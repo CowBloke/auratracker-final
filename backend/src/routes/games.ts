@@ -7,6 +7,7 @@ import { checkQuestProgress } from './quests.js';
 import { recheckBadgeForCondition, awardBadgeByKey } from '../utils/badgeAwards.js';
 import { announceGameRecordBroken } from '../socket/chat.js';
 import { getActiveClanMoneyBoostForUser } from '../utils/clanEffects.js';
+import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
@@ -873,11 +874,7 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
     ]);
 
     if (dailyMoneyReward > 0 || dailyAuraReward > 0) {
-      io.emit('economy:balance-update', {
-        userId: req.user.id,
-        aura: user.aura,
-        money: user.money,
-      });
+      await emitSharedBalanceUpdates(prisma, req.user.id);
       logGame('game_reward', req.user.id, req.user.username, {
         gameType: 'racer_daily',
         lapTimeMs,
@@ -1197,11 +1194,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
 
     // Emit balance update (always for casino, or if there are rewards)
     if (gameType === 'casino' || auraReward > 0 || moneyReward > 0) {
-      io.emit('economy:balance-update', {
-        userId: req.user.id,
-        aura: user.aura,
-        money: user.money,
-      });
+      await emitSharedBalanceUpdates(prisma, req.user.id);
     }
 
     // Log game completion

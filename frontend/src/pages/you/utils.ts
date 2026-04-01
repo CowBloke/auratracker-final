@@ -18,15 +18,11 @@ export function formatDurationMinutes(value: number) {
 }
 
 export function getRelationshipPill(status: YouRelationship['status']) {
-  if (status === 'MARRIED') {
-    return { label: 'Marie', color: 'bg-red-400/15 text-red-400' };
-  }
-
-  if (status === 'DIVORCED') {
-    return { label: 'Divorce', color: 'bg-slate-400/15 text-slate-300' };
-  }
-
-  return { label: 'Relation', color: 'bg-pink-400/15 text-pink-400' };
+  if (status === 'MARRIED') return { label: 'Marie(e)', color: 'bg-red-400/15 text-red-400' };
+  if (status === 'DIVORCED') return { label: 'Ex', color: 'bg-slate-400/15 text-slate-300' };
+  if (status === 'FRIEND') return { label: 'Ami(e)', color: 'bg-sky-400/15 text-sky-400' };
+  if (status === 'MISTRESS') return { label: 'Liaison', color: 'bg-purple-400/15 text-purple-400' };
+  return { label: 'En relation', color: 'bg-pink-400/15 text-pink-400' };
 }
 
 export function canUseBusinessAction(business: YouBusiness, action: BusinessAction, userId: string) {

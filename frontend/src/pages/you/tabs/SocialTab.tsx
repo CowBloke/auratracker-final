@@ -1,54 +1,402 @@
 import { useState } from 'react';
-import { Heart, UserPlus } from 'lucide-react';
+import { AlertTriangle, Gavel, Heart, Scale, Trash2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { type YouState, youApi } from '@/services/api';
-import { MarriageModal, MeetModal } from '../components/modals';
-import { ActionCard, ActionRow, Pill, ProgressBar, SectionTitle, UserAvatar } from '../components/ui';
+import { type YouCourtCase, type YouRelationship, type YouState, youApi } from '@/services/api';
+import { NewRelationModal } from '../components/modals';
+import { Pill, SectionTitle, UserAvatar } from '../components/ui';
 import { getRelationshipPill, withRouteError } from '../utils';
 
-export function SocialTab({ data, onReload }: { data: YouState; onReload: () => Promise<void> }) {
-  const [meetOpen, setMeetOpen] = useState(false);
-  const [marryOpen, setMarryOpen] = useState(false);
-  const eligibleForMarriage = data.relationships.filter((relationship) => relationship.canProposeMarriage);
-  const incomingProposals = data.relationships.filter((relationship) => relationship.pendingProposal?.canRespond);
-  const incomingDivorceProposals = data.relationships.filter((relationship) => relationship.pendingDivorceProposal?.canRespond);
+function RelationListItem({
+  relationship,
+  selected,
+  onClick,
+}: {
+  relationship: YouRelationship;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const pill = getRelationshipPill(relationship.status);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all ${selected ? 'bg-muted/30 ring-1 ring-border/60' : 'hover:bg-muted/20'}`}
+    >
+      <UserAvatar player={relationship.otherUser} className="h-9 w-9 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">{relationship.otherUser.username}</p>
+        <div className="mt-0.5 flex items-center gap-1.5">
+          <Pill label={pill.label} color={pill.color} />
+          {(relationship.pendingProposal || relationship.pendingDivorceProposal) && (
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+          )}
+          {relationship.hasPendingCourtCase && (
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
 
-  const respondToProposal = async (proposalId: string, decision: 'accept' | 'reject') => {
-    await withRouteError(() => youApi.respondToMarriageProposal(proposalId, decision), 'Impossible de traiter la demande.');
-    toast.success(decision === 'accept' ? 'Mariage valide' : 'Demande refusee');
-    await onReload();
-  };
+function CourtCaseItem({
+  courtCase,
+  onReload,
+}: {
+  courtCase: YouCourtCase;
+  onReload: () => Promise<void>;
+}) {
+  const [loading, setLoading] = useState(false);
 
-  const divorce = async (relationshipId: string) => {
-    await withRouteError(() => youApi.divorceRelationship(relationshipId), 'Impossible d enregistrer la demande de divorce.');
-    toast.success('Demande de divorce envoyee');
-    await onReload();
-  };
-
-  const respondToDivorce = async (proposalId: string, decision: 'accept' | 'reject') => {
-    await withRouteError(() => youApi.respondToDivorceProposal(proposalId, decision), 'Impossible de traiter la demande de divorce.');
-    toast.success(decision === 'accept' ? 'Divorce valide' : 'Divorce refuse');
-    await onReload();
+  const respond = async (decision: 'court' | 'drop') => {
+    setLoading(true);
+    try {
+      await withRouteError(() => youApi.respondToCourtCase(courtCase.id, decision), 'Impossible de repondre.');
+      if (decision === 'court') {
+        toast.success('Jugement rendu - tu as recupere tout l argent');
+      } else {
+        toast.success('Accusation ignoree');
+      }
+      await onReload();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <>
-      <div className="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <SectionTitle>Actions</SectionTitle>
-          <ActionCard><ActionRow icon={UserPlus} label="Nouvelle relation" sub={`${data.players.filter((player) => !player.alreadyInRelationship).length} joueur(s) disponible(s)`} iconBg="bg-purple-400/15" iconColor="text-purple-400" onClick={() => setMeetOpen(true)} /><ActionRow icon={Heart} label="Demander en mariage" sub={eligibleForMarriage.length > 0 ? `${eligibleForMarriage.length} relation(s) eligible(s)` : 'Relation +70 requise'} iconBg="bg-red-400/15" iconColor="text-red-400" onClick={() => setMarryOpen(true)} /></ActionCard>
-          {incomingProposals.length > 0 ? <><SectionTitle>Demandes de mariage</SectionTitle><Card><CardContent className="space-y-3 px-5 py-4">{incomingProposals.map((relationship) => <div key={relationship.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><p className="text-sm font-semibold">{relationship.otherUser.username}</p><p className="mt-1 text-xs text-muted-foreground">{relationship.pendingProposal?.message?.trim() || 'Aucun message joint.'}</p><div className="mt-3 flex gap-2"><Button size="sm" className="text-xs" onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'accept')}>Accepter</Button><Button size="sm" variant="outline" className="text-xs" onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'reject')}>Refuser</Button></div></div>)}</CardContent></Card></> : null}
-          {incomingDivorceProposals.length > 0 ? <><SectionTitle>Demandes de divorce</SectionTitle><Card><CardContent className="space-y-3 px-5 py-4">{incomingDivorceProposals.map((relationship) => <div key={relationship.id} className="rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-3"><p className="text-sm font-semibold">{relationship.otherUser.username}</p><p className="mt-1 text-xs text-muted-foreground">{relationship.pendingDivorceProposal?.message?.trim() || 'Aucun message joint.'}</p><div className="mt-3 flex gap-2"><Button size="sm" className="text-xs" onClick={() => void respondToDivorce(relationship.pendingDivorceProposal!.id, 'accept')}>Valider</Button><Button size="sm" variant="outline" className="text-xs" onClick={() => void respondToDivorce(relationship.pendingDivorceProposal!.id, 'reject')}>Refuser</Button></div></div>)}</CardContent></Card></> : null}
-        </div>
-        <div className="space-y-4">
-          <SectionTitle>Relations ({data.relationships.length})</SectionTitle>
-          {data.relationships.length === 0 ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune relation en base. Cree-en une avec un vrai joueur depuis le panneau de gauche.</CardContent></Card> : data.relationships.map((relationship) => { const pill = getRelationshipPill(relationship.status); return <Card key={relationship.id}><CardContent className="space-y-4 px-5 py-4"><div className="flex items-start gap-3"><UserAvatar player={relationship.otherUser} className="h-11 w-11" /><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-base font-semibold">{relationship.otherUser.username}</p><Pill label={pill.label} color={pill.color} />{relationship.pendingProposal ? <Pill label={relationship.pendingProposal.direction === 'sent' ? 'Demande envoyee' : 'Demande recue'} color="bg-amber-400/15 text-amber-400" /> : null}{relationship.pendingDivorceProposal ? <Pill label={relationship.pendingDivorceProposal.direction === 'sent' ? 'Divorce envoye' : 'Divorce recu'} color="bg-rose-400/15 text-rose-300" /> : null}</div><p className="mt-1 text-sm text-muted-foreground">{relationship.otherUser.bio?.trim() || 'Aucune bio renseignee.'}</p></div><span className="text-sm font-bold tabular-nums text-pink-400">{relationship.connectionLevel}%</span></div><div className="space-y-1"><div className="flex justify-between text-[11px] text-muted-foreground"><span>Connexion</span><span>{relationship.status === 'MARRIED' ? 'Statut finalise' : relationship.status === 'DIVORCED' ? 'Relation terminee' : 'Evolution active'}</span></div><ProgressBar value={relationship.connectionLevel} color="bg-pink-400" /></div>{relationship.pendingProposal ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">{relationship.pendingProposal.direction === 'sent' ? 'Ta demande en mariage est en attente.' : 'Une demande en mariage attend ta reponse.'}</div> : null}{relationship.pendingDivorceProposal ? <div className="rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-xs text-rose-100">{relationship.pendingDivorceProposal.direction === 'sent' ? 'Ta demande de divorce attend une validation mutuelle.' : 'Une demande de divorce attend ta reponse.'}</div> : null}{relationship.canDivorce ? <div className="flex justify-end"><Button size="sm" variant="outline" className="text-xs text-red-300" onClick={() => void divorce(relationship.id)}>Demander le divorce</Button></div> : null}</CardContent></Card>; })}
+    <div className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Gavel className="h-4 w-4 text-rose-400" />
+        <p className="text-sm font-semibold text-rose-300">Suspicion de tricherie</p>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">{courtCase.accuser.username}</span> te soupçonne de tricherie.
+        Aller en justice te permet de prendre tout son argent si la suspicion est infondee.
+      </p>
+      <div className="mt-3 flex gap-2">
+        <Button size="sm" variant="destructive" className="text-xs" disabled={loading} onClick={() => void respond('court')}>
+          <Scale className="mr-1.5 h-3.5 w-3.5" />
+          Aller en justice
+        </Button>
+        <Button size="sm" variant="outline" className="text-xs" disabled={loading} onClick={() => void respond('drop')}>
+          Ignorer
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function RelationActions({
+  relationship,
+  onReload,
+}: {
+  relationship: YouRelationship;
+  onReload: () => Promise<void>;
+}) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [confirmForget, setConfirmForget] = useState(false);
+  const [confirmMistress, setConfirmMistress] = useState(false);
+  const [confirmSuspect, setConfirmSuspect] = useState(false);
+
+  const run = async (key: string, fn: () => Promise<void>) => {
+    setLoading(key);
+    try {
+      await fn();
+      await onReload();
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const respondToProposal = (proposalId: string, decision: 'accept' | 'reject') =>
+    run('proposal', async () => {
+      await withRouteError(() => youApi.respondToMarriageProposal(proposalId, decision), 'Impossible de traiter la demande.');
+      toast.success(decision === 'accept' ? 'Mariage valide' : 'Demande refusee');
+    });
+
+  const divorce = () =>
+    run('divorce', async () => {
+      await withRouteError(() => youApi.divorceRelationship(relationship.id), 'Impossible d enregistrer la demande de divorce.');
+      toast.success('Demande de divorce envoyee');
+    });
+
+  const respondToDivorce = (proposalId: string, decision: 'accept' | 'reject') =>
+    run('divorceRespond', async () => {
+      await withRouteError(() => youApi.respondToDivorceProposal(proposalId, decision), 'Impossible de traiter la demande de divorce.');
+      toast.success(decision === 'accept' ? 'Divorce valide - argent partage' : 'Divorce refuse');
+    });
+
+  const proposeMarriage = () =>
+    run('proposeMarriage', async () => {
+      await withRouteError(() => youApi.proposeMarriage(relationship.id), 'Impossible d envoyer la demande.');
+      toast.success('Demande en mariage envoyee');
+    });
+
+  const forget = () =>
+    run('forget', async () => {
+      await withRouteError(() => youApi.forgetRelationship(relationship.id), 'Impossible d oublier cette relation.');
+      toast.success('Relation supprimee');
+    });
+
+  const makeMistress = () =>
+    run('mistress', async () => {
+      await withRouteError(() => youApi.makeMistress(relationship.id), 'Impossible de modifier la relation.');
+      toast.success('Liaison creee');
+    });
+
+  const suspectCheating = () =>
+    run('suspect', async () => {
+      const result = await withRouteError(() => youApi.suspectCheating(relationship.id), 'Impossible d envoyer la suspicion.');
+      if (result?.data?.correct) {
+        toast.success('Tricherie prouvee ! Tu as recupere tout l argent.');
+      } else {
+        toast.info('Suspicion envoyee. Ton conjoint peut aller en justice.');
+      }
+    });
+
+  const pill = getRelationshipPill(relationship.status);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <UserAvatar player={relationship.otherUser} className="h-12 w-12" />
+        <div>
+          <p className="text-base font-semibold">{relationship.otherUser.username}</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <Pill label={pill.label} color={pill.color} />
+            {relationship.pendingProposal && (
+              <Pill
+                label={relationship.pendingProposal.direction === 'sent' ? 'Demande envoyee' : 'Demande recue'}
+                color="bg-amber-400/15 text-amber-400"
+              />
+            )}
+            {relationship.pendingDivorceProposal && (
+              <Pill
+                label={relationship.pendingDivorceProposal.direction === 'sent' ? 'Divorce envoye' : 'Divorce recu'}
+                color="bg-rose-400/15 text-rose-300"
+              />
+            )}
+          </div>
         </div>
       </div>
-      <MeetModal open={meetOpen} onClose={() => setMeetOpen(false)} players={data.players} onSubmitted={onReload} />
-      <MarriageModal open={marryOpen} onClose={() => setMarryOpen(false)} relationships={eligibleForMarriage} onSubmitted={onReload} />
+
+      {relationship.otherUser.bio?.trim() && (
+        <p className="text-sm text-muted-foreground">{relationship.otherUser.bio}</p>
+      )}
+
+      {/* Marriage proposal received */}
+      {relationship.pendingProposal?.canRespond && (
+        <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3">
+          <p className="text-sm font-semibold text-red-300">Demande en mariage</p>
+          {relationship.pendingProposal.message?.trim() && (
+            <p className="mt-1 text-xs text-muted-foreground">{relationship.pendingProposal.message}</p>
+          )}
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'accept')}>Accepter</Button>
+            <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'reject')}>Refuser</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Marriage proposal sent */}
+      {relationship.pendingProposal && !relationship.pendingProposal.canRespond && (
+        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
+          Ta demande en mariage est en attente de reponse.
+        </div>
+      )}
+
+      {/* Divorce received */}
+      {relationship.pendingDivorceProposal?.canRespond && (
+        <div className="rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-3">
+          <p className="text-sm font-semibold text-rose-300">Demande de divorce</p>
+          {relationship.pendingDivorceProposal.message?.trim() && (
+            <p className="mt-1 text-xs text-muted-foreground">{relationship.pendingDivorceProposal.message}</p>
+          )}
+          <p className="mt-1 text-xs text-amber-400">Le divorce partage l argent du foyer en deux.</p>
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => void respondToDivorce(relationship.pendingDivorceProposal!.id, 'accept')}>Accepter</Button>
+            <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => void respondToDivorce(relationship.pendingDivorceProposal!.id, 'reject')}>Refuser</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Divorce sent */}
+      {relationship.pendingDivorceProposal && !relationship.pendingDivorceProposal.canRespond && (
+        <div className="rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-xs text-rose-100">
+          Ta demande de divorce attend une validation mutuelle.
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="space-y-2">
+        {relationship.canProposeMarriage && !relationship.pendingProposal && (
+          <Button size="sm" className="w-full justify-start gap-2 text-xs" variant="outline" disabled={!!loading} onClick={() => void proposeMarriage()}>
+            <Heart className="h-3.5 w-3.5 text-red-400" />
+            Demander en mariage
+          </Button>
+        )}
+
+        {relationship.canDivorce && (
+          <Button size="sm" className="w-full justify-start gap-2 text-xs text-red-300" variant="outline" disabled={!!loading} onClick={() => void divorce()}>
+            <Heart className="h-3.5 w-3.5" />
+            Demander le divorce
+          </Button>
+        )}
+
+        {relationship.canMakeMistress && !confirmMistress && (
+          <Button size="sm" className="w-full justify-start gap-2 text-xs text-purple-300" variant="outline" disabled={!!loading} onClick={() => setConfirmMistress(true)}>
+            <Heart className="h-3.5 w-3.5" />
+            Faire une liaison
+          </Button>
+        )}
+
+        {confirmMistress && (
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              <p className="text-xs text-amber-200">
+                Attention : ton/ta conjoint(e) peut te soupçonner de tricherie. Si la suspicion est confirmee, il/elle recupere TOUT l argent du foyer et vous divorcez automatiquement.
+              </p>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => { setConfirmMistress(false); void makeMistress(); }}>Confirmer</Button>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setConfirmMistress(false)}>Annuler</Button>
+            </div>
+          </div>
+        )}
+
+        {relationship.canSuspectCheating && !confirmSuspect && (
+          <Button size="sm" className="w-full justify-start gap-2 text-xs text-amber-300" variant="outline" disabled={!!loading} onClick={() => setConfirmSuspect(true)}>
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Suspicion de tricherie
+          </Button>
+        )}
+
+        {confirmSuspect && (
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              <p className="text-xs text-amber-200">
+                Si ton/ta conjoint(e) a une liaison, tu recuperes tout l argent du foyer et vous divorcez automatiquement.
+                Si tu as tort, il/elle peut aller en justice et prendre tout ton argent.
+              </p>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Button size="sm" variant="destructive" className="text-xs" disabled={!!loading} onClick={() => { setConfirmSuspect(false); void suspectCheating(); }}>Confirmer</Button>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setConfirmSuspect(false)}>Annuler</Button>
+            </div>
+          </div>
+        )}
+
+        {relationship.canForget && !confirmForget && (
+          <Button size="sm" className="w-full justify-start gap-2 text-xs text-muted-foreground" variant="ghost" disabled={!!loading} onClick={() => setConfirmForget(true)}>
+            <Trash2 className="h-3.5 w-3.5" />
+            Oublier
+          </Button>
+        )}
+
+        {confirmForget && (
+          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+            <p className="text-xs text-muted-foreground">Supprimer cette relation definitivement ?</p>
+            <div className="mt-3 flex gap-2">
+              <Button size="sm" variant="destructive" className="text-xs" disabled={!!loading} onClick={() => { setConfirmForget(false); void forget(); }}>Oublier</Button>
+              <Button size="sm" variant="ghost" className="text-xs" onClick={() => setConfirmForget(false)}>Annuler</Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function SocialTab({ data, onReload }: { data: YouState; onReload: () => Promise<void> }) {
+  const [addOpen, setAddOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const availablePlayers = data.players.filter((p) => !p.alreadyInRelationship);
+
+  // Sort: MARRIED first, then rest
+  const sortedRelationships = [...data.relationships].sort((a, b) => {
+    if (a.status === 'MARRIED' && b.status !== 'MARRIED') return -1;
+    if (a.status !== 'MARRIED' && b.status === 'MARRIED') return 1;
+    return 0;
+  });
+
+  const selected = sortedRelationships.find((r) => r.id === selectedId) ?? sortedRelationships[0] ?? null;
+
+  return (
+    <>
+      <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+        {/* Left: List */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <SectionTitle>Relations ({data.relationships.length})</SectionTitle>
+            <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => setAddOpen(true)}>
+              <UserPlus className="h-3.5 w-3.5" />
+              Ajouter
+            </Button>
+          </div>
+
+          {/* Court cases for me (I'm the accused) */}
+          {data.courtCases.length > 0 && (
+            <div className="space-y-2">
+              {data.courtCases.map((c) => (
+                <CourtCaseItem key={c.id} courtCase={c} onReload={onReload} />
+              ))}
+            </div>
+          )}
+
+          {sortedRelationships.length === 0 ? (
+            <Card>
+              <CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">
+                Aucune relation. Ajoute quelqu un avec le bouton ci-dessus.
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="space-y-0.5 px-2 py-2">
+                {sortedRelationships.map((r) => (
+                  <RelationListItem
+                    key={r.id}
+                    relationship={r}
+                    selected={selected?.id === r.id}
+                    onClick={() => setSelectedId(r.id)}
+                  />
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right: Actions */}
+        <div className="space-y-4">
+          {selected ? (
+            <>
+              <SectionTitle>Actions</SectionTitle>
+              <Card>
+                <CardContent className="px-5 py-4">
+                  <RelationActions relationship={selected} onReload={onReload} />
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">
+                Selectionne une relation pour voir les actions disponibles.
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      <NewRelationModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        players={availablePlayers}
+        onSubmitted={onReload}
+      />
     </>
   );
 }

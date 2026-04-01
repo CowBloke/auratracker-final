@@ -1,4 +1,4 @@
-import { prisma } from '../../server.js';
+import { io, prisma } from '../../server.js';
 import { createNotification } from '../../utils/notifications.js';
 import {
   BUSINESS_TYPES,
@@ -285,7 +285,7 @@ function serializeBusiness(business: any, viewerId: string) {
   };
 }
 
-function serializeRelationship(relationship: any, viewerId: string) {
+function serializeRelationship(relationship: any, viewerId: string, ctx?: { viewerIsMarried: boolean; pendingCourtCaseIds: Set<string> }) {
   const otherUser = relationship.userAId === viewerId ? relationship.userB : relationship.userA;
   const pendingMarriageProposal = relationship.marriageProposals.find((proposal: any) => proposal.status === 'PENDING') ?? null;
   const pendingMarriageProposalDirection = pendingMarriageProposal
@@ -296,6 +296,11 @@ function serializeRelationship(relationship: any, viewerId: string) {
     ? (pendingDivorceProposal.proposerId === viewerId ? 'sent' : 'received')
     : null;
   const canRequestDivorce = relationship.status === 'MARRIED' && !pendingDivorceProposal;
+  const isActive = ['DATING', 'FRIEND', 'MISTRESS'].includes(relationship.status);
+  const canForget = relationship.status !== 'MARRIED' && !pendingMarriageProposal && !pendingDivorceProposal;
+  const canMakeMistress = isActive && relationship.status !== 'MISTRESS' && (ctx?.viewerIsMarried ?? false);
+  const canSuspectCheating = relationship.status === 'MARRIED';
+  const hasPendingCourtCase = ctx?.pendingCourtCaseIds.has(otherUser.id) ?? false;
 
   return {
     id: relationship.id,
@@ -304,8 +309,12 @@ function serializeRelationship(relationship: any, viewerId: string) {
     createdAt: relationship.createdAt.toISOString(),
     marriedAt: relationship.marriedAt ? relationship.marriedAt.toISOString() : null,
     otherUser,
-    canProposeMarriage: relationship.status === 'DATING' && relationship.connectionLevel >= 70 && !pendingMarriageProposal,
+    canProposeMarriage: (relationship.status === 'DATING' || relationship.status === 'FRIEND') && relationship.connectionLevel >= 70 && !pendingMarriageProposal,
     canDivorce: canRequestDivorce,
+    canForget,
+    canMakeMistress,
+    canSuspectCheating,
+    hasPendingCourtCase,
     pendingProposal: pendingMarriageProposal
       ? {
           id: pendingMarriageProposal.id,
@@ -345,6 +354,17 @@ export async function getYouState(userId: string) {
     include: RELATIONSHIP_INCLUDE,
     orderBy: [{ status: 'asc' }, { updatedAt: 'desc' }],
   });
+
+  const viewerIsMarried = relationships.some((r) => r.status === 'MARRIED');
+
+  // Court cases where viewer is the accused (pending)
+  const pendingCourtCases = await prisma.cheatingAccusation.findMany({
+    where: { accusedId: userId, status: 'PENDING' },
+    include: { accuser: { select: USER_PREVIEW_SELECT } },
+  });
+
+  // Build set of accuser IDs for quick lookup in serializeRelationship
+  const pendingCourtCaseIds = new Set(pendingCourtCases.map((c: any) => c.accuserId));
 
   const relatedUserIds = new Set<string>();
   relationships.forEach((relationship) => {
@@ -449,7 +469,13 @@ export async function getYouState(userId: string) {
         owner: invitation.business.owner,
       },
     })),
-    relationships: relationships.map((relationship) => serializeRelationship(relationship, userId)),
+    relationships: relationships.map((relationship) => serializeRelationship(relationship, userId, { viewerIsMarried, pendingCourtCaseIds })),
+    courtCases: pendingCourtCases.map((c: any) => ({
+      id: c.id,
+      accuserId: c.accuserId,
+      accuser: c.accuser,
+      createdAt: c.createdAt.toISOString(),
+    })),
     ownedBusinesses: ownedBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
     exploreBusinesses: exploreBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
   };
@@ -1282,7 +1308,7 @@ export async function executeBusinessAction(userId: string, businessId: string, 
   return handler(userId, business, input);
 }
 
-export async function createRelationship(userId: string, targetUserId: string) {
+export async function createRelationship(userId: string, targetUserId: string, type: 'FRIEND' | 'DATING' = 'DATING') {
   if (userId === targetUserId) {
     throw new Error('RELATIONSHIP_SELF_FORBIDDEN');
   }
@@ -1335,6 +1361,7 @@ export async function createRelationship(userId: string, targetUserId: string) {
     data: {
       ...pair,
       initiatedById: userId,
+      status: type,
       connectionLevel: 72,
     },
     include: RELATIONSHIP_INCLUDE,
@@ -1625,6 +1652,15 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
     };
   }
 
+  // Split money 50/50 on divorce
+  const [userARecord, userBRecord] = await Promise.all([
+    prisma.user.findUnique({ where: { id: proposal.relationship.userAId }, select: { money: true } }),
+    prisma.user.findUnique({ where: { id: proposal.relationship.userBId }, select: { money: true } }),
+  ]);
+  const totalMoney = (userARecord?.money ?? 0) + (userBRecord?.money ?? 0);
+  const halfA = Math.floor(totalMoney / 2);
+  const halfB = totalMoney - halfA;
+
   const [acceptedProposal, updatedRelationship] = await prisma.$transaction([
     prisma.divorceProposal.update({
       where: { id: proposalId },
@@ -1641,6 +1677,8 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
       },
       include: RELATIONSHIP_INCLUDE,
     }),
+    prisma.user.update({ where: { id: proposal.relationship.userAId }, data: { money: halfA } }),
+    prisma.user.update({ where: { id: proposal.relationship.userBId }, data: { money: halfB } }),
   ]);
 
   await Promise.allSettled([
@@ -1670,6 +1708,150 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
     },
     relationship: serializeRelationship(updatedRelationship, userId),
   };
+}
+
+export async function forgetRelationship(userId: string, relationshipId: string) {
+  const relationship = await prisma.relationship.findUnique({ where: { id: relationshipId } });
+  if (!relationship) throw new Error('RELATIONSHIP_NOT_FOUND');
+  if (relationship.userAId !== userId && relationship.userBId !== userId) throw new Error('RELATIONSHIP_FORBIDDEN');
+  if (relationship.status === 'MARRIED') throw new Error('RELATIONSHIP_NOT_MARRIED');
+  await prisma.relationship.delete({ where: { id: relationshipId } });
+}
+
+export async function makeMistress(userId: string, relationshipId: string) {
+  const relationship = await prisma.relationship.findUnique({
+    where: { id: relationshipId },
+    include: RELATIONSHIP_INCLUDE,
+  });
+  if (!relationship) throw new Error('RELATIONSHIP_NOT_FOUND');
+  if (relationship.userAId !== userId && relationship.userBId !== userId) throw new Error('RELATIONSHIP_FORBIDDEN');
+  if (!['DATING', 'FRIEND'].includes(relationship.status)) throw new Error('RELATIONSHIP_NOT_ACTIVE');
+
+  const viewerMarried = await prisma.relationship.findFirst({
+    where: { status: 'MARRIED', OR: [{ userAId: userId }, { userBId: userId }], id: { not: relationshipId } },
+  });
+  if (!viewerMarried) throw new Error('NOT_MARRIED');
+
+  const otherUserId = relationship.userAId === userId ? relationship.userBId : relationship.userAId;
+  const updated = await prisma.relationship.update({
+    where: { id: relationshipId },
+    data: { status: 'MISTRESS' },
+    include: RELATIONSHIP_INCLUDE,
+  });
+
+  await createNotification({
+    userId: otherUserId,
+    type: 'SYSTEM',
+    title: 'Liaison secrete',
+    body: 'Votre relation a ete transformee en liaison secrete.',
+    link: '/you?tab=social',
+    icon: 'heart',
+  });
+
+  return serializeRelationship(updated, userId);
+}
+
+export async function suspectCheating(userId: string, relationshipId: string) {
+  const relationship = await prisma.relationship.findUnique({
+    where: { id: relationshipId },
+    include: RELATIONSHIP_INCLUDE,
+  });
+  if (!relationship) throw new Error('RELATIONSHIP_NOT_FOUND');
+  if (relationship.userAId !== userId && relationship.userBId !== userId) throw new Error('RELATIONSHIP_FORBIDDEN');
+  if (relationship.status !== 'MARRIED') throw new Error('RELATIONSHIP_NOT_MARRIED');
+
+  const accusedId = relationship.userAId === userId ? relationship.userBId : relationship.userAId;
+
+  const existingAccusation = await prisma.cheatingAccusation.findFirst({
+    where: { accuserId: userId, accusedId, status: 'PENDING' },
+  });
+  if (existingAccusation) throw new Error('CHEATING_ACCUSATION_ALREADY_PENDING');
+
+  const mistressRelationship = await prisma.relationship.findFirst({
+    where: { status: 'MISTRESS', OR: [{ userAId: accusedId }, { userBId: accusedId }] },
+  });
+
+  if (mistressRelationship) {
+    const [viewerUser, accusedUser] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { money: true } }),
+      prisma.user.findUnique({ where: { id: accusedId }, select: { money: true } }),
+    ]);
+    const totalMoney = (viewerUser?.money ?? 0) + (accusedUser?.money ?? 0);
+
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: userId }, data: { money: totalMoney } }),
+      prisma.user.update({ where: { id: accusedId }, data: { money: 0 } }),
+      prisma.relationship.update({ where: { id: relationshipId }, data: { status: 'DIVORCED', marriedAt: null } }),
+    ]);
+
+    await createNotification({
+      userId: accusedId,
+      type: 'SYSTEM',
+      title: 'Tricherie decouverte',
+      body: 'Ta liaison a ete prouvee. Ton conjoint a pris tout l argent et vous etes divorces.',
+      link: '/you?tab=social',
+      icon: 'heart-crack',
+    });
+
+    io.to(`user:${userId}`).emit('economy:balance-update', { userId, money: totalMoney });
+    io.to(`user:${accusedId}`).emit('economy:balance-update', { userId: accusedId, money: 0 });
+
+    return { correct: true };
+  }
+
+  await prisma.cheatingAccusation.create({ data: { accuserId: userId, accusedId } });
+
+  await createNotification({
+    userId: accusedId,
+    type: 'SYSTEM',
+    title: 'Suspicion de tricherie',
+    body: 'Ton conjoint te soupçonne de tricherie. Tu peux aller en justice depuis l onglet social.',
+    link: '/you?tab=social',
+    icon: 'gavel',
+  });
+
+  return { correct: false };
+}
+
+export async function respondToCourtCase(userId: string, accusationId: string, decision: 'court' | 'drop') {
+  const accusation = await prisma.cheatingAccusation.findUnique({
+    where: { id: accusationId },
+    include: { accuser: { select: USER_PREVIEW_SELECT } },
+  });
+  if (!accusation) throw new Error('CHEATING_ACCUSATION_NOT_FOUND');
+  if (accusation.accusedId !== userId) throw new Error('CHEATING_ACCUSATION_FORBIDDEN');
+  if (accusation.status !== 'PENDING') throw new Error('CHEATING_ACCUSATION_ALREADY_RESOLVED');
+
+  if (decision === 'drop') {
+    await prisma.cheatingAccusation.update({ where: { id: accusationId }, data: { status: 'DROPPED' } });
+    return { decision: 'drop' };
+  }
+
+  const [accuserUser, accusedUser] = await Promise.all([
+    prisma.user.findUnique({ where: { id: accusation.accuserId }, select: { money: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { money: true } }),
+  ]);
+  const totalMoney = (accuserUser?.money ?? 0) + (accusedUser?.money ?? 0);
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { money: totalMoney } }),
+    prisma.user.update({ where: { id: accusation.accuserId }, data: { money: 0 } }),
+    prisma.cheatingAccusation.update({ where: { id: accusationId }, data: { status: 'COURT_TAKEN' } }),
+  ]);
+
+  await createNotification({
+    userId: accusation.accuserId,
+    type: 'SYSTEM',
+    title: 'Jugement rendu',
+    body: 'Ta suspicion etait infondee. Le tribunal t a condamne et ton conjoint a pris tout l argent.',
+    link: '/you?tab=social',
+    icon: 'gavel',
+  });
+
+  io.to(`user:${userId}`).emit('economy:balance-update', { userId, money: totalMoney });
+  io.to(`user:${accusation.accuserId}`).emit('economy:balance-update', { userId: accusation.accuserId, money: 0 });
+
+  return { decision: 'court' };
 }
 
 export async function deleteBusiness(requestUserId: string, businessId: string) {

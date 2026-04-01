@@ -3,6 +3,7 @@ import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
+import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 interface BattleshipPlayer {
@@ -196,18 +197,7 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
       }),
     ]);
 
-    // Emit balance updates
-    io.emit('economy:balance-update', {
-      userId: winnerId,
-      aura: updatedWinner.aura,
-      money: updatedWinner.money,
-    });
-
-    io.emit('economy:balance-update', {
-      userId: loser.userId,
-      aura: updatedLoser.aura,
-      money: updatedLoser.money,
-    });
+    await emitSharedBalanceUpdatesForUserIds(prisma, [winnerId, loser.userId]);
 
     // Check quest progress
     await checkQuestProgress(winnerId, 'BATTLESHIP_PLAYS', 1);

@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logEconomy } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
 import { awardBadgeByKey } from '../utils/badgeAwards.js';
+import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
 
 const router = Router();
 
@@ -377,12 +378,7 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
       ),
     ]);
 
-    // Emit balance update
-    io.emit('economy:balance-update', {
-      userId: req.user.id,
-      aura: updatedUser.aura,
-      money: updatedUser.money,
-    });
+    await emitSharedBalanceUpdates(prisma, req.user.id);
 
     // Log rewards
     logEconomy('quest_reward', req.user.id, req.user.username || '', undefined, undefined, {

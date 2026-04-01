@@ -4,6 +4,7 @@ import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAuraCoin } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
+import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
 
 const router = Router();
 
@@ -268,12 +269,7 @@ router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
     // Save new price and broadcast
     await savePriceAndBroadcast(moneyAmount);
     
-    // Broadcast balance update
-    io.emit('economy:balance-update', {
-      userId: req.user.id,
-      money: updatedUser.money,
-      aura: updatedUser.aura,
-    });
+    await emitSharedBalanceUpdates(prisma, req.user.id);
 
     // Log buy
     logAuraCoin('auracoin_buy', req.user.id, user.username, {
@@ -379,12 +375,7 @@ router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => 
     // Save new price and broadcast
     await savePriceAndBroadcast(grossAmount);
     
-    // Broadcast balance update
-    io.emit('economy:balance-update', {
-      userId: req.user.id,
-      money: updatedUser.money,
-      aura: updatedUser.aura,
-    });
+    await emitSharedBalanceUpdates(prisma, req.user.id);
 
     // Log sell
     logAuraCoin('auracoin_sell', req.user.id, user.username, {
@@ -640,12 +631,7 @@ router.post('/position/open', authMiddleware, async (req: AuthRequest, res: Resp
       }),
     ]);
 
-    // Broadcast balance update
-    io.emit('economy:balance-update', {
-      userId: req.user.id,
-      money: position[0].money,
-      aura: position[0].aura,
-    });
+    await emitSharedBalanceUpdates(prisma, req.user.id);
 
     createNotification({
       userId: req.user.id,
@@ -736,12 +722,7 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
       }),
     ]);
 
-    // Broadcast balance update
-    io.emit('economy:balance-update', {
-      userId: req.user.id,
-      money: updatedUser.money,
-      aura: updatedUser.aura,
-    });
+    await emitSharedBalanceUpdates(prisma, req.user.id);
 
     createNotification({
       userId: req.user.id,

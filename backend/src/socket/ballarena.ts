@@ -4,6 +4,7 @@ import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
+import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 // ─── Arena constants ──────────────────────────────────────────────────────────
@@ -346,10 +347,7 @@ async function endGame(
         })
       )));
 
-      io.emit('economy:balance-update', { userId: updatedWinner.id, aura: updatedWinner.aura, money: updatedWinner.money });
-      for (const updatedLoser of updatedLosers) {
-        io.emit('economy:balance-update', { userId: updatedLoser.id, aura: updatedLoser.aura, money: updatedLoser.money });
-      }
+      await emitSharedBalanceUpdatesForUserIds(prisma, [updatedWinner.id, ...updatedLosers.map((user) => user.id)]);
 
       await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
       await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
@@ -409,9 +407,7 @@ async function endGame(
           })
         )
       );
-      for (const u of updated) {
-        io.emit('economy:balance-update', { userId: u.id, aura: u.aura, money: u.money });
-      }
+      await emitSharedBalanceUpdatesForUserIds(prisma, updated.map((user) => user.id));
       for (const p of game.players) {
         await checkQuestProgress(p.userId, 'PLAY_GAMES', 1);
       }

@@ -5,7 +5,7 @@ import { validate, transferSchema } from '../middleware/validation.js';
 import { logEconomy } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
 import { syncUserDailyAuraState } from '../utils/dailyAura.js';
-import { getSharedBalance } from '../utils/sharedBalance.js';
+import { emitSharedBalanceUpdates, getSharedBalance } from '../utils/sharedBalance.js';
 
 const router = Router();
 
@@ -140,11 +140,7 @@ router.post('/transfer', authMiddleware, validate(transferSchema), async (req: A
       return { updatedSender, updatedReceiver, transfer };
     });
 
-    io.emit('economy:balance-update', {
-      userId: receiverId,
-      aura: Number(transferResult.updatedReceiver.aura),
-      money: transferResult.updatedReceiver.money,
-    });
+    await emitSharedBalanceUpdates(prisma, receiverId);
 
     const notificationTitle = auraAmount >= 0
       ? `+${auraAmount} aura recue`

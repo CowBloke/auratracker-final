@@ -285,15 +285,26 @@ export interface YouDivorceProposal {
 
 export interface YouRelationship {
   id: string;
-  status: 'DATING' | 'MARRIED' | 'DIVORCED' | string;
+  status: 'DATING' | 'FRIEND' | 'MARRIED' | 'DIVORCED' | 'MISTRESS' | string;
   connectionLevel: number;
   createdAt: string;
   marriedAt: string | null;
   otherUser: Omit<YouPlayer, 'alreadyInRelationship'>;
   canProposeMarriage: boolean;
   canDivorce: boolean;
+  canForget: boolean;
+  canMakeMistress: boolean;
+  canSuspectCheating: boolean;
+  hasPendingCourtCase: boolean;
   pendingProposal: YouMarriageProposal | null;
   pendingDivorceProposal: YouDivorceProposal | null;
+}
+
+export interface YouCourtCase {
+  id: string;
+  accuserId: string;
+  accuser: Omit<YouPlayer, 'alreadyInRelationship'>;
+  createdAt: string;
 }
 
 export interface YouJobOffer {
@@ -316,6 +327,7 @@ export interface YouState {
   players: YouPlayer[];
   jobOffers: YouJobOffer[];
   relationships: YouRelationship[];
+  courtCases: YouCourtCase[];
   ownedBusinesses: YouBusiness[];
   exploreBusinesses: YouBusiness[];
 }
@@ -333,8 +345,8 @@ export const youApi = {
     api.post<{ result: { id: string; status: string; respondedAt: string | null } }>(`/you/business-invitations/${invitationId}/respond`, { decision }),
   respondToBusinessLoan: (loanId: string, decision: 'accept' | 'reject') =>
     api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/loans/${loanId}/respond`, { decision }),
-  createRelationship: (targetUserId: string) =>
-    api.post<{ relationship: YouRelationship }>('/you/relationships', { targetUserId }),
+  createRelationship: (targetUserId: string, type: 'FRIEND' | 'DATING' = 'DATING') =>
+    api.post<{ relationship: YouRelationship }>('/you/relationships', { targetUserId, type }),
   proposeMarriage: (relationshipId: string, message?: string) =>
     api.post<{ proposal: Omit<YouMarriageProposal, 'direction' | 'canRespond' | 'respondedAt'> & { respondedAt?: string | null } }>(`/you/relationships/${relationshipId}/actions/propose-marriage`, { message }),
   respondToMarriageProposal: (proposalId: string, decision: 'accept' | 'reject') =>
@@ -343,6 +355,14 @@ export const youApi = {
     api.post<{ proposal: { id: string; status: string; createdAt: string; respondedAt: string | null } }>(`/you/relationships/${relationshipId}/actions/divorce`, { message }),
   respondToDivorceProposal: (proposalId: string, decision: 'accept' | 'reject') =>
     api.post<{ proposal: { id: string; status: string; respondedAt: string | null }; relationship: YouRelationship }>(`/you/divorce-proposals/${proposalId}/respond`, { decision }),
+  forgetRelationship: (relationshipId: string) =>
+    api.delete<{ ok: boolean }>(`/you/relationships/${relationshipId}`),
+  makeMistress: (relationshipId: string) =>
+    api.post<{ relationship: YouRelationship }>(`/you/relationships/${relationshipId}/actions/make-mistress`, {}),
+  suspectCheating: (relationshipId: string) =>
+    api.post<{ correct: boolean }>(`/you/relationships/${relationshipId}/actions/suspect-cheating`, {}),
+  respondToCourtCase: (accusationId: string, decision: 'court' | 'drop') =>
+    api.post<{ decision: string }>(`/you/cheating-accusations/${accusationId}/respond`, { decision }),
   deleteBusiness: (businessId: string) =>
     api.delete<{ result: { id: string } }>(`/you/businesses/${businessId}`),
 };

@@ -267,6 +267,57 @@ export function MeetModal({ open, onClose, players, onSubmitted }: { open: boole
   );
 }
 
+export function NewRelationModal({ open, onClose, players, onSubmitted }: { open: boolean; onClose: () => void; players: YouPlayer[]; onSubmitted: () => Promise<void> }) {
+  const [search, setSearch] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [type, setType] = useState<'FRIEND' | 'DATING'>('DATING');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) { setSearch(''); setSelectedUserId(''); setType('DATING'); }
+  }, [open]);
+
+  const candidates = useMemo(() => players.filter((player) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return player.username.toLowerCase().includes(q) || player.firstName?.toLowerCase().includes(q) || player.bio?.toLowerCase().includes(q);
+  }), [players, search]);
+
+  const submit = async () => {
+    if (!selectedUserId) return;
+    setSubmitting(true);
+    try {
+      await withRouteError(() => youApi.createRelationship(selectedUserId, type), 'Impossible de creer la relation.');
+      toast.success('Relation creee');
+      await onSubmitted();
+      onClose();
+    } finally { setSubmitting(false); }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Ajouter une relation" desc="Choisis un joueur et le type de relation.">
+      <FieldRow label="Type">
+        <div className="flex gap-2">
+          {(['DATING', 'FRIEND'] as const).map((t) => (
+            <button key={t} type="button" onClick={() => setType(t)} className={cn('flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors', type === t ? 'border-foreground bg-muted/20' : 'border-border/40 bg-muted/10 hover:bg-muted/20')}>
+              {t === 'DATING' ? 'En relation' : 'Ami(e)'}
+            </button>
+          ))}
+        </div>
+      </FieldRow>
+      <FieldRow label="Recherche"><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
+      <div className="max-h-64 space-y-2 overflow-y-auto">
+        {candidates.map((player) => {
+          const sel = player.id === selectedUserId;
+          return <button key={player.id} type="button" onClick={() => setSelectedUserId(player.id)} className={cn('flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors', sel ? 'border-foreground bg-muted/20' : 'border-border/40 bg-muted/10 hover:bg-muted/20')}><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Aucune bio.'}</p></div>{sel && <Pill label="Selection" color="bg-foreground text-background" />}</button>;
+        })}
+        {candidates.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Aucun joueur disponible.</p>}
+      </div>
+      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedUserId}>Ajouter</Button></div>
+    </ModalWrap>
+  );
+}
+
 export function MarriageModal({ open, onClose, relationships, onSubmitted }: { open: boolean; onClose: () => void; relationships: YouRelationship[]; onSubmitted: () => Promise<void> }) {
   const [relationshipId, setRelationshipId] = useState(relationships[0]?.id ?? '');
   const [message, setMessage] = useState('');

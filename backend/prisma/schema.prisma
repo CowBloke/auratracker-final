@@ -67,6 +67,8 @@ model User {
   receivedMarriageProposals MarriageProposal[]   @relation("MarriageProposalRecipient")
   sentDivorceProposals  DivorceProposal[]        @relation("DivorceProposalSender")
   receivedDivorceProposals DivorceProposal[]     @relation("DivorceProposalRecipient")
+  sentAccusations       CheatingAccusation[]     @relation("AccusationAccuser")
+  receivedAccusations   CheatingAccusation[]     @relation("AccusationAccused")
   auraCoinTransactions  AuraCoinTransaction[]
   auraCoinPositions     AuraCoinPosition[]
   bugReports            BugReport[]
@@ -570,6 +572,21 @@ model DivorceProposal {
 
   @@index([relationshipId, status])
   @@index([recipientId, status])
+}
+
+model CheatingAccusation {
+  id        String   @id @default(uuid())
+  accuserId String
+  accusedId String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accuser User @relation("AccusationAccuser", fields: [accuserId], references: [id], onDelete: Cascade)
+  accused User @relation("AccusationAccused", fields: [accusedId], references: [id], onDelete: Cascade)
+
+  @@index([accusedId, status])
+  @@index([accuserId, status])
 }
 
 // Clan System

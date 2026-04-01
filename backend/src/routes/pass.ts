@@ -3,6 +3,7 @@ import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
 import { logEconomy } from '../utils/logger.js';
+import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
 
 const router = Router();
 
@@ -356,11 +357,7 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
       return nextUser;
     });
 
-    io.emit('economy:balance-update', {
-      userId: req.user.id,
-      aura: updatedUser.aura,
-      money: updatedUser.money,
-    });
+    await emitSharedBalanceUpdates(prisma, req.user.id);
 
     createNotification({
       userId: req.user.id,

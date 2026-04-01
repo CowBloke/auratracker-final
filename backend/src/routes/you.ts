@@ -7,13 +7,17 @@ import {
   deleteBusiness,
   divorceRelationship,
   executeBusinessAction,
+  forgetRelationship,
   getYouSkills,
   getYouState,
+  makeMistress,
   proposeMarriage,
   respondToBusinessInvitation,
   respondToBusinessLoan,
+  respondToCourtCase,
   respondToDivorceProposal,
   respondToMarriageProposal,
+  suspectCheating,
   trainUserSkill,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
@@ -77,6 +81,12 @@ const ERROR_STATUS: Record<string, number> = {
   DIVORCE_PROPOSAL_FORBIDDEN: 403,
   DIVORCE_PROPOSAL_ALREADY_RESOLVED: 400,
   YOU_ADMIN_ONLY: 403,
+  RELATIONSHIP_NOT_ACTIVE: 400,
+  NOT_MARRIED: 400,
+  CHEATING_ACCUSATION_ALREADY_PENDING: 400,
+  CHEATING_ACCUSATION_NOT_FOUND: 404,
+  CHEATING_ACCUSATION_FORBIDDEN: 403,
+  CHEATING_ACCUSATION_ALREADY_RESOLVED: 400,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -135,6 +145,12 @@ const ERROR_MESSAGE: Record<string, string> = {
   DIVORCE_PROPOSAL_FORBIDDEN: 'Tu ne peux pas repondre a cette demande de divorce.',
   DIVORCE_PROPOSAL_ALREADY_RESOLVED: 'Cette demande de divorce a deja ete traitee.',
   YOU_ADMIN_ONLY: 'Cette section est reservee aux admins.',
+  RELATIONSHIP_NOT_ACTIVE: 'Cette relation n est pas active (ami ou en relation).',
+  NOT_MARRIED: 'Tu dois etre marie pour avoir une liaison.',
+  CHEATING_ACCUSATION_ALREADY_PENDING: 'Une suspicion est deja en attente.',
+  CHEATING_ACCUSATION_NOT_FOUND: 'Accusation introuvable.',
+  CHEATING_ACCUSATION_FORBIDDEN: 'Tu ne peux pas repondre a cette accusation.',
+  CHEATING_ACCUSATION_ALREADY_RESOLVED: 'Cette accusation a deja ete traitee.',
 };
 
 async function requireYouAccess(req: AuthRequest, res: Response, next: () => void) {
@@ -240,7 +256,8 @@ router.post('/business-invitations/:invitationId/respond', authMiddleware, requi
 
 router.post('/relationships', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
-    const relationship = await createRelationship(req.user!.id, String(req.body?.targetUserId ?? ''));
+    const type = req.body?.type === 'FRIEND' ? 'FRIEND' : 'DATING';
+    const relationship = await createRelationship(req.user!.id, String(req.body?.targetUserId ?? ''), type);
     res.status(201).json({ relationship });
   } catch (error) {
     handleRouteError(error, res, 'Create relationship error');
@@ -286,6 +303,43 @@ router.post('/divorce-proposals/:proposalId/respond', authMiddleware, requireYou
     res.json(result);
   } catch (error) {
     handleRouteError(error, res, 'Respond divorce proposal error');
+  }
+});
+
+router.delete('/relationships/:relationshipId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    await forgetRelationship(req.user!.id, req.params.relationshipId);
+    res.json({ ok: true });
+  } catch (error) {
+    handleRouteError(error, res, 'Forget relationship error');
+  }
+});
+
+router.post('/relationships/:relationshipId/actions/make-mistress', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const relationship = await makeMistress(req.user!.id, req.params.relationshipId);
+    res.json({ relationship });
+  } catch (error) {
+    handleRouteError(error, res, 'Make mistress error');
+  }
+});
+
+router.post('/relationships/:relationshipId/actions/suspect-cheating', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await suspectCheating(req.user!.id, req.params.relationshipId);
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Suspect cheating error');
+  }
+});
+
+router.post('/cheating-accusations/:accusationId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision === 'court' ? 'court' : 'drop';
+    const result = await respondToCourtCase(req.user!.id, req.params.accusationId, decision);
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Respond court case error');
   }
 });
 

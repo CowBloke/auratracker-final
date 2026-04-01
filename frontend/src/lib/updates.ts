@@ -54,6 +54,7 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
       {
         category: 'BIG_FEATURE',
         items: [
+          { id: '2026-04-01-social-relations-v2', text: '**Moi · Social** — Refonte de l\'onglet relations : liste à gauche (avatar, nom, statut), panneau d\'actions à droite. Nouveaux types de relation : ami(e), en relation, marié(e), liaison secrète (mistress), ex. Bouton "Oublier" pour supprimer une relation. Le divorce partage désormais l\'argent du foyer en deux. Mécanique de suspicion de tricherie : si confirmée, tout l\'argent passe au conjoint suspicieux ; si infondée, l\'accusé peut aller en justice et prendre tout l\'argent de l\'accusateur.' },
           { id: '2026-04-01-you-v2-skills',    text: '**Moi · Compétences** — La barre supérieure affiche désormais 5 compétences (Affaires, Social, Intelligence, Charisme, Finance) avec niveau, XP et déblocages visibles au survol.' },
           { id: '2026-04-01-you-v2-multibiz',  text: '**Moi · Travail** — Gestion multi-entreprise et multi-emploi : chaque entreprise possédée est affichable et contrôlable. Les banques ont un tableau de bord dédié (demandes de prêt, taux d\'intérêt).' },
           { id: '2026-04-01-you-v2-bizpicker', text: '**Moi · Créateur d\'entreprise** — La liste des types d\'entreprises est réorganisée par catégorie (1 par ligne) avec description du fonctionnement et mode de contrôle.' },
