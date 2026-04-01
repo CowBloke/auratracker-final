@@ -7,18 +7,33 @@ const router = Router();
 
 type UpdateCategory = 'BIG_FEATURE' | 'SMALL_FEATURE' | 'BUG_FIX';
 const CATEGORIES: UpdateCategory[] = ['BIG_FEATURE', 'SMALL_FEATURE', 'BUG_FIX'];
+const LEGACY_IMAGE_UPLOAD_ENTRY_ID = '2026-04-01-image-upload-reliability';
+const CANONICAL_APRIL_FIRST_ENTRY_ID = '2026-04-01-ui-toasts-fixes';
 
 const SEED_ENTRIES = [
   {
-    id: '2026-04-01-ui-toasts-fixes',
+    id: '2026-04-01-clans-wording',
+    date: '2026-04-01',
+    title: 'Terminologie des clans',
+    summary: "Le site affiche maintenant 'clan' a la place de 'guilde' dans l'interface.",
+    items: [
+      { category: 'SMALL_FEATURE', text: "**Terminologie unifiee** — Les libelles de navigation, statistiques, metadonnees de page et messages visibles utilisent maintenant 'clan' et 'clans' au lieu de 'guilde' et 'guildes'.", order: 0 },
+    ],
+  },
+  {
+    id: CANONICAL_APRIL_FIRST_ENTRY_ID,
     date: '2026-04-01',
     title: 'Corrections UI & Notifications',
-    summary: 'Toasts unifiés sur tout le site, badge changelog rouge, fix des doublons de notifications.',
+    summary: "Toasts unifiés, badge changelog rouge, doublons de notifications corrigés et uploads d'images plus fiables.",
     items: [
       { category: 'BUG_FIX', text: '**Badge changelog** — La pastille de notifications non lues dans la sidebar passe au rouge, cohérent avec les autres badges.', order: 0 },
       { category: 'BUG_FIX', text: '**Toasts en double** — Les achats en boutique, claims de quêtes, ouverture du pass et investissements business ne déclenchaient plus deux toasts simultanément.', order: 1 },
+      { category: 'BUG_FIX', text: "**Formats d'image mieux geres** — Les uploads acceptent maintenant aussi l'AVIF et reconnaissent mieux certains MIME types courants comme `image/jpg`.", order: 2 },
+      { category: 'BUG_FIX', text: "**Uploads d'images plus robustes** — La validation et l'ecriture des images sont centralisees cote serveur pour eviter les comportements differents selon la page ou le type d'upload.", order: 3 },
+      { category: 'BUG_FIX', text: "**Conversion automatique d'images** — Sur les navigateurs compatibles, certains formats comme HEIC/HEIF ou SVG sont convertis automatiquement vers un format supporte avant envoi.", order: 4 },
       { category: 'SMALL_FEATURE', text: '**Fermer un toast** — Un bouton ✕ permet maintenant de fermer manuellement chaque toast.', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Toasts unifiés** — Tous les toasts du site (y compris la page Admin) passent par le même système visuel.', order: 1 },
+      { category: 'SMALL_FEATURE', text: "**Selection d'images plus claire** — Les zones d'upload affichent des formats explicitement supportes pour mieux guider les utilisateurs avant l'envoi.", order: 2 },
     ],
   },
   {
@@ -49,21 +64,87 @@ const SEED_ENTRIES = [
 ];
 
 async function ensureSeeded() {
-  const existingEntriesCount = await prisma.updateEntry.count();
-  if (existingEntriesCount > 0) {
-    return;
+  const canonicalEntry = SEED_ENTRIES.find((entry) => entry.id === CANONICAL_APRIL_FIRST_ENTRY_ID);
+  if (canonicalEntry) {
+    const legacyEntry = await prisma.updateEntry.findUnique({
+      where: { id: LEGACY_IMAGE_UPLOAD_ENTRY_ID },
+      include: { items: true },
+    });
+
+    if (legacyEntry) {
+      const canonicalExists = await prisma.updateEntry.findUnique({
+        where: { id: CANONICAL_APRIL_FIRST_ENTRY_ID },
+        include: { items: true },
+      });
+
+      if (!canonicalExists) {
+        await prisma.updateEntry.create({
+          data: {
+            id: canonicalEntry.id,
+            date: canonicalEntry.date,
+            title: canonicalEntry.title,
+            summary: canonicalEntry.summary,
+            items: { create: canonicalEntry.items },
+          },
+        });
+      }
+
+      await prisma.updateItem.deleteMany({
+        where: { entryId: LEGACY_IMAGE_UPLOAD_ENTRY_ID },
+      });
+      await prisma.updateEntry.delete({
+        where: { id: LEGACY_IMAGE_UPLOAD_ENTRY_ID },
+      });
+    }
   }
 
+  const existingEntries = await prisma.updateEntry.findMany({
+    include: { items: true },
+  });
+  const existingEntriesById = new Map(existingEntries.map((entry) => [entry.id, entry]));
+
   for (const entry of SEED_ENTRIES) {
-    await prisma.updateEntry.create({
-      data: {
-        id: entry.id,
-        date: entry.date,
-        title: entry.title,
-        summary: entry.summary,
-        items: { create: entry.items },
-      },
-    });
+    const existingEntry = existingEntriesById.get(entry.id);
+
+    if (!existingEntry) {
+      await prisma.updateEntry.create({
+        data: {
+          id: entry.id,
+          date: entry.date,
+          title: entry.title,
+          summary: entry.summary,
+          items: { create: entry.items },
+        },
+      });
+      continue;
+    }
+
+    const existingItemKeys = new Set(
+      existingEntry.items.map((item) => `${item.category}:${item.text}`)
+    );
+    const missingItems = entry.items.filter((item) => !existingItemKeys.has(`${item.category}:${item.text}`));
+
+    if (existingEntry.date !== entry.date || existingEntry.title !== entry.title || existingEntry.summary !== entry.summary) {
+      await prisma.updateEntry.update({
+        where: { id: entry.id },
+        data: {
+          date: entry.date,
+          title: entry.title,
+          summary: entry.summary,
+        },
+      });
+    }
+
+    if (missingItems.length > 0) {
+      await prisma.updateItem.createMany({
+        data: missingItems.map((item) => ({
+          entryId: entry.id,
+          category: item.category,
+          text: item.text,
+          order: item.order,
+        })),
+      });
+    }
   }
 }
 

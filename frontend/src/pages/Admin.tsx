@@ -16,6 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award, Terminal } from 'lucide-react';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
@@ -1139,23 +1140,10 @@ export default function Admin() {
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const raw = typeof reader.result === 'string' ? reader.result : '';
-        const payload = raw.includes(',') ? raw.split(',')[1] : '';
-        if (!payload) reject(new Error('Invalid file'));
-        else resolve(payload);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
   const uploadUpdatePopupImageFile = async (file: File): Promise<string> => {
     try {
-      const base64Data = await fileToBase64(file);
-      const res = await adminApi.uploadUpdatePopupImage({ base64Data, mimeType: file.type });
+      const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+      const res = await adminApi.uploadUpdatePopupImage({ base64Data, mimeType });
       showMessage('success', 'Image téléchargée');
       return res.data.imageUrl;
     } catch {
@@ -1166,8 +1154,8 @@ export default function Admin() {
 
   const uploadItemImageFile = async (file: File): Promise<string> => {
     try {
-      const base64Data = await fileToBase64(file);
-      const res = await adminApi.uploadItemImage({ base64Data, mimeType: file.type });
+      const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+      const res = await adminApi.uploadItemImage({ base64Data, mimeType });
       showMessage('success', 'Image téléchargée');
       return res.data.imageUrl;
     } catch {

@@ -1,8 +1,3 @@
----
-description: "Use when completing any product-visible change, feature, or bug fix in this repository. Enforces mandatory changelog entries in backend/src/routes/changelog.ts before considering a task complete."
-name: "Mandatory Updates Changelog"
-applyTo: "**"
----
 ## Changelog Rule
 
 After completing any feature, fix, or visible change, add an entry directly to `SEED_ENTRIES` in `backend/src/routes/changelog.ts`. The entry is automatically synced to the DB on next server start via `ensureSeeded()`. Structure:

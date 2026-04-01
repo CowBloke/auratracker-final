@@ -20,6 +20,7 @@ import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
+import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { PageShell } from '@/components/layout/page-shell';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -252,18 +253,8 @@ export default function Inventory() {
   };
 
   const uploadProfileImageFile = async (file: File): Promise<string> => {
-    const base64Data = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const raw = typeof reader.result === 'string' ? reader.result : '';
-        const payload = raw.includes(',') ? raw.split(',')[1] : '';
-        if (!payload) reject(new Error('Invalid file'));
-        else resolve(payload);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-    const res = await uploadUserImage({ base64Data, mimeType: file.type });
+    const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+    const res = await uploadUserImage({ base64Data, mimeType });
     return res.data.imageUrl;
   };
 

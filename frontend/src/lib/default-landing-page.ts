@@ -7,7 +7,7 @@ export const DEFAULT_LANDING_PAGE_OPTIONS = [
   { value: '/games', label: 'Jeux' },
   { value: '/market', label: 'Boutique' },
   { value: '/party', label: 'Groupe' },
-  { value: '/clans', label: 'Guildes' },
+  { value: '/clans', label: 'Clans' },
   { value: '/polymarket', label: 'Polymarket' },
   { value: '/leaderboards', label: 'Classements' },
   { value: '/inbox', label: 'Boîte de réception' },

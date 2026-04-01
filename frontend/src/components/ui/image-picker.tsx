@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { resolveImageUrl } from '@/lib/images';
+import { IMAGE_UPLOAD_INPUT_ACCEPT } from '@/lib/image-upload';
 
 const DEFAULT_MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const DEFAULT_MAX_IMAGE_SIZE_LABEL = '10 Mo';
@@ -71,7 +72,7 @@ export function ImagePicker({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={IMAGE_UPLOAD_INPUT_ACCEPT}
         className="hidden"
         onChange={(e) => {
           handleFile(e.target.files?.[0] || null);
@@ -127,7 +128,7 @@ export function ImagePicker({
               Cliquez, glissez ou collez (Ctrl+V)
             </span>
             <span className="text-xs">
-              Taille max: {maxSizeLabel}
+              Taille max: {maxSizeLabel}. JPG, PNG, WebP, GIF, AVIF
             </span>
           </span>
         )}

@@ -18,6 +18,7 @@ interface NotificationContextValue {
   archiveNotification: (id: string) => Promise<void>;
   unarchiveNotification: (id: string) => Promise<void>;
   archiveAllRead: () => Promise<void>;
+  dismissNotification: (id: string) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
@@ -326,6 +327,24 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } catch { /* silent */ }
   }, []);
 
+  const dismissNotification = useCallback(async (id: string) => {
+    try {
+      const previous = notificationsRef.current.find((item) => item.id === id)
+        ?? archivedNotificationsRef.current.find((item) => item.id === id);
+
+      await notificationsApi.remove(id);
+
+      if (previous && !previous.isRead && !previous.isArchived) {
+        setUnreadCount((current) => Math.max(0, current - 1));
+      }
+
+      removeNotificationById(id);
+      void refreshCount();
+    } catch {
+      toast.error('Impossible de supprimer la notification.');
+    }
+  }, [refreshCount, removeNotificationById]);
+
   return (
     <NotificationContext.Provider
       value={{
@@ -343,6 +362,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         archiveNotification,
         unarchiveNotification,
         archiveAllRead,
+        dismissNotification,
       }}
     >
       {children}

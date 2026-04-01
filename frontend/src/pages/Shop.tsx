@@ -618,7 +618,7 @@ export default function Shop() {
           : 'Achat confirme',
         {
           description: isClanTagUnlock
-            ? 'Le tag est maintenant actif pour ton clan. Va dans Guildes pour le personnaliser.'
+            ? 'Le tag est maintenant actif pour ton clan. Va dans Clans pour le personnaliser.'
             : isClanSlotUpgrade
             ? 'Ton clan gagne un membre maximum supplémentaire.'
             : isClanMoneyBoost

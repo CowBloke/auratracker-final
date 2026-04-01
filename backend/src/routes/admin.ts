@@ -1,13 +1,11 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import fs from 'fs';
 import path from 'path';
-import { randomUUID } from 'crypto';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, adminRareActionSchema } from '../middleware/validation.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
-import { isAllowedImageUrl } from '../utils/uploads.js';
+import { isAllowedImageUrl, writeBase64UploadImage } from '../utils/uploads.js';
 import { listBombPartyLanguageFiles } from '../utils/bombpartyDictionary.js';
 import { recalculateBombPartyPrompts } from '../utils/bombpartyPrompts.js';
 import { getOnlineCount, getOnlineUsers } from '../socket/chat.js';
@@ -51,27 +49,6 @@ const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_ITEM_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ADMIN_CLAN_MAX_MEMBERS_LIMIT = 12;
 const LOG_EXPORT_BATCH_SIZE = 5000;
-
-const ensureUpdatePopupUploadDir = () => {
-  if (!fs.existsSync(UPDATE_POPUP_UPLOAD_DIR)) {
-    fs.mkdirSync(UPDATE_POPUP_UPLOAD_DIR, { recursive: true });
-  }
-};
-
-const inferImageExtension = (mimeType: string) => {
-  switch (mimeType.toLowerCase()) {
-    case 'image/png':
-      return 'png';
-    case 'image/jpeg':
-      return 'jpg';
-    case 'image/webp':
-      return 'webp';
-    case 'image/gif':
-      return 'gif';
-    default:
-      return null;
-  }
-};
 
 const parseLogDateBoundary = (value: unknown, boundary: 'start' | 'end'): Date | null => {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -2927,31 +2904,23 @@ router.post('/update-popups/upload-image', authMiddleware, requireAdmin, async (
       return res.status(400).json({ error: 'base64Data and mimeType are required' });
     }
 
-    const extension = inferImageExtension(mimeType);
-    if (!extension) {
-      return res.status(400).json({ error: 'Unsupported image type. Allowed: png, jpg, webp, gif' });
-    }
-
-    const buffer = Buffer.from(base64Data, 'base64');
-    if (buffer.byteLength === 0) {
-      return res.status(400).json({ error: 'Invalid image payload' });
-    }
-
-    if (buffer.byteLength > MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES) {
-      return res.status(400).json({ error: 'Image too large (max 10MB)' });
-    }
-
-    ensureUpdatePopupUploadDir();
-    const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
-    const absolutePath = path.join(UPDATE_POPUP_UPLOAD_DIR, fileName);
-    fs.writeFileSync(absolutePath, buffer);
-
-    const imageUrl = `/api/uploads/update-popups/${fileName}`;
-
-    logAdmin('update_popup_image_upload', req.user!.id, req.user!.username, undefined, fileName, {
-      imageUrl,
+    const uploadedImage = await writeBase64UploadImage({
+      base64Data,
       mimeType,
-      sizeBytes: buffer.byteLength,
+      uploadDir: UPDATE_POPUP_UPLOAD_DIR,
+      maxBytes: MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES,
+    });
+
+    if ('error' in uploadedImage) {
+      return res.status(400).json({ error: uploadedImage.error });
+    }
+
+    const imageUrl = `/api/uploads/update-popups/${uploadedImage.fileName}`;
+
+    logAdmin('update_popup_image_upload', req.user!.id, req.user!.username, undefined, uploadedImage.fileName, {
+      imageUrl,
+      mimeType: uploadedImage.mimeType,
+      sizeBytes: uploadedImage.sizeBytes,
     });
 
     res.status(201).json({ imageUrl });
@@ -2971,33 +2940,23 @@ router.post('/items/upload-image', authMiddleware, requireAdmin, async (req: Aut
       return res.status(400).json({ error: 'base64Data and mimeType are required' });
     }
 
-    const extension = inferImageExtension(mimeType);
-    if (!extension) {
-      return res.status(400).json({ error: 'Unsupported image type. Allowed: png, jpg, webp, gif' });
-    }
-
-    const buffer = Buffer.from(base64Data, 'base64');
-    if (buffer.byteLength === 0) {
-      return res.status(400).json({ error: 'Invalid image payload' });
-    }
-
-    if (buffer.byteLength > MAX_ITEM_IMAGE_SIZE_BYTES) {
-      return res.status(400).json({ error: 'Image too large (max 10MB)' });
-    }
-
-    if (!fs.existsSync(ITEM_UPLOAD_DIR)) {
-      fs.mkdirSync(ITEM_UPLOAD_DIR, { recursive: true });
-    }
-    const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
-    const absolutePath = path.join(ITEM_UPLOAD_DIR, fileName);
-    fs.writeFileSync(absolutePath, buffer);
-
-    const imageUrl = `/api/uploads/items/${fileName}`;
-
-    logAdmin('item_image_upload', req.user!.id, req.user!.username, undefined, fileName, {
-      imageUrl,
+    const uploadedImage = await writeBase64UploadImage({
+      base64Data,
       mimeType,
-      sizeBytes: buffer.byteLength,
+      uploadDir: ITEM_UPLOAD_DIR,
+      maxBytes: MAX_ITEM_IMAGE_SIZE_BYTES,
+    });
+
+    if ('error' in uploadedImage) {
+      return res.status(400).json({ error: uploadedImage.error });
+    }
+
+    const imageUrl = `/api/uploads/items/${uploadedImage.fileName}`;
+
+    logAdmin('item_image_upload', req.user!.id, req.user!.username, undefined, uploadedImage.fileName, {
+      imageUrl,
+      mimeType: uploadedImage.mimeType,
+      sizeBytes: uploadedImage.sizeBytes,
     });
 
     res.status(201).json({ imageUrl });

@@ -37,7 +37,7 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/leaderboards': { title: 'Classements', description: 'Classements économie et jeux.' },
   '/leaderboards/nombres': { title: 'Nombres', description: 'Indicateurs globaux et statistiques clés.' },
   '/party': { title: 'Groupe', description: 'Crée, gère et rejoins des groupes.' },
-  '/clans': { title: 'Guildes', description: 'Communauté, membres et progression de guilde.' },
+  '/clans': { title: 'Clans', description: 'Communauté, membres et progression de clan.' },
   '/inventory': { title: 'Inventaire', description: 'Objets, cosmétiques et améliorations.' },
   '/admin': { title: 'Admin', description: 'Outils de modération et d’administration.' },
   '/rules': { title: 'Règlement', description: 'Règles de la communauté et modération.' },

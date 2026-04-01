@@ -264,6 +264,8 @@ export const youApi = {
     api.post<{ business: YouBusiness }>('/you/businesses', data),
   runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw', data?: Record<string, unknown>) =>
     api.post<{ result: Record<string, unknown> }>(`/you/businesses/${businessId}/actions/${actionKey}`, data ?? {}),
+  respondToBusinessInvitation: (invitationId: string, decision: 'accept' | 'reject') =>
+    api.post<{ result: { id: string; status: string; respondedAt: string | null } }>(`/you/business-invitations/${invitationId}/respond`, { decision }),
   respondToBusinessLoan: (loanId: string, decision: 'accept' | 'reject') =>
     api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/loans/${loanId}/respond`, { decision }),
   createRelationship: (targetUserId: string) =>
@@ -1948,6 +1950,7 @@ export const notificationsApi = {
   markRead: (id: string) => api.post<{ notification: Notification }>(`/notifications/${id}/read`),
   markAllRead: () => api.post<{ success: boolean }>('/notifications/read-all'),
   archive: (id: string) => api.post<{ notification: Notification }>(`/notifications/${id}/archive`),
+  remove: (id: string) => api.delete<{ success: boolean }>(`/notifications/${id}`),
   archiveAllRead: () => api.post<{ success: boolean }>('/notifications/archive-all-read'),
   /** Admin only */
   broadcast: (data: { title: string; body: string; link?: string; icon?: string }) =>

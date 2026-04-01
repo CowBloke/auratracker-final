@@ -9,6 +9,7 @@ import {
   executeBusinessAction,
   getYouState,
   proposeMarriage,
+  respondToBusinessInvitation,
   respondToBusinessLoan,
   respondToMarriageProposal,
 } from '../modules/you/service.js';
@@ -40,6 +41,9 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_LOAN_NOT_FOUND: 404,
   BUSINESS_LOAN_REVIEW_FORBIDDEN: 403,
   BUSINESS_LOAN_ALREADY_DECIDED: 400,
+  BUSINESS_INVITATION_NOT_FOUND: 404,
+  BUSINESS_INVITATION_FORBIDDEN: 403,
+  BUSINESS_INVITATION_ALREADY_RESOLVED: 400,
   BUSINESS_INVEST_SELF_FORBIDDEN: 400,
   INVALID_INVEST_AMOUNT: 400,
   RELATIONSHIP_SELF_FORBIDDEN: 400,
@@ -80,6 +84,9 @@ const ERROR_MESSAGE: Record<string, string> = {
   BUSINESS_LOAN_NOT_FOUND: 'Demande de pret introuvable.',
   BUSINESS_LOAN_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette demande de pret.',
   BUSINESS_LOAN_ALREADY_DECIDED: 'Cette demande de pret a deja ete traitee.',
+  BUSINESS_INVITATION_NOT_FOUND: 'Invitation business introuvable.',
+  BUSINESS_INVITATION_FORBIDDEN: 'Tu ne peux pas repondre a cette invitation.',
+  BUSINESS_INVITATION_ALREADY_RESOLVED: 'Cette invitation a deja ete traitee.',
   BUSINESS_INVEST_SELF_FORBIDDEN: 'Tu ne peux pas investir dans ton propre business via cette action.',
   INVALID_INVEST_AMOUNT: 'Montant d investissement invalide.',
   RELATIONSHIP_SELF_FORBIDDEN: 'Tu ne peux pas creer une relation avec toi-meme.',
@@ -167,6 +174,16 @@ router.post('/loans/:loanId/respond', authMiddleware, requireYouAccess, async (r
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Respond business loan error');
+  }
+});
+
+router.post('/business-invitations/:invitationId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
+    const result = await respondToBusinessInvitation(req.user!.id, req.params.invitationId, decision);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Respond business invitation error');
   }
 });
 

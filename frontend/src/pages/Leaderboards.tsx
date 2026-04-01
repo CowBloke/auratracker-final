@@ -242,7 +242,7 @@ export default function Leaderboards() {
           items: [
             { label: 'Joueurs inscrits', value: formatNumber(totalUsers), hint: 'Tous les profils actifs et valides.' },
             { label: 'Nouveaux joueurs (7 jours)', value: formatNumber(newUsers7d), hint: 'Arrivées récentes dans la communauté.' },
-            { label: 'Guildes actives', value: formatNumber(totalClans), hint: 'Guildes qui comptent au moins un membre.' },
+            { label: 'Clans actifs', value: formatNumber(totalClans), hint: 'Clans qui comptent au moins un membre.' },
             { label: 'Membres en clan', value: formatNumber(totalClanMembers), hint: 'Somme des membres dans tous les clans.' },
           ],
         },

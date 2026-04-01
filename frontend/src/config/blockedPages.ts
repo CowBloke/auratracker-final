@@ -53,7 +53,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'leaderboards', path: '/leaderboards', label: 'Classements', category: 'Communauté', description: 'Classements généraux des joueurs par aura et par jeu.' },
   { key: 'leaderboards-numbers', path: '/leaderboards/nombres', label: 'Classement Nombres', category: 'Communauté', description: 'Classement spécial basé sur les scores de la section Nombres.' },
   { key: 'party', path: '/party', label: 'Groupe', category: 'Communauté', description: 'Salons de jeu en groupe — créez ou rejoignez un groupe.' },
-  { key: 'clans', path: '/clans', label: 'Guildes', category: 'Communauté', description: 'Système de guildes — rejoignez ou créez votre guilde.' },
+  { key: 'clans', path: '/clans', label: 'Clans', category: 'Communauté', description: 'Système de clans — rejoignez ou créez votre clan.' },
   { key: 'suggestions', path: '/suggestions', label: 'Suggestions', category: 'Communauté', description: 'Page de suggestions — soumettez et votez pour des idées.' },
   { key: 'inventory', path: '/inventory', label: 'Inventaire', category: 'Profil', description: 'Inventaire personnel — consultez et utilisez vos objets.' },
   { key: 'profile', path: '/profile', label: 'Profils', category: 'Profil', description: 'Profils publics des joueurs — stats, badges et historique.' },

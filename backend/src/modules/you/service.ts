@@ -316,7 +316,7 @@ async function handleInviteAction(userId: string, business: any, input: { invite
     throw new Error('NO_NEW_INVITATIONS');
   }
 
-  await Promise.all(
+  const invitations = await Promise.all(
     creatableInvitees.map((invitee) =>
       prisma.businessInvitation.create({
         data: {
@@ -329,6 +329,8 @@ async function handleInviteAction(userId: string, business: any, input: { invite
     )
   );
 
+  const invitationByInviteeId = new Map(invitations.map((invitation) => [invitation.inviteeId, invitation]));
+
   await Promise.allSettled(
     creatableInvitees.map((invitee) =>
       createNotification({
@@ -336,6 +338,13 @@ async function handleInviteAction(userId: string, business: any, input: { invite
         type: 'SYSTEM',
         title: 'Invitation business',
         body: `${business.owner.username} t'invite a rejoindre ${business.name} comme ${input.role || 'employee'}.`,
+        data: {
+          invitationId: invitationByInviteeId.get(invitee.id)?.id ?? null,
+          businessId: business.id,
+          businessName: business.name,
+          role: input.role || 'employee',
+          actionType: 'BUSINESS_INVITATION',
+        },
         link: '/you?tab=travail',
         icon: 'briefcase-business',
       })
@@ -582,6 +591,113 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
     id: result.id,
     status: result.status,
     decidedAt: result.decidedAt?.toISOString() ?? now.toISOString(),
+  };
+}
+
+export async function respondToBusinessInvitation(userId: string, invitationId: string, decision: 'accept' | 'reject') {
+  const invitation = await prisma.businessInvitation.findUnique({
+    where: { id: invitationId },
+    include: {
+      invitee: { select: USER_PREVIEW_SELECT },
+      business: {
+        include: {
+          owner: { select: USER_PREVIEW_SELECT },
+        },
+      },
+    },
+  });
+
+  if (!invitation) {
+    throw new Error('BUSINESS_INVITATION_NOT_FOUND');
+  }
+
+  if (invitation.inviteeId !== userId) {
+    throw new Error('BUSINESS_INVITATION_FORBIDDEN');
+  }
+
+  if (invitation.status !== 'PENDING') {
+    throw new Error('BUSINESS_INVITATION_ALREADY_RESOLVED');
+  }
+
+  const respondedAt = new Date();
+
+  if (decision === 'reject') {
+    const rejectedInvitation = await prisma.businessInvitation.update({
+      where: { id: invitation.id },
+      data: {
+        status: 'REJECTED',
+        respondedAt,
+      },
+    });
+
+    await createNotification({
+      userId: invitation.business.ownerId,
+      type: 'SYSTEM',
+      title: 'Invitation refusee',
+      body: `${invitation.invitee.username} a refuse l'invitation pour ${invitation.business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    });
+
+    return {
+      id: rejectedInvitation.id,
+      status: rejectedInvitation.status,
+      respondedAt: rejectedInvitation.respondedAt?.toISOString() ?? null,
+    };
+  }
+
+  const acceptedInvitation = await prisma.$transaction(async (tx) => {
+    await tx.businessMember.upsert({
+      where: {
+        businessId_userId: {
+          businessId: invitation.businessId,
+          userId,
+        },
+      },
+      update: {
+        role: invitation.role,
+        status: 'ACTIVE',
+      },
+      create: {
+        businessId: invitation.businessId,
+        userId,
+        role: invitation.role,
+        status: 'ACTIVE',
+      },
+    });
+
+    return tx.businessInvitation.update({
+      where: { id: invitation.id },
+      data: {
+        status: 'ACCEPTED',
+        respondedAt,
+      },
+    });
+  });
+
+  await Promise.allSettled([
+    createNotification({
+      userId: invitation.business.ownerId,
+      type: 'SYSTEM',
+      title: 'Invitation acceptee',
+      body: `${invitation.invitee.username} rejoint ${invitation.business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Bienvenue dans le business',
+      body: `Tu fais maintenant partie de ${invitation.business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+  ]);
+
+  return {
+    id: acceptedInvitation.id,
+    status: acceptedInvitation.status,
+    respondedAt: acceptedInvitation.respondedAt?.toISOString() ?? null,
   };
 }
 

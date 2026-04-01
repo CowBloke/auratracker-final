@@ -25,6 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { UserBadges } from '@/components/badges/UserBadges';
 import { toClanTagData } from '@/components/clans/ClanTag';
 import { uploadUserImage } from '@/services/api';
+import { IMAGE_UPLOAD_INPUT_ACCEPT, prepareImageUploadPayload } from '@/lib/image-upload';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -184,30 +185,14 @@ export default function ChatSidebar() {
     return `${text.slice(0, 120)}...`;
   };
 
-  const readFileAsBase64 = (file: File) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = typeof reader.result === 'string' ? reader.result : '';
-        const base64 = result.includes(',') ? result.split(',')[1] : result;
-        if (!base64) {
-          reject(new Error('Invalid image payload'));
-          return;
-        }
-        resolve(base64);
-      };
-      reader.onerror = () => reject(reader.error ?? new Error('Failed to read image'));
-      reader.readAsDataURL(file);
-    });
-
   const handleImageSelection = async (file: File | null) => {
     if (!file || isUploadingImage) return;
     if (!file.type.startsWith('image/')) return;
 
     try {
       setIsUploadingImage(true);
-      const base64Data = await readFileAsBase64(file);
-      const response = await uploadUserImage({ base64Data, mimeType: file.type });
+      const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+      const response = await uploadUserImage({ base64Data, mimeType });
       setImageUrl(response.data.imageUrl);
     } catch (error) {
       console.error('Failed to upload chat image:', error);
@@ -637,7 +622,7 @@ export default function ChatSidebar() {
             <input
               ref={imageInputRef}
               type="file"
-              accept="image/*"
+              accept={IMAGE_UPLOAD_INPUT_ACCEPT}
               className="hidden"
               onChange={(e) => {
                 void handleImageSelection(e.target.files?.[0] || null);
