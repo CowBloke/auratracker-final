@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { BarChart3, Building2, ChevronRight, Landmark, PiggyBank, Search, ShieldAlert, Sparkles, Trash2, UserPlus, Vault, Wallet } from 'lucide-react';
+import { ArrowLeftRight, BarChart3, Building2, ChevronRight, HandCoins, Landmark, PiggyBank, Search, ShieldAlert, Sparkles, Trash2, UserPlus, Vault, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { type YouBusiness, type YouPlayer, type YouState, youApi } from '@/services/api';
-import { InvestModal, InvitePlayersModal, LoanModal } from '../components/modals';
+import { BuyoutOfferModal, InvestModal, InvitePlayersModal, LoanModal, TransferBusinessModal } from '../components/modals';
 import { FilterButton, Input, Pill, SectionTitle, UserAvatar } from '../components/ui';
 import { ACTION_META, BUSINESS_ICON_MAP } from '../constants';
 import { type BusinessAction } from '../types';
@@ -147,13 +147,15 @@ function BankDetailCard({ business, userId, onReload }: { business: YouBusiness;
   );
 }
 
-function DefaultDetailCard({ business, userId, isAdmin, onDeleteBusiness, onAction, visibleActions }: {
+function DefaultDetailCard({ business, userId, isAdmin, onDeleteBusiness, onAction, visibleActions, onBuyout, onTransfer }: {
   business: YouBusiness;
   userId: string;
   isAdmin: boolean;
   onDeleteBusiness: () => void;
   onAction: (b: YouBusiness, a: BusinessAction) => void;
   visibleActions: string[];
+  onBuyout: (b: YouBusiness) => void;
+  onTransfer: (b: YouBusiness) => void;
 }) {
   return (
     <>
@@ -192,6 +194,18 @@ function DefaultDetailCard({ business, userId, isAdmin, onDeleteBusiness, onActi
       <Card>
         <CardContent className="space-y-3 px-5 py-4">
           <SectionTitle>Actions utilisateur</SectionTitle>
+          {business.ownerId !== userId ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button size="sm" variant="outline" className="justify-start border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10" onClick={() => onBuyout(business)}>
+                <HandCoins className="mr-2 h-4 w-4" />Faire une offre
+              </Button>
+              {business.typeKey === 'transfer' ? (
+                <Button size="sm" variant="outline" className="justify-start border-sky-400/30 text-sky-300 hover:bg-sky-500/10" onClick={() => onTransfer(business)}>
+                  <ArrowLeftRight className="mr-2 h-4 w-4" />Utiliser le service
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           {visibleActions.length === 0 ? (
             <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
               {business.ownerId === userId
@@ -246,6 +260,8 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
   const [inviteBusiness, setInviteBusiness] = useState<YouBusiness | null>(null);
   const [loanBusiness, setLoanBusiness] = useState<YouBusiness | null>(null);
   const [investBusiness, setInvestBusiness] = useState<YouBusiness | null>(null);
+  const [buyoutBusiness, setBuyoutBusiness] = useState<YouBusiness | null>(null);
+  const [transferBusiness, setTransferBusiness] = useState<YouBusiness | null>(null);
 
   const allBusinesses = useMemo(() => [...data.ownedBusinesses, ...data.exploreBusinesses], [data.exploreBusinesses, data.ownedBusinesses]);
   const categories = useMemo(() => ['all', ...new Set(data.businessTypes.map((type) => type.category))], [data.businessTypes]);
@@ -435,6 +451,16 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
                     </CardContent>
                   </Card>
                 ) : null}
+                {selectedBusiness.ownerId !== userId ? (
+                  <Card>
+                    <CardContent className="space-y-2 px-5 py-4">
+                      <SectionTitle>Rachat</SectionTitle>
+                      <Button size="sm" variant="outline" className="w-full justify-start border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10" onClick={() => setBuyoutBusiness(selectedBusiness)}>
+                        <HandCoins className="mr-2 h-4 w-4" />Faire une offre
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : null}
               </>
             ) : (
               <DefaultDetailCard
@@ -444,6 +470,8 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
                 onDeleteBusiness={() => void deleteSelectedBusiness()}
                 onAction={onAction}
                 visibleActions={visibleActions}
+                onBuyout={setBuyoutBusiness}
+                onTransfer={setTransferBusiness}
               />
             )
           ) : (
@@ -459,6 +487,8 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
       <InvitePlayersModal open={Boolean(inviteBusiness)} onClose={() => setInviteBusiness(null)} business={inviteBusiness} players={players} onSubmitted={() => onReload()} />
       <LoanModal open={Boolean(loanBusiness)} onClose={() => setLoanBusiness(null)} business={loanBusiness} onSubmitted={() => onReload(true)} />
       <InvestModal open={Boolean(investBusiness)} onClose={() => setInvestBusiness(null)} business={investBusiness} onSubmitted={() => onReload(true)} />
+      <BuyoutOfferModal open={Boolean(buyoutBusiness)} onClose={() => setBuyoutBusiness(null)} business={buyoutBusiness} onSubmitted={() => onReload(true)} />
+      <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusiness(null)} business={transferBusiness} players={players} onSubmitted={() => onReload(true)} />
     </>
   );
 }

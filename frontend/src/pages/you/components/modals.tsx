@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Building2, Check, Trash2, UserPlus, X } from 'lucide-react';
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Building2, Check, Trash2, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,54 @@ import { type YouBusiness, type YouBusinessType, type YouPlayer, type YouRelatio
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';
 import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, ProgressBar, SectionTitle, SelectBox, UserAvatar } from './ui';
+
+function BusinessTypePickerModal({
+  open,
+  onClose,
+  businessTypes,
+  selectedKey,
+  onSelect,
+}: {
+  open: boolean;
+  onClose: () => void;
+  businessTypes: YouBusinessType[];
+  selectedKey: string;
+  onSelect: (type: YouBusinessType) => void;
+}) {
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Choisir un type d activite" desc="Selectionne le type de structure a creer.">
+      <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+        {businessTypes.map((type) => {
+          const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+          const style = BUSINESS_STYLE_MAP[type.key as keyof typeof BUSINESS_STYLE_MAP] ?? { card: 'border-border/40 bg-muted/10', badge: 'bg-muted text-muted-foreground', iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+          const active = type.key === selectedKey;
+          return (
+            <button
+              key={type.key}
+              type="button"
+              onClick={() => { onSelect(type); onClose(); }}
+              className={cn('w-full rounded-2xl border px-4 py-4 text-left transition-all', active ? style.card : 'border-border/40 bg-muted/10 hover:bg-muted/20')}
+            >
+              <div className="flex items-start gap-4">
+                <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', active ? style.iconWrap : 'bg-muted/20')}>
+                  <Icon className={cn('h-5 w-5', active ? style.icon : 'text-foreground')} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold">{type.label}</p>
+                    <Pill label={type.category} color={active ? style.badge : 'bg-muted text-muted-foreground'} />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{type.description}</p>
+                  <p className="mt-3 text-[11px] font-medium text-muted-foreground">Frais: {type.creationFee.toLocaleString('fr-FR')} money{type.minCapital > 0 ? ` · capital min. ${type.minCapital.toLocaleString('fr-FR')}` : ''}</p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </ModalWrap>
+  );
+}
 
 export function CreateBusinessModal({
   open,
@@ -25,6 +73,7 @@ export function CreateBusinessModal({
   const [typeKey, setTypeKey] = useState(businessTypes[0]?.key ?? '');
   const [capital, setCapital] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -52,47 +101,53 @@ export function CreateBusinessModal({
     }
   };
 
+  const SelectedIcon = selectedType ? (BUSINESS_ICON_MAP[selectedType.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2) : Building2;
+  const selectedStyle = selectedType ? (BUSINESS_STYLE_MAP[selectedType.key as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground', badge: 'bg-muted text-muted-foreground' }) : { iconWrap: 'bg-muted/20', icon: 'text-foreground', badge: 'bg-muted text-muted-foreground' };
+
   return (
-    <ModalWrap open={open} onClose={onClose} title="Creer une entreprise" desc={isBank ? 'La creation de la banque coute 10 000 money et la tresorerie demarre a 0.' : 'Le capital de depart est pris sur ton argent global.'}>
-      <FieldRow label="Type d activite">
-        <div className="space-y-3">
-          {businessTypes.map((type) => {
-            const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
-            const style = BUSINESS_STYLE_MAP[type.key as keyof typeof BUSINESS_STYLE_MAP] ?? { card: 'border-border/40 bg-muted/10', badge: 'bg-muted text-muted-foreground', iconWrap: 'bg-muted/20', icon: 'text-foreground' };
-            const active = type.key === typeKey;
-            return (
-              <button
-                key={type.key}
-                type="button"
-                onClick={() => {
-                  setTypeKey(type.key);
-                  setCapital(String(type.minCapital));
-                }}
-                className={cn('w-full rounded-2xl border px-4 py-4 text-left transition-all', active ? style.card : 'border-border/40 bg-muted/10 hover:bg-muted/20')}
-              >
-                <div className="flex items-start gap-4">
-                  <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', active ? style.iconWrap : 'bg-muted/20')}>
-                    <Icon className={cn('h-5 w-5', active ? style.icon : 'text-foreground')} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold">{type.label}</p>
-                      <Pill label={type.category} color={active ? style.badge : 'bg-muted text-muted-foreground'} />
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{type.description}</p>
-                    <p className="mt-3 text-[11px] font-medium text-muted-foreground">Frais: {type.creationFee.toLocaleString('fr-FR')} money{type.minCapital > 0 ? ` · capital min. ${type.minCapital.toLocaleString('fr-FR')}` : ''}</p>
-                  </div>
+    <>
+      <ModalWrap open={open} onClose={onClose} title="Creer une entreprise" desc={isBank ? 'La creation de la banque coute 10 000 money et la tresorerie demarre a 0.' : 'Le capital de depart est pris sur ton argent global.'}>
+        <FieldRow label="Type d activite">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="w-full rounded-2xl border border-border/40 bg-muted/10 px-4 py-4 text-left transition-all hover:bg-muted/20"
+          >
+            {selectedType ? (
+              <div className="flex items-center gap-4">
+                <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', selectedStyle.iconWrap)}>
+                  <SelectedIcon className={cn('h-5 w-5', selectedStyle.icon)} />
                 </div>
-              </button>
-            );
-          })}
-        </div>
-      </FieldRow>
-      {selectedType ? <div className="rounded-xl border border-border/40 bg-muted/10 p-4"><p className="text-sm font-medium">{selectedType.label}</p><p className="mt-1 text-xs text-muted-foreground">{selectedType.description}</p><p className="mt-2 text-[11px] text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></div> : null}
-      <FieldRow label="Nom"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="ex : Citizen Bank" /></FieldRow>
-      {!isBank ? <FieldRow label="Capital de depart"><Input type="number" value={capital} onChange={(event) => setCapital(event.target.value)} min={selectedType?.minCapital ?? 0} /></FieldRow> : null}
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedType || !name.trim() || (!isBank && Number(capital) < selectedType.minCapital)}>Creer</Button></div>
-    </ModalWrap>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold">{selectedType.label}</p>
+                    <Pill label={selectedType.category} color={selectedStyle.badge} />
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{selectedType.description}</p>
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">Changer →</span>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Choisir un type...</p>
+            )}
+          </button>
+        </FieldRow>
+        {selectedType ? <div className="rounded-xl border border-border/40 bg-muted/10 p-4"><p className="text-[11px] text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></div> : null}
+        <FieldRow label="Nom"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="ex : Citizen Bank" /></FieldRow>
+        {!isBank ? <FieldRow label="Capital de depart"><Input type="number" value={capital} onChange={(event) => setCapital(event.target.value)} min={selectedType?.minCapital ?? 0} /></FieldRow> : null}
+        <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedType || !name.trim() || (!isBank && Number(capital) < selectedType.minCapital)}>Creer</Button></div>
+      </ModalWrap>
+      <BusinessTypePickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        businessTypes={businessTypes}
+        selectedKey={typeKey}
+        onSelect={(type) => {
+          setTypeKey(type.key);
+          setCapital(String(type.minCapital));
+        }}
+      />
+    </>
   );
 }
 
@@ -222,6 +277,92 @@ export function InvestModal({ open, onClose, business, onSubmitted }: { open: bo
       <FieldRow label="Risque"><SelectBox value={riskLevel} onChange={(value) => setRiskLevel(value as 'low' | 'medium' | 'high')}><option value="low">Faible risque</option><option value="medium">Risque modere</option><option value="high">Risque eleve</option></SelectBox></FieldRow>
       <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/10 p-3 text-center"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Risque</p><p className={cn('text-sm font-bold', selected.color)}>{selected.label}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Min</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.min}%</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Max</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.max}%</p></div></div>
       <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business}>Investir</Button></div>
+    </ModalWrap>
+  );
+}
+
+export function TransferBusinessModal({ open, onClose, business, players, onSubmitted }: { open: boolean; onClose: () => void; business: YouBusiness | null; players: YouPlayer[]; onSubmitted: () => Promise<void> }) {
+  const [recipientId, setRecipientId] = useState('');
+  const [amount, setAmount] = useState('1000');
+  const [search, setSearch] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setRecipientId('');
+      setAmount('1000');
+      setSearch('');
+    }
+  }, [open]);
+
+  const availablePlayers = useMemo(() => players.filter((player) => {
+    if (player.id === business?.ownerId) return true;
+    if (!search.trim()) return true;
+    const query = search.toLowerCase();
+    return player.username.toLowerCase().includes(query) || player.firstName?.toLowerCase().includes(query) || player.bio?.toLowerCase().includes(query);
+  }), [business?.ownerId, players, search]);
+
+  const submit = async () => {
+    if (!business || !recipientId) return;
+    setSubmitting(true);
+    try {
+      await withRouteError(() => youApi.transferWithBusiness(business.id, { recipientId, amount: Number(amount) }), 'Impossible d effectuer ce transfert.');
+      toast.success('Transfert envoye');
+      await onSubmitted();
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title={business ? `Transfert via ${business.name}` : 'Service de transfert'} desc="Le montant est envoye au joueur choisi et les frais sont credites a la tresorerie du service.">
+      <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
+      <div className="max-h-64 space-y-2 overflow-y-auto">
+        {availablePlayers.map((player) => {
+          const selected = player.id === recipientId;
+          return <button key={player.id} type="button" onClick={() => setRecipientId(player.id)} className={cn('flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors', selected ? 'border-cyan-400/50 bg-cyan-400/10' : 'border-border/40 bg-muted/10 hover:bg-muted/20')}><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Disponible pour recevoir un transfert.'}</p></div>{selected ? <Pill label="Destinataire" color="bg-cyan-400/15 text-cyan-300" /> : null}</button>;
+        })}
+      </div>
+      <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={1} /></FieldRow>
+      <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
+        Frais de service: environ 2% du montant envoye.
+      </div>
+      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || !recipientId || Number(amount) <= 0}>Transferer</Button></div>
+    </ModalWrap>
+  );
+}
+
+export function BuyoutOfferModal({ open, onClose, business, onSubmitted }: { open: boolean; onClose: () => void; business: YouBusiness | null; onSubmitted: () => Promise<void> }) {
+  const [amount, setAmount] = useState('');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setAmount('');
+      setMessage('');
+    }
+  }, [open]);
+
+  const submit = async () => {
+    if (!business) return;
+    setSubmitting(true);
+    try {
+      await withRouteError(() => youApi.createBuyoutOffer(business.id, { amount: Number(amount), message: message.trim() || undefined }), 'Impossible d envoyer l offre.');
+      toast.success('Offre de rachat envoyee');
+      await onSubmitted();
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title={business ? `Faire une offre · ${business.name}` : 'Faire une offre'} desc="Le montant est debite tout de suite et garde en escrow jusqu a la decision du proprietaire.">
+      <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={1} placeholder="Montant propose" /></FieldRow>
+      <FieldRow label="Message (optionnel)"><Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ex : reprise complete, maintien de l equipe..." /></FieldRow>
+      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || Number(amount) <= 0}>Envoyer l offre</Button></div>
     </ModalWrap>
   );
 }
@@ -375,6 +516,7 @@ export function ManageBusinessModal({
   const [withdrawAmount, setWithdrawAmount] = useState('1000');
   const [activeTreasuryAction, setActiveTreasuryAction] = useState<'deposit' | 'withdraw' | null>(null);
   const [reviewingLoanId, setReviewingLoanId] = useState<string | null>(null);
+  const [reviewingBuyoutId, setReviewingBuyoutId] = useState<string | null>(null);
   const [actingProductKey, setActingProductKey] = useState<string | null>(null);
   const [liquidating, setLiquidating] = useState(false);
 
@@ -384,11 +526,13 @@ export function ManageBusinessModal({
       setWithdrawAmount('1000');
       setActiveTreasuryAction(null);
       setReviewingLoanId(null);
+      setReviewingBuyoutId(null);
       setActingProductKey(null);
     }
   }, [open, business?.id]);
 
   const pendingLoans = business?.recentLoans.filter((loan) => loan.status === 'PENDING') ?? [];
+  const pendingBuyoutOffers = business?.pendingBuyoutOffers.filter((offer) => offer.status === 'PENDING') ?? [];
   const isBank = business?.typeKey === 'bank';
   const isStartup = business?.typeKey === 'startup';
   const businessIconTypeKey = business?.typeKey as keyof typeof BUSINESS_ICON_MAP | undefined;
@@ -420,6 +564,20 @@ export function ManageBusinessModal({
       await onSubmitted(true);
     } finally {
       setReviewingLoanId(null);
+    }
+  };
+
+  const reviewBuyout = async (offerId: string, decision: 'accept' | 'reject') => {
+    setReviewingBuyoutId(offerId);
+    try {
+      await withRouteError(() => youApi.respondToBuyoutOffer(offerId, decision), 'Impossible de traiter cette offre de rachat.');
+      toast.success(decision === 'accept' ? 'Offre de rachat acceptee' : 'Offre de rachat refusee');
+      await onSubmitted(true);
+      if (decision === 'accept') {
+        onClose();
+      }
+    } finally {
+      setReviewingBuyoutId(null);
     }
   };
 
@@ -483,8 +641,8 @@ export function ManageBusinessModal({
               <Card><CardContent className="space-y-3 px-4 py-4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-400/15"><ArrowUpCircle className="h-4 w-4 text-red-400" /></div><div><p className="text-sm font-semibold">Retirer</p><p className="text-xs text-muted-foreground">Retour vers ton money partage.</p></div></div><div className="flex gap-2"><Input type="number" value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value)} min={1} /><Button size="sm" variant="outline" onClick={() => void runTreasuryAction('withdraw', withdrawAmount)} disabled={activeTreasuryAction !== null || Number(withdrawAmount) <= 0}>Retirer</Button></div></CardContent></Card>
             ) : null}
             <ActionCard>
-              {business.actions.includes('invite') ? <ActionRow icon={UserPlus} label="Inviter des joueurs" sub="Envoyer de nouvelles invitations." iconBg="bg-violet-400/15" iconColor="text-violet-400" onClick={() => { onClose(); onInviteRequested(business); }} /> : null}
-              <ActionRow icon={Trash2} label={liquidating ? 'Liquidation en cours' : 'Liquider l entreprise'} sub="Suppression definitive de la structure." iconBg="bg-red-400/15" iconColor="text-red-400" onClick={() => { if (!liquidating) void liquidateBusiness(); }} />
+              {business.actions.includes('invite') && business.ownerKind === 'you' ? <ActionRow icon={UserPlus} label="Inviter des joueurs" sub="Envoyer de nouvelles invitations." iconBg="bg-violet-400/15" iconColor="text-violet-400" onClick={() => { onClose(); onInviteRequested(business); }} /> : null}
+              {business.ownerKind === 'you' ? <ActionRow icon={Trash2} label={liquidating ? 'Liquidation en cours' : 'Liquider l entreprise'} sub="Suppression definitive de la structure." iconBg="bg-red-400/15" iconColor="text-red-400" onClick={() => { if (!liquidating) void liquidateBusiness(); }} /> : null}
             </ActionCard>
             {isStartup ? <div className="space-y-3">
               <SectionTitle>Time Tasks</SectionTitle>
@@ -608,6 +766,11 @@ export function ManageBusinessModal({
             {isBank ? <Card><CardContent className="space-y-3 px-5 py-4">
               <SectionTitle>Demandes de pret</SectionTitle>
               {pendingLoans.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Aucune demande de pret en attente.</div> : pendingLoans.map((loan) => <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-semibold">{loan.borrower.username}</p><p className="text-xs text-muted-foreground">{formatMoney(loan.amount)} money · {loan.termDays} jours · {loan.interestRate}% d interet</p></div><div className="flex gap-2"><Button size="sm" className="text-xs" onClick={() => void reviewLoan(loan.id, 'accept')} disabled={reviewingLoanId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button><Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewLoan(loan.id, 'reject')} disabled={reviewingLoanId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button></div></div></div>)}
+            </CardContent></Card> : null}
+
+            {business.ownerKind === 'you' ? <Card><CardContent className="space-y-3 px-5 py-4">
+              <SectionTitle>Offres de rachat</SectionTitle>
+              {pendingBuyoutOffers.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Aucune offre de rachat en attente.</div> : pendingBuyoutOffers.map((offer) => <div key={offer.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div className="space-y-1"><p className="text-sm font-semibold">{offer.bidder.username}</p><p className="text-xs text-muted-foreground">{formatMoney(offer.amount)} money en escrow</p>{offer.message ? <p className="text-xs text-muted-foreground/80">"{offer.message}"</p> : null}</div><div className="flex gap-2"><Button size="sm" className="text-xs" onClick={() => void reviewBuyout(offer.id, 'accept')} disabled={reviewingBuyoutId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button><Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewBuyout(offer.id, 'reject')} disabled={reviewingBuyoutId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button></div></div></div>)}
             </CardContent></Card> : null}
           </div>
         </div>

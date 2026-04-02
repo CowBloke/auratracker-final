@@ -55,6 +55,8 @@ model User {
   followers             UserFollow[]              @relation("UserFollowers")
   ownedBusinesses       Business[]               @relation("BusinessOwner")
   businessMemberships   BusinessMember[]
+  buyoutOffersPlaced    BusinessBuyoutOffer[]    @relation("BuyoutBidder")
+  buyoutOffersReceived  BusinessBuyoutOffer[]    @relation("BusinessBuyoutOwner")
   sentBusinessInvitations BusinessInvitation[]   @relation("BusinessInvitationSender")
   receivedBusinessInvitations BusinessInvitation[] @relation("BusinessInvitationRecipient")
   borrowedBusinessLoans BusinessLoan[]
@@ -403,6 +405,7 @@ model Business {
   invitations BusinessInvitation[]
   loans       BusinessLoan[]
   investments BusinessInvestment[]
+  buyoutOffers BusinessBuyoutOffer[]
   startupProducts BusinessStartupProduct[]
 
   @@index([ownerId])
@@ -480,6 +483,26 @@ model BusinessInvestment {
 
   @@index([businessId, createdAt])
   @@index([investorId, createdAt])
+}
+
+model BusinessBuyoutOffer {
+  id          String   @id @default(uuid())
+  businessId  String
+  bidderId    String
+  ownerId     String
+  amount      Int
+  message     String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  decidedAt   DateTime?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bidder   User     @relation("BuyoutBidder", fields: [bidderId], references: [id], onDelete: Cascade)
+  owner    User     @relation("BusinessBuyoutOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([bidderId])
+  @@index([ownerId, status])
 }
 
 model BusinessStartupProduct {

@@ -212,6 +212,24 @@ export interface YouBusinessInvestment {
   investor: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
+export interface YouBusinessBuyoutOffer {
+  id: string;
+  businessId: string;
+  amount: number;
+  message: string | null;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | string;
+  createdAt: string;
+  decidedAt: string | null;
+  direction: 'sent' | 'received';
+  bidder: Omit<YouPlayer, 'alreadyInRelationship'>;
+  owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  business?: {
+    id: string;
+    name: string;
+    typeKey: string;
+  };
+}
+
 export interface YouStartupProduct {
   id: string;
   slotIndex: number;
@@ -256,6 +274,7 @@ export interface YouBusiness {
   pendingInvitations: YouBusinessInvitation[];
   recentLoans: YouBusinessLoan[];
   recentInvestments: YouBusinessInvestment[];
+  pendingBuyoutOffers: YouBusinessBuyoutOffer[];
   startupProducts: YouStartupProduct[];
   livretEpargneUnlocked?: boolean;
   loanInterestRate?: number;
@@ -333,6 +352,9 @@ export interface YouState {
   courtCases: YouCourtCase[];
   ownedBusinesses: YouBusiness[];
   exploreBusinesses: YouBusiness[];
+  memberBusinesses: YouBusiness[];
+  pendingBuyoutOffers: YouBusinessBuyoutOffer[];
+  sentBuyoutOffers: YouBusinessBuyoutOffer[];
 }
 
 export const youApi = {
@@ -348,6 +370,14 @@ export const youApi = {
     api.post<{ result: { id: string; status: string; respondedAt: string | null } }>(`/you/business-invitations/${invitationId}/respond`, { decision }),
   respondToBusinessLoan: (loanId: string, decision: 'accept' | 'reject') =>
     api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/loans/${loanId}/respond`, { decision }),
+  transferWithBusiness: (businessId: string, data: { recipientId: string; amount: number }) =>
+    api.post<{ result: { recipientId: string; amount: number; fee: number; debited: number } }>(`/you/businesses/${businessId}/actions/transfer`, data),
+  createBuyoutOffer: (businessId: string, data: { amount: number; message?: string }) =>
+    api.post<{ offer: YouBusinessBuyoutOffer }>(`/you/businesses/${businessId}/buyout-offers`, data),
+  respondToBuyoutOffer: (offerId: string, decision: 'accept' | 'reject') =>
+    api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/buyout-offers/${offerId}/respond`, { decision }),
+  cancelBuyoutOffer: (offerId: string) =>
+    api.delete<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/buyout-offers/${offerId}`),
   createRelationship: (targetUserId: string, type: 'FRIEND' | 'DATING' = 'DATING') =>
     api.post<{ relationship: YouRelationship }>('/you/relationships', { targetUserId, type }),
   proposeMarriage: (relationshipId: string, message?: string) =>

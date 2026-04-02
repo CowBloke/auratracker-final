@@ -352,7 +352,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     
-    const [user, auraCoinAggregate, clanMembership, socialStats, relationship, connections, totalRankedUsers] = await Promise.all([
+    const [user, auraCoinAggregate, clanMembership, socialStats, relationship, connections, totalRankedUsers, marriageRel, ownedBusinesses] = await Promise.all([
       prisma.user.findUnique({
         where: { id },
         select: {
@@ -413,6 +413,24 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       prisma.user.count({
         where: { isSuperAdmin: false },
       }),
+      prisma.relationship.findFirst({
+        where: {
+          OR: [{ userAId: id }, { userBId: id }],
+          status: 'MARRIED',
+        },
+        select: {
+          userAId: true,
+          userBId: true,
+          marriedAt: true,
+          userA: { select: { id: true, username: true, usernameColor: true } },
+          userB: { select: { id: true, username: true, usernameColor: true } },
+        },
+      }),
+      prisma.business.findMany({
+        where: { ownerId: id },
+        select: { id: true, name: true, typeKey: true },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
 
     if (!user) {
@@ -442,6 +460,13 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           totalMoney: auraCoinAggregate._sum.moneyAmount ?? 0,
         },
         overallRankTotalPlayers: totalRankedUsers,
+        marriage: marriageRel
+          ? {
+              partner: marriageRel.userAId === id ? marriageRel.userB : marriageRel.userA,
+              marriedAt: marriageRel.marriedAt?.toISOString() ?? null,
+            }
+          : null,
+        ownedBusinesses: ownedBusinesses.map((b) => ({ id: b.id, name: b.name, typeKey: b.typeKey })),
       },
     });
   } catch (error) {

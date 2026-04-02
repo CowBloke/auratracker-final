@@ -3,8 +3,10 @@ import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { prisma } from '../server.js';
 import {
   buyLivretEpargneUpgrade,
+  cancelBusinessBuyoutOffer,
   setLoanRate,
   createBusiness,
+  createBusinessBuyoutOffer,
   createRelationship,
   deleteBusiness,
   depositToCouple,
@@ -16,10 +18,12 @@ import {
   makeMistress,
   proposeMarriage,
   respondToBusinessInvitation,
+  respondToBusinessBuyoutOffer,
   respondToBusinessLoan,
   respondToCourtCase,
   respondToDivorceProposal,
   respondToMarriageProposal,
+  runTransferBusinessAction,
   suspectCheating,
   trainUserSkill,
   withdrawFromCouple,
@@ -61,6 +65,9 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_INVITATION_ALREADY_RESOLVED: 400,
   BUSINESS_INVEST_SELF_FORBIDDEN: 400,
   INVALID_INVEST_AMOUNT: 400,
+  BUSINESS_TRANSFER_UNAVAILABLE: 400,
+  INVALID_TRANSFER_AMOUNT: 400,
+  TRANSFER_RECIPIENT_INVALID: 400,
   BUSINESS_RESEARCH_FORBIDDEN: 403,
   BUSINESS_RESEARCH_UNAVAILABLE: 400,
   INVALID_STARTUP_PRODUCT_SLOT: 400,
@@ -91,6 +98,13 @@ const ERROR_STATUS: Record<string, number> = {
   COUPLE_BALANCE_TOO_LOW: 400,
   INVALID_LOAN_RATE: 400,
   BANK_RATE_FORBIDDEN: 403,
+  BUYOUT_SELF_FORBIDDEN: 400,
+  INVALID_BUYOUT_AMOUNT: 400,
+  BUYOUT_OFFER_ALREADY_PENDING: 400,
+  BUYOUT_OFFER_NOT_FOUND: 404,
+  BUYOUT_OFFER_REVIEW_FORBIDDEN: 403,
+  BUYOUT_OFFER_CANCEL_FORBIDDEN: 403,
+  BUYOUT_OFFER_ALREADY_RESOLVED: 400,
   CHEATING_ACCUSATION_ALREADY_PENDING: 400,
   CHEATING_ACCUSATION_NOT_FOUND: 404,
   CHEATING_ACCUSATION_FORBIDDEN: 403,
@@ -129,6 +143,9 @@ const ERROR_MESSAGE: Record<string, string> = {
   BUSINESS_INVITATION_ALREADY_RESOLVED: 'Cette invitation a deja ete traitee.',
   BUSINESS_INVEST_SELF_FORBIDDEN: 'Tu ne peux pas investir dans ton propre business via cette action.',
   INVALID_INVEST_AMOUNT: 'Montant d investissement invalide.',
+  BUSINESS_TRANSFER_UNAVAILABLE: 'Cette action est reservee aux services de transfert.',
+  INVALID_TRANSFER_AMOUNT: 'Montant de transfert invalide.',
+  TRANSFER_RECIPIENT_INVALID: 'Destinataire invalide.',
   BUSINESS_RESEARCH_FORBIDDEN: 'Tu ne peux pas lancer cette recherche sur ce business.',
   BUSINESS_RESEARCH_UNAVAILABLE: 'Cette action de recherche est reservee aux startups tech.',
   INVALID_STARTUP_PRODUCT_SLOT: 'Produit startup invalide.',
@@ -159,6 +176,13 @@ const ERROR_MESSAGE: Record<string, string> = {
   COUPLE_BALANCE_TOO_LOW: 'Le compte commun n a pas assez de fonds.',
   INVALID_LOAN_RATE: 'Le taux d emprunt doit etre entre 1% et 50%.',
   BANK_RATE_FORBIDDEN: 'Seul le proprietaire peut modifier le taux d emprunt.',
+  BUYOUT_SELF_FORBIDDEN: 'Tu ne peux pas faire une offre sur ton propre business.',
+  INVALID_BUYOUT_AMOUNT: 'Montant d offre invalide.',
+  BUYOUT_OFFER_ALREADY_PENDING: 'Tu as deja une offre en attente sur ce business.',
+  BUYOUT_OFFER_NOT_FOUND: 'Offre de rachat introuvable.',
+  BUYOUT_OFFER_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette offre.',
+  BUYOUT_OFFER_CANCEL_FORBIDDEN: 'Tu ne peux pas annuler cette offre.',
+  BUYOUT_OFFER_ALREADY_RESOLVED: 'Cette offre de rachat a deja ete traitee.',
   CHEATING_ACCUSATION_ALREADY_PENDING: 'Une suspicion est deja en attente.',
   CHEATING_ACCUSATION_NOT_FOUND: 'Accusation introuvable.',
   CHEATING_ACCUSATION_FORBIDDEN: 'Tu ne peux pas repondre a cette accusation.',
@@ -236,6 +260,18 @@ router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthReq
   }
 });
 
+router.post('/businesses/:businessId/actions/transfer', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await runTransferBusinessAction(req.user!.id, req.params.businessId, {
+      recipientId: String(req.body?.recipientId ?? ''),
+      amount: Number(req.body?.amount ?? 0),
+    });
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Run transfer business action error');
+  }
+});
+
 router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const actionKey = req.params.actionKey as BusinessActionKey;
@@ -243,6 +279,37 @@ router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, requir
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Run business action error');
+  }
+});
+
+router.post('/businesses/:businessId/buyout-offers', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const offer = await createBusinessBuyoutOffer(req.user!.id, req.params.businessId, {
+      amount: Number(req.body?.amount ?? 0),
+      message: typeof req.body?.message === 'string' ? req.body.message : undefined,
+    });
+    res.status(201).json({ offer });
+  } catch (error) {
+    handleRouteError(error, res, 'Create buyout offer error');
+  }
+});
+
+router.post('/buyout-offers/:offerId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
+    const result = await respondToBusinessBuyoutOffer(req.user!.id, req.params.offerId, decision);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Respond buyout offer error');
+  }
+});
+
+router.delete('/buyout-offers/:offerId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await cancelBusinessBuyoutOffer(req.user!.id, req.params.offerId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Cancel buyout offer error');
   }
 });
 

@@ -1,16 +1,20 @@
-import { ArrowDownCircle, ArrowUpCircle, BarChart3, Building2, CreditCard, Landmark, TrendingUp, UserPlus } from 'lucide-react';
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, BarChart3, Building2, CreditCard, GraduationCap, Landmark, TrendingUp, UserPlus } from 'lucide-react';
 import { type BusinessAction } from './types';
 
 export const BUSINESS_ICON_MAP = {
   startup: Building2,
   bank: Landmark,
   agency: BarChart3,
+  formation: GraduationCap,
+  transfer: ArrowLeftRight,
 } as const;
 
 export const BUSINESS_STYLE_MAP = {
   startup: { card: 'border-sky-400/30 bg-sky-400/10', badge: 'bg-sky-400/15 text-sky-400', iconWrap: 'bg-sky-400/15', icon: 'text-sky-400' },
   bank: { card: 'border-emerald-400/30 bg-emerald-400/10', badge: 'bg-emerald-400/15 text-emerald-400', iconWrap: 'bg-emerald-400/15', icon: 'text-emerald-400' },
   agency: { card: 'border-violet-400/30 bg-violet-400/10', badge: 'bg-violet-400/15 text-violet-400', iconWrap: 'bg-violet-400/15', icon: 'text-violet-400' },
+  formation: { card: 'border-amber-400/30 bg-amber-400/10', badge: 'bg-amber-400/15 text-amber-400', iconWrap: 'bg-amber-400/15', icon: 'text-amber-400' },
+  transfer: { card: 'border-cyan-400/30 bg-cyan-400/10', badge: 'bg-cyan-400/15 text-cyan-400', iconWrap: 'bg-cyan-400/15', icon: 'text-cyan-400' },
 } as const;
 
 export const ACTION_META: Record<BusinessAction, { label: string; help: string; icon: typeof UserPlus; tone: string }> = {
