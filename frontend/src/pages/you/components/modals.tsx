@@ -165,7 +165,9 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
   const [amount, setAmount] = useState('5000');
   const [durationDays, setDurationDays] = useState('30');
   const [submitting, setSubmitting] = useState(false);
-  const dailyRepayment = Math.round((Number(amount || 0) * 1.04) / Math.max(1, Number(durationDays || 1)));
+  const rate = business?.loanInterestRate ?? 4;
+  const total = Math.round(Number(amount || 0) * (1 + rate / 100));
+  const dailyRepayment = Math.round(total / Math.max(1, Number(durationDays || 1)));
 
   const submit = async () => {
     if (!business) return;
@@ -183,9 +185,13 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
   return (
     <ModalWrap open={open} onClose={onClose} title={business ? `Demander un pret · ${business.name}` : 'Demander un pret'} desc="Le proprietaire devra accepter la demande avant que le money soit debloque.">
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={500} /></FieldRow>
-      <FieldRow label="Duree"><SelectBox value={durationDays} onChange={setDurationDays}>{['7', '14', '30', '60', '90'].map((value) => <option key={value} value={value}>{value} jours</option>)}</SelectBox></FieldRow>
-      <div className="grid grid-cols-2 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Remboursement / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-red-400">{formatMoney(Math.round(Number(amount || 0) * 1.04))}</p></div></div>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business}>Envoyer</Button></div>
+      <FieldRow label="Duree (jours)"><Input type="number" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} min={1} placeholder="ex : 7" /></FieldRow>
+      <div className="grid grid-cols-3 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4">
+        <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Taux</p><p className="text-lg font-bold tabular-nums text-amber-400">{rate}%</p></div>
+        <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Remb. / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div>
+        <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-red-400">{formatMoney(total)}</p></div>
+      </div>
+      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || Number(durationDays) < 1}>Envoyer</Button></div>
     </ModalWrap>
   );
 }

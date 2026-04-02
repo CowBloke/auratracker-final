@@ -3,6 +3,7 @@ import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { prisma } from '../server.js';
 import {
   buyLivretEpargneUpgrade,
+  setLoanRate,
   createBusiness,
   createRelationship,
   deleteBusiness,
@@ -88,6 +89,8 @@ const ERROR_STATUS: Record<string, number> = {
   NOT_MARRIED: 400,
   INVALID_COUPLE_AMOUNT: 400,
   COUPLE_BALANCE_TOO_LOW: 400,
+  INVALID_LOAN_RATE: 400,
+  BANK_RATE_FORBIDDEN: 403,
   CHEATING_ACCUSATION_ALREADY_PENDING: 400,
   CHEATING_ACCUSATION_NOT_FOUND: 404,
   CHEATING_ACCUSATION_FORBIDDEN: 403,
@@ -154,6 +157,8 @@ const ERROR_MESSAGE: Record<string, string> = {
   NOT_MARRIED: 'Tu dois etre marie pour avoir une liaison.',
   INVALID_COUPLE_AMOUNT: 'Montant invalide.',
   COUPLE_BALANCE_TOO_LOW: 'Le compte commun n a pas assez de fonds.',
+  INVALID_LOAN_RATE: 'Le taux d emprunt doit etre entre 1% et 50%.',
+  BANK_RATE_FORBIDDEN: 'Seul le proprietaire peut modifier le taux d emprunt.',
   CHEATING_ACCUSATION_ALREADY_PENDING: 'Une suspicion est deja en attente.',
   CHEATING_ACCUSATION_NOT_FOUND: 'Accusation introuvable.',
   CHEATING_ACCUSATION_FORBIDDEN: 'Tu ne peux pas repondre a cette accusation.',
@@ -367,6 +372,16 @@ router.post('/cheating-accusations/:accusationId/respond', authMiddleware, requi
     res.json(result);
   } catch (error) {
     handleRouteError(error, res, 'Respond court case error');
+  }
+});
+
+router.post('/businesses/:businessId/set-loan-rate', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const rate = Number(req.body?.rate);
+    const result = await setLoanRate(req.user!.id, req.params.businessId, rate);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Set loan rate error');
   }
 });
 

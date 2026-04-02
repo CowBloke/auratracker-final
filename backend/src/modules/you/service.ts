@@ -288,6 +288,7 @@ function serializeBusiness(business: any, viewerId: string) {
     })),
     startupProducts,
     livretEpargneUnlocked: business.typeKey === 'bank' ? (business.livretEpargneUnlocked ?? false) : undefined,
+    loanInterestRate: business.typeKey === 'bank' ? (business.loanInterestRate ?? 4) : undefined,
   };
 }
 
@@ -762,7 +763,7 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
     throw new Error('USER_NOT_FOUND');
   }
 
-  const interestRate = 4;
+  const interestRate = business.loanInterestRate ?? 4;
 
   const loan = await prisma.businessLoan.create({
     data: {
@@ -1981,4 +1982,26 @@ export async function buyLivretEpargneUpgrade(userId: string, businessId: string
   });
 
   return { livretEpargneUnlocked: true };
+}
+
+export async function setLoanRate(userId: string, businessId: string, rate: number) {
+  if (!Number.isFinite(rate) || rate < 1 || rate > 50) {
+    throw new Error('INVALID_LOAN_RATE');
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true },
+  });
+
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('BANK_RATE_FORBIDDEN');
+  if (business.typeKey !== 'bank') throw new Error('BUSINESS_NOT_FOUND');
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { loanInterestRate: rate },
+  });
+
+  return { loanInterestRate: rate };
 }

@@ -258,6 +258,7 @@ export interface YouBusiness {
   recentInvestments: YouBusinessInvestment[];
   startupProducts: YouStartupProduct[];
   livretEpargneUnlocked?: boolean;
+  loanInterestRate?: number;
 }
 
 export interface YouMarriageProposal {
@@ -373,6 +374,8 @@ export const youApi = {
     api.delete<{ result: { id: string } }>(`/you/businesses/${businessId}`),
   buyLivretEpargneUpgrade: (businessId: string) =>
     api.post<{ result: { livretEpargneUnlocked: boolean } }>(`/you/businesses/${businessId}/upgrades/livret-epargne`, {}),
+  setLoanRate: (businessId: string, rate: number) =>
+    api.post<{ result: { loanInterestRate: number } }>(`/you/businesses/${businessId}/set-loan-rate`, { rate }),
 };
 
 // Economy API

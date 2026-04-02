@@ -20,6 +20,19 @@ function formatMoney(n: number) {
 function BankDetailCard({ business, userId, onReload }: { business: YouBusiness; userId: string; onReload: () => Promise<void> }) {
   const isOwner = business.ownerId === userId;
   const [buying, setBuying] = useState(false);
+  const [rateInput, setRateInput] = useState(String(business.loanInterestRate ?? 4));
+  const [savingRate, setSavingRate] = useState(false);
+
+  const handleSaveRate = async () => {
+    setSavingRate(true);
+    try {
+      await withRouteError(() => youApi.setLoanRate(business.id, Number(rateInput)), 'Impossible de modifier le taux.');
+      toast.success('Taux d emprunt mis a jour');
+      await onReload();
+    } finally {
+      setSavingRate(false);
+    }
+  };
 
   const handleBuyUpgrade = async () => {
     setBuying(true);
@@ -47,10 +60,39 @@ function BankDetailCard({ business, userId, onReload }: { business: YouBusiness;
               </div>
             </div>
           </div>
-          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Tresorerie disponible</p>
-            <p className="mt-1 text-xl font-bold tabular-nums text-emerald-400">{formatMoney(business.treasuryMoney)}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Tresorerie disponible</p>
+              <p className="mt-1 text-xl font-bold tabular-nums text-emerald-400">{formatMoney(business.treasuryMoney)}</p>
+            </div>
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Taux d emprunt</p>
+              <p className="mt-1 text-xl font-bold tabular-nums text-amber-400">{business.loanInterestRate ?? 4}%</p>
+            </div>
           </div>
+          {isOwner && (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={50}
+                step={0.5}
+                value={rateInput}
+                onChange={(e) => setRateInput(e.target.value)}
+                className="h-8 w-24 rounded-lg border border-border/40 bg-muted/10 px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-400/40"
+              />
+              <span className="text-xs text-muted-foreground">% / pret</span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={savingRate || Number(rateInput) < 1 || Number(rateInput) > 50}
+                onClick={() => void handleSaveRate()}
+                className="h-7 border-amber-400/30 text-amber-300 hover:bg-amber-500/10 disabled:opacity-40"
+              >
+                {savingRate ? 'Sauvegarde...' : 'Modifier'}
+              </Button>
+            </div>
+          )}
           {business.livretEpargneUnlocked ? (
             <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2 text-xs text-amber-300">
               <Sparkles className="h-3.5 w-3.5 shrink-0" />
@@ -319,13 +361,12 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
                         {isBank ? (
                           <div className="text-right shrink-0">
                             <p className="text-sm font-bold tabular-nums text-emerald-400">{formatMoney(business.treasuryMoney)}</p>
+                            <p className="text-[10px] text-amber-400/80 mt-0.5">{business.loanInterestRate ?? 4}% emprunt</p>
                             {business.livretEpargneUnlocked ? (
-                              <p className="text-[10px] text-amber-400/80 flex items-center justify-end gap-0.5 mt-0.5">
+                              <p className="text-[10px] text-amber-400/60 flex items-center justify-end gap-0.5 mt-0.5">
                                 <Sparkles className="h-2.5 w-2.5" />Livret
                               </p>
-                            ) : (
-                              <p className="text-[10px] text-muted-foreground">tresorerie</p>
-                            )}
+                            ) : null}
                           </div>
                         ) : (
                           <div className="text-right shrink-0">

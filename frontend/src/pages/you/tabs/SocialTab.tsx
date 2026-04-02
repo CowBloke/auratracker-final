@@ -97,6 +97,7 @@ function RelationActions({
   onReload: () => Promise<void>;
 }) {
   const [loading, setLoading] = useState<string | null>(null);
+  const [confirmMarriage, setConfirmMarriage] = useState(false);
   const [confirmForget, setConfirmForget] = useState(false);
   const [confirmMistress, setConfirmMistress] = useState(false);
   const [confirmSuspect, setConfirmSuspect] = useState(false);
@@ -247,15 +248,30 @@ function RelationActions({
 
       {/* Marriage proposal received */}
       {relationship.pendingProposal?.canRespond && (
-        <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3">
+        <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 space-y-2">
           <p className="text-sm font-semibold text-red-300">Demande en mariage</p>
           {relationship.pendingProposal.message?.trim() && (
-            <p className="mt-1 text-xs text-muted-foreground">{relationship.pendingProposal.message}</p>
+            <p className="text-xs text-muted-foreground">{relationship.pendingProposal.message}</p>
           )}
-          <div className="mt-3 flex gap-2">
-            <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'accept')}>Accepter</Button>
-            <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'reject')}>Refuser</Button>
-          </div>
+          {confirmMarriage ? (
+            <div className="space-y-2">
+              <div className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200 space-y-1">
+                <p className="font-semibold">Consequences du mariage :</p>
+                <p>· Compte bancaire commun partage avec ton conjoint</p>
+                <p>· En cas de divorce, le compte commun est divise en deux</p>
+                <p>· Si ton conjoint triche, il peut perdre tout son argent au tribunal</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'accept')}>Confirmer</Button>
+                <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => setConfirmMarriage(false)}>Annuler</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => setConfirmMarriage(true)}>Accepter</Button>
+              <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'reject')}>Refuser</Button>
+            </div>
+          )}
         </div>
       )}
 

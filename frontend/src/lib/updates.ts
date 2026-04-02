@@ -46,6 +46,22 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-02-bank-loan-rate',
+    date: '2026-04-02',
+    title: 'Banques, prêts et mariage',
+    summary: 'Les banques peuvent fixer leur taux d\'emprunt, les prêts acceptent n\'importe quelle durée en jours, et accepter un mariage affiche les conséquences avant confirmation.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-04-02-bank-loan-rate-1', text: '**Banques · Taux d\'emprunt** — Le propriétaire d\'une banque peut modifier son taux d\'intérêt (entre 1% et 50%) depuis la fiche de sa banque dans l\'explorateur. Le taux s\'affiche dans la liste et dans le détail pour tous les joueurs.' },
+          { id: '2026-04-02-loan-days-input-1', text: '**Prêts · Durée libre** — La durée d\'un prêt est maintenant saisie librement en jours (minimum 1 jour) au lieu d\'être limitée à une liste fixe. Le récapitulatif affiche le taux, le remboursement journalier et le total estimé.' },
+          { id: '2026-04-02-marriage-consequences-1', text: '**Mariage · Confirmation** — Avant d\'accepter une demande en mariage (depuis l\'onglet Social ou le fil d\'actualité), un panneau affiche les conséquences : compte commun partagé, partage 50/50 en cas de divorce, risque judiciaire en cas de suspicion de tricherie.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-01-you-v2',
     date: '2026-04-01',
     title: 'Section Moi — compétences, entreprises et services',

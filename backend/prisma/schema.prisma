@@ -393,6 +393,7 @@ model Business {
   monthlyExpenses        Int      @default(0)
   satisfaction           Int      @default(70)
   livretEpargneUnlocked  Boolean  @default(false)
+  loanInterestRate       Float    @default(4.0)
   lastBankRevenueDate    String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
