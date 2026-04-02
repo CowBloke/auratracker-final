@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Building2, Check, Trash2, UserPlus, X } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Building2, Check, Trash2, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
