@@ -388,12 +388,14 @@ model Business {
   verified        Boolean  @default(false)
   hiring          Boolean  @default(true)
   startingCapital Int
-  treasuryMoney   Int      @default(0)
-  monthlyRevenue  Int      @default(0)
-  monthlyExpenses Int      @default(0)
-  satisfaction    Int      @default(70)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  treasuryMoney          Int      @default(0)
+  monthlyRevenue         Int      @default(0)
+  monthlyExpenses        Int      @default(0)
+  satisfaction           Int      @default(70)
+  livretEpargneUnlocked  Boolean  @default(false)
+  lastBankRevenueDate    String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   owner       User                 @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members     BusinessMember[]
@@ -520,6 +522,7 @@ model Relationship {
   initiatedById   String
   status          String   @default("DATING")
   connectionLevel Int      @default(55)
+  coupleBalance   Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   marriedAt       DateTime?

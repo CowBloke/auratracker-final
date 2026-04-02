@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { AlertTriangle, Gavel, Heart, Scale, Trash2, UserPlus } from 'lucide-react';
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Gavel, Heart, Scale, Trash2, UserPlus, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { type YouCourtCase, type YouRelationship, type YouState, youApi } from '@/services/api';
 import { NewRelationModal } from '../components/modals';
 import { Pill, SectionTitle, UserAvatar } from '../components/ui';
@@ -99,6 +100,7 @@ function RelationActions({
   const [confirmForget, setConfirmForget] = useState(false);
   const [confirmMistress, setConfirmMistress] = useState(false);
   const [confirmSuspect, setConfirmSuspect] = useState(false);
+  const [coupleAmount, setCoupleAmount] = useState('');
 
   const run = async (key: string, fn: () => Promise<void>) => {
     setLoading(key);
@@ -156,6 +158,22 @@ function RelationActions({
       }
     });
 
+  const coupleDeposit = () =>
+    run('coupleDeposit', async () => {
+      const amt = parseInt(coupleAmount, 10);
+      await withRouteError(() => youApi.coupleDeposit(relationship.id, amt), 'Impossible de deposer.');
+      setCoupleAmount('');
+      toast.success(`+${amt} deposé sur le compte commun`);
+    });
+
+  const coupleWithdraw = () =>
+    run('coupleWithdraw', async () => {
+      const amt = parseInt(coupleAmount, 10);
+      await withRouteError(() => youApi.coupleWithdraw(relationship.id, amt), 'Impossible de retirer.');
+      setCoupleAmount('');
+      toast.success(`${amt} retiré du compte commun`);
+    });
+
   const pill = getRelationshipPill(relationship.status);
 
   return (
@@ -184,6 +202,47 @@ function RelationActions({
 
       {relationship.otherUser.bio?.trim() && (
         <p className="text-sm text-muted-foreground">{relationship.otherUser.bio}</p>
+      )}
+
+      {/* Couple account */}
+      {relationship.status === 'MARRIED' && (
+        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Compte commun</span>
+            <span className="ml-auto text-sm font-semibold tabular-nums">{relationship.coupleBalance.toLocaleString()} M</span>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min={1}
+              placeholder="Montant"
+              value={coupleAmount}
+              onChange={(e) => setCoupleAmount(e.target.value)}
+              className="h-7 text-xs"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs text-emerald-400"
+              disabled={!!loading || !coupleAmount || parseInt(coupleAmount, 10) <= 0}
+              onClick={() => void coupleDeposit()}
+            >
+              <ArrowUpRight className="h-3.5 w-3.5" />
+              Déposer
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs text-amber-400"
+              disabled={!!loading || !coupleAmount || parseInt(coupleAmount, 10) <= 0}
+              onClick={() => void coupleWithdraw()}
+            >
+              <ArrowDownLeft className="h-3.5 w-3.5" />
+              Retirer
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Marriage proposal received */}

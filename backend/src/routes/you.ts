@@ -2,9 +2,11 @@ import { Router, type Response } from 'express';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { prisma } from '../server.js';
 import {
+  buyLivretEpargneUpgrade,
   createBusiness,
   createRelationship,
   deleteBusiness,
+  depositToCouple,
   divorceRelationship,
   executeBusinessAction,
   forgetRelationship,
@@ -19,6 +21,7 @@ import {
   respondToMarriageProposal,
   suspectCheating,
   trainUserSkill,
+  withdrawFromCouple,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
@@ -83,6 +86,8 @@ const ERROR_STATUS: Record<string, number> = {
   YOU_ADMIN_ONLY: 403,
   RELATIONSHIP_NOT_ACTIVE: 400,
   NOT_MARRIED: 400,
+  INVALID_COUPLE_AMOUNT: 400,
+  COUPLE_BALANCE_TOO_LOW: 400,
   CHEATING_ACCUSATION_ALREADY_PENDING: 400,
   CHEATING_ACCUSATION_NOT_FOUND: 404,
   CHEATING_ACCUSATION_FORBIDDEN: 403,
@@ -147,6 +152,8 @@ const ERROR_MESSAGE: Record<string, string> = {
   YOU_ADMIN_ONLY: 'Cette section est reservee aux admins.',
   RELATIONSHIP_NOT_ACTIVE: 'Cette relation n est pas active (ami ou en relation).',
   NOT_MARRIED: 'Tu dois etre marie pour avoir une liaison.',
+  INVALID_COUPLE_AMOUNT: 'Montant invalide.',
+  COUPLE_BALANCE_TOO_LOW: 'Le compte commun n a pas assez de fonds.',
   CHEATING_ACCUSATION_ALREADY_PENDING: 'Une suspicion est deja en attente.',
   CHEATING_ACCUSATION_NOT_FOUND: 'Accusation introuvable.',
   CHEATING_ACCUSATION_FORBIDDEN: 'Tu ne peux pas repondre a cette accusation.',
@@ -306,6 +313,26 @@ router.post('/divorce-proposals/:proposalId/respond', authMiddleware, requireYou
   }
 });
 
+router.post('/relationships/:relationshipId/actions/couple-deposit', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const amount = Number(req.body?.amount);
+    const result = await depositToCouple(req.user!.id, req.params.relationshipId, amount);
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Couple deposit error');
+  }
+});
+
+router.post('/relationships/:relationshipId/actions/couple-withdraw', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const amount = Number(req.body?.amount);
+    const result = await withdrawFromCouple(req.user!.id, req.params.relationshipId, amount);
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Couple withdraw error');
+  }
+});
+
 router.delete('/relationships/:relationshipId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     await forgetRelationship(req.user!.id, req.params.relationshipId);
@@ -340,6 +367,15 @@ router.post('/cheating-accusations/:accusationId/respond', authMiddleware, requi
     res.json(result);
   } catch (error) {
     handleRouteError(error, res, 'Respond court case error');
+  }
+});
+
+router.post('/businesses/:businessId/upgrades/livret-epargne', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await buyLivretEpargneUpgrade(req.user!.id, req.params.businessId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Buy livret epargne error');
   }
 });
 

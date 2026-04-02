@@ -287,6 +287,7 @@ function serializeBusiness(business: any, viewerId: string) {
       investor: investment.investor,
     })),
     startupProducts,
+    livretEpargneUnlocked: business.typeKey === 'bank' ? (business.livretEpargneUnlocked ?? false) : undefined,
   };
 }
 
@@ -311,6 +312,7 @@ function serializeRelationship(relationship: any, viewerId: string, ctx?: { view
     id: relationship.id,
     status: relationship.status,
     connectionLevel: relationship.connectionLevel,
+    coupleBalance: relationship.coupleBalance ?? 0,
     createdAt: relationship.createdAt.toISOString(),
     marriedAt: relationship.marriedAt ? relationship.marriedAt.toISOString() : null,
     otherUser,
@@ -1547,6 +1549,54 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
   };
 }
 
+export async function depositToCouple(userId: string, relationshipId: string, amount: number) {
+  if (!Number.isInteger(amount) || amount <= 0) throw new Error('INVALID_COUPLE_AMOUNT');
+
+  const relationship = await prisma.relationship.findUnique({ where: { id: relationshipId } });
+  if (!relationship) throw new Error('RELATIONSHIP_NOT_FOUND');
+  if (relationship.userAId !== userId && relationship.userBId !== userId) throw new Error('RELATIONSHIP_FORBIDDEN');
+  if (relationship.status !== 'MARRIED') throw new Error('RELATIONSHIP_NOT_MARRIED');
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { money: true } });
+  if ((user?.money ?? 0) < amount) throw new Error('INSUFFICIENT_MONEY');
+
+  const [updatedRelationship] = await prisma.$transaction([
+    prisma.relationship.update({
+      where: { id: relationshipId },
+      data: { coupleBalance: { increment: amount } },
+      include: RELATIONSHIP_INCLUDE,
+    }),
+    prisma.user.update({ where: { id: userId }, data: { money: { decrement: amount } } }),
+  ]);
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  return { relationship: serializeRelationship(updatedRelationship, userId) };
+}
+
+export async function withdrawFromCouple(userId: string, relationshipId: string, amount: number) {
+  if (!Number.isInteger(amount) || amount <= 0) throw new Error('INVALID_COUPLE_AMOUNT');
+
+  const relationship = await prisma.relationship.findUnique({ where: { id: relationshipId } });
+  if (!relationship) throw new Error('RELATIONSHIP_NOT_FOUND');
+  if (relationship.userAId !== userId && relationship.userBId !== userId) throw new Error('RELATIONSHIP_FORBIDDEN');
+  if (relationship.status !== 'MARRIED') throw new Error('RELATIONSHIP_NOT_MARRIED');
+  if ((relationship.coupleBalance ?? 0) < amount) throw new Error('COUPLE_BALANCE_TOO_LOW');
+
+  const [updatedRelationship] = await prisma.$transaction([
+    prisma.relationship.update({
+      where: { id: relationshipId },
+      data: { coupleBalance: { decrement: amount } },
+      include: RELATIONSHIP_INCLUDE,
+    }),
+    prisma.user.update({ where: { id: userId }, data: { money: { increment: amount } } }),
+  ]);
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  return { relationship: serializeRelationship(updatedRelationship, userId) };
+}
+
 export async function divorceRelationship(userId: string, relationshipId: string, message?: string) {
   const relationship = await prisma.relationship.findUnique({
     where: { id: relationshipId },
@@ -1657,14 +1707,10 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
     };
   }
 
-  // Split money 50/50 on divorce
-  const [userARecord, userBRecord] = await Promise.all([
-    prisma.user.findUnique({ where: { id: proposal.relationship.userAId }, select: { money: true } }),
-    prisma.user.findUnique({ where: { id: proposal.relationship.userBId }, select: { money: true } }),
-  ]);
-  const totalMoney = (userARecord?.money ?? 0) + (userBRecord?.money ?? 0);
-  const halfA = Math.floor(totalMoney / 2);
-  const halfB = totalMoney - halfA;
+  // Split couple balance 50/50 on divorce; individual money stays untouched
+  const coupleBalance = proposal.relationship.coupleBalance ?? 0;
+  const halfA = Math.floor(coupleBalance / 2);
+  const halfB = coupleBalance - halfA;
 
   const [acceptedProposal, updatedRelationship] = await prisma.$transaction([
     prisma.divorceProposal.update({
@@ -1679,11 +1725,12 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
       data: {
         status: 'DIVORCED',
         marriedAt: null,
+        coupleBalance: 0,
       },
       include: RELATIONSHIP_INCLUDE,
     }),
-    prisma.user.update({ where: { id: proposal.relationship.userAId }, data: { money: halfA } }),
-    prisma.user.update({ where: { id: proposal.relationship.userBId }, data: { money: halfB } }),
+    prisma.user.update({ where: { id: proposal.relationship.userAId }, data: { money: { increment: halfA } } }),
+    prisma.user.update({ where: { id: proposal.relationship.userBId }, data: { money: { increment: halfB } } }),
   ]);
 
   await Promise.allSettled([
@@ -1781,12 +1828,13 @@ export async function suspectCheating(userId: string, relationshipId: string) {
       prisma.user.findUnique({ where: { id: userId }, select: { money: true } }),
       prisma.user.findUnique({ where: { id: accusedId }, select: { money: true } }),
     ]);
-    const totalMoney = (viewerUser?.money ?? 0) + (accusedUser?.money ?? 0);
+    const coupleBalance = relationship.coupleBalance ?? 0;
+    const totalMoney = (viewerUser?.money ?? 0) + (accusedUser?.money ?? 0) + coupleBalance;
 
     await prisma.$transaction([
       prisma.user.update({ where: { id: userId }, data: { money: totalMoney } }),
       prisma.user.update({ where: { id: accusedId }, data: { money: 0 } }),
-      prisma.relationship.update({ where: { id: relationshipId }, data: { status: 'DIVORCED', marriedAt: null } }),
+      prisma.relationship.update({ where: { id: relationshipId }, data: { status: 'DIVORCED', marriedAt: null, coupleBalance: 0 } }),
     ]);
 
     await createNotification({
@@ -1831,16 +1879,28 @@ export async function respondToCourtCase(userId: string, accusationId: string, d
     return { decision: 'drop' };
   }
 
-  const [accuserUser, accusedUser] = await Promise.all([
+  const [accuserUser, accusedUser, marriageRel] = await Promise.all([
     prisma.user.findUnique({ where: { id: accusation.accuserId }, select: { money: true } }),
     prisma.user.findUnique({ where: { id: userId }, select: { money: true } }),
+    prisma.relationship.findFirst({
+      where: {
+        status: 'MARRIED',
+        OR: [
+          { userAId: accusation.accuserId, userBId: userId },
+          { userAId: userId, userBId: accusation.accuserId },
+        ],
+      },
+      select: { id: true, coupleBalance: true },
+    }),
   ]);
-  const totalMoney = (accuserUser?.money ?? 0) + (accusedUser?.money ?? 0);
+  const coupleBalance = marriageRel?.coupleBalance ?? 0;
+  const totalMoney = (accuserUser?.money ?? 0) + (accusedUser?.money ?? 0) + coupleBalance;
 
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { money: totalMoney } }),
     prisma.user.update({ where: { id: accusation.accuserId }, data: { money: 0 } }),
     prisma.cheatingAccusation.update({ where: { id: accusationId }, data: { status: 'COURT_TAKEN' } }),
+    ...(marriageRel ? [prisma.relationship.update({ where: { id: marriageRel.id }, data: { coupleBalance: 0 } })] : []),
   ]);
 
   await createNotification({
@@ -1896,4 +1956,29 @@ export async function deleteBusiness(requestUserId: string, businessId: string) 
   }
 
   return { id: businessId };
+}
+
+export const LIVRET_EPARGNE_COST = 5000;
+
+export async function buyLivretEpargneUpgrade(userId: string, businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true, treasuryMoney: true, livretEpargneUnlocked: true },
+  });
+
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('BUSINESS_UPGRADE_FORBIDDEN');
+  if (business.typeKey !== 'bank') throw new Error('BUSINESS_UPGRADE_UNAVAILABLE');
+  if (business.livretEpargneUnlocked) throw new Error('UPGRADE_ALREADY_OWNED');
+  if (business.treasuryMoney < LIVRET_EPARGNE_COST) throw new Error('UPGRADE_INSUFFICIENT_FUNDS');
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: {
+      livretEpargneUnlocked: true,
+      treasuryMoney: { decrement: LIVRET_EPARGNE_COST },
+    },
+  });
+
+  return { livretEpargneUnlocked: true };
 }

@@ -257,6 +257,7 @@ export interface YouBusiness {
   recentLoans: YouBusinessLoan[];
   recentInvestments: YouBusinessInvestment[];
   startupProducts: YouStartupProduct[];
+  livretEpargneUnlocked?: boolean;
 }
 
 export interface YouMarriageProposal {
@@ -287,6 +288,7 @@ export interface YouRelationship {
   id: string;
   status: 'DATING' | 'FRIEND' | 'MARRIED' | 'DIVORCED' | 'MISTRESS' | string;
   connectionLevel: number;
+  coupleBalance: number;
   createdAt: string;
   marriedAt: string | null;
   otherUser: Omit<YouPlayer, 'alreadyInRelationship'>;
@@ -355,6 +357,10 @@ export const youApi = {
     api.post<{ proposal: { id: string; status: string; createdAt: string; respondedAt: string | null } }>(`/you/relationships/${relationshipId}/actions/divorce`, { message }),
   respondToDivorceProposal: (proposalId: string, decision: 'accept' | 'reject') =>
     api.post<{ proposal: { id: string; status: string; respondedAt: string | null }; relationship: YouRelationship }>(`/you/divorce-proposals/${proposalId}/respond`, { decision }),
+  coupleDeposit: (relationshipId: string, amount: number) =>
+    api.post<{ relationship: YouRelationship }>(`/you/relationships/${relationshipId}/actions/couple-deposit`, { amount }),
+  coupleWithdraw: (relationshipId: string, amount: number) =>
+    api.post<{ relationship: YouRelationship }>(`/you/relationships/${relationshipId}/actions/couple-withdraw`, { amount }),
   forgetRelationship: (relationshipId: string) =>
     api.delete<{ ok: boolean }>(`/you/relationships/${relationshipId}`),
   makeMistress: (relationshipId: string) =>
@@ -365,6 +371,8 @@ export const youApi = {
     api.post<{ decision: string }>(`/you/cheating-accusations/${accusationId}/respond`, { decision }),
   deleteBusiness: (businessId: string) =>
     api.delete<{ result: { id: string } }>(`/you/businesses/${businessId}`),
+  buyLivretEpargneUpgrade: (businessId: string) =>
+    api.post<{ result: { livretEpargneUnlocked: boolean } }>(`/you/businesses/${businessId}/upgrades/livret-epargne`, {}),
 };
 
 // Economy API
