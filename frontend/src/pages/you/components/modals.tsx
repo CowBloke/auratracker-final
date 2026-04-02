@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Building2, Check, Trash2, UserPlus, X } from 'lucide-react';
+import {
+  ArrowDownCircle, ArrowUpCircle, Building2, Check, ChevronRight,
+  CreditCard, ExternalLink, GraduationCap, Landmark, Link2, Percent,
+  Plus, Sparkles, Trash2, TrendingUp, UserPlus, Users, X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { type YouBusiness, type YouBusinessType, type YouPlayer, type YouRelationship, type YouStartupProduct, youApi } from '@/services/api';
+import {
+  type YouBankAccount, type YouBusiness, type YouBusinessTransaction,
+  type YouBusinessType, type YouPlayer, type YouRelationship, type YouStartupProduct, youApi,
+} from '@/services/api';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';
-import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, ProgressBar, SectionTitle, SelectBox, UserAvatar } from './ui';
+import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, SectionTitle, SelectBox, UserAvatar } from './ui';
 
 function BusinessTypePickerModal({
   open,
@@ -499,6 +506,45 @@ export function MarriageModal({ open, onClose, relationships, onSubmitted }: { o
   );
 }
 
+// Transaction type metadata
+const TX_META: Record<string, { icon: typeof TrendingUp; color: string; label: string }> = {
+  DEPOSIT: { icon: ArrowDownCircle, color: 'text-emerald-400', label: 'Dépôt' },
+  WITHDRAW: { icon: ArrowUpCircle, color: 'text-red-400', label: 'Retrait' },
+  BANK_DEPOSIT: { icon: Landmark, color: 'text-emerald-400', label: 'Dépôt client' },
+  BANK_WITHDRAW: { icon: Landmark, color: 'text-red-400', label: 'Retrait client' },
+  FORMATION_SALE: { icon: GraduationCap, color: 'text-amber-400', label: 'Vente formation' },
+  SALARY: { icon: Users, color: 'text-orange-400', label: 'Salaires' },
+  SERVICE_FEE: { icon: CreditCard, color: 'text-cyan-400', label: 'Frais de service' },
+  LOAN_ISSUE: { icon: CreditCard, color: 'text-amber-400', label: 'Prêt accordé' },
+  LOAN_REPAY: { icon: CreditCard, color: 'text-emerald-400', label: 'Remboursement' },
+};
+
+function TxRow({ tx }: { tx: YouBusinessTransaction }) {
+  const meta = TX_META[tx.type] ?? { icon: TrendingUp, color: 'text-muted-foreground', label: tx.type };
+  const Icon = meta.icon;
+  const isPositive = tx.amount > 0;
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border/30 bg-muted/5 px-4 py-3">
+      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/20')}>
+        <Icon className={cn('h-3.5 w-3.5', meta.color)} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium">{tx.label}</p>
+        <p className="text-[10px] text-muted-foreground">{new Date(tx.createdAt).toLocaleString('fr-FR')}</p>
+      </div>
+      <p className={cn('shrink-0 text-sm font-bold tabular-nums', isPositive ? 'text-emerald-400' : 'text-red-400')}>
+        {isPositive ? '+' : ''}{tx.amount.toLocaleString('fr-FR')} €
+      </p>
+    </div>
+  );
+}
+
+// Expandable inline section within ActionCard
+function InlineSection({ open, children }: { open: boolean; children: React.ReactNode }) {
+  if (!open) return null;
+  return <div className="px-5 pb-4 pt-1">{children}</div>;
+}
+
 export function ManageBusinessModal({
   open,
   onClose,
@@ -512,6 +558,7 @@ export function ManageBusinessModal({
   onInviteRequested: (business: YouBusiness) => void;
   onSubmitted: (refreshBalance?: boolean) => Promise<void>;
 }) {
+  const [activeSection, setActiveSection] = useState<'deposit' | 'withdraw' | 'loanRate' | 'transferFee' | 'formation' | null>(null);
   const [depositAmount, setDepositAmount] = useState('1000');
   const [withdrawAmount, setWithdrawAmount] = useState('1000');
   const [activeTreasuryAction, setActiveTreasuryAction] = useState<'deposit' | 'withdraw' | null>(null);
@@ -520,13 +567,22 @@ export function ManageBusinessModal({
   const [actingProductKey, setActingProductKey] = useState<string | null>(null);
   const [loanRateInput, setLoanRateInput] = useState('4');
   const [transferFeeInput, setTransferFeeInput] = useState('2');
+  const [formationUrlInput, setFormationUrlInput] = useState('');
+  const [formationPriceInput, setFormationPriceInput] = useState('500');
   const [savingBankRate, setSavingBankRate] = useState(false);
   const [savingTransferFee, setSavingTransferFee] = useState(false);
-  const [buyingLivret, setBuyingLivret] = useState(false);
+  const [savingFormation, setSavingFormation] = useState(false);
   const [liquidating, setLiquidating] = useState(false);
+  const [txFilter, setTxFilter] = useState<'all' | 'in' | 'out'>('all');
+  const [transactions, setTransactions] = useState<YouBusinessTransaction[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
+  const [manageTeamOpen, setManageTeamOpen] = useState(false);
+
+  const toggleSection = (s: typeof activeSection) => setActiveSection((prev) => (prev === s ? null : s));
 
   useEffect(() => {
     if (open) {
+      setActiveSection(null);
       setDepositAmount('1000');
       setWithdrawAmount('1000');
       setActiveTreasuryAction(null);
@@ -535,7 +591,22 @@ export function ManageBusinessModal({
       setActingProductKey(null);
       setLoanRateInput(String(business?.loanInterestRate ?? 4));
       setTransferFeeInput(String(business?.transferFeeRate ?? 2));
+      setFormationUrlInput(business?.formationUrl ?? '');
+      setFormationPriceInput(String(business?.formationPrice ?? 500));
+      setTransactions([]);
     }
+  }, [open, business?.id]);
+
+  // Load transactions when modal opens
+  useEffect(() => {
+    if (!open || !business || business.ownerKind !== 'you') return;
+    let cancelled = false;
+    setLoadingTx(true);
+    youApi.getBusinessTransactions(business.id)
+      .then((res) => { if (!cancelled) setTransactions(res.data.transactions); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingTx(false); });
+    return () => { cancelled = true; };
   }, [open, business?.id]);
 
   const pendingLoans = business?.recentLoans.filter((loan) => loan.status === 'PENDING') ?? [];
@@ -543,11 +614,18 @@ export function ManageBusinessModal({
   const isBank = business?.typeKey === 'bank';
   const isStartup = business?.typeKey === 'startup';
   const isTransfer = business?.typeKey === 'transfer';
+  const isFormation = business?.typeKey === 'formation';
   const businessIconTypeKey = business?.typeKey as keyof typeof BUSINESS_ICON_MAP | undefined;
   const BusinessIcon = businessIconTypeKey ? (BUSINESS_ICON_MAP[businessIconTypeKey] ?? Building2) : Building2;
   const businessIconStyle = businessIconTypeKey
     ? (BUSINESS_STYLE_MAP[businessIconTypeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' })
     : { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+
+  const filteredTx = transactions.filter((tx) => {
+    if (txFilter === 'in') return tx.amount > 0;
+    if (txFilter === 'out') return tx.amount < 0;
+    return true;
+  });
 
   const runTreasuryAction = async (action: 'deposit' | 'withdraw', amount: string) => {
     if (!business) return;
@@ -594,10 +672,27 @@ export function ManageBusinessModal({
     setSavingBankRate(true);
     try {
       await withRouteError(() => youApi.setLoanRate(business.id, Number(loanRateInput)), 'Impossible de modifier le taux.');
-      toast.success('Taux d emprunt mis a jour');
+      toast.success('Taux d\'emprunt mis à jour');
       await onSubmitted(true);
+      setActiveSection(null);
     } finally {
       setSavingBankRate(false);
+    }
+  };
+
+  const saveFormation = async () => {
+    if (!business) return;
+    setSavingFormation(true);
+    try {
+      await withRouteError(
+        () => youApi.setFormationDetails(business.id, { formationUrl: formationUrlInput.trim() || null, formationPrice: Number(formationPriceInput) }),
+        'Impossible de modifier les paramètres de la formation.',
+      );
+      toast.success('Formation mise à jour');
+      await onSubmitted(true);
+      setActiveSection(null);
+    } finally {
+      setSavingFormation(false);
     }
   };
 
@@ -606,8 +701,9 @@ export function ManageBusinessModal({
     setSavingTransferFee(true);
     try {
       await withRouteError(() => youApi.setTransferFeeRate(business.id, Number(transferFeeInput)), 'Impossible de modifier les frais.');
-      toast.success('Frais de transfert mis a jour');
+      toast.success('Frais de transfert mis à jour');
       await onSubmitted(true);
+      setActiveSection(null);
     } finally {
       setSavingTransferFee(false);
     }
@@ -666,195 +762,672 @@ export function ManageBusinessModal({
   };
 
   return (
+    <>
     <ModalWrap
       open={open}
       onClose={onClose}
-      title={business ? <span className="inline-flex items-center justify-center gap-2"><span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', businessIconStyle.iconWrap)}><BusinessIcon className={cn('h-4 w-4', businessIconStyle.icon)} /></span><span>{business.name}</span></span> : 'Business'}
-      desc="Actions de gestion sur la structure selectionnee."
+      title={business ? <span className="inline-flex items-center justify-center gap-2"><span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', businessIconStyle.iconWrap)}><BusinessIcon className={cn('h-4 w-4', businessIconStyle.icon)} /></span><span>{business.name}</span></span> : 'Entreprise'}
+      desc="Gestion de ta structure."
       wide
       centerTitle
     >
       {business ? (
         <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="space-y-4">
-            <SectionTitle>Actions</SectionTitle>
-            {business.actions.includes('deposit') ? (
-              <Card><CardContent className="space-y-3 px-4 py-4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-400/15"><ArrowDownCircle className="h-4 w-4 text-emerald-400" /></div><div><p className="text-sm font-semibold">Deposer</p><p className="text-xs text-muted-foreground">Transfert depuis ton money partage.</p></div></div><div className="flex gap-2"><Input type="number" value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)} min={1} /><Button size="sm" onClick={() => void runTreasuryAction('deposit', depositAmount)} disabled={activeTreasuryAction !== null || Number(depositAmount) <= 0}>Deposer</Button></div></CardContent></Card>
-            ) : null}
-            {business.actions.includes('withdraw') ? (
-              <Card><CardContent className="space-y-3 px-4 py-4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-400/15"><ArrowUpCircle className="h-4 w-4 text-red-400" /></div><div><p className="text-sm font-semibold">Retirer</p><p className="text-xs text-muted-foreground">Retour vers ton money partage.</p></div></div><div className="flex gap-2"><Input type="number" value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value)} min={1} /><Button size="sm" variant="outline" onClick={() => void runTreasuryAction('withdraw', withdrawAmount)} disabled={activeTreasuryAction !== null || Number(withdrawAmount) <= 0}>Retirer</Button></div></CardContent></Card>
-            ) : null}
+          {/* LEFT: Actions — all consistent ActionRow height */}
+          <div className="space-y-3">
             <ActionCard>
-              {business.actions.includes('invite') && business.ownerKind === 'you' ? <ActionRow icon={UserPlus} label="Inviter des joueurs" sub="Envoyer de nouvelles invitations." iconBg="bg-violet-400/15" iconColor="text-violet-400" onClick={() => { onClose(); onInviteRequested(business); }} /> : null}
-              {business.ownerKind === 'you' ? <ActionRow icon={Trash2} label={liquidating ? 'Liquidation en cours' : 'Liquider l entreprise'} sub="Suppression definitive de la structure." iconBg="bg-red-400/15" iconColor="text-red-400" onClick={() => { if (!liquidating) void liquidateBusiness(); }} /> : null}
-            </ActionCard>
-            {isStartup ? <div className="space-y-3">
-              <SectionTitle>Time Tasks</SectionTitle>
-              {business.startupProducts.map((product) => {
-                const levelLabel = `Niveau ${product.deployedLevel}/10`;
-                const statusLabel = product.isResearchActive
-                  ? `Recherche niv. ${product.activeResearchLevel}`
-                  : product.canDeploy
-                    ? `Pret a deployer niv. ${product.activeResearchLevel}`
-                    : product.isMaxLevel
-                      ? 'Maximum atteint'
-                      : `Prochaine recherche niv. ${product.deployedLevel + 1}`;
-                const progressLabel = product.isResearchActive || product.canDeploy
-                  ? `${product.progressPercent}%`
-                  : product.nextResearchDurationMinutes
-                    ? formatDurationMinutes(product.nextResearchDurationMinutes)
-                    : 'termine';
-                const progressValue = product.isResearchActive || product.canDeploy
-                  ? product.progressPercent
-                  : product.isMaxLevel
-                    ? 100
-                    : 0;
-                const actionLabel = product.canDeploy
-                  ? 'Cliquer pour deployer'
-                  : product.isResearchActive
-                    ? 'Recherche en cours'
-                    : product.isMaxLevel
-                      ? 'Niveau max'
-                      : 'Cliquer pour lancer la recherche';
-                const isClickable = product.canDeploy || product.canStartResearch;
-                const isBusy = actingProductKey !== null;
+              {/* Deposit */}
+              {business.actions.includes('deposit') ? (
+                <>
+                  <ActionRow
+                    icon={ArrowDownCircle}
+                    label="Déposer"
+                    sub="Injecter du money dans la trésorerie"
+                    iconBg="bg-emerald-400/15"
+                    iconColor="text-emerald-400"
+                    onClick={() => toggleSection('deposit')}
+                  />
+                  <InlineSection open={activeSection === 'deposit'}>
+                    <div className="flex gap-2">
+                      <Input type="number" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} min={1} placeholder="Montant" />
+                      <Button size="sm" onClick={() => void runTreasuryAction('deposit', depositAmount)} disabled={activeTreasuryAction !== null || Number(depositAmount) <= 0}>Déposer</Button>
+                    </div>
+                  </InlineSection>
+                </>
+              ) : null}
 
-                return (
-                  <Card
-                    key={product.id}
-                    role={isClickable ? 'button' : undefined}
-                    tabIndex={isClickable ? 0 : undefined}
-                    className={cn(
-                      'transition-colors',
-                      isClickable ? 'cursor-pointer hover:border-sky-400/40 hover:bg-sky-400/5' : 'opacity-80',
-                      isBusy && actingProductKey !== product.id ? 'pointer-events-none opacity-60' : null,
-                    )}
-                    onClick={() => {
+              {/* Withdraw */}
+              {business.actions.includes('withdraw') ? (
+                <>
+                  <ActionRow
+                    icon={ArrowUpCircle}
+                    label="Retirer"
+                    sub="Récupérer du money vers ton solde"
+                    iconBg="bg-red-400/15"
+                    iconColor="text-red-400"
+                    onClick={() => toggleSection('withdraw')}
+                  />
+                  <InlineSection open={activeSection === 'withdraw'}>
+                    <div className="flex gap-2">
+                      <Input type="number" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} min={1} placeholder="Montant" />
+                      <Button size="sm" variant="outline" onClick={() => void runTreasuryAction('withdraw', withdrawAmount)} disabled={activeTreasuryAction !== null || Number(withdrawAmount) <= 0}>Retirer</Button>
+                    </div>
+                  </InlineSection>
+                </>
+              ) : null}
+
+              {/* Gérer l'équipe */}
+              {business.ownerKind === 'you' ? (
+                <ActionRow icon={Users} label="Gérer l'équipe" sub="Salaires, invitations et départs" iconBg="bg-violet-400/15" iconColor="text-violet-400" onClick={() => setManageTeamOpen(true)} />
+              ) : null}
+
+              {/* Settings section */}
+              {(isBank || isTransfer || isFormation) ? (
+                <>
+                  <div className="mx-5 border-t border-border/20" />
+
+                  {/* Bank: taux d'emprunt */}
+                  {isBank ? (
+                    <>
+                      <ActionRow
+                        icon={Percent}
+                        label={`Taux d'emprunt · ${business.loanInterestRate ?? 4} %`}
+                        sub="Applicable aux nouveaux prêts accordés"
+                        iconBg="bg-amber-400/15"
+                        iconColor="text-amber-400"
+                        onClick={() => toggleSection('loanRate')}
+                      />
+                      <InlineSection open={activeSection === 'loanRate'}>
+                        <div className="flex gap-2">
+                          <Input type="number" min={1} max={50} step={0.5} value={loanRateInput} onChange={(e) => setLoanRateInput(e.target.value)} />
+                          <Button size="sm" variant="outline" onClick={() => void saveLoanRate()} disabled={savingBankRate || Number(loanRateInput) < 1 || Number(loanRateInput) > 50}>Modifier</Button>
+                        </div>
+                      </InlineSection>
+                    </>
+                  ) : null}
+
+                  {/* Bank: livret épargne */}
+                  {isBank ? (
+                    <ActionRow
+                      icon={Sparkles}
+                      label={business.livretEpargneUnlocked ? 'Livret Épargne · Actif' : 'Livret Épargne · Débloquer'}
+                      sub={business.livretEpargneUnlocked ? '+0,5 % / jour pour les clients' : `Coût : ${formatMoney(5000)} · Passe de 0,2 % à 0,5 % / jour`}
+                      iconBg="bg-amber-400/15"
+                      iconColor="text-amber-400"
+                      onClick={() => { if (!business.livretEpargneUnlocked) void buyLivret(); }}
+                    />
+                  ) : null}
+
+                  {/* Transfer: frais */}
+                  {isTransfer ? (
+                    <>
+                      <ActionRow
+                        icon={Percent}
+                        label={`Frais de transfert · ${business.transferFeeRate ?? 2} %`}
+                        sub="Prélevés sur chaque transfert entre joueurs"
+                        iconBg="bg-cyan-400/15"
+                        iconColor="text-cyan-400"
+                        onClick={() => toggleSection('transferFee')}
+                      />
+                      <InlineSection open={activeSection === 'transferFee'}>
+                        <div className="flex gap-2">
+                          <Input type="number" min={0} max={25} step={0.25} value={transferFeeInput} onChange={(e) => setTransferFeeInput(e.target.value)} />
+                          <Button size="sm" variant="outline" onClick={() => void saveTransferFee()} disabled={savingTransferFee || Number(transferFeeInput) < 0 || Number(transferFeeInput) > 25}>Modifier</Button>
+                        </div>
+                      </InlineSection>
+                    </>
+                  ) : null}
+
+                  {/* Formation: URL & price */}
+                  {isFormation ? (
+                    <>
+                      <ActionRow
+                        icon={Link2}
+                        label="Formation en ligne"
+                        sub={business.formationUrl ? `Prix : ${formatMoney(business.formationPrice ?? 500)}` : 'Aucune formation configurée'}
+                        iconBg="bg-amber-400/15"
+                        iconColor="text-amber-400"
+                        onClick={() => toggleSection('formation')}
+                      />
+                      <InlineSection open={activeSection === 'formation'}>
+                        <div className="space-y-2">
+                          <Input value={formationUrlInput} onChange={(e) => setFormationUrlInput(e.target.value)} placeholder="URL du PDF (ex : drive.google.com/...)" />
+                          <div className="flex gap-2">
+                            <Input type="number" min={0} value={formationPriceInput} onChange={(e) => setFormationPriceInput(e.target.value)} placeholder="Prix en €" />
+                            <Button size="sm" onClick={() => void saveFormation()} disabled={savingFormation}>Enregistrer</Button>
+                          </div>
+                        </div>
+                      </InlineSection>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+
+              {/* Startup products */}
+              {isStartup ? (
+                <>
+                  <div className="mx-5 border-t border-border/20" />
+                  {business.startupProducts.map((product) => {
+                    const isClickable = product.canDeploy || product.canStartResearch;
+                    const isBusy = actingProductKey !== null;
+                    const statusLabel = product.isResearchActive
+                      ? `Recherche niv. ${product.activeResearchLevel} · ${product.progressPercent}%`
+                      : product.canDeploy
+                        ? `Prêt à déployer · niv. ${product.activeResearchLevel}`
+                        : product.isMaxLevel
+                          ? 'Niveau maximum atteint'
+                          : `Lancer recherche niv. ${product.deployedLevel + 1} · ${product.nextResearchDurationMinutes ? formatDurationMinutes(product.nextResearchDurationMinutes) : '–'}`;
+                    const handleClick = () => {
                       if (isBusy) return;
-                      if (product.canDeploy) {
-                        void deployProduct(product);
-                        return;
-                      }
-                      if (product.canStartResearch) {
-                        void startResearch(product);
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      if (!isClickable || isBusy) return;
-                      if (event.key !== 'Enter' && event.key !== ' ') return;
-                      event.preventDefault();
-                      if (product.canDeploy) {
-                        void deployProduct(product);
-                        return;
-                      }
-                      if (product.canStartResearch) {
-                        void startResearch(product);
-                      }
-                    }}
-                  >
-                    <CardContent className="space-y-3 px-4 py-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">{levelLabel}</p>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <Pill label={`+${formatMoney(product.currentRevenue)}`} color="bg-sky-400/15 text-sky-300" />
-                          <span className="text-[11px] font-medium text-muted-foreground">{actionLabel}</span>
-                        </div>
+                      if (product.canDeploy) { void deployProduct(product); return; }
+                      if (product.canStartResearch) { void startResearch(product); }
+                    };
+                    return (
+                      <div key={product.id} className={cn('transition-colors', isBusy && actingProductKey !== `research:${product.slotIndex}` && actingProductKey !== `deploy:${product.slotIndex}` ? 'pointer-events-none opacity-60' : '')}>
+                        <button
+                          type="button"
+                          disabled={!isClickable || isBusy}
+                          onClick={handleClick}
+                          className={cn(
+                            'group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors',
+                            isClickable ? 'hover:bg-sky-400/5' : 'cursor-default',
+                          )}
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-400/15">
+                            <TrendingUp className="h-4 w-4 text-sky-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-medium">{product.name}</p>
+                              <span className="shrink-0 text-xs font-semibold text-sky-300">+{product.currentRevenue.toLocaleString('fr-FR')} €</span>
+                            </div>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{statusLabel}</p>
+                            {(product.isResearchActive || product.canDeploy) && (
+                              <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted/40">
+                                <div className="h-full rounded-full bg-sky-400 transition-all" style={{ width: `${product.progressPercent}%` }} />
+                              </div>
+                            )}
+                          </div>
+                          {isClickable ? <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" /> : null}
+                        </button>
                       </div>
+                    );
+                  })}
+                </>
+              ) : null}
 
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between gap-3 text-[11px] text-muted-foreground">
-                          <span>{statusLabel}</span>
-                          <span>{progressLabel}</span>
-                        </div>
-                        <ProgressBar value={progressValue} color="bg-sky-400" />
-                      </div>
-
-                      <div className="rounded-xl border border-border/40 bg-muted/10 px-3 py-3 text-xs text-muted-foreground">
-                        {product.canDeploy ? (
-                          <p>La recherche est terminee. Tu peux deployer le produit pour augmenter le revenue.</p>
-                        ) : product.isResearchActive ? (
-                          <p>Recherche en cours jusqu au {product.researchEndsAt ? new Date(product.researchEndsAt).toLocaleString('fr-FR') : 'bientot'}.</p>
-                        ) : product.isMaxLevel ? (
-                          <p>Ce produit est deja au niveau maximum.</p>
-                        ) : (
-                          <p>Prochaine recherche: {product.nextResearchCost ? `${formatMoney(product.nextResearchCost)} money` : 'n/a'} · {product.nextResearchDurationMinutes ? formatDurationMinutes(product.nextResearchDurationMinutes) : 'n/a'}.</p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div> : null}
+              {/* Liquidate — always last */}
+              {business.ownerKind === 'you' ? (
+                <>
+                  <div className="mx-5 border-t border-border/20" />
+                  <ActionRow
+                    icon={Trash2}
+                    label={liquidating ? 'Liquidation en cours…' : 'Liquider l\'entreprise'}
+                    sub="Action irréversible — la structure sera supprimée."
+                    iconBg="bg-red-400/15"
+                    iconColor="text-red-400"
+                    onClick={() => { if (!liquidating) void liquidateBusiness(); }}
+                  />
+                </>
+              ) : null}
+            </ActionCard>
           </div>
 
+          {/* RIGHT: Treasury + Log */}
           <div className="space-y-4">
-            <SectionTitle>Informations</SectionTitle>
-            <Card><CardContent className="space-y-4 px-5 py-4">
-              <div className="rounded-3xl border border-emerald-400/25 bg-emerald-400/10 px-6 py-8 text-center">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-emerald-300/80">Tresorerie</p>
-                <p className="mt-3 text-6xl font-semibold tabular-nums text-emerald-200">{formatMoney(business.treasuryMoney)}</p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[{ label: 'Membres', value: String(business.memberCount) }, { label: 'Revenue', value: `+${formatMoney(business.monthlyRevenue)}` }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-sm font-semibold tabular-nums">{entry.value}</p></div>)}
-              </div>
-            </CardContent></Card>
-
-            {isBank ? <Card><CardContent className="space-y-4 px-5 py-4">
-              <SectionTitle>Parametres banque</SectionTitle>
-              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
-                <p className="text-xs text-muted-foreground">Taux d emprunt</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <Input type="number" min={1} max={50} step={0.5} value={loanRateInput} onChange={(event) => setLoanRateInput(event.target.value)} />
-                  <Button size="sm" variant="outline" onClick={() => void saveLoanRate()} disabled={savingBankRate || Number(loanRateInput) < 1 || Number(loanRateInput) > 50}>Modifier</Button>
+            {/* Trésorerie */}
+            <Card>
+              <CardContent className="space-y-4 px-5 py-4">
+                <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-5 py-6 text-center">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-emerald-300/70">Trésorerie</p>
+                  <p className="mt-2 text-5xl font-semibold tabular-nums text-emerald-200">{business.treasuryMoney.toLocaleString('fr-FR')} €</p>
                 </div>
-              </div>
-              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Membres', value: String(business.memberCount) },
+                    { label: 'Revenu mensuel', value: `+${business.monthlyRevenue.toLocaleString('fr-FR')} €` },
+                  ].map((entry) => (
+                    <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p>
+                      <p className="mt-1 text-sm font-semibold tabular-nums">{entry.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Transaction log */}
+            <Card>
+              <CardContent className="space-y-3 px-5 py-4">
                 <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">Livret Epargne</p>
-                    <p className="text-xs text-muted-foreground">{business.livretEpargneUnlocked ? 'Upgrade deja actif.' : 'Passe le rendement quotidien de 0.2% a 0.5%.'}</p>
+                  <SectionTitle>Mouvements de trésorerie</SectionTitle>
+                  <select
+                    value={txFilter}
+                    onChange={(e) => setTxFilter(e.target.value as typeof txFilter)}
+                    className="h-7 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none"
+                  >
+                    <option value="all">Tous</option>
+                    <option value="in">Entrées</option>
+                    <option value="out">Sorties</option>
+                  </select>
+                </div>
+                {loadingTx ? (
+                  <p className="py-4 text-center text-xs text-muted-foreground">Chargement…</p>
+                ) : filteredTx.length === 0 ? (
+                  <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
+                    Aucun mouvement enregistré.
                   </div>
-                  {business.livretEpargneUnlocked ? <Pill label="Actif" color="bg-amber-400/15 text-amber-300" /> : null}
-                </div>
-                {!business.livretEpargneUnlocked ? <div className="mt-3 flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">Cout: {formatMoney(5000)} money</p><Button size="sm" variant="outline" onClick={() => void buyLivret()} disabled={buyingLivret || business.treasuryMoney < 5000}>Acheter</Button></div> : null}
-              </div>
-            </CardContent></Card> : null}
+                ) : (
+                  <div className="max-h-64 space-y-2 overflow-y-auto">
+                    {filteredTx.map((tx) => <TxRow key={tx.id} tx={tx} />)}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-            {isTransfer ? <Card><CardContent className="space-y-4 px-5 py-4">
-              <SectionTitle>Parametres transfert</SectionTitle>
-              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
-                <p className="text-xs text-muted-foreground">Frais de transfert</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <Input type="number" min={0} max={25} step={0.25} value={transferFeeInput} onChange={(event) => setTransferFeeInput(event.target.value)} />
-                  <Button size="sm" variant="outline" onClick={() => void saveTransferFee()} disabled={savingTransferFee || Number(transferFeeInput) < 0 || Number(transferFeeInput) > 25}>Modifier</Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <SectionTitle>Historique des transferts</SectionTitle>
-                {business.transferHistory.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Aucun transfert enregistre pour le moment.</div> : business.transferHistory.map((entry) => <div key={entry.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">{entry.sender.username} -&gt; {entry.recipient.username}</p><p className="text-xs text-muted-foreground">{new Date(entry.createdAt).toLocaleString('fr-FR')} · frais {formatMoney(entry.fee)} ({entry.feeRate}%)</p></div><p className="text-sm font-semibold tabular-nums text-cyan-300">{formatMoney(entry.amount)}</p></div></div>)}
-              </div>
-            </CardContent></Card> : null}
+            {/* Pending loans (bank only) */}
+            {isBank && pendingLoans.length > 0 ? (
+              <Card>
+                <CardContent className="space-y-3 px-5 py-4">
+                  <SectionTitle>Demandes de prêt ({pendingLoans.length})</SectionTitle>
+                  {pendingLoans.map((loan) => (
+                    <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{loan.borrower.username}</p>
+                          <p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} € · {loan.termDays} jours · {loan.interestRate} % d'intérêt</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="text-xs" onClick={() => void reviewLoan(loan.id, 'accept')} disabled={reviewingLoanId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button>
+                          <Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewLoan(loan.id, 'reject')} disabled={reviewingLoanId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
 
-            {isStartup ? <Card><CardContent className="space-y-3 px-5 py-4">
-              <SectionTitle>Produits</SectionTitle>
-              {business.startupProducts.map((product) => <div key={product.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">Niveau {product.deployedLevel}/10 · revenue {formatMoney(product.currentRevenue)}</p></div><span className="text-xs font-medium text-muted-foreground">{product.canDeploy ? 'Pret' : product.isResearchActive ? 'En cours' : product.isMaxLevel ? 'Max' : 'Disponible'}</span></div></div>)}
-            </CardContent></Card> : null}
-
-            {isBank ? <Card><CardContent className="space-y-3 px-5 py-4">
-              <SectionTitle>Demandes de pret</SectionTitle>
-              {pendingLoans.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Aucune demande de pret en attente.</div> : pendingLoans.map((loan) => <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div><p className="text-sm font-semibold">{loan.borrower.username}</p><p className="text-xs text-muted-foreground">{formatMoney(loan.amount)} money · {loan.termDays} jours · {loan.interestRate}% d interet</p></div><div className="flex gap-2"><Button size="sm" className="text-xs" onClick={() => void reviewLoan(loan.id, 'accept')} disabled={reviewingLoanId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button><Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewLoan(loan.id, 'reject')} disabled={reviewingLoanId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button></div></div></div>)}
-            </CardContent></Card> : null}
-
-            {business.ownerKind === 'you' ? <Card><CardContent className="space-y-3 px-5 py-4">
-              <SectionTitle>Offres de rachat</SectionTitle>
-              {pendingBuyoutOffers.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Aucune offre de rachat en attente.</div> : pendingBuyoutOffers.map((offer) => <div key={offer.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div className="space-y-1"><p className="text-sm font-semibold">{offer.bidder.username}</p><p className="text-xs text-muted-foreground">{formatMoney(offer.amount)} money en escrow</p>{offer.message ? <p className="text-xs text-muted-foreground/80">"{offer.message}"</p> : null}</div><div className="flex gap-2"><Button size="sm" className="text-xs" onClick={() => void reviewBuyout(offer.id, 'accept')} disabled={reviewingBuyoutId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button><Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewBuyout(offer.id, 'reject')} disabled={reviewingBuyoutId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button></div></div></div>)}
-            </CardContent></Card> : null}
+            {/* Pending buyout offers */}
+            {pendingBuyoutOffers.length > 0 ? (
+              <Card>
+                <CardContent className="space-y-3 px-5 py-4">
+                  <SectionTitle>Offres de rachat ({pendingBuyoutOffers.length})</SectionTitle>
+                  {pendingBuyoutOffers.map((offer) => (
+                    <div key={offer.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{offer.bidder.username}</p>
+                          <p className="text-xs text-muted-foreground">{offer.amount.toLocaleString('fr-FR')} € en escrow</p>
+                          {offer.message ? <p className="mt-0.5 text-xs text-muted-foreground/70">"{offer.message}"</p> : null}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="text-xs" onClick={() => void reviewBuyout(offer.id, 'accept')} disabled={reviewingBuyoutId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button>
+                          <Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewBuyout(offer.id, 'reject')} disabled={reviewingBuyoutId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
         </div>
       ) : null}
+    </ModalWrap>
+
+    {business ? (
+      <ManageTeamModal
+        open={manageTeamOpen}
+        onClose={() => setManageTeamOpen(false)}
+        business={business}
+        onInviteRequested={() => { setManageTeamOpen(false); onClose(); onInviteRequested(business); }}
+        onSubmitted={onSubmitted}
+      />
+    ) : null}
+    </>
+  );
+}
+
+// --- ManageTeamModal ---
+
+export function ManageTeamModal({
+  open,
+  onClose,
+  business,
+  onInviteRequested,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness;
+  onInviteRequested: () => void;
+  onSubmitted: (refreshBalance?: boolean) => Promise<void>;
+}) {
+  const [updatingSalaryId, setUpdatingSalaryId] = useState<string | null>(null);
+  const [sackingId, setSackingId] = useState<string | null>(null);
+  const [salaryInputs, setSalaryInputs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (open) {
+      const inputs: Record<string, string> = {};
+      business.members.forEach((m) => { inputs[m.id] = String(m.salary ?? 0); });
+      setSalaryInputs(inputs);
+    }
+  }, [open, business.members]);
+
+  const saveSalary = async (memberId: string) => {
+    setUpdatingSalaryId(memberId);
+    try {
+      await withRouteError(
+        () => youApi.updateMemberSalary(business.id, memberId, Number(salaryInputs[memberId] ?? 0)),
+        'Impossible de modifier le salaire.',
+      );
+      toast.success('Salaire mis à jour');
+      await onSubmitted();
+    } finally {
+      setUpdatingSalaryId(null);
+    }
+  };
+
+  const sack = async (memberId: string) => {
+    if (!window.confirm('Renvoyer cet employé ? Il perdra l\'accès à l\'entreprise.')) return;
+    setSackingId(memberId);
+    try {
+      await withRouteError(() => youApi.sackMember(business.id, memberId), 'Impossible de renvoyer ce membre.');
+      toast.success('Membre renvoyé');
+      await onSubmitted();
+    } finally {
+      setSackingId(null);
+    }
+  };
+
+  const activeMembers = business.members.filter((m) => m.status === 'ACTIVE');
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Gérer l'équipe" desc="Salaires quotidiens, invitations et départs.">
+      <Button size="sm" variant="outline" className="w-full justify-start" onClick={onInviteRequested}>
+        <UserPlus className="mr-2 h-4 w-4" />Inviter des joueurs
+      </Button>
+      {activeMembers.length === 0 ? (
+        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
+          Aucun membre dans cette équipe.
+        </div>
+      ) : (
+        <div className="max-h-96 space-y-2 overflow-y-auto">
+          {activeMembers.map((member) => (
+            <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              <UserAvatar player={member.user} className="h-9 w-9 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium">{member.user.username}</p>
+                  <Pill label={member.role} color="bg-violet-400/15 text-violet-400" />
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={salaryInputs[member.id] ?? '0'}
+                    onChange={(e) => setSalaryInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
+                    className="h-7 w-24 text-xs"
+                    placeholder="Salaire €/j"
+                  />
+                  <span className="text-xs text-muted-foreground">€/jour</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => void saveSalary(member.id)}
+                    disabled={updatingSalaryId !== null}
+                  >
+                    OK
+                  </Button>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0 border-red-400/30 text-red-300 hover:bg-red-500/10"
+                onClick={() => void sack(member.id)}
+                disabled={sackingId !== null}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </ModalWrap>
+  );
+}
+
+// --- BankAccountModal ---
+
+export function BankAccountModal({
+  open,
+  onClose,
+  business,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness | null;
+  onSubmitted: () => Promise<void>;
+}) {
+  const [accounts, setAccounts] = useState<YouBankAccount[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
+  const [action, setAction] = useState<'deposit' | 'withdraw' | null>(null);
+  const [amount, setAmount] = useState('500');
+  const [acting, setActing] = useState(false);
+
+  const loadAccounts = async () => {
+    if (!business) return;
+    setLoading(true);
+    try {
+      const res = await youApi.getBankAccounts(business.id);
+      setAccounts(res.data.accounts);
+    } catch { /* empty */ } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && business) { void loadAccounts(); }
+    if (!open) { setAccounts([]); setActiveAccountId(null); setAction(null); setAmount('500'); }
+  }, [open, business?.id]);
+
+  const openAccount = async (accountType: 'COURANT' | 'EPARGNE') => {
+    if (!business) return;
+    setOpening(true);
+    try {
+      await withRouteError(() => youApi.openBankAccount(business.id, accountType), 'Impossible d\'ouvrir ce compte.');
+      toast.success('Compte ouvert');
+      await loadAccounts();
+      await onSubmitted();
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  const doAction = async () => {
+    if (!activeAccountId || !action) return;
+    setActing(true);
+    try {
+      if (action === 'deposit') {
+        await withRouteError(() => youApi.bankAccountDeposit(activeAccountId, Number(amount)), 'Impossible de déposer.');
+        toast.success('Dépôt effectué');
+      } else {
+        await withRouteError(() => youApi.bankAccountWithdraw(activeAccountId, Number(amount)), 'Impossible de retirer.');
+        toast.success('Retrait effectué');
+      }
+      await loadAccounts();
+      await onSubmitted();
+      setAction(null);
+      setAmount('500');
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const hasCourant = accounts.some((a) => a.accountType === 'COURANT');
+  const hasEpargne = accounts.some((a) => a.accountType === 'EPARGNE');
+
+  return (
+    <ModalWrap
+      open={open}
+      onClose={onClose}
+      title={business ? `Mes comptes · ${business.name}` : 'Mes comptes bancaires'}
+      desc="Déposez et retirez de l'argent. Vos fonds contribuent à la trésorerie de la banque."
+    >
+      {loading ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">Chargement…</p>
+      ) : (
+        <div className="space-y-3">
+          {/* Open account buttons */}
+          <div className="flex gap-2">
+            {!hasCourant ? (
+              <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => void openAccount('COURANT')} disabled={opening}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />Compte courant
+              </Button>
+            ) : null}
+            {!hasEpargne && business?.livretEpargneUnlocked ? (
+              <Button size="sm" variant="outline" className="flex-1 text-xs border-amber-400/30 text-amber-300 hover:bg-amber-400/10" onClick={() => void openAccount('EPARGNE')} disabled={opening}>
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />Compte épargne
+              </Button>
+            ) : null}
+          </div>
+
+          {accounts.length === 0 ? (
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
+              Ouvre un compte pour commencer à épargner.
+            </div>
+          ) : (
+            accounts.map((account) => {
+              const isEpargne = account.accountType === 'EPARGNE';
+              const isActive = activeAccountId === account.id;
+              return (
+                <div key={account.id} className={cn('rounded-xl border bg-muted/10 px-4 py-4', isEpargne ? 'border-amber-400/25' : 'border-border/40')}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        {isEpargne ? <Sparkles className="h-3.5 w-3.5 text-amber-400" /> : <Landmark className="h-3.5 w-3.5 text-emerald-400" />}
+                        <p className="text-sm font-semibold">{isEpargne ? 'Compte Épargne' : 'Compte Courant'}</p>
+                      </div>
+                      <p className={cn('mt-1 text-xl font-bold tabular-nums', isEpargne ? 'text-amber-300' : 'text-emerald-300')}>
+                        {account.balance.toLocaleString('fr-FR')} €
+                      </p>
+                      {isEpargne ? <p className="mt-0.5 text-[10px] text-amber-400/70">+0,5 % / jour</p> : <p className="mt-0.5 text-[10px] text-emerald-400/70">+0,2 % / jour</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="text-xs" onClick={() => { setActiveAccountId(account.id); setAction('deposit'); setAmount('500'); }}>
+                        <ArrowDownCircle className="mr-1 h-3.5 w-3.5" />Déposer
+                      </Button>
+                      <Button size="sm" variant="outline" className="text-xs" onClick={() => { setActiveAccountId(account.id); setAction('withdraw'); setAmount('500'); }}>
+                        <ArrowUpCircle className="mr-1 h-3.5 w-3.5" />Retirer
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Inline action form */}
+                  {isActive && action ? (
+                    <div className="mt-3 flex gap-2">
+                      <Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Montant" />
+                      <Button size="sm" onClick={() => void doAction()} disabled={acting || Number(amount) <= 0}>
+                        {action === 'deposit' ? 'Déposer' : 'Retirer'}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setAction(null); setActiveAccountId(null); }}>Annuler</Button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </ModalWrap>
+  );
+}
+
+// --- FormationPurchaseModal ---
+
+export function FormationPurchaseModal({
+  open,
+  onClose,
+  business,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness | null;
+  onSubmitted: () => Promise<void>;
+}) {
+  const [buying, setBuying] = useState(false);
+  const [purchased, setPurchased] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) { setPurchased(null); }
+  }, [open]);
+
+  const buy = async () => {
+    if (!business) return;
+    setBuying(true);
+    try {
+      const res = await withRouteError(() => youApi.buyFormation(business.id), 'Impossible d\'acheter cette formation.');
+      toast.success('Formation achetée !');
+      setPurchased(res.data.result.formationUrl);
+      await onSubmitted();
+    } finally {
+      setBuying(false);
+    }
+  };
+
+  const price = business?.formationPrice ?? 500;
+
+  return (
+    <ModalWrap
+      open={open}
+      onClose={onClose}
+      title={business ? business.name : 'Formation'}
+      desc="Accède à la formation proposée par ce centre."
+    >
+      {purchased ? (
+        <div className="space-y-4 text-center">
+          <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-6">
+            <GraduationCap className="mx-auto h-10 w-10 text-emerald-400" />
+            <p className="mt-3 text-sm font-semibold">Formation achetée !</p>
+            <p className="mt-1 text-xs text-muted-foreground">Clique sur le bouton pour accéder au contenu.</p>
+          </div>
+          <a href={purchased} target="_blank" rel="noopener noreferrer">
+            <Button className="w-full"><ExternalLink className="mr-2 h-4 w-4" />Accéder à la formation</Button>
+          </a>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-4">
+            <div className="flex items-center gap-3">
+              <GraduationCap className="h-8 w-8 text-amber-400" />
+              <div>
+                <p className="text-sm font-semibold">{business?.name}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Propriétaire : {business?.owner.username}</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Prix de la formation</span>
+              <span className="font-bold text-amber-300">{price.toLocaleString('fr-FR')} €</span>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose} disabled={buying}>Annuler</Button>
+            <Button size="sm" onClick={() => void buy()} disabled={buying}>
+              Acheter · {price.toLocaleString('fr-FR')} €
+            </Button>
+          </div>
+        </div>
+      )}
     </ModalWrap>
   );
 }

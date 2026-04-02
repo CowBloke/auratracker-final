@@ -180,7 +180,24 @@ export interface YouBusinessMember {
   id: string;
   role: string;
   status: string;
+  salary: number;
   user: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
+export interface YouBankAccount {
+  id: string;
+  accountType: 'COURANT' | 'EPARGNE';
+  balance: number;
+  createdAt: string;
+}
+
+export interface YouBusinessTransaction {
+  id: string;
+  type: string;
+  amount: number;
+  label: string;
+  actorId: string | null;
+  createdAt: string;
 }
 
 export interface YouBusinessInvitation {
@@ -290,6 +307,8 @@ export interface YouBusiness {
   livretEpargneUnlocked?: boolean;
   loanInterestRate?: number;
   transferFeeRate?: number;
+  formationUrl?: string | null;
+  formationPrice?: number;
 }
 
 export interface YouMarriageProposal {
@@ -420,6 +439,24 @@ export const youApi = {
     api.post<{ result: { loanInterestRate: number } }>(`/you/businesses/${businessId}/set-loan-rate`, { rate }),
   setTransferFeeRate: (businessId: string, rate: number) =>
     api.post<{ result: { transferFeeRate: number } }>(`/you/businesses/${businessId}/set-transfer-fee-rate`, { rate }),
+  getBusinessTransactions: (businessId: string) =>
+    api.get<{ transactions: YouBusinessTransaction[] }>(`/you/businesses/${businessId}/transactions`),
+  getBankAccounts: (businessId: string) =>
+    api.get<{ accounts: YouBankAccount[] }>(`/you/businesses/${businessId}/bank-accounts`),
+  openBankAccount: (businessId: string, accountType: 'COURANT' | 'EPARGNE') =>
+    api.post<{ account: YouBankAccount }>(`/you/businesses/${businessId}/bank-accounts`, { accountType }),
+  bankAccountDeposit: (accountId: string, amount: number) =>
+    api.post<{ result: { newBalance: number } }>(`/you/bank-accounts/${accountId}/deposit`, { amount }),
+  bankAccountWithdraw: (accountId: string, amount: number) =>
+    api.post<{ result: { newBalance: number } }>(`/you/bank-accounts/${accountId}/withdraw`, { amount }),
+  setFormationDetails: (businessId: string, data: { formationUrl: string | null; formationPrice: number }) =>
+    api.patch<{ result: { formationUrl: string | null; formationPrice: number } }>(`/you/businesses/${businessId}/formation`, data),
+  buyFormation: (businessId: string) =>
+    api.post<{ result: { formationUrl: string; price: number } }>(`/you/businesses/${businessId}/buy-formation`, {}),
+  updateMemberSalary: (businessId: string, memberId: string, salary: number) =>
+    api.patch<{ result: { salary: number } }>(`/you/businesses/${businessId}/members/${memberId}/salary`, { salary }),
+  sackMember: (businessId: string, memberId: string) =>
+    api.delete<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/members/${memberId}`),
 };
 
 // Economy API

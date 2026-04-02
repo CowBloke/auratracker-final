@@ -28,6 +28,15 @@ import {
   suspectCheating,
   trainUserSkill,
   withdrawFromCouple,
+  getBusinessTransactions,
+  getBankAccounts,
+  openBankAccount,
+  bankAccountDeposit,
+  bankAccountWithdraw,
+  setFormationDetails,
+  buyFormation,
+  updateMemberSalary,
+  sackMember,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
@@ -108,6 +117,18 @@ const ERROR_STATUS: Record<string, number> = {
   BUYOUT_OFFER_REVIEW_FORBIDDEN: 403,
   BUYOUT_OFFER_CANCEL_FORBIDDEN: 403,
   BUYOUT_OFFER_ALREADY_RESOLVED: 400,
+  BANK_SELF_ACCOUNT_FORBIDDEN: 403,
+  BANK_EPARGNE_LOCKED: 403,
+  BANK_ACCOUNT_ALREADY_EXISTS: 400,
+  BANK_ACCOUNT_NOT_FOUND: 404,
+  INVALID_BANK_AMOUNT: 400,
+  BANK_BALANCE_TOO_LOW: 400,
+  FORMATION_EDIT_FORBIDDEN: 403,
+  FORMATION_SELF_BUY_FORBIDDEN: 403,
+  FORMATION_URL_NOT_SET: 400,
+  INVALID_FORMATION_PRICE: 400,
+  INVALID_SALARY: 400,
+  MEMBER_NOT_FOUND: 404,
   CHEATING_ACCUSATION_ALREADY_PENDING: 400,
   CHEATING_ACCUSATION_NOT_FOUND: 404,
   CHEATING_ACCUSATION_FORBIDDEN: 403,
@@ -482,6 +503,92 @@ router.delete('/businesses/:businessId', authMiddleware, requireYouAccess, async
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Delete business error');
+  }
+});
+
+// Business transaction log
+router.get('/businesses/:businessId/transactions', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const transactions = await getBusinessTransactions(req.user!.id, req.params.businessId);
+    res.json({ transactions });
+  } catch (error) {
+    handleRouteError(error, res, 'Get business transactions error');
+  }
+});
+
+// Bank accounts
+router.get('/businesses/:businessId/bank-accounts', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const accounts = await getBankAccounts(req.user!.id, req.params.businessId);
+    res.json({ accounts });
+  } catch (error) {
+    handleRouteError(error, res, 'Get bank accounts error');
+  }
+});
+
+router.post('/businesses/:businessId/bank-accounts', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const accountType = req.body?.accountType === 'EPARGNE' ? 'EPARGNE' : 'COURANT';
+    const account = await openBankAccount(req.user!.id, req.params.businessId, accountType);
+    res.json({ account });
+  } catch (error) {
+    handleRouteError(error, res, 'Open bank account error');
+  }
+});
+
+router.post('/bank-accounts/:accountId/deposit', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await bankAccountDeposit(req.user!.id, req.params.accountId, Number(req.body?.amount));
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Bank account deposit error');
+  }
+});
+
+router.post('/bank-accounts/:accountId/withdraw', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await bankAccountWithdraw(req.user!.id, req.params.accountId, Number(req.body?.amount));
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Bank account withdraw error');
+  }
+});
+
+// Formation
+router.patch('/businesses/:businessId/formation', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await setFormationDetails(req.user!.id, req.params.businessId, req.body?.formationUrl ?? null, Number(req.body?.formationPrice ?? 500));
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Set formation details error');
+  }
+});
+
+router.post('/businesses/:businessId/buy-formation', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await buyFormation(req.user!.id, req.params.businessId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Buy formation error');
+  }
+});
+
+// Team management
+router.patch('/businesses/:businessId/members/:memberId/salary', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await updateMemberSalary(req.user!.id, req.params.businessId, req.params.memberId, Number(req.body?.salary));
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Update member salary error');
+  }
+});
+
+router.delete('/businesses/:businessId/members/:memberId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await sackMember(req.user!.id, req.params.businessId, req.params.memberId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Sack member error');
   }
 });
 

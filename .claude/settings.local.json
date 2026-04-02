@@ -113,7 +113,8 @@
       "Read(//Users/viktorabe/Documents/GitHub/auratracker-final/backend/**)",
       "mcp__Claude_Preview__preview_start",
       "Bash(grep -n \"UpdatePopup\\\\|update-popup\" /Users/viktorabe/Documents/GitHub/auratracker-final/backend/src/routes/*.ts)",
-      "Bash(grep -r bank /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=*.tsx --include=*.ts)"
+      "Bash(grep -r bank /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=*.tsx --include=*.ts)",
+      "Bash(cp /tmp/modals_clean.tsx \"c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/pages/you/components/modals.tsx\")"
     ]
   },
   "outputStyle": "default"

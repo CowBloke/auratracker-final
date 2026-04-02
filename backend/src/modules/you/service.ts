@@ -315,6 +315,7 @@ function serializeBusiness(business: any, viewerId: string) {
       id: member.id,
       role: member.role,
       status: member.status,
+      salary: member.salary ?? 0,
       user: member.user,
     })),
     pendingInvitations: business.invitations.map((invite: any) => ({
@@ -351,6 +352,8 @@ function serializeBusiness(business: any, viewerId: string) {
     livretEpargneUnlocked: business.typeKey === 'bank' ? (business.livretEpargneUnlocked ?? false) : undefined,
     loanInterestRate: business.typeKey === 'bank' ? (business.loanInterestRate ?? 4) : undefined,
     transferFeeRate: business.typeKey === 'transfer' ? (business.transferFeeRate ?? 2) : undefined,
+    formationUrl: business.typeKey === 'formation' ? (business.formationUrl ?? null) : undefined,
+    formationPrice: business.typeKey === 'formation' ? (business.formationPrice ?? 500) : undefined,
   };
 }
 
@@ -2654,4 +2657,206 @@ export async function setTransferFeeRate(userId: string, businessId: string, rat
   });
 
   return { transferFeeRate: rate };
+}
+
+// --- Business Transaction Log ---
+
+async function logBusinessTransaction(
+  businessId: string,
+  type: string,
+  amount: number,
+  label: string,
+  actorId?: string,
+) {
+  await prisma.businessTransaction.create({
+    data: { businessId, type, amount, label, actorId: actorId ?? null },
+  });
+}
+
+export async function getBusinessTransactions(userId: string, businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('BUSINESS_NOT_FOUND');
+
+  const transactions = await prisma.businessTransaction.findMany({
+    where: { businessId },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+  });
+  return transactions.map((tx) => ({
+    id: tx.id,
+    type: tx.type,
+    amount: tx.amount,
+    label: tx.label,
+    actorId: tx.actorId,
+    createdAt: tx.createdAt.toISOString(),
+  }));
+}
+
+// --- Bank Account System ---
+
+export async function getBankAccounts(userId: string, businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, typeKey: true },
+  });
+  if (!business || business.typeKey !== 'bank') throw new Error('BUSINESS_NOT_FOUND');
+
+  const accounts = await prisma.bankAccount.findMany({
+    where: { businessId, userId },
+    orderBy: { createdAt: 'asc' },
+  });
+  return accounts.map((a) => ({
+    id: a.id,
+    accountType: a.accountType,
+    balance: a.balance,
+    createdAt: a.createdAt.toISOString(),
+  }));
+}
+
+export async function openBankAccount(userId: string, businessId: string, accountType: 'COURANT' | 'EPARGNE') {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, typeKey: true, livretEpargneUnlocked: true, ownerId: true },
+  });
+  if (!business || business.typeKey !== 'bank') throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId === userId) throw new Error('BANK_SELF_ACCOUNT_FORBIDDEN');
+  if (accountType === 'EPARGNE' && !business.livretEpargneUnlocked) throw new Error('BANK_EPARGNE_LOCKED');
+
+  const existing = await prisma.bankAccount.findUnique({
+    where: { businessId_userId_accountType: { businessId, userId, accountType } },
+  });
+  if (existing) throw new Error('BANK_ACCOUNT_ALREADY_EXISTS');
+
+  const account = await prisma.bankAccount.create({
+    data: { businessId, userId, accountType, balance: 0 },
+  });
+  return { id: account.id, accountType: account.accountType, balance: account.balance, createdAt: account.createdAt.toISOString() };
+}
+
+export async function bankAccountDeposit(userId: string, accountId: string, amount: number) {
+  if (!Number.isInteger(amount) || amount <= 0) throw new Error('INVALID_BANK_AMOUNT');
+
+  const account = await prisma.bankAccount.findUnique({
+    where: { id: accountId },
+    include: { business: { select: { id: true, typeKey: true, name: true } }, user: { select: { username: true } } },
+  });
+  if (!account || account.userId !== userId) throw new Error('BANK_ACCOUNT_NOT_FOUND');
+  if (account.business.typeKey !== 'bank') throw new Error('BUSINESS_NOT_FOUND');
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { money: true } });
+  if (!user || user.money < amount) throw new Error('INSUFFICIENT_MONEY');
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { money: { decrement: amount } } }),
+    prisma.bankAccount.update({ where: { id: accountId }, data: { balance: { increment: amount } } }),
+    prisma.business.update({ where: { id: account.businessId }, data: { treasuryMoney: { increment: amount } } }),
+  ]);
+
+  await logBusinessTransaction(account.businessId, 'BANK_DEPOSIT', amount, `Depot compte de ${account.user.username}`, userId);
+
+  return { newBalance: account.balance + amount };
+}
+
+export async function bankAccountWithdraw(userId: string, accountId: string, amount: number) {
+  if (!Number.isInteger(amount) || amount <= 0) throw new Error('INVALID_BANK_AMOUNT');
+
+  const account = await prisma.bankAccount.findUnique({
+    where: { id: accountId },
+    include: { business: { select: { id: true, typeKey: true, name: true, treasuryMoney: true } }, user: { select: { username: true } } },
+  });
+  if (!account || account.userId !== userId) throw new Error('BANK_ACCOUNT_NOT_FOUND');
+  if (account.business.typeKey !== 'bank') throw new Error('BUSINESS_NOT_FOUND');
+  if (account.balance < amount) throw new Error('BANK_BALANCE_TOO_LOW');
+  if (account.business.treasuryMoney < amount) throw new Error('BUSINESS_TREASURY_TOO_LOW');
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { money: { increment: amount } } }),
+    prisma.bankAccount.update({ where: { id: accountId }, data: { balance: { decrement: amount } } }),
+    prisma.business.update({ where: { id: account.businessId }, data: { treasuryMoney: { decrement: amount } } }),
+  ]);
+
+  await logBusinessTransaction(account.businessId, 'BANK_WITHDRAW', -amount, `Retrait compte de ${account.user.username}`, userId);
+
+  return { newBalance: account.balance - amount };
+}
+
+// --- Formation System ---
+
+export async function setFormationDetails(userId: string, businessId: string, formationUrl: string | null, formationPrice: number) {
+  if (!Number.isFinite(formationPrice) || formationPrice < 0) throw new Error('INVALID_FORMATION_PRICE');
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true },
+  });
+  if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { formationUrl: formationUrl || null, formationPrice },
+  });
+
+  return { formationUrl, formationPrice };
+}
+
+export async function buyFormation(userId: string, businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true, formationPrice: true, formationUrl: true },
+  });
+  if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId === userId) throw new Error('FORMATION_SELF_BUY_FORBIDDEN');
+  if (!business.formationUrl) throw new Error('FORMATION_URL_NOT_SET');
+
+  const price = business.formationPrice ?? 500;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { money: true, username: true } });
+  if (!user || user.money < price) throw new Error('INSUFFICIENT_MONEY');
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { money: { decrement: price } } }),
+    prisma.business.update({ where: { id: businessId }, data: { treasuryMoney: { increment: price } } }),
+  ]);
+
+  await logBusinessTransaction(businessId, 'FORMATION_SALE', price, `Achat formation par ${user.username}`, userId);
+
+  return { formationUrl: business.formationUrl, price };
+}
+
+// --- Team Management ---
+
+export async function updateMemberSalary(ownerId: string, businessId: string, memberId: string, salary: number) {
+  if (!Number.isInteger(salary) || salary < 0) throw new Error('INVALID_SALARY');
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== ownerId) throw new Error('BUSINESS_INVITE_FORBIDDEN');
+
+  const member = await prisma.businessMember.findUnique({ where: { id: memberId } });
+  if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
+
+  await prisma.businessMember.update({ where: { id: memberId }, data: { salary } });
+  return { salary };
+}
+
+export async function sackMember(ownerId: string, businessId: string, memberId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== ownerId) throw new Error('BUSINESS_INVITE_FORBIDDEN');
+
+  const member = await prisma.businessMember.findUnique({ where: { id: memberId } });
+  if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
+
+  await prisma.businessMember.delete({ where: { id: memberId } });
+  return { ok: true };
 }

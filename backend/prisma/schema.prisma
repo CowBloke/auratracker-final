@@ -139,6 +139,9 @@ model User {
   overallRank         Int     @default(0) // Their rank in the combined leaderboard (1 = best player)
   lastScoreUpdate     DateTime @default(now()) // When the total score was last calculated
 
+  // Business bank accounts
+  bankAccounts        BankAccount[]
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
@@ -400,6 +403,8 @@ model Business {
   loanInterestRate       Float    @default(4.0)
   transferFeeRate        Float    @default(2.0)
   lastBankRevenueDate    String?
+  formationUrl           String?
+  formationPrice         Int      @default(500)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -411,6 +416,8 @@ model Business {
   buyoutOffers BusinessBuyoutOffer[]
   transferHistory BusinessTransferTransaction[]
   startupProducts BusinessStartupProduct[]
+  bankAccounts    BankAccount[]
+  transactions    BusinessTransaction[]
 
   @@index([ownerId])
   @@index([typeKey, createdAt])
@@ -423,6 +430,7 @@ model BusinessMember {
   userId     String
   role       String
   status     String   @default("ACTIVE")
+  salary     Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -1647,4 +1655,35 @@ model UpdateItem {
   createdAt DateTime    @default(now())
 
   @@index([entryId])
+}
+
+model BankAccount {
+  id          String   @id @default(uuid())
+  businessId  String
+  userId      String
+  balance     Int      @default(0)
+  accountType String   @default("COURANT")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId, accountType])
+  @@index([userId])
+  @@index([businessId])
+}
+
+model BusinessTransaction {
+  id         String   @id @default(uuid())
+  businessId String
+  type       String
+  amount     Int
+  label      String
+  actorId    String?
+  createdAt  DateTime @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
 }
