@@ -64,9 +64,9 @@ export default function Layout() {
 
   useEffect(() => {
     if (connected) {
-      setCurrentPage(location.pathname);
+      setCurrentPage(`${location.pathname}${location.search}`);
     }
-  }, [connected, location.pathname, setCurrentPage]);
+  }, [connected, location.pathname, location.search, setCurrentPage]);
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);

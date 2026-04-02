@@ -35,10 +35,13 @@ function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b:
 
 export function TravailTab({ data, players, onReload }: { data: YouState; players: YouPlayer[]; onReload: (refreshBalance?: boolean) => Promise<void> }) {
   const [createOpen, setCreateOpen] = useState(false);
-  const [inviteBusiness, setInviteBusiness] = useState<YouBusiness | null>(null);
-  const [managedBusiness, setManagedBusiness] = useState<YouBusiness | null>(null);
+  const [inviteBusinessId, setInviteBusinessId] = useState<string | null>(null);
+  const [managedBusinessId, setManagedBusinessId] = useState<string | null>(null);
   const [cancellingOfferId, setCancellingOfferId] = useState<string | null>(null);
   const canCreateBusiness = data.ownedBusinesses.length < data.businessSlots;
+  const allBusinesses = [...data.ownedBusinesses, ...data.memberBusinesses];
+  const inviteBusiness = inviteBusinessId ? allBusinesses.find((business) => business.id === inviteBusinessId) ?? null : null;
+  const managedBusiness = managedBusinessId ? allBusinesses.find((business) => business.id === managedBusinessId) ?? null : null;
 
   const cancelBuyoutOffer = async (offerId: string) => {
     setCancellingOfferId(offerId);
@@ -67,7 +70,7 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
             <SectionTitle>Mes entreprises ({data.ownedBusinesses.length}/{data.businessSlots})</SectionTitle>
             {data.ownedBusinesses.length === 0
               ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise creee. Ouvre-en une depuis cette page pour utiliser ton argent reel du site.</CardContent></Card>
-              : data.ownedBusinesses.map((business) => <BusinessCard key={business.id} business={business} onOpen={setManagedBusiness} />)
+              : data.ownedBusinesses.map((business) => <BusinessCard key={business.id} business={business} onOpen={(entry) => setManagedBusinessId(entry.id)} />)
             }
           </div>
           {data.memberBusinesses.length > 0 && (
@@ -97,7 +100,7 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
                           Proprietaire: {business.owner.username} · Revenue: +{formatMoney(business.monthlyRevenue)}
                         </p>
                       </div>
-                      <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => setManagedBusiness(business)}>Gerer</Button>
+                      <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => setManagedBusinessId(business.id)}>Gerer</Button>
                     </CardContent>
                   </Card>
                 );
@@ -125,8 +128,8 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
         </div>
       </div>
       <CreateBusinessModal open={createOpen} onClose={() => setCreateOpen(false)} businessTypes={data.businessTypes} onCreated={() => onReload(true)} />
-      <InvitePlayersModal open={Boolean(inviteBusiness)} onClose={() => setInviteBusiness(null)} business={inviteBusiness} players={players} onSubmitted={() => onReload()} />
-      <ManageBusinessModal open={Boolean(managedBusiness)} onClose={() => setManagedBusiness(null)} business={managedBusiness} onInviteRequested={setInviteBusiness} onSubmitted={onReload} />
+      <InvitePlayersModal open={Boolean(inviteBusiness)} onClose={() => setInviteBusinessId(null)} business={inviteBusiness} players={players} onSubmitted={() => onReload()} />
+      <ManageBusinessModal open={Boolean(managedBusiness)} onClose={() => setManagedBusinessId(null)} business={managedBusiness} onInviteRequested={(business) => setInviteBusinessId(business.id)} onSubmitted={onReload} />
     </>
   );
 }

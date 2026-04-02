@@ -46,7 +46,7 @@ export default function You() {
 
   return (
     <div className="animate-in space-y-6 fade-in pb-8 duration-300">
-      {currentTab !== 'travail' ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {currentTab === 'overview' ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[{ label: 'Money partage', value: user.money.toLocaleString('fr-FR') }, { label: 'Aura partagee', value: user.aura.toLocaleString('fr-FR') }, { label: 'Businesses', value: String(data.ownedBusinesses.length) }, { label: 'Relations', value: String(data.relationships.length) }].map((entry) => (
           <Card key={entry.label} className="min-w-0 overflow-hidden">
             <CardContent className="min-w-0 px-5 py-4">

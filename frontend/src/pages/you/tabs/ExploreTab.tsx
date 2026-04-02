@@ -1,8 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeftRight, BarChart3, Building2, ChevronRight,
-  GraduationCap, HandCoins, Landmark, PiggyBank, Search,
-  ShieldAlert, Sparkles, TrendingUp, Wallet,
+  ArrowLeftRight,
+  Building2,
+  ChevronDown,
+  ChevronRight,
+  GraduationCap,
+  HandCoins,
+  Landmark,
+  PiggyBank,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -10,18 +20,44 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { type YouBusiness, type YouPlayer, type YouState, youApi } from '@/services/api';
 import {
-  BankAccountModal, BuyoutOfferModal, FormationPurchaseModal,
-  InvestModal, LoanModal, TransferBusinessModal,
+  BankAccountModal,
+  BuyoutOfferModal,
+  FormationPurchaseModal,
+  InvestModal,
+  LoanModal,
+  TransferBusinessModal,
 } from '../components/modals';
 import { FilterButton, Input, Pill, SectionTitle } from '../components/ui';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { withRouteError } from '../utils';
 
 function formatMoney(n: number) {
-  return n.toLocaleString('fr-FR') + ' €';
+  return `${n.toLocaleString('fr-FR')} EUR`;
 }
 
-// Compact header for selected business
+const BUSINESS_TYPE_ORDER = ['bank', 'transfer', 'formation', 'startup', 'agency'] as const;
+
+const SECTION_META: Record<
+  (typeof BUSINESS_TYPE_ORDER)[number],
+  { label: string; icon: typeof Building2; pillColor: string }
+> = {
+  bank: { label: 'Banks', icon: Landmark, pillColor: 'bg-emerald-400/15 text-emerald-400' },
+  transfer: { label: 'Transfer', icon: ArrowLeftRight, pillColor: 'bg-cyan-400/15 text-cyan-300' },
+  formation: { label: 'Formations', icon: GraduationCap, pillColor: 'bg-amber-400/15 text-amber-400' },
+  startup: { label: 'Tech startups', icon: TrendingUp, pillColor: 'bg-sky-400/15 text-sky-400' },
+  agency: { label: 'Agencies', icon: Building2, pillColor: 'bg-violet-400/15 text-violet-400' },
+};
+
+function isNewBusiness(business: YouBusiness) {
+  const foundedAt = new Date(business.foundedAt).getTime();
+  if (Number.isNaN(foundedAt)) return false;
+  return Date.now() - foundedAt < 3 * 24 * 60 * 60 * 1000;
+}
+
+function getBusinessRevenue(business: YouBusiness) {
+  return business.monthlyRevenue;
+}
+
 function BusinessHeader({ business, userId }: { business: YouBusiness; userId: string }) {
   const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
   const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
@@ -33,18 +69,18 @@ function BusinessHeader({ business, userId }: { business: YouBusiness; userId: s
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-semibold">{business.name}</p>
-          {business.verified && <Pill label="Vérifié" color="bg-emerald-400/15 text-emerald-400" />}
-          {business.ownerId === userId && <Pill label="À toi" color="bg-purple-400/15 text-purple-400" />}
+          {business.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}
+          {isNewBusiness(business) ? <Pill label="New" color="bg-rose-400/15 text-rose-300" /> : null}
+          {business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}
         </div>
         <p className="text-xs text-muted-foreground">
-          {business.type?.label ?? business.typeKey} · {business.owner.username}
+          {business.type?.label ?? business.typeKey} · {business.owner.username} · {business.foundedLabel}
         </p>
       </div>
     </div>
   );
 }
 
-// Stat tile
 function StatTile({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
@@ -54,7 +90,6 @@ function StatTile({ label, value, color }: { label: string; value: string; color
   );
 }
 
-// Generic action button used for all interactions
 function ActionButton({
   icon: Icon,
   label,
@@ -77,9 +112,7 @@ function ActionButton({
       onClick={onClick}
       className={cn(
         'flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
-        primary
-          ? 'border-transparent bg-muted/20 hover:bg-muted/30'
-          : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+        primary ? 'border-transparent bg-muted/20 hover:bg-muted/30' : 'border-border/40 bg-muted/10 hover:bg-muted/20',
       )}
     >
       <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', toneBg)}>
@@ -87,14 +120,13 @@ function ActionButton({
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{label}</p>
-        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+        {sub ? <p className="text-xs text-muted-foreground">{sub}</p> : null}
       </div>
       <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
     </button>
   );
 }
 
-// Startup product cards (read-only for explore view)
 function StartupProductsReadonly({ business }: { business: YouBusiness }) {
   if (!business.startupProducts.length) return null;
   return (
@@ -109,15 +141,15 @@ function StartupProductsReadonly({ business }: { business: YouBusiness }) {
                 <p className="text-xs text-muted-foreground">Niveau {product.deployedLevel}/10</p>
               </div>
               <div className="text-right">
-                <p className="text-xs font-semibold text-sky-300">+{product.currentRevenue.toLocaleString('fr-FR')} €</p>
-                {isActive && <span className="mt-0.5 inline-block text-[10px] text-amber-400">{product.isResearchActive ? 'En recherche' : 'Prêt'}</span>}
+                <p className="text-xs font-semibold text-sky-300">+{product.currentRevenue.toLocaleString('fr-FR')} EUR</p>
+                {isActive ? <span className="mt-0.5 inline-block text-[10px] text-amber-400">{product.isResearchActive ? 'En recherche' : 'Pret'}</span> : null}
               </div>
             </div>
-            {isActive && (
+            {isActive ? (
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
                 <div className="h-full rounded-full bg-sky-400 transition-all" style={{ width: `${product.progressPercent}%` }} />
               </div>
-            )}
+            ) : null}
           </div>
         );
       })}
@@ -125,7 +157,6 @@ function StartupProductsReadonly({ business }: { business: YouBusiness }) {
   );
 }
 
-// Per-business-type detail card (for non-owned businesses)
 function BusinessDetailPanel({
   business,
   userId,
@@ -152,7 +183,7 @@ function BusinessDetailPanel({
       <Card>
         <CardContent className="px-5 py-6 text-center">
           <p className="text-sm font-medium text-muted-foreground">C'est ton entreprise.</p>
-          <p className="mt-1 text-xs text-muted-foreground/60">Gère-la depuis l'onglet Travail.</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">Gere-la depuis l'onglet Travail.</p>
         </CardContent>
       </Card>
     );
@@ -161,16 +192,14 @@ function BusinessDetailPanel({
   const primarySection = (() => {
     if (business.typeKey === 'bank') {
       return (
-        <div className="space-y-2">
-          <ActionButton
-            icon={Landmark}
-            label="Gérer mes comptes"
-            sub={`Taux d'emprunt : ${business.loanInterestRate ?? 4} % · ${business.livretEpargneUnlocked ? 'Livret Épargne dispo' : 'Compte courant'}`}
-            tone="bg-emerald-400/15 text-emerald-400"
-            primary
-            onClick={onBankAccounts}
-          />
-        </div>
+        <ActionButton
+          icon={Landmark}
+          label="Gerer mes comptes"
+          sub={`Taux d'emprunt : ${business.loanInterestRate ?? 4} % · ${business.livretEpargneUnlocked ? 'Livret epargne dispo' : 'Compte courant'}`}
+          tone="bg-emerald-400/15 text-emerald-400"
+          primary
+          onClick={onBankAccounts}
+        />
       );
     }
     if (business.typeKey === 'transfer') {
@@ -190,8 +219,8 @@ function BusinessDetailPanel({
       return (
         <ActionButton
           icon={GraduationCap}
-          label={hasFormation ? 'Accéder à la formation' : 'Formation non disponible'}
-          sub={hasFormation ? `Prix : ${formatMoney(business.formationPrice ?? 500)}` : 'Le propriétaire n\'a pas encore mis de formation en ligne.'}
+          label={hasFormation ? 'Acceder a la formation' : 'Formation non disponible'}
+          sub={hasFormation ? `Prix : ${formatMoney(business.formationPrice ?? 500)}` : "Le proprietaire n'a pas encore mis de formation en ligne."}
           tone="bg-amber-400/15 text-amber-400"
           primary
           onClick={hasFormation ? onFormation : () => {}}
@@ -205,7 +234,7 @@ function BusinessDetailPanel({
           <ActionButton
             icon={TrendingUp}
             label="Investir dans cette startup"
-            sub="Le rendement dépend du niveau de risque choisi."
+            sub="Le rendement depend du niveau de risque choisi."
             tone="bg-sky-400/15 text-sky-400"
             primary
             onClick={onInvest}
@@ -213,12 +242,11 @@ function BusinessDetailPanel({
         </div>
       );
     }
-    // agency / other
     return (
       <ActionButton
         icon={TrendingUp}
         label="Investir"
-        sub="Le rendement dépend du niveau de risque choisi."
+        sub="Le rendement depend du niveau de risque choisi."
         tone="bg-sky-400/15 text-sky-400"
         primary
         onClick={onInvest}
@@ -229,13 +257,13 @@ function BusinessDetailPanel({
   const stats = (() => {
     if (business.typeKey === 'bank') {
       return [
-        { label: 'Trésorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
-        { label: 'Taux d\'emprunt', value: `${business.loanInterestRate ?? 4} %`, color: 'text-amber-400' },
+        { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
+        { label: "Taux d'emprunt", value: `${business.loanInterestRate ?? 4} %`, color: 'text-amber-400' },
       ];
     }
     if (business.typeKey === 'transfer') {
       return [
-        { label: 'Trésorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
+        { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
         { label: 'Frais', value: `${business.transferFeeRate ?? 2} %`, color: 'text-cyan-400' },
       ];
     }
@@ -254,36 +282,44 @@ function BusinessDetailPanel({
 
   const secondaryActions: Array<{ icon: typeof Building2; label: string; sub: string; tone: string; onClick: () => void }> = [];
   if (business.typeKey === 'bank') {
-    secondaryActions.push({ icon: Landmark, label: 'Demander un prêt', sub: `Taux ${business.loanInterestRate ?? 4} % · Le propriétaire doit accepter.`, tone: 'bg-amber-400/15 text-amber-400', onClick: onLoan });
+    secondaryActions.push({
+      icon: Landmark,
+      label: 'Demander un pret',
+      sub: `Taux ${business.loanInterestRate ?? 4} % · Le proprietaire doit accepter.`,
+      tone: 'bg-amber-400/15 text-amber-400',
+      onClick: onLoan,
+    });
   }
-  secondaryActions.push({ icon: HandCoins, label: 'Faire une offre de rachat', sub: 'Le montant est bloqué jusqu\'à la décision du propriétaire.', tone: 'bg-rose-400/15 text-rose-400', onClick: onBuyout });
+  secondaryActions.push({
+    icon: HandCoins,
+    label: 'Faire une offre de rachat',
+    sub: "Le montant est bloque jusqu'a la decision du proprietaire.",
+    tone: 'bg-rose-400/15 text-rose-400',
+    onClick: onBuyout,
+  });
 
   return (
     <div className="space-y-3">
       <Card>
         <CardContent className="space-y-4 px-5 py-4">
-          {/* Primary action */}
           <div>
             <SectionTitle>Utiliser le service</SectionTitle>
             {primarySection}
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-2 gap-2">
             {stats.map((s) => <StatTile key={s.label} label={s.label} value={s.value} color={s.color} />)}
           </div>
 
-          {/* Livret info for banks */}
-          {business.typeKey === 'bank' && business.livretEpargneUnlocked && (
+          {business.typeKey === 'bank' && business.livretEpargneUnlocked ? (
             <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2 text-xs text-amber-300">
               <Sparkles className="h-3.5 w-3.5 shrink-0" />
-              <span>Livret Épargne disponible · +0,5 % / jour</span>
+              <span>Livret epargne disponible · +0,5 % / jour</span>
             </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
-      {/* Secondary actions */}
       <Card>
         <CardContent className="space-y-2 px-5 py-4">
           <SectionTitle>Autres actions</SectionTitle>
@@ -297,7 +333,11 @@ function BusinessDetailPanel({
 }
 
 export function ExploreTab({
-  data, players, userId, isAdmin, onReload,
+  data,
+  players,
+  userId,
+  isAdmin,
+  onReload,
 }: {
   data: YouState;
   players: YouPlayer[];
@@ -306,110 +346,164 @@ export function ExploreTab({
   onReload: (refreshBalance?: boolean) => Promise<void>;
 }) {
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'you' | 'player'>('all');
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>(
     data.exploreBusinesses[0]?.id ?? data.ownedBusinesses[0]?.id ?? '',
   );
 
-  const [bankBusiness, setBankBusiness] = useState<YouBusiness | null>(null);
-  const [loanBusiness, setLoanBusiness] = useState<YouBusiness | null>(null);
-  const [investBusiness, setInvestBusiness] = useState<YouBusiness | null>(null);
-  const [buyoutBusiness, setBuyoutBusiness] = useState<YouBusiness | null>(null);
-  const [transferBusiness, setTransferBusiness] = useState<YouBusiness | null>(null);
-  const [formationBusiness, setFormationBusiness] = useState<YouBusiness | null>(null);
+  const [bankBusinessId, setBankBusinessId] = useState<string | null>(null);
+  const [loanBusinessId, setLoanBusinessId] = useState<string | null>(null);
+  const [investBusinessId, setInvestBusinessId] = useState<string | null>(null);
+  const [buyoutBusinessId, setBuyoutBusinessId] = useState<string | null>(null);
+  const [transferBusinessId, setTransferBusinessId] = useState<string | null>(null);
+  const [formationBusinessId, setFormationBusinessId] = useState<string | null>(null);
 
   const allBusinesses = useMemo(
     () => [...data.ownedBusinesses, ...data.exploreBusinesses],
     [data.exploreBusinesses, data.ownedBusinesses],
   );
-  const categories = useMemo(
-    () => ['all', ...new Set(data.businessTypes.map((t) => t.category))],
-    [data.businessTypes],
+
+  const availableTypeKeys = useMemo(
+    () => BUSINESS_TYPE_ORDER.filter((typeKey) => allBusinesses.some((business) => business.typeKey === typeKey)),
+    [allBusinesses],
   );
 
   const filteredBusinesses = useMemo(
     () =>
-      allBusinesses.filter((b) => {
+      allBusinesses.filter((business) => {
         const query = search.trim().toLowerCase();
-        const matchesCategory = category === 'all' || b.type?.category === category;
+        const matchesType = typeFilter === 'all' || business.typeKey === typeFilter;
         const matchesOwner =
           ownerFilter === 'all' ||
-          (ownerFilter === 'you' ? b.ownerId === userId : b.ownerId !== userId);
+          (ownerFilter === 'you' ? business.ownerId === userId : business.ownerId !== userId);
         const matchesQuery =
           !query ||
-          b.name.toLowerCase().includes(query) ||
-          b.owner.username.toLowerCase().includes(query) ||
-          b.description?.toLowerCase().includes(query);
-        return matchesCategory && matchesOwner && matchesQuery;
+          business.name.toLowerCase().includes(query) ||
+          business.owner.username.toLowerCase().includes(query) ||
+          business.description?.toLowerCase().includes(query);
+        return matchesType && matchesOwner && matchesQuery;
       }),
-    [allBusinesses, category, ownerFilter, search, userId],
+    [allBusinesses, ownerFilter, search, typeFilter, userId],
   );
 
-  const selectedBusiness = filteredBusinesses.find((b) => b.id === selectedBusinessId) ?? filteredBusinesses[0] ?? null;
+  const groupedBusinesses = useMemo(
+    () =>
+      BUSINESS_TYPE_ORDER.map((typeKey) => ({
+        typeKey,
+        businesses: filteredBusinesses
+          .filter((business) => business.typeKey === typeKey)
+          .sort((a, b) => getBusinessRevenue(b) - getBusinessRevenue(a)),
+      })).filter((section) => section.businesses.length > 0),
+    [filteredBusinesses],
+  );
+
+  const selectedBusiness =
+    filteredBusinesses.find((business) => business.id === selectedBusinessId) ?? filteredBusinesses[0] ?? null;
+
+  const bankBusiness = bankBusinessId ? allBusinesses.find((business) => business.id === bankBusinessId) ?? null : null;
+  const loanBusiness = loanBusinessId ? allBusinesses.find((business) => business.id === loanBusinessId) ?? null : null;
+  const investBusiness = investBusinessId ? allBusinesses.find((business) => business.id === investBusinessId) ?? null : null;
+  const buyoutBusiness = buyoutBusinessId ? allBusinesses.find((business) => business.id === buyoutBusinessId) ?? null : null;
+  const transferBusiness = transferBusinessId ? allBusinesses.find((business) => business.id === transferBusinessId) ?? null : null;
+  const formationBusiness = formationBusinessId ? allBusinesses.find((business) => business.id === formationBusinessId) ?? null : null;
+
+  useEffect(() => {
+    if (selectedBusinessId && filteredBusinesses.some((business) => business.id === selectedBusinessId)) return;
+    setSelectedBusinessId(filteredBusinesses[0]?.id ?? '');
+  }, [filteredBusinesses, selectedBusinessId]);
 
   const deleteSelectedBusiness = async () => {
     if (!selectedBusiness || !isAdmin) return;
     await withRouteError(() => youApi.deleteBusiness(selectedBusiness.id), 'Impossible de supprimer le business.');
-    toast.success('Business supprimé');
+    toast.success('Business supprime');
     await onReload();
   };
 
   return (
     <>
-      <div className="grid gap-5 xl:grid-cols-[190px_minmax(0,1fr)_360px]">
-        {/* Filters column */}
+      <div className="grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)_360px]">
         <div className="space-y-4">
           <Card>
             <CardContent className="space-y-4 px-4 py-4">
-              <div className="flex items-center gap-2">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-semibold">Filtres</p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Catégorie</p>
-                <div className="space-y-1.5">
-                  {categories.map((entry) => (
-                    <FilterButton
-                      key={entry}
-                      active={category === entry}
-                      label={entry === 'all' ? 'Toutes' : entry}
-                      icon={
-                        entry === 'all'
-                          ? Wallet
-                          : entry === 'Finance'
-                            ? Landmark
-                            : entry === 'Tech'
-                              ? Building2
-                              : BarChart3
-                      }
-                      colorClass={
-                        entry === 'Finance'
-                          ? 'bg-emerald-500'
-                          : entry === 'Tech'
-                            ? 'bg-sky-500'
-                            : entry === 'Services'
-                              ? 'bg-violet-500'
-                              : 'bg-slate-600'
-                      }
-                      onClick={() => setCategory(entry)}
-                    />
-                  ))}
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((current) => !current)}
+                className="flex w-full items-center justify-between gap-2 rounded-xl border border-border/40 bg-muted/10 px-3 py-3 text-left transition-colors hover:bg-muted/20"
+              >
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-semibold">Filtres</p>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Propriétaire</p>
-                <div className="space-y-1.5">
-                  <FilterButton active={ownerFilter === 'all'} label="Tous" icon={Wallet} colorClass="bg-slate-600" onClick={() => setOwnerFilter('all')} />
-                  <FilterButton active={ownerFilter === 'you'} label="Mes entreprises" icon={PiggyBank} colorClass="bg-purple-500" onClick={() => setOwnerFilter('you')} />
-                  <FilterButton active={ownerFilter === 'player'} label="Autres joueurs" icon={Building2} colorClass="bg-amber-500" onClick={() => setOwnerFilter('player')} />
-                </div>
-              </div>
+                <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', filtersOpen ? 'rotate-180' : '')} />
+              </button>
+
+              {filtersOpen ? (
+                <>
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Type d'entreprise</p>
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => setTypeFilter('all')}
+                        className={cn(
+                          'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors',
+                          typeFilter === 'all' ? 'border-foreground/20 bg-muted/25' : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+                        )}
+                      >
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/30">
+                          <Wallet className="h-4 w-4 text-foreground" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">Tous les types</p>
+                          <p className="text-xs text-muted-foreground">{filteredBusinesses.length} visible{filteredBusinesses.length > 1 ? 's' : ''}</p>
+                        </div>
+                      </button>
+
+                      {availableTypeKeys.map((typeKey) => {
+                        const meta = SECTION_META[typeKey];
+                        const Icon = meta.icon;
+                        const style = BUSINESS_STYLE_MAP[typeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+                        const count = allBusinesses.filter((business) => business.typeKey === typeKey).length;
+                        return (
+                          <button
+                            key={typeKey}
+                            type="button"
+                            onClick={() => setTypeFilter(typeKey)}
+                            className={cn(
+                              'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors',
+                              typeFilter === typeKey ? 'border-foreground/20 bg-muted/25' : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+                            )}
+                          >
+                            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', style.iconWrap)}>
+                              <Icon className={cn('h-4 w-4', style.icon)} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium">{meta.label}</p>
+                              <p className="text-xs text-muted-foreground">{count} entreprise{count > 1 ? 's' : ''}</p>
+                            </div>
+                            <Pill label={typeKey} color={meta.pillColor} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Proprietaire</p>
+                    <div className="space-y-1.5">
+                      <FilterButton active={ownerFilter === 'all'} label="Tous" icon={Wallet} colorClass="bg-slate-600" onClick={() => setOwnerFilter('all')} />
+                      <FilterButton active={ownerFilter === 'you'} label="Mes entreprises" icon={PiggyBank} colorClass="bg-purple-500" onClick={() => setOwnerFilter('you')} />
+                      <FilterButton active={ownerFilter === 'player'} label="Autres joueurs" icon={Building2} colorClass="bg-amber-500" onClick={() => setOwnerFilter('player')} />
+                    </div>
+                  </div>
+                </>
+              ) : null}
             </CardContent>
           </Card>
         </div>
 
-        {/* List column */}
         <div className="space-y-4">
           <Card>
             <CardContent className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
@@ -423,71 +517,86 @@ export function ExploreTab({
                 />
               </div>
               <div className="text-xs text-muted-foreground">
-                {filteredBusinesses.length} résultat{filteredBusinesses.length > 1 ? 's' : ''}
+                {filteredBusinesses.length} resultat{filteredBusinesses.length > 1 ? 's' : ''}
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border/30">
-                {filteredBusinesses.map((business) => {
-                  const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
-                  const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
-                  const selected = business.id === selectedBusiness?.id;
-                  const profit = business.monthlyRevenue - business.monthlyExpenses;
 
-                  return (
-                    <button
-                      key={business.id}
-                      type="button"
-                      onClick={() => setSelectedBusinessId(business.id)}
-                      className={cn('w-full px-5 py-4 text-left transition-colors', selected ? 'bg-muted/25' : 'hover:bg-muted/15')}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', style.iconWrap)}>
-                          <Icon className={cn('h-4 w-4', style.icon)} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="text-sm font-semibold">{business.name}</p>
-                            {business.type && <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" />}
-                            {business.ownerId === userId && <Pill label="À toi" color="bg-purple-400/15 text-purple-400" />}
-                          </div>
-                          <p className="mt-0.5 text-xs text-muted-foreground">{business.owner.username}</p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          {business.typeKey === 'bank' ? (
-                            <>
-                              <p className="text-sm font-bold tabular-nums text-emerald-400">{business.treasuryMoney.toLocaleString('fr-FR')} €</p>
-                              <p className="text-[10px] text-amber-400/80">{business.loanInterestRate ?? 4} % emprunt</p>
-                            </>
-                          ) : (
-                            <>
-                              <p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-                                {profit >= 0 ? '+' : ''}{profit.toLocaleString('fr-FR')} €
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">{business.satisfaction}/100</p>
-                            </>
-                          )}
-                        </div>
+          <Card>
+            <CardContent className="space-y-5 px-4 py-4">
+              {groupedBusinesses.map((section) => {
+                const meta = SECTION_META[section.typeKey];
+                const Icon = meta.icon;
+                const sectionStyle = BUSINESS_STYLE_MAP[section.typeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+                return (
+                  <div key={section.typeKey} className="space-y-2">
+                    <div className="flex items-center gap-3 px-1">
+                      <div className={cn('flex h-9 w-9 items-center justify-center rounded-xl', sectionStyle.iconWrap)}>
+                        <Icon className={cn('h-4 w-4', sectionStyle.icon)} />
                       </div>
-                    </button>
-                  );
-                })}
-                {filteredBusinesses.length === 0 && (
-                  <p className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise ne correspond à tes filtres.</p>
-                )}
-              </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">{meta.label}</p>
+                        <p className="text-[11px] text-muted-foreground">Trie par revenu mensuel decroissant</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {section.businesses.map((business) => {
+                        const BusinessIcon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+                        const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+                        const selected = business.id === selectedBusiness?.id;
+                        const profit = business.monthlyRevenue - business.monthlyExpenses;
+                        return (
+                          <button
+                            key={business.id}
+                            type="button"
+                            onClick={() => setSelectedBusinessId(business.id)}
+                            className={cn(
+                              'w-full rounded-2xl border px-4 py-4 text-left transition-colors',
+                              selected ? 'border-foreground/20 bg-muted/25' : 'border-border/30 bg-background hover:bg-muted/15',
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', style.iconWrap)}>
+                                <BusinessIcon className={cn('h-4 w-4', style.icon)} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <p className="text-sm font-semibold">{business.name}</p>
+                                  {business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}
+                                  {isNewBusiness(business) ? <Pill label="New" color="bg-rose-400/15 text-rose-300" /> : null}
+                                  {business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}
+                                </div>
+                                <p className="mt-0.5 text-xs text-muted-foreground">{business.owner.username} · {business.foundedLabel}</p>
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <p className="text-sm font-bold tabular-nums text-emerald-400">{business.monthlyRevenue.toLocaleString('fr-FR')} EUR</p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {business.typeKey === 'bank'
+                                    ? `${business.loanInterestRate ?? 4} % emprunt`
+                                    : `${profit >= 0 ? '+' : ''}${profit.toLocaleString('fr-FR')} EUR profit`}
+                                </p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {filteredBusinesses.length === 0 ? (
+                <p className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise ne correspond a tes filtres.</p>
+              ) : null}
             </CardContent>
           </Card>
         </div>
 
-        {/* Detail column */}
         <div className="space-y-3">
           {selectedBusiness ? (
             <>
-              {/* Admin delete */}
-              {isAdmin && (
+              {isAdmin ? (
                 <Card>
                   <CardContent className="px-5 py-3">
                     <div className="flex items-center gap-2 text-xs text-amber-300">
@@ -504,46 +613,44 @@ export function ExploreTab({
                     </Button>
                   </CardContent>
                 </Card>
-              )}
+              ) : null}
 
-              {/* Business header */}
               <Card>
                 <CardContent className="px-5 py-4">
                   <BusinessHeader business={selectedBusiness} userId={userId} />
-                  {selectedBusiness.description && (
+                  {selectedBusiness.description ? (
                     <p className="mt-3 text-xs text-muted-foreground">{selectedBusiness.description}</p>
-                  )}
+                  ) : null}
                 </CardContent>
               </Card>
 
-              {/* Main detail + actions */}
               <BusinessDetailPanel
                 business={selectedBusiness}
                 userId={userId}
-                onBankAccounts={() => setBankBusiness(selectedBusiness)}
-                onTransfer={() => setTransferBusiness(selectedBusiness)}
-                onInvest={() => setInvestBusiness(selectedBusiness)}
-                onLoan={() => setLoanBusiness(selectedBusiness)}
-                onBuyout={() => setBuyoutBusiness(selectedBusiness)}
-                onFormation={() => setFormationBusiness(selectedBusiness)}
+                onBankAccounts={() => setBankBusinessId(selectedBusiness.id)}
+                onTransfer={() => setTransferBusinessId(selectedBusiness.id)}
+                onInvest={() => setInvestBusinessId(selectedBusiness.id)}
+                onLoan={() => setLoanBusinessId(selectedBusiness.id)}
+                onBuyout={() => setBuyoutBusinessId(selectedBusiness.id)}
+                onFormation={() => setFormationBusinessId(selectedBusiness.id)}
               />
             </>
           ) : (
             <Card>
               <CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">
-                Sélectionne une entreprise pour voir ses détails.
+                Selectionne une entreprise pour voir ses details.
               </CardContent>
             </Card>
           )}
         </div>
       </div>
 
-      <BankAccountModal open={Boolean(bankBusiness)} onClose={() => setBankBusiness(null)} business={bankBusiness} onSubmitted={() => onReload(true)} />
-      <LoanModal open={Boolean(loanBusiness)} onClose={() => setLoanBusiness(null)} business={loanBusiness} onSubmitted={() => onReload(true)} />
-      <InvestModal open={Boolean(investBusiness)} onClose={() => setInvestBusiness(null)} business={investBusiness} onSubmitted={() => onReload(true)} />
-      <BuyoutOfferModal open={Boolean(buyoutBusiness)} onClose={() => setBuyoutBusiness(null)} business={buyoutBusiness} onSubmitted={() => onReload(true)} />
-      <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusiness(null)} business={transferBusiness} players={players} onSubmitted={() => onReload(true)} />
-      <FormationPurchaseModal open={Boolean(formationBusiness)} onClose={() => setFormationBusiness(null)} business={formationBusiness} onSubmitted={() => onReload(true)} />
+      <BankAccountModal open={Boolean(bankBusiness)} onClose={() => setBankBusinessId(null)} business={bankBusiness} onSubmitted={() => onReload(true)} />
+      <LoanModal open={Boolean(loanBusiness)} onClose={() => setLoanBusinessId(null)} business={loanBusiness} onSubmitted={() => onReload(true)} />
+      <InvestModal open={Boolean(investBusiness)} onClose={() => setInvestBusinessId(null)} business={investBusiness} onSubmitted={() => onReload(true)} />
+      <BuyoutOfferModal open={Boolean(buyoutBusiness)} onClose={() => setBuyoutBusinessId(null)} business={buyoutBusiness} onSubmitted={() => onReload(true)} />
+      <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} onSubmitted={() => onReload(true)} />
+      <FormationPurchaseModal open={Boolean(formationBusiness)} onClose={() => setFormationBusinessId(null)} business={formationBusiness} onSubmitted={() => onReload(true)} />
     </>
   );
 }

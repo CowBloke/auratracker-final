@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bomb,
+  Briefcase,
   Coins,
   Dice5,
   Gamepad2,
@@ -15,6 +16,7 @@ import {
   User,
   Users,
   Store,
+  LayoutDashboard,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -28,6 +30,11 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/login'), label: 'Connexion', icon: User },
   { test: (path) => path.startsWith('/register'), label: 'Inscription', icon: User },
   { test: (path) => path.startsWith('/banned'), label: 'Banni', icon: Shield },
+  { test: (path) => path === '/you' || path === '/you?tab=overview', label: 'Moi - Vue d\'ensemble', icon: LayoutDashboard },
+  { test: (path) => path.startsWith('/you?tab=travail'), label: 'Moi - Travail', icon: Briefcase },
+  { test: (path) => path.startsWith('/you?tab=social'), label: 'Moi - Relations', icon: Users },
+  { test: (path) => path.startsWith('/you?tab=explore'), label: 'Moi - Explore business', icon: BarChart3 },
+  { test: (path) => path.startsWith('/you'), label: 'Moi', icon: User },
   { test: (path) => path.startsWith('/games/bomb-party'), label: 'Bombe de mots', icon: Bomb },
   { test: (path) => path.startsWith('/games/poker'), label: 'Poker', icon: Dice5 },
   { test: (path) => path.startsWith('/games/petit-bac'), label: 'Petit Bac', icon: Gamepad2 },
@@ -81,7 +88,7 @@ export function getPageMeta(path?: string | null): PageMeta {
     return { label: 'Navigation', icon: MapPin };
   }
 
-  const cleanPath = path.split('?')[0]?.split('#')[0] ?? path;
+  const cleanPath = path.split('#')[0] ?? path;
   const match = pageMatchers.find((entry) => entry.test(cleanPath));
   if (match) {
     return { label: match.label, icon: match.icon };
