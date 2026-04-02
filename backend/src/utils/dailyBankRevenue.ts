@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { getParisDayKey } from './dailyAura.js';
+import { logAdmin } from './logger.js';
 
 export const BANK_BASE_DAILY_RATE = 0.002;       // 0.2% per day
 export const BANK_LIVRET_DAILY_RATE = 0.005;     // 0.5% per day with livret épargne
@@ -14,6 +15,7 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
     where: { typeKey: 'bank' },
     select: {
       id: true,
+      name: true,
       treasuryMoney: true,
       livretEpargneUnlocked: true,
       lastBankRevenueDate: true,
@@ -33,6 +35,19 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
           treasuryMoney: { increment: revenue },
           lastBankRevenueDate: todayKey,
         },
+      });
+    })
+  );
+
+  await Promise.all(
+    eligible.map((bank) => {
+      const rate = bank.livretEpargneUnlocked ? BANK_LIVRET_DAILY_RATE : BANK_BASE_DAILY_RATE;
+      const revenue = Math.max(1, Math.floor(bank.treasuryMoney * rate));
+      return logAdmin('bank_daily_revenue', undefined, undefined, bank.id, bank.name, {
+        revenue,
+        rate,
+        dayKey: todayKey,
+        livretEpargneUnlocked: bank.livretEpargneUnlocked,
       });
     })
   );

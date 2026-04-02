@@ -23,6 +23,7 @@ import {
   emitSharedBalanceUpdatesForUserIds,
   ensureSharedMoneyAvailable,
 } from '../../utils/sharedBalance.js';
+import { logAdmin } from '../../utils/logger.js';
 
 const USER_PREVIEW_SELECT = {
   id: true,
@@ -86,6 +87,10 @@ const RELATIONSHIP_INCLUDE = {
     orderBy: { createdAt: 'desc' as const },
   },
 } as const;
+
+const logYouAdmin = (...args: Parameters<typeof logAdmin>) => {
+  void logAdmin(...args);
+};
 
 const USER_SKILL_DEFAULTS = YOU_SKILLS.map((skill) => ({
   key: skill.key,
@@ -559,6 +564,13 @@ export async function trainUserSkill(userId: string, skillKey: string) {
 
   await emitSharedBalanceUpdates(prisma, userId);
 
+  logYouAdmin('skill_train', userId, undefined, definition.key, definition.key, {
+    skillKey: definition.key,
+    trainingCost,
+    levelBefore: existingSkill.level,
+    levelAfter: skill.level,
+  });
+
   const serialized = serializeSkill(skill);
   if (!serialized) {
     throw new Error('INVALID_SKILL_KEY');
@@ -645,6 +657,12 @@ export async function createBusiness(userId: string, input: { name: string; type
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
+
+  logYouAdmin('business_create', userId, undefined, business.id, business.name, {
+    businessType: business.typeKey,
+    creationCost,
+    startingCapital,
+  });
 
   return serializeBusiness(business, userId);
 }
@@ -795,6 +813,12 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
     }),
   ]);
 
+  logYouAdmin('business_loan_request', userId, borrower.username, business.id, business.name, {
+    amount,
+    durationDays,
+    interestRate,
+  });
+
   return {
     id: loan.id,
     amount,
@@ -829,6 +853,10 @@ async function handleDepositAction(userId: string, business: any, input: { amoun
 
   await emitSharedBalanceUpdates(prisma, userId);
 
+  logYouAdmin('business_deposit', userId, undefined, business.id, business.name, {
+    amount,
+  });
+
   return { amount };
 }
 
@@ -858,6 +886,10 @@ async function handleWithdrawAction(userId: string, business: any, input: { amou
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
+
+  logYouAdmin('business_withdraw', userId, undefined, business.id, business.name, {
+    amount,
+  });
 
   return { amount };
 }
@@ -927,6 +959,12 @@ async function handleStartResearchAction(userId: string, business: any, input: {
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
+
+  logYouAdmin('business_research_start', userId, undefined, business.id, business.name, {
+    slotIndex,
+    nextLevel,
+    researchCost,
+  });
 
   return {
     slotIndex,
@@ -1030,6 +1068,14 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
       icon: 'credit-card',
     });
 
+    logYouAdmin('business_loan_decision', userId, loan.business.owner.username, loan.business.id, loan.business.name, {
+      loanId: loan.id,
+      borrowerId: loan.borrowerId,
+      borrowerName: loan.borrower.username,
+      amount: loan.amount,
+      decision: 'reject',
+    });
+
     return {
       id: rejected.id,
       status: rejected.status,
@@ -1086,6 +1132,14 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
       icon: 'credit-card',
     }),
   ]);
+
+  logYouAdmin('business_loan_decision', userId, loan.business.owner.username, loan.business.id, loan.business.name, {
+    loanId: loan.id,
+    borrowerId: loan.borrowerId,
+    borrowerName: loan.borrower.username,
+    amount: loan.amount,
+    decision: 'accept',
+  });
 
   return {
     id: result.id,
@@ -1274,6 +1328,13 @@ async function handleInvestAction(userId: string, business: any, input: { amount
     }),
   ]);
 
+  logYouAdmin('business_invest', investor.id, investor.username, business.id, business.name, {
+    amount,
+    riskLevel,
+    expectedReturnMin: riskRange.min,
+    expectedReturnMax: riskRange.max,
+  });
+
   return {
     amount,
     riskLevel,
@@ -1362,6 +1423,12 @@ export async function createRelationship(userId: string, targetUserId: string, t
       icon: 'heart',
     });
 
+    logYouAdmin('relationship_reactivate', userId, undefined, revivedRelationship.id, `${revivedRelationship.userA.username} / ${revivedRelationship.userB.username}`, {
+      targetUserId,
+      relationshipStatus: revivedRelationship.status,
+      connectionLevel: revivedRelationship.connectionLevel,
+    });
+
     return serializeRelationship(revivedRelationship, userId);
   }
 
@@ -1382,6 +1449,11 @@ export async function createRelationship(userId: string, targetUserId: string, t
     body: `${relationship.userAId === userId ? relationship.userA.username : relationship.userB.username} t'a ajoute dans ses relations.`,
     link: '/you?tab=social',
     icon: 'heart',
+  });
+
+  logYouAdmin('relationship_create', userId, undefined, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    targetUserId,
+    relationshipType: type,
   });
 
   return serializeRelationship(relationship, userId);
@@ -1433,6 +1505,11 @@ export async function proposeMarriage(userId: string, relationshipId: string, me
     body: `${proposer.username} t'a demande en mariage.`,
     link: '/you?tab=social',
     icon: 'heart',
+  });
+
+  logYouAdmin('marriage_proposal', userId, proposer.username, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    recipientId,
+    message: message?.trim() || null,
   });
 
   return {
@@ -1488,6 +1565,11 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
       icon: 'heart-crack',
     });
 
+    logYouAdmin('marriage_response', userId, proposal.recipient.username, proposal.relationship.id, `${proposal.relationship.userA.username} / ${proposal.relationship.userB.username}`, {
+      proposalId,
+      decision: 'reject',
+    });
+
     return {
       proposal: {
         id: rejectedProposal.id,
@@ -1540,6 +1622,11 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
     emitSharedBalanceUpdates(prisma, proposal.recipientId),
   ]);
 
+  logYouAdmin('marriage_response', userId, proposal.recipient.username, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+    proposalId,
+    decision: 'accept',
+  });
+
   return {
     proposal: {
       id: acceptedProposal.id,
@@ -1572,6 +1659,11 @@ export async function depositToCouple(userId: string, relationshipId: string, am
 
   await emitSharedBalanceUpdates(prisma, userId);
 
+  logYouAdmin('couple_deposit', userId, undefined, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+    amount,
+    coupleBalance: updatedRelationship.coupleBalance,
+  });
+
   return { relationship: serializeRelationship(updatedRelationship, userId) };
 }
 
@@ -1594,6 +1686,11 @@ export async function withdrawFromCouple(userId: string, relationshipId: string,
   ]);
 
   await emitSharedBalanceUpdates(prisma, userId);
+
+  logYouAdmin('couple_withdraw', userId, undefined, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+    amount,
+    coupleBalance: updatedRelationship.coupleBalance,
+  });
 
   return { relationship: serializeRelationship(updatedRelationship, userId) };
 }
@@ -1643,6 +1740,11 @@ export async function divorceRelationship(userId: string, relationshipId: string
       icon: 'heart-crack',
     }),
   ]);
+
+  logYouAdmin('divorce_proposal', userId, proposer.username, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    recipientId,
+    message: message?.trim() || null,
+  });
 
   return {
     id: proposal.id,
@@ -1696,6 +1798,11 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
       body: 'La demande de divorce a ete refusee.',
       link: '/you?tab=social',
       icon: 'heart-crack',
+    });
+
+    logYouAdmin('divorce_response', userId, proposal.recipient.username, proposal.relationship.id, `${proposal.relationship.userA.username} / ${proposal.relationship.userB.username}`, {
+      proposalId,
+      decision: 'reject',
     });
 
     return {
@@ -1753,6 +1860,15 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
     }),
   ]);
 
+  logYouAdmin('divorce_response', userId, proposal.recipient.username, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+    proposalId,
+    decision: 'accept',
+    coupleBalanceSplit: {
+      userA: halfA,
+      userB: halfB,
+    },
+  });
+
   return {
     proposal: {
       id: acceptedProposal.id,
@@ -1799,6 +1915,10 @@ export async function makeMistress(userId: string, relationshipId: string) {
     body: 'Votre relation a ete transformee en liaison secrete.',
     link: '/you?tab=social',
     icon: 'heart',
+  });
+
+  logYouAdmin('relationship_mistress', userId, undefined, updated.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    otherUserId,
   });
 
   return serializeRelationship(updated, userId);
@@ -1849,6 +1969,13 @@ export async function suspectCheating(userId: string, relationshipId: string) {
 
     await emitSharedBalanceUpdatesForUserIds(prisma, [userId, accusedId]);
 
+    logYouAdmin('relationship_cheating_report', userId, undefined, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+      accusedId,
+      correct: true,
+      seizedMoney: totalMoney,
+      coupleBalance,
+    });
+
     return { correct: true };
   }
 
@@ -1861,6 +1988,11 @@ export async function suspectCheating(userId: string, relationshipId: string) {
     body: 'Ton conjoint te soupçonne de tricherie. Tu peux aller en justice depuis l onglet social.',
     link: '/you?tab=social',
     icon: 'gavel',
+  });
+
+  logYouAdmin('relationship_cheating_report', userId, undefined, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    accusedId,
+    correct: false,
   });
 
   return { correct: false };
@@ -1915,6 +2047,13 @@ export async function respondToCourtCase(userId: string, accusationId: string, d
 
   await emitSharedBalanceUpdatesForUserIds(prisma, [userId, accusation.accuserId]);
 
+  logYouAdmin('relationship_court_case', userId, accusation.accuser.username, marriageRel?.id ?? accusationId, marriageRel ? `${accusation.accuser.username} / ${userId}` : accusation.accuser.username, {
+    accusationId,
+    decision: 'court',
+    seizedMoney: totalMoney,
+    coupleBalance,
+  });
+
   return { decision: 'court' };
 }
 
@@ -1964,7 +2103,7 @@ export const LIVRET_EPARGNE_COST = 5000;
 export async function buyLivretEpargneUpgrade(userId: string, businessId: string) {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, ownerId: true, typeKey: true, treasuryMoney: true, livretEpargneUnlocked: true },
+    select: { id: true, name: true, ownerId: true, typeKey: true, treasuryMoney: true, livretEpargneUnlocked: true },
   });
 
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
@@ -1981,6 +2120,10 @@ export async function buyLivretEpargneUpgrade(userId: string, businessId: string
     },
   });
 
+  logYouAdmin('bank_upgrade_purchase', userId, undefined, business.id, business.name, {
+    cost: LIVRET_EPARGNE_COST,
+  });
+
   return { livretEpargneUnlocked: true };
 }
 
@@ -1991,7 +2134,7 @@ export async function setLoanRate(userId: string, businessId: string, rate: numb
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, ownerId: true, typeKey: true },
+    select: { id: true, ownerId: true, typeKey: true, name: true },
   });
 
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
@@ -2001,6 +2144,10 @@ export async function setLoanRate(userId: string, businessId: string, rate: numb
   await prisma.business.update({
     where: { id: businessId },
     data: { loanInterestRate: rate },
+  });
+
+  logYouAdmin('bank_rate_update', userId, undefined, business.id, business.name, {
+    loanInterestRate: rate,
   });
 
   return { loanInterestRate: rate };
