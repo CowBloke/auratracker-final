@@ -711,13 +711,12 @@ export function ManageBusinessModal({
 
   const buyLivret = async () => {
     if (!business) return;
-    setBuyingLivret(true);
     try {
       await withRouteError(() => youApi.buyLivretEpargneUpgrade(business.id), "Impossible d'acheter cet upgrade.");
       toast.success('Livret Epargne active');
       await onSubmitted(true);
-    } finally {
-      setBuyingLivret(false);
+    } catch {
+      // error already toasted by withRouteError
     }
   };
 
