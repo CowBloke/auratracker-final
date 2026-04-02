@@ -1,4 +1,4 @@
-import { type ElementType, type ReactNode } from 'react';
+import { type ElementType, type ReactNode, useState } from 'react';
 import { ChevronRight, Heart, Landmark, UserPlus, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -154,6 +154,7 @@ export function FeedCard({
   onRespondMarriage: (proposalId: string, decision: 'accept' | 'reject') => Promise<void>;
   onRespondDivorce: (proposalId: string, decision: 'accept' | 'reject') => Promise<void>;
 }) {
+  const [confirmMarriage, setConfirmMarriage] = useState(false);
   const dateStr = new Date(item.date).toLocaleString('fr-FR');
 
   if (item.kind === 'notification') {
@@ -215,10 +216,25 @@ export function FeedCard({
             </div>
             {proposal.message ? <p className="mt-0.5 text-xs text-muted-foreground">{proposal.message}</p> : null}
             <p className="mt-1.5 text-[11px] text-muted-foreground/60">{dateStr}</p>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" className="h-7 text-xs" onClick={() => void onRespondMarriage(proposal.id, 'accept')}>Accepter</Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRespondMarriage(proposal.id, 'reject')}>Refuser</Button>
-            </div>
+            {confirmMarriage ? (
+              <div className="mt-2 space-y-2">
+                <div className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200 space-y-1">
+                  <p className="font-semibold">Consequences du mariage :</p>
+                  <p>· Compte bancaire commun partage avec ton conjoint</p>
+                  <p>· En cas de divorce, le compte commun est divise en deux</p>
+                  <p>· Si ton conjoint triche, il peut perdre tout son argent au tribunal</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 text-xs" onClick={() => void onRespondMarriage(proposal.id, 'accept')}>Confirmer</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmMarriage(false)}>Annuler</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" className="h-7 text-xs" onClick={() => setConfirmMarriage(true)}>Accepter</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRespondMarriage(proposal.id, 'reject')}>Refuser</Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

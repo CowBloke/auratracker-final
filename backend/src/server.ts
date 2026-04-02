@@ -62,6 +62,7 @@ import { initLogger } from './utils/logger.js';
 import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges, awardBadgeByKey } from './utils/badgeAwards.js';
 import { ensureDefaultBadges } from './utils/seedBadges.js';
 import { recomputeOverallClassement, startOverallClassementScheduler, stopOverallClassementScheduler } from './utils/overallClassement.js';
+import { startDailyBankRevenueScheduler, stopDailyBankRevenueScheduler } from './utils/dailyBankRevenue.js';
 
 // Initialize Prisma
 export const prisma = new PrismaClient();
@@ -325,6 +326,7 @@ const start = async () => {
     startAutoBadgeScheduler(); // first run: awards + auto-equip immediately
     await recomputeOverallClassement(prisma);
     startOverallClassementScheduler(prisma);
+    startDailyBankRevenueScheduler(prisma);
     await advanceClanWarsState(); // activate any PREPARING wars immediately on startup
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
@@ -343,6 +345,7 @@ process.on('SIGINT', async () => {
   stopAuraCoinEngine();
   stopAutoBadgeScheduler();
   stopOverallClassementScheduler();
+  stopDailyBankRevenueScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });
@@ -351,6 +354,7 @@ process.on('SIGTERM', async () => {
   stopAuraCoinEngine();
   stopAutoBadgeScheduler();
   stopOverallClassementScheduler();
+  stopDailyBankRevenueScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { AlertTriangle, Gavel, Heart, Scale, Trash2, UserPlus } from 'lucide-react';
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Gavel, Heart, Scale, Trash2, UserPlus, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { type YouCourtCase, type YouRelationship, type YouState, youApi } from '@/services/api';
 import { NewRelationModal } from '../components/modals';
 import { Pill, SectionTitle, UserAvatar } from '../components/ui';
@@ -96,9 +97,11 @@ function RelationActions({
   onReload: () => Promise<void>;
 }) {
   const [loading, setLoading] = useState<string | null>(null);
+  const [confirmMarriage, setConfirmMarriage] = useState(false);
   const [confirmForget, setConfirmForget] = useState(false);
   const [confirmMistress, setConfirmMistress] = useState(false);
   const [confirmSuspect, setConfirmSuspect] = useState(false);
+  const [coupleAmount, setCoupleAmount] = useState('');
 
   const run = async (key: string, fn: () => Promise<void>) => {
     setLoading(key);
@@ -156,6 +159,22 @@ function RelationActions({
       }
     });
 
+  const coupleDeposit = () =>
+    run('coupleDeposit', async () => {
+      const amt = parseInt(coupleAmount, 10);
+      await withRouteError(() => youApi.coupleDeposit(relationship.id, amt), 'Impossible de deposer.');
+      setCoupleAmount('');
+      toast.success(`+${amt} deposé sur le compte commun`);
+    });
+
+  const coupleWithdraw = () =>
+    run('coupleWithdraw', async () => {
+      const amt = parseInt(coupleAmount, 10);
+      await withRouteError(() => youApi.coupleWithdraw(relationship.id, amt), 'Impossible de retirer.');
+      setCoupleAmount('');
+      toast.success(`${amt} retiré du compte commun`);
+    });
+
   const pill = getRelationshipPill(relationship.status);
 
   return (
@@ -186,17 +205,73 @@ function RelationActions({
         <p className="text-sm text-muted-foreground">{relationship.otherUser.bio}</p>
       )}
 
+      {/* Couple account */}
+      {relationship.status === 'MARRIED' && (
+        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Compte commun</span>
+            <span className="ml-auto text-sm font-semibold tabular-nums">{relationship.coupleBalance.toLocaleString()} M</span>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min={1}
+              placeholder="Montant"
+              value={coupleAmount}
+              onChange={(e) => setCoupleAmount(e.target.value)}
+              className="h-7 text-xs"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs text-emerald-400"
+              disabled={!!loading || !coupleAmount || parseInt(coupleAmount, 10) <= 0}
+              onClick={() => void coupleDeposit()}
+            >
+              <ArrowUpRight className="h-3.5 w-3.5" />
+              Déposer
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1 text-xs text-amber-400"
+              disabled={!!loading || !coupleAmount || parseInt(coupleAmount, 10) <= 0}
+              onClick={() => void coupleWithdraw()}
+            >
+              <ArrowDownLeft className="h-3.5 w-3.5" />
+              Retirer
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Marriage proposal received */}
       {relationship.pendingProposal?.canRespond && (
-        <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3">
+        <div className="rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 space-y-2">
           <p className="text-sm font-semibold text-red-300">Demande en mariage</p>
           {relationship.pendingProposal.message?.trim() && (
-            <p className="mt-1 text-xs text-muted-foreground">{relationship.pendingProposal.message}</p>
+            <p className="text-xs text-muted-foreground">{relationship.pendingProposal.message}</p>
           )}
-          <div className="mt-3 flex gap-2">
-            <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'accept')}>Accepter</Button>
-            <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'reject')}>Refuser</Button>
-          </div>
+          {confirmMarriage ? (
+            <div className="space-y-2">
+              <div className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200 space-y-1">
+                <p className="font-semibold">Consequences du mariage :</p>
+                <p>· Compte bancaire commun partage avec ton conjoint</p>
+                <p>· En cas de divorce, le compte commun est divise en deux</p>
+                <p>· Si ton conjoint triche, il peut perdre tout son argent au tribunal</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'accept')}>Confirmer</Button>
+                <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => setConfirmMarriage(false)}>Annuler</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button size="sm" className="text-xs" disabled={!!loading} onClick={() => setConfirmMarriage(true)}>Accepter</Button>
+              <Button size="sm" variant="outline" className="text-xs" disabled={!!loading} onClick={() => void respondToProposal(relationship.pendingProposal!.id, 'reject')}>Refuser</Button>
+            </div>
+          )}
         </div>
       )}
 

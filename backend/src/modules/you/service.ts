@@ -23,6 +23,7 @@ import {
   emitSharedBalanceUpdatesForUserIds,
   ensureSharedMoneyAvailable,
 } from '../../utils/sharedBalance.js';
+import { logAdmin } from '../../utils/logger.js';
 
 const USER_PREVIEW_SELECT = {
   id: true,
@@ -71,6 +72,29 @@ const BUSINESS_BASE_INCLUDE = {
       },
     },
   },
+  transferHistory: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 12,
+    include: {
+      sender: {
+        select: USER_PREVIEW_SELECT,
+      },
+      recipient: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  },
+  buyoutOffers: {
+    orderBy: { createdAt: 'desc' as const },
+    include: {
+      bidder: {
+        select: USER_PREVIEW_SELECT,
+      },
+      owner: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  },
   startupProducts: {
     orderBy: { slotIndex: 'asc' as const },
   },
@@ -86,6 +110,10 @@ const RELATIONSHIP_INCLUDE = {
     orderBy: { createdAt: 'desc' as const },
   },
 } as const;
+
+const logYouAdmin = (...args: Parameters<typeof logAdmin>) => {
+  void logAdmin(...args);
+};
 
 const USER_SKILL_DEFAULTS = YOU_SKILLS.map((skill) => ({
   key: skill.key,
@@ -217,6 +245,33 @@ function serializeStartupProduct(product: any) {
   };
 }
 
+function serializeBuyoutOffer(offer: any, viewerId: string) {
+  return {
+    id: offer.id,
+    businessId: offer.businessId,
+    amount: offer.amount,
+    message: offer.message,
+    status: offer.status,
+    createdAt: offer.createdAt.toISOString(),
+    decidedAt: offer.decidedAt ? offer.decidedAt.toISOString() : null,
+    direction: offer.bidderId === viewerId ? 'sent' : 'received',
+    bidder: offer.bidder,
+    owner: offer.owner,
+  };
+}
+
+function serializeTransferHistoryEntry(entry: any) {
+  return {
+    id: entry.id,
+    amount: entry.amount,
+    fee: entry.fee,
+    feeRate: entry.feeRate,
+    createdAt: entry.createdAt.toISOString(),
+    sender: entry.sender,
+    recipient: entry.recipient,
+  };
+}
+
 function serializeBusiness(business: any, viewerId: string) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
   const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
@@ -228,6 +283,8 @@ function serializeBusiness(business: any, viewerId: string) {
     ? Math.max(0, Math.floor(treasuryMoney * 0.04))
     : business.typeKey === 'startup'
       ? startupProducts.reduce((total: number, product: any) => total + product.currentRevenue, 0)
+    : business.typeKey === 'formation'
+      ? business.monthlyRevenue + business.members.length * 250
     : business.monthlyRevenue;
   const monthlyExpenses = business.typeKey === 'bank'
     ? 0
@@ -286,7 +343,14 @@ function serializeBusiness(business: any, viewerId: string) {
       createdAt: investment.createdAt.toISOString(),
       investor: investment.investor,
     })),
+    transferHistory: business.transferHistory.map((entry: any) => serializeTransferHistoryEntry(entry)),
+    pendingBuyoutOffers: business.buyoutOffers
+      .filter((offer: any) => offer.status === 'PENDING')
+      .map((offer: any) => serializeBuyoutOffer(offer, viewerId)),
     startupProducts,
+    livretEpargneUnlocked: business.typeKey === 'bank' ? (business.livretEpargneUnlocked ?? false) : undefined,
+    loanInterestRate: business.typeKey === 'bank' ? (business.loanInterestRate ?? 4) : undefined,
+    transferFeeRate: business.typeKey === 'transfer' ? (business.transferFeeRate ?? 2) : undefined,
   };
 }
 
@@ -311,6 +375,7 @@ function serializeRelationship(relationship: any, viewerId: string, ctx?: { view
     id: relationship.id,
     status: relationship.status,
     connectionLevel: relationship.connectionLevel,
+    coupleBalance: relationship.coupleBalance ?? 0,
     createdAt: relationship.createdAt.toISOString(),
     marriedAt: relationship.marriedAt ? relationship.marriedAt.toISOString() : null,
     otherUser,
@@ -379,7 +444,7 @@ export async function getYouState(userId: string) {
     }
   });
 
-  const [players, ownedBusinesses, exploreBusinesses, pendingInvitations, skills] = await Promise.all([
+  const [players, ownedBusinesses, exploreBusinesses, memberBusinesses, pendingInvitations, pendingBuyoutOffers, sentBuyoutOffers, skills] = await Promise.all([
     prisma.user.findMany({
       where: {
         isApproved: true,
@@ -403,6 +468,14 @@ export async function getYouState(userId: string) {
       include: BUSINESS_BASE_INCLUDE,
       orderBy: [{ verified: 'desc' }, { createdAt: 'desc' }],
     }),
+    prisma.business.findMany({
+      where: {
+        ownerId: { not: userId },
+        members: { some: { userId, status: 'ACTIVE' } },
+      },
+      include: BUSINESS_BASE_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    }),
     prisma.businessInvitation.findMany({
       where: {
         inviteeId: userId,
@@ -420,13 +493,48 @@ export async function getYouState(userId: string) {
         },
       },
     }),
+    prisma.businessBuyoutOffer.findMany({
+      where: {
+        ownerId: userId,
+        status: 'PENDING',
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        bidder: { select: USER_PREVIEW_SELECT },
+        owner: { select: USER_PREVIEW_SELECT },
+        business: {
+          select: {
+            id: true,
+            name: true,
+            typeKey: true,
+          },
+        },
+      },
+    }),
+    prisma.businessBuyoutOffer.findMany({
+      where: {
+        bidderId: userId,
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        bidder: { select: USER_PREVIEW_SELECT },
+        owner: { select: USER_PREVIEW_SELECT },
+        business: {
+          select: {
+            id: true,
+            name: true,
+            typeKey: true,
+          },
+        },
+      },
+    }),
     prisma.userSkill.findMany({
       where: { userId },
       orderBy: { createdAt: 'asc' },
     }),
   ]);
 
-  const startupBusinessIds = [...ownedBusinesses, ...exploreBusinesses]
+  const startupBusinessIds = [...ownedBusinesses, ...exploreBusinesses, ...memberBusinesses]
     .filter((business) => business.typeKey === 'startup')
     .map((business) => business.id);
 
@@ -434,7 +542,7 @@ export async function getYouState(userId: string) {
     await Promise.all(startupBusinessIds.map((businessId) => ensureStartupProducts(businessId)));
   }
 
-  const [ownedBusinessesWithProducts, exploreBusinessesWithProducts] = startupBusinessIds.length > 0
+  const [ownedBusinessesWithProducts, exploreBusinessesWithProducts, memberBusinessesWithProducts] = startupBusinessIds.length > 0
     ? await Promise.all([
         prisma.business.findMany({
           where: { id: { in: ownedBusinesses.map((business) => business.id) } },
@@ -446,8 +554,13 @@ export async function getYouState(userId: string) {
           include: BUSINESS_BASE_INCLUDE,
           orderBy: [{ verified: 'desc' }, { createdAt: 'desc' }],
         }),
+        prisma.business.findMany({
+          where: { id: { in: memberBusinesses.map((business) => business.id) } },
+          include: BUSINESS_BASE_INCLUDE,
+          orderBy: { createdAt: 'desc' },
+        }),
       ])
-    : [ownedBusinesses, exploreBusinesses];
+    : [ownedBusinesses, exploreBusinesses, memberBusinesses];
 
   const serializedSkills = skills
     .map((skill) => serializeSkill(skill))
@@ -474,6 +587,14 @@ export async function getYouState(userId: string) {
         owner: invitation.business.owner,
       },
     })),
+    pendingBuyoutOffers: pendingBuyoutOffers.map((offer) => ({
+      ...serializeBuyoutOffer(offer, userId),
+      business: offer.business,
+    })),
+    sentBuyoutOffers: sentBuyoutOffers.map((offer) => ({
+      ...serializeBuyoutOffer(offer, userId),
+      business: offer.business,
+    })),
     relationships: relationships.map((relationship) => serializeRelationship(relationship, userId, { viewerIsMarried, pendingCourtCaseIds })),
     courtCases: pendingCourtCases.map((c: any) => ({
       id: c.id,
@@ -483,6 +604,7 @@ export async function getYouState(userId: string) {
     })),
     ownedBusinesses: ownedBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
     exploreBusinesses: exploreBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
+    memberBusinesses: memberBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
   };
 }
 
@@ -555,6 +677,13 @@ export async function trainUserSkill(userId: string, skillKey: string) {
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
+
+  logYouAdmin('skill_train', userId, undefined, definition.key, definition.key, {
+    skillKey: definition.key,
+    trainingCost,
+    levelBefore: existingSkill.level,
+    levelAfter: skill.level,
+  });
 
   const serialized = serializeSkill(skill);
   if (!serialized) {
@@ -642,6 +771,12 @@ export async function createBusiness(userId: string, input: { name: string; type
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
+
+  logYouAdmin('business_create', userId, undefined, business.id, business.name, {
+    businessType: business.typeKey,
+    creationCost,
+    startingCapital,
+  });
 
   return serializeBusiness(business, userId);
 }
@@ -760,7 +895,7 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
     throw new Error('USER_NOT_FOUND');
   }
 
-  const interestRate = 4;
+  const interestRate = business.loanInterestRate ?? 4;
 
   const loan = await prisma.businessLoan.create({
     data: {
@@ -791,6 +926,12 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
       icon: 'landmark',
     }),
   ]);
+
+  logYouAdmin('business_loan_request', userId, borrower.username, business.id, business.name, {
+    amount,
+    durationDays,
+    interestRate,
+  });
 
   return {
     id: loan.id,
@@ -826,6 +967,10 @@ async function handleDepositAction(userId: string, business: any, input: { amoun
 
   await emitSharedBalanceUpdates(prisma, userId);
 
+  logYouAdmin('business_deposit', userId, undefined, business.id, business.name, {
+    amount,
+  });
+
   return { amount };
 }
 
@@ -856,7 +1001,118 @@ async function handleWithdrawAction(userId: string, business: any, input: { amou
 
   await emitSharedBalanceUpdates(prisma, userId);
 
+  logYouAdmin('business_withdraw', userId, undefined, business.id, business.name, {
+    amount,
+  });
+
   return { amount };
+}
+
+export async function runTransferBusinessAction(userId: string, businessId: string, input: { recipientId: string; amount: number }) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      owner: { select: USER_PREVIEW_SELECT },
+    },
+  });
+
+  if (!business) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
+
+  if (business.typeKey !== 'transfer') {
+    throw new Error('BUSINESS_TRANSFER_UNAVAILABLE');
+  }
+
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('INVALID_TRANSFER_AMOUNT');
+  }
+
+  const recipientId = String(input.recipientId ?? '');
+  if (!recipientId || recipientId === userId) {
+    throw new Error('TRANSFER_RECIPIENT_INVALID');
+  }
+
+  const recipient = await prisma.user.findUnique({
+    where: { id: recipientId },
+    select: { id: true, username: true, isApproved: true },
+  });
+
+  if (!recipient?.isApproved) {
+    throw new Error('TARGET_NOT_FOUND');
+  }
+
+  const feeRate = Math.max(0, business.transferFeeRate ?? 2);
+  const fee = Math.max(0, Math.round(amount * (feeRate / 100)));
+  const totalDebit = amount + fee;
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, totalDebit);
+  if (!hasSharedMoney) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, totalDebit);
+    await tx.user.update({
+      where: { id: recipientId },
+      data: { money: { increment: amount } },
+    });
+    await tx.business.update({
+      where: { id: business.id },
+      data: { treasuryMoney: { increment: fee } },
+    });
+    await tx.businessTransferTransaction.create({
+      data: {
+        businessId: business.id,
+        senderId: userId,
+        recipientId,
+        amount,
+        fee,
+        feeRate,
+      },
+    });
+  });
+
+  await emitSharedBalanceUpdatesForUserIds(prisma, [userId, recipientId]);
+
+  io.to(`user:${userId}`).emit('you:business-transfer', { businessId: business.id, amount, fee, recipientId });
+  io.to(`user:${recipientId}`).emit('you:business-transfer', { businessId: business.id, amount, fee, senderId: userId });
+  io.to(`user:${business.ownerId}`).emit('you:business-transfer', { businessId: business.id, amount, fee, senderId: userId, recipientId });
+
+  await Promise.allSettled([
+    createNotification({
+      userId: recipientId,
+      type: 'MONEY_RECEIVED',
+      title: 'Transfert recu',
+      body: `${amount.toLocaleString('fr-FR')} money recu via ${business.name}.`,
+      link: '/you?tab=explore',
+      icon: 'arrow-left-right',
+    }),
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Transfert envoye',
+      body: `${amount.toLocaleString('fr-FR')} money envoye a ${recipient.username} via ${business.name}. Frais: ${fee.toLocaleString('fr-FR')}.`,
+      link: '/you?tab=explore',
+      icon: 'arrow-left-right',
+    }),
+  ]);
+
+  logYouAdmin('business_transfer', userId, undefined, business.id, business.name, {
+    recipientId,
+    recipientUsername: recipient.username,
+    amount,
+    fee,
+    feeRate,
+  });
+
+  return {
+    recipientId,
+    amount,
+    fee,
+    feeRate,
+    debited: totalDebit,
+  };
 }
 
 async function handleStartResearchAction(userId: string, business: any, input: { slotIndex: number }) {
@@ -924,6 +1180,12 @@ async function handleStartResearchAction(userId: string, business: any, input: {
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
+
+  logYouAdmin('business_research_start', userId, undefined, business.id, business.name, {
+    slotIndex,
+    nextLevel,
+    researchCost,
+  });
 
   return {
     slotIndex,
@@ -1027,6 +1289,14 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
       icon: 'credit-card',
     });
 
+    logYouAdmin('business_loan_decision', userId, loan.business.owner.username, loan.business.id, loan.business.name, {
+      loanId: loan.id,
+      borrowerId: loan.borrowerId,
+      borrowerName: loan.borrower.username,
+      amount: loan.amount,
+      decision: 'reject',
+    });
+
     return {
       id: rejected.id,
       status: rejected.status,
@@ -1083,6 +1353,14 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
       icon: 'credit-card',
     }),
   ]);
+
+  logYouAdmin('business_loan_decision', userId, loan.business.owner.username, loan.business.id, loan.business.name, {
+    loanId: loan.id,
+    borrowerId: loan.borrowerId,
+    borrowerName: loan.borrower.username,
+    amount: loan.amount,
+    decision: 'accept',
+  });
 
   return {
     id: result.id,
@@ -1271,6 +1549,13 @@ async function handleInvestAction(userId: string, business: any, input: { amount
     }),
   ]);
 
+  logYouAdmin('business_invest', investor.id, investor.username, business.id, business.name, {
+    amount,
+    riskLevel,
+    expectedReturnMin: riskRange.min,
+    expectedReturnMax: riskRange.max,
+  });
+
   return {
     amount,
     riskLevel,
@@ -1311,6 +1596,254 @@ export async function executeBusinessAction(userId: string, businessId: string, 
 
   const handler = BUSINESS_ACTION_HANDLERS[actionKey];
   return handler(userId, business, input);
+}
+
+export async function createBusinessBuyoutOffer(userId: string, businessId: string, input: { amount: number; message?: string }) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      owner: { select: USER_PREVIEW_SELECT },
+    },
+  });
+
+  if (!business) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
+
+  if (business.ownerId === userId) {
+    throw new Error('BUYOUT_SELF_FORBIDDEN');
+  }
+
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('INVALID_BUYOUT_AMOUNT');
+  }
+
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, amount);
+  if (!hasSharedMoney) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  const existingPendingOffer = await prisma.businessBuyoutOffer.findFirst({
+    where: {
+      businessId,
+      bidderId: userId,
+      status: 'PENDING',
+    },
+  });
+  if (existingPendingOffer) {
+    throw new Error('BUYOUT_OFFER_ALREADY_PENDING');
+  }
+
+  const offer = await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, amount);
+    return tx.businessBuyoutOffer.create({
+      data: {
+        businessId,
+        bidderId: userId,
+        ownerId: business.ownerId,
+        amount,
+        message: input.message?.trim() || null,
+      },
+      include: {
+        bidder: { select: USER_PREVIEW_SELECT },
+        owner: { select: USER_PREVIEW_SELECT },
+        business: {
+          select: {
+            id: true,
+            name: true,
+            typeKey: true,
+          },
+        },
+      },
+    });
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  io.to(`user:${userId}`).emit('you:business-buyout-updated', { businessId, offerId: offer.id, status: offer.status });
+  io.to(`user:${business.ownerId}`).emit('you:business-buyout-updated', { businessId, offerId: offer.id, status: offer.status });
+
+  await createNotification({
+    userId: business.ownerId,
+    type: 'SYSTEM',
+    title: 'Nouvelle offre de rachat',
+    body: `${offer.bidder.username} propose ${amount.toLocaleString('fr-FR')} money pour ${business.name}.`,
+    data: {
+      offerId: offer.id,
+      businessId,
+      amount,
+      actionType: 'BUSINESS_BUYOUT_OFFER',
+    },
+    link: '/you?tab=travail',
+    icon: 'briefcase-business',
+  });
+
+  logYouAdmin('business_buyout_offer_create', userId, offer.bidder.username, business.id, business.name, {
+    amount,
+    ownerId: business.ownerId,
+  });
+
+  return {
+    ...serializeBuyoutOffer(offer, userId),
+    business: offer.business,
+  };
+}
+
+export async function respondToBusinessBuyoutOffer(userId: string, offerId: string, decision: 'accept' | 'reject') {
+  const offer = await prisma.businessBuyoutOffer.findUnique({
+    where: { id: offerId },
+    include: {
+      bidder: { select: USER_PREVIEW_SELECT },
+      owner: { select: USER_PREVIEW_SELECT },
+      business: {
+        include: {
+          owner: { select: USER_PREVIEW_SELECT },
+        },
+      },
+    },
+  });
+
+  if (!offer) {
+    throw new Error('BUYOUT_OFFER_NOT_FOUND');
+  }
+
+  if (offer.ownerId !== userId || offer.business.ownerId !== userId) {
+    throw new Error('BUYOUT_OFFER_REVIEW_FORBIDDEN');
+  }
+
+  if (offer.status !== 'PENDING') {
+    throw new Error('BUYOUT_OFFER_ALREADY_RESOLVED');
+  }
+
+  const decidedAt = new Date();
+
+  if (decision === 'reject') {
+    const rejected = await prisma.$transaction(async (tx) => {
+      const updated = await tx.businessBuyoutOffer.update({
+        where: { id: offer.id },
+        data: {
+          status: 'REJECTED',
+          decidedAt,
+        },
+      });
+      await tx.user.update({
+        where: { id: offer.bidderId },
+        data: { money: { increment: offer.amount } },
+      });
+      return updated;
+    });
+
+    await emitSharedBalanceUpdates(prisma, offer.bidderId);
+
+    io.to(`user:${offer.bidderId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: rejected.status });
+    io.to(`user:${userId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: rejected.status });
+
+    await createNotification({
+      userId: offer.bidderId,
+      type: 'SYSTEM',
+      title: 'Offre de rachat refusee',
+      body: `${offer.business.name} a refuse ton offre de ${offer.amount.toLocaleString('fr-FR')} money.`,
+      link: '/you?tab=explore',
+      icon: 'briefcase-business',
+    });
+
+    return {
+      id: rejected.id,
+      status: rejected.status,
+      decidedAt: rejected.decidedAt?.toISOString() ?? null,
+    };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.businessBuyoutOffer.update({
+      where: { id: offer.id },
+      data: {
+        status: 'ACCEPTED',
+        decidedAt,
+      },
+    });
+    await tx.business.update({
+      where: { id: offer.businessId },
+      data: { ownerId: offer.bidderId },
+    });
+    await tx.user.update({
+      where: { id: userId },
+      data: { money: { increment: offer.amount } },
+    });
+  });
+
+  await emitSharedBalanceUpdatesForUserIds(prisma, [userId, offer.bidderId]);
+
+  io.to(`user:${offer.bidderId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: 'ACCEPTED' });
+  io.to(`user:${userId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: 'ACCEPTED' });
+
+  await createNotification({
+    userId: offer.bidderId,
+    type: 'SYSTEM',
+    title: 'Offre de rachat acceptee',
+    body: `Tu deviens proprietaire de ${offer.business.name}.`,
+    link: '/you?tab=travail',
+    icon: 'briefcase-business',
+  });
+
+  logYouAdmin('business_buyout_offer_respond', userId, offer.owner.username, offer.business.id, offer.business.name, {
+    offerId,
+    bidderId: offer.bidderId,
+    amount: offer.amount,
+    decision,
+  });
+
+  return {
+    id: offer.id,
+    status: 'ACCEPTED',
+    decidedAt: decidedAt.toISOString(),
+  };
+}
+
+export async function cancelBusinessBuyoutOffer(userId: string, offerId: string) {
+  const offer = await prisma.businessBuyoutOffer.findUnique({
+    where: { id: offerId },
+  });
+
+  if (!offer) {
+    throw new Error('BUYOUT_OFFER_NOT_FOUND');
+  }
+
+  if (offer.bidderId !== userId) {
+    throw new Error('BUYOUT_OFFER_CANCEL_FORBIDDEN');
+  }
+
+  if (offer.status !== 'PENDING') {
+    throw new Error('BUYOUT_OFFER_ALREADY_RESOLVED');
+  }
+
+  const cancelledAt = new Date();
+  const cancelled = await prisma.$transaction(async (tx) => {
+    const updated = await tx.businessBuyoutOffer.update({
+      where: { id: offer.id },
+      data: {
+        status: 'CANCELLED',
+        decidedAt: cancelledAt,
+      },
+    });
+    await tx.user.update({
+      where: { id: userId },
+      data: { money: { increment: offer.amount } },
+    });
+    return updated;
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  io.to(`user:${userId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: cancelled.status });
+  io.to(`user:${offer.ownerId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: cancelled.status });
+
+  return {
+    id: cancelled.id,
+    status: cancelled.status,
+    decidedAt: cancelled.decidedAt?.toISOString() ?? null,
+  };
 }
 
 export async function createRelationship(userId: string, targetUserId: string, type: 'FRIEND' | 'DATING' = 'DATING') {
@@ -1359,6 +1892,12 @@ export async function createRelationship(userId: string, targetUserId: string, t
       icon: 'heart',
     });
 
+    logYouAdmin('relationship_reactivate', userId, undefined, revivedRelationship.id, `${revivedRelationship.userA.username} / ${revivedRelationship.userB.username}`, {
+      targetUserId,
+      relationshipStatus: revivedRelationship.status,
+      connectionLevel: revivedRelationship.connectionLevel,
+    });
+
     return serializeRelationship(revivedRelationship, userId);
   }
 
@@ -1379,6 +1918,11 @@ export async function createRelationship(userId: string, targetUserId: string, t
     body: `${relationship.userAId === userId ? relationship.userA.username : relationship.userB.username} t'a ajoute dans ses relations.`,
     link: '/you?tab=social',
     icon: 'heart',
+  });
+
+  logYouAdmin('relationship_create', userId, undefined, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    targetUserId,
+    relationshipType: type,
   });
 
   return serializeRelationship(relationship, userId);
@@ -1432,6 +1976,11 @@ export async function proposeMarriage(userId: string, relationshipId: string, me
     icon: 'heart',
   });
 
+  logYouAdmin('marriage_proposal', userId, proposer.username, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    recipientId,
+    message: message?.trim() || null,
+  });
+
   return {
     id: proposal.id,
     relationshipId: proposal.relationshipId,
@@ -1465,6 +2014,10 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
     throw new Error('MARRIAGE_PROPOSAL_ALREADY_RESOLVED');
   }
 
+  const responderUsername = proposal.relationship.userAId === userId
+    ? proposal.relationship.userA.username
+    : proposal.relationship.userB.username;
+
   const now = new Date();
 
   if (decision === 'reject') {
@@ -1483,6 +2036,11 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
       body: 'Ta demande en mariage a ete refusee.',
       link: '/you?tab=social',
       icon: 'heart-crack',
+    });
+
+    logYouAdmin('marriage_response', userId, responderUsername, proposal.relationship.id, `${proposal.relationship.userA.username} / ${proposal.relationship.userB.username}`, {
+      proposalId,
+      decision: 'reject',
     });
 
     return {
@@ -1537,6 +2095,11 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
     emitSharedBalanceUpdates(prisma, proposal.recipientId),
   ]);
 
+  logYouAdmin('marriage_response', userId, responderUsername, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+    proposalId,
+    decision: 'accept',
+  });
+
   return {
     proposal: {
       id: acceptedProposal.id,
@@ -1545,6 +2108,64 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
     },
     relationship: serializeRelationship(updatedRelationship, userId),
   };
+}
+
+export async function depositToCouple(userId: string, relationshipId: string, amount: number) {
+  if (!Number.isInteger(amount) || amount <= 0) throw new Error('INVALID_COUPLE_AMOUNT');
+
+  const relationship = await prisma.relationship.findUnique({ where: { id: relationshipId } });
+  if (!relationship) throw new Error('RELATIONSHIP_NOT_FOUND');
+  if (relationship.userAId !== userId && relationship.userBId !== userId) throw new Error('RELATIONSHIP_FORBIDDEN');
+  if (relationship.status !== 'MARRIED') throw new Error('RELATIONSHIP_NOT_MARRIED');
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { money: true } });
+  if ((user?.money ?? 0) < amount) throw new Error('INSUFFICIENT_MONEY');
+
+  const [updatedRelationship] = await prisma.$transaction([
+    prisma.relationship.update({
+      where: { id: relationshipId },
+      data: { coupleBalance: { increment: amount } },
+      include: RELATIONSHIP_INCLUDE,
+    }),
+    prisma.user.update({ where: { id: userId }, data: { money: { decrement: amount } } }),
+  ]);
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  logYouAdmin('couple_deposit', userId, undefined, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+    amount,
+    coupleBalance: updatedRelationship.coupleBalance,
+  });
+
+  return { relationship: serializeRelationship(updatedRelationship, userId) };
+}
+
+export async function withdrawFromCouple(userId: string, relationshipId: string, amount: number) {
+  if (!Number.isInteger(amount) || amount <= 0) throw new Error('INVALID_COUPLE_AMOUNT');
+
+  const relationship = await prisma.relationship.findUnique({ where: { id: relationshipId } });
+  if (!relationship) throw new Error('RELATIONSHIP_NOT_FOUND');
+  if (relationship.userAId !== userId && relationship.userBId !== userId) throw new Error('RELATIONSHIP_FORBIDDEN');
+  if (relationship.status !== 'MARRIED') throw new Error('RELATIONSHIP_NOT_MARRIED');
+  if ((relationship.coupleBalance ?? 0) < amount) throw new Error('COUPLE_BALANCE_TOO_LOW');
+
+  const [updatedRelationship] = await prisma.$transaction([
+    prisma.relationship.update({
+      where: { id: relationshipId },
+      data: { coupleBalance: { decrement: amount } },
+      include: RELATIONSHIP_INCLUDE,
+    }),
+    prisma.user.update({ where: { id: userId }, data: { money: { increment: amount } } }),
+  ]);
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  logYouAdmin('couple_withdraw', userId, undefined, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+    amount,
+    coupleBalance: updatedRelationship.coupleBalance,
+  });
+
+  return { relationship: serializeRelationship(updatedRelationship, userId) };
 }
 
 export async function divorceRelationship(userId: string, relationshipId: string, message?: string) {
@@ -1593,6 +2214,11 @@ export async function divorceRelationship(userId: string, relationshipId: string
     }),
   ]);
 
+  logYouAdmin('divorce_proposal', userId, proposer.username, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    recipientId,
+    message: message?.trim() || null,
+  });
+
   return {
     id: proposal.id,
     relationshipId: proposal.relationshipId,
@@ -1627,6 +2253,10 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
     throw new Error('DIVORCE_PROPOSAL_ALREADY_RESOLVED');
   }
 
+  const responderUsername = proposal.relationship.userAId === userId
+    ? proposal.relationship.userA.username
+    : proposal.relationship.userB.username;
+
   const now = new Date();
 
   if (decision === 'reject') {
@@ -1647,6 +2277,11 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
       icon: 'heart-crack',
     });
 
+    logYouAdmin('divorce_response', userId, responderUsername, proposal.relationship.id, `${proposal.relationship.userA.username} / ${proposal.relationship.userB.username}`, {
+      proposalId,
+      decision: 'reject',
+    });
+
     return {
       proposal: {
         id: rejectedProposal.id,
@@ -1657,14 +2292,10 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
     };
   }
 
-  // Split money 50/50 on divorce
-  const [userARecord, userBRecord] = await Promise.all([
-    prisma.user.findUnique({ where: { id: proposal.relationship.userAId }, select: { money: true } }),
-    prisma.user.findUnique({ where: { id: proposal.relationship.userBId }, select: { money: true } }),
-  ]);
-  const totalMoney = (userARecord?.money ?? 0) + (userBRecord?.money ?? 0);
-  const halfA = Math.floor(totalMoney / 2);
-  const halfB = totalMoney - halfA;
+  // Split couple balance 50/50 on divorce; individual money stays untouched
+  const coupleBalance = proposal.relationship.coupleBalance ?? 0;
+  const halfA = Math.floor(coupleBalance / 2);
+  const halfB = coupleBalance - halfA;
 
   const [acceptedProposal, updatedRelationship] = await prisma.$transaction([
     prisma.divorceProposal.update({
@@ -1679,11 +2310,12 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
       data: {
         status: 'DIVORCED',
         marriedAt: null,
+        coupleBalance: 0,
       },
       include: RELATIONSHIP_INCLUDE,
     }),
-    prisma.user.update({ where: { id: proposal.relationship.userAId }, data: { money: halfA } }),
-    prisma.user.update({ where: { id: proposal.relationship.userBId }, data: { money: halfB } }),
+    prisma.user.update({ where: { id: proposal.relationship.userAId }, data: { money: { increment: halfA } } }),
+    prisma.user.update({ where: { id: proposal.relationship.userBId }, data: { money: { increment: halfB } } }),
   ]);
 
   await Promise.allSettled([
@@ -1704,6 +2336,15 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
       icon: 'heart-crack',
     }),
   ]);
+
+  logYouAdmin('divorce_response', userId, responderUsername, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+    proposalId,
+    decision: 'accept',
+    coupleBalanceSplit: {
+      userA: halfA,
+      userB: halfB,
+    },
+  });
 
   return {
     proposal: {
@@ -1753,6 +2394,10 @@ export async function makeMistress(userId: string, relationshipId: string) {
     icon: 'heart',
   });
 
+  logYouAdmin('relationship_mistress', userId, undefined, updated.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    otherUserId,
+  });
+
   return serializeRelationship(updated, userId);
 }
 
@@ -1781,12 +2426,13 @@ export async function suspectCheating(userId: string, relationshipId: string) {
       prisma.user.findUnique({ where: { id: userId }, select: { money: true } }),
       prisma.user.findUnique({ where: { id: accusedId }, select: { money: true } }),
     ]);
-    const totalMoney = (viewerUser?.money ?? 0) + (accusedUser?.money ?? 0);
+    const coupleBalance = relationship.coupleBalance ?? 0;
+    const totalMoney = (viewerUser?.money ?? 0) + (accusedUser?.money ?? 0) + coupleBalance;
 
     await prisma.$transaction([
       prisma.user.update({ where: { id: userId }, data: { money: totalMoney } }),
       prisma.user.update({ where: { id: accusedId }, data: { money: 0 } }),
-      prisma.relationship.update({ where: { id: relationshipId }, data: { status: 'DIVORCED', marriedAt: null } }),
+      prisma.relationship.update({ where: { id: relationshipId }, data: { status: 'DIVORCED', marriedAt: null, coupleBalance: 0 } }),
     ]);
 
     await createNotification({
@@ -1800,6 +2446,13 @@ export async function suspectCheating(userId: string, relationshipId: string) {
 
     await emitSharedBalanceUpdatesForUserIds(prisma, [userId, accusedId]);
 
+    logYouAdmin('relationship_cheating_report', userId, undefined, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+      accusedId,
+      correct: true,
+      seizedMoney: totalMoney,
+      coupleBalance,
+    });
+
     return { correct: true };
   }
 
@@ -1812,6 +2465,11 @@ export async function suspectCheating(userId: string, relationshipId: string) {
     body: 'Ton conjoint te soupçonne de tricherie. Tu peux aller en justice depuis l onglet social.',
     link: '/you?tab=social',
     icon: 'gavel',
+  });
+
+  logYouAdmin('relationship_cheating_report', userId, undefined, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    accusedId,
+    correct: false,
   });
 
   return { correct: false };
@@ -1831,16 +2489,28 @@ export async function respondToCourtCase(userId: string, accusationId: string, d
     return { decision: 'drop' };
   }
 
-  const [accuserUser, accusedUser] = await Promise.all([
+  const [accuserUser, accusedUser, marriageRel] = await Promise.all([
     prisma.user.findUnique({ where: { id: accusation.accuserId }, select: { money: true } }),
     prisma.user.findUnique({ where: { id: userId }, select: { money: true } }),
+    prisma.relationship.findFirst({
+      where: {
+        status: 'MARRIED',
+        OR: [
+          { userAId: accusation.accuserId, userBId: userId },
+          { userAId: userId, userBId: accusation.accuserId },
+        ],
+      },
+      select: { id: true, coupleBalance: true },
+    }),
   ]);
-  const totalMoney = (accuserUser?.money ?? 0) + (accusedUser?.money ?? 0);
+  const coupleBalance = marriageRel?.coupleBalance ?? 0;
+  const totalMoney = (accuserUser?.money ?? 0) + (accusedUser?.money ?? 0) + coupleBalance;
 
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { money: totalMoney } }),
     prisma.user.update({ where: { id: accusation.accuserId }, data: { money: 0 } }),
     prisma.cheatingAccusation.update({ where: { id: accusationId }, data: { status: 'COURT_TAKEN' } }),
+    ...(marriageRel ? [prisma.relationship.update({ where: { id: marriageRel.id }, data: { coupleBalance: 0 } })] : []),
   ]);
 
   await createNotification({
@@ -1853,6 +2523,13 @@ export async function respondToCourtCase(userId: string, accusationId: string, d
   });
 
   await emitSharedBalanceUpdatesForUserIds(prisma, [userId, accusation.accuserId]);
+
+  logYouAdmin('relationship_court_case', userId, accusation.accuser.username, marriageRel?.id ?? accusationId, marriageRel ? `${accusation.accuser.username} / ${userId}` : accusation.accuser.username, {
+    accusationId,
+    decision: 'court',
+    seizedMoney: totalMoney,
+    coupleBalance,
+  });
 
   return { decision: 'court' };
 }
@@ -1896,4 +2573,85 @@ export async function deleteBusiness(requestUserId: string, businessId: string) 
   }
 
   return { id: businessId };
+}
+
+export const LIVRET_EPARGNE_COST = 5000;
+
+export async function buyLivretEpargneUpgrade(userId: string, businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, name: true, ownerId: true, typeKey: true, treasuryMoney: true, livretEpargneUnlocked: true },
+  });
+
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('BUSINESS_UPGRADE_FORBIDDEN');
+  if (business.typeKey !== 'bank') throw new Error('BUSINESS_UPGRADE_UNAVAILABLE');
+  if (business.livretEpargneUnlocked) throw new Error('UPGRADE_ALREADY_OWNED');
+  if (business.treasuryMoney < LIVRET_EPARGNE_COST) throw new Error('UPGRADE_INSUFFICIENT_FUNDS');
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: {
+      livretEpargneUnlocked: true,
+      treasuryMoney: { decrement: LIVRET_EPARGNE_COST },
+    },
+  });
+
+  logYouAdmin('bank_upgrade_purchase', userId, undefined, business.id, business.name, {
+    cost: LIVRET_EPARGNE_COST,
+  });
+
+  return { livretEpargneUnlocked: true };
+}
+
+export async function setLoanRate(userId: string, businessId: string, rate: number) {
+  if (!Number.isFinite(rate) || rate < 1 || rate > 50) {
+    throw new Error('INVALID_LOAN_RATE');
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true, name: true },
+  });
+
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('BANK_RATE_FORBIDDEN');
+  if (business.typeKey !== 'bank') throw new Error('BUSINESS_NOT_FOUND');
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { loanInterestRate: rate },
+  });
+
+  logYouAdmin('bank_rate_update', userId, undefined, business.id, business.name, {
+    loanInterestRate: rate,
+  });
+
+  return { loanInterestRate: rate };
+}
+
+export async function setTransferFeeRate(userId: string, businessId: string, rate: number) {
+  if (!Number.isFinite(rate) || rate < 0 || rate > 25) {
+    throw new Error('INVALID_TRANSFER_FEE_RATE');
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true, name: true },
+  });
+
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('TRANSFER_FEE_FORBIDDEN');
+  if (business.typeKey !== 'transfer') throw new Error('BUSINESS_NOT_FOUND');
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { transferFeeRate: rate },
+  });
+
+  logYouAdmin('business_transfer_fee_update', userId, undefined, business.id, business.name, {
+    transferFeeRate: rate,
+  });
+
+  return { transferFeeRate: rate };
 }

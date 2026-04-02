@@ -13,7 +13,7 @@ import {
   SocialRelationship,
   SocialStats,
 } from '../services/api';
-import { CalendarDays, Edit2, Loader2, Save, X } from 'lucide-react';
+import { Building2, CalendarDays, Edit2, Heart, Loader2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { TYPOGRAPHY } from '@/lib/design-system';
@@ -60,6 +60,12 @@ const PROFILE_GAME_CATALOG = [
 
 const INITIAL_VISIBLE_GAME_ROWS = 12;
 
+const BUSINESS_TYPE_LABELS: Record<string, string> = {
+  startup: 'Startup Tech',
+  bank: 'Banque',
+  agency: 'Agence',
+};
+
 interface ProfileUser {
   id: string;
   username: string;
@@ -99,6 +105,11 @@ interface ProfileUser {
     highScore: number;
     totalPlayed: number;
   }>;
+  marriage?: {
+    partner: { id: string; username: string; usernameColor?: string | null };
+    marriedAt: string | null;
+  } | null;
+  ownedBusinesses?: Array<{ id: string; name: string; typeKey: string }>;
 }
 
 interface Rankings {
@@ -683,7 +694,7 @@ export default function Profile() {
               </SidebarPanel>
 
               {social ? (
-                <SidebarPanel title="Reseau" flushBottom>
+                <SidebarPanel title="Reseau">
                   <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
                     <CompactMetric label="Followers" value={String(social.followerCount)} />
                     <CompactMetric label="Following" value={String(social.followingCount)} />
@@ -708,6 +719,51 @@ export default function Profile() {
                       </div>
                     </div>
                   ) : null}
+                </SidebarPanel>
+              ) : null}
+
+              {profileUser.marriage || (profileUser.ownedBusinesses && profileUser.ownedBusinesses.length > 0) ? (
+                <SidebarPanel title="Vie" flushBottom>
+                  <div className="space-y-4">
+                    {profileUser.marriage ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Statut</p>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Heart className="h-4 w-4 shrink-0 text-rose-500" />
+                          <span>Marie(e) avec </span>
+                          <button
+                            className="font-medium hover:underline"
+                            style={profileUser.marriage.partner.usernameColor ? { color: profileUser.marriage.partner.usernameColor } : undefined}
+                            onClick={() => navigate(`/profile/${profileUser.marriage!.partner.id}`)}
+                          >
+                            {profileUser.marriage.partner.username}
+                          </button>
+                        </div>
+                        {profileUser.marriage.marriedAt ? (
+                          <p className="text-xs text-muted-foreground">
+                            depuis le {new Date(profileUser.marriage.marriedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {profileUser.ownedBusinesses && profileUser.ownedBusinesses.length > 0 ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Entreprises</p>
+                        <div className="space-y-2">
+                          {profileUser.ownedBusinesses.map((biz) => (
+                            <div key={biz.id} className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/40 px-3 py-2">
+                              <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium">{biz.name}</p>
+                                <p className="text-xs text-muted-foreground">{BUSINESS_TYPE_LABELS[biz.typeKey] ?? biz.typeKey}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </SidebarPanel>
               ) : null}
             </div>

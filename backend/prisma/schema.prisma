@@ -55,6 +55,10 @@ model User {
   followers             UserFollow[]              @relation("UserFollowers")
   ownedBusinesses       Business[]               @relation("BusinessOwner")
   businessMemberships   BusinessMember[]
+  buyoutOffersPlaced    BusinessBuyoutOffer[]    @relation("BuyoutBidder")
+  buyoutOffersReceived  BusinessBuyoutOffer[]    @relation("BusinessBuyoutOwner")
+  sentBusinessTransfers BusinessTransferTransaction[] @relation("BusinessTransferSender")
+  receivedBusinessTransfers BusinessTransferTransaction[] @relation("BusinessTransferRecipient")
   sentBusinessInvitations BusinessInvitation[]   @relation("BusinessInvitationSender")
   receivedBusinessInvitations BusinessInvitation[] @relation("BusinessInvitationRecipient")
   borrowedBusinessLoans BusinessLoan[]
@@ -388,18 +392,24 @@ model Business {
   verified        Boolean  @default(false)
   hiring          Boolean  @default(true)
   startingCapital Int
-  treasuryMoney   Int      @default(0)
-  monthlyRevenue  Int      @default(0)
-  monthlyExpenses Int      @default(0)
-  satisfaction    Int      @default(70)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  treasuryMoney          Int      @default(0)
+  monthlyRevenue         Int      @default(0)
+  monthlyExpenses        Int      @default(0)
+  satisfaction           Int      @default(70)
+  livretEpargneUnlocked  Boolean  @default(false)
+  loanInterestRate       Float    @default(4.0)
+  transferFeeRate        Float    @default(2.0)
+  lastBankRevenueDate    String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   owner       User                 @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members     BusinessMember[]
   invitations BusinessInvitation[]
   loans       BusinessLoan[]
   investments BusinessInvestment[]
+  buyoutOffers BusinessBuyoutOffer[]
+  transferHistory BusinessTransferTransaction[]
   startupProducts BusinessStartupProduct[]
 
   @@index([ownerId])
@@ -479,6 +489,45 @@ model BusinessInvestment {
   @@index([investorId, createdAt])
 }
 
+model BusinessBuyoutOffer {
+  id          String   @id @default(uuid())
+  businessId  String
+  bidderId    String
+  ownerId     String
+  amount      Int
+  message     String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  decidedAt   DateTime?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  bidder   User     @relation("BuyoutBidder", fields: [bidderId], references: [id], onDelete: Cascade)
+  owner    User     @relation("BusinessBuyoutOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([bidderId])
+  @@index([ownerId, status])
+}
+
+model BusinessTransferTransaction {
+  id          String   @id @default(uuid())
+  businessId  String
+  senderId    String
+  recipientId String
+  amount      Int
+  fee         Int
+  feeRate     Float
+  createdAt   DateTime @default(now())
+
+  business  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sender    User     @relation("BusinessTransferSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User     @relation("BusinessTransferRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([senderId, createdAt])
+  @@index([recipientId, createdAt])
+}
+
 model BusinessStartupProduct {
   id                  String   @id @default(uuid())
   businessId          String
@@ -520,6 +569,7 @@ model Relationship {
   initiatedById   String
   status          String   @default("DATING")
   connectionLevel Int      @default(55)
+  coupleBalance   Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   marriedAt       DateTime?

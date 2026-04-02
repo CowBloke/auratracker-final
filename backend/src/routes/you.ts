@@ -2,9 +2,15 @@ import { Router, type Response } from 'express';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { prisma } from '../server.js';
 import {
+  buyLivretEpargneUpgrade,
+  cancelBusinessBuyoutOffer,
+  setLoanRate,
+  setTransferFeeRate,
   createBusiness,
+  createBusinessBuyoutOffer,
   createRelationship,
   deleteBusiness,
+  depositToCouple,
   divorceRelationship,
   executeBusinessAction,
   forgetRelationship,
@@ -13,12 +19,15 @@ import {
   makeMistress,
   proposeMarriage,
   respondToBusinessInvitation,
+  respondToBusinessBuyoutOffer,
   respondToBusinessLoan,
   respondToCourtCase,
   respondToDivorceProposal,
   respondToMarriageProposal,
+  runTransferBusinessAction,
   suspectCheating,
   trainUserSkill,
+  withdrawFromCouple,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
@@ -57,6 +66,9 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_INVITATION_ALREADY_RESOLVED: 400,
   BUSINESS_INVEST_SELF_FORBIDDEN: 400,
   INVALID_INVEST_AMOUNT: 400,
+  BUSINESS_TRANSFER_UNAVAILABLE: 400,
+  INVALID_TRANSFER_AMOUNT: 400,
+  TRANSFER_RECIPIENT_INVALID: 400,
   BUSINESS_RESEARCH_FORBIDDEN: 403,
   BUSINESS_RESEARCH_UNAVAILABLE: 400,
   INVALID_STARTUP_PRODUCT_SLOT: 400,
@@ -83,6 +95,19 @@ const ERROR_STATUS: Record<string, number> = {
   YOU_ADMIN_ONLY: 403,
   RELATIONSHIP_NOT_ACTIVE: 400,
   NOT_MARRIED: 400,
+  INVALID_COUPLE_AMOUNT: 400,
+  COUPLE_BALANCE_TOO_LOW: 400,
+  INVALID_LOAN_RATE: 400,
+  BANK_RATE_FORBIDDEN: 403,
+  INVALID_TRANSFER_FEE_RATE: 400,
+  TRANSFER_FEE_FORBIDDEN: 403,
+  BUYOUT_SELF_FORBIDDEN: 400,
+  INVALID_BUYOUT_AMOUNT: 400,
+  BUYOUT_OFFER_ALREADY_PENDING: 400,
+  BUYOUT_OFFER_NOT_FOUND: 404,
+  BUYOUT_OFFER_REVIEW_FORBIDDEN: 403,
+  BUYOUT_OFFER_CANCEL_FORBIDDEN: 403,
+  BUYOUT_OFFER_ALREADY_RESOLVED: 400,
   CHEATING_ACCUSATION_ALREADY_PENDING: 400,
   CHEATING_ACCUSATION_NOT_FOUND: 404,
   CHEATING_ACCUSATION_FORBIDDEN: 403,
@@ -121,6 +146,9 @@ const ERROR_MESSAGE: Record<string, string> = {
   BUSINESS_INVITATION_ALREADY_RESOLVED: 'Cette invitation a deja ete traitee.',
   BUSINESS_INVEST_SELF_FORBIDDEN: 'Tu ne peux pas investir dans ton propre business via cette action.',
   INVALID_INVEST_AMOUNT: 'Montant d investissement invalide.',
+  BUSINESS_TRANSFER_UNAVAILABLE: 'Cette action est reservee aux services de transfert.',
+  INVALID_TRANSFER_AMOUNT: 'Montant de transfert invalide.',
+  TRANSFER_RECIPIENT_INVALID: 'Destinataire invalide.',
   BUSINESS_RESEARCH_FORBIDDEN: 'Tu ne peux pas lancer cette recherche sur ce business.',
   BUSINESS_RESEARCH_UNAVAILABLE: 'Cette action de recherche est reservee aux startups tech.',
   INVALID_STARTUP_PRODUCT_SLOT: 'Produit startup invalide.',
@@ -147,6 +175,19 @@ const ERROR_MESSAGE: Record<string, string> = {
   YOU_ADMIN_ONLY: 'Cette section est reservee aux admins.',
   RELATIONSHIP_NOT_ACTIVE: 'Cette relation n est pas active (ami ou en relation).',
   NOT_MARRIED: 'Tu dois etre marie pour avoir une liaison.',
+  INVALID_COUPLE_AMOUNT: 'Montant invalide.',
+  COUPLE_BALANCE_TOO_LOW: 'Le compte commun n a pas assez de fonds.',
+  INVALID_LOAN_RATE: 'Le taux d emprunt doit etre entre 1% et 50%.',
+  BANK_RATE_FORBIDDEN: 'Seul le proprietaire peut modifier le taux d emprunt.',
+  INVALID_TRANSFER_FEE_RATE: 'Les frais de transfert doivent etre entre 0% et 25%.',
+  TRANSFER_FEE_FORBIDDEN: 'Seul le proprietaire peut modifier les frais de transfert.',
+  BUYOUT_SELF_FORBIDDEN: 'Tu ne peux pas faire une offre sur ton propre business.',
+  INVALID_BUYOUT_AMOUNT: 'Montant d offre invalide.',
+  BUYOUT_OFFER_ALREADY_PENDING: 'Tu as deja une offre en attente sur ce business.',
+  BUYOUT_OFFER_NOT_FOUND: 'Offre de rachat introuvable.',
+  BUYOUT_OFFER_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette offre.',
+  BUYOUT_OFFER_CANCEL_FORBIDDEN: 'Tu ne peux pas annuler cette offre.',
+  BUYOUT_OFFER_ALREADY_RESOLVED: 'Cette offre de rachat a deja ete traitee.',
   CHEATING_ACCUSATION_ALREADY_PENDING: 'Une suspicion est deja en attente.',
   CHEATING_ACCUSATION_NOT_FOUND: 'Accusation introuvable.',
   CHEATING_ACCUSATION_FORBIDDEN: 'Tu ne peux pas repondre a cette accusation.',
@@ -224,6 +265,18 @@ router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthReq
   }
 });
 
+router.post('/businesses/:businessId/actions/transfer', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await runTransferBusinessAction(req.user!.id, req.params.businessId, {
+      recipientId: String(req.body?.recipientId ?? ''),
+      amount: Number(req.body?.amount ?? 0),
+    });
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Run transfer business action error');
+  }
+});
+
 router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const actionKey = req.params.actionKey as BusinessActionKey;
@@ -231,6 +284,37 @@ router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, requir
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Run business action error');
+  }
+});
+
+router.post('/businesses/:businessId/buyout-offers', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const offer = await createBusinessBuyoutOffer(req.user!.id, req.params.businessId, {
+      amount: Number(req.body?.amount ?? 0),
+      message: typeof req.body?.message === 'string' ? req.body.message : undefined,
+    });
+    res.status(201).json({ offer });
+  } catch (error) {
+    handleRouteError(error, res, 'Create buyout offer error');
+  }
+});
+
+router.post('/buyout-offers/:offerId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
+    const result = await respondToBusinessBuyoutOffer(req.user!.id, req.params.offerId, decision);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Respond buyout offer error');
+  }
+});
+
+router.delete('/buyout-offers/:offerId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await cancelBusinessBuyoutOffer(req.user!.id, req.params.offerId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Cancel buyout offer error');
   }
 });
 
@@ -306,6 +390,26 @@ router.post('/divorce-proposals/:proposalId/respond', authMiddleware, requireYou
   }
 });
 
+router.post('/relationships/:relationshipId/actions/couple-deposit', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const amount = Number(req.body?.amount);
+    const result = await depositToCouple(req.user!.id, req.params.relationshipId, amount);
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Couple deposit error');
+  }
+});
+
+router.post('/relationships/:relationshipId/actions/couple-withdraw', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const amount = Number(req.body?.amount);
+    const result = await withdrawFromCouple(req.user!.id, req.params.relationshipId, amount);
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Couple withdraw error');
+  }
+});
+
 router.delete('/relationships/:relationshipId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     await forgetRelationship(req.user!.id, req.params.relationshipId);
@@ -340,6 +444,35 @@ router.post('/cheating-accusations/:accusationId/respond', authMiddleware, requi
     res.json(result);
   } catch (error) {
     handleRouteError(error, res, 'Respond court case error');
+  }
+});
+
+router.post('/businesses/:businessId/set-loan-rate', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const rate = Number(req.body?.rate);
+    const result = await setLoanRate(req.user!.id, req.params.businessId, rate);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Set loan rate error');
+  }
+});
+
+router.post('/businesses/:businessId/set-transfer-fee-rate', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const rate = Number(req.body?.rate);
+    const result = await setTransferFeeRate(req.user!.id, req.params.businessId, rate);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Set transfer fee rate error');
+  }
+});
+
+router.post('/businesses/:businessId/upgrades/livret-epargne', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await buyLivretEpargneUpgrade(req.user!.id, req.params.businessId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Buy livret epargne error');
   }
 });
 

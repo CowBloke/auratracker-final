@@ -212,6 +212,34 @@ export interface YouBusinessInvestment {
   investor: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
+export interface YouBusinessBuyoutOffer {
+  id: string;
+  businessId: string;
+  amount: number;
+  message: string | null;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | string;
+  createdAt: string;
+  decidedAt: string | null;
+  direction: 'sent' | 'received';
+  bidder: Omit<YouPlayer, 'alreadyInRelationship'>;
+  owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  business?: {
+    id: string;
+    name: string;
+    typeKey: string;
+  };
+}
+
+export interface YouBusinessTransferHistoryEntry {
+  id: string;
+  amount: number;
+  fee: number;
+  feeRate: number;
+  createdAt: string;
+  sender: Omit<YouPlayer, 'alreadyInRelationship'>;
+  recipient: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
 export interface YouStartupProduct {
   id: string;
   slotIndex: number;
@@ -256,7 +284,12 @@ export interface YouBusiness {
   pendingInvitations: YouBusinessInvitation[];
   recentLoans: YouBusinessLoan[];
   recentInvestments: YouBusinessInvestment[];
+  transferHistory: YouBusinessTransferHistoryEntry[];
+  pendingBuyoutOffers: YouBusinessBuyoutOffer[];
   startupProducts: YouStartupProduct[];
+  livretEpargneUnlocked?: boolean;
+  loanInterestRate?: number;
+  transferFeeRate?: number;
 }
 
 export interface YouMarriageProposal {
@@ -287,6 +320,7 @@ export interface YouRelationship {
   id: string;
   status: 'DATING' | 'FRIEND' | 'MARRIED' | 'DIVORCED' | 'MISTRESS' | string;
   connectionLevel: number;
+  coupleBalance: number;
   createdAt: string;
   marriedAt: string | null;
   otherUser: Omit<YouPlayer, 'alreadyInRelationship'>;
@@ -330,6 +364,9 @@ export interface YouState {
   courtCases: YouCourtCase[];
   ownedBusinesses: YouBusiness[];
   exploreBusinesses: YouBusiness[];
+  memberBusinesses: YouBusiness[];
+  pendingBuyoutOffers: YouBusinessBuyoutOffer[];
+  sentBuyoutOffers: YouBusinessBuyoutOffer[];
 }
 
 export const youApi = {
@@ -345,6 +382,14 @@ export const youApi = {
     api.post<{ result: { id: string; status: string; respondedAt: string | null } }>(`/you/business-invitations/${invitationId}/respond`, { decision }),
   respondToBusinessLoan: (loanId: string, decision: 'accept' | 'reject') =>
     api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/loans/${loanId}/respond`, { decision }),
+  transferWithBusiness: (businessId: string, data: { recipientId: string; amount: number }) =>
+    api.post<{ result: { recipientId: string; amount: number; fee: number; debited: number } }>(`/you/businesses/${businessId}/actions/transfer`, data),
+  createBuyoutOffer: (businessId: string, data: { amount: number; message?: string }) =>
+    api.post<{ offer: YouBusinessBuyoutOffer }>(`/you/businesses/${businessId}/buyout-offers`, data),
+  respondToBuyoutOffer: (offerId: string, decision: 'accept' | 'reject') =>
+    api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/buyout-offers/${offerId}/respond`, { decision }),
+  cancelBuyoutOffer: (offerId: string) =>
+    api.delete<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/buyout-offers/${offerId}`),
   createRelationship: (targetUserId: string, type: 'FRIEND' | 'DATING' = 'DATING') =>
     api.post<{ relationship: YouRelationship }>('/you/relationships', { targetUserId, type }),
   proposeMarriage: (relationshipId: string, message?: string) =>
@@ -355,6 +400,10 @@ export const youApi = {
     api.post<{ proposal: { id: string; status: string; createdAt: string; respondedAt: string | null } }>(`/you/relationships/${relationshipId}/actions/divorce`, { message }),
   respondToDivorceProposal: (proposalId: string, decision: 'accept' | 'reject') =>
     api.post<{ proposal: { id: string; status: string; respondedAt: string | null }; relationship: YouRelationship }>(`/you/divorce-proposals/${proposalId}/respond`, { decision }),
+  coupleDeposit: (relationshipId: string, amount: number) =>
+    api.post<{ relationship: YouRelationship }>(`/you/relationships/${relationshipId}/actions/couple-deposit`, { amount }),
+  coupleWithdraw: (relationshipId: string, amount: number) =>
+    api.post<{ relationship: YouRelationship }>(`/you/relationships/${relationshipId}/actions/couple-withdraw`, { amount }),
   forgetRelationship: (relationshipId: string) =>
     api.delete<{ ok: boolean }>(`/you/relationships/${relationshipId}`),
   makeMistress: (relationshipId: string) =>
@@ -365,6 +414,12 @@ export const youApi = {
     api.post<{ decision: string }>(`/you/cheating-accusations/${accusationId}/respond`, { decision }),
   deleteBusiness: (businessId: string) =>
     api.delete<{ result: { id: string } }>(`/you/businesses/${businessId}`),
+  buyLivretEpargneUpgrade: (businessId: string) =>
+    api.post<{ result: { livretEpargneUnlocked: boolean } }>(`/you/businesses/${businessId}/upgrades/livret-epargne`, {}),
+  setLoanRate: (businessId: string, rate: number) =>
+    api.post<{ result: { loanInterestRate: number } }>(`/you/businesses/${businessId}/set-loan-rate`, { rate }),
+  setTransferFeeRate: (businessId: string, rate: number) =>
+    api.post<{ result: { transferFeeRate: number } }>(`/you/businesses/${businessId}/set-transfer-fee-rate`, { rate }),
 };
 
 // Economy API

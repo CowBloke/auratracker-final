@@ -56,6 +56,30 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     satisfaction: 82,
     actions: ['invite', 'deposit', 'withdraw'],
   },
+  {
+    key: 'formation',
+    label: 'Centre de formation',
+    category: 'Services',
+    description: 'Des eleves paient des cours et les revenus evoluent avec la taille de l equipe.',
+    minCapital: 2000,
+    creationFee: 1500,
+    monthlyRevenue: 800,
+    monthlyExpenses: 450,
+    satisfaction: 80,
+    actions: ['invite', 'deposit', 'withdraw'],
+  },
+  {
+    key: 'transfer',
+    label: 'Service de transfert',
+    category: 'Finance',
+    description: 'Des frais sont factures sur les transferts d argent entre joueurs.',
+    minCapital: 5000,
+    creationFee: 3000,
+    monthlyRevenue: 0,
+    monthlyExpenses: 700,
+    satisfaction: 78,
+    actions: ['invite', 'deposit', 'withdraw'],
+  },
 ];
 
 export const BUSINESS_TYPE_MAP = new Map(BUSINESS_TYPES.map((type) => [type.key, type]));
