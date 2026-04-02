@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, BarChart3, Building2, CreditCard, GraduationCap, Landmark, TrendingUp, UserPlus } from 'lucide-react';
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, BarChart3, Building2, Coffee, CreditCard, GraduationCap, Landmark, ShoppingBasket, Store, TrendingUp, UserPlus } from 'lucide-react';
 import { type BusinessAction } from './types';
 
 export const BUSINESS_ICON_MAP = {
@@ -7,6 +7,9 @@ export const BUSINESS_ICON_MAP = {
   agency: BarChart3,
   formation: GraduationCap,
   transfer: ArrowLeftRight,
+  lemonade: Store,
+  epicerie: ShoppingBasket,
+  coffee_shop: Coffee,
 } as const;
 
 export const BUSINESS_STYLE_MAP = {
@@ -15,6 +18,9 @@ export const BUSINESS_STYLE_MAP = {
   agency: { card: 'border-violet-400/30 bg-violet-400/10', badge: 'bg-violet-400/15 text-violet-400', iconWrap: 'bg-violet-400/15', icon: 'text-violet-400' },
   formation: { card: 'border-amber-400/30 bg-amber-400/10', badge: 'bg-amber-400/15 text-amber-400', iconWrap: 'bg-amber-400/15', icon: 'text-amber-400' },
   transfer: { card: 'border-cyan-400/30 bg-cyan-400/10', badge: 'bg-cyan-400/15 text-cyan-400', iconWrap: 'bg-cyan-400/15', icon: 'text-cyan-400' },
+  lemonade: { card: 'border-yellow-400/30 bg-yellow-400/10', badge: 'bg-yellow-400/15 text-yellow-400', iconWrap: 'bg-yellow-400/15', icon: 'text-yellow-400' },
+  epicerie: { card: 'border-lime-400/30 bg-lime-400/10', badge: 'bg-lime-400/15 text-lime-400', iconWrap: 'bg-lime-400/15', icon: 'text-lime-400' },
+  coffee_shop: { card: 'border-orange-400/30 bg-orange-400/10', badge: 'bg-orange-400/15 text-orange-400', iconWrap: 'bg-orange-400/15', icon: 'text-orange-400' },
 } as const;
 
 export const ACTION_META: Record<BusinessAction, { label: string; help: string; icon: typeof UserPlus; tone: string }> = {

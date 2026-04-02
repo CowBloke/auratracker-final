@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import path from 'path';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { adminPurgeAllBusinesses, adminResetBusinessUnlockLevels } from '../modules/you/service.js';
 import { validate, adminRareActionSchema } from '../middleware/validation.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl, writeBase64UploadImage } from '../utils/uploads.js';
@@ -4069,6 +4070,57 @@ router.get('/platform-stats', authMiddleware, requireAdmin, async (req: AuthRequ
   } catch (error) {
     console.error('Admin platform stats error:', error);
     return res.status(500).json({ error: 'Failed to fetch platform stats' });
+  }
+});
+
+// --- Business Admin Controls ---
+const BUSINESS_CREATION_ENABLED_KEY = 'business_creation_enabled';
+
+router.post('/businesses/purge', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const result = await adminPurgeAllBusinesses();
+    res.json(result);
+  } catch (error) {
+    console.error('Admin purge businesses error:', error);
+    res.status(500).json({ error: 'Failed to purge businesses' });
+  }
+});
+
+router.post('/businesses/reset-unlock-levels', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const result = await adminResetBusinessUnlockLevels();
+    res.json(result);
+  } catch (error) {
+    console.error('Admin reset business unlock levels error:', error);
+    res.status(500).json({ error: 'Failed to reset unlock levels' });
+  }
+});
+
+router.get('/businesses/creation-enabled', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const setting = await prisma.gameSettings.findUnique({ where: { key: BUSINESS_CREATION_ENABLED_KEY } });
+    const enabled = setting?.value !== 'false';
+    res.json({ enabled });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch setting' });
+  }
+});
+
+router.post('/businesses/creation-enabled', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  const enabled = req.body?.enabled !== false;
+  try {
+    await prisma.gameSettings.upsert({
+      where: { key: BUSINESS_CREATION_ENABLED_KEY },
+      update: { value: enabled ? 'true' : 'false' },
+      create: { key: BUSINESS_CREATION_ENABLED_KEY, value: enabled ? 'true' : 'false' },
+    });
+    res.json({ enabled });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update setting' });
   }
 });
 

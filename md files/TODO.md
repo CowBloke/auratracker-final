@@ -28,3 +28,9 @@
 - fix apigner chat
 - temps passé par jeu manque des jeux
 - ajouter image support et bug 
+- nouvelle entry : school
+- sauvegarde chat exporter
+- fix export stats excel
+- logs
+- bloquer chat
+- ajouter jeux

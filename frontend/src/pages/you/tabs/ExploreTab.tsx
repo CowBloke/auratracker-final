@@ -4,13 +4,17 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  Coffee,
   GraduationCap,
   HandCoins,
   Landmark,
   PiggyBank,
   Search,
   ShieldAlert,
+  ShoppingBasket,
+  ShoppingCart,
   Sparkles,
+  Store,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
@@ -27,7 +31,7 @@ import {
   LoanModal,
   TransferBusinessModal,
 } from '../components/modals';
-import { FilterButton, Input, Pill, SectionTitle } from '../components/ui';
+import { FilterButton, Input, ModalWrap, Pill, SectionTitle } from '../components/ui';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { withRouteError } from '../utils';
 
@@ -35,7 +39,7 @@ function formatMoney(n: number) {
   return `${n.toLocaleString('fr-FR')} EUR`;
 }
 
-const BUSINESS_TYPE_ORDER = ['bank', 'transfer', 'formation', 'startup', 'agency'] as const;
+const BUSINESS_TYPE_ORDER = ['bank', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'epicerie', 'coffee_shop'] as const;
 
 const SECTION_META: Record<
   (typeof BUSINESS_TYPE_ORDER)[number],
@@ -46,6 +50,9 @@ const SECTION_META: Record<
   formation: { label: 'Formations', icon: GraduationCap, pillColor: 'bg-amber-400/15 text-amber-400' },
   startup: { label: 'Tech startups', icon: TrendingUp, pillColor: 'bg-sky-400/15 text-sky-400' },
   agency: { label: 'Agencies', icon: Building2, pillColor: 'bg-violet-400/15 text-violet-400' },
+  lemonade: { label: 'Stands limonade', icon: Store, pillColor: 'bg-yellow-400/15 text-yellow-400' },
+  epicerie: { label: 'Epiceries', icon: ShoppingBasket, pillColor: 'bg-lime-400/15 text-lime-400' },
+  coffee_shop: { label: 'Coffee Shops', icon: Coffee, pillColor: 'bg-orange-400/15 text-orange-400' },
 };
 
 function isNewBusiness(business: YouBusiness) {
@@ -166,6 +173,7 @@ function BusinessDetailPanel({
   onLoan,
   onBuyout,
   onFormation,
+  onPurchase,
 }: {
   business: YouBusiness;
   userId: string;
@@ -175,6 +183,7 @@ function BusinessDetailPanel({
   onLoan: () => void;
   onBuyout: () => void;
   onFormation: () => void;
+  onPurchase: () => void;
 }) {
   const isOwned = business.ownerId === userId;
 
@@ -211,6 +220,32 @@ function BusinessDetailPanel({
           tone="bg-cyan-400/15 text-cyan-300"
           primary
           onClick={onTransfer}
+        />
+      );
+    }
+    if (business.typeKey === 'lemonade' || business.typeKey === 'epicerie') {
+      const Icon = business.typeKey === 'lemonade' ? Store : ShoppingBasket;
+      const tone = business.typeKey === 'lemonade' ? 'bg-yellow-400/15 text-yellow-400' : 'bg-lime-400/15 text-lime-400';
+      return (
+        <ActionButton
+          icon={Icon}
+          label="Acheter"
+          sub="Parcourir les articles disponibles"
+          tone={tone}
+          primary
+          onClick={onPurchase}
+        />
+      );
+    }
+    if (business.typeKey === 'coffee_shop') {
+      return (
+        <ActionButton
+          icon={Coffee}
+          label="Investir"
+          sub="Le rendement depend du niveau de risque choisi."
+          tone="bg-orange-400/15 text-orange-400"
+          primary
+          onClick={onInvest}
         />
       );
     }
@@ -271,6 +306,12 @@ function BusinessDetailPanel({
       return [
         { label: 'Revenue mensuel', value: formatMoney(business.monthlyRevenue), color: 'text-emerald-400' },
         { label: 'Prix formation', value: formatMoney(business.formationPrice ?? 500), color: 'text-amber-400' },
+      ];
+    }
+    if (business.typeKey === 'lemonade' || business.typeKey === 'epicerie') {
+      return [
+        { label: 'Revenue mensuel', value: formatMoney(business.monthlyRevenue), color: 'text-emerald-400' },
+        { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-muted-foreground' },
       ];
     }
     const profit = business.monthlyRevenue - business.monthlyExpenses;
@@ -359,6 +400,7 @@ export function ExploreTab({
   const [buyoutBusinessId, setBuyoutBusinessId] = useState<string | null>(null);
   const [transferBusinessId, setTransferBusinessId] = useState<string | null>(null);
   const [formationBusinessId, setFormationBusinessId] = useState<string | null>(null);
+  const [purchaseBusinessId, setPurchaseBusinessId] = useState<string | null>(null);
 
   const allBusinesses = useMemo(
     () => [...data.ownedBusinesses, ...data.exploreBusinesses],
@@ -408,6 +450,7 @@ export function ExploreTab({
   const buyoutBusiness = buyoutBusinessId ? allBusinesses.find((business) => business.id === buyoutBusinessId) ?? null : null;
   const transferBusiness = transferBusinessId ? allBusinesses.find((business) => business.id === transferBusinessId) ?? null : null;
   const formationBusiness = formationBusinessId ? allBusinesses.find((business) => business.id === formationBusinessId) ?? null : null;
+  const purchaseBusiness = purchaseBusinessId ? allBusinesses.find((business) => business.id === purchaseBusinessId) ?? null : null;
 
   useEffect(() => {
     if (selectedBusinessId && filteredBusinesses.some((business) => business.id === selectedBusinessId)) return;
@@ -633,6 +676,7 @@ export function ExploreTab({
                 onLoan={() => setLoanBusinessId(selectedBusiness.id)}
                 onBuyout={() => setBuyoutBusinessId(selectedBusiness.id)}
                 onFormation={() => setFormationBusinessId(selectedBusiness.id)}
+                onPurchase={() => setPurchaseBusinessId(selectedBusiness.id)}
               />
             </>
           ) : (
@@ -651,6 +695,65 @@ export function ExploreTab({
       <BuyoutOfferModal open={Boolean(buyoutBusiness)} onClose={() => setBuyoutBusinessId(null)} business={buyoutBusiness} onSubmitted={() => onReload(true)} />
       <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} onSubmitted={() => onReload(true)} />
       <FormationPurchaseModal open={Boolean(formationBusiness)} onClose={() => setFormationBusinessId(null)} business={formationBusiness} onSubmitted={() => onReload(true)} />
+      <PurchaseItemModal open={Boolean(purchaseBusiness)} onClose={() => setPurchaseBusinessId(null)} business={purchaseBusiness} onSubmitted={() => onReload(true)} />
     </>
+  );
+}
+
+// --- Purchase Item Modal for lemonade/epicerie ---
+
+const ITEMS_CONFIG: Record<string, Array<{ key: string; label: string; price: number }>> = {
+  lemonade: [
+    { key: 'citronnade', label: 'Citronnade', price: 10 },
+    { key: 'limonade_fraise', label: 'Limonade fraise', price: 15 },
+    { key: 'eau_petillante', label: 'Eau petillante', price: 8 },
+  ],
+  epicerie: [
+    { key: 'baguette', label: 'Baguette', price: 5 },
+    { key: 'fromage', label: 'Fromage', price: 20 },
+    { key: 'vin', label: 'Vin', price: 35 },
+    { key: 'confiture', label: 'Confiture', price: 12 },
+  ],
+};
+
+function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boolean; onClose: () => void; business: YouBusiness | null; onSubmitted: () => void }) {
+  const [buying, setBuying] = useState<string | null>(null);
+  if (!business) return null;
+
+  const items = ITEMS_CONFIG[business.typeKey] ?? [];
+
+  const buy = async (itemKey: string) => {
+    setBuying(itemKey);
+    try {
+      await withRouteError(() => youApi.purchaseItem(business.id, itemKey), 'Impossible d\'acheter cet article.');
+      const item = items.find((i) => i.key === itemKey);
+      toast.success(`${item?.label ?? 'Article'} acheté !`);
+      onSubmitted();
+    } finally {
+      setBuying(null);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title={business.name} desc="Parcourir les articles disponibles.">
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-yellow-400/15">
+                <ShoppingCart className="h-4 w-4 text-yellow-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.price.toLocaleString('fr-FR')} money</p>
+              </div>
+            </div>
+            <Button size="sm" onClick={() => void buy(item.key)} disabled={buying !== null}>
+              Acheter
+            </Button>
+          </div>
+        ))}
+      </div>
+    </ModalWrap>
   );
 }

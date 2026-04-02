@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, Check, ChevronRight,
   CreditCard, ExternalLink, GraduationCap, Landmark, Link2, Percent,
-  Plus, Sparkles, Trash2, TrendingUp, UserPlus, Users, X,
+  Plus, Sparkles, Trash2, TrendingUp, UserPlus, Users, Wallet, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -69,22 +69,27 @@ export function CreateBusinessModal({
   open,
   onClose,
   businessTypes,
+  unlockedBusinessLevel,
   onCreated,
 }: {
   open: boolean;
   onClose: () => void;
   businessTypes: YouBusinessType[];
+  unlockedBusinessLevel: number;
   onCreated: () => Promise<void>;
 }) {
+  // Filter types to those accessible given unlocked level
+  const accessibleTypes = businessTypes.filter((t) => t.level === 1 || t.level <= (unlockedBusinessLevel + 1));
+
   const [name, setName] = useState('');
-  const [typeKey, setTypeKey] = useState(businessTypes[0]?.key ?? '');
+  const [typeKey, setTypeKey] = useState(accessibleTypes[0]?.key ?? '');
   const [capital, setCapital] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    const firstType = businessTypes[0];
+    const firstType = accessibleTypes[0];
     if (firstType) {
       setTypeKey(firstType.key);
       setCapital(String(firstType.minCapital));
@@ -92,7 +97,7 @@ export function CreateBusinessModal({
     setName('');
   }, [businessTypes, open]);
 
-  const selectedType = businessTypes.find((type) => type.key === typeKey) ?? businessTypes[0];
+  const selectedType = accessibleTypes.find((type) => type.key === typeKey) ?? accessibleTypes[0];
   const isBank = selectedType?.key === 'bank';
 
   const submit = async () => {
@@ -147,7 +152,7 @@ export function CreateBusinessModal({
       <BusinessTypePickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
-        businessTypes={businessTypes}
+        businessTypes={accessibleTypes}
         selectedKey={typeKey}
         onSelect={(type) => {
           setTypeKey(type.key);
@@ -517,6 +522,8 @@ const TX_META: Record<string, { icon: typeof TrendingUp; color: string; label: s
   SERVICE_FEE: { icon: CreditCard, color: 'text-cyan-400', label: 'Frais de service' },
   LOAN_ISSUE: { icon: CreditCard, color: 'text-amber-400', label: 'Prêt accordé' },
   LOAN_REPAY: { icon: CreditCard, color: 'text-emerald-400', label: 'Remboursement' },
+  NPC_COLLECT: { icon: TrendingUp, color: 'text-yellow-400', label: 'Recettes clients' },
+  ITEM_SALE: { icon: TrendingUp, color: 'text-lime-400', label: 'Vente article' },
 };
 
 function TxRow({ tx }: { tx: YouBusinessTransaction }) {
@@ -563,6 +570,7 @@ export function ManageBusinessModal({
   const [withdrawAmount, setWithdrawAmount] = useState('1000');
   const [activeTreasuryAction, setActiveTreasuryAction] = useState<'deposit' | 'withdraw' | null>(null);
   const [reviewingLoanId, setReviewingLoanId] = useState<string | null>(null);
+  const [repayingLoanId, setRepayingLoanId] = useState<string | null>(null);
   const [reviewingBuyoutId, setReviewingBuyoutId] = useState<string | null>(null);
   const [actingProductKey, setActingProductKey] = useState<string | null>(null);
   const [loanRateInput, setLoanRateInput] = useState('4');
@@ -573,6 +581,7 @@ export function ManageBusinessModal({
   const [savingTransferFee, setSavingTransferFee] = useState(false);
   const [savingFormation, setSavingFormation] = useState(false);
   const [liquidating, setLiquidating] = useState(false);
+  const [collectingNpc, setCollectingNpc] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | 'in' | 'out'>('all');
   const [transactions, setTransactions] = useState<YouBusinessTransaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
@@ -587,6 +596,7 @@ export function ManageBusinessModal({
       setWithdrawAmount('1000');
       setActiveTreasuryAction(null);
       setReviewingLoanId(null);
+      setRepayingLoanId(null);
       setReviewingBuyoutId(null);
       setActingProductKey(null);
       setLoanRateInput(String(business?.loanInterestRate ?? 4));
@@ -610,11 +620,15 @@ export function ManageBusinessModal({
   }, [open, business?.id]);
 
   const pendingLoans = business?.recentLoans.filter((loan) => loan.status === 'PENDING') ?? [];
+  const activeLoans = business?.recentLoans.filter((loan) => loan.status === 'ACTIVE') ?? [];
   const pendingBuyoutOffers = business?.pendingBuyoutOffers.filter((offer) => offer.status === 'PENDING') ?? [];
   const isBank = business?.typeKey === 'bank';
   const isStartup = business?.typeKey === 'startup';
   const isTransfer = business?.typeKey === 'transfer';
   const isFormation = business?.typeKey === 'formation';
+  const isNpcCommerce = business?.typeKey === 'lemonade' || business?.typeKey === 'epicerie';
+  const npcCooldownHours = isNpcCommerce ? (business?.typeKey === 'lemonade' ? 6 : 6) : 0;
+  const npcOnCooldown = Boolean(business?.npcLastCollectedAt && (Date.now() - new Date(business.npcLastCollectedAt).getTime()) < npcCooldownHours * 3600 * 1000);
   const businessIconTypeKey = business?.typeKey as keyof typeof BUSINESS_ICON_MAP | undefined;
   const BusinessIcon = businessIconTypeKey ? (BUSINESS_ICON_MAP[businessIconTypeKey] ?? Building2) : Building2;
   const businessIconStyle = businessIconTypeKey
@@ -744,6 +758,29 @@ export function ManageBusinessModal({
     }
   };
 
+  const collectNpc = async () => {
+    if (!business) return;
+    setCollectingNpc(true);
+    try {
+      const res = await withRouteError(() => youApi.collectNpc(business.id), 'Impossible de collecter les recettes.');
+      toast.success(`+${(res as any)?.data?.result?.amount?.toLocaleString('fr-FR') ?? '?'} money collectes`);
+      await onSubmitted(true);
+    } finally {
+      setCollectingNpc(false);
+    }
+  };
+
+  const repayLoanNow = async (loanId: string) => {
+    setRepayingLoanId(loanId);
+    try {
+      await withRouteError(() => youApi.repayLoan(loanId), 'Impossible de rembourser ce pret.');
+      toast.success('Pret rembourse');
+      await onSubmitted(true);
+    } finally {
+      setRepayingLoanId(null);
+    }
+  };
+
   const liquidateBusiness = async () => {
     if (!business) return;
     const confirmed = window.confirm(`Liquider ${business.name} ? Cette action est irreversible.`);
@@ -813,6 +850,18 @@ export function ManageBusinessModal({
                     </div>
                   </InlineSection>
                 </>
+              ) : null}
+
+              {/* Collecter les recettes (lemonade/epicerie) */}
+              {isNpcCommerce && business.ownerKind === 'you' ? (
+                <ActionRow
+                  icon={Wallet}
+                  label={npcOnCooldown ? 'Collecter les recettes (cooldown)' : 'Collecter les recettes'}
+                  sub={npcOnCooldown ? 'Disponible dans quelques heures' : 'Ajoute les recettes clients a la tresorerie'}
+                  iconBg="bg-yellow-400/15"
+                  iconColor="text-yellow-400"
+                  onClick={() => { if (!npcOnCooldown && !collectingNpc) void collectNpc(); }}
+                />
               ) : null}
 
               {/* Gérer l'équipe */}
@@ -994,6 +1043,43 @@ export function ManageBusinessModal({
                 </div>
               </CardContent>
             </Card>
+
+            {/* Active loans — shown at top, above tx log (bank only) */}
+            {isBank && activeLoans.length > 0 ? (
+              <Card>
+                <CardContent className="space-y-3 px-5 py-4">
+                  <SectionTitle>Prêts actifs ({activeLoans.length})</SectionTitle>
+                  {activeLoans.map((loan) => {
+                    const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
+                    const repaid = loan.repaidAmount ?? 0;
+                    const pct = totalOwed > 0 ? Math.round((repaid / totalOwed) * 100) : 0;
+                    return (
+                      <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-2">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold">{loan.borrower.username}</p>
+                            <p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} € principal · {loan.interestRate} %</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{repaid.toLocaleString('fr-FR')} / {totalOwed.toLocaleString('fr-FR')} € remboursé</p>
+                            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
+                              <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0 text-xs"
+                            onClick={() => void repayLoanNow(loan.id)}
+                            disabled={repayingLoanId !== null}
+                          >
+                            Rembourser maintenant
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            ) : null}
 
             {/* Transaction log */}
             <Card>

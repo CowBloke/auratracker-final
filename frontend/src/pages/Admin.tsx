@@ -1116,6 +1116,11 @@ export default function Admin() {
   const [savingLoginRegisterCta, setSavingLoginRegisterCta] = useState(false);
   const [savingDefaultLandingPage, setSavingDefaultLandingPage] = useState(false);
   const [savingYouLogoAdminOnly, setSavingYouLogoAdminOnly] = useState(false);
+  // Business admin controls
+  const [businessCreationEnabled, setBusinessCreationEnabled] = useState(true);
+  const [savingBusinessCreation, setSavingBusinessCreation] = useState(false);
+  const [purgingBusinesses, setPurgingBusinesses] = useState(false);
+  const [resettingUnlockLevels, setResettingUnlockLevels] = useState(false);
   const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
   const [loadingUpdatePopups, setLoadingUpdatePopups] = useState(false);
   const [savingUpdatePopup, setSavingUpdatePopup] = useState(false);
@@ -2014,6 +2019,12 @@ export default function Admin() {
       setDefaultLandingPage(normalizeDefaultLandingPage(res.data.settings[DEFAULT_LANDING_PAGE_KEY]));
       setYouLogoAdminOnly(res.data.settings[YOU_LOGO_ADMIN_ONLY_SETTING_KEY] === 'true');
 
+      // Business creation toggle
+      try {
+        const bizRes = await adminApi.getBusinessCreationEnabled();
+        setBusinessCreationEnabled(bizRes.data.enabled);
+      } catch { /* ignore */ }
+
       if (res.data.settings.blocked_pages) {
         try {
           const parsed = JSON.parse(res.data.settings.blocked_pages);
@@ -2342,6 +2353,47 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde');
     } finally {
       setSavingYouLogoAdminOnly(false);
+    }
+  };
+
+  const saveBusinessCreationEnabled = async (value: boolean) => {
+    const prev = businessCreationEnabled;
+    try {
+      setBusinessCreationEnabled(value);
+      setSavingBusinessCreation(true);
+      await adminApi.setBusinessCreationEnabled(value);
+      showMessage('success', value ? 'Création d\'entreprise activée' : 'Création d\'entreprise désactivée');
+    } catch {
+      setBusinessCreationEnabled(prev);
+      showMessage('error', 'Erreur lors de la sauvegarde');
+    } finally {
+      setSavingBusinessCreation(false);
+    }
+  };
+
+  const purgeAllBusinesses = async () => {
+    if (!window.confirm('Purger TOUTES les entreprises ? Les propriétaires seront remboursés. Action irréversible.')) return;
+    setPurgingBusinesses(true);
+    try {
+      const res = await adminApi.purgeAllBusinesses();
+      showMessage('success', `${res.data.purged} entreprise(s) supprimée(s)`);
+    } catch {
+      showMessage('error', 'Erreur lors de la purge');
+    } finally {
+      setPurgingBusinesses(false);
+    }
+  };
+
+  const resetBusinessUnlockLevels = async () => {
+    if (!window.confirm('Réinitialiser le niveau débloqué de TOUS les joueurs à 0 ?')) return;
+    setResettingUnlockLevels(true);
+    try {
+      await adminApi.resetBusinessUnlockLevels();
+      showMessage('success', 'Niveaux réinitialisés');
+    } catch {
+      showMessage('error', 'Erreur lors de la réinitialisation');
+    } finally {
+      setResettingUnlockLevels(false);
     }
   };
 
@@ -4494,6 +4546,49 @@ export default function Admin() {
                 <Button variant="outline" size="sm" onClick={() => setMaintenanceOpen(true)} className="shrink-0">
                   <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
                   Configurer
+                </Button>
+              </div>
+
+              {/* Business admin controls */}
+              <div className="mx-4 border-t border-border/30 pt-3 pb-1">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Entreprises</p>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Création d'entreprise</div>
+                  <div className="text-xs text-muted-foreground">
+                    Quand désactivé, les joueurs ne peuvent plus créer de nouvelles entreprises.
+                  </div>
+                </div>
+                <Switch
+                  checked={businessCreationEnabled}
+                  onCheckedChange={saveBusinessCreationEnabled}
+                  disabled={savingBusinessCreation}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Purger toutes les entreprises</div>
+                  <div className="text-xs text-muted-foreground">
+                    Supprime toutes les entreprises et rembourse chaque propriétaire.
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => void purgeAllBusinesses()} disabled={purgingBusinesses} className="shrink-0 border-red-400/30 text-red-300 hover:bg-red-500/10">
+                  {purgingBusinesses ? 'Purge…' : 'Purger'}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Réinitialiser les niveaux débloqués</div>
+                  <div className="text-xs text-muted-foreground">
+                    Remet le niveau débloqué de tous les joueurs à 0 (niveau 1 accessible à nouveau).
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => void resetBusinessUnlockLevels()} disabled={resettingUnlockLevels} className="shrink-0">
+                  {resettingUnlockLevels ? 'Reset…' : 'Réinitialiser'}
                 </Button>
               </div>
 

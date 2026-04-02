@@ -37,6 +37,7 @@ import {
   buyFormation,
   updateMemberSalary,
   sackMember,
+  repayLoan,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
@@ -133,6 +134,14 @@ const ERROR_STATUS: Record<string, number> = {
   CHEATING_ACCUSATION_NOT_FOUND: 404,
   CHEATING_ACCUSATION_FORBIDDEN: 403,
   CHEATING_ACCUSATION_ALREADY_RESOLVED: 400,
+  BUSINESS_LEVEL_LOCKED: 400,
+  BUSINESS_COLLECT_FORBIDDEN: 403,
+  COLLECT_ON_COOLDOWN: 400,
+  PURCHASE_SELF_FORBIDDEN: 400,
+  ITEM_NOT_FOUND: 404,
+  LOAN_NOT_ACTIVE: 400,
+  LOAN_ALREADY_REPAID: 400,
+  BORROWER_INSUFFICIENT_MONEY: 400,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -213,6 +222,14 @@ const ERROR_MESSAGE: Record<string, string> = {
   CHEATING_ACCUSATION_NOT_FOUND: 'Accusation introuvable.',
   CHEATING_ACCUSATION_FORBIDDEN: 'Tu ne peux pas repondre a cette accusation.',
   CHEATING_ACCUSATION_ALREADY_RESOLVED: 'Cette accusation a deja ete traitee.',
+  BUSINESS_LEVEL_LOCKED: 'Tu dois debloquer le niveau precedent avant de creer ce type d entreprise.',
+  BUSINESS_COLLECT_FORBIDDEN: 'Seul le proprietaire peut collecter les recettes.',
+  COLLECT_ON_COOLDOWN: 'Tu dois attendre avant de collecter a nouveau.',
+  PURCHASE_SELF_FORBIDDEN: 'Tu ne peux pas acheter dans ton propre commerce.',
+  ITEM_NOT_FOUND: 'Article introuvable.',
+  LOAN_NOT_ACTIVE: 'Ce pret n est pas actif.',
+  LOAN_ALREADY_REPAID: 'Ce pret a deja ete rembourse.',
+  BORROWER_INSUFFICIENT_MONEY: 'L emprunteur n a pas assez de money pour rembourser.',
 };
 
 async function requireYouAccess(req: AuthRequest, res: Response, next: () => void) {
@@ -272,6 +289,11 @@ router.post('/skills/:skillKey/train', authMiddleware, requireYouAccess, async (
 
 router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
+    // Check global creation toggle
+    const creationSetting = await prisma.gameSettings.findUnique({ where: { key: 'business_creation_enabled' } });
+    if (creationSetting?.value === 'false' && !req.user?.isAdmin) {
+      return res.status(403).json({ error: 'La creation d entreprise est temporairement desactivee.', code: 'BUSINESS_CREATION_DISABLED' });
+    }
     const business = await createBusiness(req.user!.id, {
       name: String(req.body?.name ?? ''),
       typeKey: String(req.body?.typeKey ?? ''),
@@ -589,6 +611,16 @@ router.delete('/businesses/:businessId/members/:memberId', authMiddleware, requi
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Sack member error');
+  }
+});
+
+// Loan repayment
+router.post('/loans/:loanId/repay', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await repayLoan(req.user!.id, req.params.loanId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Loan repay error');
   }
 });
 

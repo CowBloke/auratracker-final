@@ -160,7 +160,8 @@ export interface YouBusinessType {
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
-  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product'>;
+  level: number;
+  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item'>;
 }
 
 export interface YouSkill {
@@ -214,6 +215,7 @@ export interface YouBusinessLoan {
   termDays: number;
   interestRate: number;
   status: string;
+  repaidAmount: number;
   decidedAt: string | null;
   createdAt: string;
   borrower: Omit<YouPlayer, 'alreadyInRelationship'>;
@@ -296,7 +298,8 @@ export interface YouBusiness {
   monthlyExpenses: number;
   satisfaction: number;
   memberCount: number;
-  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product'>;
+  level: number;
+  actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item'>;
   members: YouBusinessMember[];
   pendingInvitations: YouBusinessInvitation[];
   recentLoans: YouBusinessLoan[];
@@ -309,6 +312,7 @@ export interface YouBusiness {
   transferFeeRate?: number;
   formationUrl?: string | null;
   formationPrice?: number;
+  npcLastCollectedAt?: string | null;
 }
 
 export interface YouMarriageProposal {
@@ -376,6 +380,7 @@ export interface YouJobOffer {
 export interface YouState {
   skills: YouSkill[];
   businessSlots: number;
+  unlockedBusinessLevel: number;
   businessTypes: YouBusinessType[];
   players: YouPlayer[];
   jobOffers: YouJobOffer[];
@@ -457,6 +462,12 @@ export const youApi = {
     api.patch<{ result: { salary: number } }>(`/you/businesses/${businessId}/members/${memberId}/salary`, { salary }),
   sackMember: (businessId: string, memberId: string) =>
     api.delete<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/members/${memberId}`),
+  repayLoan: (loanId: string) =>
+    api.post<{ result: { repaid: number; totalOwed: number } }>(`/you/loans/${loanId}/repay`, {}),
+  purchaseItem: (businessId: string, itemKey: string) =>
+    api.post<{ result: { item: string; price: number } }>(`/you/businesses/${businessId}/actions/purchase_item`, { itemKey }),
+  collectNpc: (businessId: string) =>
+    api.post<{ result: { amount: number } }>(`/you/businesses/${businessId}/actions/collect_npc`, {}),
 };
 
 // Economy API
@@ -1857,6 +1868,14 @@ export const adminApi = {
     totalEntries: number;
     limit: number;
   }>('/admin/playtime-leaderboard', { params }),
+  purgeAllBusinesses: () =>
+    api.post<{ purged: number }>('/admin/businesses/purge', {}),
+  resetBusinessUnlockLevels: () =>
+    api.post<{ ok: boolean }>('/admin/businesses/reset-unlock-levels', {}),
+  getBusinessCreationEnabled: () =>
+    api.get<{ enabled: boolean }>('/admin/businesses/creation-enabled'),
+  setBusinessCreationEnabled: (enabled: boolean) =>
+    api.post<{ enabled: boolean }>('/admin/businesses/creation-enabled', { enabled }),
 };
 
 export const maintenanceApi = {

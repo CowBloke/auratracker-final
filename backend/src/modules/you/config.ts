@@ -1,4 +1,4 @@
-export type BusinessActionKey = 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product';
+export type BusinessActionKey = 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item';
 export type YouSkillKey = 'affaires' | 'social' | 'intelligence' | 'charisme' | 'finance';
 
 export interface BusinessTypeDefinition {
@@ -11,6 +11,7 @@ export interface BusinessTypeDefinition {
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
+  level: number; // 1 = always available; 2 = requires having owned a level 1; 3 = requires level 2
   actions: BusinessActionKey[];
 }
 
@@ -20,6 +21,47 @@ export interface StartupProductDefinition {
 }
 
 export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
+  // --- Level 1 ---
+  {
+    key: 'lemonade',
+    label: 'Stand de limonade',
+    category: 'Commerce',
+    description: 'Un petit stand de boissons fraiches. Premier pas dans le monde des affaires.',
+    minCapital: 0,
+    creationFee: 500,
+    monthlyRevenue: 300,
+    monthlyExpenses: 50,
+    satisfaction: 75,
+    level: 1,
+    actions: ['deposit', 'withdraw', 'collect_npc'],
+  },
+  {
+    key: 'epicerie',
+    label: 'Epicerie',
+    category: 'Commerce',
+    description: 'Une petite epicerie de quartier. Les clients achètent directement vos produits.',
+    minCapital: 0,
+    creationFee: 1500,
+    monthlyRevenue: 600,
+    monthlyExpenses: 200,
+    satisfaction: 78,
+    level: 1,
+    actions: ['deposit', 'withdraw', 'collect_npc'],
+  },
+  // --- Level 2 ---
+  {
+    key: 'coffee_shop',
+    label: 'Coffee Shop',
+    category: 'Commerce',
+    description: 'Un cafe tendance avec une clientele fidèle et des revenus stables.',
+    minCapital: 1000,
+    creationFee: 3000,
+    monthlyRevenue: 1200,
+    monthlyExpenses: 600,
+    satisfaction: 83,
+    level: 2,
+    actions: ['invite', 'deposit', 'withdraw'],
+  },
   {
     key: 'startup',
     label: 'Startup Tech',
@@ -30,30 +72,20 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyRevenue: 0,
     monthlyExpenses: 1800,
     satisfaction: 86,
+    level: 2,
     actions: ['invite', 'deposit', 'withdraw', 'start_research', 'deploy_product'],
   },
   {
-    key: 'bank',
-    label: 'Banque',
-    category: 'Finance',
-    description: 'Depots, prets et services bancaires entre joueurs.',
-    minCapital: 0,
-    creationFee: 10000,
-    monthlyRevenue: 0,
-    monthlyExpenses: 0,
-    satisfaction: 91,
-    actions: ['loan', 'invest', 'invite', 'deposit', 'withdraw'],
-  },
-  {
     key: 'agency',
-    label: 'Agence',
+    label: 'Agence Immobiliere',
     category: 'Services',
-    description: 'Campagnes, design et accompagnement business.',
+    description: 'Transactions immobilieres, gestion de biens et conseil patrimonial.',
     minCapital: 5000,
     creationFee: 5000,
     monthlyRevenue: 6800,
     monthlyExpenses: 3900,
     satisfaction: 82,
+    level: 2,
     actions: ['invite', 'deposit', 'withdraw'],
   },
   {
@@ -66,6 +98,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyRevenue: 800,
     monthlyExpenses: 450,
     satisfaction: 80,
+    level: 2,
     actions: ['invite', 'deposit', 'withdraw'],
   },
   {
@@ -78,7 +111,22 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyRevenue: 0,
     monthlyExpenses: 700,
     satisfaction: 78,
+    level: 2,
     actions: ['invite', 'deposit', 'withdraw'],
+  },
+  // --- Level 3 ---
+  {
+    key: 'bank',
+    label: 'Banque',
+    category: 'Finance',
+    description: 'Depots, prets et services bancaires entre joueurs.',
+    minCapital: 0,
+    creationFee: 10000,
+    monthlyRevenue: 0,
+    monthlyExpenses: 0,
+    satisfaction: 91,
+    level: 3,
+    actions: ['loan', 'invest', 'invite', 'deposit', 'withdraw'],
   },
 ];
 

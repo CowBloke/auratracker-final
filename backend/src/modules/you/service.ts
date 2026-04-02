@@ -331,6 +331,7 @@ function serializeBusiness(business: any, viewerId: string) {
       termDays: loan.termMonths,
       interestRate: loan.interestRate,
       status: loan.status,
+      repaidAmount: loan.repaidAmount ?? 0,
       decidedAt: loan.decidedAt ? loan.decidedAt.toISOString() : null,
       createdAt: loan.createdAt.toISOString(),
       borrower: loan.borrower,
@@ -354,6 +355,10 @@ function serializeBusiness(business: any, viewerId: string) {
     transferFeeRate: business.typeKey === 'transfer' ? (business.transferFeeRate ?? 2) : undefined,
     formationUrl: business.typeKey === 'formation' ? (business.formationUrl ?? null) : undefined,
     formationPrice: business.typeKey === 'formation' ? (business.formationPrice ?? 500) : undefined,
+    npcLastCollectedAt: (business.typeKey === 'lemonade' || business.typeKey === 'epicerie')
+      ? (business.npcLastCollectedAt ? new Date(business.npcLastCollectedAt).toISOString() : null)
+      : undefined,
+    level: type?.level ?? 1,
   };
 }
 
@@ -570,10 +575,17 @@ export async function getYouState(userId: string) {
     .filter((skill): skill is NonNullable<typeof skill> => Boolean(skill));
   const businessSlots = getBusinessSlots(skills);
 
+  const viewerUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { unlockedBusinessLevel: true },
+  });
+  const unlockedBusinessLevel = viewerUser?.unlockedBusinessLevel ?? 0;
+
   return {
     businessTypes: BUSINESS_TYPES,
     skills: serializedSkills,
     businessSlots,
+    unlockedBusinessLevel,
     players: players.map((player) => ({
       ...player,
       alreadyInRelationship: relatedUserIds.has(player.id),
@@ -715,7 +727,7 @@ export async function createBusiness(userId: string, input: { name: string; type
 
   const creationCost = type.creationFee;
   const startingCapital = type.key === 'bank' ? 0 : input.capital;
-  const [skills, ownedBusinessCount] = await Promise.all([
+  const [skills, ownedBusinessCount, viewer] = await Promise.all([
     prisma.userSkill.findMany({
       where: { userId },
       select: { key: true, level: true },
@@ -723,10 +735,20 @@ export async function createBusiness(userId: string, input: { name: string; type
     prisma.business.count({
       where: { ownerId: userId },
     }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { unlockedBusinessLevel: true },
+    }),
   ]);
   const businessSlots = getBusinessSlots(skills);
   if (ownedBusinessCount >= businessSlots) {
     throw new Error('BUSINESS_SLOT_LIMIT_REACHED');
+  }
+
+  const unlockedLevel = viewer?.unlockedBusinessLevel ?? 0;
+  const requiredUnlock = type.level - 1; // to create level N, must have unlocked N-1
+  if (type.level > 1 && unlockedLevel < requiredUnlock) {
+    throw new Error('BUSINESS_LEVEL_LOCKED');
   }
 
   const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, creationCost);
@@ -774,6 +796,14 @@ export async function createBusiness(userId: string, input: { name: string; type
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
+
+  // Update unlocked level (only goes up, never down)
+  if (type.level > unlockedLevel) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { unlockedBusinessLevel: type.level },
+    });
+  }
 
   logYouAdmin('business_create', userId, undefined, business.id, business.name, {
     businessType: business.typeKey,
@@ -969,6 +999,7 @@ async function handleDepositAction(userId: string, business: any, input: { amoun
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
+  await logBusinessTransaction(business.id, 'DEPOSIT', amount, `Depot par proprietaire`, userId);
 
   logYouAdmin('business_deposit', userId, undefined, business.id, business.name, {
     amount,
@@ -1003,6 +1034,7 @@ async function handleWithdrawAction(userId: string, business: any, input: { amou
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
+  await logBusinessTransaction(business.id, 'WITHDRAW', -amount, `Retrait par proprietaire`, userId);
 
   logYouAdmin('business_withdraw', userId, undefined, business.id, business.name, {
     amount,
@@ -1338,6 +1370,8 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
     emitSharedBalanceUpdates(prisma, userId),
   ]);
 
+  await logBusinessTransaction(loan.businessId, 'LOAN_ISSUE', -loan.amount, `Pret accorde a ${loan.borrower.username}`, loan.borrowerId);
+
   await Promise.allSettled([
     createNotification({
       userId: loan.borrowerId,
@@ -1567,6 +1601,75 @@ async function handleInvestAction(userId: string, business: any, input: { amount
   };
 }
 
+async function handleCollectNpcAction(userId: string, business: any, _input: unknown) {
+  if (business.ownerId !== userId) {
+    throw new Error('BUSINESS_COLLECT_FORBIDDEN');
+  }
+
+  const { getBusinessBalancing } = await import('../../config/balancing.js');
+  const balancing = getBusinessBalancing(business.typeKey);
+  if (!balancing || !('npcCollectAmount' in balancing)) {
+    throw new Error('BUSINESS_ACTION_UNAVAILABLE');
+  }
+
+  const cooldownMs = (balancing.npcCollectCooldownHours as number) * 60 * 60 * 1000;
+  if (business.npcLastCollectedAt) {
+    const last = new Date(business.npcLastCollectedAt).getTime();
+    if (Date.now() - last < cooldownMs) {
+      throw new Error('COLLECT_ON_COOLDOWN');
+    }
+  }
+
+  const amount = balancing.npcCollectAmount as number;
+
+  await prisma.$transaction([
+    prisma.business.update({
+      where: { id: business.id },
+      data: { treasuryMoney: { increment: amount }, npcLastCollectedAt: new Date() },
+    }),
+  ]);
+
+  await logBusinessTransaction(business.id, 'NPC_COLLECT', amount, `Recettes clients collectees`, userId);
+
+  return { amount };
+}
+
+async function handlePurchaseItemAction(userId: string, business: any, input: { itemKey: string }) {
+  if (business.ownerId === userId) {
+    throw new Error('PURCHASE_SELF_FORBIDDEN');
+  }
+
+  const { getBusinessBalancing } = await import('../../config/balancing.js');
+  const balancing = getBusinessBalancing(business.typeKey);
+  if (!balancing || !('items' in balancing)) {
+    throw new Error('BUSINESS_ACTION_UNAVAILABLE');
+  }
+
+  const items = balancing.items as unknown as Array<{ key: string; label: string; price: number }>;
+  const item = items.find((i) => i.key === input.itemKey);
+  if (!item) {
+    throw new Error('ITEM_NOT_FOUND');
+  }
+
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, item.price);
+  if (!hasSharedMoney) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, item.price);
+    await tx.business.update({
+      where: { id: business.id },
+      data: { treasuryMoney: { increment: item.price } },
+    });
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+  await logBusinessTransaction(business.id, 'ITEM_SALE', item.price, `Achat de ${item.label} par un client`, userId);
+
+  return { item: item.label, price: item.price };
+}
+
 const BUSINESS_ACTION_HANDLERS: Record<BusinessActionKey, (userId: string, business: any, input: any) => Promise<any>> = {
   invite: handleInviteAction,
   loan: handleLoanAction,
@@ -1575,6 +1678,8 @@ const BUSINESS_ACTION_HANDLERS: Record<BusinessActionKey, (userId: string, busin
   withdraw: handleWithdrawAction,
   start_research: handleStartResearchAction,
   deploy_product: handleDeployProductAction,
+  collect_npc: handleCollectNpcAction,
+  purchase_item: handlePurchaseItemAction,
 };
 
 export async function executeBusinessAction(userId: string, businessId: string, actionKey: BusinessActionKey, input: Record<string, unknown>) {
@@ -2696,6 +2801,48 @@ export async function getBusinessTransactions(userId: string, businessId: string
   }));
 }
 
+// --- Loan Repayment ---
+
+export async function repayLoan(userId: string, loanId: string) {
+  const loan = await prisma.businessLoan.findUnique({
+    where: { id: loanId },
+    include: {
+      borrower: { select: USER_PREVIEW_SELECT },
+      business: { select: { id: true, name: true, ownerId: true, treasuryMoney: true } },
+    },
+  });
+
+  if (!loan) throw new Error('BUSINESS_LOAN_NOT_FOUND');
+  if (loan.business.ownerId !== userId) throw new Error('BUSINESS_LOAN_REVIEW_FORBIDDEN');
+  if (loan.status !== 'ACTIVE') throw new Error('LOAN_NOT_ACTIVE');
+
+  const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
+  const remaining = totalOwed - (loan.repaidAmount ?? 0);
+
+  if (remaining <= 0) throw new Error('LOAN_ALREADY_REPAID');
+
+  // Deduct from borrower's balance, add to bank treasury
+  const borrowerHasMoney = await ensureSharedMoneyAvailable(prisma, loan.borrowerId, remaining);
+  if (!borrowerHasMoney) throw new Error('BORROWER_INSUFFICIENT_MONEY');
+
+  await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, loan.borrowerId, remaining);
+    await tx.business.update({
+      where: { id: loan.businessId },
+      data: { treasuryMoney: { increment: remaining } },
+    });
+    await tx.businessLoan.update({
+      where: { id: loanId },
+      data: { status: 'REPAID', repaidAmount: totalOwed },
+    });
+  });
+
+  await emitSharedBalanceUpdates(prisma, loan.borrowerId);
+  await logBusinessTransaction(loan.businessId, 'LOAN_REPAY', remaining, `Remboursement de ${loan.borrower.username}`, loan.borrowerId);
+
+  return { repaid: remaining, totalOwed };
+}
+
 // --- Bank Account System ---
 
 export async function getBankAccounts(userId: string, businessId: string) {
@@ -2858,5 +3005,33 @@ export async function sackMember(ownerId: string, businessId: string, memberId: 
   if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
 
   await prisma.businessMember.delete({ where: { id: memberId } });
+  return { ok: true };
+}
+
+// --- Admin Business Controls ---
+
+export async function adminPurgeAllBusinesses() {
+  const businesses = await prisma.business.findMany({
+    select: { id: true, ownerId: true, startingCapital: true },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    // Reimburse each owner with their creation cost
+    for (const biz of businesses) {
+      await tx.user.update({
+        where: { id: biz.ownerId },
+        data: { money: { increment: biz.startingCapital } },
+      });
+    }
+    await tx.business.deleteMany({});
+  });
+
+  await emitSharedBalanceUpdatesForUserIds(prisma, [...new Set(businesses.map((b) => b.ownerId))]);
+
+  return { purged: businesses.length };
+}
+
+export async function adminResetBusinessUnlockLevels() {
+  await prisma.user.updateMany({ data: { unlockedBusinessLevel: 0 } });
   return { ok: true };
 }
