@@ -518,6 +518,11 @@ export function ManageBusinessModal({
   const [reviewingLoanId, setReviewingLoanId] = useState<string | null>(null);
   const [reviewingBuyoutId, setReviewingBuyoutId] = useState<string | null>(null);
   const [actingProductKey, setActingProductKey] = useState<string | null>(null);
+  const [loanRateInput, setLoanRateInput] = useState('4');
+  const [transferFeeInput, setTransferFeeInput] = useState('2');
+  const [savingBankRate, setSavingBankRate] = useState(false);
+  const [savingTransferFee, setSavingTransferFee] = useState(false);
+  const [buyingLivret, setBuyingLivret] = useState(false);
   const [liquidating, setLiquidating] = useState(false);
 
   useEffect(() => {
@@ -528,6 +533,8 @@ export function ManageBusinessModal({
       setReviewingLoanId(null);
       setReviewingBuyoutId(null);
       setActingProductKey(null);
+      setLoanRateInput(String(business?.loanInterestRate ?? 4));
+      setTransferFeeInput(String(business?.transferFeeRate ?? 2));
     }
   }, [open, business?.id]);
 
@@ -535,6 +542,7 @@ export function ManageBusinessModal({
   const pendingBuyoutOffers = business?.pendingBuyoutOffers.filter((offer) => offer.status === 'PENDING') ?? [];
   const isBank = business?.typeKey === 'bank';
   const isStartup = business?.typeKey === 'startup';
+  const isTransfer = business?.typeKey === 'transfer';
   const businessIconTypeKey = business?.typeKey as keyof typeof BUSINESS_ICON_MAP | undefined;
   const BusinessIcon = businessIconTypeKey ? (BUSINESS_ICON_MAP[businessIconTypeKey] ?? Building2) : Building2;
   const businessIconStyle = businessIconTypeKey
@@ -578,6 +586,42 @@ export function ManageBusinessModal({
       }
     } finally {
       setReviewingBuyoutId(null);
+    }
+  };
+
+  const saveLoanRate = async () => {
+    if (!business) return;
+    setSavingBankRate(true);
+    try {
+      await withRouteError(() => youApi.setLoanRate(business.id, Number(loanRateInput)), 'Impossible de modifier le taux.');
+      toast.success('Taux d emprunt mis a jour');
+      await onSubmitted(true);
+    } finally {
+      setSavingBankRate(false);
+    }
+  };
+
+  const saveTransferFee = async () => {
+    if (!business) return;
+    setSavingTransferFee(true);
+    try {
+      await withRouteError(() => youApi.setTransferFeeRate(business.id, Number(transferFeeInput)), 'Impossible de modifier les frais.');
+      toast.success('Frais de transfert mis a jour');
+      await onSubmitted(true);
+    } finally {
+      setSavingTransferFee(false);
+    }
+  };
+
+  const buyLivret = async () => {
+    if (!business) return;
+    setBuyingLivret(true);
+    try {
+      await withRouteError(() => youApi.buyLivretEpargneUpgrade(business.id), "Impossible d'acheter cet upgrade.");
+      toast.success('Livret Epargne active');
+      await onSubmitted(true);
+    } finally {
+      setBuyingLivret(false);
     }
   };
 
@@ -757,6 +801,42 @@ export function ManageBusinessModal({
                 {[{ label: 'Membres', value: String(business.memberCount) }, { label: 'Revenue', value: `+${formatMoney(business.monthlyRevenue)}` }].map((entry) => <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p><p className="mt-1 text-sm font-semibold tabular-nums">{entry.value}</p></div>)}
               </div>
             </CardContent></Card>
+
+            {isBank ? <Card><CardContent className="space-y-4 px-5 py-4">
+              <SectionTitle>Parametres banque</SectionTitle>
+              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
+                <p className="text-xs text-muted-foreground">Taux d emprunt</p>
+                <div className="mt-3 flex items-center gap-2">
+                  <Input type="number" min={1} max={50} step={0.5} value={loanRateInput} onChange={(event) => setLoanRateInput(event.target.value)} />
+                  <Button size="sm" variant="outline" onClick={() => void saveLoanRate()} disabled={savingBankRate || Number(loanRateInput) < 1 || Number(loanRateInput) > 50}>Modifier</Button>
+                </div>
+              </div>
+              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">Livret Epargne</p>
+                    <p className="text-xs text-muted-foreground">{business.livretEpargneUnlocked ? 'Upgrade deja actif.' : 'Passe le rendement quotidien de 0.2% a 0.5%.'}</p>
+                  </div>
+                  {business.livretEpargneUnlocked ? <Pill label="Actif" color="bg-amber-400/15 text-amber-300" /> : null}
+                </div>
+                {!business.livretEpargneUnlocked ? <div className="mt-3 flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">Cout: {formatMoney(5000)} money</p><Button size="sm" variant="outline" onClick={() => void buyLivret()} disabled={buyingLivret || business.treasuryMoney < 5000}>Acheter</Button></div> : null}
+              </div>
+            </CardContent></Card> : null}
+
+            {isTransfer ? <Card><CardContent className="space-y-4 px-5 py-4">
+              <SectionTitle>Parametres transfert</SectionTitle>
+              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
+                <p className="text-xs text-muted-foreground">Frais de transfert</p>
+                <div className="mt-3 flex items-center gap-2">
+                  <Input type="number" min={0} max={25} step={0.25} value={transferFeeInput} onChange={(event) => setTransferFeeInput(event.target.value)} />
+                  <Button size="sm" variant="outline" onClick={() => void saveTransferFee()} disabled={savingTransferFee || Number(transferFeeInput) < 0 || Number(transferFeeInput) > 25}>Modifier</Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <SectionTitle>Historique des transferts</SectionTitle>
+                {business.transferHistory.length === 0 ? <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">Aucun transfert enregistre pour le moment.</div> : business.transferHistory.map((entry) => <div key={entry.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4"><div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">{entry.sender.username} -&gt; {entry.recipient.username}</p><p className="text-xs text-muted-foreground">{new Date(entry.createdAt).toLocaleString('fr-FR')} · frais {formatMoney(entry.fee)} ({entry.feeRate}%)</p></div><p className="text-sm font-semibold tabular-nums text-cyan-300">{formatMoney(entry.amount)}</p></div></div>)}
+              </div>
+            </CardContent></Card> : null}
 
             {isStartup ? <Card><CardContent className="space-y-3 px-5 py-4">
               <SectionTitle>Produits</SectionTitle>

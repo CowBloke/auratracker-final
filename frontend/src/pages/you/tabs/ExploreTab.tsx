@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeftRight, BarChart3, Building2, ChevronRight, HandCoins, Landmark, PiggyBank, Search, ShieldAlert, Sparkles, Trash2, UserPlus, Vault, Wallet } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeftRight, BarChart3, Building2, ChevronRight, HandCoins, Landmark, PiggyBank, Search, ShieldAlert, Sparkles, Trash2, UserPlus, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,50 +11,70 @@ import { ACTION_META, BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants
 import { type BusinessAction } from '../types';
 import { canUseBusinessAction, withRouteError } from '../utils';
 
-const LIVRET_EPARGNE_COST = 5000;
+type ExploreAction = BusinessAction | 'buyout' | 'transfer_service';
+
+const EXPLORE_ACTION_META: Record<ExploreAction, { label: string; help: string; icon: typeof UserPlus; tone: string }> = {
+  ...ACTION_META,
+  buyout: { label: 'Faire une offre', help: 'Proposer un rachat du business au proprietaire.', icon: HandCoins, tone: 'bg-cyan-400/15 text-cyan-300' },
+  transfer_service: { label: 'Utiliser le service', help: 'Envoyer du money a un autre joueur via ce business.', icon: ArrowLeftRight, tone: 'bg-sky-400/15 text-sky-300' },
+};
 
 function formatMoney(n: number) {
   return n.toLocaleString('fr-FR');
 }
 
-function BankDetailCard({ business, userId, onReload }: { business: YouBusiness; userId: string; onReload: () => Promise<void> }) {
-  const isOwner = business.ownerId === userId;
-  const [buying, setBuying] = useState(false);
-  const [rateInput, setRateInput] = useState(String(business.loanInterestRate ?? 4));
-  const [savingRate, setSavingRate] = useState(false);
+function ActionBar({ actions, business, onAction }: { actions: ExploreAction[]; business: YouBusiness; onAction: (business: YouBusiness, action: ExploreAction) => void }) {
+  return (
+    <Card>
+      <CardContent className="space-y-2 px-5 py-4">
+        <SectionTitle>Actions</SectionTitle>
+        {actions.length === 0 ? (
+          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
+            {business.ownerKind === 'you'
+              ? "Les actions de gestion se font depuis l'onglet travail avec le bouton Gerer entreprise."
+              : 'Aucune action disponible pour ce business.'}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {actions.map((action) => {
+              const meta = EXPLORE_ACTION_META[action];
+              const Icon = meta.icon;
+              const [toneBg, toneText] = meta.tone.split(' ');
+              return (
+                <button
+                  key={action}
+                  type="button"
+                  onClick={() => onAction(business, action)}
+                  className="flex w-full items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-left transition-colors hover:bg-muted/20"
+                >
+                  <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', toneBg)}>
+                    <Icon className={cn('h-4 w-4', toneText)} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{meta.label}</p>
+                    <p className="text-xs text-muted-foreground">{meta.help}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
-  const handleSaveRate = async () => {
-    setSavingRate(true);
-    try {
-      await withRouteError(() => youApi.setLoanRate(business.id, Number(rateInput)), 'Impossible de modifier le taux.');
-      toast.success('Taux d emprunt mis a jour');
-      await onReload();
-    } finally {
-      setSavingRate(false);
-    }
-  };
-
-  const handleBuyUpgrade = async () => {
-    setBuying(true);
-    try {
-      await withRouteError(() => youApi.buyLivretEpargneUpgrade(business.id), "Impossible d'acheter cet upgrade.");
-      toast.success('Livret Epargne activé !');
-      await onReload();
-    } finally {
-      setBuying(false);
-    }
-  };
-
+function BankDetailCard({ business }: { business: YouBusiness }) {
   return (
     <div className="space-y-3">
-      {/* Founder + treasury */}
       <Card>
-        <CardContent className="px-5 py-4 space-y-4">
+        <CardContent className="space-y-4 px-5 py-4">
           <div className="flex items-center gap-3">
             <UserAvatar player={business.owner} className="h-11 w-11" />
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground/60 uppercase tracking-wider">Fondateur</p>
-              <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground/60">Fondateur</p>
+              <div className="mt-0.5 flex items-center gap-2">
                 <p className="text-sm font-semibold">{business.owner.username}</p>
                 {business.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}
               </div>
@@ -70,29 +90,6 @@ function BankDetailCard({ business, userId, onReload }: { business: YouBusiness;
               <p className="mt-1 text-xl font-bold tabular-nums text-amber-400">{business.loanInterestRate ?? 4}%</p>
             </div>
           </div>
-          {isOwner && (
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                max={50}
-                step={0.5}
-                value={rateInput}
-                onChange={(e) => setRateInput(e.target.value)}
-                className="h-8 w-24 rounded-lg border border-border/40 bg-muted/10 px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-amber-400/40"
-              />
-              <span className="text-xs text-muted-foreground">% / pret</span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={savingRate || Number(rateInput) < 1 || Number(rateInput) > 50}
-                onClick={() => void handleSaveRate()}
-                className="h-7 border-amber-400/30 text-amber-300 hover:bg-amber-500/10 disabled:opacity-40"
-              >
-                {savingRate ? 'Sauvegarde...' : 'Modifier'}
-              </Button>
-            </div>
-          )}
           {business.livretEpargneUnlocked ? (
             <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2 text-xs text-amber-300">
               <Sparkles className="h-3.5 w-3.5 shrink-0" />
@@ -103,78 +100,19 @@ function BankDetailCard({ business, userId, onReload }: { business: YouBusiness;
           )}
         </CardContent>
       </Card>
-
-      {/* Upgrade: livret épargne (owner only, not yet unlocked) */}
-      {isOwner && !business.livretEpargneUnlocked ? (
-        <Card>
-          <CardContent className="px-5 py-4 space-y-3">
-            <SectionTitle>Upgrades</SectionTitle>
-            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-2.5">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15">
-                  <Vault className="h-4 w-4 text-amber-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">Livret Epargne</p>
-                  <p className="text-xs text-muted-foreground">Booste le rendement quotidien de 0.2% à 0.5%</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between pt-0.5">
-                <p className="text-xs text-muted-foreground">
-                  Coût :{' '}
-                  <span className={cn('font-semibold', business.treasuryMoney >= LIVRET_EPARGNE_COST ? 'text-foreground' : 'text-red-400')}>
-                    {formatMoney(LIVRET_EPARGNE_COST)}
-                  </span>
-                  {business.treasuryMoney < LIVRET_EPARGNE_COST ? (
-                    <span className="ml-1.5 text-red-400/80">· fonds insuffisants</span>
-                  ) : null}
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={buying || business.treasuryMoney < LIVRET_EPARGNE_COST}
-                  onClick={() => void handleBuyUpgrade()}
-                  className="h-7 border-amber-400/30 text-amber-300 hover:bg-amber-500/10 disabled:opacity-40"
-                >
-                  {buying ? 'Achat...' : 'Acheter'}
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
     </div>
   );
 }
 
-function TransferDetailCard({ business, userId, onReload }: { business: YouBusiness; userId: string; onReload: () => Promise<void> }) {
-  const isOwner = business.ownerId === userId;
-  const [feeInput, setFeeInput] = useState(String(business.transferFeeRate ?? 2));
-  const [savingFee, setSavingFee] = useState(false);
-
-  useEffect(() => {
-    setFeeInput(String(business.transferFeeRate ?? 2));
-  }, [business.id, business.transferFeeRate]);
-
-  const handleSaveFee = async () => {
-    setSavingFee(true);
-    try {
-      await withRouteError(() => youApi.setTransferFeeRate(business.id, Number(feeInput)), 'Impossible de modifier les frais.');
-      toast.success('Frais de transfert mis a jour');
-      await onReload();
-    } finally {
-      setSavingFee(false);
-    }
-  };
-
+function TransferDetailCard({ business }: { business: YouBusiness }) {
   return (
     <div className="space-y-3">
       <Card>
-        <CardContent className="px-5 py-4 space-y-4">
+        <CardContent className="space-y-4 px-5 py-4">
           <div className="flex items-center gap-3">
             <UserAvatar player={business.owner} className="h-11 w-11" />
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground/60 uppercase tracking-wider">Operateur</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground/60">Operateur</p>
               <div className="mt-0.5 flex items-center gap-2">
                 <p className="text-sm font-semibold">{business.owner.username}</p>
                 {business.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}
@@ -191,33 +129,9 @@ function TransferDetailCard({ business, userId, onReload }: { business: YouBusin
               <p className="mt-1 text-xl font-bold tabular-nums text-cyan-400">{business.transferFeeRate ?? 2}%</p>
             </div>
           </div>
-          {isOwner ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={0}
-                max={25}
-                step={0.25}
-                value={feeInput}
-                onChange={(e) => setFeeInput(e.target.value)}
-                className="h-8 w-24 rounded-lg border border-border/40 bg-muted/10 px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
-              />
-              <span className="text-xs text-muted-foreground">% / transfert</span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={savingFee || Number(feeInput) < 0 || Number(feeInput) > 25}
-                onClick={() => void handleSaveFee()}
-                className="h-7 border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-40"
-              >
-                {savingFee ? 'Sauvegarde...' : 'Modifier'}
-              </Button>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200">
-              Chaque transfert applique {business.transferFeeRate ?? 2}% de frais sur le montant envoye.
-            </div>
-          )}
+          <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200">
+            Chaque transfert applique {business.transferFeeRate ?? 2}% de frais sur le montant envoye.
+          </div>
         </CardContent>
       </Card>
 
@@ -234,7 +148,7 @@ function TransferDetailCard({ business, userId, onReload }: { business: YouBusin
                 <div key={entry.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">{entry.sender.username} → {entry.recipient.username}</p>
+                      <p className="text-sm font-medium">{entry.sender.username} {'->'} {entry.recipient.username}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {new Date(entry.createdAt).toLocaleString('fr-FR')} · frais {formatMoney(entry.fee)} ({entry.feeRate}%)
                       </p>
@@ -251,108 +165,40 @@ function TransferDetailCard({ business, userId, onReload }: { business: YouBusin
   );
 }
 
-function DefaultDetailCard({ business, userId, isAdmin, onDeleteBusiness, onAction, visibleActions, onBuyout, onTransfer }: {
-  business: YouBusiness;
-  userId: string;
-  isAdmin: boolean;
-  onDeleteBusiness: () => void;
-  onAction: (b: YouBusiness, a: BusinessAction) => void;
-  visibleActions: string[];
-  onBuyout: (b: YouBusiness) => void;
-  onTransfer: (b: YouBusiness) => void;
-}) {
+function DefaultDetailCard({ business, isAdmin, onDeleteBusiness }: { business: YouBusiness; isAdmin: boolean; onDeleteBusiness: () => void }) {
   return (
-    <>
-      <Card>
-        <CardContent className="space-y-4 px-5 py-4">
-          <div className="flex items-start gap-3">
-            <UserAvatar player={business.owner} className="h-11 w-11" />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-base font-semibold">{business.name}</p>
-                {business.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">{business.description || 'Aucune description.'}</p>
+    <Card>
+      <CardContent className="space-y-4 px-5 py-4">
+        <div className="flex items-start gap-3">
+          <UserAvatar player={business.owner} className="h-11 w-11" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-base font-semibold">{business.name}</p>
+              {business.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}
             </div>
+            <p className="mt-1 text-sm text-muted-foreground">{business.description || 'Aucune description.'}</p>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: 'Proprietaire', value: business.owner.username },
-              { label: 'Fondation', value: business.foundedLabel },
-              { label: 'Lieu', value: business.location || 'n/a' },
-              { label: 'Satisfaction', value: `${business.satisfaction}/100` },
-            ].map((entry) => (
-              <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p>
-                <p className="mt-1 text-sm font-medium">{entry.value}</p>
-              </div>
-            ))}
-          </div>
-          {isAdmin ? (
-            <Button size="sm" variant="outline" className="w-full justify-start border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={onDeleteBusiness}>
-              <Trash2 className="mr-2 h-4 w-4" />Supprimer ce business
-            </Button>
-          ) : null}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="space-y-3 px-5 py-4">
-          <SectionTitle>Actions utilisateur</SectionTitle>
-          {business.ownerId !== userId ? (
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Button size="sm" variant="outline" className="justify-start border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10" onClick={() => onBuyout(business)}>
-                <HandCoins className="mr-2 h-4 w-4" />Faire une offre
-              </Button>
-              {business.typeKey === 'transfer' ? (
-                <Button size="sm" variant="outline" className="justify-start border-sky-400/30 text-sky-300 hover:bg-sky-500/10" onClick={() => onTransfer(business)}>
-                  <ArrowLeftRight className="mr-2 h-4 w-4" />Utiliser le service
-                </Button>
-              ) : null}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: 'Proprietaire', value: business.owner.username },
+            { label: 'Fondation', value: business.foundedLabel },
+            { label: 'Lieu', value: business.location || 'n/a' },
+            { label: 'Satisfaction', value: `${business.satisfaction}/100` },
+          ].map((entry) => (
+            <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p>
+              <p className="mt-1 text-sm font-medium">{entry.value}</p>
             </div>
-          ) : null}
-          {visibleActions.length === 0 ? (
-            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
-              {business.ownerId === userId
-                ? "Les actions de gestion se trouvent dans l'onglet travail via le bouton Ouvrir."
-                : 'Aucune action disponible pour ce business.'}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {visibleActions.map((action) => {
-                const meta = ACTION_META[action as BusinessAction];
-                const Icon = meta.icon;
-                const [toneBg, toneText] = meta.tone.split(' ');
-                return (
-                  <button
-                    key={action}
-                    type="button"
-                    onClick={() => onAction(business, action as BusinessAction)}
-                    className="flex w-full items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-left transition-colors hover:bg-muted/20"
-                  >
-                    <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', toneBg)}>
-                      <Icon className={cn('h-4 w-4', toneText)} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium">{meta.label}</p>
-                      <p className="text-xs text-muted-foreground">{meta.help}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {isAdmin ? (
-            <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
-              <div className="flex items-start gap-2">
-                <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>Mode admin actif: tu peux supprimer un business directement depuis cette fiche.</p>
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-    </>
+          ))}
+        </div>
+        {isAdmin ? (
+          <Button size="sm" variant="outline" className="w-full justify-start border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={onDeleteBusiness}>
+            <Trash2 className="mr-2 h-4 w-4" />Supprimer ce business
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -385,14 +231,23 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
   }, [filteredBusinesses, selectedBusinessId]);
 
   const selectedBusiness = filteredBusinesses.find((b) => b.id === selectedBusinessId) ?? filteredBusinesses[0] ?? null;
-  const visibleActions = selectedBusiness
-    ? selectedBusiness.actions.filter((action) => canUseBusinessAction(selectedBusiness, action as BusinessAction, userId))
+  const visibleActions: ExploreAction[] = selectedBusiness
+    ? [
+        ...selectedBusiness.actions.filter((action): action is BusinessAction =>
+          ['invite', 'loan', 'invest', 'deposit', 'withdraw'].includes(action)
+          && canUseBusinessAction(selectedBusiness, action as BusinessAction, userId)
+        ),
+        ...(selectedBusiness.ownerId !== userId ? ['buyout' as const] : []),
+        ...(selectedBusiness.typeKey === 'transfer' && selectedBusiness.ownerId !== userId ? ['transfer_service' as const] : []),
+      ]
     : [];
 
-  const onAction = (business: YouBusiness, action: BusinessAction) => {
+  const onAction = (business: YouBusiness, action: ExploreAction) => {
     if (action === 'invite') setInviteBusiness(business);
     if (action === 'loan') setLoanBusiness(business);
     if (action === 'invest') setInvestBusiness(business);
+    if (action === 'buyout') setBuyoutBusiness(business);
+    if (action === 'transfer_service') setTransferBusiness(business);
   };
 
   const deleteSelectedBusiness = async () => {
@@ -405,7 +260,6 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
   return (
     <>
       <div className="grid gap-5 xl:grid-cols-[190px_minmax(0,1fr)_360px]">
-        {/* Filters */}
         <div className="space-y-4">
           <Card>
             <CardContent className="space-y-4 px-4 py-4">
@@ -440,7 +294,6 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
           </Card>
         </div>
 
-        {/* List */}
         <div className="space-y-4">
           <Card>
             <CardContent className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
@@ -480,21 +333,26 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
                           <p className="text-xs text-muted-foreground">par {business.owner.username}</p>
                         </div>
                         {isBank ? (
-                          <div className="text-right shrink-0">
+                          <div className="shrink-0 text-right">
                             <p className="text-sm font-bold tabular-nums text-emerald-400">{formatMoney(business.treasuryMoney)}</p>
-                            <p className="text-[10px] text-amber-400/80 mt-0.5">{business.loanInterestRate ?? 4}% emprunt</p>
+                            <p className="mt-0.5 text-[10px] text-amber-400/80">{business.loanInterestRate ?? 4}% emprunt</p>
                             {business.livretEpargneUnlocked ? (
-                              <p className="text-[10px] text-amber-400/60 flex items-center justify-end gap-0.5 mt-0.5">
+                              <p className="mt-0.5 flex items-center justify-end gap-0.5 text-[10px] text-amber-400/60">
                                 <Sparkles className="h-2.5 w-2.5" />Livret
                               </p>
                             ) : null}
                           </div>
                         ) : (
-                          <div className="text-right shrink-0">
-                            {(() => { const profit = business.monthlyRevenue - business.monthlyExpenses; return <>
-                              <p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-400' : 'text-red-400')}>{profit >= 0 ? '+' : ''}{profit.toLocaleString('fr-FR')}</p>
-                              <p className="text-[10px] text-muted-foreground">{business.satisfaction}/100</p>
-                            </>; })()}
+                          <div className="shrink-0 text-right">
+                            {(() => {
+                              const profit = business.monthlyRevenue - business.monthlyExpenses;
+                              return (
+                                <>
+                                  <p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-400' : 'text-red-400')}>{profit >= 0 ? '+' : ''}{profit.toLocaleString('fr-FR')}</p>
+                                  <p className="text-[10px] text-muted-foreground">{business.satisfaction}/100</p>
+                                </>
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
@@ -509,102 +367,37 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
           </Card>
         </div>
 
-        {/* Detail panel */}
         <div className="space-y-4">
           {selectedBusiness ? (
-            selectedBusiness.typeKey === 'bank' ? (
-              <>
-                {isAdmin ? (
-                  <Card>
-                    <CardContent className="px-5 py-3">
-                      <Button size="sm" variant="outline" className="w-full justify-start border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={() => void deleteSelectedBusiness()}>
-                        <Trash2 className="mr-2 h-4 w-4" />Supprimer ce business
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ) : null}
-                <BankDetailCard business={selectedBusiness} userId={userId} onReload={() => onReload(true)} />
-                {/* Non-owner bank actions (loan, invest) */}
-                {visibleActions.length > 0 ? (
-                  <Card>
-                    <CardContent className="space-y-2 px-5 py-4">
-                      <SectionTitle>Actions</SectionTitle>
-                      <div className="space-y-2">
-                        {visibleActions.map((action) => {
-                          const meta = ACTION_META[action as BusinessAction];
-                          const Icon = meta.icon;
-                          const [toneBg, toneText] = meta.tone.split(' ');
-                          return (
-                            <button
-                              key={action}
-                              type="button"
-                              onClick={() => onAction(selectedBusiness, action as BusinessAction)}
-                              className="flex w-full items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-left transition-colors hover:bg-muted/20"
-                            >
-                              <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', toneBg)}>
-                                <Icon className={cn('h-4 w-4', toneText)} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium">{meta.label}</p>
-                                <p className="text-xs text-muted-foreground">{meta.help}</p>
-                              </div>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : null}
-                {selectedBusiness.ownerId !== userId ? (
-                  <Card>
-                    <CardContent className="space-y-2 px-5 py-4">
-                      <SectionTitle>Rachat</SectionTitle>
-                      <Button size="sm" variant="outline" className="w-full justify-start border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10" onClick={() => setBuyoutBusiness(selectedBusiness)}>
-                        <HandCoins className="mr-2 h-4 w-4" />Faire une offre
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ) : null}
-              </>
-            ) : selectedBusiness.typeKey === 'transfer' ? (
-              <>
-                {isAdmin ? (
-                  <Card>
-                    <CardContent className="px-5 py-3">
-                      <Button size="sm" variant="outline" className="w-full justify-start border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={() => void deleteSelectedBusiness()}>
-                        <Trash2 className="mr-2 h-4 w-4" />Supprimer ce business
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ) : null}
-                <TransferDetailCard business={selectedBusiness} userId={userId} onReload={() => onReload(true)} />
-                {selectedBusiness.ownerId !== userId ? (
-                  <Card>
-                    <CardContent className="space-y-2 px-5 py-4">
-                      <SectionTitle>Actions</SectionTitle>
-                      <Button size="sm" variant="outline" className="w-full justify-start border-sky-400/30 text-sky-300 hover:bg-sky-500/10" onClick={() => setTransferBusiness(selectedBusiness)}>
-                        <ArrowLeftRight className="mr-2 h-4 w-4" />Utiliser le service
-                      </Button>
-                      <Button size="sm" variant="outline" className="w-full justify-start border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10" onClick={() => setBuyoutBusiness(selectedBusiness)}>
-                        <HandCoins className="mr-2 h-4 w-4" />Faire une offre
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ) : null}
-              </>
-            ) : (
-              <DefaultDetailCard
-                business={selectedBusiness}
-                userId={userId}
-                isAdmin={isAdmin}
-                onDeleteBusiness={() => void deleteSelectedBusiness()}
-                onAction={onAction}
-                visibleActions={visibleActions}
-                onBuyout={setBuyoutBusiness}
-                onTransfer={setTransferBusiness}
-              />
-            )
+            <>
+              {isAdmin && (selectedBusiness.typeKey === 'bank' || selectedBusiness.typeKey === 'transfer') ? (
+                <Card>
+                  <CardContent className="px-5 py-3">
+                    <Button size="sm" variant="outline" className="w-full justify-start border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={() => void deleteSelectedBusiness()}>
+                      <Trash2 className="mr-2 h-4 w-4" />Supprimer ce business
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {selectedBusiness.typeKey === 'bank' ? (
+                <BankDetailCard business={selectedBusiness} />
+              ) : selectedBusiness.typeKey === 'transfer' ? (
+                <TransferDetailCard business={selectedBusiness} />
+              ) : (
+                <DefaultDetailCard business={selectedBusiness} isAdmin={isAdmin} onDeleteBusiness={() => void deleteSelectedBusiness()} />
+              )}
+
+              <ActionBar actions={visibleActions} business={selectedBusiness} onAction={onAction} />
+
+              {isAdmin ? (
+                <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+                  <div className="flex items-start gap-2">
+                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>Mode admin actif: tu peux supprimer un business directement depuis cette fiche.</p>
+                  </div>
+                </div>
+              ) : null}
+            </>
           ) : (
             <Card>
               <CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">
