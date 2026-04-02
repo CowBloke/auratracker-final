@@ -11,3 +11,20 @@
 - jeu block blast
 - temps decran dashbaord
 - ui pass/clan
+- modifier partyore 
+- score qui s'enregistre pas watermelon
+- inventaire de clan effet
+- bannière clan image coupée
+- objet changer photo de clan
+- ligne pour monter dernier message lu dans le chat
+- justice
+- pas clair uI you quand on arrive
+- objet shop modif clan
+- imobilier
+- charger plus de message chat
+- pb theme burgandy
+- chat scroll qd nouveu messgae 
+- inbox suggestion redirige à la suggestion
+- fix apigner chat
+- temps passé par jeu manque des jeux
+- ajouter image support et bug 
