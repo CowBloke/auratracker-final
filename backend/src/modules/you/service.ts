@@ -1545,6 +1545,10 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
     throw new Error('MARRIAGE_PROPOSAL_ALREADY_RESOLVED');
   }
 
+  const responderUsername = proposal.relationship.userAId === userId
+    ? proposal.relationship.userA.username
+    : proposal.relationship.userB.username;
+
   const now = new Date();
 
   if (decision === 'reject') {
@@ -1565,7 +1569,7 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
       icon: 'heart-crack',
     });
 
-    logYouAdmin('marriage_response', userId, proposal.recipient.username, proposal.relationship.id, `${proposal.relationship.userA.username} / ${proposal.relationship.userB.username}`, {
+    logYouAdmin('marriage_response', userId, responderUsername, proposal.relationship.id, `${proposal.relationship.userA.username} / ${proposal.relationship.userB.username}`, {
       proposalId,
       decision: 'reject',
     });
@@ -1622,7 +1626,7 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
     emitSharedBalanceUpdates(prisma, proposal.recipientId),
   ]);
 
-  logYouAdmin('marriage_response', userId, proposal.recipient.username, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+  logYouAdmin('marriage_response', userId, responderUsername, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
     proposalId,
     decision: 'accept',
   });
@@ -1780,6 +1784,10 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
     throw new Error('DIVORCE_PROPOSAL_ALREADY_RESOLVED');
   }
 
+  const responderUsername = proposal.relationship.userAId === userId
+    ? proposal.relationship.userA.username
+    : proposal.relationship.userB.username;
+
   const now = new Date();
 
   if (decision === 'reject') {
@@ -1800,7 +1808,7 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
       icon: 'heart-crack',
     });
 
-    logYouAdmin('divorce_response', userId, proposal.recipient.username, proposal.relationship.id, `${proposal.relationship.userA.username} / ${proposal.relationship.userB.username}`, {
+    logYouAdmin('divorce_response', userId, responderUsername, proposal.relationship.id, `${proposal.relationship.userA.username} / ${proposal.relationship.userB.username}`, {
       proposalId,
       decision: 'reject',
     });
@@ -1860,7 +1868,7 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
     }),
   ]);
 
-  logYouAdmin('divorce_response', userId, proposal.recipient.username, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
+  logYouAdmin('divorce_response', userId, responderUsername, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
     proposalId,
     decision: 'accept',
     coupleBalanceSplit: {
