@@ -326,7 +326,7 @@ export function TransferBusinessModal({ open, onClose, business, players, onSubm
       </div>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={1} /></FieldRow>
       <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
-        Frais de service: environ 2% du montant envoye.
+        Frais de service actuels: {business?.transferFeeRate ?? 2}% du montant envoye.
       </div>
       <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || !recipientId || Number(amount) <= 0}>Transferer</Button></div>
     </ModalWrap>

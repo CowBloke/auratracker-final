@@ -57,6 +57,8 @@ model User {
   businessMemberships   BusinessMember[]
   buyoutOffersPlaced    BusinessBuyoutOffer[]    @relation("BuyoutBidder")
   buyoutOffersReceived  BusinessBuyoutOffer[]    @relation("BusinessBuyoutOwner")
+  sentBusinessTransfers BusinessTransferTransaction[] @relation("BusinessTransferSender")
+  receivedBusinessTransfers BusinessTransferTransaction[] @relation("BusinessTransferRecipient")
   sentBusinessInvitations BusinessInvitation[]   @relation("BusinessInvitationSender")
   receivedBusinessInvitations BusinessInvitation[] @relation("BusinessInvitationRecipient")
   borrowedBusinessLoans BusinessLoan[]
@@ -396,6 +398,7 @@ model Business {
   satisfaction           Int      @default(70)
   livretEpargneUnlocked  Boolean  @default(false)
   loanInterestRate       Float    @default(4.0)
+  transferFeeRate        Float    @default(2.0)
   lastBankRevenueDate    String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
@@ -406,6 +409,7 @@ model Business {
   loans       BusinessLoan[]
   investments BusinessInvestment[]
   buyoutOffers BusinessBuyoutOffer[]
+  transferHistory BusinessTransferTransaction[]
   startupProducts BusinessStartupProduct[]
 
   @@index([ownerId])
@@ -503,6 +507,25 @@ model BusinessBuyoutOffer {
   @@index([businessId])
   @@index([bidderId])
   @@index([ownerId, status])
+}
+
+model BusinessTransferTransaction {
+  id          String   @id @default(uuid())
+  businessId  String
+  senderId    String
+  recipientId String
+  amount      Int
+  fee         Int
+  feeRate     Float
+  createdAt   DateTime @default(now())
+
+  business  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sender    User     @relation("BusinessTransferSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User     @relation("BusinessTransferRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([senderId, createdAt])
+  @@index([recipientId, createdAt])
 }
 
 model BusinessStartupProduct {

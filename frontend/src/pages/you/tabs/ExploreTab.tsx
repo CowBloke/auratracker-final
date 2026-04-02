@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { type YouBusiness, type YouPlayer, type YouState, youApi } from '@/services/api';
 import { BuyoutOfferModal, InvestModal, InvitePlayersModal, LoanModal, TransferBusinessModal } from '../components/modals';
 import { FilterButton, Input, Pill, SectionTitle, UserAvatar } from '../components/ui';
-import { ACTION_META, BUSINESS_ICON_MAP } from '../constants';
+import { ACTION_META, BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { type BusinessAction } from '../types';
 import { canUseBusinessAction, withRouteError } from '../utils';
 
@@ -143,6 +143,110 @@ function BankDetailCard({ business, userId, onReload }: { business: YouBusiness;
           </CardContent>
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+function TransferDetailCard({ business, userId, onReload }: { business: YouBusiness; userId: string; onReload: () => Promise<void> }) {
+  const isOwner = business.ownerId === userId;
+  const [feeInput, setFeeInput] = useState(String(business.transferFeeRate ?? 2));
+  const [savingFee, setSavingFee] = useState(false);
+
+  useEffect(() => {
+    setFeeInput(String(business.transferFeeRate ?? 2));
+  }, [business.id, business.transferFeeRate]);
+
+  const handleSaveFee = async () => {
+    setSavingFee(true);
+    try {
+      await withRouteError(() => youApi.setTransferFeeRate(business.id, Number(feeInput)), 'Impossible de modifier les frais.');
+      toast.success('Frais de transfert mis a jour');
+      await onReload();
+    } finally {
+      setSavingFee(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <CardContent className="px-5 py-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <UserAvatar player={business.owner} className="h-11 w-11" />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground/60 uppercase tracking-wider">Operateur</p>
+              <div className="mt-0.5 flex items-center gap-2">
+                <p className="text-sm font-semibold">{business.owner.username}</p>
+                {business.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Tresorerie</p>
+              <p className="mt-1 text-xl font-bold tabular-nums text-emerald-400">{formatMoney(business.treasuryMoney)}</p>
+            </div>
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Frais de transfert</p>
+              <p className="mt-1 text-xl font-bold tabular-nums text-cyan-400">{business.transferFeeRate ?? 2}%</p>
+            </div>
+          </div>
+          {isOwner ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={25}
+                step={0.25}
+                value={feeInput}
+                onChange={(e) => setFeeInput(e.target.value)}
+                className="h-8 w-24 rounded-lg border border-border/40 bg-muted/10 px-3 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
+              />
+              <span className="text-xs text-muted-foreground">% / transfert</span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={savingFee || Number(feeInput) < 0 || Number(feeInput) > 25}
+                onClick={() => void handleSaveFee()}
+                className="h-7 border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10 disabled:opacity-40"
+              >
+                {savingFee ? 'Sauvegarde...' : 'Modifier'}
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200">
+              Chaque transfert applique {business.transferFeeRate ?? 2}% de frais sur le montant envoye.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-3 px-5 py-4">
+          <SectionTitle>Historique</SectionTitle>
+          {business.transferHistory.length === 0 ? (
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
+              Aucun transfert enregistre pour le moment.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {business.transferHistory.map((entry) => (
+                <div key={entry.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{entry.sender.username} → {entry.recipient.username}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {new Date(entry.createdAt).toLocaleString('fr-FR')} · frais {formatMoney(entry.fee)} ({entry.feeRate}%)
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-sm font-bold tabular-nums text-cyan-300">{formatMoney(entry.amount)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -352,6 +456,7 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
               <div className="divide-y divide-border/30">
                 {filteredBusinesses.map((business) => {
                   const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+                  const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
                   const selected = business.id === selectedBusiness?.id;
                   const isBank = business.typeKey === 'bank';
 
@@ -363,8 +468,8 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
                       className={cn('w-full px-5 py-4 text-left transition-colors', selected ? 'bg-muted/25' : 'hover:bg-muted/15')}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted/20">
-                          <Icon className="h-4 w-4 text-foreground" />
+                        <div className={cn('mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', style.iconWrap)}>
+                          <Icon className={cn('h-4 w-4', style.icon)} />
                         </div>
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -455,6 +560,32 @@ export function ExploreTab({ data, players, userId, isAdmin, onReload }: { data:
                   <Card>
                     <CardContent className="space-y-2 px-5 py-4">
                       <SectionTitle>Rachat</SectionTitle>
+                      <Button size="sm" variant="outline" className="w-full justify-start border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10" onClick={() => setBuyoutBusiness(selectedBusiness)}>
+                        <HandCoins className="mr-2 h-4 w-4" />Faire une offre
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : null}
+              </>
+            ) : selectedBusiness.typeKey === 'transfer' ? (
+              <>
+                {isAdmin ? (
+                  <Card>
+                    <CardContent className="px-5 py-3">
+                      <Button size="sm" variant="outline" className="w-full justify-start border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={() => void deleteSelectedBusiness()}>
+                        <Trash2 className="mr-2 h-4 w-4" />Supprimer ce business
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : null}
+                <TransferDetailCard business={selectedBusiness} userId={userId} onReload={() => onReload(true)} />
+                {selectedBusiness.ownerId !== userId ? (
+                  <Card>
+                    <CardContent className="space-y-2 px-5 py-4">
+                      <SectionTitle>Actions</SectionTitle>
+                      <Button size="sm" variant="outline" className="w-full justify-start border-sky-400/30 text-sky-300 hover:bg-sky-500/10" onClick={() => setTransferBusiness(selectedBusiness)}>
+                        <ArrowLeftRight className="mr-2 h-4 w-4" />Utiliser le service
+                      </Button>
                       <Button size="sm" variant="outline" className="w-full justify-start border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/10" onClick={() => setBuyoutBusiness(selectedBusiness)}>
                         <HandCoins className="mr-2 h-4 w-4" />Faire une offre
                       </Button>

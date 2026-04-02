@@ -72,6 +72,18 @@ const BUSINESS_BASE_INCLUDE = {
       },
     },
   },
+  transferHistory: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 12,
+    include: {
+      sender: {
+        select: USER_PREVIEW_SELECT,
+      },
+      recipient: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  },
   buyoutOffers: {
     orderBy: { createdAt: 'desc' as const },
     include: {
@@ -248,6 +260,18 @@ function serializeBuyoutOffer(offer: any, viewerId: string) {
   };
 }
 
+function serializeTransferHistoryEntry(entry: any) {
+  return {
+    id: entry.id,
+    amount: entry.amount,
+    fee: entry.fee,
+    feeRate: entry.feeRate,
+    createdAt: entry.createdAt.toISOString(),
+    sender: entry.sender,
+    recipient: entry.recipient,
+  };
+}
+
 function serializeBusiness(business: any, viewerId: string) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
   const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
@@ -319,12 +343,14 @@ function serializeBusiness(business: any, viewerId: string) {
       createdAt: investment.createdAt.toISOString(),
       investor: investment.investor,
     })),
+    transferHistory: business.transferHistory.map((entry: any) => serializeTransferHistoryEntry(entry)),
     pendingBuyoutOffers: business.buyoutOffers
       .filter((offer: any) => offer.status === 'PENDING')
       .map((offer: any) => serializeBuyoutOffer(offer, viewerId)),
     startupProducts,
     livretEpargneUnlocked: business.typeKey === 'bank' ? (business.livretEpargneUnlocked ?? false) : undefined,
     loanInterestRate: business.typeKey === 'bank' ? (business.loanInterestRate ?? 4) : undefined,
+    transferFeeRate: business.typeKey === 'transfer' ? (business.transferFeeRate ?? 2) : undefined,
   };
 }
 
@@ -982,8 +1008,6 @@ async function handleWithdrawAction(userId: string, business: any, input: { amou
   return { amount };
 }
 
-const BUSINESS_TRANSFER_FEE_RATE = 0.02;
-
 export async function runTransferBusinessAction(userId: string, businessId: string, input: { recipientId: string; amount: number }) {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
@@ -1019,7 +1043,8 @@ export async function runTransferBusinessAction(userId: string, businessId: stri
     throw new Error('TARGET_NOT_FOUND');
   }
 
-  const fee = Math.max(1, Math.round(amount * BUSINESS_TRANSFER_FEE_RATE));
+  const feeRate = Math.max(0, business.transferFeeRate ?? 2);
+  const fee = Math.max(0, Math.round(amount * (feeRate / 100)));
   const totalDebit = amount + fee;
   const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, totalDebit);
   if (!hasSharedMoney) {
@@ -1035,6 +1060,16 @@ export async function runTransferBusinessAction(userId: string, businessId: stri
     await tx.business.update({
       where: { id: business.id },
       data: { treasuryMoney: { increment: fee } },
+    });
+    await tx.businessTransferTransaction.create({
+      data: {
+        businessId: business.id,
+        senderId: userId,
+        recipientId,
+        amount,
+        fee,
+        feeRate,
+      },
     });
   });
 
@@ -1068,12 +1103,14 @@ export async function runTransferBusinessAction(userId: string, businessId: stri
     recipientUsername: recipient.username,
     amount,
     fee,
+    feeRate,
   });
 
   return {
     recipientId,
     amount,
     fee,
+    feeRate,
     debited: totalDebit,
   };
 }
@@ -2591,4 +2628,30 @@ export async function setLoanRate(userId: string, businessId: string, rate: numb
   });
 
   return { loanInterestRate: rate };
+}
+
+export async function setTransferFeeRate(userId: string, businessId: string, rate: number) {
+  if (!Number.isFinite(rate) || rate < 0 || rate > 25) {
+    throw new Error('INVALID_TRANSFER_FEE_RATE');
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true, name: true },
+  });
+
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('TRANSFER_FEE_FORBIDDEN');
+  if (business.typeKey !== 'transfer') throw new Error('BUSINESS_NOT_FOUND');
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { transferFeeRate: rate },
+  });
+
+  logYouAdmin('business_transfer_fee_update', userId, undefined, business.id, business.name, {
+    transferFeeRate: rate,
+  });
+
+  return { transferFeeRate: rate };
 }

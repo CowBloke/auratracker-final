@@ -5,6 +5,7 @@ import {
   buyLivretEpargneUpgrade,
   cancelBusinessBuyoutOffer,
   setLoanRate,
+  setTransferFeeRate,
   createBusiness,
   createBusinessBuyoutOffer,
   createRelationship,
@@ -98,6 +99,8 @@ const ERROR_STATUS: Record<string, number> = {
   COUPLE_BALANCE_TOO_LOW: 400,
   INVALID_LOAN_RATE: 400,
   BANK_RATE_FORBIDDEN: 403,
+  INVALID_TRANSFER_FEE_RATE: 400,
+  TRANSFER_FEE_FORBIDDEN: 403,
   BUYOUT_SELF_FORBIDDEN: 400,
   INVALID_BUYOUT_AMOUNT: 400,
   BUYOUT_OFFER_ALREADY_PENDING: 400,
@@ -176,6 +179,8 @@ const ERROR_MESSAGE: Record<string, string> = {
   COUPLE_BALANCE_TOO_LOW: 'Le compte commun n a pas assez de fonds.',
   INVALID_LOAN_RATE: 'Le taux d emprunt doit etre entre 1% et 50%.',
   BANK_RATE_FORBIDDEN: 'Seul le proprietaire peut modifier le taux d emprunt.',
+  INVALID_TRANSFER_FEE_RATE: 'Les frais de transfert doivent etre entre 0% et 25%.',
+  TRANSFER_FEE_FORBIDDEN: 'Seul le proprietaire peut modifier les frais de transfert.',
   BUYOUT_SELF_FORBIDDEN: 'Tu ne peux pas faire une offre sur ton propre business.',
   INVALID_BUYOUT_AMOUNT: 'Montant d offre invalide.',
   BUYOUT_OFFER_ALREADY_PENDING: 'Tu as deja une offre en attente sur ce business.',
@@ -449,6 +454,16 @@ router.post('/businesses/:businessId/set-loan-rate', authMiddleware, requireYouA
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Set loan rate error');
+  }
+});
+
+router.post('/businesses/:businessId/set-transfer-fee-rate', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const rate = Number(req.body?.rate);
+    const result = await setTransferFeeRate(req.user!.id, req.params.businessId, rate);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Set transfer fee rate error');
   }
 });
 

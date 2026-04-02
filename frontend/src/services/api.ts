@@ -230,6 +230,16 @@ export interface YouBusinessBuyoutOffer {
   };
 }
 
+export interface YouBusinessTransferHistoryEntry {
+  id: string;
+  amount: number;
+  fee: number;
+  feeRate: number;
+  createdAt: string;
+  sender: Omit<YouPlayer, 'alreadyInRelationship'>;
+  recipient: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
 export interface YouStartupProduct {
   id: string;
   slotIndex: number;
@@ -274,10 +284,12 @@ export interface YouBusiness {
   pendingInvitations: YouBusinessInvitation[];
   recentLoans: YouBusinessLoan[];
   recentInvestments: YouBusinessInvestment[];
+  transferHistory: YouBusinessTransferHistoryEntry[];
   pendingBuyoutOffers: YouBusinessBuyoutOffer[];
   startupProducts: YouStartupProduct[];
   livretEpargneUnlocked?: boolean;
   loanInterestRate?: number;
+  transferFeeRate?: number;
 }
 
 export interface YouMarriageProposal {
@@ -406,6 +418,8 @@ export const youApi = {
     api.post<{ result: { livretEpargneUnlocked: boolean } }>(`/you/businesses/${businessId}/upgrades/livret-epargne`, {}),
   setLoanRate: (businessId: string, rate: number) =>
     api.post<{ result: { loanInterestRate: number } }>(`/you/businesses/${businessId}/set-loan-rate`, { rate }),
+  setTransferFeeRate: (businessId: string, rate: number) =>
+    api.post<{ result: { transferFeeRate: number } }>(`/you/businesses/${businessId}/set-transfer-fee-rate`, { rate }),
 };
 
 // Economy API
