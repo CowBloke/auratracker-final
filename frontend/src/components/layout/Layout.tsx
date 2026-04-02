@@ -16,6 +16,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { SiteHeader } from '@/components/site-header';
 import PartyChatFloating from '@/components/party/PartyChatFloating';
 import SupportChat from '@/components/support/SupportChat';
+import MoneyIncomeOverlay from '@/components/rewards/MoneyIncomeOverlay';
 import { CONTAINER } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { matchesShortcut, useKeyboardShortcuts } from '@/lib/keyboard-shortcuts';
@@ -160,6 +161,7 @@ export default function Layout() {
         <PartyChatFloatingContainer />
         <SupportChatContainer />
         <ChatBubbleContainer />
+        <MoneyIncomeOverlay />
 
         {activeJoinPrompt && user && (
           <GameJoinPrompt

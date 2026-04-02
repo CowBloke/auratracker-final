@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { type YouSkill, youApi } from '@/services/api';
 import { UserAccountMenu } from '@/components/user-account-menu';
+import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
 
 type HeaderSkill = {
   key: string;
@@ -132,7 +133,7 @@ export function YouHeaderBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
             <Zap className="h-3 w-3 text-yellow-400" />
             <span className="text-xs font-semibold tabular-nums">{user?.aura?.toLocaleString() ?? '0'}</span>
           </div>
-          <div className="hidden items-center gap-1.5 rounded-lg bg-muted/30 px-2.5 py-1 sm:flex">
+          <div ref={setMoneyIndicatorElement} className="hidden items-center gap-1.5 rounded-lg bg-muted/30 px-2.5 py-1 sm:flex">
             <Coins className="h-3 w-3 text-emerald-400" />
             <span className="text-xs font-semibold tabular-nums">{user?.money?.toLocaleString() ?? '0'} {'\u20AC'}</span>
           </div>

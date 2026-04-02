@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { authApi } from '../services/api';
 import { clearBanInfo } from '../services/ban';
 import type { ClanActiveEffect } from '../services/api';
+import { emitMoneyIncome } from '../lib/money-income-effects';
 
 interface User {
   id: string;
@@ -39,19 +40,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const applyUser = useCallback((nextUser: User | null, options?: { animateMoneyGain?: boolean }) => {
+    setUser((prevUser) => {
+      if (
+        options?.animateMoneyGain &&
+        prevUser &&
+        nextUser &&
+        nextUser.money > prevUser.money
+      ) {
+        emitMoneyIncome(nextUser.money - prevUser.money);
+      }
+
+      return nextUser;
+    });
+  }, []);
+
   const refreshUser = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (token) {
         const response = await authApi.me();
-        setUser(response.data.user);
+        applyUser(response.data.user, { animateMoneyGain: true });
         clearBanInfo();
       }
     } catch (error) {
       localStorage.removeItem('token');
-      setUser(null);
+      applyUser(null);
     }
-  }, []);
+  }, [applyUser]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -64,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string) => {
     const response = await authApi.login({ username, password });
     localStorage.setItem('token', response.data.token);
-    setUser(response.data.user);
+    applyUser(response.data.user);
     clearBanInfo();
   };
 
@@ -83,13 +99,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('token');
-    setUser(null);
+    applyUser(null);
   };
 
   const updateBalance = (aura: number, money: number) => {
-    if (user) {
-      setUser({ ...user, aura, money });
-    }
+    setUser((prevUser) => {
+      if (!prevUser) return prevUser;
+      if (money > prevUser.money) {
+        emitMoneyIncome(money - prevUser.money);
+      }
+      return { ...prevUser, aura, money };
+    });
   };
 
   return (
