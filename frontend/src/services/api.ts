@@ -1967,6 +1967,14 @@ export const maintenanceApi = {
     youLogoAdminOnly?: boolean;
     betaGameIds?: string[];
     newGameIds?: string[];
+    chatBlocked?: boolean;
+    chatBlockReason?: 'manual' | 'schedule' | null;
+    chatBlockMessage?: string;
+    chatAutoBlockEnabled?: boolean;
+    chatAutoBlockStart?: string | null;
+    chatAutoBlockEnd?: string | null;
+    chatAutoBlockActive?: boolean;
+    chatBlockTimezone?: string;
   }>('/maintenance'),
 };
 

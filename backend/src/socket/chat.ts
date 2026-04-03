@@ -2,6 +2,7 @@ import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { logChat } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
+import { getChatBlockState } from '../utils/chatSettings.js';
 
 interface OnlineUser {
   userId: string;
@@ -677,12 +678,29 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         usernameColor: true,
         profilePicture: true,
         isChatMuted: true,
+        isAdmin: true,
+        isSuperAdmin: true,
       },
     });
 
     if (dbUser?.isChatMuted) {
       socket.emit('chat:muted', { message: 'Vous êtes mute du chat pour le moment.' });
       return;
+    }
+
+    if (!dbUser) {
+      return;
+    }
+
+    if (!dbUser.isAdmin && !dbUser.isSuperAdmin) {
+      const chatBlockState = await getChatBlockState();
+      if (chatBlockState.blocked) {
+        socket.emit('chat:blocked', {
+          message: chatBlockState.blockMessage,
+          reason: chatBlockState.activeReason,
+        });
+        return;
+      }
     }
     
     // Update cached cosmetics
@@ -779,12 +797,29 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   });
   
   // Typing indicator
-  socket.on('chat:typing', (data: { userId: string; isTyping: boolean }) => {
+  socket.on('chat:typing', async (data: { userId: string; isTyping: boolean }) => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
     const { isTyping } = data;
     const user = onlineUsers.get(userId);
     if (!user) return;
+
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        isAdmin: true,
+        isSuperAdmin: true,
+      },
+    });
+
+    if (!dbUser) return;
+
+    if (!dbUser.isAdmin && !dbUser.isSuperAdmin) {
+      const chatBlockState = await getChatBlockState();
+      if (chatBlockState.blocked) {
+        return;
+      }
+    }
     
     socket.to('global-chat').emit('chat:typing', {
       userId,

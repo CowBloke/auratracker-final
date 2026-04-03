@@ -15,6 +15,14 @@ interface MaintenanceStatus {
   youLogoAdminOnly: boolean;
   betaGameIds: string[];
   newGameIds: string[];
+  chatBlocked: boolean;
+  chatBlockReason: 'manual' | 'schedule' | null;
+  chatBlockMessage: string;
+  chatAutoBlockEnabled: boolean;
+  chatAutoBlockStart: string | null;
+  chatAutoBlockEnd: string | null;
+  chatAutoBlockActive: boolean;
+  chatBlockTimezone: string;
 }
 
 const DEFAULT_STATUS: MaintenanceStatus = {
@@ -30,6 +38,14 @@ const DEFAULT_STATUS: MaintenanceStatus = {
   youLogoAdminOnly: false,
   betaGameIds: [],
   newGameIds: [],
+  chatBlocked: false,
+  chatBlockReason: null,
+  chatBlockMessage: '',
+  chatAutoBlockEnabled: false,
+  chatAutoBlockStart: null,
+  chatAutoBlockEnd: null,
+  chatAutoBlockActive: false,
+  chatBlockTimezone: 'Europe/Paris',
 };
 
 interface FeaturesContextValue {
@@ -64,6 +80,14 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
         youLogoAdminOnly: res.data.youLogoAdminOnly === true,
         betaGameIds: res.data.betaGameIds || [],
         newGameIds: res.data.newGameIds || [],
+        chatBlocked: res.data.chatBlocked === true,
+        chatBlockReason: res.data.chatBlockReason ?? null,
+        chatBlockMessage: res.data.chatBlockMessage || '',
+        chatAutoBlockEnabled: res.data.chatAutoBlockEnabled === true,
+        chatAutoBlockStart: res.data.chatAutoBlockStart || null,
+        chatAutoBlockEnd: res.data.chatAutoBlockEnd || null,
+        chatAutoBlockActive: res.data.chatAutoBlockActive === true,
+        chatBlockTimezone: res.data.chatBlockTimezone || 'Europe/Paris',
       });
     } catch {
       setMaintenanceStatus(DEFAULT_STATUS);

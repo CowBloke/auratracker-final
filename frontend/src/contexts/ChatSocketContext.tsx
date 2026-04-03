@@ -193,6 +193,12 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       }
     });
 
+    s.on('chat:blocked', (data: { message?: string }) => {
+      if (typeof window !== 'undefined') {
+        toast(data.message || 'Le chat est temporairement bloque.');
+      }
+    });
+
     s.on('chat:message-deleted', (data: { messageId: string }) => {
       setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
     });
@@ -262,6 +268,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       s.off('chat:history');
       s.off('chat:message');
       s.off('chat:muted');
+      s.off('chat:blocked');
       s.off('chat:message-deleted');
       s.off('chat:reactions-updated');
       s.off('chat:pin-updated');

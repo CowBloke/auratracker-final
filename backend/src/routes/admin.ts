@@ -28,6 +28,15 @@ import {
   LAST_TAX_RUN_KEY,
   runDailyTax,
 } from '../utils/dailyTax.js';
+import {
+  CHAT_AUTO_BLOCK_ENABLED_KEY,
+  CHAT_AUTO_BLOCK_END_KEY,
+  CHAT_AUTO_BLOCK_START_KEY,
+  CHAT_BLOCK_ENABLED_KEY,
+  CHAT_BLOCK_MESSAGE_KEY,
+  getDefaultChatBlockMessage,
+  isValidChatBlockTimeValue,
+} from '../utils/chatSettings.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -2567,10 +2576,38 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       return res.status(400).json({ error: 'You logo admin only must be true or false' });
     }
 
+    if (
+      (key === CHAT_BLOCK_ENABLED_KEY || key === CHAT_AUTO_BLOCK_ENABLED_KEY) &&
+      !['true', 'false'].includes(normalizedValue)
+    ) {
+      return res.status(400).json({ error: 'Chat block toggles must be true or false' });
+    }
+
+    if (
+      (key === CHAT_AUTO_BLOCK_START_KEY || key === CHAT_AUTO_BLOCK_END_KEY) &&
+      normalizedValue !== '' &&
+      !isValidChatBlockTimeValue(normalizedValue)
+    ) {
+      return res.status(400).json({ error: 'Chat block schedule must use HH:mm format' });
+    }
+
+    if (key === CHAT_BLOCK_MESSAGE_KEY && normalizedValue.length > 240) {
+      return res.status(400).json({ error: 'Chat block message must be 240 characters or less' });
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
-      create: { key, value: normalizedValue },
-      update: { value: normalizedValue },
+      create: {
+        key,
+        value: key === CHAT_BLOCK_MESSAGE_KEY && normalizedValue.trim() === ''
+          ? getDefaultChatBlockMessage()
+          : normalizedValue,
+      },
+      update: {
+        value: key === CHAT_BLOCK_MESSAGE_KEY && normalizedValue.trim() === ''
+          ? getDefaultChatBlockMessage()
+          : normalizedValue,
+      },
     });
 
     if (key === DUEL_MATCHMAKING_ENABLED_SETTING_KEY && normalizedValue === 'false') {
@@ -2704,7 +2741,34 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         continue;
       }
 
-      updates.push({ key, value: normalizedValue });
+      if (
+        (key === CHAT_BLOCK_ENABLED_KEY || key === CHAT_AUTO_BLOCK_ENABLED_KEY) &&
+        !['true', 'false'].includes(normalizedValue)
+      ) {
+        errors.push(`${key}: Chat block toggles must be true or false`);
+        continue;
+      }
+
+      if (
+        (key === CHAT_AUTO_BLOCK_START_KEY || key === CHAT_AUTO_BLOCK_END_KEY) &&
+        normalizedValue !== '' &&
+        !isValidChatBlockTimeValue(normalizedValue)
+      ) {
+        errors.push(`${key}: Chat block schedule must use HH:mm format`);
+        continue;
+      }
+
+      if (key === CHAT_BLOCK_MESSAGE_KEY && normalizedValue.length > 240) {
+        errors.push(`${key}: Chat block message must be 240 characters or less`);
+        continue;
+      }
+
+      updates.push({
+        key,
+        value: key === CHAT_BLOCK_MESSAGE_KEY && normalizedValue.trim() === ''
+          ? getDefaultChatBlockMessage()
+          : normalizedValue,
+      });
     }
 
     if (errors.length > 0) {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../server.js';
+import { getChatBlockState } from '../utils/chatSettings.js';
 
 const router = Router();
 const MAINTENANCE_ENABLED_KEY = 'maintenance_enabled';
@@ -50,6 +51,7 @@ router.get('/', async (_req, res) => {
       youLogoAdminOnlySetting,
       betaGameIdsSetting,
       newGameIdsSetting,
+      chatBlockState,
     ] = await Promise.all([
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_MESSAGE_KEY } }),
@@ -65,6 +67,7 @@ router.get('/', async (_req, res) => {
       prisma.gameSettings.findUnique({ where: { key: YOU_LOGO_ADMIN_ONLY_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: BETA_GAME_IDS_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: NEW_GAME_IDS_KEY } }),
+      getChatBlockState(),
     ]);
 
     const message = messageSetting?.value ?? '';
@@ -111,6 +114,14 @@ router.get('/', async (_req, res) => {
       youLogoAdminOnly: youLogoAdminOnlySetting?.value === 'true',
       betaGameIds,
       newGameIds,
+      chatBlocked: chatBlockState.blocked,
+      chatBlockReason: chatBlockState.activeReason,
+      chatBlockMessage: chatBlockState.blockMessage,
+      chatAutoBlockEnabled: chatBlockState.autoBlockEnabled,
+      chatAutoBlockStart: chatBlockState.autoBlockStart,
+      chatAutoBlockEnd: chatBlockState.autoBlockEnd,
+      chatAutoBlockActive: chatBlockState.autoBlockActive,
+      chatBlockTimezone: chatBlockState.timezone,
     });
   } catch (error) {
     console.error('Get maintenance status error:', error);

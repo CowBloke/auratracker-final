@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChatSocket } from '../../contexts/ChatSocketContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFeatures } from '../../contexts/FeaturesContext';
 import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,7 @@ const getReactionUsersLabel = (users: string[]) => {
 export default function Chat({ isOpen, onToggle }: ChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { maintenanceStatus } = useFeatures();
   const { messages, onlineUsers, onlineCount, requestOnlineUsers, typingUsers, sendMessage, setTyping, deleteMessage, reactToMessage, pinMessage } = useChatSocket();
   const [input, setInput] = useState('');
   const [showUsers, setShowUsers] = useState(false);
@@ -47,6 +49,17 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const lastMessageIdRef = useRef<string | null>(null);
   const canViewConnectedStatus = Boolean(user?.isAdmin || user?.isSuperAdmin);
+  const chatBlockedForUser = Boolean(
+    maintenanceStatus.chatBlocked &&
+    !user?.isAdmin &&
+    !user?.isSuperAdmin
+  );
+  const chatBlockedLabel = maintenanceStatus.chatBlockMessage || 'Le chat est temporairement bloque.';
+  const chatScheduleLabel = maintenanceStatus.chatAutoBlockEnabled &&
+    maintenanceStatus.chatAutoBlockStart &&
+    maintenanceStatus.chatAutoBlockEnd
+    ? `Blocage auto: ${maintenanceStatus.chatAutoBlockStart} -> ${maintenanceStatus.chatAutoBlockEnd} (${maintenanceStatus.chatBlockTimezone})`
+    : null;
   const sortedMessages = useMemo(() => {
     return [...messages].sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
@@ -80,6 +93,9 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (chatBlockedForUser) {
+      return;
+    }
     if (input.trim()) {
       sendMessage(input.trim());
       setInput('');
@@ -91,6 +107,9 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (chatBlockedForUser) {
+      return;
+    }
     setInput(e.target.value);
     setTyping(true);
     
@@ -282,18 +301,28 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
               </div>
             )}
 
+            {chatBlockedForUser && (
+              <div className="border-t border-amber-500/30 bg-amber-500/10 px-6 py-3">
+                <p className="text-xs font-medium text-amber-200">{chatBlockedLabel}</p>
+                {chatScheduleLabel && (
+                  <p className="mt-1 text-[11px] text-amber-100/80">{chatScheduleLabel}</p>
+                )}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="px-6 py-3 border-t border-border/40">
               <div className="flex gap-2">
                 <Input
                   type="text"
                   value={input}
                   onChange={handleInputChange}
-                  placeholder="Message..."
+                  placeholder={chatBlockedForUser ? 'Chat temporairement bloque' : 'Message...'}
                   className="flex-1 h-9 bg-transparent border-border/50"
+                  disabled={chatBlockedForUser}
                 />
                 <Button
                   type="submit"
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || chatBlockedForUser}
                   variant="outline"
                   size="icon"
                   className="h-9 w-9 text-muted-foreground"

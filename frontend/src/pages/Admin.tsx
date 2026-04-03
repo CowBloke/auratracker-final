@@ -103,8 +103,12 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 const ANNOUNCEMENT_MAX_LENGTH = 120;
+const CHAT_BLOCK_MESSAGE_MAX_LENGTH = 240;
 const YOU_LOGO_ADMIN_ONLY_SETTING_KEY = 'you_logo_admin_only';
 const ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY = 'admin_archived_registrations';
+const CHAT_BLOCK_TIMEZONE = 'Europe/Paris';
+
+const isValidChatTimeValue = (value: string) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
 const ROLE_LABELS = {
   USER: 'membre',
   ADMIN: 'admin',
@@ -1340,6 +1344,12 @@ export default function Admin() {
   const [savingFakeOnline, setSavingFakeOnline] = useState(false);
   const [announcementMessage, setAnnouncementMessage] = useState('');
   const [savingAnnouncement, setSavingAnnouncement] = useState(false);
+  const [chatBlockEnabled, setChatBlockEnabled] = useState(false);
+  const [chatAutoBlockEnabled, setChatAutoBlockEnabled] = useState(false);
+  const [chatAutoBlockStart, setChatAutoBlockStart] = useState('22:00');
+  const [chatAutoBlockEnd, setChatAutoBlockEnd] = useState('07:00');
+  const [chatBlockMessage, setChatBlockMessage] = useState('Le chat est temporairement bloque par l administration.');
+  const [savingChatBlockSettings, setSavingChatBlockSettings] = useState(false);
   const [duelMatchmakingEnabled, setDuelMatchmakingEnabled] = useState(true);
   const [savingDuelMatchmakingEnabled, setSavingDuelMatchmakingEnabled] = useState(false);
   const [referralEnabled, setReferralEnabled] = useState(true);
@@ -2332,6 +2342,11 @@ export default function Admin() {
       setLoadingSettings(true);
       const res = await adminApi.getSettings();
       setAnnouncementMessage(res.data.settings.topbar_announcement || '');
+      setChatBlockEnabled(res.data.settings.chat_block_enabled === 'true');
+      setChatAutoBlockEnabled(res.data.settings.chat_auto_block_enabled === 'true');
+      setChatAutoBlockStart(res.data.settings.chat_auto_block_start || '22:00');
+      setChatAutoBlockEnd(res.data.settings.chat_auto_block_end || '07:00');
+      setChatBlockMessage(res.data.settings.chat_block_message || 'Le chat est temporairement bloque par l administration.');
       setDuelMatchmakingEnabled(res.data.settings.duel_matchmaking_enabled !== 'false');
       setReferralEnabled(res.data.settings.referral_enabled !== 'false');
       setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
@@ -2626,6 +2641,45 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde de l\'annonce');
     } finally {
       setSavingAnnouncement(false);
+    }
+  };
+
+  const saveChatBlockSettings = async () => {
+    try {
+      const trimmedMessage = chatBlockMessage.trim();
+      if (!trimmedMessage) {
+        showMessage('error', 'Le message de blocage du chat ne peut pas etre vide');
+        return;
+      }
+
+      if (trimmedMessage.length > CHAT_BLOCK_MESSAGE_MAX_LENGTH) {
+        showMessage('error', `Le message de blocage doit faire ${CHAT_BLOCK_MESSAGE_MAX_LENGTH} caracteres ou moins`);
+        return;
+      }
+
+      if (chatAutoBlockEnabled) {
+        if (!isValidChatTimeValue(chatAutoBlockStart) || !isValidChatTimeValue(chatAutoBlockEnd)) {
+          showMessage('error', 'Les horaires du blocage auto doivent etre au format HH:mm');
+          return;
+        }
+      }
+
+      setSavingChatBlockSettings(true);
+      await adminApi.updateSettings({
+        chat_block_enabled: chatBlockEnabled ? 'true' : 'false',
+        chat_block_message: trimmedMessage,
+        chat_auto_block_enabled: chatAutoBlockEnabled ? 'true' : 'false',
+        chat_auto_block_start: chatAutoBlockStart,
+        chat_auto_block_end: chatAutoBlockEnd,
+      });
+      setChatBlockMessage(trimmedMessage);
+      refreshFeatures();
+      showMessage('success', 'Parametres du chat sauvegardes');
+    } catch (error) {
+      console.error('Failed to save chat block settings:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde du blocage du chat');
+    } finally {
+      setSavingChatBlockSettings(false);
     }
   };
 
@@ -5126,6 +5180,99 @@ export default function Admin() {
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Communication</p>
             <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+
+              <div className="px-4 py-3.5 space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-medium">Blocage du chat</div>
+                    <div className="text-xs text-muted-foreground">
+                      Coupe l&apos;envoi de messages pour les joueurs. Les admins gardent l&apos;accès pour moderer.
+                    </div>
+                  </div>
+                  <Switch checked={chatBlockEnabled} onCheckedChange={setChatBlockEnabled} disabled={savingChatBlockSettings} />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Message affiche aux joueurs
+                    </label>
+                    <Textarea
+                      value={chatBlockMessage}
+                      onChange={(event) => setChatBlockMessage(event.target.value)}
+                      placeholder="Ex: Le chat est ferme pendant les heures de cours."
+                      className="min-h-[88px]"
+                      maxLength={CHAT_BLOCK_MESSAGE_MAX_LENGTH}
+                    />
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Visible dans le chat et au moment d&apos;une tentative d&apos;envoi.</span>
+                      <span>{chatBlockMessage.length}/{CHAT_BLOCK_MESSAGE_MAX_LENGTH}</span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border/40 bg-background/40 p-3 text-xs text-muted-foreground md:w-64">
+                    <p className="font-medium text-foreground">Etat actuel</p>
+                    <p className="mt-1">
+                      {chatBlockEnabled
+                        ? 'Blocage manuel active'
+                        : chatAutoBlockEnabled
+                          ? `Blocage auto configure de ${chatAutoBlockStart} a ${chatAutoBlockEnd}`
+                          : 'Chat ouvert'}
+                    </p>
+                    <p className="mt-1">Fuseau horaire: {CHAT_BLOCK_TIMEZONE}</p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border/40 bg-background/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-sm font-medium">Blocage automatique quotidien</div>
+                      <div className="text-xs text-muted-foreground">
+                        Active un blocage chaque jour sur un creneau fixe. Gere aussi les plages qui passent minuit.
+                      </div>
+                    </div>
+                    <Switch checked={chatAutoBlockEnabled} onCheckedChange={setChatAutoBlockEnabled} disabled={savingChatBlockSettings} />
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Debut
+                      </label>
+                      <Input
+                        type="time"
+                        step={60}
+                        value={chatAutoBlockStart}
+                        disabled={!chatAutoBlockEnabled || savingChatBlockSettings}
+                        onChange={(event) => setChatAutoBlockStart(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Fin
+                      </label>
+                      <Input
+                        type="time"
+                        step={60}
+                        value={chatAutoBlockEnd}
+                        disabled={!chatAutoBlockEnabled || savingChatBlockSettings}
+                        onChange={(event) => setChatAutoBlockEnd(event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">
+                    Exemple: `22:00` → `07:00` bloque le chat toute la nuit.
+                  </p>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button onClick={saveChatBlockSettings} disabled={savingChatBlockSettings}>
+                    {savingChatBlockSettings ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+                    Sauvegarder le chat
+                  </Button>
+                </div>
+              </div>
 
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
