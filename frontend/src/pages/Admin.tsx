@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef, type PointerEvent as ReactPointerEvent } from 'react';
-import { toast } from 'sonner';
+import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest } from '../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award, Terminal } from 'lucide-react';
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Bug, Check, UserPlus, UserX, Ban as BanIcon, ShieldOff, ScrollText, Search, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, Inbox, Archive, UserCog, Crown, Swords, Send, Upload, Award, Terminal, Landmark } from 'lucide-react';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
 import {
@@ -63,6 +63,7 @@ const EFFECT_TYPES = [
   { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du membre acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
   { value: 'CLAN_SLOT_UPGRADE', label: '+1 Slot clan', description: 'Ajoute un slot membre supplémentaire au clan. Un clan ne peut l\'acheter qu\'une fois. S\'applique automatiquement à l\'achat.' },
   { value: 'CLAN_GAME_MONEY_BOOST', label: 'Boost gains clan', description: 'Objet de clan: active un boost en % sur l\'argent gagné en jeu pour tous les membres du clan.' },
+  { value: 'CLAN_PROFILE_PICTURE', label: 'Photo de profil de clan', description: 'Objet de clan: acheté avec la banque du clan, puis le chef téléverse une image pour l\'utiliser comme emblème du clan.' },
   { value: 'CLAN_BANNER', label: 'Bannière de clan', description: 'Objet de clan: acheté avec la banque du clan, puis le chef téléverse une image pour l\'afficher en haut de la page clan.' },
   { value: 'AWARD_BADGE', label: 'Badge', description: 'Donne un badge spécifique au joueur lors de l\'utilisation. L\'image boutique est générée automatiquement.' },
   { value: 'CUSTOM_BADGE', label: 'Badge personnalisé', description: 'Permet au joueur de concevoir son propre badge. La demande est envoyée aux admins pour validation. Remboursement automatique si refusée.' },
@@ -74,6 +75,7 @@ const EFFECT_TYPES_WITHOUT_VALUE = new Set([
   'PROFILE_BANNER',
   'CLAN_TAG_UNLOCK',
   'CLAN_SLOT_UPGRADE',
+  'CLAN_PROFILE_PICTURE',
   'CLAN_BANNER',
   'AWARD_BADGE',
   'CUSTOM_BADGE',
@@ -110,8 +112,20 @@ const ROLE_LABELS = {
 } as const;
 
 type AdminRole = keyof typeof ROLE_LABELS;
-type AdminTab = 'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'settings' | 'activity' | 'badges' | 'support' | 'communication';
-const ADMIN_TABS: AdminTab[] = ['inbox', 'users', 'clubs', 'logs', 'bans', 'content', 'settings', 'activity', 'badges', 'support', 'communication'];
+type AdminTab = 'inbox' | 'users' | 'clubs' | 'logs' | 'bans' | 'content' | 'taxes' | 'settings' | 'activity' | 'badges' | 'support' | 'communication';
+const ADMIN_TABS: AdminTab[] = ['inbox', 'users', 'clubs', 'logs', 'bans', 'content', 'taxes', 'settings', 'activity', 'badges', 'support', 'communication'];
+
+type EditableTaxBracket = {
+  id: string;
+  threshold: string;
+  rate: string;
+};
+
+const DEFAULT_TAX_BRACKET: EditableTaxBracket = {
+  id: 'default-tax-bracket',
+  threshold: '10000',
+  rate: '1',
+};
 
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
@@ -189,6 +203,7 @@ const ACTION_LABELS: Record<string, string> = {
   game_reward: 'Récompense obtenue',
   casino_bet: 'Pari casino',
   highscore: 'Nouveau record',
+  reward_fallback: 'Récompense de secours',
   // Economy
   transfer: 'Transfert',
   balance_change: 'Modification solde',
@@ -210,6 +225,7 @@ const ACTION_LABELS: Record<string, string> = {
   item_purchase: 'Achat',
   item_use: 'Utilisation objet',
   item_create: 'Objet créé',
+  item_import: 'Objets importés',
   item_delete: 'Objet supprimé',
   // Admin
   user_update: 'Utilisateur modifié',
@@ -221,7 +237,52 @@ const ACTION_LABELS: Record<string, string> = {
   inventory_remove: 'Inventaire retiré',
   chat_clear: 'Chat vidé',
   stats_delete: 'Stats supprimées',
-
+  business_create: 'Entreprise créée',
+  business_delete: 'Entreprise supprimée',
+  business_invite: 'Invitation business envoyée',
+  business_loan_request: 'Demande de prêt business',
+  business_loan_decision: 'Décision prêt business',
+  business_loan_repay: 'Prêt business remboursé',
+  business_deposit: 'Dépôt business',
+  business_withdraw: 'Retrait business',
+  business_invest: 'Investissement business',
+  business_transfer: 'Transfert business',
+  business_transfer_fee_update: 'Frais de transfert modifiés',
+  business_buyout_offer_create: 'Offre de rachat créée',
+  business_buyout_offer_respond: 'Offre de rachat traitée',
+  business_buyout_offer_cancel: 'Offre de rachat annulée',
+  business_research_start: 'Recherche business lancée',
+  business_product_deploy: 'Produit startup déployé',
+  business_collect: 'Recette business collectée',
+  business_sale: 'Vente business enregistrée',
+  business_profile_update: 'Profil business modifié',
+  business_invitation_respond: 'Invitation business traitée',
+  business_member_sack: 'Membre business renvoyé',
+  business_member_salary_update: 'Salaire business modifié',
+  business_formation_product_buy: 'Produit formation acheté',
+  business_rate: 'Business noté',
+  bank_upgrade_purchase: 'Upgrade bancaire acheté',
+  bank_rate_update: 'Taux bancaire modifié',
+  bank_account_open: 'Compte bancaire ouvert',
+  bank_account_deposit: 'Dépôt bancaire',
+  bank_account_withdraw: 'Retrait bancaire',
+  formation_update: 'Formation modifiée',
+  formation_purchase: 'Formation achetée',
+  formation_product_create: 'Produit formation créé',
+  formation_product_update: 'Produit formation modifié',
+  formation_product_delete: 'Produit formation supprimé',
+  relationship_create: 'Relation créée',
+  relationship_forget: 'Relation supprimée',
+  relationship_reactivate: 'Relation relancée',
+  marriage_proposal: 'Demande en mariage',
+  marriage_response: 'Réponse mariage',
+  divorce_proposal: 'Demande de divorce',
+  divorce_response: 'Réponse divorce',
+  relationship_mistress: 'Liaison créée',
+  relationship_cheating_report: 'Soupçon de tricherie',
+  relationship_court_case: 'Décision tribunal',
+  couple_deposit: 'Dépôt compte commun',
+  couple_withdraw: 'Retrait compte commun',
   update_popup_create: 'Popup changelog créée',
   update_popup_update: 'Popup changelog modifiée',
   update_popup_delete: 'Popup changelog supprimée',
@@ -290,6 +351,7 @@ const METADATA_LABELS: Record<string, string> = {
   coinsSold: 'AuraCoins vendus',
   moneyReceived: 'Money reçu',
   fee: 'Frais',
+  feeRate: 'Taux de frais',
   priceAtPurchase: 'Prix d\'achat',
   priceAtSale: 'Prix de vente',
   remainingAllowance: 'Quota restant',
@@ -302,6 +364,37 @@ const METADATA_LABELS: Record<string, string> = {
   level: 'Niveau',
   cost: 'Coût',
   via: 'Via',
+  timeMs: 'Temps',
+  trackNumber: 'Circuit',
+  invitedCount: 'Invités',
+  inviteeIds: 'IDs invités',
+  inviteeNames: 'Invités',
+  role: 'Rôle',
+  durationDays: 'Durée (jours)',
+  interestRate: 'Taux intérêt',
+  borrowerName: 'Emprunteur',
+  recipientUsername: 'Destinataire',
+  slotIndex: 'Slot',
+  nextLevel: 'Niveau suivant',
+  researchCost: 'Coût recherche',
+  productName: 'Produit',
+  accountType: 'Type de compte',
+  newBalance: 'Nouveau solde',
+  formationPrice: 'Prix formation',
+  formationUrl: 'URL formation',
+  previousName: 'Nom précédent',
+  previousDescription: 'Description précédente',
+  previousLogoUrl: 'Logo précédent',
+  previousTitle: 'Titre précédent',
+  previousPrice: 'Prix précédent',
+  previousUrl: 'URL précédente',
+  previousSalary: 'Salaire précédent',
+  salary: 'Salaire',
+  ownerName: 'Propriétaire',
+  ownerId: 'ID propriétaire',
+  previousStatus: 'Statut précédent',
+  seizedMoney: 'Money saisi',
+  deletedByAdmin: 'Suppression admin',
 };
 
 const GAME_TYPE_LABELS: Record<string, string> = {
@@ -385,6 +478,138 @@ const formatBigNumber = (n: number): string => {
   return n.toLocaleString('fr-FR');
 };
 
+const formatPercent = (value: number, digits = 1): string => (
+  `${value.toLocaleString('fr-FR', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}%`
+);
+
+type WealthDistributionSummary = {
+  total: number;
+  average: number;
+  median: number;
+  p10: number;
+  p90: number;
+  min: number;
+  max: number;
+  gini: number;
+  top10Share: number;
+  top1Share: number;
+  bottom50Share: number;
+  zeroCount: number;
+  richestUser: Pick<AdminUser, 'id' | 'username'> | null;
+  deciles: Array<{
+    label: string;
+    total: number;
+    average: number;
+    userCount: number;
+  }>;
+  concentration: Array<{
+    label: string;
+    share: number;
+    amount: number;
+  }>;
+};
+
+const getPercentileValue = (sortedValues: number[], percentile: number): number => {
+  if (sortedValues.length === 0) return 0;
+  const clamped = Math.max(0, Math.min(1, percentile));
+  const index = (sortedValues.length - 1) * clamped;
+  const lowerIndex = Math.floor(index);
+  const upperIndex = Math.ceil(index);
+  const lower = sortedValues[lowerIndex];
+  const upper = sortedValues[upperIndex];
+  if (lower === undefined || upper === undefined) return lower ?? upper ?? 0;
+  if (lowerIndex === upperIndex) return lower;
+  return lower + (upper - lower) * (index - lowerIndex);
+};
+
+const calculateWealthDistribution = (
+  population: AdminUser[],
+  getValue: (user: AdminUser) => number
+): WealthDistributionSummary | null => {
+  if (population.length === 0) return null;
+
+  const entries = population
+    .map((member) => ({
+      id: member.id,
+      username: member.username,
+      value: Number.isFinite(getValue(member)) ? getValue(member) : 0,
+    }))
+    .sort((a, b) => a.value - b.value);
+
+  if (entries.length === 0) return null;
+
+  const values = entries.map((entry) => entry.value);
+  const safeTotal = values.reduce((sum, value) => sum + value, 0);
+  const nonNegativeValues = values.map((value) => Math.max(0, value));
+  const totalForShares = nonNegativeValues.reduce((sum, value) => sum + value, 0);
+  const shiftedValues = (() => {
+    const minValue = Math.min(...values);
+    return minValue < 0 ? values.map((value) => value - minValue) : values;
+  })();
+  const shiftedTotal = shiftedValues.reduce((sum, value) => sum + value, 0);
+  const gini = shiftedTotal <= 0
+    ? 0
+    : Math.max(
+        0,
+        Math.min(
+          100,
+          (
+            (2 * shiftedValues.reduce((sum, value, index) => sum + (index + 1) * value, 0)) /
+              (shiftedValues.length * shiftedTotal) -
+            (shiftedValues.length + 1) / shiftedValues.length
+          ) * 100
+        )
+      );
+
+  const topSlice = (share: number) => Math.max(1, Math.ceil(entries.length * share));
+  const computeShare = (subset: typeof entries) => {
+    if (totalForShares <= 0) return 0;
+    const subtotal = subset.reduce((sum, entry) => sum + Math.max(0, entry.value), 0);
+    return (subtotal / totalForShares) * 100;
+  };
+
+  const decileSize = Math.max(1, Math.ceil(entries.length / 10));
+  const deciles = Array.from({ length: 10 }, (_value, index) => {
+    const start = index * decileSize;
+    const bucket = entries.slice(start, start + decileSize);
+    const labelStart = index * 10;
+    const labelEnd = index === 9 ? 100 : (index + 1) * 10;
+    const total = bucket.reduce((sum, entry) => sum + entry.value, 0);
+    return {
+      label: `P${labelStart}-${labelEnd}`,
+      total,
+      average: bucket.length > 0 ? total / bucket.length : 0,
+      userCount: bucket.length,
+    };
+  }).filter((bucket) => bucket.userCount > 0);
+
+  return {
+    total: safeTotal,
+    average: safeTotal / entries.length,
+    median: getPercentileValue(values, 0.5),
+    p10: getPercentileValue(values, 0.1),
+    p90: getPercentileValue(values, 0.9),
+    min: values[0] ?? 0,
+    max: values[values.length - 1] ?? 0,
+    gini,
+    top10Share: computeShare(entries.slice(-topSlice(0.1))),
+    top1Share: computeShare(entries.slice(-topSlice(0.01))),
+    bottom50Share: computeShare(entries.slice(0, Math.max(1, Math.floor(entries.length * 0.5)))),
+    zeroCount: values.filter((value) => value <= 0).length,
+    richestUser: entries.length > 0 ? { id: entries[entries.length - 1].id, username: entries[entries.length - 1].username } : null,
+    deciles,
+    concentration: [
+      { label: 'Top 1%', share: computeShare(entries.slice(-topSlice(0.01))), amount: entries.slice(-topSlice(0.01)).reduce((sum, entry) => sum + Math.max(0, entry.value), 0) },
+      { label: 'Top 10%', share: computeShare(entries.slice(-topSlice(0.1))), amount: entries.slice(-topSlice(0.1)).reduce((sum, entry) => sum + Math.max(0, entry.value), 0) },
+      { label: 'Top 25%', share: computeShare(entries.slice(-topSlice(0.25))), amount: entries.slice(-topSlice(0.25)).reduce((sum, entry) => sum + Math.max(0, entry.value), 0) },
+      { label: 'Bas 50%', share: computeShare(entries.slice(0, Math.max(1, Math.floor(entries.length * 0.5)))), amount: entries.slice(0, Math.max(1, Math.floor(entries.length * 0.5))).reduce((sum, entry) => sum + Math.max(0, entry.value), 0) },
+    ],
+  };
+};
+
 const formatDurationShort = (totalSeconds: number): string => {
   if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '0s';
   const rounded = Math.round(totalSeconds);
@@ -434,6 +659,8 @@ const renderNetGain = (net: number) => (
   </span>
 );
 
+const formatMilliseconds = (value: number) => `${(value / 1000).toFixed(3)}s`;
+
 const renderMetadataValue = (key: string, value: unknown): React.ReactNode => {
   if (key === 'netGain') {
     const n = toNumber(value);
@@ -456,7 +683,11 @@ const renderMetadataValue = (key: string, value: unknown): React.ReactNode => {
   }
   if (key === 'lapTimeMs') {
     const n = toNumber(value);
-    if (n !== null) return `${(n / 1000).toFixed(3)}s`;
+    if (n !== null) return formatMilliseconds(n);
+  }
+  if (key === 'timeMs') {
+    const n = toNumber(value);
+    if (n !== null) return formatMilliseconds(n);
   }
   if (typeof value === 'object' && value !== null) return JSON.stringify(value);
   return String(value);
@@ -469,6 +700,10 @@ const renderLogSummary = (log: ActivityLog): React.ReactNode => {
 
   if (log.type === 'GAME') {
     if (log.action === 'game_complete') {
+      const timeMs = toNumber(metadata.timeMs) ?? toNumber(metadata.lapTimeMs);
+      if (timeMs !== null) {
+        return <>{gameLabel} : temps {formatMilliseconds(timeMs)} par {actor}</>;
+      }
       if (gameType === 'battleship') {
         const won = metadata.won === true;
         return <>{gameLabel} : {won ? <span className="text-green-400">victoire</span> : <span className="text-red-400">défaite</span>} par {actor}</>;
@@ -484,6 +719,10 @@ const renderLogSummary = (log: ActivityLog): React.ReactNode => {
     }
 
     if (log.action === 'highscore') {
+      const timedBest = toNumber(metadata.newHighScore);
+      if (timedBest !== null && (gameType === 'racer' || gameType === 'racer_daily' || gameType === 'hexgl' || gameType === 'polytrack')) {
+        return <>{gameLabel} : nouveau record {formatMilliseconds(timedBest)} par {actor}</>;
+      }
       const best = toNumber(metadata.newHighScore);
       if (best !== null) return <>{gameLabel} : nouveau record {best} par {actor}</>;
       return <>{gameLabel} : nouveau record par {actor}</>;
@@ -633,6 +872,9 @@ const defaultItemForm: ItemFormData = {
   skinShopType: 'none',
   badgeId: '',
 };
+
+const SHOP_ITEMS_FILE_FORMAT = 'auratracker-shop-items';
+const SHOP_ITEMS_FILE_VERSION = 1;
 
 interface UpdatePopupFormData {
   type: 'UPDATE' | 'CLAN_PROMPT';
@@ -981,6 +1223,8 @@ export default function Admin() {
   const [itemForm, setItemForm] = useState<ItemFormData>(defaultItemForm);
   const [savingItem, setSavingItem] = useState(false);
   const [deletingItem, setDeletingItem] = useState<string | null>(null);
+  const [importingItems, setImportingItems] = useState(false);
+  const itemImportInputRef = useRef<HTMLInputElement>(null);
 
   // DJ forced skin state
   const [djForcedSkinId, setDjForcedSkinId] = useState<string | null>(null);
@@ -1104,6 +1348,11 @@ export default function Admin() {
   const [savingReferralReward, setSavingReferralReward] = useState(false);
   const [dailyAuraDistributionLimit, setDailyAuraDistributionLimit] = useState('100');
   const [savingDailyAuraDistributionLimit, setSavingDailyAuraDistributionLimit] = useState(false);
+  const [taxBrackets, setTaxBrackets] = useState<EditableTaxBracket[]>([DEFAULT_TAX_BRACKET]);
+  const [loadingTaxSettings, setLoadingTaxSettings] = useState(false);
+  const [savingTaxSettings, setSavingTaxSettings] = useState(false);
+  const [runningTaxNow, setRunningTaxNow] = useState(false);
+  const [taxLastRunDate, setTaxLastRunDate] = useState<string | null>(null);
   const [auraCoinBuyFeePercentage, setAuraCoinBuyFeePercentage] = useState('0.02');
   const [savingAuraCoinBuyFee, setSavingAuraCoinBuyFee] = useState(false);
   const [clashAttackCooldownMinutes, setClashAttackCooldownMinutes] = useState('10');
@@ -1346,6 +1595,7 @@ export default function Admin() {
     fetchLogs();
     fetchLogStats();
     fetchSettings();
+    fetchTaxSettings();
     fetchUpdatePopups();
     fetchActivity('day');
     fetchActivityBreakdown(new Date().toISOString().slice(0, 10));
@@ -1451,6 +1701,49 @@ export default function Admin() {
     } finally {
       setLoadingPlatformStats(false);
     }
+  };
+
+  const downloadStatsCSV = () => {
+    if (!platformStats) return;
+    const { overview, topGames, activityChart } = platformStats;
+    const now = new Date().toISOString().slice(0, 10);
+
+    const sections: string[] = [];
+
+    // Overview
+    sections.push('# Vue d\'ensemble');
+    sections.push([
+      'Membres inscrits', 'Membres actifs', 'Aura totale', 'Argent total',
+      'Parties jouées', 'Victoires', 'Transferts', 'Aura échangée',
+      'Argent échangé', 'Mots tapés (Bombe)',
+    ].join(','));
+    sections.push([
+      overview.totalUsers, overview.approvedUsers, overview.totalAura, overview.totalMoney,
+      overview.totalGamesPlayed, overview.totalWins, overview.totalTransfers, overview.totalAuraTransferred,
+      overview.totalMoneyTransferred, overview.totalWordsTyped,
+    ].join(','));
+
+    sections.push('');
+
+    // Top games
+    sections.push('# Top jeux');
+    sections.push('Jeu,Parties jouées,Victoires');
+    topGames.forEach(g => sections.push(`${g.gameType},${g.totalPlayed},${g.wins}`));
+
+    sections.push('');
+
+    // Activity chart (30 days)
+    sections.push('# Parties / jour (30 derniers jours)');
+    sections.push('Date,Parties');
+    activityChart.forEach(d => sections.push(`${d.date},${d.count}`));
+
+    const blob = new Blob([sections.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `auratracker-stats-${now}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const fetchGamesLeaderboard = async () => {
@@ -1932,6 +2225,39 @@ export default function Admin() {
     }
   };
 
+  const renderLogsPagination = () => (
+    totalLogs > logsPerPage ? (
+      <div className="flex items-center justify-between pt-2">
+        <p className="text-xs text-muted-foreground">
+          {logsPage * logsPerPage + 1}-{Math.min((logsPage + 1) * logsPerPage, totalLogs)} sur {totalLogs.toLocaleString()}
+        </p>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => fetchLogs(logsPage - 1)}
+            disabled={logsPage === 0 || loadingLogs}
+            className="h-7 w-7 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground px-2">
+            {logsPage + 1}/{Math.ceil(totalLogs / logsPerPage)}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => fetchLogs(logsPage + 1)}
+            disabled={(logsPage + 1) * logsPerPage >= totalLogs || loadingLogs}
+            className="h-7 w-7 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    ) : null
+  );
+
   const handleDownloadLogs = async () => {
     if (downloadLogsMode === 'range' && !downloadLogsStartDate) {
       setDownloadLogsError('Choisis une date de début.');
@@ -1960,9 +2286,9 @@ export default function Admin() {
       const res = await adminApi.downloadLogs({
         startDate: downloadLogsMode === 'range' ? downloadLogsStartDate : timelineStartDate,
         endDate: downloadLogsMode === 'range' ? downloadLogsEndDate : timelineEndDate,
-        type: logFilter.type !== 'ALL' ? logFilter.type : undefined,
-        gameType: logFilter.gameType !== 'ALL' ? logFilter.gameType : undefined,
-        username: logFilter.username || undefined,
+        type: downloadLogsMode === 'all' ? undefined : (logFilter.type !== 'ALL' ? logFilter.type : undefined),
+        gameType: downloadLogsMode === 'all' ? undefined : (logFilter.gameType !== 'ALL' ? logFilter.gameType : undefined),
+        username: downloadLogsMode === 'all' ? undefined : (logFilter.username || undefined),
       });
 
       const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'text/csv' });
@@ -2078,6 +2404,132 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des paramètres');
     } finally {
       setLoadingSettings(false);
+    }
+  };
+
+  const fetchTaxSettings = async () => {
+    try {
+      setLoadingTaxSettings(true);
+      const res = await adminApi.getTaxSettings();
+      const nextBrackets = res.data.brackets.length > 0
+        ? res.data.brackets.map((bracket: TaxBracket) => ({
+            id: bracket.id,
+            threshold: String(bracket.threshold),
+            rate: String(bracket.rate),
+          }))
+        : [{
+            id: DEFAULT_TAX_BRACKET.id,
+            threshold: String(res.data.defaults.threshold),
+            rate: String(res.data.defaults.rate),
+          }];
+
+      setTaxBrackets(nextBrackets);
+      setTaxLastRunDate(res.data.lastRunDate);
+    } catch (error) {
+      console.error('Failed to fetch tax settings:', error);
+      showMessage('error', "Erreur lors du chargement des paliers d'impôt");
+    } finally {
+      setLoadingTaxSettings(false);
+    }
+  };
+
+  const addTaxBracket = () => {
+    setTaxBrackets((prev) => [
+      ...prev,
+      {
+        id: `new-tax-bracket-${Date.now()}-${prev.length}`,
+        threshold: '',
+        rate: '',
+      },
+    ]);
+  };
+
+  const updateTaxBracket = (id: string, field: 'threshold' | 'rate', value: string) => {
+    setTaxBrackets((prev) => prev.map((bracket) => (
+      bracket.id === id ? { ...bracket, [field]: value } : bracket
+    )));
+  };
+
+  const removeTaxBracket = (id: string) => {
+    setTaxBrackets((prev) => {
+      if (prev.length <= 1) {
+        return [{ ...DEFAULT_TAX_BRACKET, id: prev[0]?.id ?? DEFAULT_TAX_BRACKET.id }];
+      }
+      return prev.filter((bracket) => bracket.id !== id);
+    });
+  };
+
+  const saveTaxSettings = async () => {
+    const parsedBrackets: Array<{ threshold: number; rate: number }> = [];
+    const seenThresholds = new Set<number>();
+
+    for (const bracket of taxBrackets) {
+      const threshold = Number.parseInt(bracket.threshold, 10);
+      const rate = Number.parseFloat(bracket.rate);
+
+      if (!Number.isInteger(threshold) || threshold < 0) {
+        showMessage('error', "Chaque palier doit avoir un seuil entier positif ou nul");
+        return;
+      }
+
+      if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+        showMessage('error', "Chaque taux d'impôt doit être compris entre 0 et 100%");
+        return;
+      }
+
+      if (seenThresholds.has(threshold)) {
+        showMessage('error', 'Chaque seuil doit être unique');
+        return;
+      }
+
+      seenThresholds.add(threshold);
+      parsedBrackets.push({ threshold, rate });
+    }
+
+    parsedBrackets.sort((a, b) => a.threshold - b.threshold);
+
+    try {
+      setSavingTaxSettings(true);
+      const res = await adminApi.updateTaxSettings(parsedBrackets);
+      setTaxBrackets(
+        res.data.brackets.length > 0
+          ? res.data.brackets.map((bracket) => ({
+              id: bracket.id,
+              threshold: String(bracket.threshold),
+              rate: String(bracket.rate),
+            }))
+          : [{
+              id: DEFAULT_TAX_BRACKET.id,
+              threshold: String(res.data.defaults.threshold),
+              rate: String(res.data.defaults.rate),
+            }]
+      );
+      showMessage('success', "Paliers d'impôt sauvegardés");
+    } catch (error) {
+      console.error('Failed to save tax settings:', error);
+      showMessage('error', "Erreur lors de la sauvegarde des paliers d'impôt");
+    } finally {
+      setSavingTaxSettings(false);
+    }
+  };
+
+  const runTaxNow = async () => {
+    try {
+      setRunningTaxNow(true);
+      const res = await adminApi.runTaxNow(true);
+      const { skipped, usersAffected, totalCollected } = res.data.result;
+      setTaxLastRunDate(new Date().toISOString().slice(0, 10));
+      showMessage(
+        'success',
+        skipped
+          ? "Impôt déjà exécuté aujourd'hui"
+          : `Impôt lancé: ${usersAffected} joueur(s), ${totalCollected.toLocaleString('fr-FR')}$ collectés`
+      );
+    } catch (error) {
+      console.error('Failed to run tax now:', error);
+      showMessage('error', "Erreur lors du lancement de l'impôt");
+    } finally {
+      setRunningTaxNow(false);
     }
   };
 
@@ -2679,6 +3131,97 @@ export default function Admin() {
     }
   };
 
+  const serializeItemEffect = (effect: string | null): Record<string, unknown> | string | null => {
+    if (!effect) return null;
+    try {
+      return JSON.parse(effect) as Record<string, unknown>;
+    } catch {
+      return effect;
+    }
+  };
+
+  const buildShopItemsExchangeFile = (sourceItems: ShopItem[]): ShopItemExchangeFile => ({
+    format: SHOP_ITEMS_FILE_FORMAT,
+    version: SHOP_ITEMS_FILE_VERSION,
+    exportedAt: new Date().toISOString(),
+    itemCount: sourceItems.length,
+    items: sourceItems.map((item) => ({
+      name: item.name,
+      description: item.description,
+      type: item.type,
+      price: item.price,
+      imageUrl: item.imageUrl,
+      effect: serializeItemEffect(item.effect),
+      expiresAt: item.expiresAt,
+    })),
+  });
+
+  const handleExportItems = () => {
+    if (items.length === 0) {
+      showMessage('error', 'Aucun objet à exporter');
+      return;
+    }
+
+    const file = buildShopItemsExchangeFile(items);
+    const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    anchor.href = url;
+    anchor.download = `shop-items-${timestamp}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    showMessage('success', `${items.length} objet${items.length > 1 ? 's' : ''} exporté${items.length > 1 ? 's' : ''}`);
+  };
+
+  const openImportItemsPicker = () => {
+    itemImportInputRef.current?.click();
+  };
+
+  const handleImportItemsFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    input.value = '';
+
+    if (!file) return;
+
+    try {
+      setImportingItems(true);
+      const raw = await file.text();
+      const parsed = JSON.parse(raw) as ShopItemExchangeFile;
+
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.items) || parsed.items.length === 0) {
+        throw new Error('Le fichier doit contenir un tableau "items" non vide');
+      }
+
+      if ('format' in parsed && parsed.format !== SHOP_ITEMS_FILE_FORMAT) {
+        throw new Error('Format de fichier non reconnu');
+      }
+
+      if ('version' in parsed && parsed.version !== SHOP_ITEMS_FILE_VERSION) {
+        throw new Error('Version de fichier non supportée');
+      }
+
+      const res = await adminApi.importItems({
+        format: SHOP_ITEMS_FILE_FORMAT,
+        version: SHOP_ITEMS_FILE_VERSION,
+        exportedAt: parsed.exportedAt || new Date().toISOString(),
+        itemCount: parsed.items.length,
+        items: parsed.items,
+      });
+
+      setItems((prev) => [...res.data.items, ...prev]);
+      showMessage('success', `${res.data.count} objet${res.data.count > 1 ? 's' : ''} importé${res.data.count > 1 ? 's' : ''}`);
+    } catch (error: any) {
+      const message = error?.response?.data?.error || error?.message || 'Erreur lors de l\'import';
+      showMessage('error', message);
+    } finally {
+      setImportingItems(false);
+    }
+  };
+
   // Open dialog for creating new item
   const openCreateItemDialog = () => {
     setEditingItem(null);
@@ -3108,6 +3651,9 @@ export default function Admin() {
     label: GAME_TYPE_LABELS[entry.gameType] ?? entry.gameType.replace(/_/g, ' '),
   }));
   const platformTopGamesChartHeight = Math.max(340, platformTopGamesChartData.length * 28);
+  const wealthUsers = users.filter((entry) => !entry.isSuperAdmin);
+  const moneyDistribution = calculateWealthDistribution(wealthUsers, (entry) => entry.money);
+  const auraDistribution = calculateWealthDistribution(wealthUsers, (entry) => entry.aura);
 
 
   return (
@@ -3153,6 +3699,9 @@ export default function Admin() {
           </TabsTrigger>
           <TabsTrigger value="content">
             Objets
+          </TabsTrigger>
+          <TabsTrigger value="taxes" onClick={fetchTaxSettings}>
+            Impôts
           </TabsTrigger>
           <TabsTrigger value="settings">
             Paramètres
@@ -4219,12 +4768,32 @@ export default function Admin() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardDescription>Objets de la boutique</CardDescription>
-                  <Button size="sm" variant="outline" onClick={openCreateItemDialog} className="h-8 w-8 p-0">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={itemImportInputRef}
+                      type="file"
+                      accept="application/json,.json"
+                      className="hidden"
+                      onChange={handleImportItemsFile}
+                    />
+                    <Button size="sm" variant="outline" onClick={handleExportItems} className="h-8 px-2">
+                      <Download className="mr-1.5 h-4 w-4" />
+                      Export
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={openImportItemsPicker} className="h-8 px-2" disabled={importingItems}>
+                      {importingItems ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
+                      Import
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={openCreateItemDialog} className="h-8 w-8 p-0">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
+              <p className="mb-4 text-xs text-muted-foreground">
+                Import/export au format JSON versionné. Les images restent référencées par URL et les effets sont conservés en structure JSON.
+              </p>
               {loadingItems ? (
                 <div className="flex justify-center py-12">
                   <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
@@ -4310,6 +4879,112 @@ export default function Admin() {
             </CardContent>
           </Card>
           </div>{/* end flex sidebar layout */}
+        </TabsContent>
+
+        <TabsContent value="taxes" className={SPACING.SECTION_SPACING}>
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <CardDescription>Impôt quotidien des joueurs</CardDescription>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Tous les jours à 00:00, chaque joueur ayant au moins le seuil d&apos;un palier paie le taux du palier le plus élevé qu&apos;il atteint.
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Si aucun palier n&apos;est enregistré, le système retombe sur la règle par défaut: 10 000$ → 1%.
+                    </p>
+                  </div>
+                  <div className="text-right text-xs text-muted-foreground shrink-0">
+                    <div>Dernier run</div>
+                    <div className="mt-1 font-medium text-foreground">
+                      {taxLastRunDate ?? 'Jamais'}
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <div>Seuil minimum</div>
+                    <div>Taux (%)</div>
+                    <div className="w-10" />
+                  </div>
+
+                  {loadingTaxSettings ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    taxBrackets.map((bracket, index) => (
+                      <div key={bracket.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-4 py-3">
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={bracket.threshold}
+                          onChange={(event) => updateTaxBracket(bracket.id, 'threshold', event.target.value)}
+                          placeholder={index === 0 ? '10000' : '5000000'}
+                        />
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.01}
+                          value={bracket.rate}
+                          onChange={(event) => updateTaxBracket(bracket.id, 'rate', event.target.value)}
+                          placeholder={index === 0 ? '1' : '5'}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-10 w-10 p-0"
+                          onClick={() => removeTaxBracket(bracket.id)}
+                          disabled={savingTaxSettings || loadingTaxSettings}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addTaxBracket}
+                    disabled={savingTaxSettings || loadingTaxSettings}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Ajouter un palier
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={saveTaxSettings}
+                    disabled={savingTaxSettings || loadingTaxSettings}
+                  >
+                    {savingTaxSettings ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+                    Sauvegarder
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={runTaxNow}
+                    disabled={runningTaxNow || loadingTaxSettings}
+                  >
+                    {runningTaxNow ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Landmark className="mr-1.5 h-4 w-4" />}
+                    Prélever maintenant
+                  </Button>
+                </div>
+
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs text-muted-foreground">
+                  Chaque prélèvement crée une notification dans l&apos;Inbox du joueur avec le montant retiré, le taux appliqué et son nouveau solde.
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
@@ -5782,7 +6457,7 @@ export default function Admin() {
               <DialogHeader>
                 <DialogTitle>Télécharger les logs</DialogTitle>
                 <DialogDescription>
-                  Exporte une plage de dates précise ou tous les logs. Les filtres actuels, y compris le créneau horaire s'il est activé, seront appliqués.
+                  Exporte une plage de dates précise ou la totalité des logs. En mode plage de dates, les filtres actifs (type, jeu, pseudo) sont appliqués.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -5833,7 +6508,7 @@ export default function Admin() {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Tous les logs correspondant aux filtres actifs seront exportés, sans limite de date.
+                    Tous les logs seront exportés sans aucun filtre ni limite de date.
                   </p>
                 )}
                 {downloadLogsError && (
@@ -5863,6 +6538,8 @@ export default function Admin() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {renderLogsPagination()}
 
           {/* Log List */}
           {loadingLogs ? (
@@ -5996,37 +6673,7 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Pagination */}
-          {totalLogs > logsPerPage && (
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-muted-foreground">
-                {logsPage * logsPerPage + 1}-{Math.min((logsPage + 1) * logsPerPage, totalLogs)} sur {totalLogs.toLocaleString()}
-              </p>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fetchLogs(logsPage - 1)}
-                  disabled={logsPage === 0 || loadingLogs}
-                  className="h-7 w-7 p-0"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-muted-foreground px-2">
-                  {logsPage + 1}/{Math.ceil(totalLogs / logsPerPage)}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fetchLogs(logsPage + 1)}
-                  disabled={(logsPage + 1) * logsPerPage >= totalLogs || loadingLogs}
-                  className="h-7 w-7 p-0"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
+          {renderLogsPagination()}
         </TabsContent>
 
       {/* Ban Dialog */}
@@ -6736,9 +7383,14 @@ export default function Admin() {
                 <span className="font-semibold text-sm">Vue d'ensemble de la plateforme</span>
                 {loadingPlatformStats && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
               </div>
-              <Button variant="ghost" size="sm" onClick={fetchPlatformStats} className="h-7 w-7 p-0" title="Rafraîchir">
-                <RefreshCw className={cn('h-3.5 w-3.5', loadingPlatformStats && 'animate-spin')} />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" onClick={downloadStatsCSV} disabled={!platformStats} className="h-7 w-7 p-0" title="Télécharger CSV">
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={fetchPlatformStats} className="h-7 w-7 p-0" title="Rafraîchir">
+                  <RefreshCw className={cn('h-3.5 w-3.5', loadingPlatformStats && 'animate-spin')} />
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
               <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
@@ -6853,6 +7505,199 @@ export default function Admin() {
                     {(platformStats.activityChart.reduce((s, d) => s + d.count, 0) / 30).toFixed(1)}
                   </p>
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>parties par jour</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {(moneyDistribution || auraDistribution) && (
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+              <Card className="border-border/40">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <Landmark className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold text-sm">Répartition des richesses</span>
+                  </div>
+                  <CardDescription>
+                    Calculé sur {wealthUsers.length.toLocaleString('fr-FR')} comptes hors super admin.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <Card className="border-emerald-500/20 bg-emerald-500/5">
+                      <CardContent className="p-4 space-y-1">
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Médiane argent</p>
+                        <p className="text-xl font-semibold tabular-nums text-emerald-300">
+                          {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.median)) : '—'}
+                        </p>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                          moyenne {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.average)) : '—'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-cyan-500/20 bg-cyan-500/5">
+                      <CardContent className="p-4 space-y-1">
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Médiane aura</p>
+                        <p className="text-xl font-semibold tabular-nums text-cyan-300">
+                          {auraDistribution ? formatBigNumber(Math.round(auraDistribution.median)) : '—'}
+                        </p>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                          moyenne {auraDistribution ? formatBigNumber(Math.round(auraDistribution.average)) : '—'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-amber-500/20 bg-amber-500/5">
+                      <CardContent className="p-4 space-y-1">
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inégalité argent</p>
+                        <p className="text-xl font-semibold tabular-nums text-amber-300">
+                          {moneyDistribution ? formatPercent(moneyDistribution.gini) : '—'}
+                        </p>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                          top 10%: {moneyDistribution ? formatPercent(moneyDistribution.top10Share) : '—'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-fuchsia-500/20 bg-fuchsia-500/5">
+                      <CardContent className="p-4 space-y-1">
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inégalité aura</p>
+                        <p className="text-xl font-semibold tabular-nums text-fuchsia-300">
+                          {auraDistribution ? formatPercent(auraDistribution.gini) : '—'}
+                        </p>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
+                          top 10%: {auraDistribution ? formatPercent(auraDistribution.top10Share) : '—'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium">Argent par décile</p>
+                          <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Qui détient quoi dans l’économie.</p>
+                        </div>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-right text-muted-foreground')}>
+                          Top 1%: {moneyDistribution ? formatPercent(moneyDistribution.top1Share) : '—'}
+                        </p>
+                      </div>
+                      {moneyDistribution && moneyDistribution.deciles.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={moneyDistribution.deciles} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
+                            <RechartsTooltip
+                              contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                              formatter={(value: number, _name: string, props: any) => [
+                                `${value.toLocaleString('fr-FR')} total · moyenne ${Math.round(props.payload.average).toLocaleString('fr-FR')}`,
+                                'Argent',
+                              ]}
+                            />
+                            <Bar dataKey="total" fill="#10b981" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium">Aura par décile</p>
+                          <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Distribution sociale et prestige accumulé.</p>
+                        </div>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-right text-muted-foreground')}>
+                          Top 1%: {auraDistribution ? formatPercent(auraDistribution.top1Share) : '—'}
+                        </p>
+                      </div>
+                      {auraDistribution && auraDistribution.deciles.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={auraDistribution.deciles} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                            <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
+                            <RechartsTooltip
+                              contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                              formatter={(value: number, _name: string, props: any) => [
+                                `${value.toLocaleString('fr-FR')} total · moyenne ${Math.round(props.payload.average).toLocaleString('fr-FR')}`,
+                                'Aura',
+                              ]}
+                            />
+                            <Bar dataKey="total" fill="#06b6d4" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/40">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold text-sm">Concentration & écarts</span>
+                  </div>
+                  <CardDescription>
+                    Vue rapide sur les poches de richesse et les écarts entre bas et haut de tableau.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium">Argent</p>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                          p10 {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.p10)) : '—'} · p90 {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.p90)) : '—'}
+                        </p>
+                      </div>
+                      {moneyDistribution?.concentration.map((item) => (
+                        <div key={item.label} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">{item.label}</span>
+                            <span className="font-medium tabular-nums">{formatPercent(item.share)}</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
+                            <div className="h-full rounded-full bg-emerald-400" style={{ width: `${Math.max(2, Math.min(100, item.share))}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                        Plus riche: <span className="font-medium text-foreground">{moneyDistribution?.richestUser?.username ?? '—'}</span> · {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.max)) : '—'}
+                      </p>
+                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                        Comptes à 0 ou moins: {moneyDistribution?.zeroCount.toLocaleString('fr-FR') ?? '—'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium">Aura</p>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                          p10 {auraDistribution ? formatBigNumber(Math.round(auraDistribution.p10)) : '—'} · p90 {auraDistribution ? formatBigNumber(Math.round(auraDistribution.p90)) : '—'}
+                        </p>
+                      </div>
+                      {auraDistribution?.concentration.map((item) => (
+                        <div key={item.label} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">{item.label}</span>
+                            <span className="font-medium tabular-nums">{formatPercent(item.share)}</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
+                            <div className="h-full rounded-full bg-cyan-400" style={{ width: `${Math.max(2, Math.min(100, item.share))}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                        Plus riche: <span className="font-medium text-foreground">{auraDistribution?.richestUser?.username ?? '—'}</span> · {auraDistribution ? formatBigNumber(Math.round(auraDistribution.max)) : '—'}
+                      </p>
+                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                        Comptes à 0 ou moins: {auraDistribution?.zeroCount.toLocaleString('fr-FR') ?? '—'}
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>

@@ -1,5 +1,5 @@
 import { BellRing, Building2, Heart, Landmark, TrendingUp } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { type Notification, type YouBusiness, type YouRelationship } from '@/services/api';
 import { type BusinessAction } from './types';
 

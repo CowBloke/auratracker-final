@@ -9,7 +9,7 @@ import { TYPOGRAPHY } from '@/lib/design-system';
 import { markChangelogSeen } from '@/lib/changelog';
 import { changelogApi, type ChangelogEntry } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Bug, Sparkles, Rocket, Plus, X, Check, Bold } from 'lucide-react';
 
 type UpdateCategory = 'BIG_FEATURE' | 'SMALL_FEATURE' | 'BUG_FIX';

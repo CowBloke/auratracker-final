@@ -4,7 +4,7 @@ import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { useRewardQueue, type RewardItem } from '../contexts/RewardQueueContext';
 import { CheckCircle2, Circle, Coins, Sparkles, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';

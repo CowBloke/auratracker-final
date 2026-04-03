@@ -22,6 +22,12 @@ import {
 import {
   DAILY_AURA_LIMIT_SETTING_KEY,
 } from '../utils/dailyAura.js';
+import {
+  DEFAULT_TAX_BRACKET_RATE,
+  DEFAULT_TAX_BRACKET_THRESHOLD,
+  LAST_TAX_RUN_KEY,
+  runDailyTax,
+} from '../utils/dailyTax.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -50,6 +56,154 @@ const MAX_UPDATE_POPUP_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_ITEM_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ADMIN_CLAN_MAX_MEMBERS_LIMIT = 12;
 const LOG_EXPORT_BATCH_SIZE = 5000;
+const MAX_TAX_BRACKETS = 25;
+
+type TaxBracketInput = {
+  threshold: number;
+  rate: number;
+};
+
+type ShopItemImportInput = {
+  name: string;
+  description: string;
+  type: string;
+  price: number;
+  imageUrl?: string | null;
+  effect?: string | Record<string, unknown> | null;
+  expiresAt?: string | null;
+};
+
+type ShopItemImportFile = {
+  format?: string;
+  version?: number;
+  items?: ShopItemImportInput[];
+};
+
+const SHOP_ITEMS_EXPORT_FORMAT = 'auratracker-shop-items';
+const SHOP_ITEMS_EXPORT_VERSION = 1;
+
+const normalizeImportedItem = (entry: unknown): { item: Omit<ShopItemImportInput, 'effect'> & { effect: string | null } } | { error: string } => {
+  if (!entry || typeof entry !== 'object') {
+    return { error: 'Chaque objet importe doit être un objet valide' };
+  }
+
+  const raw = entry as Record<string, unknown>;
+  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+  const description = typeof raw.description === 'string' ? raw.description.trim() : '';
+  const type = typeof raw.type === 'string' ? raw.type.trim() : '';
+  const price = Number.parseInt(String(raw.price ?? ''), 10);
+
+  if (!name) {
+    return { error: 'Chaque objet doit avoir un nom' };
+  }
+
+  if (!description) {
+    return { error: `L'objet "${name}" doit avoir une description` };
+  }
+
+  if (!type) {
+    return { error: `L'objet "${name}" doit avoir une catégorie` };
+  }
+
+  if (!Number.isInteger(price) || price < 0) {
+    return { error: `L'objet "${name}" doit avoir un prix entier positif ou nul` };
+  }
+
+  const imageUrl = raw.imageUrl == null ? null : String(raw.imageUrl).trim();
+  if (imageUrl && !isAllowedImageUrl(imageUrl)) {
+    return { error: `L'image de "${name}" doit être une URL autorisée` };
+  }
+
+  let effect: string | null = null;
+  if (raw.effect != null) {
+    if (typeof raw.effect === 'string') {
+      const trimmedEffect = raw.effect.trim();
+      if (trimmedEffect) {
+        try {
+          JSON.parse(trimmedEffect);
+          effect = trimmedEffect;
+        } catch {
+          return { error: `L'effet de "${name}" doit être un JSON valide` };
+        }
+      }
+    } else if (typeof raw.effect === 'object') {
+      try {
+        effect = JSON.stringify(raw.effect);
+      } catch {
+        return { error: `Impossible de sérialiser l'effet de "${name}"` };
+      }
+    } else {
+      return { error: `L'effet de "${name}" doit être un objet JSON ou une chaîne JSON` };
+    }
+  }
+
+  let expiresAt: string | null = null;
+  if (raw.expiresAt != null && String(raw.expiresAt).trim() !== '') {
+    const parsedDate = new Date(String(raw.expiresAt));
+    if (Number.isNaN(parsedDate.getTime())) {
+      return { error: `La date d'expiration de "${name}" est invalide` };
+    }
+    expiresAt = parsedDate.toISOString();
+  }
+
+  return {
+    item: {
+      name,
+      description,
+      type,
+      price,
+      imageUrl,
+      effect,
+      expiresAt,
+    },
+  };
+};
+
+const normalizeTaxBracketsInput = (value: unknown): { brackets: TaxBracketInput[] } | { error: string } => {
+  if (!Array.isArray(value)) {
+    return { error: 'Brackets must be an array' };
+  }
+
+  if (value.length > MAX_TAX_BRACKETS) {
+    return { error: `A maximum of ${MAX_TAX_BRACKETS} tax brackets is allowed` };
+  }
+
+  const seenThresholds = new Set<number>();
+  const brackets: TaxBracketInput[] = [];
+
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') {
+      return { error: 'Each tax bracket must be an object' };
+    }
+
+    const rawThreshold = (entry as { threshold?: unknown }).threshold;
+    const rawRate = (entry as { rate?: unknown }).rate;
+    const threshold = Number.parseInt(String(rawThreshold), 10);
+    const rate = Number.parseFloat(String(rawRate));
+
+    if (!Number.isInteger(threshold) || threshold < 0) {
+      return { error: 'Each threshold must be a positive integer or zero' };
+    }
+
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+      return { error: 'Each tax rate must be between 0 and 100' };
+    }
+
+    if (seenThresholds.has(threshold)) {
+      return { error: 'Each tax threshold must be unique' };
+    }
+
+    seenThresholds.add(threshold);
+    brackets.push({
+      threshold,
+      rate: Number(rate.toFixed(4)),
+    });
+  }
+
+  brackets.sort((a, b) => a.threshold - b.threshold);
+
+  return { brackets };
+};
 
 const parseLogDateBoundary = (value: unknown, boundary: 'start' | 'end'): Date | null => {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -711,6 +865,51 @@ router.post('/items', authMiddleware, requireAdmin, async (req: AuthRequest, res
   } catch (error) {
     console.error('Admin create item error:', error);
     res.status(500).json({ error: 'Failed to create item' });
+  }
+});
+
+router.post('/items/import', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const payload = (req.body ?? {}) as Partial<ShopItemImportFile> & { items?: unknown };
+    const items = Array.isArray(payload?.items) ? payload.items : null;
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: 'Le fichier doit contenir un tableau "items" non vide' });
+    }
+
+    if (payload.format && payload.format !== SHOP_ITEMS_EXPORT_FORMAT) {
+      return res.status(400).json({ error: 'Format de fichier d’import non reconnu' });
+    }
+
+    if (payload.version != null && payload.version !== SHOP_ITEMS_EXPORT_VERSION) {
+      return res.status(400).json({ error: 'Version de fichier d’import non supportée' });
+    }
+
+    const normalizedItems: Array<Omit<ShopItemImportInput, 'effect'> & { effect: string | null }> = [];
+
+    for (const entry of items) {
+      const normalized = normalizeImportedItem(entry);
+      if ('error' in normalized) {
+        return res.status(400).json({ error: normalized.error });
+      }
+      normalizedItems.push(normalized.item);
+    }
+
+    const createdItems = await prisma.$transaction(
+      normalizedItems.map((item) => prisma.item.create({ data: item })),
+    );
+
+    logAdmin('item_import', req.user!.id, req.user!.username, undefined, undefined, {
+      count: createdItems.length,
+      names: createdItems.map((item) => item.name),
+      format: SHOP_ITEMS_EXPORT_FORMAT,
+      version: SHOP_ITEMS_EXPORT_VERSION,
+    });
+
+    res.status(201).json({ success: true, count: createdItems.length, items: createdItems });
+  } catch (error) {
+    console.error('Admin import items error:', error);
+    res.status(500).json({ error: 'Failed to import items' });
   }
 });
 
@@ -2566,6 +2765,92 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
   }
 });
 
+// ========== TAX MANAGEMENT ==========
+
+router.get('/tax-settings', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const [brackets, lastRunSetting] = await Promise.all([
+      prisma.taxBracket.findMany({
+        orderBy: { threshold: 'asc' },
+      }),
+      prisma.gameSettings.findUnique({
+        where: { key: LAST_TAX_RUN_KEY },
+        select: { value: true },
+      }),
+    ]);
+
+    res.json({
+      brackets,
+      defaults: {
+        threshold: DEFAULT_TAX_BRACKET_THRESHOLD,
+        rate: DEFAULT_TAX_BRACKET_RATE,
+      },
+      lastRunDate: lastRunSetting?.value ?? null,
+    });
+  } catch (error) {
+    console.error('Admin get tax settings error:', error);
+    res.status(500).json({ error: 'Failed to get tax settings' });
+  }
+});
+
+router.put('/tax-settings', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const normalized = normalizeTaxBracketsInput(req.body?.brackets);
+    if ('error' in normalized) {
+      return res.status(400).json({ error: normalized.error });
+    }
+
+    const { brackets } = normalized;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.taxBracket.deleteMany();
+
+      if (brackets.length > 0) {
+        await tx.taxBracket.createMany({
+          data: brackets,
+        });
+      }
+    });
+
+    const savedBrackets = await prisma.taxBracket.findMany({
+      orderBy: { threshold: 'asc' },
+    });
+
+    logAdmin('tax_brackets_update', req.user!.id, undefined, undefined, undefined, {
+      brackets: savedBrackets,
+      fallbackDefaultAppliedWhenEmpty: savedBrackets.length === 0,
+    });
+
+    res.json({
+      brackets: savedBrackets,
+      defaults: {
+        threshold: DEFAULT_TAX_BRACKET_THRESHOLD,
+        rate: DEFAULT_TAX_BRACKET_RATE,
+      },
+    });
+  } catch (error) {
+    console.error('Admin update tax settings error:', error);
+    res.status(500).json({ error: 'Failed to update tax settings' });
+  }
+});
+
+router.post('/tax-settings/run', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const force = req.body?.force !== false;
+    const result = await runDailyTax(prisma, force);
+
+    logAdmin('tax_manual_run', req.user!.id, undefined, undefined, undefined, {
+      force,
+      ...result,
+    });
+
+    res.json({ result });
+  } catch (error) {
+    console.error('Admin run tax error:', error);
+    res.status(500).json({ error: 'Failed to run tax collection' });
+  }
+});
+
 // List available Bomb Party languages (admin only)
 router.get('/bombparty/languages', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
@@ -3896,38 +4181,74 @@ router.get('/playtime-leaderboard', authMiddleware, requireAdmin, async (req: Au
 
     const maxLimit = Math.min(parseInt(limit) || 50, 200);
 
-    // Get all game_complete logs within the period with duration metadata
-    const gameLogs = await prisma.log.findMany({
-      where: {
-        type: 'GAME',
-        action: 'game_complete',
-        createdAt: { gte: start, lte: end },
-        userId: { not: null },
-        metadata: { not: null },
-      },
-      select: {
-        userId: true,
-        metadata: true,
-      },
-    });
+    const [gameLogs, snapshotBeforeStart, snapshotsInRange, snapshotAfterEnd] = await Promise.all([
+      prisma.log.findMany({
+        where: {
+          type: 'GAME',
+          action: 'game_complete',
+          createdAt: { gte: start, lte: end },
+          userId: { not: null },
+        },
+        select: {
+          userId: true,
+        },
+      }),
+      prisma.onlineSnapshot.findFirst({
+        where: { createdAt: { lt: start } },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true, usernames: true },
+      }),
+      prisma.onlineSnapshot.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true, usernames: true },
+      }),
+      prisma.onlineSnapshot.findFirst({
+        where: { createdAt: { gt: end } },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true, usernames: true },
+      }),
+    ]);
 
-    // Aggregate playtime by user
-    const playtimeByUser = new Map<string, { totalSeconds: number; gamesPlayed: number }>();
+    const snapshots = [snapshotBeforeStart, ...snapshotsInRange, snapshotAfterEnd]
+      .filter((snapshot): snapshot is { createdAt: Date; usernames: string } => Boolean(snapshot))
+      .filter((snapshot, index, array) => (
+        array.findIndex((entry) => entry.createdAt.getTime() === snapshot.createdAt.getTime()) === index
+      ))
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
-    for (const log of gameLogs) {
-      try {
-        const meta = JSON.parse(log.metadata!) as Record<string, unknown>;
-        const durationSeconds = meta.duration;
+    const screenTimeByUser = new Map<string, number>();
 
-        if (typeof durationSeconds === 'number' && Number.isFinite(durationSeconds) && durationSeconds > 0 && log.userId) {
-          const current = playtimeByUser.get(log.userId) ?? { totalSeconds: 0, gamesPlayed: 0 };
-          current.totalSeconds += durationSeconds;
-          current.gamesPlayed += 1;
-          playtimeByUser.set(log.userId, current);
-        }
-      } catch {
-        // Skip logs with invalid metadata
+    for (let index = 0; index < snapshots.length - 1; index += 1) {
+      const currentSnapshot = snapshots[index];
+      const nextSnapshot = snapshots[index + 1];
+      const intervalStart = Math.max(currentSnapshot.createdAt.getTime(), start.getTime());
+      const intervalEnd = Math.min(nextSnapshot.createdAt.getTime(), end.getTime());
+      const durationSeconds = (intervalEnd - intervalStart) / 1000;
+
+      if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+        continue;
       }
+
+      for (const user of parseSnapshotUsers(currentSnapshot.usernames)) {
+        if (typeof user.userId !== 'string' || user.userId === '') continue;
+        screenTimeByUser.set(user.userId, (screenTimeByUser.get(user.userId) ?? 0) + durationSeconds);
+      }
+    }
+
+    const gamesPlayedByUser = new Map<string, number>();
+    for (const log of gameLogs) {
+      if (typeof log.userId !== 'string' || log.userId === '') continue;
+      gamesPlayedByUser.set(log.userId, (gamesPlayedByUser.get(log.userId) ?? 0) + 1);
+    }
+
+    const playtimeByUser = new Map<string, { totalSeconds: number; gamesPlayed: number }>();
+    for (const [userId, totalSeconds] of screenTimeByUser.entries()) {
+      if (totalSeconds <= 0) continue;
+      playtimeByUser.set(userId, {
+        totalSeconds,
+        gamesPlayed: gamesPlayedByUser.get(userId) ?? 0,
+      });
     }
 
     // Get user info for all users with playtime
@@ -3955,7 +4276,9 @@ router.get('/playtime-leaderboard', authMiddleware, requireAdmin, async (req: Au
           usernameColor: user?.usernameColor ?? null,
           totalSeconds: Math.round(totalSeconds),
           gamesPlayed,
-          averageGameDuration: Math.round((totalSeconds / gamesPlayed) * 100) / 100,
+          averageGameDuration: gamesPlayed > 0
+            ? Math.round((totalSeconds / gamesPlayed) * 100) / 100
+            : 0,
         };
       })
       .sort((a, b) => b.totalSeconds - a.totalSeconds)

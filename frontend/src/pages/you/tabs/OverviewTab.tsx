@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, BookOpen, Building2, Globe, Heart, RotateCcw, ShoppingBasket, TrendingUp, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNotifications } from '@/contexts/NotificationContext';

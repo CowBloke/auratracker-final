@@ -47,7 +47,7 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl, resolveThemeImageUrl } from '@/lib/images';
 import { getGameImage } from '@/lib/game-images';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 interface GameShortcut {
   id: string;

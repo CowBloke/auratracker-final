@@ -312,7 +312,6 @@ router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthReq
       description: typeof req.body?.description === 'string' ? req.body.description : undefined,
       location: typeof req.body?.location === 'string' ? req.body.location : undefined,
     });
-
     res.status(201).json({ business });
   } catch (error) {
     handleRouteError(error, res, 'Create business error');

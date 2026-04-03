@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { initSocket, duelEvents } from '../services/socket';
@@ -75,23 +76,17 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
 
     s.on('duel:challenge-accepted', (data: { targetId: string; targetUsername: string }) => {
       setOutgoingDuelChallenge(null);
-      import('sonner').then(({ toast }) => {
-        toast(`Défi accepté !`, { description: `${data.targetUsername} a accepté. Redirection en cours...` });
-      });
+      toast(`Défi accepté !`, { description: `${data.targetUsername} a accepté. Redirection en cours...` });
     });
 
     s.on('duel:challenge-declined', (data: { targetUsername: string }) => {
       setOutgoingDuelChallenge(null);
-      import('sonner').then(({ toast }) => {
-        toast(`Défi refusé`, { description: `${data.targetUsername} a refusé le défi.` });
-      });
+      toast(`Défi refusé`, { description: `${data.targetUsername} a refusé le défi.` });
     });
 
     s.on('duel:challenge-expired', () => {
       setOutgoingDuelChallenge(null);
-      import('sonner').then(({ toast }) => {
-        toast('Défi expiré', { description: "Le joueur n'a pas répondu à temps." });
-      });
+      toast('Défi expiré', { description: "Le joueur n'a pas répondu à temps." });
     });
 
     s.on('duel:challenge-cancelled', () => setIncomingDuelChallenge(null));
@@ -99,7 +94,7 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
     s.on('duel:challenge-error', (data: { message: string }) => {
       setIncomingDuelChallenge(null);
       setOutgoingDuelChallenge(null);
-      import('sonner').then(({ toast }) => toast.error(data.message));
+      toast.error(data.message);
     });
 
     s.on('duel:redirect', (data: { path: string }) => {
@@ -120,10 +115,8 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
     });
 
     s.on('duel:matchmaking-match-found', (data: { gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' }) => {
-      import('sonner').then(({ toast }) => {
-        const labels = { chess: 'Echecs', battleship: 'Bataille navale', p4: 'Puissance 4', ballarena: 'Arène des balles', uno: 'UNO', morpion: 'Morpion' } as const;
-        toast('Adversaire trouve !', { description: `Duel ${labels[data.gameType] ?? 'aleatoire'} en cours de lancement...` });
-      });
+      const labels = { chess: 'Echecs', battleship: 'Bataille navale', p4: 'Puissance 4', ballarena: 'Arène des balles', uno: 'UNO', morpion: 'Morpion' } as const;
+      toast('Adversaire trouve !', { description: `Duel ${labels[data.gameType] ?? 'aleatoire'} en cours de lancement...` });
     });
 
     return () => {

@@ -7,7 +7,7 @@ import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { passApi, type PassClaimResponse, type PassRewardEntry, type PassStatus } from '@/services/api';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import {
   Clock3,
   Gem,

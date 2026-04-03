@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
 import { chatEvents, initSocket, getSocket } from '../services/socket';
 
@@ -188,9 +189,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
 
     s.on('chat:muted', (data: { message?: string }) => {
       if (typeof window !== 'undefined') {
-        import('sonner').then(({ toast }) => {
-          toast(data.message || 'Vous êtes mute du chat.');
-        });
+        toast(data.message || 'Vous êtes mute du chat.');
       }
     });
 

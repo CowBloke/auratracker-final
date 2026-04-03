@@ -19,7 +19,7 @@ import { ImagePicker } from '@/components/ui/image-picker';
 import {
   Loader2, Plus, Calendar,
   CheckCircle2, XCircle, Pencil, Trash2, Eye,
-  Check, X,
+  Check, X, LayoutGrid, List,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,6 +41,8 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 // ─── Option helpers ───────────────────────────────────────────────────────────
 
 const DEFAULT_OPTION_COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b'];
+type PolymarketViewMode = 'list' | 'grid';
+const POLYMARKET_VIEW_STORAGE_KEY = 'auratracker:polymarket-view-mode';
 
 interface DraftOption {
   key: string;
@@ -288,6 +290,11 @@ export default function Polymarket() {
   const [activeTab, setActiveTab] = useState<'events' | 'history' | 'admin'>('events');
   const [betHistoryTab, setBetHistoryTab] = useState<'my' | 'all'>('my');
   const [sortOrder, setSortOrder] = useState<'recent' | 'ends_soon' | 'popular' | 'best_odds'>('recent');
+  const [viewMode, setViewMode] = useState<PolymarketViewMode>(() => {
+    if (typeof window === 'undefined') return 'list';
+    const stored = window.localStorage.getItem(POLYMARKET_VIEW_STORAGE_KEY);
+    return stored === 'grid' ? 'grid' : 'list';
+  });
 
   // Suggestion dialog
   const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
@@ -406,6 +413,11 @@ export default function Polymarket() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(POLYMARKET_VIEW_STORAGE_KEY, viewMode);
+  }, [viewMode]);
 
   const fetchData = async () => {
     try {
@@ -723,6 +735,30 @@ export default function Polymarket() {
                   </SelectContent>
                 </Select>
               )}
+              {(activeTab === 'events' || activeTab === 'admin') && (
+                <div className="inline-flex rounded-md border border-border/60 p-0.5">
+                  <Button
+                    type="button"
+                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                    size="icon"
+                    onClick={() => setViewMode('list')}
+                    className="h-8 w-8"
+                    aria-label="Vue liste"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                    size="icon"
+                    onClick={() => setViewMode('grid')}
+                    className="h-8 w-8"
+                    aria-label="Vue grille"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               <Button className="h-11 px-5" onClick={() => setSuggestionDialogOpen(true)}>
                 <Plus className="h-5 w-5 mr-2" />
                 Suggérer
@@ -745,7 +781,7 @@ export default function Polymarket() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
+              <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : 'space-y-4')}>
                 {sortedOpenEvents.map((event) => {
                   const userBet = bets.find((b) => b.eventId === event.id);
                   const canBet = !userBet && event.status === 'OPEN' && new Date(event.eventDate) > new Date();
@@ -754,9 +790,12 @@ export default function Polymarket() {
 
                   return (
                     <Card key={event.id} className="overflow-hidden">
-                      <div className="flex min-h-[160px]">
+                      <div className={cn('min-h-[160px]', viewMode === 'grid' ? 'flex h-full flex-col' : 'flex')}>
                         {/* ── Image: full card height, rounded inside with margin ── */}
-                        <div className="w-36 shrink-0 m-3 mr-0 rounded-xl overflow-hidden">
+                        <div className={cn(
+                          'shrink-0 overflow-hidden rounded-xl',
+                          viewMode === 'grid' ? 'm-3 mb-0 h-44 w-auto' : 'm-3 mr-0 w-36'
+                        )}>
                           {event.imageUrl ? (
                             <img
                               src={resolveImageUrl(event.imageUrl)}
@@ -769,7 +808,7 @@ export default function Polymarket() {
                         </div>
 
                         {/* ── Right side: title + content ── */}
-                        <div className="flex-1 flex flex-col p-4 min-w-0 gap-3">
+                        <div className="flex flex-1 flex-col gap-3 p-4 min-w-0">
                           {/* Title row */}
                           <div className="flex items-start gap-2">
                             <div className="flex-1 min-w-0">
@@ -798,9 +837,12 @@ export default function Polymarket() {
                           </div>
 
                           {/* Content: description 30% · options 70% */}
-                          <div className="flex gap-3 flex-1 min-h-0">
+                          <div className={cn('flex flex-1 min-h-0 gap-3', viewMode === 'grid' && 'flex-col')}>
                             {/* Description column */}
-                            <div className="flex flex-col justify-between gap-2 min-w-0" style={{ flex: '0 0 28%' }}>
+                            <div
+                              className="flex min-w-0 flex-col justify-between gap-2"
+                              style={viewMode === 'grid' ? undefined : { flex: '0 0 28%' }}
+                            >
                               <div>
                                 <CardDescription className="line-clamp-3 text-xs leading-relaxed">{event.description}</CardDescription>
                                 <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
@@ -831,7 +873,7 @@ export default function Polymarket() {
                             </div>
 
                             {/* Option boxes column */}
-                            <div className="flex gap-2 flex-1 min-w-0">
+                            <div className="flex flex-1 gap-2 min-w-0">
                               {options.map((opt) => {
                                 const optVol = (event.optionStats ?? {})[opt.key]
                                   ?? (opt.key === 'YES' ? (event.totalYes || 0) : opt.key === 'NO' ? (event.totalNo || 0) : 0);
@@ -1149,7 +1191,7 @@ export default function Polymarket() {
                       <CardContent className="py-8 text-center text-muted-foreground">Aucune suggestion en attente</CardContent>
                     </Card>
                   ) : (
-                    <div className="space-y-4">
+                <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : 'space-y-4')}>
                       {pendingSuggestions.map((suggestion) => {
                         return (
                           <Card key={suggestion.id}>
@@ -1239,7 +1281,7 @@ export default function Polymarket() {
                       <CardContent className="py-8 text-center text-muted-foreground">Aucun événement disponible</CardContent>
                     </Card>
                   ) : (
-                    <div className="space-y-3">
+                <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : 'space-y-3')}>
                       {events.map((event) => {
                         const options = getEventOptions(event);
                         return (

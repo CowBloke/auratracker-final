@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { gamesApi } from '../services/api';
+import { api, gamesApi } from '../services/api';
 import { cn } from '@/lib/utils';
 import { CircleDollarSign, Disc3, RotateCcw, Sparkles, Spade, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -1474,6 +1474,8 @@ function BlackjackGame({
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const deckRef = useRef<BlackjackCard[]>(shuffleDeck(createBlackjackDeck()));
+  const activeRoundBetRef = useRef(0);
+  const hasPendingSubmissionRef = useRef(false);
 
   const dealerTotal = useMemo(() => getHandTotal(dealerHand), [dealerHand]);
   const revealDealer = status !== 'player';
@@ -1498,8 +1500,69 @@ function BlackjackGame({
     return deckRef.current.pop()!;
   }, []);
 
+  const submitAbandonedRound = useCallback((betAmount: number, useKeepalive = false) => {
+    if (betAmount <= 0 || hasPendingSubmissionRef.current) return;
+
+    const token = localStorage.getItem('token');
+    const baseUrl = api.defaults.baseURL;
+    if (!token || !baseUrl) return;
+
+    hasPendingSubmissionRef.current = true;
+    activeRoundBetRef.current = 0;
+
+    const payload = {
+      score: 0,
+      won: false,
+      bet: betAmount,
+      netGain: -betAmount,
+    };
+
+    if (useKeepalive) {
+      void fetch(`${baseUrl}/games/casino/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch((err) => {
+        console.error('Failed to submit abandoned blackjack round:', err);
+      });
+      return;
+    }
+
+    void gamesApi.complete('casino', payload)
+      .then(() => refreshUser())
+      .catch((err) => {
+        console.error('Failed to submit abandoned blackjack round:', err);
+      });
+  }, [refreshUser]);
+
+  useEffect(() => {
+    const handlePageExit = () => {
+      if (activeRoundBetRef.current > 0) {
+        submitAbandonedRound(activeRoundBetRef.current, true);
+      }
+    };
+
+    window.addEventListener('pagehide', handlePageExit);
+    window.addEventListener('beforeunload', handlePageExit);
+
+    return () => {
+      window.removeEventListener('pagehide', handlePageExit);
+      window.removeEventListener('beforeunload', handlePageExit);
+
+      if (activeRoundBetRef.current > 0) {
+        submitAbandonedRound(activeRoundBetRef.current);
+      }
+    };
+  }, [submitAbandonedRound]);
+
   const finishRound = useCallback(
     async (finalHands: BlackjackHand[], payoutAmount: number, totalRoundBet: number) => {
+      activeRoundBetRef.current = 0;
+      hasPendingSubmissionRef.current = true;
       const net = payoutAmount - totalRoundBet;
       setHands(finalHands);
       setNetGain(net);
@@ -1524,6 +1587,8 @@ function BlackjackGame({
         await refreshUser();
       } catch (err) {
         console.error('Failed to submit blackjack:', err);
+      } finally {
+        hasPendingSubmissionRef.current = false;
       }
     },
     [onCelebrate, refreshUser, user]
@@ -1633,6 +1698,8 @@ function BlackjackGame({
       outcome: null,
     };
 
+    activeRoundBetRef.current = bet;
+    hasPendingSubmissionRef.current = false;
     setHands([initialHand]);
 
     if (playerBlackjack || dealerBlackjack) {
@@ -1723,6 +1790,7 @@ function BlackjackGame({
         : hand
     );
 
+    activeRoundBetRef.current = updatedHands.reduce((sum, hand) => sum + hand.bet, 0);
     setHands(updatedHands);
 
     const nextIndex = updatedHands.findIndex(
@@ -1768,6 +1836,7 @@ function BlackjackGame({
     };
 
     const updatedHands = [handOne, handTwo];
+    activeRoundBetRef.current = updatedHands.reduce((sum, hand) => sum + hand.bet, 0);
     setHands(updatedHands);
 
     const nextIndex = updatedHands.findIndex((hand) => hand.state === 'playing');
@@ -1923,9 +1992,15 @@ function BlackjackGame({
         </div>
       </div>
 
-      {error && (
-        <div className="border border-border/30 px-4 py-3 text-sm text-muted-foreground">
-          {error}
+        {error && (
+          <div className="border border-border/30 px-4 py-3 text-sm text-muted-foreground">
+            {error}
+          </div>
+        )}
+
+      {(status === 'player' || status === 'dealer') && (
+        <div className="border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Quitter ou recharger pendant une manche en cours compte comme une defaite et la mise sera perdue.
         </div>
       )}
 

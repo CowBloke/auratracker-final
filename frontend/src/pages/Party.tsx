@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
 import { useGameSocket } from '../contexts/GameSocketContext';
 import { usersApi } from '../services/api';
-import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2, User, Play, Search } from 'lucide-react';
+import { Plus, LogOut, UserPlus, X, RefreshCw, Trash2, User, Play, Search, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -113,6 +113,7 @@ export default function Party() {
     respondToJoinRequest,
     leaveParty,
     deleteParty,
+    updateParty,
     inviteToParty,
     rejectPartyInvite,
     kickFromParty,
@@ -127,6 +128,7 @@ export default function Party() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [partyName, setPartyName] = useState('');
   const [isPublic, setIsPublic] = useState(true);
   const [maxSize, setMaxSize] = useState<number>(8);
@@ -134,6 +136,8 @@ export default function Party() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [inviteSearch, setInviteSearch] = useState('');
   const [appliedInviteSearch, setAppliedInviteSearch] = useState('');
+  const [editPartyName, setEditPartyName] = useState('');
+  const [editMaxSize, setEditMaxSize] = useState<number>(8);
 
   // Start game dialogs
   const [showBpDialog, setShowBpDialog] = useState(false);
@@ -190,6 +194,22 @@ export default function Party() {
       setInviteSearch('');
       setAppliedInviteSearch('');
     }
+  };
+
+  const handleOpenEditModal = () => {
+    if (!currentParty) return;
+    setEditPartyName(currentParty.name || '');
+    setEditMaxSize(Math.max(currentParty.maxSize, partyMembers.length, 2));
+    setShowEditModal(true);
+  };
+
+  const handleUpdateParty = () => {
+    if (!currentParty) return;
+    updateParty({
+      name: editPartyName,
+      ...(currentParty.maxSize !== 2 ? { maxSize: editMaxSize } : {}),
+    });
+    setShowEditModal(false);
   };
 
   const handleInviteSearch = () => {
@@ -302,6 +322,16 @@ export default function Party() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                {isLeader && (
+                  <Button
+                    onClick={handleOpenEditModal}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Modifier
+                  </Button>
+                )}
                 {isLeader && (
                   <Button
                     onClick={() => setShowInviteModal(true)}
@@ -848,6 +878,60 @@ export default function Party() {
               className="w-full border-border/30"
             >
               Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier le groupe</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              type="text"
+              value={editPartyName}
+              onChange={(e) => setEditPartyName(e.target.value)}
+              placeholder="Nom du groupe"
+              className="h-12 bg-transparent border-border/50"
+            />
+            {currentParty && currentParty.maxSize !== 2 && (
+              <div className="space-y-2">
+                <Label htmlFor="editMaxSize" className="text-sm text-muted-foreground">
+                  Taille maximale
+                </Label>
+                <div className="flex flex-wrap items-center justify-center gap-1 text-muted-foreground">
+                  {Array.from({ length: editMaxSize }).map((_, index) => (
+                    <User key={`${editMaxSize}-${index}`} className="h-3.5 w-3.5" />
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{Math.max(2, partyMembers.length)}</span>
+                    <span className="text-foreground font-semibold">{editMaxSize} joueurs</span>
+                    <span>16</span>
+                  </div>
+                  <Slider
+                    value={[editMaxSize]}
+                    min={Math.max(2, partyMembers.length)}
+                    max={16}
+                    step={1}
+                    onValueChange={(value) => setEditMaxSize(value[0])}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowEditModal(false)}
+            >
+              Annuler
+            </Button>
+            <Button onClick={handleUpdateParty}>
+              Enregistrer
             </Button>
           </DialogFooter>
         </DialogContent>

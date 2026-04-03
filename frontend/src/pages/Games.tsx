@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

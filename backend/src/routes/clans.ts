@@ -1267,27 +1267,38 @@ router.post('/:id/items/:clanItemId/use', authMiddleware, async (req: AuthReques
       return res.status(404).json({ error: 'Objet de clan introuvable.' });
     }
 
-    // CLAN_BANNER: sets the clan's banner image
+    // Clan image items: set either the clan emblem or the clan banner.
     let parsedEffect: { type?: string } | null = null;
     try { parsedEffect = clanItem.item.effect ? JSON.parse(clanItem.item.effect) : null; } catch {}
 
-    if (parsedEffect?.type === 'CLAN_BANNER') {
+    if (parsedEffect?.type === 'CLAN_BANNER' || parsedEffect?.type === 'CLAN_PROFILE_PICTURE') {
       const { imageUrl } = req.body;
       if (!imageUrl || typeof imageUrl !== 'string') {
-        return res.status(400).json({ error: 'Une URL d\'image est requise pour la bannière.' });
+        return res.status(400).json({
+          error: parsedEffect.type === 'CLAN_BANNER'
+            ? 'Une URL d\'image est requise pour la bannière.'
+            : 'Une URL d\'image est requise pour la photo de profil du clan.',
+        });
       }
       if (!isAllowedImageUrl(imageUrl)) {
         return res.status(400).json({ error: 'URL d\'image invalide.' });
       }
+      const trimmedImageUrl = imageUrl.trim();
+      const clanImageField = parsedEffect.type === 'CLAN_BANNER' ? 'banner' : 'imageUrl';
       await prisma.$transaction(async (tx) => {
-        await tx.clan.update({ where: { id: clanId }, data: { banner: imageUrl.trim() } });
+        await tx.clan.update({ where: { id: clanId }, data: { [clanImageField]: trimmedImageUrl } });
         if (clanItem.quantity > 1) {
           await tx.clanOwnedItem.update({ where: { id: clanItem.id }, data: { quantity: { decrement: 1 } } });
         } else {
           await tx.clanOwnedItem.delete({ where: { id: clanItem.id } });
         }
       });
-      return res.json({ success: true, effect: { type: 'CLAN_BANNER', banner: imageUrl.trim() } });
+      return res.json({
+        success: true,
+        effect: parsedEffect.type === 'CLAN_BANNER'
+          ? { type: 'CLAN_BANNER', banner: trimmedImageUrl }
+          : { type: 'CLAN_PROFILE_PICTURE', imageUrl: trimmedImageUrl },
+      });
     }
 
     if (!isClanGameMoneyBoostEffect(clanItem.item.effect)) {

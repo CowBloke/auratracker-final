@@ -7,7 +7,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import {
   Loader2, Package,
   Timer, Gamepad2, RotateCcw, ShoppingCart,
@@ -38,6 +38,7 @@ const getEffectLabel = (effect: string | null) => {
     if (p.type === 'PROFILE_BANNER') return 'Banniere de profil';
     if (p.type === 'DOODLE_JUMP_SKIN') return 'Apparence Doodle Jump';
     if (p.type === 'CLAN_GAME_MONEY_BOOST') return `Boost clan +${p.percentage ?? 0}%`;
+    if (p.type === 'CLAN_PROFILE_PICTURE') return 'Photo de profil de clan';
     if (p.type === 'CLAN_BANNER') return 'Bannière de clan';
   } catch { /**/ }
   return null;
@@ -216,8 +217,9 @@ function ShopCard({
   const isClanTagUnlock = effectType === 'CLAN_TAG_UNLOCK';
   const isClanSlotUpgrade = effectType === 'CLAN_SLOT_UPGRADE';
   const isClanMoneyBoost = effectType === 'CLAN_GAME_MONEY_BOOST';
+  const isClanProfilePicture = effectType === 'CLAN_PROFILE_PICTURE';
   const isClanBanner = effectType === 'CLAN_BANNER';
-  const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanMoneyBoost || isClanBanner;
+  const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanMoneyBoost || isClanProfilePicture || isClanBanner;
   const isAlreadyPurchased =
     (isClanTagUnlock && !!clanStatus?.tagUnlocked) ||
     (isClanSlotUpgrade && !!clanStatus?.slotUpgraded);
@@ -593,6 +595,7 @@ export default function Shop() {
       const isClanTagUnlock = response.data.effect?.type === 'CLAN_TAG_UNLOCK';
       const isClanSlotUpgrade = response.data.effect?.type === 'CLAN_SLOT_UPGRADE';
       const isClanMoneyBoost = response.data.effect?.type === 'CLAN_GAME_MONEY_BOOST';
+      const isClanProfilePicturePurchase = response.data.effect?.type === 'CLAN_PROFILE_PICTURE';
       const isClanBannerPurchase = response.data.effect?.type === 'CLAN_BANNER';
       const isDj = parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN';
       if (isClanTagUnlock) {
@@ -601,7 +604,7 @@ export default function Shop() {
       if (isClanSlotUpgrade) {
         setClanStatus(prev => prev ? { ...prev, slotUpgraded: true, clanBankMoney: prev.clanBankMoney - item.price } : prev);
       }
-      if (isClanMoneyBoost || isClanBannerPurchase) {
+      if (isClanMoneyBoost || isClanProfilePicturePurchase || isClanBannerPurchase) {
         setClanStatus(prev => prev ? { ...prev, clanBankMoney: prev.clanBankMoney - item.price } : prev);
       }
       toast.success(
@@ -611,6 +614,8 @@ export default function Shop() {
           ? 'Slot de clan debloque !'
           : isClanMoneyBoost
           ? 'Objet de clan acheté'
+          : isClanProfilePicturePurchase
+          ? 'Photo de profil de clan achetée'
           : isClanBannerPurchase
           ? 'Bannière de clan achetée'
           : isDj
@@ -623,6 +628,8 @@ export default function Shop() {
             ? 'Ton clan gagne un membre maximum supplémentaire.'
             : isClanMoneyBoost
             ? `${item.name} a ete ajoute aux objets du clan. Active-le depuis la page Clan.`
+            : isClanProfilePicturePurchase
+            ? `${item.name} a ete ajoute aux objets du clan. Active-le depuis la page Clan pour choisir l'image.`
             : isClanBannerPurchase
             ? `${item.name} a ete ajoute aux objets du clan. Active-le depuis la page Clan pour choisir l'image.`
             : isDj

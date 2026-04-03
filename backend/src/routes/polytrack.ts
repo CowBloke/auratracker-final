@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { logGame } from '../utils/logger.js';
 
 const router = Router();
 
@@ -94,6 +95,7 @@ router.get('/tracks', authMiddleware, async (req: AuthRequest, res: Response) =>
 router.post('/records', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;
+    const username = req.user!.username;
     const { trackNumber, timeMs } = req.body as { trackNumber: unknown; timeMs: unknown };
 
     const trackNum = parseInt(String(trackNumber), 10);
@@ -131,6 +133,24 @@ router.post('/records', authMiddleware, async (req: AuthRequest, res: Response) 
       orderBy: { timeMs: 'asc' },
     });
     const isGlobalRecord = !globalBest;
+
+    logGame('game_complete', userId, username, {
+      gameType: 'polytrack',
+      score: timeMsNum,
+      timeMs: timeMsNum,
+      won: true,
+      trackNumber: trackNum,
+      isGlobalRecord,
+      isNewHighScore: !existing || timeMsNum < existing.timeMs,
+    });
+
+    logGame('highscore', userId, username, {
+      gameType: 'polytrack',
+      trackNumber: trackNum,
+      newHighScore: timeMsNum,
+      previousHighScore: existing?.timeMs ?? null,
+      isGlobalRecord,
+    });
 
     res.json({
       saved: true,

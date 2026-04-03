@@ -63,6 +63,7 @@ import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges
 import { ensureDefaultBadges } from './utils/seedBadges.js';
 import { recomputeOverallClassement, startOverallClassementScheduler, stopOverallClassementScheduler } from './utils/overallClassement.js';
 import { startDailyBankRevenueScheduler, stopDailyBankRevenueScheduler } from './utils/dailyBankRevenue.js';
+import { runDailyTax, startDailyTaxScheduler, stopDailyTaxScheduler } from './utils/dailyTax.js';
 
 // Initialize Prisma
 export const prisma = new PrismaClient();
@@ -327,6 +328,8 @@ const start = async () => {
     await recomputeOverallClassement(prisma);
     startOverallClassementScheduler(prisma);
     startDailyBankRevenueScheduler(prisma);
+    await runDailyTax(prisma);
+    startDailyTaxScheduler(prisma);
     await advanceClanWarsState(); // activate any PREPARING wars immediately on startup
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
@@ -346,6 +349,7 @@ process.on('SIGINT', async () => {
   stopAutoBadgeScheduler();
   stopOverallClassementScheduler();
   stopDailyBankRevenueScheduler();
+  stopDailyTaxScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });
@@ -355,6 +359,7 @@ process.on('SIGTERM', async () => {
   stopAutoBadgeScheduler();
   stopOverallClassementScheduler();
   stopDailyBankRevenueScheduler();
+  stopDailyTaxScheduler();
   await prisma.$disconnect();
   process.exit(0);
 });

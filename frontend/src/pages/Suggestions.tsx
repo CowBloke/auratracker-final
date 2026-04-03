@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestionsApi, Suggestion, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { ChevronUp, ChevronDown, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, LayoutGrid, List, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -15,11 +15,21 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { PageShell } from '@/components/layout/page-shell';
+
+type PendingSortOption = 'trending' | 'newest' | 'top' | 'discussed';
+type DoneSortOption = 'recently-done' | 'best-rated' | 'most-rated' | 'discussed';
+type ParticipationFilter = 'all' | 'mine' | 'voted' | 'commented';
+type ContentFilter = 'all' | 'with-image' | 'without-image' | 'boosted';
+type FeedbackFilter = 'all' | 'rated' | 'to-rate' | 'with-comments';
+type SuggestionsViewMode = 'list' | 'grid';
+
+const SUGGESTIONS_VIEW_STORAGE_KEY = 'auratracker:suggestions-view-mode';
 
 export default function Suggestions() {
   const { user } = useAuth();
@@ -34,6 +44,17 @@ export default function Suggestions() {
   const [ratingInputs, setRatingInputs] = useState<Record<string, number>>({});
   const [ratingSubmitting, setRatingSubmitting] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState<'pending' | 'done'>('pending');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pendingSortBy, setPendingSortBy] = useState<PendingSortOption>('trending');
+  const [doneSortBy, setDoneSortBy] = useState<DoneSortOption>('recently-done');
+  const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>('all');
+  const [pendingContentFilter, setPendingContentFilter] = useState<ContentFilter>('all');
+  const [doneFeedbackFilter, setDoneFeedbackFilter] = useState<FeedbackFilter>('all');
+  const [viewMode, setViewMode] = useState<SuggestionsViewMode>(() => {
+    if (typeof window === 'undefined') return 'list';
+    const stored = window.localStorage.getItem(SUGGESTIONS_VIEW_STORAGE_KEY);
+    return stored === 'grid' ? 'grid' : 'list';
+  });
 
   // Form state
   const [title, setTitle] = useState('');
@@ -81,9 +102,46 @@ export default function Suggestions() {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
+  const getPendingSuggestionsSorted = (items: Suggestion[], sortBy: PendingSortOption) => {
+    if (sortBy === 'trending') {
+      return sortPendingSuggestions(items);
+    }
+
+    return [...items].sort((a, b) => {
+      if (sortBy === 'newest') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === 'top') {
+        return b.score - a.score || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return b.comments.length - a.comments.length || b.score - a.score;
+    });
+  };
+
+  const getDoneSuggestionsSorted = (items: Suggestion[], sortBy: DoneSortOption) => {
+    if (sortBy === 'recently-done') {
+      return sortDoneSuggestions(items);
+    }
+
+    return [...items].sort((a, b) => {
+      if (sortBy === 'best-rated') {
+        return (b.averageRating ?? 0) - (a.averageRating ?? 0) || b.ratingCount - a.ratingCount;
+      }
+      if (sortBy === 'most-rated') {
+        return b.ratingCount - a.ratingCount || (b.averageRating ?? 0) - (a.averageRating ?? 0);
+      }
+      return b.comments.length - a.comments.length || b.ratingCount - a.ratingCount;
+    });
+  };
+
   useEffect(() => {
     fetchSuggestions();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(SUGGESTIONS_VIEW_STORAGE_KEY, viewMode);
+  }, [viewMode]);
 
   const fetchSuggestions = async () => {
     try {
@@ -319,12 +377,60 @@ export default function Suggestions() {
     });
   };
 
-  const pendingSuggestions = sortPendingSuggestions(
-    suggestions.filter((suggestion) => suggestion.status === 'PENDING')
-  );
-  const doneSuggestions = sortDoneSuggestions(
-    suggestions.filter((suggestion) => suggestion.status === 'DONE')
-  );
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  const matchesParticipationFilter = (suggestion: Suggestion) => {
+    if (!user) return participationFilter === 'all';
+    if (participationFilter === 'mine') return suggestion.user.id === user.id;
+    if (participationFilter === 'voted') return suggestion.userVote !== 0;
+    if (participationFilter === 'commented') {
+      return suggestion.comments.some((comment) => comment.user.id === user.id);
+    }
+    return true;
+  };
+
+  const matchesSearchQuery = (suggestion: Suggestion) => {
+    if (!normalizedSearchQuery) return true;
+
+    const searchableText = [
+      suggestion.title,
+      suggestion.description,
+      suggestion.user.username,
+      ...suggestion.comments.map((comment) => `${comment.user.username} ${comment.content}`),
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    return searchableText.includes(normalizedSearchQuery);
+  };
+
+  const filteredPendingSuggestions = useMemo(() => {
+    const filtered = suggestions.filter((suggestion) => {
+      if (suggestion.status !== 'PENDING') return false;
+      if (!matchesParticipationFilter(suggestion)) return false;
+      if (!matchesSearchQuery(suggestion)) return false;
+      if (pendingContentFilter === 'with-image' && !suggestion.imageUrl) return false;
+      if (pendingContentFilter === 'without-image' && suggestion.imageUrl) return false;
+      if (pendingContentFilter === 'boosted' && !(suggestion.boost && suggestion.boost > 0)) return false;
+      return true;
+    });
+
+    return getPendingSuggestionsSorted(filtered, pendingSortBy);
+  }, [suggestions, participationFilter, normalizedSearchQuery, pendingContentFilter, pendingSortBy, user?.id]);
+
+  const filteredDoneSuggestions = useMemo(() => {
+    const filtered = suggestions.filter((suggestion) => {
+      if (suggestion.status !== 'DONE') return false;
+      if (!matchesParticipationFilter(suggestion)) return false;
+      if (!matchesSearchQuery(suggestion)) return false;
+      if (doneFeedbackFilter === 'rated' && suggestion.ratingCount === 0) return false;
+      if (doneFeedbackFilter === 'to-rate' && suggestion.userRating !== null) return false;
+      if (doneFeedbackFilter === 'with-comments' && suggestion.comments.length === 0) return false;
+      return true;
+    });
+
+    return getDoneSuggestionsSorted(filtered, doneSortBy);
+  }, [suggestions, participationFilter, normalizedSearchQuery, doneFeedbackFilter, doneSortBy, user?.id]);
 
   const renderSuggestions = (items: Suggestion[], showRatings: boolean) => {
     if (items.length === 0) {
@@ -341,18 +447,25 @@ export default function Suggestions() {
     }
 
     return (
-      <div className={SPACING.CARD_SPACING}>
+      <div className={cn(SPACING.CARD_SPACING, viewMode === 'grid' && 'grid grid-cols-1 gap-4 xl:grid-cols-2')}>
         {items.map((suggestion) => {
           const ratingValue = ratingInputs[suggestion.id] ?? suggestion.userRating ?? 5;
 
           return (
             <Card
               key={suggestion.id}
-              className="group hover:border-border/60 transition-colors"
+              className={cn('group hover:border-border/60 transition-colors', viewMode === 'grid' && 'h-full')}
             >
-              <div className="flex">
+              <div className={cn('flex', viewMode === 'grid' && 'h-full flex-col')}>
                 {/* Vote Column */}
-                <div className="flex flex-col items-center py-4 px-3 bg-muted/20 border-r border-border/30">
+                <div
+                  className={cn(
+                    'flex items-center bg-muted/20 border-border/30',
+                    viewMode === 'list'
+                      ? 'flex-col px-3 py-4 border-r'
+                      : 'gap-1 border-b px-4 py-3'
+                  )}
+                >
                   <Button
                     onClick={() => handleVote(suggestion.id, 1)}
                     variant="ghost"
@@ -368,6 +481,7 @@ export default function Suggestions() {
                     className={cn(
                       TYPOGRAPHY.H5,
                       'tabular-nums py-1',
+                      viewMode === 'grid' && 'min-w-[3ch] text-center',
                       suggestion.score > 0 && 'text-emerald-500',
                       suggestion.score < 0 && 'text-rose-500'
                     )}
@@ -389,7 +503,7 @@ export default function Suggestions() {
 
                 {/* Content */}
                 <CardContent className="flex-1 p-4 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <h3 className={TYPOGRAPHY.H5}>{suggestion.title}</h3>
@@ -468,7 +582,7 @@ export default function Suggestions() {
                         <img
                           src={resolveImageUrl(suggestion.imageUrl)}
                           alt={suggestion.title}
-                          className="max-h-64 rounded-md object-cover"
+                          className={cn('rounded-md object-cover', viewMode === 'grid' ? 'h-56 w-full' : 'max-h-64')}
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                           }}
@@ -635,27 +749,136 @@ export default function Suggestions() {
         <div className={SPACING.PAGE_CONTENT}>
           {/* Tab Selector */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done')}>
-            <div className="flex items-center justify-between gap-3">
-              <TabsList>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <TabsList className="h-auto flex-wrap">
                 <TabsTrigger value="pending">
-                  Suggestions ({pendingSuggestions.length})
+                  Suggestions ({filteredPendingSuggestions.length})
                 </TabsTrigger>
                 <TabsTrigger value="done">
-                  Réalisées ({doneSuggestions.length})
+                  Réalisées ({filteredDoneSuggestions.length})
                 </TabsTrigger>
               </TabsList>
-              <Button onClick={() => setDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Créer
-              </Button>
+
+              <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row">
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={activeTab === 'pending' ? 'Rechercher une suggestion' : 'Rechercher une réalisation'}
+                  className="lg:w-[250px]"
+                />
+
+                <div className="lg:w-[220px]">
+                  <Select
+                    value={activeTab === 'pending' ? pendingSortBy : doneSortBy}
+                    onValueChange={(value) => {
+                      if (activeTab === 'pending') {
+                        setPendingSortBy(value as PendingSortOption);
+                        return;
+                      }
+                      setDoneSortBy(value as DoneSortOption);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Trier les suggestions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeTab === 'pending' ? (
+                        <>
+                          <SelectItem value="trending">Tendance</SelectItem>
+                          <SelectItem value="newest">Plus récentes</SelectItem>
+                          <SelectItem value="top">Mieux votées</SelectItem>
+                          <SelectItem value="discussed">Plus discutées</SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value="recently-done">Réalisées récemment</SelectItem>
+                          <SelectItem value="best-rated">Mieux notées</SelectItem>
+                          <SelectItem value="most-rated">Plus notées</SelectItem>
+                          <SelectItem value="discussed">Plus discutées</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="lg:w-[220px]">
+                  <Select value={participationFilter} onValueChange={(value) => setParticipationFilter(value as ParticipationFilter)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Participation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toute la communauté</SelectItem>
+                      <SelectItem value="mine">Mes suggestions</SelectItem>
+                      <SelectItem value="voted">J&apos;ai voté</SelectItem>
+                      <SelectItem value="commented">J&apos;ai commenté</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="lg:w-[220px]">
+                  {activeTab === 'pending' ? (
+                    <Select value={pendingContentFilter} onValueChange={(value) => setPendingContentFilter(value as ContentFilter)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Contenu" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les formats</SelectItem>
+                        <SelectItem value="with-image">Avec image</SelectItem>
+                        <SelectItem value="without-image">Sans image</SelectItem>
+                        <SelectItem value="boosted">Nouvelles en avant</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select value={doneFeedbackFilter} onValueChange={(value) => setDoneFeedbackFilter(value as FeedbackFilter)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Retours" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les retours</SelectItem>
+                        <SelectItem value="rated">Déjà notées</SelectItem>
+                        <SelectItem value="to-rate">À noter</SelectItem>
+                        <SelectItem value="with-comments">Avec commentaires</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                <div className="inline-flex shrink-0 rounded-md border border-border/60 p-0.5">
+                  <Button
+                    type="button"
+                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                    size="icon"
+                    onClick={() => setViewMode('list')}
+                    className="h-8 w-8"
+                    aria-label="Vue liste"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                    size="icon"
+                    onClick={() => setViewMode('grid')}
+                    className="h-8 w-8"
+                    aria-label="Vue grille"
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <Button onClick={() => setDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Créer
+                </Button>
+              </div>
             </div>
 
             {/* Content */}
             <TabsContent value="pending" className={SPACING.SECTION_SPACING}>
-              {renderSuggestions(pendingSuggestions, false)}
+              {renderSuggestions(filteredPendingSuggestions, false)}
             </TabsContent>
             <TabsContent value="done" className={SPACING.SECTION_SPACING}>
-              {renderSuggestions(doneSuggestions, true)}
+              {renderSuggestions(filteredDoneSuggestions, true)}
             </TabsContent>
           </Tabs>
         </div>

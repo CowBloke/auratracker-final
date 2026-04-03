@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Copy, Sparkles, Ticket, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 
 interface ReferralClaimAnimationProps {

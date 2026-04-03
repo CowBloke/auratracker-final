@@ -4,7 +4,7 @@ import {
   CreditCard, Download, Edit2, ExternalLink, GraduationCap, Landmark, Percent,
   Plus, Sparkles, Trash2, TrendingUp, UserPlus, Users, Wallet, X,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

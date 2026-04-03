@@ -266,6 +266,7 @@ export default function Clans() {
   const [bannerItemDialogOpen, setBannerItemDialogOpen] = useState(false);
   const [bannerItemId, setBannerItemId] = useState<string | null>(null);
   const [bannerItemImgUrl, setBannerItemImgUrl] = useState('');
+  const [bannerItemEffectType, setBannerItemEffectType] = useState<'CLAN_BANNER' | 'CLAN_PROFILE_PICTURE' | null>(null);
   const [savingBannerItem, setSavingBannerItem] = useState(false);
 
   // Tag editor state
@@ -833,9 +834,10 @@ export default function Clans() {
   const handleUseClanItem = async (clanItem: ClanOwnedItem) => {
     if (!selectedClan || usingClanItemId) return;
     const effect = parseClanItemEffect(clanItem.item.effect);
-    if (effect?.type === "CLAN_BANNER") {
+    if (effect?.type === "CLAN_BANNER" || effect?.type === 'CLAN_PROFILE_PICTURE') {
       setBannerItemId(clanItem.id);
-      setBannerItemImgUrl(selectedClan.banner ?? "");
+      setBannerItemEffectType(effect.type);
+      setBannerItemImgUrl(effect.type === 'CLAN_BANNER' ? (selectedClan.banner ?? "") : (selectedClan.imageUrl ?? ""));
       setBannerItemDialogOpen(true);
       return;
     }
@@ -859,24 +861,34 @@ export default function Clans() {
   };
 
   const handleApplyBannerItem = async () => {
-    if (!selectedClan || !bannerItemId || !bannerItemImgUrl.trim()) return;
+    if (!selectedClan || !bannerItemId || !bannerItemImgUrl.trim() || !bannerItemEffectType) return;
     try {
       setSavingBannerItem(true);
       await clansApi.useOwnedItem(selectedClan.id, bannerItemId, { imageUrl: bannerItemImgUrl.trim() });
-      const bannerUrl = bannerItemImgUrl.trim();
-      setSelectedClan((prev) => prev ? { ...prev, banner: bannerUrl } : prev);
-      setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, banner: bannerUrl } : c));
+      const appliedImageUrl = bannerItemImgUrl.trim();
+      if (bannerItemEffectType === 'CLAN_BANNER') {
+        setSelectedClan((prev) => prev ? { ...prev, banner: appliedImageUrl } : prev);
+        setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, banner: appliedImageUrl } : c));
+      } else {
+        setSelectedClan((prev) => prev ? { ...prev, imageUrl: appliedImageUrl } : prev);
+        setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, imageUrl: appliedImageUrl } : c));
+      }
       setBannerItemDialogOpen(false);
-      toast({ title: "Banniere de clan appliquee" });
+      toast({ title: bannerItemEffectType === 'CLAN_BANNER' ? "Banniere de clan appliquee" : 'Photo de profil de clan appliquee' });
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: error.response?.data?.error || "Impossible d’appliquer la banniere.",
+        description: error.response?.data?.error || (
+          bannerItemEffectType === 'CLAN_BANNER'
+            ? "Impossible d’appliquer la banniere."
+            : "Impossible d’appliquer la photo de profil du clan."
+        ),
         variant: "destructive",
       });
     } finally {
       setSavingBannerItem(false);
       setBannerItemId(null);
+      setBannerItemEffectType(null);
     }
   };
 
@@ -1248,7 +1260,7 @@ export default function Clans() {
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2 text-sm font-medium">
                                       <span>{clanItem.item.name} ×{clanItem.quantity}</span>
-                                      {parseClanItemEffect(clanItem.item.effect)?.type === 'CLAN_BANNER' ? (
+                                      {['CLAN_BANNER', 'CLAN_PROFILE_PICTURE'].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? '') ? (
                                         <Badge variant="secondary">Upload image</Badge>
                                       ) : null}
                                     </div>
@@ -1262,7 +1274,7 @@ export default function Clans() {
                                       disabled={usingClanItemId === clanItem.id}
                                     >
                                       {usingClanItemId === clanItem.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                      {parseClanItemEffect(clanItem.item.effect)?.type === 'CLAN_BANNER' ? 'Choisir l’image' : 'Activer'}
+                                      {['CLAN_BANNER', 'CLAN_PROFILE_PICTURE'].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? '') ? 'Choisir l’image' : 'Activer'}
                                     </Button>
                                   ) : (
                                     <Badge variant="outline">Chef requis</Badge>
@@ -2054,9 +2066,11 @@ export default function Clans() {
       <Dialog open={bannerItemDialogOpen} onOpenChange={setBannerItemDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Appliquer une banniere de clan</DialogTitle>
+            <DialogTitle>{bannerItemEffectType === 'CLAN_PROFILE_PICTURE' ? 'Appliquer une photo de profil de clan' : 'Appliquer une banniere de clan'}</DialogTitle>
             <DialogDescription>
-              Téléversez l'image qui sera affichée en haut de la page du clan lorsque ce clan est sélectionné.
+              {bannerItemEffectType === 'CLAN_PROFILE_PICTURE'
+                ? "Téléversez l'image qui sera utilisée comme emblème du clan."
+                : "Téléversez l'image qui sera affichée en haut de la page du clan lorsque ce clan est sélectionné."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -2068,7 +2082,16 @@ export default function Clans() {
             />
           </div>
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setBannerItemDialogOpen(false)} disabled={savingBannerItem}>Annuler</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setBannerItemDialogOpen(false);
+                setBannerItemEffectType(null);
+              }}
+              disabled={savingBannerItem}
+            >
+              Annuler
+            </Button>
             <Button onClick={handleApplyBannerItem} disabled={savingBannerItem || !bannerItemImgUrl.trim()}>
               {savingBannerItem ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Appliquer

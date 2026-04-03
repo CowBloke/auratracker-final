@@ -3,19 +3,17 @@
 // Inspired by react-hot-toast library
 import * as React from "react"
 
-import type {
-  ToastActionElement,
-  ToastProps,
-} from "@/components/ui/toast"
+import type { ToastProps } from "@/components/ui/toast"
+import { ToastAction } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
 
-type ToasterToast = ToastProps & {
+type ToasterToast = Omit<ToastProps, "title"> & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
-  action?: ToastActionElement
+  action?: React.ReactNode
 }
 
 const actionTypes = {
@@ -141,8 +139,58 @@ function dispatch(action: Action) {
 }
 
 type Toast = Omit<ToasterToast, "id">
+type ToastActionConfig = {
+  label: React.ReactNode
+  onClick?: () => void
+  altText?: string
+}
+type ToastInput = Toast | React.ReactNode
+type ToastOptions = Omit<Toast, "title" | "action"> & {
+  action?: React.ReactNode | ToastActionConfig
+}
 
-function toast({ ...props }: Toast) {
+const isToastConfig = (value: ToastInput): value is Toast =>
+  typeof value === "object" && value !== null && !React.isValidElement(value)
+
+const isToastActionConfig = (
+  action: React.ReactNode | ToastActionConfig
+): action is ToastActionConfig =>
+  typeof action === "object" &&
+  action !== null &&
+  "label" in action
+
+const normalizeAction = (
+  action?: React.ReactNode | ToastActionConfig
+): React.ReactNode | undefined => {
+  if (!action) return undefined
+  if (React.isValidElement(action) || !isToastActionConfig(action)) return action
+
+  return React.createElement(
+    ToastAction,
+    {
+      altText: action.altText ?? String(action.label),
+      onClick: action.onClick,
+    },
+    action.label
+  )
+}
+
+const normalizeToast = (input: ToastInput, options?: ToastOptions): Toast => {
+  if (isToastConfig(input)) {
+    return {
+      ...input,
+      action: normalizeAction(input.action),
+    }
+  }
+
+  return {
+    ...options,
+    title: input as React.ReactNode,
+    action: normalizeAction(options?.action),
+  }
+}
+
+function baseToast({ ...props }: Toast) {
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -170,6 +218,25 @@ function toast({ ...props }: Toast) {
     update,
   }
 }
+
+type ToastFn = {
+  (props: Toast): ReturnType<typeof baseToast>
+  (title: React.ReactNode, options?: ToastOptions): ReturnType<typeof baseToast>
+  success: (title: React.ReactNode, options?: ToastOptions) => ReturnType<typeof baseToast>
+  error: (title: React.ReactNode, options?: ToastOptions) => ReturnType<typeof baseToast>
+  info: (title: React.ReactNode, options?: ToastOptions) => ReturnType<typeof baseToast>
+}
+
+const toast = ((input: ToastInput, options?: ToastOptions) =>
+  baseToast(normalizeToast(input, options))) as ToastFn
+
+toast.success = (title, options) => toast(title, options)
+toast.info = (title, options) => toast(title, options)
+toast.error = (title, options) =>
+  toast(title, {
+    ...options,
+    variant: "destructive",
+  })
 
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)

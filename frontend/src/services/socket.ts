@@ -91,6 +91,9 @@ export const partyEvents = {
   delete: (userId: string) => {
     socket?.emit('party:delete', { userId });
   },
+  update: (userId: string, updates: { name?: string; maxSize?: number }) => {
+    socket?.emit('party:update', { userId, ...updates });
+  },
   list: () => {
     socket?.emit('party:list');
   },

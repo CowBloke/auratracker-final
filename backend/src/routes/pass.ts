@@ -123,6 +123,7 @@ const isEligibleLootItem = (item: LootItem, ownedItemIds: Set<string>, now: Date
   if (effectType === 'CLAN_SLOT_UPGRADE') return false;
   if (effectType === 'CLAN_GAME_MONEY_BOOST') return false;
   if (effectType === 'CLAN_BANNER') return false;
+  if (effectType === 'CLAN_PROFILE_PICTURE') return false;
   if (effectType === 'DOODLE_JUMP_SKIN' && ownedItemIds.has(item.id)) return false;
 
   return true;

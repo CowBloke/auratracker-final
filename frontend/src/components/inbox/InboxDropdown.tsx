@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { youApi, type Notification } from '@/services/api';

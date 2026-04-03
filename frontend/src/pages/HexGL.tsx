@@ -12,7 +12,7 @@ import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 const GAME_TYPE = 'hexgl';
 const GAME_WIDTH = 1280;

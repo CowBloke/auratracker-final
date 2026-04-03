@@ -169,6 +169,18 @@ const serializePartyPayload = (party: {
   })),
 });
 
+const serializePartyMeta = (party: {
+  id: string;
+  name: string | null;
+  isPublic: boolean;
+  maxSize: number;
+}) => ({
+  id: party.id,
+  name: party.name,
+  isPublic: party.isPublic,
+  maxSize: party.maxSize,
+});
+
 const removeJoinRequest = (partyId: string, userId: string) => {
   const requests = partyJoinRequests.get(partyId) || [];
   const updated = requests.filter((request) => request.userId !== userId);
@@ -1070,6 +1082,80 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
     } catch (error) {
       console.error('Delete party error:', error);
       socket.emit('party:error', { message: 'Failed to delete party' });
+    }
+  });
+
+  // Update party settings (leader only)
+  socket.on('party:update', async (data: { userId: string; name?: string; maxSize?: number }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+
+    try {
+      const membership = await prisma.partyMember.findUnique({
+        where: { userId },
+        include: {
+          party: {
+            include: {
+              members: true,
+            },
+          },
+          user: {
+            select: { username: true },
+          },
+        },
+      });
+
+      if (!membership) {
+        socket.emit('party:error', { message: 'You are not in a party' });
+        return;
+      }
+
+      if (!membership.isLeader) {
+        socket.emit('party:error', { message: 'Only the leader can update the party' });
+        return;
+      }
+
+      const trimmedName = typeof data.name === 'string' ? data.name.trim() : undefined;
+      const memberCount = membership.party.members.length;
+      const nextMaxSizeRaw = typeof data.maxSize === 'number' ? Math.floor(data.maxSize) : undefined;
+
+      if (nextMaxSizeRaw !== undefined) {
+        if (membership.party.maxSize === 2 && nextMaxSizeRaw !== 2) {
+          socket.emit('party:error', { message: 'Duel parties must stay at 2 players' });
+          return;
+        }
+
+        if (nextMaxSizeRaw < Math.max(2, memberCount) || nextMaxSizeRaw > 16) {
+          socket.emit('party:error', {
+            message: `Party size must be between ${Math.max(2, memberCount)} and 16`,
+          });
+          return;
+        }
+      }
+
+      const updatedParty = await prisma.party.update({
+        where: { id: membership.partyId },
+        data: {
+          lastActivity: new Date(),
+          ...(trimmedName !== undefined ? { name: trimmedName || null } : {}),
+          ...(nextMaxSizeRaw !== undefined ? { maxSize: nextMaxSizeRaw } : {}),
+        },
+      });
+
+      logParty('party_update', userId, membership.user.username, {
+        partyId: membership.partyId,
+        previousName: membership.party.name,
+        nextName: updatedParty.name,
+        previousMaxSize: membership.party.maxSize,
+        nextMaxSize: updatedParty.maxSize,
+      });
+
+      io.to(getPartyRoomId(membership.partyId)).emit('party:updated', {
+        party: serializePartyMeta(updatedParty),
+      });
+    } catch (error) {
+      console.error('Update party error:', error);
+      socket.emit('party:error', { message: 'Failed to update party' });
     }
   });
   

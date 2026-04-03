@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { initSocket, getSocket, partyEvents, connectSocket } from '../services/socket';
@@ -100,6 +101,7 @@ interface PartySocketContextValue {
   respondToJoinRequest: (targetUserId: string, accepted: boolean) => void;
   leaveParty: () => void;
   deleteParty: () => void;
+  updateParty: (updates: { name?: string; maxSize?: number }) => void;
   inviteToParty: (targetUserId: string) => void;
   rejectPartyInvite: (partyId: string) => void;
   kickFromParty: (targetUserId: string) => void;
@@ -225,16 +227,14 @@ export function PartySocketProvider({ children }: { children: React.ReactNode })
     s.on('party:invite', (invite: PartyInvite) => {
       setPartyInvites((prev) => [...prev, invite]);
       if (typeof window !== 'undefined') {
-        import('sonner').then(({ toast }) => {
-          toast(`Invitation de party`, {
-            description: `${invite.inviterUsername} vous invite à rejoindre ${invite.partyName || 'leur party'}`,
-            action: {
-              label: 'Voir',
-              onClick: () => {
-                if (window.location.pathname !== '/party') window.location.href = '/party';
-              },
+        toast(`Invitation de party`, {
+          description: `${invite.inviterUsername} vous invite à rejoindre ${invite.partyName || 'leur party'}`,
+          action: {
+            label: 'Voir',
+            onClick: () => {
+              if (window.location.pathname !== '/party') window.location.href = '/party';
             },
-          });
+          },
         });
       }
     });
@@ -247,6 +247,11 @@ export function PartySocketProvider({ children }: { children: React.ReactNode })
       setPartyMembers((prev) =>
         prev.map((m) => ({ ...m, isLeader: m.userId === data.newLeaderId }))
       );
+    });
+
+    s.on('party:updated', (data: { party: Party }) => {
+      setCurrentParty((prev) => (prev ? { ...prev, ...data.party } : data.party));
+      partyEvents.list();
     });
 
     s.on('party:join-request', (request: PartyJoinRequest) => {
@@ -288,7 +293,7 @@ export function PartySocketProvider({ children }: { children: React.ReactNode })
     });
 
     s.on('party:chat-error', (data: { message: string }) => {
-      import('sonner').then(({ toast }) => toast.error(data.message));
+      toast.error(data.message);
     });
 
     s.on('party:error', () => {
@@ -309,6 +314,7 @@ export function PartySocketProvider({ children }: { children: React.ReactNode })
       s.off('party:invite');
       s.off('party:list');
       s.off('party:leader-changed');
+      s.off('party:updated');
       s.off('party:join-request');
       s.off('party:join-request-list');
       s.off('party:join-requested');
@@ -365,6 +371,13 @@ export function PartySocketProvider({ children }: { children: React.ReactNode })
   const deleteParty = useCallback(() => {
     if (user) partyEvents.delete(user.id);
   }, [user?.id]);
+
+  const updateParty = useCallback(
+    (updates: { name?: string; maxSize?: number }) => {
+      if (user && currentPartyRef.current) partyEvents.update(user.id, updates);
+    },
+    [user?.id]
+  );
 
   const inviteToParty = useCallback(
     (targetUserId: string) => {
@@ -442,6 +455,7 @@ export function PartySocketProvider({ children }: { children: React.ReactNode })
       respondToJoinRequest,
       leaveParty,
       deleteParty,
+      updateParty,
       inviteToParty,
       rejectPartyInvite,
       kickFromParty,
@@ -467,6 +481,7 @@ export function PartySocketProvider({ children }: { children: React.ReactNode })
       respondToJoinRequest,
       leaveParty,
       deleteParty,
+      updateParty,
       inviteToParty,
       rejectPartyInvite,
       kickFromParty,

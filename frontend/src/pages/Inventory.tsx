@@ -23,7 +23,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { PageShell } from '@/components/layout/page-shell';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 interface UserItem {
   id: string;

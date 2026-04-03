@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Gavel, Heart, Scale, Trash2, UserPlus, Wallet } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

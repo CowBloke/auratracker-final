@@ -1468,6 +1468,22 @@ export interface ShopItem {
   createdAt: string;
 }
 
+export interface ShopItemExchangeFile {
+  format: 'auratracker-shop-items';
+  version: 1;
+  exportedAt: string;
+  itemCount: number;
+  items: Array<{
+    name: string;
+    description: string;
+    type: string;
+    price: number;
+    imageUrl: string | null;
+    effect: Record<string, unknown> | string | null;
+    expiresAt: string | null;
+  }>;
+}
+
 export interface AdminInventoryItem {
   id: string;
   quantity: number;
@@ -1663,6 +1679,14 @@ export interface AdminActivityBreakdown {
   }>;
 }
 
+export interface TaxBracket {
+  id: string;
+  threshold: number;
+  rate: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface OnlineHistoryInsightPeakHour {
   hour: number;
   label: string;
@@ -1737,6 +1761,8 @@ export const adminApi = {
     effect?: string;
   }) => api.put<{ item: ShopItem }>(`/admin/items/${id}`, data),
   deleteItem: (id: string) => api.delete<{ success: boolean }>(`/admin/items/${id}`),
+  importItems: (data: ShopItemExchangeFile) =>
+    api.post<{ success: boolean; count: number; items: ShopItem[] }>('/admin/items/import', data),
   // Doodle Jump skin rotation control
   getDjForcedSkin: () => api.get<{ itemId: string | null }>('/marketplace/admin/dj-forced-skin'),
   setDjForcedSkin: (itemId: string | null) =>
@@ -1783,6 +1809,25 @@ export const adminApi = {
     api.put<{ settings: Record<string, string> }>('/admin/settings', { settings }),
   updateSetting: (key: string, value: string | number) =>
     api.put<{ setting: { key: string; value: string } }>(`/admin/settings/${key}`, { value }),
+  getTaxSettings: () =>
+    api.get<{
+      brackets: TaxBracket[];
+      defaults: { threshold: number; rate: number };
+      lastRunDate: string | null;
+    }>('/admin/tax-settings'),
+  updateTaxSettings: (brackets: Array<{ threshold: number; rate: number }>) =>
+    api.put<{
+      brackets: TaxBracket[];
+      defaults: { threshold: number; rate: number };
+    }>('/admin/tax-settings', { brackets }),
+  runTaxNow: (force = true) =>
+    api.post<{
+      result: {
+        skipped: boolean;
+        usersAffected: number;
+        totalCollected: number;
+      };
+    }>('/admin/tax-settings/run', { force }),
   getBombPartyLanguages: () =>
     api.get<{ languages: { fileName: string; label: string }[] }>('/admin/bombparty/languages'),
   recalculateBombPartyPrompts: () =>

@@ -36,6 +36,7 @@
 
   let isGameOver = false;
   let score = 0;
+  let lastPostedGameOverScore = null;
 
   let isLineEnable = false;
 
@@ -318,6 +319,7 @@
     ball = null;
     engine.timing.timeScale = 1;
     score = 0;
+    lastPostedGameOverScore = null;
 
     gameOverlayer.style.display = "none";
 
@@ -335,6 +337,18 @@
     gameOverlayer.style.display = "";
 
     if (ball != null) World.remove(engine.world, ball);
+
+    if (lastPostedGameOverScore !== score) {
+      lastPostedGameOverScore = score;
+      window.parent?.postMessage(
+        {
+          source: "aura-qs-watermelon",
+          type: "game-over",
+          score,
+        },
+        window.location.origin
+      );
+    }
   }
 
   function createNewBall(size) {

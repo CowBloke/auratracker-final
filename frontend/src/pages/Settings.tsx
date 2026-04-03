@@ -43,7 +43,7 @@ import {
 import { PageShell } from '@/components/layout/page-shell';
 import { ReferralSummary, authApi, usersApi } from '@/services/api';
 import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import {
   setHideGameLeaderboardsPreference,
   setHideGameLeftInfoPreference,

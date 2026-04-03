@@ -11,7 +11,7 @@ import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 const GAME_TYPE = 'chrome_dino';
 const GAME_SRC = '/chrome-dino/index.html';

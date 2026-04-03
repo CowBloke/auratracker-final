@@ -386,10 +386,20 @@ async function rateBusiness(userId: string, businessId: string, rating: number) 
   if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
     throw new Error('Rating must be an integer between 1 and 5');
   }
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, name: true },
+  });
+  if (!business) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
   await prisma.businessRating.upsert({
     where: { businessId_userId: { businessId, userId } },
     update: { rating },
     create: { businessId, userId, rating },
+  });
+  logYouAdmin('business_rate', userId, undefined, business.id, business.name, {
+    rating,
   });
 }
 
@@ -926,6 +936,13 @@ async function handleInviteAction(userId: string, business: any, input: { invite
     )
   );
 
+  logYouAdmin('business_invite', userId, business.owner.username, business.id, business.name, {
+    invitedCount: creatableInvitees.length,
+    inviteeIds: creatableInvitees.map((invitee) => invitee.id),
+    inviteeNames: creatableInvitees.map((invitee) => invitee.username),
+    role: input.role || 'employee',
+  });
+
   return {
     invited: creatableInvitees.length,
   };
@@ -1306,6 +1323,12 @@ async function handleDeployProductAction(userId: string, business: any, input: {
     },
   });
 
+  logYouAdmin('business_product_deploy', userId, undefined, business.id, business.name, {
+    slotIndex: deployed.slotIndex,
+    deployedLevel: deployed.deployedLevel,
+    productName: deployed.name,
+  });
+
   return {
     slotIndex: deployed.slotIndex,
     deployedLevel: deployed.deployedLevel,
@@ -1484,6 +1507,14 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
       icon: 'briefcase-business',
     });
 
+    logYouAdmin('business_invitation_respond', userId, invitation.invitee.username, invitation.business.id, invitation.business.name, {
+      invitationId,
+      decision: 'reject',
+      role: invitation.role,
+      ownerId: invitation.business.ownerId,
+      ownerName: invitation.business.owner.username,
+    });
+
     return {
       id: rejectedInvitation.id,
       status: rejectedInvitation.status,
@@ -1538,6 +1569,14 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
       icon: 'briefcase-business',
     }),
   ]);
+
+  logYouAdmin('business_invitation_respond', userId, invitation.invitee.username, invitation.business.id, invitation.business.name, {
+    invitationId,
+    decision: 'accept',
+    role: invitation.role,
+    ownerId: invitation.business.ownerId,
+    ownerName: invitation.business.owner.username,
+  });
 
   return {
     id: acceptedInvitation.id,
@@ -1664,6 +1703,10 @@ async function handleCollectNpcAction(userId: string, business: any, _input: unk
 
   await logBusinessTransaction(business.id, 'NPC_COLLECT', amount, `Recettes clients collectees`, userId);
 
+  logYouAdmin('business_collect', userId, undefined, business.id, business.name, {
+    amount,
+  });
+
   return { amount };
 }
 
@@ -1699,6 +1742,12 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
 
   await emitSharedBalanceUpdates(prisma, userId);
   await logBusinessTransaction(business.id, 'ITEM_SALE', item.price, `Achat de ${item.label} par un client`, userId);
+
+  logYouAdmin('business_sale', userId, undefined, business.id, business.name, {
+    itemKey: item.key,
+    itemLabel: item.label,
+    price: item.price,
+  });
 
   return { item: item.label, price: item.price };
 }
@@ -1889,6 +1938,14 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
       icon: 'briefcase-business',
     });
 
+    logYouAdmin('business_buyout_offer_respond', userId, offer.owner.username, offer.business.id, offer.business.name, {
+      offerId,
+      bidderId: offer.bidderId,
+      bidderName: offer.bidder.username,
+      amount: offer.amount,
+      decision: 'reject',
+    });
+
     return {
       id: rejected.id,
       status: rejected.status,
@@ -1979,6 +2036,12 @@ export async function cancelBusinessBuyoutOffer(userId: string, offerId: string)
 
   io.to(`user:${userId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: cancelled.status });
   io.to(`user:${offer.ownerId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: cancelled.status });
+
+  logYouAdmin('business_buyout_offer_cancel', userId, undefined, offer.businessId, offerId, {
+    offerId,
+    amount: offer.amount,
+    ownerId: offer.ownerId,
+  });
 
   return {
     id: cancelled.id,
@@ -2498,11 +2561,18 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
 }
 
 export async function forgetRelationship(userId: string, relationshipId: string) {
-  const relationship = await prisma.relationship.findUnique({ where: { id: relationshipId } });
+  const relationship = await prisma.relationship.findUnique({
+    where: { id: relationshipId },
+    include: RELATIONSHIP_INCLUDE,
+  });
   if (!relationship) throw new Error('RELATIONSHIP_NOT_FOUND');
   if (relationship.userAId !== userId && relationship.userBId !== userId) throw new Error('RELATIONSHIP_FORBIDDEN');
   if (relationship.status === 'MARRIED') throw new Error('RELATIONSHIP_NOT_MARRIED');
   await prisma.relationship.delete({ where: { id: relationshipId } });
+
+  logYouAdmin('relationship_forget', userId, undefined, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    previousStatus: relationship.status,
+  });
 }
 
 export async function makeMistress(userId: string, relationshipId: string) {
@@ -2627,6 +2697,10 @@ export async function respondToCourtCase(userId: string, accusationId: string, d
 
   if (decision === 'drop') {
     await prisma.cheatingAccusation.update({ where: { id: accusationId }, data: { status: 'DROPPED' } });
+    logYouAdmin('relationship_court_case', userId, undefined, accusationId, accusation.accuser.username, {
+      accusationId,
+      decision: 'drop',
+    });
     return { decision: 'drop' };
   }
 
@@ -2712,6 +2786,12 @@ export async function deleteBusiness(requestUserId: string, businessId: string) 
       icon: 'briefcase-business',
     });
   }
+
+  logYouAdmin('business_delete', requestUserId, undefined, business.id, business.name, {
+    ownerId: business.ownerId,
+    ownerName: business.owner.username,
+    deletedByAdmin: isAdmin && !isOwner,
+  });
 
   return { id: businessId };
 }
@@ -2873,6 +2953,14 @@ export async function repayLoan(userId: string, loanId: string) {
   await emitSharedBalanceUpdates(prisma, loan.borrowerId);
   await logBusinessTransaction(loan.businessId, 'LOAN_REPAY', remaining, `Remboursement de ${loan.borrower.username}`, loan.borrowerId);
 
+  logYouAdmin('business_loan_repay', userId, undefined, loan.business.id, loan.business.name, {
+    loanId,
+    borrowerId: loan.borrowerId,
+    borrowerName: loan.borrower.username,
+    repaid: remaining,
+    totalOwed,
+  });
+
   return { repaid: remaining, totalOwed };
 }
 
@@ -2900,7 +2988,7 @@ export async function getBankAccounts(userId: string, businessId: string) {
 export async function openBankAccount(userId: string, businessId: string, accountType: 'COURANT' | 'EPARGNE') {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, typeKey: true, livretEpargneUnlocked: true, ownerId: true },
+    select: { id: true, name: true, typeKey: true, livretEpargneUnlocked: true, ownerId: true },
   });
   if (!business || business.typeKey !== 'bank') throw new Error('BUSINESS_NOT_FOUND');
   if (business.ownerId === userId) throw new Error('BANK_SELF_ACCOUNT_FORBIDDEN');
@@ -2914,6 +3002,12 @@ export async function openBankAccount(userId: string, businessId: string, accoun
   const account = await prisma.bankAccount.create({
     data: { businessId, userId, accountType, balance: 0 },
   });
+
+  logYouAdmin('bank_account_open', userId, undefined, business.id, business.name, {
+    accountId: account.id,
+    accountType,
+  });
+
   return { id: account.id, accountType: account.accountType, balance: account.balance, createdAt: account.createdAt.toISOString() };
 }
 
@@ -2938,6 +3032,13 @@ export async function bankAccountDeposit(userId: string, accountId: string, amou
 
   await logBusinessTransaction(account.businessId, 'BANK_DEPOSIT', amount, `Depot compte de ${account.user.username}`, userId);
 
+  logYouAdmin('bank_account_deposit', userId, account.user.username, account.business.id, account.business.name, {
+    accountId,
+    accountType: account.accountType,
+    amount,
+    newBalance: account.balance + amount,
+  });
+
   return { newBalance: account.balance + amount };
 }
 
@@ -2961,6 +3062,13 @@ export async function bankAccountWithdraw(userId: string, accountId: string, amo
 
   await logBusinessTransaction(account.businessId, 'BANK_WITHDRAW', -amount, `Retrait compte de ${account.user.username}`, userId);
 
+  logYouAdmin('bank_account_withdraw', userId, account.user.username, account.business.id, account.business.name, {
+    accountId,
+    accountType: account.accountType,
+    amount,
+    newBalance: account.balance - amount,
+  });
+
   return { newBalance: account.balance - amount };
 }
 
@@ -2971,7 +3079,7 @@ export async function setFormationDetails(userId: string, businessId: string, fo
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, ownerId: true, typeKey: true },
+    select: { id: true, name: true, ownerId: true, typeKey: true },
   });
   if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
   if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
@@ -2981,13 +3089,18 @@ export async function setFormationDetails(userId: string, businessId: string, fo
     data: { formationUrl: formationUrl || null, formationPrice },
   });
 
+  logYouAdmin('formation_update', userId, undefined, business.id, business.name, {
+    formationUrl: formationUrl || null,
+    formationPrice,
+  });
+
   return { formationUrl, formationPrice };
 }
 
 export async function buyFormation(userId: string, businessId: string) {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, ownerId: true, typeKey: true, formationPrice: true, formationUrl: true },
+    select: { id: true, name: true, ownerId: true, typeKey: true, formationPrice: true, formationUrl: true },
   });
   if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
   if (business.ownerId === userId) throw new Error('FORMATION_SELF_BUY_FORBIDDEN');
@@ -3004,6 +3117,11 @@ export async function buyFormation(userId: string, businessId: string) {
 
   await logBusinessTransaction(businessId, 'FORMATION_SALE', price, `Achat formation par ${user.username}`, userId);
 
+  logYouAdmin('formation_purchase', userId, user.username, business.id, business.name, {
+    price,
+    formationUrl: business.formationUrl,
+  });
+
   return { formationUrl: business.formationUrl, price };
 }
 
@@ -3016,7 +3134,10 @@ export async function updateBusinessProfile(
 ) {
   if (data.name !== undefined && !data.name.trim()) throw new Error('INVALID_BUSINESS_NAME');
 
-  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { id: true, ownerId: true } });
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, name: true, description: true, logoUrl: true },
+  });
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
   if (business.ownerId !== userId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
 
@@ -3028,6 +3149,16 @@ export async function updateBusinessProfile(
       ...(data.logoUrl !== undefined ? { logoUrl: data.logoUrl?.trim() || null } : {}),
     },
   });
+
+  logYouAdmin('business_profile_update', userId, undefined, businessId, updated.name, {
+    previousName: business.name,
+    previousDescription: business.description,
+    previousLogoUrl: business.logoUrl,
+    name: updated.name,
+    description: updated.description,
+    logoUrl: updated.logoUrl,
+  });
+
   return { name: updated.name, description: updated.description, logoUrl: updated.logoUrl };
 }
 
@@ -3067,6 +3198,13 @@ export async function addFormationProduct(
       imageUrl: data.imageUrl?.trim() || null,
     },
   });
+
+  logYouAdmin('formation_product_create', userId, undefined, businessId, product.title, {
+    productId: product.id,
+    price: product.price,
+    url: product.url,
+  });
+
   return product;
 }
 
@@ -3100,6 +3238,17 @@ export async function updateFormationProduct(
       ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl?.trim() || null } : {}),
     },
   });
+
+  logYouAdmin('formation_product_update', userId, undefined, businessId, updated.title, {
+    productId,
+    previousTitle: product.title,
+    previousPrice: product.price,
+    previousUrl: product.url,
+    title: updated.title,
+    price: updated.price,
+    url: updated.url,
+  });
+
   return updated;
 }
 
@@ -3115,6 +3264,11 @@ export async function deleteFormationProduct(userId: string, businessId: string,
   if (!product || product.businessId !== businessId) throw new Error('FORMATION_PRODUCT_NOT_FOUND');
 
   await prisma.formationProduct.delete({ where: { id: productId } });
+  logYouAdmin('formation_product_delete', userId, undefined, businessId, product.title, {
+    productId,
+    price: product.price,
+    url: product.url,
+  });
   return { ok: true };
 }
 
@@ -3139,6 +3293,13 @@ export async function buyFormationProduct(userId: string, businessId: string, pr
 
   await logBusinessTransaction(businessId, 'FORMATION_SALE', product.price, `Achat "${product.title}" par ${user.username}`, userId);
 
+  logYouAdmin('business_formation_product_buy', userId, user.username, businessId, product.title, {
+    productId,
+    businessOwnerId: business.ownerId,
+    price: product.price,
+    url: product.url,
+  });
+
   return { url: product.url, title: product.title, price: product.price };
 }
 
@@ -3154,10 +3315,19 @@ export async function updateMemberSalary(ownerId: string, businessId: string, me
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
   if (business.ownerId !== ownerId) throw new Error('BUSINESS_INVITE_FORBIDDEN');
 
-  const member = await prisma.businessMember.findUnique({ where: { id: memberId } });
+  const member = await prisma.businessMember.findUnique({
+    where: { id: memberId },
+    include: { user: { select: USER_PREVIEW_SELECT } },
+  });
   if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
 
+  const previousSalary = member.salary;
   await prisma.businessMember.update({ where: { id: memberId }, data: { salary } });
+  logYouAdmin('business_member_salary_update', ownerId, undefined, businessId, member.user.username, {
+    memberId,
+    previousSalary,
+    salary,
+  });
   return { salary };
 }
 
@@ -3169,10 +3339,18 @@ export async function sackMember(ownerId: string, businessId: string, memberId: 
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
   if (business.ownerId !== ownerId) throw new Error('BUSINESS_INVITE_FORBIDDEN');
 
-  const member = await prisma.businessMember.findUnique({ where: { id: memberId } });
+  const member = await prisma.businessMember.findUnique({
+    where: { id: memberId },
+    include: { user: { select: USER_PREVIEW_SELECT } },
+  });
   if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
 
   await prisma.businessMember.delete({ where: { id: memberId } });
+  logYouAdmin('business_member_sack', ownerId, undefined, businessId, member.user.username, {
+    memberId,
+    role: member.role,
+    salary: member.salary,
+  });
   return { ok: true };
 }
 

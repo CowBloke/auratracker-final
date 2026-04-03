@@ -12,7 +12,7 @@ import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;

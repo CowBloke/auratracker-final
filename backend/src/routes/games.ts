@@ -885,6 +885,25 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
       });
     }
 
+    logGame('game_complete', req.user.id, req.user.username, {
+      gameType: 'racer_daily',
+      score: lapTimeMs,
+      lapTimeMs,
+      won: true,
+      isFirstRunToday,
+      isNewDailyBest,
+      auraReward: dailyAuraReward,
+      moneyReward: dailyMoneyReward,
+    });
+
+    if (isNewDailyBest) {
+      logGame('highscore', req.user.id, req.user.username, {
+        gameType: 'racer_daily',
+        newHighScore: lapTimeMs,
+        previousHighScore: previousBest?.lapTimeMs ?? null,
+      });
+    }
+
     return res.json({
       success: true,
       run: {

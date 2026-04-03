@@ -1182,6 +1182,17 @@ model GameSettings {
   updatedAt DateTime @updatedAt
 }
 
+// Tax Brackets (configurable by admin — highest qualifying bracket applies)
+model TaxBracket {
+  id        String   @id @default(uuid())
+  threshold Int      // Minimum money to enter this bracket (e.g. 10000)
+  rate      Float    // Tax rate as percentage (e.g. 1.0 = 1%)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([threshold])
+}
+
 // Bomb Party Player Stats
 model BombPartyStats {
   id          String  @id @default(uuid())

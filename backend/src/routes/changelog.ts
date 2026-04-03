@@ -21,6 +21,15 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-03-fix-download-logs-all-time',
+    date: '2026-04-03',
+    title: 'Fix export logs — tous les temps',
+    summary: "Le mode 'Tous les temps' exportait incorrectement les logs filtrés par type/jeu/pseudo actifs dans l'UI.",
+    items: [
+      { category: 'BUG_FIX', text: "**Export logs complet** — En mode 'Tous les temps', tous les logs sont maintenant exportés sans aucun filtre ni limite de date.", order: 0 },
+    ],
+  },
+  {
     id: '2026-04-03-you-page-upgrades',
     date: '2026-04-03',
     title: 'YOU — Explorer, formations multiples, tutoriel et profil',
