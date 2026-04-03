@@ -313,6 +313,8 @@ export interface YouBusiness {
   formationUrl?: string | null;
   formationPrice?: number;
   npcLastCollectedAt?: string | null;
+  avgRating: number | null;
+  ratingCount: number;
 }
 
 export interface YouMarriageProposal {
@@ -468,6 +470,8 @@ export const youApi = {
     api.post<{ result: { item: string; price: number } }>(`/you/businesses/${businessId}/actions/purchase_item`, { itemKey }),
   collectNpc: (businessId: string) =>
     api.post<{ result: { amount: number } }>(`/you/businesses/${businessId}/actions/collect_npc`, {}),
+  rateBusiness: (businessId: string, rating: number) =>
+    api.post<{ ok: boolean }>(`/you/businesses/${businessId}/rate`, { rating }),
 };
 
 // Economy API

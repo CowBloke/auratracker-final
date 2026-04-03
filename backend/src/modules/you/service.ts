@@ -98,6 +98,9 @@ const BUSINESS_BASE_INCLUDE = {
   startupProducts: {
     orderBy: { slotIndex: 'asc' as const },
   },
+  ratings: {
+    select: { rating: true },
+  },
 } as const;
 
 const RELATIONSHIP_INCLUDE = {
@@ -359,8 +362,25 @@ function serializeBusiness(business: any, viewerId: string) {
       ? (business.npcLastCollectedAt ? new Date(business.npcLastCollectedAt).toISOString() : null)
       : undefined,
     level: type?.level ?? 1,
+    avgRating: business.ratings && business.ratings.length > 0
+      ? Math.round((business.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / business.ratings.length) * 10) / 10
+      : null,
+    ratingCount: business.ratings?.length ?? 0,
   };
 }
+
+async function rateBusiness(userId: string, businessId: string, rating: number) {
+  if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+    throw new Error('Rating must be an integer between 1 and 5');
+  }
+  await prisma.businessRating.upsert({
+    where: { businessId_userId: { businessId, userId } },
+    update: { rating },
+    create: { businessId, userId, rating },
+  });
+}
+
+export { rateBusiness };
 
 function serializeRelationship(relationship: any, viewerId: string, ctx?: { viewerIsMarried: boolean; pendingCourtCaseIds: Set<string> }) {
   const otherUser = relationship.userAId === viewerId ? relationship.userB : relationship.userA;

@@ -38,6 +38,7 @@ import {
   updateMemberSalary,
   sackMember,
   repayLoan,
+  rateBusiness,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
@@ -621,6 +622,17 @@ router.post('/loans/:loanId/repay', authMiddleware, requireYouAccess, async (req
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Loan repay error');
+  }
+});
+
+// Business rating
+router.post('/businesses/:businessId/rate', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const rating = Number(req.body?.rating);
+    await rateBusiness(req.user!.id, req.params.businessId, rating);
+    res.json({ ok: true });
+  } catch (error) {
+    handleRouteError(error, res, 'Rate business error');
   }
 });
 

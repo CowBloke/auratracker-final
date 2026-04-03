@@ -14,6 +14,7 @@ import {
   ShoppingBasket,
   ShoppingCart,
   Sparkles,
+  Star,
   Store,
   TrendingUp,
   Wallet,
@@ -31,7 +32,7 @@ import {
   LoanModal,
   TransferBusinessModal,
 } from '../components/modals';
-import { FilterButton, Input, ModalWrap, Pill, SectionTitle } from '../components/ui';
+import { Input, ModalWrap, Pill, SectionTitle } from '../components/ui';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { withRouteError } from '../utils';
 
@@ -401,6 +402,12 @@ export function ExploreTab({
   const [transferBusinessId, setTransferBusinessId] = useState<string | null>(null);
   const [formationBusinessId, setFormationBusinessId] = useState<string | null>(null);
   const [purchaseBusinessId, setPurchaseBusinessId] = useState<string | null>(null);
+  const [ratingBusinessId, setRatingBusinessId] = useState<string | null>(null);
+
+  const handleServiceSuccess = (businessId: string) => async () => {
+    await onReload(true);
+    setTimeout(() => setRatingBusinessId(businessId), 1000);
+  };
 
   const allBusinesses = useMemo(
     () => [...data.ownedBusinesses, ...data.exploreBusinesses],
@@ -436,7 +443,11 @@ export function ExploreTab({
         typeKey,
         businesses: filteredBusinesses
           .filter((business) => business.typeKey === typeKey)
-          .sort((a, b) => getBusinessRevenue(b) - getBusinessRevenue(a)),
+          .sort((a, b) => {
+            const ratingDiff = (b.avgRating ?? 0) - (a.avgRating ?? 0);
+            if (Math.abs(ratingDiff) > 0.05) return ratingDiff;
+            return getBusinessRevenue(b) - getBusinessRevenue(a);
+          }),
       })).filter((section) => section.businesses.length > 0),
     [filteredBusinesses],
   );
@@ -467,47 +478,42 @@ export function ExploreTab({
   return (
     <>
       <div className="grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)_360px]">
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Card>
-            <CardContent className="space-y-4 px-4 py-4">
+            <CardContent className="px-3 py-3">
               <button
                 type="button"
                 onClick={() => setFiltersOpen((current) => !current)}
-                className="flex w-full items-center justify-between gap-2 rounded-xl border border-border/40 bg-muted/10 px-3 py-3 text-left transition-colors hover:bg-muted/20"
+                className="flex w-full items-center justify-between gap-2 px-1 py-0.5 text-left"
               >
-                <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-sm font-semibold">Filtres</p>
+                <div className="flex items-center gap-1.5">
+                  <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Filtres</p>
                 </div>
-                <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', filtersOpen ? 'rotate-180' : '')} />
+                <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground/50 transition-transform', filtersOpen ? 'rotate-180' : '')} />
               </button>
 
               {filtersOpen ? (
-                <>
-                  <div className="space-y-2">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Type d'entreprise</p>
-                    <div className="space-y-2">
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <p className="mb-1.5 px-1 text-[10px] uppercase tracking-wider text-muted-foreground/50">Type</p>
+                    <div className="space-y-0.5">
                       <button
                         type="button"
                         onClick={() => setTypeFilter('all')}
                         className={cn(
-                          'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors',
-                          typeFilter === 'all' ? 'border-foreground/20 bg-muted/25' : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+                          'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors text-xs',
+                          typeFilter === 'all' ? 'bg-muted/30 font-semibold text-foreground' : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground',
                         )}
                       >
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/30">
-                          <Wallet className="h-4 w-4 text-foreground" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">Tous les types</p>
-                          <p className="text-xs text-muted-foreground">{filteredBusinesses.length} visible{filteredBusinesses.length > 1 ? 's' : ''}</p>
-                        </div>
+                        <Wallet className="h-3.5 w-3.5 shrink-0" />
+                        <span className="flex-1">Tous</span>
+                        <span className="tabular-nums text-muted-foreground/60">{filteredBusinesses.length}</span>
                       </button>
 
                       {availableTypeKeys.map((typeKey) => {
                         const meta = SECTION_META[typeKey];
                         const Icon = meta.icon;
-                        const style = BUSINESS_STYLE_MAP[typeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
                         const count = allBusinesses.filter((business) => business.typeKey === typeKey).length;
                         return (
                           <button
@@ -515,33 +521,43 @@ export function ExploreTab({
                             type="button"
                             onClick={() => setTypeFilter(typeKey)}
                             className={cn(
-                              'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors',
-                              typeFilter === typeKey ? 'border-foreground/20 bg-muted/25' : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+                              'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors text-xs',
+                              typeFilter === typeKey ? 'bg-muted/30 font-semibold text-foreground' : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground',
                             )}
                           >
-                            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg', style.iconWrap)}>
-                              <Icon className={cn('h-4 w-4', style.icon)} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium">{meta.label}</p>
-                              <p className="text-xs text-muted-foreground">{count} entreprise{count > 1 ? 's' : ''}</p>
-                            </div>
-                            <Pill label={typeKey} color={meta.pillColor} />
+                            <Icon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="flex-1 truncate">{meta.label}</span>
+                            <span className="tabular-nums text-muted-foreground/60">{count}</span>
                           </button>
                         );
                       })}
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Proprietaire</p>
-                    <div className="space-y-1.5">
-                      <FilterButton active={ownerFilter === 'all'} label="Tous" icon={Wallet} colorClass="bg-slate-600" onClick={() => setOwnerFilter('all')} />
-                      <FilterButton active={ownerFilter === 'you'} label="Mes entreprises" icon={PiggyBank} colorClass="bg-purple-500" onClick={() => setOwnerFilter('you')} />
-                      <FilterButton active={ownerFilter === 'player'} label="Autres joueurs" icon={Building2} colorClass="bg-amber-500" onClick={() => setOwnerFilter('player')} />
+                  <div className="border-t border-border/30 pt-3">
+                    <p className="mb-1.5 px-1 text-[10px] uppercase tracking-wider text-muted-foreground/50">Proprietaire</p>
+                    <div className="space-y-0.5">
+                      {([
+                        { key: 'all', label: 'Tous', icon: Wallet },
+                        { key: 'you', label: 'Mes entreprises', icon: PiggyBank },
+                        { key: 'player', label: 'Autres joueurs', icon: Building2 },
+                      ] as const).map(({ key, label, icon: Icon }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setOwnerFilter(key)}
+                          className={cn(
+                            'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors text-xs',
+                            ownerFilter === key ? 'bg-muted/30 font-semibold text-foreground' : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground',
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                          <span>{label}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </>
+                </div>
               ) : null}
             </CardContent>
           </Card>
@@ -565,73 +581,85 @@ export function ExploreTab({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="space-y-5 px-4 py-4">
-              {groupedBusinesses.map((section) => {
-                const meta = SECTION_META[section.typeKey];
-                const Icon = meta.icon;
-                const sectionStyle = BUSINESS_STYLE_MAP[section.typeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
-                return (
-                  <div key={section.typeKey} className="space-y-2">
-                    <div className="flex items-center gap-3 px-1">
-                      <div className={cn('flex h-9 w-9 items-center justify-center rounded-xl', sectionStyle.iconWrap)}>
-                        <Icon className={cn('h-4 w-4', sectionStyle.icon)} />
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <div className="max-h-[calc(100vh-16rem)] overflow-y-auto px-4 py-4">
+                <div className="space-y-5">
+                {groupedBusinesses.map((section) => {
+                  const meta = SECTION_META[section.typeKey];
+                  const Icon = meta.icon;
+                  const sectionStyle = BUSINESS_STYLE_MAP[section.typeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+                  return (
+                    <div key={section.typeKey} className="space-y-2">
+                      <div className="flex items-center gap-3 px-1">
+                        <div className={cn('flex h-8 w-8 items-center justify-center rounded-xl', sectionStyle.iconWrap)}>
+                          <Icon className={cn('h-4 w-4', sectionStyle.icon)} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{meta.label}</p>
+                          <p className="text-[11px] text-muted-foreground">Trie par note</p>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">{meta.label}</p>
-                        <p className="text-[11px] text-muted-foreground">Trie par revenu mensuel decroissant</p>
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      {section.businesses.map((business) => {
-                        const BusinessIcon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
-                        const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
-                        const selected = business.id === selectedBusiness?.id;
-                        const profit = business.monthlyRevenue - business.monthlyExpenses;
-                        return (
-                          <button
-                            key={business.id}
-                            type="button"
-                            onClick={() => setSelectedBusinessId(business.id)}
-                            className={cn(
-                              'w-full rounded-2xl border px-4 py-4 text-left transition-colors',
-                              selected ? 'border-foreground/20 bg-muted/25' : 'border-border/30 bg-background hover:bg-muted/15',
-                            )}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', style.iconWrap)}>
-                                <BusinessIcon className={cn('h-4 w-4', style.icon)} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <p className="text-sm font-semibold">{business.name}</p>
-                                  {business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}
-                                  {isNewBusiness(business) ? <Pill label="New" color="bg-rose-400/15 text-rose-300" /> : null}
-                                  {business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}
+                      <div className="space-y-2">
+                        {section.businesses.map((business) => {
+                          const BusinessIcon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+                          const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+                          const selected = business.id === selectedBusiness?.id;
+                          const profit = business.monthlyRevenue - business.monthlyExpenses;
+                          return (
+                            <button
+                              key={business.id}
+                              type="button"
+                              onClick={() => setSelectedBusinessId(business.id)}
+                              className={cn(
+                                'w-full rounded-2xl border px-4 py-3 text-left transition-colors',
+                                selected ? 'border-foreground/20 bg-muted/25' : 'border-border/30 bg-background hover:bg-muted/15',
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', style.iconWrap)}>
+                                  <BusinessIcon className={cn('h-4 w-4', style.icon)} />
                                 </div>
-                                <p className="mt-0.5 text-xs text-muted-foreground">{business.owner.username} · {business.foundedLabel}</p>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <p className="text-sm font-semibold">{business.name}</p>
+                                    {isNewBusiness(business) ? <Pill label="New" color="bg-rose-400/15 text-rose-300" /> : null}
+                                    {business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}
+                                  </div>
+                                  <div className="mt-0.5 flex items-center gap-2">
+                                    <p className="text-xs text-muted-foreground">{business.owner.username}</p>
+                                    {business.avgRating !== null ? (
+                                      <span className="flex items-center gap-0.5 text-[11px] text-amber-400">
+                                        <Star className="h-3 w-3 fill-amber-400" />
+                                        {business.avgRating.toFixed(1)}
+                                        <span className="text-muted-foreground/60">({business.ratingCount})</span>
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <p className="text-sm font-bold tabular-nums text-emerald-400">{business.monthlyRevenue.toLocaleString('fr-FR')} EUR</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {business.typeKey === 'bank'
+                                      ? `${business.loanInterestRate ?? 4} % emprunt`
+                                      : `${profit >= 0 ? '+' : ''}${profit.toLocaleString('fr-FR')} EUR`}
+                                  </p>
+                                </div>
                               </div>
-                              <div className="shrink-0 text-right">
-                                <p className="text-sm font-bold tabular-nums text-emerald-400">{business.monthlyRevenue.toLocaleString('fr-FR')} EUR</p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {business.typeKey === 'bank'
-                                    ? `${business.loanInterestRate ?? 4} % emprunt`
-                                    : `${profit >= 0 ? '+' : ''}${profit.toLocaleString('fr-FR')} EUR profit`}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-              {filteredBusinesses.length === 0 ? (
-                <p className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise ne correspond a tes filtres.</p>
-              ) : null}
+                {filteredBusinesses.length === 0 ? (
+                  <p className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise ne correspond a tes filtres.</p>
+                ) : null}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -689,13 +717,14 @@ export function ExploreTab({
         </div>
       </div>
 
-      <BankAccountModal open={Boolean(bankBusiness)} onClose={() => setBankBusinessId(null)} business={bankBusiness} onSubmitted={() => onReload(true)} />
-      <LoanModal open={Boolean(loanBusiness)} onClose={() => setLoanBusinessId(null)} business={loanBusiness} onSubmitted={() => onReload(true)} />
-      <InvestModal open={Boolean(investBusiness)} onClose={() => setInvestBusinessId(null)} business={investBusiness} onSubmitted={() => onReload(true)} />
+      <BankAccountModal open={Boolean(bankBusiness)} onClose={() => setBankBusinessId(null)} business={bankBusiness} onSubmitted={bankBusiness ? handleServiceSuccess(bankBusiness.id) : () => onReload(true)} />
+      <LoanModal open={Boolean(loanBusiness)} onClose={() => setLoanBusinessId(null)} business={loanBusiness} onSubmitted={loanBusiness ? handleServiceSuccess(loanBusiness.id) : () => onReload(true)} />
+      <InvestModal open={Boolean(investBusiness)} onClose={() => setInvestBusinessId(null)} business={investBusiness} onSubmitted={investBusiness ? handleServiceSuccess(investBusiness.id) : () => onReload(true)} />
       <BuyoutOfferModal open={Boolean(buyoutBusiness)} onClose={() => setBuyoutBusinessId(null)} business={buyoutBusiness} onSubmitted={() => onReload(true)} />
-      <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} onSubmitted={() => onReload(true)} />
-      <FormationPurchaseModal open={Boolean(formationBusiness)} onClose={() => setFormationBusinessId(null)} business={formationBusiness} onSubmitted={() => onReload(true)} />
-      <PurchaseItemModal open={Boolean(purchaseBusiness)} onClose={() => setPurchaseBusinessId(null)} business={purchaseBusiness} onSubmitted={() => onReload(true)} />
+      <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} onSubmitted={transferBusiness ? handleServiceSuccess(transferBusiness.id) : () => onReload(true)} />
+      <FormationPurchaseModal open={Boolean(formationBusiness)} onClose={() => setFormationBusinessId(null)} business={formationBusiness} onSubmitted={formationBusiness ? handleServiceSuccess(formationBusiness.id) : () => onReload(true)} />
+      <PurchaseItemModal open={Boolean(purchaseBusiness)} onClose={() => setPurchaseBusinessId(null)} business={purchaseBusiness} onSubmitted={purchaseBusiness ? handleServiceSuccess(purchaseBusiness.id) : () => onReload(true)} />
+      <RatingModal open={Boolean(ratingBusinessId)} onClose={() => setRatingBusinessId(null)} businessId={ratingBusinessId} businesses={allBusinesses} onSubmitted={() => onReload()} />
     </>
   );
 }
@@ -754,6 +783,101 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
           </div>
         ))}
       </div>
+    </ModalWrap>
+  );
+}
+
+// --- Rating Modal ---
+
+function StarRatingInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div className="flex items-center justify-center gap-2">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange(star)}
+          onMouseEnter={() => setHovered(star)}
+          onMouseLeave={() => setHovered(0)}
+          className="transition-transform hover:scale-110"
+        >
+          <Star
+            className={cn(
+              'h-8 w-8 transition-colors',
+              (hovered || value) >= star ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-muted-foreground/30',
+            )}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RatingModal({
+  open,
+  onClose,
+  businessId,
+  businesses,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  businessId: string | null;
+  businesses: YouBusiness[];
+  onSubmitted: () => void;
+}) {
+  const [rating, setRating] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+  const business = businessId ? businesses.find((b) => b.id === businessId) ?? null : null;
+
+  const LABELS: Record<number, string> = {
+    1: 'Tres mauvais',
+    2: 'Mauvais',
+    3: 'Correct',
+    4: 'Bien',
+    5: 'Excellent !',
+  };
+
+  const submit = async () => {
+    if (!businessId || rating === 0) return;
+    setSubmitting(true);
+    try {
+      await youApi.rateBusiness(businessId, rating);
+      toast.success('Note enregistree, merci !');
+      onSubmitted();
+      onClose();
+    } catch {
+      toast.error('Impossible d\'enregistrer la note.');
+    } finally {
+      setSubmitting(false);
+      setRating(0);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Comment c'etait ?" centerTitle>
+      {business ? (
+        <div className="space-y-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Note le service de <span className="font-semibold text-foreground">{business.name}</span>
+          </p>
+          <StarRatingInput value={rating} onChange={setRating} />
+          {rating > 0 ? (
+            <p className="text-sm font-medium text-amber-400">{LABELS[rating]}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground/60">Clique sur une etoile</p>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
+              Passer
+            </Button>
+            <Button className="flex-1" onClick={() => void submit()} disabled={rating === 0 || submitting}>
+              Envoyer
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </ModalWrap>
   );
 }

@@ -145,6 +145,9 @@ model User {
   // Business bank accounts
   bankAccounts        BankAccount[]
 
+  // Business ratings
+  businessRatings     BusinessRating[]
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
@@ -422,10 +425,26 @@ model Business {
   startupProducts BusinessStartupProduct[]
   bankAccounts    BankAccount[]
   transactions    BusinessTransaction[]
+  ratings         BusinessRating[]
 
   @@index([ownerId])
   @@index([typeKey, createdAt])
   @@index([hiring])
+}
+
+model BusinessRating {
+  id         String   @id @default(uuid())
+  businessId String
+  userId     String
+  rating     Int      // 1-5
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([businessId])
 }
 
 model BusinessMember {
