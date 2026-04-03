@@ -14,7 +14,7 @@ import {
   SocialRelationship,
   SocialStats,
 } from '../services/api';
-import { AlertTriangle, Ban as BanIcon, Building2, CalendarDays, Edit2, Heart, Loader2, Save, Send, X } from 'lucide-react';
+import { AlertTriangle, Ban as BanIcon, Building2, CalendarDays, Edit2, Heart, Loader2, MessageCircle, Save, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -568,14 +568,24 @@ export default function Profile() {
                     Modifier la bio
                   </Button>
                 ) : (
-                  <Button
-                    onClick={handleFollowToggle}
-                    disabled={socialLoading}
-                    className="rounded-full px-5"
-                  >
-                    {socialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      className="rounded-full px-5"
+                      onClick={() => navigate(`/messages?user=${profileUser.id}`)}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Message
+                    </Button>
+                    <Button
+                      onClick={handleFollowToggle}
+                      disabled={socialLoading}
+                      className="rounded-full px-5"
+                    >
+                      {socialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
+                    </Button>
+                  </>
                 )}
                 {canModerateProfile ? (
                   <>

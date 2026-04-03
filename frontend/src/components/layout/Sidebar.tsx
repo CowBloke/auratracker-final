@@ -20,6 +20,7 @@ import {
   BarChart3,
   Target,
   Bug,
+  SendHorizonal,
   MessageCircle,
   Megaphone,
   Briefcase,
@@ -40,7 +41,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { usersApi, supportApi, changelogApi } from '@/services/api';
+import { usersApi, supportApi, changelogApi, messagesApi } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -102,7 +103,7 @@ const gameItems = [
   { to: '/games/stack-tower', label: 'Tour empilée', image: getGameImage('stack-tower') },
   { to: '/games/geometry-dash', label: 'Geometry Dash', image: getGameImage('geometry-dash') },
   { to: '/games/casino', label: 'Casino', image: getGameImage('casino') },
-  { to: '/games/aura-coin', label: 'Aura Coin', image: getGameImage('aura-coin') },
+  { to: '/games/salle-de-marche', label: 'Salle de marché', image: getGameImage('market-room') },
   { to: '/games/solitaire', label: 'Solitaire', image: getGameImage('solitaire') },
   { to: '/games/racer', label: 'Racer', image: getGameImage('racer') },
   { to: '/games/tetris', label: 'Tetris', image: getGameImage('tetris') },
@@ -156,6 +157,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const isOnDashboard = location.pathname === '/' || location.pathname === '/dashboard';
   const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || !!user?.isAdmin;
   const [supportUnread, setSupportUnread] = useState(0);
+  const [messagesUnread, setMessagesUnread] = useState(0);
   const [updatesUnread, setUpdatesUnread] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [users, setUsers] = useState<SearchUser[]>([]);
@@ -169,6 +171,27 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   useEffect(() => {
     if (!user) return;
     supportApi.getUnreadCount().then(({ data }) => setSupportUnread(data.count)).catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    const syncMessagesUnread = () => {
+      messagesApi.getUnreadCount().then(({ data }) => {
+        if (!cancelled) {
+          setMessagesUnread(data.count);
+        }
+      }).catch(() => {});
+    };
+
+    syncMessagesUnread();
+    const interval = window.setInterval(syncMessagesUnread, 15000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -187,6 +210,12 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   useEffect(() => {
     if (location.pathname === '/support') {
       setSupportUnread(0);
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname === '/messages') {
+      setMessagesUnread(0);
     }
   }, [location.pathname]);
 
@@ -499,6 +528,30 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             )}
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === '/messages'}
+                tooltip="Messages"
+                className={cn(
+                  'h-9 px-3 text-sm font-normal',
+                  location.pathname === '/messages'
+                    ? 'text-foreground bg-muted/50'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                )}
+              >
+                <NavLink to="/messages">
+                  <SendHorizonal className="h-4 w-4" />
+                  <span className="group-data-[collapsible=icon]:hidden">Messages</span>
+                  {messagesUnread > 0 && (
+                    <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-sky-500 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
+                      {messagesUnread > 99 ? '99+' : messagesUnread}
+                    </span>
+                  )}
+                </NavLink>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
 
             {/* Other nav items */}
             {navItems.filter((item) => !isDisabled(item.to)).map((item) => {

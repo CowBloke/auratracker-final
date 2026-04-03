@@ -1375,6 +1375,34 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
 
     // Casino big bet badges
     if (gameType === 'casino' && bet && typeof bet === 'number') {
+      const casinoConditionKeys = [
+        'CASINO_FIRST_PLAY',
+        'CASINO_REGULAR_10',
+        'CASINO_VETERAN',
+        'CASINO_REGULAR_50',
+        'CASINO_REGULAR_100',
+        'CASINO_WIN_1',
+        'CASINO_WIN_10',
+        'CASINO_WIN_25',
+        'CASINO_WIN_50',
+        'CASINO_LOSS_1',
+        'CASINO_LOSS_10',
+        'CASINO_LOSS_25',
+        'CASINO_LOSS_50',
+        'TOP_CASINO_WINS',
+        'TOP_CASINO_LOSSES',
+      ] as const;
+      for (const conditionKey of casinoConditionKeys) {
+        badgeUpdateTasks.push(recheckBadgeForCondition(conditionKey));
+      }
+
+      if (score >= 50000) {
+        badgeUpdateTasks.push(recheckBadgeForCondition('CASINO_JACKPOT_50000'));
+      }
+      if (score >= 100000) {
+        badgeUpdateTasks.push(recheckBadgeForCondition('CASINO_JACKPOT_100000'));
+      }
+
       const thresholds = [10000, 20000, 50000, 100000];
       for (const threshold of thresholds) {
         if (bet >= threshold) {
@@ -1616,6 +1644,9 @@ const GOYAVE_BUILDING_BASE_GPS: Record<string, number> = {
   lab: 7800,
   rocket: 44000,
   dimension: 260000,
+  multiverse: 1500000,
+  chrono: 8500000,
+  divinity: 48000000,
 };
 
 const GOYAVE_UPGRADE_MULTIPLIERS = [
@@ -1633,12 +1664,25 @@ const GOYAVE_UPGRADE_MULTIPLIERS = [
   { id: 'mega_orchard', target: 'orchard', multiplier: 2 },
   { id: 'automation', target: 'factory', multiplier: 2 },
   { id: 'nano_processing', target: 'factory', multiplier: 2 },
+  { id: 'robo_packaging', target: 'factory', multiplier: 2 },
   { id: 'tropical_genetics', target: 'plantation', multiplier: 2 },
   { id: 'climate_dome', target: 'plantation', multiplier: 2 },
+  { id: 'solar_monsoon', target: 'plantation', multiplier: 2 },
   { id: 'gmo_goyave', target: 'lab', multiplier: 2 },
   { id: 'super_goyave', target: 'lab', multiplier: 2 },
+  { id: 'genome_forge', target: 'lab', multiplier: 2 },
   { id: 'space_farming', target: 'rocket', multiplier: 2 },
+  { id: 'orbital_greenhouse', target: 'rocket', multiplier: 2 },
+  { id: 'lunar_harvesters', target: 'rocket', multiplier: 2 },
   { id: 'quantum_goyave', target: 'dimension', multiplier: 2 },
+  { id: 'parallel_dynasties', target: 'dimension', multiplier: 2 },
+  { id: 'paradox_refinery', target: 'dimension', multiplier: 2 },
+  { id: 'multiversal_rootstock', target: 'multiverse', multiplier: 2 },
+  { id: 'infinite_canopy', target: 'multiverse', multiplier: 2 },
+  { id: 'time_loops', target: 'chrono', multiplier: 2 },
+  { id: 'frozen_harvest', target: 'chrono', multiplier: 2 },
+  { id: 'sacred_orchards', target: 'divinity', multiplier: 2 },
+  { id: 'guava_ascension', target: 'divinity', multiplier: 2 },
 ] as const;
 
 type ParsedGoyaveSaveSnapshot = {

@@ -61,7 +61,7 @@ const EFFECT_TYPES = [
   { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
   { value: 'DOODLE_JUMP_SKIN', label: 'Apparence Doodle Jump', description: 'Débloque une apparence personnalisée dans Doodle Jump (sélectionner une image pour l’apparence)' },
   { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du membre acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
-  { value: 'CLAN_SLOT_UPGRADE', label: '+1 Slot clan', description: 'Ajoute un slot membre supplémentaire au clan. Un clan ne peut l\'acheter qu\'une fois. S\'applique automatiquement à l\'achat.' },
+  { value: 'CLAN_SLOT_UPGRADE', label: '+1 Slot clan', description: 'Ajoute un slot membre supplémentaire au clan. Le clan peut l\'acheter jusqu\'à deux fois, pour monter jusqu\'à 7 membres. S\'applique automatiquement à l\'achat.' },
   { value: 'CLAN_GAME_MONEY_BOOST', label: 'Boost gains clan', description: 'Objet de clan: active un boost en % sur l\'argent gagné en jeu pour tous les membres du clan.' },
   { value: 'CLAN_PROFILE_PICTURE', label: 'Photo de profil de clan', description: 'Objet de clan: acheté avec la banque du clan, puis le chef téléverse une image pour l\'utiliser comme emblème du clan.' },
   { value: 'CLAN_BANNER', label: 'Bannière de clan', description: 'Objet de clan: acheté avec la banque du clan, puis le chef téléverse une image pour l\'afficher en haut de la page clan.' },
@@ -1538,6 +1538,10 @@ export default function Admin() {
   const [taxLastRunDate, setTaxLastRunDate] = useState<string | null>(null);
   const [auraCoinBuyFeePercentage, setAuraCoinBuyFeePercentage] = useState('0.02');
   const [savingAuraCoinBuyFee, setSavingAuraCoinBuyFee] = useState(false);
+  const [stableCoinBuyFeePercentage, setStableCoinBuyFeePercentage] = useState('0.01');
+  const [savingStableCoinBuyFee, setSavingStableCoinBuyFee] = useState(false);
+  const [chaosCoinBuyFeePercentage, setChaosCoinBuyFeePercentage] = useState('0.035');
+  const [savingChaosCoinBuyFee, setSavingChaosCoinBuyFee] = useState(false);
   const [clashAttackCooldownMinutes, setClashAttackCooldownMinutes] = useState('10');
   const [savingClashAttackCooldown, setSavingClashAttackCooldown] = useState(false);
   const [loginMessage, setLoginMessage] = useState('');
@@ -2632,6 +2636,8 @@ export default function Admin() {
       setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
       setDailyAuraDistributionLimit(res.data.settings.daily_aura_distribution_limit || '100');
       setAuraCoinBuyFeePercentage(res.data.settings.auracoin_buy_fee_percentage || '0.02');
+      setStableCoinBuyFeePercentage(res.data.settings.stable_coin_buy_fee_percentage || '0.01');
+      setChaosCoinBuyFeePercentage(res.data.settings.chaos_coin_buy_fee_percentage || '0.035');
       setClashAttackCooldownMinutes(res.data.settings.clash_attack_cooldown_minutes || '10');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
@@ -3072,6 +3078,46 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde des frais AuraCoin');
     } finally {
       setSavingAuraCoinBuyFee(false);
+    }
+  };
+
+  const saveStableCoinBuyFee = async () => {
+    try {
+      const parsed = Number.parseFloat(stableCoinBuyFeePercentage);
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 0.5) {
+        showMessage('error', 'Les frais Aura Stable doivent etre compris entre 0% et 50%');
+        return;
+      }
+
+      setSavingStableCoinBuyFee(true);
+      await adminApi.updateSetting('stable_coin_buy_fee_percentage', parsed.toFixed(4));
+      setStableCoinBuyFeePercentage(parsed.toFixed(4));
+      showMessage('success', 'Frais Aura Stable sauvegardes');
+    } catch (error) {
+      console.error('Failed to save stable coin buy fee:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde des frais Aura Stable');
+    } finally {
+      setSavingStableCoinBuyFee(false);
+    }
+  };
+
+  const saveChaosCoinBuyFee = async () => {
+    try {
+      const parsed = Number.parseFloat(chaosCoinBuyFeePercentage);
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 0.5) {
+        showMessage('error', 'Les frais Chaos Coin doivent etre compris entre 0% et 50%');
+        return;
+      }
+
+      setSavingChaosCoinBuyFee(true);
+      await adminApi.updateSetting('chaos_coin_buy_fee_percentage', parsed.toFixed(4));
+      setChaosCoinBuyFeePercentage(parsed.toFixed(4));
+      showMessage('success', 'Frais Chaos Coin sauvegardes');
+    } catch (error) {
+      console.error('Failed to save chaos coin buy fee:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde des frais Chaos Coin');
+    } finally {
+      setSavingChaosCoinBuyFee(false);
     }
   };
 
@@ -5857,13 +5903,13 @@ export default function Admin() {
             </div>
           </div>
 
-          {/* ── AuraCoin ───────────────────────────────────────── */}
+          {/* ── Salle de marche ───────────────────────── */}
           <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">AuraCoin</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Salle de marche</p>
             <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
-                  <div className="text-sm font-medium">Frais d&apos;achat</div>
+                  <div className="text-sm font-medium">Frais Aura Coin</div>
                   <div className="text-xs text-muted-foreground">Taux appliqué sur les achats et ventes AuraCoin (0 = 0 %, 0.5 = 50 %).</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -5879,6 +5925,48 @@ export default function Admin() {
                   />
                   <Button size="sm" onClick={saveAuraCoinBuyFee} disabled={savingAuraCoinBuyFee}>
                     {savingAuraCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Frais Aura Stable</div>
+                  <div className="text-xs text-muted-foreground">Stable coin a faible volatilite. Meme logique de frais modifiable depuis l&apos;admin.</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Input
+                    id="stable-coin-buy-fee"
+                    type="number"
+                    min={0}
+                    max={0.5}
+                    step={0.0001}
+                    value={stableCoinBuyFeePercentage}
+                    onChange={(event) => setStableCoinBuyFeePercentage(event.target.value)}
+                    className="w-28 h-8 text-sm"
+                  />
+                  <Button size="sm" onClick={saveStableCoinBuyFee} disabled={savingStableCoinBuyFee}>
+                    {savingStableCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Frais Chaos Coin</div>
+                  <div className="text-xs text-muted-foreground">Coin tres instable avec frais separes pour equilibrer le risque et les spreads.</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Input
+                    id="chaos-coin-buy-fee"
+                    type="number"
+                    min={0}
+                    max={0.5}
+                    step={0.0001}
+                    value={chaosCoinBuyFeePercentage}
+                    onChange={(event) => setChaosCoinBuyFeePercentage(event.target.value)}
+                    className="w-28 h-8 text-sm"
+                  />
+                  <Button size="sm" onClick={saveChaosCoinBuyFee} disabled={savingChaosCoinBuyFee}>
+                    {savingChaosCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
               </div>

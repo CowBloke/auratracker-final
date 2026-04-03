@@ -1489,7 +1489,7 @@ export default function DoodleJump() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
       if (spectatingRef.current) return;
-      if (e.key === 'ArrowLeft' || e.key === 'a') {
+      if (e.key === 'ArrowLeft' || e.key === 'q' || e.key === 'Q') {
         moveLeftRef.current = true;
         e.preventDefault();
       }
@@ -1502,7 +1502,7 @@ export default function DoodleJump() {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
       if (spectatingRef.current) return;
-      if (e.key === 'ArrowLeft' || e.key === 'a') {
+      if (e.key === 'ArrowLeft' || e.key === 'q' || e.key === 'Q') {
         moveLeftRef.current = false;
       }
       if (e.key === 'ArrowRight' || e.key === 'd') {

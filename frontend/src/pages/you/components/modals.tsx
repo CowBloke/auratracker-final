@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import {
   type YouBankAccount, type YouBusiness, type YouBusinessLoan, type YouBusinessTransaction,
@@ -219,6 +220,8 @@ export function InvitePlayersModal({
 }) {
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('employee');
+  const [salary, setSalary] = useState('0');
+  const [message, setMessage] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -226,6 +229,8 @@ export function InvitePlayersModal({
     if (!open) {
       setSearch('');
       setRole('employee');
+      setSalary('0');
+      setMessage('');
       setSelectedIds([]);
     }
   }, [open]);
@@ -241,7 +246,7 @@ export function InvitePlayersModal({
     if (!business || selectedIds.length === 0) return;
     setSubmitting(true);
     try {
-      await withRouteError(() => youApi.runBusinessAction(business.id, 'invite', { inviteeIds: selectedIds, role }), 'Impossible d envoyer les invitations.');
+      await withRouteError(() => youApi.runBusinessAction(business.id, 'invite', { inviteeIds: selectedIds, role, salary: Number(salary), message: message.trim() }), 'Impossible d envoyer les invitations.');
       toast.success('Invitations envoyees');
       await onSubmitted();
       onClose();
@@ -252,10 +257,14 @@ export function InvitePlayersModal({
 
   return (
     <ModalWrap open={open} onClose={onClose} title={business ? `Inviter des joueurs · ${business.name}` : 'Inviter des joueurs'} desc="Toutes les invitations ciblent de vrais joueurs." wide>
-      <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
+      <div className="grid gap-3 sm:grid-cols-[1fr_180px_140px]">
         <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
         <FieldRow label="Role propose"><SelectBox value={role} onChange={setRole}><option value="employee">Employe</option><option value="partner">Associe</option><option value="advisor">Conseiller</option></SelectBox></FieldRow>
+        <FieldRow label="Salaire / jour"><Input type="number" min={0} value={salary} onChange={(event) => setSalary(event.target.value)} /></FieldRow>
       </div>
+      <FieldRow label="Message facultatif">
+        <Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={3} maxLength={240} placeholder="Propose le poste, explique l'objectif ou le cadre du contrat." />
+      </FieldRow>
       <div className="max-h-80 space-y-2 overflow-y-auto">
         {availablePlayers.map((player) => {
           const selected = selectedIds.includes(player.id);
@@ -263,7 +272,7 @@ export function InvitePlayersModal({
         })}
         {availablePlayers.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible pour cette recherche.</p> : null}
       </div>
-      <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">{selectedIds.length === 0 ? 'Aucune invitation preparee.' : `${selectedIds.length} invitation(s) preparee(s) pour le role ${role}.`}</div>
+      <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">{selectedIds.length === 0 ? 'Aucune invitation preparee.' : `${selectedIds.length} invitation(s) preparee(s) pour le role ${role} a ${Number(salary).toLocaleString('fr-FR')} money/jour.`}</div>
       <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Fermer</Button><Button size="sm" onClick={submit} disabled={submitting || !business || selectedIds.length === 0}>Envoyer</Button></div>
     </ModalWrap>
   );
@@ -272,6 +281,8 @@ export function InvitePlayersModal({
 export function LoanModal({ open, onClose, business, onSubmitted }: { open: boolean; onClose: () => void; business: YouBusiness | null; onSubmitted: () => Promise<void> }) {
   const [amount, setAmount] = useState('5000');
   const [durationDays, setDurationDays] = useState('30');
+  const [collateralAura, setCollateralAura] = useState('0');
+  const [motivationMessage, setMotivationMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const rate = business?.loanInterestRate ?? 4;
   const total = Math.round(Number(amount || 0) * (1 + rate / 100));
@@ -281,8 +292,18 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
     if (!business) return;
     setSubmitting(true);
     try {
-      await withRouteError(() => youApi.runBusinessAction(business.id, 'loan', { amount: Number(amount), durationDays: Number(durationDays) }), 'Impossible d emprunter.');
+      await withRouteError(
+        () => youApi.runBusinessAction(business.id, 'loan', {
+          amount: Number(amount),
+          durationDays: Number(durationDays),
+          collateralAura: Number(collateralAura),
+          motivationMessage: motivationMessage.trim(),
+        }),
+        'Impossible d emprunter.'
+      );
       toast.success('Demande de pret envoyee');
+      setCollateralAura('0');
+      setMotivationMessage('');
       await onSubmitted();
       onClose();
     } finally {
@@ -294,12 +315,27 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
     <ModalWrap open={open} onClose={onClose} title={business ? `Demander un pret · ${business.name}` : 'Demander un pret'} desc="Le proprietaire devra accepter la demande avant que le money soit debloque.">
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={500} /></FieldRow>
       <FieldRow label="Duree (jours)"><Input type="number" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} min={1} placeholder="ex : 7" /></FieldRow>
+      <FieldRow label="Hypotheque (aura)"><Input type="number" value={collateralAura} onChange={(event) => setCollateralAura(event.target.value)} min={0} placeholder="0 si aucun gage" /></FieldRow>
+      <FieldRow label="Lettre de motivation">
+        <Textarea
+          value={motivationMessage}
+          onChange={(event) => setMotivationMessage(event.target.value)}
+          rows={4}
+          maxLength={400}
+          placeholder="Explique ce que tu comptes faire de l argent, comment tu vas rembourser et pourquoi ce pret a du sens."
+        />
+      </FieldRow>
       <div className="grid grid-cols-3 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4">
         <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Taux</p><p className="text-lg font-bold tabular-nums text-amber-400">{rate}%</p></div>
         <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Remb. / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div>
         <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-red-400">{formatMoney(total)}</p></div>
       </div>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || Number(durationDays) < 1}>Envoyer</Button></div>
+      <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
+        {Number(collateralAura || 0) > 0
+          ? `${Number(collateralAura).toLocaleString('fr-FR')} aura seront bloquees a l acceptation puis rendues au remboursement. Si l echeance est depassee et que le joueur ne peut pas payer, elles seront saisies.`
+          : 'Sans hypothèque, le pret repose uniquement sur la capacite du joueur a rembourser.'}
+      </div>
+      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || Number(durationDays) < 1 || Number(collateralAura) < 0 || motivationMessage.length > 400}>Envoyer</Button></div>
     </ModalWrap>
   );
 }
@@ -334,7 +370,21 @@ export function InvestModal({ open, onClose, business, onSubmitted }: { open: bo
   );
 }
 
-export function TransferBusinessModal({ open, onClose, business, players, onSubmitted }: { open: boolean; onClose: () => void; business: YouBusiness | null; players: YouPlayer[]; onSubmitted: () => Promise<void> }) {
+export function TransferBusinessModal({
+  open,
+  onClose,
+  business,
+  players,
+  currentUserId,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness | null;
+  players: YouPlayer[];
+  currentUserId: string;
+  onSubmitted: () => Promise<void>;
+}) {
   const [recipientId, setRecipientId] = useState('');
   const [amount, setAmount] = useState('1000');
   const [search, setSearch] = useState('');
@@ -349,11 +399,11 @@ export function TransferBusinessModal({ open, onClose, business, players, onSubm
   }, [open]);
 
   const availablePlayers = useMemo(() => players.filter((player) => {
-    if (player.id === business?.ownerId) return true;
+    if (player.id === currentUserId) return false;
     if (!search.trim()) return true;
     const query = search.toLowerCase();
     return player.username.toLowerCase().includes(query) || player.firstName?.toLowerCase().includes(query) || player.bio?.toLowerCase().includes(query);
-  }), [business?.ownerId, players, search]);
+  }), [currentUserId, players, search]);
 
   const submit = async () => {
     if (!business || !recipientId) return;
@@ -664,12 +714,16 @@ export function ManageBusinessModal({
   open,
   onClose,
   business,
+  players,
+  currentUserId,
   onInviteRequested,
   onSubmitted,
 }: {
   open: boolean;
   onClose: () => void;
   business: YouBusiness | null;
+  players: YouPlayer[];
+  currentUserId: string;
   onInviteRequested: (business: YouBusiness) => void;
   onSubmitted: (refreshBalance?: boolean) => Promise<void>;
 }) {
@@ -694,6 +748,7 @@ export function ManageBusinessModal({
   const [manageTeamOpen, setManageTeamOpen] = useState(false);
   const [manageFormationsOpen, setManageFormationsOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
 
   const toggleSection = (s: typeof activeSection) => setActiveSection((prev) => (prev === s ? null : s));
 
@@ -710,6 +765,7 @@ export function ManageBusinessModal({
       setLoanRateInput(String(business?.loanInterestRate ?? 4));
       setTransferFeeInput(String(business?.transferFeeRate ?? 2));
       setTransactions([]);
+      setTransferOpen(false);
     }
   }, [open, business?.id]);
 
@@ -1016,6 +1072,16 @@ export function ManageBusinessModal({
                   {/* Transfer: frais */}
                   {isTransfer ? (
                     <>
+                      {business.ownerKind === 'you' ? (
+                        <ActionRow
+                          icon={ArrowUpCircle}
+                          label="Envoyer via ma plateforme"
+                          sub="Utiliser ce service de transfert pour envoyer de l'argent"
+                          iconBg="bg-cyan-400/15"
+                          iconColor="text-cyan-400"
+                          onClick={() => setTransferOpen(true)}
+                        />
+                      ) : null}
                       <ActionRow
                         icon={Percent}
                         label={`Frais de transfert · ${business.transferFeeRate ?? 2} %`}
@@ -1197,6 +1263,10 @@ export function ManageBusinessModal({
                                 <p className="mt-1 text-sm font-semibold text-foreground">{formatLoanDate(loan.decidedAt ?? loan.createdAt)}</p>
                               </div>
                             </div>
+                            {loan.collateralAuraHeld > 0 ? (
+                              <p className="mt-2 text-xs text-amber-400">{loan.collateralAuraHeld.toLocaleString('fr-FR')} aura actuellement bloquees en hypothèque</p>
+                            ) : null}
+                            {loan.motivationMessage ? <p className="mt-2 text-xs text-muted-foreground">Motivation: "{loan.motivationMessage}"</p> : null}
                             <p className="mt-2 text-xs text-muted-foreground">{repaid.toLocaleString('fr-FR')} / {totalOwed.toLocaleString('fr-FR')} € rembourses</p>
                             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
                               <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} />
@@ -1258,7 +1328,8 @@ export function ManageBusinessModal({
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold">{loan.borrower.username}</p>
-                          <p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} € · {loan.termDays} jours · {loan.interestRate} % d'intérêt</p>
+                          <p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} € · {loan.termDays} jours · {loan.interestRate} % d'intérêt{loan.collateralAura > 0 ? ` · ${loan.collateralAura.toLocaleString('fr-FR')} aura en hypothèque` : ''}</p>
+                          {loan.motivationMessage ? <p className="mt-1 text-xs text-muted-foreground/80">Motivation: "{loan.motivationMessage}"</p> : null}
                         </div>
                         <div className="flex gap-2">
                           <Button size="sm" className="text-xs" onClick={() => void reviewLoan(loan.id, 'accept')} disabled={reviewingLoanId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button>
@@ -1348,6 +1419,16 @@ export function ManageBusinessModal({
         onSubmitted={onSubmitted}
       />
     ) : null}
+    {business ? (
+      <TransferBusinessModal
+        open={transferOpen}
+        onClose={() => setTransferOpen(false)}
+        business={business}
+        players={players}
+        currentUserId={currentUserId}
+        onSubmitted={() => onSubmitted(true)}
+      />
+    ) : null}
     </>
   );
 }
@@ -1369,6 +1450,7 @@ export function ManageTeamModal({
 }) {
   const [updatingSalaryId, setUpdatingSalaryId] = useState<string | null>(null);
   const [sackingId, setSackingId] = useState<string | null>(null);
+  const [reviewingInvitationId, setReviewingInvitationId] = useState<string | null>(null);
   const [salaryInputs, setSalaryInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -1406,12 +1488,55 @@ export function ManageTeamModal({
   };
 
   const activeMembers = business.members.filter((m) => m.status === 'ACTIVE');
+  const pendingInvitations = business.pendingInvitations;
+
+  const reviewInvitation = async (invitationId: string, decision: 'accept' | 'reject') => {
+    setReviewingInvitationId(invitationId);
+    try {
+      await withRouteError(() => youApi.respondToBusinessInvitation(invitationId, decision), 'Impossible de traiter ce contrat.');
+      toast.success(decision === 'accept' ? 'Contrat mis a jour' : 'Contrat refuse');
+      await onSubmitted();
+    } finally {
+      setReviewingInvitationId(null);
+    }
+  };
 
   return (
     <ModalWrap open={open} onClose={onClose} title="Gérer l'équipe" desc="Salaires quotidiens, invitations et départs.">
       <Button size="sm" variant="outline" className="w-full justify-start" onClick={onInviteRequested}>
         <UserPlus className="mr-2 h-4 w-4" />Inviter des joueurs
       </Button>
+      {pendingInvitations.length > 0 ? (
+        <div className="space-y-2">
+          <SectionTitle>Contrats en attente ({pendingInvitations.length})</SectionTitle>
+          <div className="max-h-60 space-y-2 overflow-y-auto">
+            {pendingInvitations.map((invitation) => (
+              <div key={invitation.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium">{invitation.employee.username}</p>
+                      <Pill label={invitation.initiatedByRole === 'EMPLOYER' ? 'Offre envoyee' : 'Candidature'} color="bg-violet-400/15 text-violet-300" />
+                      <Pill label={`${invitation.salary.toLocaleString('fr-FR')} / jour`} color="bg-emerald-400/15 text-emerald-300" />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">Role: {invitation.role}</p>
+                    {invitation.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{invitation.message}"</p> : null}
+                    {!invitation.needsViewerAcceptance ? (
+                      <p className="mt-1 text-xs text-muted-foreground/70">En attente de validation par {invitation.waitingOn === 'EMPLOYEE' ? "l'employe" : invitation.waitingOn === 'EMPLOYER' ? "l'employeur" : "les deux parties"}.</p>
+                    ) : null}
+                  </div>
+                  {invitation.needsViewerAcceptance ? (
+                    <div className="flex gap-2">
+                      <Button size="sm" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'accept')} disabled={reviewingInvitationId !== null}>Accepter</Button>
+                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'reject')} disabled={reviewingInvitationId !== null}>Refuser</Button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {activeMembers.length === 0 ? (
         <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
           Aucun membre dans cette équipe.

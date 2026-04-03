@@ -204,8 +204,21 @@ export interface YouBusinessTransaction {
 export interface YouBusinessInvitation {
   id: string;
   role: string;
+  salary: number;
+  message: string | null;
   status: string;
   createdAt: string;
+  updatedAt: string;
+  respondedAt: string | null;
+  initiatedByRole: 'EMPLOYER' | 'EMPLOYEE' | string;
+  employerAcceptedAt: string | null;
+  employeeAcceptedAt: string | null;
+  viewerRole: 'EMPLOYER' | 'EMPLOYEE' | null;
+  needsViewerAcceptance: boolean;
+  waitingOn: 'EMPLOYER' | 'EMPLOYEE' | 'BOTH' | 'NONE' | string;
+  inviter: Omit<YouPlayer, 'alreadyInRelationship'>;
+  employee: Omit<YouPlayer, 'alreadyInRelationship'>;
+  employer: Omit<YouPlayer, 'alreadyInRelationship'>;
   invitee: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
@@ -214,9 +227,13 @@ export interface YouBusinessLoan {
   amount: number;
   termDays: number;
   interestRate: number;
+  motivationMessage: string | null;
+  collateralAura: number;
+  collateralAuraHeld: number;
   status: string;
   repaidAmount: number;
   decidedAt: string | null;
+  collateralClaimedAt: string | null;
   createdAt: string;
   borrower: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
@@ -318,6 +335,15 @@ export interface YouFormationProduct {
   createdAt: string;
 }
 
+export interface YouBusinessRating {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
 export interface YouBusiness {
   id: string;
   name: string;
@@ -364,6 +390,7 @@ export interface YouBusiness {
   npcLastCollectedAt?: string | null;
   avgRating: number | null;
   ratingCount: number;
+  ratings: YouBusinessRating[];
 }
 
 export interface YouMarriageProposal {
@@ -418,8 +445,21 @@ export interface YouCourtCase {
 export interface YouJobOffer {
   id: string;
   role: string;
+  salary: number;
+  message: string | null;
+  status: string;
   createdAt: string;
+  updatedAt: string;
+  respondedAt: string | null;
+  initiatedByRole: 'EMPLOYER' | 'EMPLOYEE' | string;
+  employerAcceptedAt: string | null;
+  employeeAcceptedAt: string | null;
+  viewerRole: 'EMPLOYER' | 'EMPLOYEE' | null;
+  needsViewerAcceptance: boolean;
+  waitingOn: 'EMPLOYER' | 'EMPLOYEE' | 'BOTH' | 'NONE' | string;
   inviter: Omit<YouPlayer, 'alreadyInRelationship'>;
+  employee: Omit<YouPlayer, 'alreadyInRelationship'>;
+  employer: Omit<YouPlayer, 'alreadyInRelationship'>;
   business: {
     id: string;
     name: string;
@@ -453,8 +493,10 @@ export const youApi = {
     api.post<{ skill: YouSkill }>(`/you/skills/${skillKey}/train`),
   createBusiness: (data: { name: string; typeKey: string; capital: number; description?: string; location?: string }) =>
     api.post<{ business: YouBusiness }>('/you/businesses', data),
-  runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product', data?: Record<string, unknown>) =>
+  runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item', data?: Record<string, unknown>) =>
     api.post<{ result: Record<string, unknown> }>(`/you/businesses/${businessId}/actions/${actionKey}`, data ?? {}),
+  applyToBusiness: (businessId: string, data: { role?: string; salary: number; message?: string }) =>
+    api.post<{ result: { id: string } }>(`/you/businesses/${businessId}/apply`, data),
   respondToBusinessInvitation: (invitationId: string, decision: 'accept' | 'reject') =>
     api.post<{ result: { id: string; status: string; respondedAt: string | null } }>(`/you/business-invitations/${invitationId}/respond`, { decision }),
   respondToBusinessLoan: (loanId: string, decision: 'accept' | 'reject') =>
@@ -532,13 +574,13 @@ export const youApi = {
   sackMember: (businessId: string, memberId: string) =>
     api.delete<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/members/${memberId}`),
   repayLoan: (loanId: string) =>
-    api.post<{ result: { repaid: number; totalOwed: number } }>(`/you/loans/${loanId}/repay`, {}),
+    api.post<{ result: { repaid: number; totalOwed: number; collateralClaimed: number; status: string } }>(`/you/loans/${loanId}/repay`, {}),
   purchaseItem: (businessId: string, itemKey: string) =>
     api.post<{ result: { item: string; price: number } }>(`/you/businesses/${businessId}/actions/purchase_item`, { itemKey }),
   collectNpc: (businessId: string) =>
     api.post<{ result: { amount: number } }>(`/you/businesses/${businessId}/actions/collect_npc`, {}),
-  rateBusiness: (businessId: string, rating: number) =>
-    api.post<{ ok: boolean }>(`/you/businesses/${businessId}/rate`, { rating }),
+  rateBusiness: (businessId: string, rating: number, comment?: string) =>
+    api.post<{ ok: boolean }>(`/you/businesses/${businessId}/rate`, { rating, comment }),
 };
 
 // Economy API
@@ -1057,6 +1099,138 @@ export interface AuraCoinPosition {
   exitPrice?: number | null;
 }
 
+export type MarketCoinKey = 'stable-coin' | 'chaos-coin';
+
+export interface MarketCoinPriceHistory {
+  price: number;
+  volume: number;
+  createdAt: string;
+}
+
+export interface MarketCoinTransaction {
+  id: string;
+  userId: string;
+  type: 'BUY' | 'SELL';
+  coinAmount: number;
+  moneyAmount: number;
+  price: number;
+  fee: number;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+  };
+}
+
+export interface MarketCoinLeaderboardEntry {
+  id: string;
+  username: string;
+  usernameColor: string | null;
+  coinBalance: number;
+}
+
+export interface MarketCoinPosition {
+  id: string;
+  type: 'LONG' | 'SHORT';
+  leverage: number;
+  entryPrice: number;
+  coinAmount: number;
+  marginAmount: number;
+  currentPrice?: number;
+  pnl?: number | null;
+  currentMargin?: number;
+  marginRatio?: number;
+  pnlPercentage?: number;
+  isOpen?: boolean;
+  liquidated?: boolean;
+  createdAt: string;
+  closedAt?: string | null;
+  exitPrice?: number | null;
+}
+
+export interface TradingTerminalApi {
+  getPrice: (hours?: number) => Promise<{
+    data: {
+      currentPrice: number;
+      feePercentage: number;
+      history: Array<{ price: number; volume: number; createdAt: string }>;
+      userBalance: { coin: number; money: number };
+    };
+  }>;
+  buy: (moneyAmount: number) => Promise<{
+    data: {
+      success: boolean;
+      transaction: { type: 'BUY'; coinsReceived: number; moneySpent: number; fee: number; newPrice: number };
+      newBalance: { money: number; coin: number };
+    };
+  }>;
+  sell: (coinAmount: number) => Promise<{
+    data: {
+      success: boolean;
+      transaction: { type: 'SELL'; coinsSold: number; moneyReceived: number; fee: number; newPrice: number };
+      newBalance: { money: number; coin: number };
+    };
+  }>;
+  getMyTransactions: (params?: { limit?: number; offset?: number }) => Promise<{ data: { transactions: MarketCoinTransaction[] } }>;
+  getAllTransactions: (params?: { limit?: number; offset?: number }) => Promise<{ data: { transactions: MarketCoinTransaction[] } }>;
+  openPosition: (type: 'LONG' | 'SHORT', leverage: number, marginAmount: number) => Promise<{
+    data: {
+      success: boolean;
+      position: {
+        id: string;
+        type: string;
+        leverage: number;
+        entryPrice: number;
+        coinAmount: number;
+        marginAmount: number;
+        createdAt: string;
+      };
+      newBalance: { money: number };
+    };
+  }>;
+  closePosition: (positionId: string) => Promise<{
+    data: {
+      success: boolean;
+      position: { id: string; pnl: number; exitPrice: number; closedAt: string };
+      newBalance: { money: number };
+    };
+  }>;
+  getOpenPositions: () => Promise<{ data: { positions: MarketCoinPosition[] } }>;
+  getClosedPositions: (params?: { limit?: number; offset?: number }) => Promise<{ data: { positions: MarketCoinPosition[] } }>;
+}
+
+const createMarketCoinApi = (coinKey: MarketCoinKey): TradingTerminalApi & {
+  getLeaderboard: (limit?: number) => Promise<{ data: { leaderboard: MarketCoinLeaderboardEntry[] } }>;
+} => ({
+  getPrice: (hours?: number) => api.get(`/market-room/${coinKey}/price`, { params: { hours } }),
+  getLeaderboard: (limit?: number) => api.get(`/market-room/${coinKey}/leaderboard`, { params: { limit } }),
+  buy: (moneyAmount: number) => api.post(`/market-room/${coinKey}/buy`, { moneyAmount }),
+  sell: (coinAmount: number) => api.post(`/market-room/${coinKey}/sell`, { coinAmount }),
+  getMyTransactions: (params?: { limit?: number; offset?: number }) => api.get(`/market-room/${coinKey}/transactions/me`, { params }),
+  getAllTransactions: (params?: { limit?: number; offset?: number }) => api.get(`/market-room/${coinKey}/transactions/all`, { params }),
+  openPosition: (type: 'LONG' | 'SHORT', leverage: number, marginAmount: number) =>
+    api.post(`/market-room/${coinKey}/position/open`, { type, leverage, marginAmount }),
+  closePosition: (positionId: string) => api.post(`/market-room/${coinKey}/position/close/${positionId}`),
+  getOpenPositions: () => api.get(`/market-room/${coinKey}/positions/open`),
+  getClosedPositions: (params?: { limit?: number; offset?: number }) => api.get(`/market-room/${coinKey}/positions/closed`, { params }),
+});
+
+export const marketRoomApi = {
+  getCoin: (coinKey: MarketCoinKey) => createMarketCoinApi(coinKey),
+  getCoins: () =>
+    api.get<{
+      coins: Array<{
+        key: MarketCoinKey;
+        name: string;
+        symbol: string;
+        description: string;
+        personality: 'STABLE' | 'VOLATILE';
+        color: string;
+      }>;
+    }>('/market-room/coins'),
+};
+
 // Leaderboards API
 export const leaderboardsApi = {
   get: (category: string, params?: { limit?: number; offset?: number; seasonId?: string; period?: 'daily' | 'weekly' | 'monthly' }) =>
@@ -1499,7 +1673,7 @@ export interface ClanEventView {
 
 export const clansApi = {
   list: () => api.get<ClansListResponse>('/clans'),
-  myStatus: () => api.get<{ inClan: boolean; isLeader?: boolean; tagUnlocked: boolean; slotUpgraded: boolean; clanBankMoney: number; level: number }>('/clans/me/status'),
+  myStatus: () => api.get<{ inClan: boolean; isLeader?: boolean; tagUnlocked: boolean; slotUpgraded: boolean; maxMembers: number; clanBankMoney: number; level: number }>('/clans/me/status'),
   getById: (id: string) => api.get<{ clan: ClanDetail }>(`/clans/${id}`),
   getGlobalWarHistory: () => api.get<{ wars: ClanWarState[] }>('/clans/wars/history'),
   getChat: (id: string, limit = 50) => api.get<{ messages: ClanChatMessage[] }>(`/clans/${id}/chat`, { params: { limit } }),
@@ -2647,6 +2821,50 @@ export const supportApi = {
   reply: (userId: string, body: string, images?: string[]) =>
     api.post<{ message: SupportMessage }>(`/support/admin/reply/${userId}`, { body, images }),
   markThreadRead: (userId: string) => api.post<{ success: boolean }>(`/support/admin/threads/${userId}/read`),
+};
+
+export interface DirectConversationUser {
+  id: string;
+  username: string;
+  firstName?: string | null;
+  usernameColor?: string | null;
+  profilePicture?: string | null;
+  bio?: string | null;
+}
+
+export interface DirectConversationMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  sender: {
+    id: string;
+    username: string;
+    usernameColor?: string | null;
+    profilePicture?: string | null;
+  };
+}
+
+export interface DirectConversation {
+  id: string;
+  updatedAt: string;
+  createdAt: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  otherUser: DirectConversationUser | null;
+  lastMessage: DirectConversationMessage | null;
+}
+
+export const messagesApi = {
+  getConversations: () => api.get<{ conversations: DirectConversation[] }>('/messages/conversations'),
+  getUnreadCount: () => api.get<{ count: number }>('/messages/unread-count'),
+  createConversation: (targetUserId: string) =>
+    api.post<{ conversation: DirectConversation }>('/messages/conversations', { targetUserId }),
+  getMessages: (conversationId: string) =>
+    api.get<{ conversation: DirectConversation; messages: DirectConversationMessage[] }>(`/messages/conversations/${conversationId}/messages`),
+  sendMessage: (conversationId: string, body: string) =>
+    api.post<{ message: DirectConversationMessage }>(`/messages/conversations/${conversationId}/messages`, { body }),
+  markRead: (conversationId: string) =>
+    api.post<{ success: boolean }>(`/messages/conversations/${conversationId}/read`),
 };
 
 export const badgesApi = {

@@ -3,6 +3,7 @@ const GAME_IMAGE_FALLBACK = '/aura-icon.svg';
 const GAME_IMAGE_BY_ID: Record<string, string> = {
   'game-2048': '/images/games/2048.png',
   'aura-coin': '/images/games/auracoin.png',
+  'market-room': '/images/games/auracoin.png',
   'ball-arena': '/images/games/ball.png',
   'bataille-navale': '/images/games/bataille.png',
   blockblast: '/images/games/blockblast.png',

@@ -399,7 +399,7 @@ export default function GeometryDash() {
         return;
       }
 
-      if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
+      if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyZ') {
         event.preventDefault();
         if (!started) {
           initGame();

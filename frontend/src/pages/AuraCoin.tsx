@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
-import { auraCoinApi, AuraCoinTransaction, AuraCoinPriceHistory, AuraCoinPosition } from '../services/api';
+import { auraCoinApi, TradingTerminalApi, MarketCoinPosition, MarketCoinPriceHistory, MarketCoinTransaction } from '../services/api';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -12,14 +12,97 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { UsernameDisplay } from '@/components/ui/username-display';
 
-export default function AuraCoin() {
+type CryptoTradingTerminalProps = {
+  api: TradingTerminalApi;
+  coinLabel: string;
+  coinUnit: string;
+  socketEvent: string;
+  initialPrice?: number;
+};
+
+const auraCoinTerminalApi: TradingTerminalApi = {
+  getPrice: async (hours?: number) => {
+    const res = await auraCoinApi.getPrice(hours);
+    return {
+      data: {
+        currentPrice: res.data.currentPrice,
+        feePercentage: res.data.feePercentage,
+        history: res.data.history,
+        userBalance: {
+          coin: res.data.userBalance.auraCoin,
+          money: res.data.userBalance.money,
+        },
+      },
+    };
+  },
+  buy: async (moneyAmount: number) => {
+    const res = await auraCoinApi.buy(moneyAmount);
+    return {
+      data: {
+        ...res.data,
+        newBalance: {
+          money: res.data.newBalance.money,
+          coin: res.data.newBalance.auraCoin,
+        },
+      },
+    };
+  },
+  sell: async (coinAmount: number) => {
+    const res = await auraCoinApi.sell(coinAmount);
+    return {
+      data: {
+        ...res.data,
+        newBalance: {
+          money: res.data.newBalance.money,
+          coin: res.data.newBalance.auraCoin,
+        },
+      },
+    };
+  },
+  getMyTransactions: auraCoinApi.getMyTransactions,
+  getAllTransactions: auraCoinApi.getAllTransactions,
+  openPosition: auraCoinApi.openPosition,
+  closePosition: auraCoinApi.closePosition,
+  getOpenPositions: async () => {
+    const res = await auraCoinApi.getOpenPositions();
+    return {
+      data: {
+        positions: res.data.positions.map((position) => ({
+          ...position,
+          type: position.type as 'LONG' | 'SHORT',
+          isOpen: true,
+        })),
+      },
+    };
+  },
+  getClosedPositions: async (params?: { limit?: number; offset?: number }) => {
+    const res = await auraCoinApi.getClosedPositions(params);
+    return {
+      data: {
+        positions: res.data.positions.map((position) => ({
+          ...position,
+          type: position.type as 'LONG' | 'SHORT',
+          isOpen: false,
+        })),
+      },
+    };
+  },
+};
+
+export function CryptoTradingTerminal({
+  api,
+  coinLabel,
+  coinUnit,
+  socketEvent,
+  initialPrice = 100,
+}: CryptoTradingTerminalProps) {
   const { refreshUser } = useAuth();
   const { socket } = useSocketBase();
   
-  const [currentPrice, setCurrentPrice] = useState(100);
+  const [currentPrice, setCurrentPrice] = useState(initialPrice);
   const [feePercentage, setFeePercentage] = useState(0.02);
-  const [priceHistory, setPriceHistory] = useState<AuraCoinPriceHistory[]>([]);
-  const [auraCoinBalance, setAuraCoinBalance] = useState(0);
+  const [priceHistory, setPriceHistory] = useState<MarketCoinPriceHistory[]>([]);
+  const [coinBalance, setCoinBalance] = useState(0);
   const [moneyBalance, setMoneyBalance] = useState(0);
   
   const [buyAmount, setBuyAmount] = useState('');
@@ -28,8 +111,8 @@ export default function AuraCoin() {
   const [error, setError] = useState('');
   
   const [activeTab, setActiveTab] = useState<'my' | 'all'>('my');
-  const [myTransactions, setMyTransactions] = useState<AuraCoinTransaction[]>([]);
-  const [allTransactions, setAllTransactions] = useState<AuraCoinTransaction[]>([]);
+  const [myTransactions, setMyTransactions] = useState<MarketCoinTransaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<MarketCoinTransaction[]>([]);
   
   const [timePeriod, setTimePeriod] = useState<'hour' | 'day' | 'week' | 'month'>('day');
   
@@ -38,7 +121,7 @@ export default function AuraCoin() {
   const [positionType, setPositionType] = useState<'LONG' | 'SHORT'>('LONG');
   const [leverage, setLeverage] = useState(1);
   const [marginAmount, setMarginAmount] = useState('');
-  const [openPositions, setOpenPositions] = useState<AuraCoinPosition[]>([]);
+  const [openPositions, setOpenPositions] = useState<MarketCoinPosition[]>([]);
   
   const getHoursForPeriod = (period: 'hour' | 'day' | 'week' | 'month') => {
     switch (period) {
@@ -54,16 +137,16 @@ export default function AuraCoin() {
     try {
       const hours = getHoursForPeriod(timePeriod);
       const [priceRes, myTxRes, allTxRes, openPosRes] = await Promise.all([
-        auraCoinApi.getPrice(hours),
-        auraCoinApi.getMyTransactions({ limit: 50 }),
-        auraCoinApi.getAllTransactions({ limit: 50 }),
-        auraCoinApi.getOpenPositions().catch(() => ({ data: { positions: [] } })),
+        api.getPrice(hours),
+        api.getMyTransactions({ limit: 50 }),
+        api.getAllTransactions({ limit: 50 }),
+        api.getOpenPositions().catch(() => ({ data: { positions: [] } })),
       ]);
       
       setCurrentPrice(priceRes.data.currentPrice);
       setFeePercentage(priceRes.data.feePercentage);
       setPriceHistory(priceRes.data.history);
-      setAuraCoinBalance(priceRes.data.userBalance.auraCoin);
+      setCoinBalance(priceRes.data.userBalance.coin);
       setMoneyBalance(priceRes.data.userBalance.money);
       setMyTransactions(myTxRes.data.transactions);
       setAllTransactions(allTxRes.data.transactions);
@@ -71,7 +154,7 @@ export default function AuraCoin() {
     } catch (err) {
       console.error('Failed to fetch data:', err);
     }
-  }, [timePeriod]);
+  }, [api, timePeriod]);
   
   useEffect(() => {
     fetchData();
@@ -88,30 +171,30 @@ export default function AuraCoin() {
         { price: data.price, volume: 0, createdAt: data.timestamp },
       ]);
       // Refresh open positions to update P&L
-      auraCoinApi.getOpenPositions()
+      api.getOpenPositions()
         .then(res => setOpenPositions(res.data.positions as any))
         .catch(() => {});
     };
     
-    socket.on('auracoin:price-update', handlePriceUpdate);
+    socket.on(socketEvent, handlePriceUpdate);
     
     return () => {
-      socket.off('auracoin:price-update', handlePriceUpdate);
+      socket.off(socketEvent, handlePriceUpdate);
     };
-  }, [socket]);
+  }, [api, socket, socketEvent]);
   
   // Refresh positions periodically
   useEffect(() => {
     const interval = setInterval(() => {
       if (tradingMode === 'leverage') {
-        auraCoinApi.getOpenPositions()
+        api.getOpenPositions()
           .then(res => setOpenPositions(res.data.positions as any))
           .catch(() => {});
       }
     }, 5000); // Every 5 seconds
     
     return () => clearInterval(interval);
-  }, [tradingMode]);
+  }, [api, tradingMode]);
   
   const handleBuy = async () => {
     const amount = parseFloat(buyAmount);
@@ -121,8 +204,8 @@ export default function AuraCoin() {
     setError('');
     
     try {
-      const res = await auraCoinApi.buy(amount);
-      setAuraCoinBalance(res.data.newBalance.auraCoin);
+      const res = await api.buy(amount);
+      setCoinBalance(res.data.newBalance.coin);
       setMoneyBalance(res.data.newBalance.money);
       setCurrentPrice(res.data.transaction.newPrice);
       setBuyAmount('');
@@ -143,8 +226,8 @@ export default function AuraCoin() {
     setError('');
     
     try {
-      const res = await auraCoinApi.sell(amount);
-      setAuraCoinBalance(res.data.newBalance.auraCoin);
+      const res = await api.sell(amount);
+      setCoinBalance(res.data.newBalance.coin);
       setMoneyBalance(res.data.newBalance.money);
       setCurrentPrice(res.data.transaction.newPrice);
       setSellAmount('');
@@ -168,7 +251,7 @@ export default function AuraCoin() {
     setError('');
     
     try {
-      const res = await auraCoinApi.openPosition(positionType, leverage, marginAmountNum);
+      const res = await api.openPosition(positionType, leverage, marginAmountNum);
       setMoneyBalance(res.data.newBalance.money);
       setMarginAmount('');
       await refreshUser();
@@ -185,7 +268,7 @@ export default function AuraCoin() {
     setError('');
     
     try {
-      const res = await auraCoinApi.closePosition(positionId);
+      const res = await api.closePosition(positionId);
       setMoneyBalance(res.data.newBalance.money);
       await refreshUser();
       await fetchData();
@@ -279,10 +362,10 @@ export default function AuraCoin() {
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Solde AuraCoin</p>
-                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{auraCoinBalance.toFixed(4)} AuraCoin</p>
+                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Solde {coinLabel}</p>
+                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{coinBalance.toFixed(4)} {coinUnit}</p>
                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
-                  ≈ ${(auraCoinBalance * currentPrice).toFixed(2)}
+                  ≈ ${(coinBalance * currentPrice).toFixed(2)}
                 </p>
               </CardContent>
             </Card>
@@ -450,7 +533,7 @@ export default function AuraCoin() {
                         </div>
                         <div className="flex justify-between">
                           <span>Vous recevrez</span>
-                          <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} AuraCoin</span>
+                          <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} {coinUnit}</span>
                         </div>
                       </div>
                     )}
@@ -466,7 +549,7 @@ export default function AuraCoin() {
                     </div>
 
                     <div>
-                      <label className={TYPOGRAPHY.XS}>Quantité (AuraCoin)</label>
+                      <label className={TYPOGRAPHY.XS}>Quantité ({coinUnit})</label>
                       <div className="flex items-center gap-2 mt-1">
                         <Input
                           type="number"
@@ -478,8 +561,8 @@ export default function AuraCoin() {
                         />
                         <Button
                           type="button"
-                          onClick={() => setSellAmount(auraCoinBalance.toFixed(4))}
-                          disabled={loading || auraCoinBalance <= 0}
+                          onClick={() => setSellAmount(coinBalance.toFixed(4))}
+                          disabled={loading || coinBalance <= 0}
                           variant="outline"
                           size="sm"
                           className="text-[10px]   whitespace-nowrap border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
@@ -488,12 +571,12 @@ export default function AuraCoin() {
                         </Button>
                         <Button
                           onClick={handleSell}
-                          disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > auraCoinBalance}
+                          disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > coinBalance}
                           variant="outline"
                           size="sm"
                           className={cn(
                             "text-xs whitespace-nowrap",
-                            !loading && sellCoinAmount > 0 && sellCoinAmount <= auraCoinBalance
+                            !loading && sellCoinAmount > 0 && sellCoinAmount <= coinBalance
                               ? "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
                               : ""
                           )}
@@ -607,8 +690,8 @@ export default function AuraCoin() {
                             <span className="tabular-nums text-foreground">${notionalValue.toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span>Quantité (AuraCoin)</span>
-                            <span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} AuraCoin</span>
+                            <span>Quantité ({coinUnit})</span>
+                            <span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} {coinUnit}</span>
                           </div>
                           <div className="flex justify-between">
                             <span>Prix d'entrée</span>
@@ -786,7 +869,7 @@ export default function AuraCoin() {
                       </div>
                       <div className="text-right">
                         <p className={cn(TYPOGRAPHY.XS, "tabular-nums")}>
-                          {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} AuraCoin
+                          {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coinUnit}
                         </p>
                         <p className="text-[10px] text-muted-foreground tabular-nums">
                           @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
@@ -801,5 +884,17 @@ export default function AuraCoin() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AuraCoin() {
+  return (
+    <CryptoTradingTerminal
+      api={auraCoinTerminalApi}
+      coinLabel="Aura Coin"
+      coinUnit="AuraCoin"
+      socketEvent="auracoin:price-update"
+      initialPrice={100}
+    />
   );
 }

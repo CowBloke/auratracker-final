@@ -399,8 +399,8 @@ export default function Game2048() {
 
       switch (e.key) {
         case 'ArrowUp':
-        case 'w':
-        case 'W':
+        case 'z':
+        case 'Z':
           e.preventDefault();
           handleMove('up');
           break;
@@ -411,8 +411,8 @@ export default function Game2048() {
           handleMove('down');
           break;
         case 'ArrowLeft':
-        case 'a':
-        case 'A':
+        case 'q':
+        case 'Q':
           e.preventDefault();
           handleMove('left');
           break;
@@ -531,7 +531,7 @@ export default function Game2048() {
               <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowLeft className="w-3 h-3" /></kbd>
               <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowRight className="w-3 h-3" /></kbd>
             </div>
-            <p className="text-xs text-muted-foreground">ou <kbd className="px-1.5 py-0.5 border border-border/50 rounded">wasd</kbd></p>
+            <p className="text-xs text-muted-foreground">ou <kbd className="px-1.5 py-0.5 border border-border/50 rounded">zqsd</kbd></p>
             <p className="text-xs text-muted-foreground">ou glisser sur mobile</p>
             <p className="text-xs text-muted-foreground pt-1"><kbd className="px-1.5 py-0.5 border border-border/50 rounded">R</kbd> pour rejouer</p>
           </CardContent>

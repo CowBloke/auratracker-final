@@ -57,7 +57,7 @@ export default function You() {
         ))}
       </div> : null}
       {currentTab === 'overview' ? <OverviewTab data={data} userId={user.id} onReload={loadState} /> : null}
-      {currentTab === 'travail' ? <TravailTab data={data} players={data.players} onReload={loadState} /> : null}
+      {currentTab === 'travail' ? <TravailTab data={data} players={data.players} currentUserId={user.id} onReload={loadState} /> : null}
       {currentTab === 'social' ? <SocialTab data={data} onReload={() => loadState()} /> : null}
       {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
     </div>

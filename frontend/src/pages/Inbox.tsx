@@ -59,6 +59,7 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   PARTY_INVITE: ({ className }) => <Sword className={className} />,
   SOCIAL_FOLLOW: ({ className }) => <UserRoundPlus className={className} />,
   SOCIAL_CONNECTION: ({ className }) => <Users className={className} />,
+  DIRECT_MESSAGE: ({ className }) => <MessageSquare className={className} />,
   ADMIN: ({ className }) => <Megaphone className={className} />,
   SYSTEM: ({ className }) => <Info className={className} />,
 };
@@ -112,7 +113,7 @@ const CATEGORIES = [
   { id: 'unread', label: 'Non lus', Icon: Eye, types: null },
   { id: 'aura', label: 'Aura', Icon: Star, types: ['AURA_RECEIVED'] },
   { id: 'clans', label: 'Clans', Icon: Users, types: CLAN_TYPES },
-  { id: 'social', label: 'Social', Icon: MessageSquare, types: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION'] },
+  { id: 'social', label: 'Social', Icon: MessageSquare, types: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION', 'DIRECT_MESSAGE'] },
   { id: 'quetes', label: 'Quetes', Icon: Zap, types: ['QUEST_COMPLETED'] },
   { id: 'polymarket', label: 'Polymarket', Icon: TrendingUp, types: POLY_TYPES },
   { id: 'systeme', label: 'Systeme', Icon: Info, types: SYS_TYPES },

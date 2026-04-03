@@ -37,6 +37,11 @@ type Game = {
   hasRewards: boolean;
 };
 
+type RewardTierLine = {
+  label: string;
+  reward: string;
+};
+
 const games: Game[] = [
   {
     id: 'russian-roulette',
@@ -261,12 +266,12 @@ const games: Game[] = [
     hasRewards: true,
   },
   {
-    id: 'aura-coin',
-    pageKey: 'game-aura-coin',
-    name: 'Aura Coin',
-    description: 'Trade la cryptomonnaie virtuelle. Achete bas, vends haut.',
+    id: 'market-room',
+    pageKey: 'game-market-room',
+    name: 'Salle de marché',
+    description: 'Hub crypto SaaS avec Aura Coin, un stable coin et un coin tres instable.',
     type: 'Trading',
-    image: getGameImage('aura-coin'),
+    image: getGameImage('market-room'),
     statsKeys: [],
     releaseRank: 7,
     hasRewards: false,
@@ -475,6 +480,191 @@ const tabConfig: Array<{ id: GamesTab; label: string }> = [
   },
 ];
 
+const gameRewardTiers: Partial<Record<Game['id'], RewardTierLine[]>> = {
+  'russian-roulette': [
+    { label: 'Partie terminée', reward: 'Pas de gain fixe actuellement' },
+  ],
+  'bomb-party': [
+    { label: 'Vainqueur', reward: '50 aura + 10$ par mot x multiplicateurs' },
+    { label: 'Autres joueurs', reward: '5$ par mot x multiplicateurs' },
+    { label: 'Multiplicateurs', reward: 'Selon nombre de vies et de joueurs' },
+  ],
+  poker: [
+    { label: 'Partie terminée', reward: 'Pas de gain fixe actuellement' },
+  ],
+  'petit-bac': [
+    { label: 'Partie terminée', reward: 'Pas de gain fixe actuellement' },
+  ],
+  uno: [
+    { label: 'Victoire', reward: '60$ + 40 aura' },
+    { label: 'Défaite', reward: '20$' },
+  ],
+  'bataille-navale': [
+    { label: 'Victoire', reward: '50$ + 30 aura' },
+    { label: 'Défaite', reward: '20$' },
+  ],
+  'doodle-jump': [
+    { label: '100+', reward: '0.05 x score' },
+    { label: '500+', reward: '0.08 x score + 5 aura' },
+    { label: '1 000+', reward: '0.12 x score + 10 aura' },
+    { label: '2 000+', reward: '0.18 x score + 20 aura' },
+    { label: '4 000+', reward: '0.25 x score + 35 aura' },
+    { label: '8 000+', reward: '0.35 x score + 50 aura' },
+  ],
+  blockblast: [
+    { label: '50+', reward: '16$ + 1 aura' },
+    { label: '120+', reward: '38$ + 4 aura' },
+    { label: '220+', reward: '72$ + 8 aura' },
+    { label: '360+', reward: '120$ + 12 aura' },
+    { label: '550+', reward: '185$ + 18 aura' },
+    { label: '800+', reward: '280$ + 26 aura' },
+  ],
+  'logic-lab': [
+    { label: '200+', reward: '20$ + 1 aura' },
+    { label: '350+', reward: '45$ + 4 aura' },
+    { label: '550+', reward: '80$ + 8 aura' },
+    { label: '750+', reward: '140$ + 14 aura' },
+    { label: '900+', reward: '220$ + 22 aura' },
+  ],
+  minesweeper: [
+    { label: '700+', reward: '22$ + 2 aura' },
+    { label: '1 000+', reward: '50$ + 5 aura' },
+    { label: '1 300+', reward: '90$ + 9 aura' },
+    { label: '1 650+', reward: '150$ + 15 aura' },
+    { label: '2 100+', reward: '230$ + 22 aura' },
+  ],
+  'game-2048': [
+    { label: '16 384+', reward: '0.0003 x score + 50 aura si 2048 atteint' },
+    { label: 'Bonus record', reward: 'Aura supplementaire si record personnel battu' },
+  ],
+  'flappy-bird': [
+    { label: '10+', reward: '0.15 x score + 2 aura' },
+    { label: '25+', reward: '0.20 x score + 5 aura' },
+    { label: '50+', reward: '0.25 x score + 10 aura' },
+    { label: '100+', reward: '0.30 x score + 20 aura' },
+    { label: '200+', reward: '0.40 x score + 35 aura' },
+    { label: '500+', reward: '0.50 x score + 50 aura' },
+  ],
+  'chrome-dino': [
+    { label: '100+', reward: '18$ + 1 aura' },
+    { label: '220+', reward: '38$ + 3 aura' },
+    { label: '380+', reward: '68$ + 6 aura' },
+    { label: '580+', reward: '115$ + 10 aura' },
+    { label: '850+', reward: '185$ + 17 aura' },
+    { label: '1 200+', reward: '285$ + 26 aura' },
+    { label: '1 700+', reward: '410$ + 36 aura' },
+  ],
+  snake: [
+    { label: '40+', reward: '12$ + 1 aura' },
+    { label: '80+', reward: '28$ + 3 aura' },
+    { label: '140+', reward: '52$ + 6 aura' },
+    { label: '220+', reward: '90$ + 10 aura' },
+    { label: '320+', reward: '145$ + 16 aura' },
+    { label: '460+', reward: '230$ + 24 aura' },
+  ],
+  'stack-tower': [
+    { label: '10+', reward: '12$ + 1 aura' },
+    { label: '20+', reward: '26$ + 3 aura' },
+    { label: '35+', reward: '50$ + 6 aura' },
+    { label: '55+', reward: '85$ + 10 aura' },
+    { label: '80+', reward: '130$ + 15 aura' },
+    { label: '120+', reward: '190$ + 22 aura' },
+  ],
+  'fruit-ninja': [
+    { label: '50+', reward: '12$ + 1 aura' },
+    { label: '120+', reward: '28$ + 3 aura' },
+    { label: '220+', reward: '55$ + 6 aura' },
+    { label: '350+', reward: '95$ + 10 aura' },
+    { label: '500+', reward: '160$ + 16 aura' },
+    { label: '700+', reward: '250$ + 24 aura' },
+  ],
+  'qs-watermelon': [
+    { label: '80+', reward: '12$ + 1 aura' },
+    { label: '200+', reward: '30$ + 3 aura' },
+    { label: '420+', reward: '62$ + 6 aura' },
+    { label: '800+', reward: '120$ + 10 aura' },
+    { label: '1 400+', reward: '210$ + 16 aura' },
+    { label: '2 200+', reward: '330$ + 24 aura' },
+  ],
+  'geometry-dash': [
+    { label: '100+', reward: '12$ + 1 aura' },
+    { label: '250+', reward: '28$ + 3 aura' },
+    { label: '500+', reward: '60$ + 6 aura' },
+    { label: '900+', reward: '110$ + 10 aura' },
+    { label: '1 400+', reward: '180$ + 16 aura' },
+    { label: '2 200+', reward: '280$ + 24 aura' },
+  ],
+  casino: [
+    { label: 'Gros gain', reward: '10 aura si gain >= 10x la mise' },
+    { label: 'Tres gros gain', reward: '50 aura si gain >= 50x la mise' },
+  ],
+  solitaire: [
+    { label: 'Victoire', reward: '50$ + 5 aura minimum' },
+    { label: '5 000+', reward: '100$ + 10 aura' },
+    { label: '7 000+', reward: '150$ + 15 aura' },
+    { label: '8 000+', reward: '200$ + 25 aura' },
+    { label: '9 000+', reward: '300$ + 40 aura' },
+    { label: '9 500+', reward: '500$ + 60 aura' },
+  ],
+  racer: [
+    { label: '< 45s', reward: '500$ + 50 aura' },
+    { label: '< 60s', reward: '200$ + 25 aura' },
+    { label: '< 90s', reward: '100$ + 10 aura' },
+    { label: '< 120s', reward: '50$ + 5 aura' },
+    { label: '< 180s', reward: '20$ + 2 aura' },
+    { label: 'Finir le tour', reward: '8$ + 1 aura minimum' },
+  ],
+  tetris: [
+    { label: '1 000+', reward: '0.0004 x score + 1 aura' },
+    { label: '100 000+', reward: '0.0007 x score + 4 aura' },
+    { label: '200 000+', reward: '0.0010 x score + 8 aura' },
+    { label: '300 000+', reward: '0.0013 x score + 12 aura' },
+    { label: '500 000+', reward: '0.0016 x score + 15 aura' },
+    { label: '800 000+', reward: '0.0020 x score + 20 aura' },
+  ],
+  'knife-hit': [
+    { label: '35+', reward: '90$ + 8 aura' },
+    { label: '50+', reward: '170$ + 14 aura' },
+    { label: '80+', reward: '320$ + 24 aura' },
+  ],
+  'goyave-empire': [
+    { label: '100+', reward: '10$ + 1 aura' },
+    { label: '1 000+', reward: '25$ + 3 aura' },
+    { label: '10 000+', reward: '60$ + 8 aura' },
+    { label: '100 000+', reward: '150$ + 20 aura' },
+    { label: '1 000 000+', reward: '400$ + 50 aura' },
+    { label: '10 000 000+', reward: '1 000$ + 100 aura' },
+  ],
+  'puissance-quatre': [
+    { label: 'Victoire', reward: '50$ + 30 aura' },
+    { label: 'Match nul', reward: '25$ + 5 aura' },
+    { label: 'Défaite', reward: '20$' },
+  ],
+  echecs: [
+    { label: 'Victoire', reward: '50$ + 30 aura' },
+    { label: 'Match nul', reward: '25$ + 5 aura' },
+    { label: 'Défaite', reward: '20$' },
+  ],
+  'ball-arena': [
+    { label: 'Victoire', reward: '50$ + 30 aura' },
+    { label: 'Match nul', reward: '25$ + 5 aura' },
+    { label: 'Défaite', reward: '20$' },
+  ],
+  morpion: [
+    { label: 'Victoire', reward: '40$ + 18 aura' },
+    { label: 'Match nul', reward: '24$ + 5 aura' },
+    { label: 'Défaite', reward: '20$' },
+  ],
+  hexgl: [
+    { label: '< 75s', reward: '500$ + 50 aura' },
+    { label: '< 95s', reward: '220$ + 25 aura' },
+    { label: '< 120s', reward: '120$ + 12 aura' },
+    { label: '< 150s', reward: '70$ + 6 aura' },
+    { label: '< 210s', reward: '30$ + 3 aura' },
+    { label: 'Finir la course', reward: '10$ + 1 aura minimum' },
+  ],
+};
+
 export default function Games() {
   const [activeTab, setActiveTab] = useState<GamesTab>('all');
   const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
@@ -632,6 +822,9 @@ export default function Games() {
     if (gameId === 'eaglercraft') {
       return '/games/eaglercraft';
     }
+    if (gameId === 'market-room') {
+      return '/games/salle-de-marche';
+    }
     return `/games/${gameId}`;
   };
 
@@ -757,7 +950,7 @@ export default function Games() {
       key={game.id}
       className="group block"
     >
-      <Card className="relative isolate aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
+      <Card className="relative isolate min-h-[430px] overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
         <Link to={getGameLink(game.id)} className="absolute inset-0 z-10" aria-label={`Ouvrir ${game.name}`} />
         {renderAdminControls(game)}
         {game.emoji && (
@@ -782,6 +975,21 @@ export default function Games() {
           <p className="mt-3 text-[11px] font-medium text-white/70">
             {game.hasRewards ? 'Avec récompenses' : 'Sans récompenses'}
           </p>
+          {gameRewardTiers[game.id]?.length ? (
+            <div className="mt-3 rounded-xl border border-white/15 bg-black/30 p-3 backdrop-blur-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                Paliers de gains
+              </p>
+              <div className="mt-2 space-y-1.5">
+                {gameRewardTiers[game.id]?.map((tier) => (
+                  <div key={`${game.id}-${tier.label}`} className="flex items-start justify-between gap-3 text-[11px] leading-4">
+                    <span className="font-medium text-white/75">{tier.label}</span>
+                    <span className="text-right text-white/95">{tier.reward}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

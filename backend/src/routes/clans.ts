@@ -393,6 +393,9 @@ const isAttackType = (value: string): value is AttackType => getAttackTypes().in
 const getClanTotalAura = (clan: ClanWithMembers | ClanDetailPayload) =>
   clan.members.reduce((sum, member) => sum + member.user.aura, BigInt(0));
 
+const hasClanSlotUpgrade = (clan: { maxMembers: number; slotUpgraded?: boolean | null }) =>
+  (clan.slotUpgraded ?? false) || clan.maxMembers > CLAN_MAX_MEMBERS;
+
 const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   id: clan.id,
   name: clan.name,
@@ -408,7 +411,7 @@ const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   tagUnlocked: clan.tagUnlocked,
   tagText: clan.tagText ?? null,
   tagStyle: clan.tagStyle ?? null,
-  slotUpgraded: clan.slotUpgraded,
+  slotUpgraded: hasClanSlotUpgrade(clan),
   warTrophies: clan.warTrophies,
   warWins: clan.warWins,
   warLosses: clan.warLosses,
@@ -1101,25 +1104,26 @@ const getClanMembership = (clanId: string, userId: string) =>
 router.get('/me/status', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, clanBankMoney: 0, level: 1 });
+    if (!userId) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, maxMembers: 0, clanBankMoney: 0, level: 1 });
 
     const membership = await prisma.clanMember.findUnique({
       where: { userId },
       select: { clanId: true, isLeader: true },
     });
 
-    if (!membership) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, clanBankMoney: 0, level: 1 });
+    if (!membership) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, maxMembers: 0, clanBankMoney: 0, level: 1 });
 
     const clan = await prisma.clan.findUnique({
       where: { id: membership.clanId },
-      select: { tagUnlocked: true, slotUpgraded: true, clanBankMoney: true, level: true },
+      select: { tagUnlocked: true, slotUpgraded: true, maxMembers: true, clanBankMoney: true, level: true },
     });
 
     res.json({
       inClan: true,
       isLeader: membership.isLeader,
       tagUnlocked: clan?.tagUnlocked ?? false,
-      slotUpgraded: clan?.slotUpgraded ?? false,
+      slotUpgraded: clan ? hasClanSlotUpgrade(clan) : false,
+      maxMembers: clan?.maxMembers ?? 0,
       clanBankMoney: clan?.clanBankMoney ?? 0,
       level: clan?.level ?? 1,
     });

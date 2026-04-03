@@ -22,6 +22,7 @@ const DEFAULT_SHOP_CATEGORIES = [
 ];
 
 const CLAN_BASE_MAX_MEMBERS = 5;
+const CLAN_SLOT_UPGRADE_MAX_MEMBERS = CLAN_BASE_MAX_MEMBERS + 2;
 
 const parseItemEffect = parseClanEffectPayload;
 
@@ -221,8 +222,8 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
         return res.status(400).json({ error: 'Le tag est déjà débloqué pour ce clan.' });
       }
 
-      if (isClanSlotUpgrade && typeof clan?.maxMembers === 'number' && clan.maxMembers > CLAN_BASE_MAX_MEMBERS) {
-        return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
+      if (isClanSlotUpgrade && typeof clan?.maxMembers === 'number' && clan.maxMembers >= CLAN_SLOT_UPGRADE_MAX_MEMBERS) {
+        return res.status(400).json({ error: 'La taille maximale du clan est déjà atteinte.' });
       }
 
       if (isClanGameMoneyBoost && clan?.activeEffects && clan.activeEffects.length > 0) {
@@ -279,7 +280,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
           throw new Error('CLAN_TAG_ALREADY_UNLOCKED');
         }
 
-        if (isClanSlotUpgrade && clan.maxMembers > CLAN_BASE_MAX_MEMBERS) {
+        if (isClanSlotUpgrade && clan.maxMembers >= CLAN_SLOT_UPGRADE_MAX_MEMBERS) {
           throw new Error('CLAN_SLOT_ALREADY_UPGRADED');
         }
 
@@ -694,8 +695,8 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       if (effect.type === 'CLAN_TAG_UNLOCK' && clan?.tagUnlocked) {
         return res.status(400).json({ error: 'Le tag est déjà débloqué pour ce clan.' });
       }
-      if (effect.type === 'CLAN_SLOT_UPGRADE' && typeof clan?.maxMembers === 'number' && clan.maxMembers > CLAN_BASE_MAX_MEMBERS) {
-        return res.status(400).json({ error: 'Le slot supplémentaire est déjà débloqué pour ce clan.' });
+      if (effect.type === 'CLAN_SLOT_UPGRADE' && typeof clan?.maxMembers === 'number' && clan.maxMembers >= CLAN_SLOT_UPGRADE_MAX_MEMBERS) {
+        return res.status(400).json({ error: 'La taille maximale du clan est déjà atteinte.' });
       }
 
       await prisma.$transaction(async (tx) => {

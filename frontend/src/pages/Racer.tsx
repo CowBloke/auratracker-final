@@ -35,10 +35,10 @@ const KEY = {
   UP: 38,
   RIGHT: 39,
   DOWN: 40,
-  A: 65,
   D: 68,
+  Q: 81,
   S: 83,
-  W: 87,
+  Z: 90,
 };
 
 const COLORS = {
@@ -1276,7 +1276,7 @@ export default function Racer() {
       if (!started || gameOver) return;
 
       const keyCode = e.keyCode || e.which;
-      if (keyCode === KEY.LEFT || keyCode === KEY.A) {
+      if (keyCode === KEY.LEFT || keyCode === KEY.Q) {
         keyLeftRef.current = true;
         e.preventDefault();
       }
@@ -1284,7 +1284,7 @@ export default function Racer() {
         keyRightRef.current = true;
         e.preventDefault();
       }
-      if (keyCode === KEY.UP || keyCode === KEY.W) {
+      if (keyCode === KEY.UP || keyCode === KEY.Z) {
         keyFasterRef.current = true;
         e.preventDefault();
       }
@@ -1296,13 +1296,13 @@ export default function Racer() {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const keyCode = e.keyCode || e.which;
-      if (keyCode === KEY.LEFT || keyCode === KEY.A) {
+      if (keyCode === KEY.LEFT || keyCode === KEY.Q) {
         keyLeftRef.current = false;
       }
       if (keyCode === KEY.RIGHT || keyCode === KEY.D) {
         keyRightRef.current = false;
       }
-      if (keyCode === KEY.UP || keyCode === KEY.W) {
+      if (keyCode === KEY.UP || keyCode === KEY.Z) {
         keyFasterRef.current = false;
       }
       if (keyCode === KEY.DOWN || keyCode === KEY.S) {
@@ -1506,7 +1506,7 @@ export default function Racer() {
         </div>
         <div className="flex items-center gap-2">
           <span>ou</span>
-          <kbd className="px-2 py-1 border border-border/50 rounded">wasd</kbd>
+          <kbd className="px-2 py-1 border border-border/50 rounded">zqsd</kbd>
         </div>
       </div>
     </div>

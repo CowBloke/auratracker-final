@@ -38,6 +38,7 @@ import {
   updateBusinessProfile,
   listFormationProducts,
   addFormationProduct,
+  applyToBusiness,
   updateFormationProduct,
   deleteFormationProduct,
   buyFormationProduct,
@@ -72,6 +73,9 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_LOAN_SELF_FORBIDDEN: 400,
   INVALID_LOAN_AMOUNT: 400,
   INVALID_LOAN_DURATION: 400,
+  INVALID_LOAN_COLLATERAL: 400,
+  LOAN_MOTIVATION_TOO_LONG: 400,
+  LOAN_COLLATERAL_AURA_TOO_LOW: 400,
   BUSINESS_DEPOSIT_FORBIDDEN: 403,
   INVALID_DEPOSIT_AMOUNT: 400,
   BUSINESS_WITHDRAW_FORBIDDEN: 403,
@@ -155,6 +159,7 @@ const ERROR_STATUS: Record<string, number> = {
   LOAN_NOT_ACTIVE: 400,
   LOAN_ALREADY_REPAID: 400,
   BORROWER_INSUFFICIENT_MONEY: 400,
+  LOAN_COLLATERAL_NOT_CLAIMABLE_YET: 400,
   SHARE_SELF_FORBIDDEN: 400,
   INVALID_SHARE_PERCENT: 400,
   INVALID_SHARE_AMOUNT: 400,
@@ -184,6 +189,9 @@ const ERROR_MESSAGE: Record<string, string> = {
   BUSINESS_LOAN_SELF_FORBIDDEN: 'Tu ne peux pas emprunter a ton propre business.',
   INVALID_LOAN_AMOUNT: 'Montant d emprunt invalide.',
   INVALID_LOAN_DURATION: 'Duree d emprunt invalide.',
+  INVALID_LOAN_COLLATERAL: 'Le montant d hypothèque en aura est invalide.',
+  LOAN_MOTIVATION_TOO_LONG: 'La lettre de motivation est trop longue.',
+  LOAN_COLLATERAL_AURA_TOO_LOW: 'Le joueur n a pas assez d aura pour bloquer cette hypothèque.',
   BUSINESS_DEPOSIT_FORBIDDEN: 'Seul le proprietaire peut deposer du money dans ce business.',
   INVALID_DEPOSIT_AMOUNT: 'Montant de depot invalide.',
   BUSINESS_WITHDRAW_FORBIDDEN: 'Seul le proprietaire peut retirer du money de ce business.',
@@ -251,6 +259,7 @@ const ERROR_MESSAGE: Record<string, string> = {
   LOAN_NOT_ACTIVE: 'Ce pret n est pas actif.',
   LOAN_ALREADY_REPAID: 'Ce pret a deja ete rembourse.',
   BORROWER_INSUFFICIENT_MONEY: 'L emprunteur n a pas assez de money pour rembourser.',
+  LOAN_COLLATERAL_NOT_CLAIMABLE_YET: 'L emprunteur n a pas assez de money pour rembourser et l echeance n est pas encore depassee.',
   SHARE_SELF_FORBIDDEN: 'Tu ne peux pas proposer de devenir actionnaire de ton propre business.',
   INVALID_SHARE_PERCENT: 'La part proposee doit etre comprise entre 0 et 100.',
   INVALID_SHARE_AMOUNT: 'La somme proposee est invalide.',
@@ -355,6 +364,19 @@ router.post('/businesses/:businessId/actions/:actionKey', authMiddleware, requir
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Run business action error');
+  }
+});
+
+router.post('/businesses/:businessId/apply', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await applyToBusiness(req.user!.id, req.params.businessId, {
+      role: typeof req.body?.role === 'string' ? req.body.role : undefined,
+      salary: Number(req.body?.salary ?? 0),
+      message: typeof req.body?.message === 'string' ? req.body.message : undefined,
+    });
+    res.status(201).json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Apply to business error');
   }
 });
 
@@ -744,7 +766,8 @@ router.post('/loans/:loanId/repay', authMiddleware, requireYouAccess, async (req
 router.post('/businesses/:businessId/rate', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const rating = Number(req.body?.rating);
-    await rateBusiness(req.user!.id, req.params.businessId, rating);
+    const comment = typeof req.body?.comment === 'string' ? req.body.comment : null;
+    await rateBusiness(req.user!.id, req.params.businessId, rating, comment);
     res.json({ ok: true });
   } catch (error) {
     handleRouteError(error, res, 'Rate business error');

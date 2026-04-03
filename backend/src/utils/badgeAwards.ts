@@ -23,8 +23,23 @@ export type AutoConditionKey =
   | 'GAME_2048_TILE_4096'     // made the 4096 tile (tracked via game_2048_tile gameType)
   | 'SUDOKU_COMPLETED'        // completed at least one sudoku
   | 'TOP_CASINO_LOSSES'       // user with the most casino losses
+  | 'TOP_CASINO_WINS'         // user with the most casino wins
   | 'TOP_BADGES_COUNT'        // user(s) with the most earned badges (excluding this badge)
+  | 'CASINO_FIRST_PLAY'       // played at least 1 casino game
+  | 'CASINO_REGULAR_10'       // played 10+ casino games
   | 'CASINO_VETERAN'          // played 25+ casino games
+  | 'CASINO_REGULAR_50'       // played 50+ casino games
+  | 'CASINO_REGULAR_100'      // played 100+ casino games
+  | 'CASINO_WIN_1'            // won at least 1 casino game
+  | 'CASINO_WIN_10'           // won 10+ casino games
+  | 'CASINO_WIN_25'           // won 25+ casino games
+  | 'CASINO_WIN_50'           // won 50+ casino games
+  | 'CASINO_LOSS_1'           // lost at least 1 casino game
+  | 'CASINO_LOSS_10'          // lost 10+ casino games
+  | 'CASINO_LOSS_25'          // lost 25+ casino games
+  | 'CASINO_LOSS_50'          // lost 50+ casino games
+  | 'CASINO_JACKPOT_50000'    // won 50,000+ in a single casino game
+  | 'CASINO_JACKPOT_100000'   // won 100,000+ in a single casino game
   | 'FLAPPY_BIRD_50'          // flappy bird score >= 50
   | 'MINESWEEPER_WIN'         // won at least one minesweeper game
   // Direct-award achievement badges (awarded at event time, never auto-revoked)
@@ -368,6 +383,16 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
     return stat ? new Set([stat.userId]) : new Set();
   }
 
+  // TOP_CASINO_WINS – user with the most casino wins
+  if (key === 'TOP_CASINO_WINS') {
+    const stat = await prisma.gameStats.findFirst({
+      where: { gameType: 'casino', wins: { gt: 0 } },
+      select: { userId: true },
+      orderBy: { wins: 'desc' },
+    });
+    return stat ? new Set([stat.userId]) : new Set();
+  }
+
   // TOP_BADGES_COUNT – user(s) with the most earned badges (excluding this badge)
   if (key === 'TOP_BADGES_COUNT') {
     const topBadgeIds = await prisma.badge.findMany({
@@ -404,10 +429,122 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
     );
   }
 
+  if (key === 'CASINO_FIRST_PLAY') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', totalPlayed: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_REGULAR_10') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', totalPlayed: { gte: 10 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
   // CASINO_VETERAN – played 25+ casino games
   if (key === 'CASINO_VETERAN') {
     const stats = await prisma.gameStats.findMany({
       where: { gameType: 'casino', totalPlayed: { gte: 25 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_REGULAR_50') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', totalPlayed: { gte: 50 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_REGULAR_100') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', totalPlayed: { gte: 100 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_WIN_1') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', wins: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_WIN_10') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', wins: { gte: 10 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_WIN_25') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', wins: { gte: 25 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_WIN_50') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', wins: { gte: 50 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_LOSS_1') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', losses: { gte: 1 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_LOSS_10') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', losses: { gte: 10 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_LOSS_25') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', losses: { gte: 25 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_LOSS_50') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', losses: { gte: 50 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_JACKPOT_50000') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', highScore: { gte: 50000 } },
+      select: { userId: true },
+    });
+    return new Set(stats.map((s) => s.userId));
+  }
+
+  if (key === 'CASINO_JACKPOT_100000') {
+    const stats = await prisma.gameStats.findMany({
+      where: { gameType: 'casino', highScore: { gte: 100000 } },
       select: { userId: true },
     });
     return new Set(stats.map((s) => s.userId));

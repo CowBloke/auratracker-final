@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeftRight,
   Building2,
@@ -22,6 +22,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { type YouBusiness, type YouPlayer, type YouState, youApi } from '@/services/api';
 import {
@@ -185,13 +186,19 @@ function BusinessInteractionModal({
   userId: string;
   isAdmin: boolean;
   onClose: () => void;
-  onAction: (action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase') => void;
+  onAction: (action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase' | 'apply') => void;
   onAdminDelete: () => Promise<void>;
 }) {
   if (!business) return null;
 
   const isOwned = business.ownerId === userId;
+  const isEmployee = business.members.some((member) => member.user.id === userId);
+  const hasPendingApplication = business.pendingInvitations.some((invitation) => invitation.employee.id === userId);
+  const canApply = !isOwned && !isEmployee && !hasPendingApplication && business.hiring;
   const profit = business.monthlyRevenue - business.monthlyExpenses;
+  const formationComments = business.typeKey === 'formation'
+    ? business.ratings.filter((entry) => entry.comment && entry.comment.trim().length > 0)
+    : [];
 
   const stats = (() => {
     if (business.typeKey === 'bank') return [
@@ -338,6 +345,65 @@ function BusinessInteractionModal({
               <div className="grid grid-cols-2 gap-2">
                 {stats.map((s) => <StatTile key={s.label} label={s.label} value={s.value} color={s.color} />)}
               </div>
+
+              {canApply ? (
+                <ActionButton
+                  icon={HandCoins}
+                  label="Postuler"
+                  sub="Envoyer une proposition de role et de salaire au proprietaire."
+                  tone="bg-violet-400/15 text-violet-300"
+                  onClick={() => onAction('apply')}
+                />
+              ) : hasPendingApplication ? (
+                <div className="rounded-xl border border-violet-400/20 bg-violet-400/5 px-4 py-3 text-xs text-muted-foreground">
+                  Une candidature ou proposition de contrat est deja en attente pour toi.
+                </div>
+              ) : null}
+
+              {business.typeKey === 'formation' ? (
+                <div className="space-y-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Avis clients</p>
+                      <p className="text-xs text-muted-foreground">
+                        {business.avgRating !== null
+                          ? `${business.avgRating.toFixed(1)}/5 · ${business.ratingCount} avis`
+                          : 'Aucun avis pour le moment'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-400">
+                      <Star className="h-4 w-4 fill-amber-400" />
+                      <span className="text-sm font-semibold">{business.avgRating?.toFixed(1) ?? '--'}</span>
+                    </div>
+                  </div>
+
+                  {formationComments.length > 0 ? (
+                    <div className="space-y-2">
+                      {formationComments.slice(0, 5).map((entry) => (
+                        <div key={entry.id} className="rounded-xl border border-border/40 bg-background/60 px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-medium">{entry.user.username}</p>
+                            <span className="flex items-center gap-1 text-xs font-semibold text-amber-400">
+                              <Star className="h-3.5 w-3.5 fill-amber-400" />
+                              {entry.rating}/5
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {new Date(entry.updatedAt).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </p>
+                          <p className="mt-2 text-sm text-foreground/90">{entry.comment}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Pas encore de commentaire visible pour cette formation.</p>
+                  )}
+                </div>
+              ) : null}
 
               {business.isShared ? (
                 <div className="rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-3">
@@ -490,8 +556,16 @@ function RatingModal({
   onSubmitted: () => void;
 }) {
   const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const business = businessId ? businesses.find((b) => b.id === businessId) ?? null : null;
+
+  useEffect(() => {
+    if (!open) {
+      setRating(0);
+      setComment('');
+    }
+  }, [open]);
 
   const LABELS: Record<number, string> = {
     1: 'Tres mauvais',
@@ -505,7 +579,7 @@ function RatingModal({
     if (!businessId || rating === 0) return;
     setSubmitting(true);
     try {
-      await youApi.rateBusiness(businessId, rating);
+      await youApi.rateBusiness(businessId, rating, comment.trim());
       toast.success('Note enregistree, merci !');
       onSubmitted();
       onClose();
@@ -514,6 +588,7 @@ function RatingModal({
     } finally {
       setSubmitting(false);
       setRating(0);
+      setComment('');
     }
   };
 
@@ -530,6 +605,14 @@ function RatingModal({
           ) : (
             <p className="text-xs text-muted-foreground/60">Clique sur une etoile</p>
           )}
+          <textarea
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            maxLength={500}
+            placeholder="Ajoute un commentaire..."
+            className="min-h-24 w-full rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-amber-400/40"
+          />
+          <p className="text-[11px] text-muted-foreground/60">{comment.trim().length}/500</p>
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
               Passer
@@ -576,6 +659,7 @@ export function ExploreTab({
   const [transferBusinessId, setTransferBusinessId] = useState<string | null>(null);
   const [formationBusinessId, setFormationBusinessId] = useState<string | null>(null);
   const [purchaseBusinessId, setPurchaseBusinessId] = useState<string | null>(null);
+  const [applyBusinessId, setApplyBusinessId] = useState<string | null>(null);
   const [ratingBusinessId, setRatingBusinessId] = useState<string | null>(null);
 
   const handleServiceSuccess = (businessId: string) => async () => {
@@ -635,9 +719,10 @@ export function ExploreTab({
   const transferBusiness = transferBusinessId ? allBusinesses.find((b) => b.id === transferBusinessId) ?? null : null;
   const formationBusiness = formationBusinessId ? allBusinesses.find((b) => b.id === formationBusinessId) ?? null : null;
   const purchaseBusiness = purchaseBusinessId ? allBusinesses.find((b) => b.id === purchaseBusinessId) ?? null : null;
+  const applyBusiness = applyBusinessId ? allBusinesses.find((b) => b.id === applyBusinessId) ?? null : null;
 
   // Open an action modal after closing the detail modal
-  const openAction = (businessId: string, action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase') => {
+  const openAction = (businessId: string, action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase' | 'apply') => {
     setDetailBusinessId(null);
     setTimeout(() => {
       if (action === 'bank') setBankBusinessId(businessId);
@@ -648,6 +733,7 @@ export function ExploreTab({
       else if (action === 'transfer') setTransferBusinessId(businessId);
       else if (action === 'formation') setFormationBusinessId(businessId);
       else if (action === 'purchase') setPurchaseBusinessId(businessId);
+      else if (action === 'apply') setApplyBusinessId(businessId);
     }, 150);
   };
 
@@ -867,10 +953,60 @@ export function ExploreTab({
       <InvestModal open={Boolean(investBusiness)} onClose={() => setInvestBusinessId(null)} business={investBusiness} onSubmitted={investBusiness ? handleServiceSuccess(investBusiness.id) : () => onReload(true)} />
       <ShareholderProposalModal open={Boolean(shareholderBusiness)} onClose={() => setShareholderBusinessId(null)} business={shareholderBusiness} onSubmitted={() => onReload(true)} />
       <BuyoutOfferModal open={Boolean(buyoutBusiness)} onClose={() => setBuyoutBusinessId(null)} business={buyoutBusiness} onSubmitted={() => onReload(true)} />
-      <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} onSubmitted={transferBusiness ? handleServiceSuccess(transferBusiness.id) : () => onReload(true)} />
+      <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} currentUserId={userId} onSubmitted={transferBusiness ? handleServiceSuccess(transferBusiness.id) : () => onReload(true)} />
       <FormationCatalogModal open={Boolean(formationBusiness)} onClose={() => setFormationBusinessId(null)} business={formationBusiness} onSubmitted={formationBusiness ? handleServiceSuccess(formationBusiness.id) : () => onReload(true)} />
       <PurchaseItemModal open={Boolean(purchaseBusiness)} onClose={() => setPurchaseBusinessId(null)} business={purchaseBusiness} onSubmitted={purchaseBusiness ? () => { void handleServiceSuccess(purchaseBusiness.id)(); } : () => onReload(true)} />
+      <ApplyBusinessModal open={Boolean(applyBusiness)} onClose={() => setApplyBusinessId(null)} business={applyBusiness} onSubmitted={applyBusiness ? handleServiceSuccess(applyBusiness.id) : () => onReload(true)} />
       <RatingModal open={Boolean(ratingBusinessId)} onClose={() => setRatingBusinessId(null)} businessId={ratingBusinessId} businesses={allBusinesses} onSubmitted={() => onReload()} />
     </>
+  );
+}
+
+function ApplyBusinessModal({ open, onClose, business, onSubmitted }: { open: boolean; onClose: () => void; business: YouBusiness | null; onSubmitted: () => Promise<void> }) {
+  const [role, setRole] = useState('employee');
+  const [salary, setSalary] = useState('0');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setRole('employee');
+      setSalary('0');
+      setMessage('');
+    }
+  }, [open]);
+
+  const submit = async () => {
+    if (!business) return;
+    setSubmitting(true);
+    try {
+      await withRouteError(() => youApi.applyToBusiness(business.id, { role, salary: Number(salary), message: message.trim() }), 'Impossible d envoyer cette candidature.');
+      toast.success('Candidature envoyee');
+      await onSubmitted();
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title={business ? `Postuler · ${business.name}` : 'Postuler'} desc="Le proprietaire doit valider le contrat pour l activer.">
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground/70">Role vise</p>
+        <Input value={role} onChange={(event) => setRole(event.target.value)} placeholder="employee" />
+      </div>
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground/70">Salaire demande / jour</p>
+        <Input type="number" min={0} value={salary} onChange={(event) => setSalary(event.target.value)} />
+      </div>
+      <div className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground/70">Message</p>
+        <Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={4} maxLength={240} placeholder="Explique ce que tu peux apporter a cette entreprise." />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button>
+        <Button size="sm" onClick={submit} disabled={submitting || !business || !role.trim()}>Envoyer</Button>
+      </div>
+    </ModalWrap>
   );
 }

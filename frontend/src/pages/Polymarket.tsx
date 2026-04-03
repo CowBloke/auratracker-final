@@ -288,7 +288,8 @@ export default function Polymarket() {
   const [bets, setBets] = useState<PolymarketBet[]>([]);
   const [allBets, setAllBets] = useState<PolymarketBet[]>([]);
   const [activeTab, setActiveTab] = useState<'events' | 'history' | 'admin'>('events');
-  const [betHistoryTab, setBetHistoryTab] = useState<'my' | 'all'>('my');
+  const [betHistoryTab, setBetHistoryTab] = useState<'my' | 'all' | 'summary'>('my');
+  const [betHistorySortOrder, setBetHistorySortOrder] = useState<'recent' | 'end_date' | 'gain'>('recent');
   const [sortOrder, setSortOrder] = useState<'recent' | 'ends_soon' | 'popular' | 'best_odds'>('recent');
   const [viewMode, setViewMode] = useState<PolymarketViewMode>(() => {
     if (typeof window === 'undefined') return 'list';
@@ -700,6 +701,50 @@ export default function Polymarket() {
   const resolvedWagered = resolvedBets.reduce((s, b) => s + b.amount, 0);
   const netPnL = totalGained - resolvedWagered;
   const betWinRate = resolvedBets.length > 0 ? (wonBets.length / resolvedBets.length * 100) : 0;
+  const averageNetPerResolvedBet = resolvedBets.length > 0 ? netPnL / resolvedBets.length : 0;
+  const roi = resolvedWagered > 0 ? (netPnL / resolvedWagered) * 100 : 0;
+
+  const getBetNetResult = (bet: PolymarketBet) => {
+    const isResolved = bet.event?.status === 'RESOLVED';
+    if (!isResolved) return null;
+    const isWinner = bet.event?.resolution === bet.prediction;
+    const payoutAmount = Number(bet.payout) || 0;
+    return isWinner ? payoutAmount - bet.amount : -bet.amount;
+  };
+
+  const sortedMyBets = [...bets].sort((a, b) => {
+    if (betHistorySortOrder === 'end_date') {
+      const aTime = a.event?.eventDate ? new Date(a.event.eventDate).getTime() : 0;
+      const bTime = b.event?.eventDate ? new Date(b.event.eventDate).getTime() : 0;
+      return bTime - aTime;
+    }
+    if (betHistorySortOrder === 'gain') {
+      const aNet = getBetNetResult(a);
+      const bNet = getBetNetResult(b);
+      if (aNet === null && bNet === null) {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (aNet === null) return 1;
+      if (bNet === null) return -1;
+      if (bNet !== aNet) return bNet - aNet;
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  const biggestWin = [...wonBets]
+    .map((bet) => ({ bet, net: getBetNetResult(bet) ?? 0 }))
+    .sort((a, b) => b.net - a.net)[0] ?? null;
+  const biggestLoss = [...lostBets]
+    .map((bet) => ({ bet, net: getBetNetResult(bet) ?? 0 }))
+    .sort((a, b) => a.net - b.net)[0] ?? null;
+  const bestPendingUpside = [...pendingBets]
+    .map((bet) => {
+      const predOpt = bet.event ? getOptionByKey(bet.event as any, bet.prediction) : undefined;
+      const betOdds = predOpt?.odds || (bet.prediction === 'YES' ? (bet.event?.yesOdds || 1) : (bet.event?.noOdds || 1));
+      const potentialPayout = Math.floor(bet.amount * betOdds);
+      return { bet, upside: potentialPayout - bet.amount };
+    })
+    .sort((a, b) => b.upside - a.upside)[0] ?? null;
 
   if (loading) {
     return (
@@ -732,6 +777,18 @@ export default function Polymarket() {
                     <SelectItem value="ends_soon">Fin proche</SelectItem>
                     <SelectItem value="popular">Plus populaires</SelectItem>
                     <SelectItem value="best_odds">Meilleures cotes</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              {activeTab === 'history' && betHistoryTab === 'my' && bets.length > 1 && (
+                <Select value={betHistorySortOrder} onValueChange={(v) => setBetHistorySortOrder(v as typeof betHistorySortOrder)}>
+                  <SelectTrigger className="h-11 w-44">
+                    <SelectValue placeholder="Trier mes paris" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recent">Plus récents</SelectItem>
+                    <SelectItem value="end_date">Date de fin</SelectItem>
+                    <SelectItem value="gain">Gain / perte</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -969,9 +1026,10 @@ export default function Polymarket() {
 
           {/* ── History tab ── */}
           <TabsContent value="history" className={SPACING.SECTION_SPACING}>
-            <Tabs value={betHistoryTab} onValueChange={(v) => setBetHistoryTab(v as 'my' | 'all')}>
+            <Tabs value={betHistoryTab} onValueChange={(v) => setBetHistoryTab(v as 'my' | 'all' | 'summary')}>
               <TabsList>
                 <TabsTrigger value="my">Mes paris</TabsTrigger>
+                <TabsTrigger value="summary">Résumé</TabsTrigger>
                 <TabsTrigger value="all">Tous les paris</TabsTrigger>
               </TabsList>
 
@@ -1024,7 +1082,7 @@ export default function Polymarket() {
 
                     {/* Bet cards */}
                     <div className="space-y-2">
-                      {bets.map((bet) => {
+                      {sortedMyBets.map((bet) => {
                         const isResolved = bet.event?.status === 'RESOLVED';
                         const isWinner = bet.event?.resolution === bet.prediction;
                         const predOpt = bet.event ? getOptionByKey(bet.event as any, bet.prediction) : undefined;
@@ -1111,6 +1169,135 @@ export default function Polymarket() {
                         );
                       })}
                     </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="summary" className="mt-4">
+                {bets.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center text-muted-foreground">
+                      Aucun historique à résumer pour le moment
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="rounded-xl border p-4 space-y-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Net total</div>
+                        <div className={cn('text-3xl font-bold tabular-nums', netPnL > 0 ? 'text-green-500' : netPnL < 0 ? 'text-red-500' : '')}>
+                          {netPnL > 0 ? '+' : ''}{netPnL.toLocaleString('fr-FR')}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Paris résolus uniquement</div>
+                      </div>
+                      <div className="rounded-xl border p-4 space-y-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total gagné</div>
+                        <div className="text-3xl font-bold tabular-nums text-green-500">
+                          {totalGained.toLocaleString('fr-FR')}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Retours encaissés</div>
+                      </div>
+                      <div className="rounded-xl border p-4 space-y-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">ROI</div>
+                        <div className={cn('text-3xl font-bold tabular-nums', roi > 0 ? 'text-green-500' : roi < 0 ? 'text-red-500' : '')}>
+                          {roi > 0 ? '+' : ''}{roi.toFixed(1)}%
+                        </div>
+                        <div className="text-xs text-muted-foreground">Sur {resolvedWagered.toLocaleString('fr-FR')} misés</div>
+                      </div>
+                      <div className="rounded-xl border p-4 space-y-1">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Moyenne / pari</div>
+                        <div className={cn('text-3xl font-bold tabular-nums', averageNetPerResolvedBet > 0 ? 'text-green-500' : averageNetPerResolvedBet < 0 ? 'text-red-500' : '')}>
+                          {averageNetPerResolvedBet > 0 ? '+' : ''}{averageNetPerResolvedBet.toFixed(0)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Sur {resolvedBets.length} paris résolus</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Plus gros gain</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {biggestWin ? (
+                            <div className="space-y-1.5">
+                              <div className="font-semibold leading-snug">{biggestWin.bet.event?.title || 'Événement supprimé'}</div>
+                              <div className="text-2xl font-bold text-green-500 tabular-nums">+{biggestWin.net.toLocaleString('fr-FR')}</div>
+                              <div className="text-xs text-muted-foreground">
+                                Fin {biggestWin.bet.event?.eventDate ? new Date(biggestWin.bet.event.eventDate).toLocaleDateString('fr-FR') : 'inconnue'}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">Aucun gain réalisé pour l’instant</div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Plus grosse perte</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {biggestLoss ? (
+                            <div className="space-y-1.5">
+                              <div className="font-semibold leading-snug">{biggestLoss.bet.event?.title || 'Événement supprimé'}</div>
+                              <div className="text-2xl font-bold text-red-500 tabular-nums">{biggestLoss.net.toLocaleString('fr-FR')}</div>
+                              <div className="text-xs text-muted-foreground">
+                                Fin {biggestLoss.bet.event?.eventDate ? new Date(biggestLoss.bet.event.eventDate).toLocaleDateString('fr-FR') : 'inconnue'}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">Aucune perte enregistrée pour l’instant</div>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">Meilleur potentiel en cours</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {bestPendingUpside ? (
+                            <div className="space-y-1.5">
+                              <div className="font-semibold leading-snug">{bestPendingUpside.bet.event?.title || 'Événement supprimé'}</div>
+                              <div className="text-2xl font-bold tabular-nums">
+                                +{bestPendingUpside.upside.toLocaleString('fr-FR')}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Fin {bestPendingUpside.bet.event?.eventDate ? new Date(bestPendingUpside.bet.event.eventDate).toLocaleDateString('fr-FR') : 'inconnue'}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">Aucun pari en cours</div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Répartition</CardTitle>
+                        <CardDescription>Vue rapide de vos résultats Polymarket</CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                        <div className="rounded-lg bg-muted/40 p-3">
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground">Paris gagnés</div>
+                          <div className="mt-1 text-2xl font-bold text-green-500 tabular-nums">{wonBets.length}</div>
+                        </div>
+                        <div className="rounded-lg bg-muted/40 p-3">
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground">Paris perdus</div>
+                          <div className="mt-1 text-2xl font-bold text-red-500 tabular-nums">{lostBets.length}</div>
+                        </div>
+                        <div className="rounded-lg bg-muted/40 p-3">
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground">En cours</div>
+                          <div className="mt-1 text-2xl font-bold tabular-nums">{pendingBets.length}</div>
+                        </div>
+                        <div className="rounded-lg bg-muted/40 p-3">
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground">Taux de réussite</div>
+                          <div className="mt-1 text-2xl font-bold tabular-nums">{betWinRate.toFixed(0)}%</div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
               </TabsContent>

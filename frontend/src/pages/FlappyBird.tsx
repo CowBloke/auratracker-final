@@ -420,7 +420,7 @@ export default function FlappyBird() {
         setIsPaused((current) => !current);
         return;
       }
-      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
+      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'z' || e.key === 'Z') {
         e.preventDefault();
         handleJump();
       }

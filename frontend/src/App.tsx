@@ -11,6 +11,9 @@ import Game2048 from './pages/Game2048';
 import FlappyBird from './pages/FlappyBird';
 import Casino from './pages/Casino';
 import AuraCoin from './pages/AuraCoin';
+import StableCoin from './pages/StableCoin';
+import ChaosCoin from './pages/ChaosCoin';
+import MarketRoom from './pages/MarketRoom';
 import Leaderboards from './pages/Leaderboards';
 import Numbers from './pages/Numbers';
 import Profile from './pages/Profile';
@@ -43,6 +46,7 @@ import Echecs from './pages/Echecs';
 import BallArena from './pages/BallArena';
 import Sudoku from './pages/Sudoku';
 import Inbox from './pages/Inbox';
+import Messages from './pages/Messages';
 import Blocked from './pages/Blocked';
 import Minesweeper from './pages/Minesweeper';
 import GeometryDash from './pages/GeometryDash';
@@ -196,6 +200,7 @@ function App() {
       >
         <Route index element={<DefaultLandingRedirect />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="messages" element={<Messages />} />
         <Route path="games" element={<Games />} />
         <Route path="games/doodle-jump" element={<DoodleJump />} />
         <Route path="games/2048" element={<Game2048 />} />
@@ -208,7 +213,10 @@ function App() {
         <Route path="games/stack-tower" element={<StackTower />} />
         <Route path="games/geometry-dash" element={<GeometryDash />} />
         <Route path="games/casino" element={<Casino />} />
+        <Route path="games/salle-de-marche" element={<MarketRoom />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
+        <Route path="games/stable-coin" element={<StableCoin />} />
+        <Route path="games/chaos-coin" element={<ChaosCoin />} />
         <Route path="games/minesweeper" element={<Minesweeper />} />
         <Route path="market" element={<Shop />} />
         <Route path="market/*" element={<Shop />} />

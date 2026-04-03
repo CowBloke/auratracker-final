@@ -49,6 +49,9 @@ const BUSINESS_BASE_INCLUDE = {
     where: { status: 'PENDING' },
     orderBy: { createdAt: 'desc' as const },
     include: {
+      inviter: {
+        select: USER_PREVIEW_SELECT,
+      },
       invitee: {
         select: USER_PREVIEW_SELECT,
       },
@@ -121,7 +124,12 @@ const BUSINESS_BASE_INCLUDE = {
     orderBy: { createdAt: 'asc' as const },
   },
   ratings: {
-    select: { rating: true },
+    orderBy: { updatedAt: 'desc' as const },
+    include: {
+      user: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
   },
 } as const;
 
@@ -154,6 +162,12 @@ function getCanonicalPair(userIdA: string, userIdB: string) {
 
 function isBusinessParticipant(userId: string, business: { ownerId: string }) {
   return business.ownerId === userId;
+}
+
+function getLoanDueDateFromEntry(loan: { decidedAt: Date | null; createdAt: Date; termMonths: number }) {
+  const dueDate = new Date(loan.decidedAt ?? loan.createdAt);
+  dueDate.setDate(dueDate.getDate() + Math.max(0, loan.termMonths));
+  return dueDate;
 }
 
 async function ensureUserSkills(userId: string) {
@@ -340,6 +354,43 @@ function computeBusinessSuggestedShareAmount(business: {
   return Math.max(500, Math.round((valuationBase * safeSharePercent) / 100));
 }
 
+function serializeEmploymentInvitation(invitation: any, viewerId: string) {
+  const viewerRole = invitation.employerId === viewerId ? 'EMPLOYER' : invitation.employeeId === viewerId ? 'EMPLOYEE' : null;
+  const needsViewerAcceptance = viewerRole === 'EMPLOYER'
+    ? !invitation.employerAcceptedAt
+    : viewerRole === 'EMPLOYEE'
+      ? !invitation.employeeAcceptedAt
+      : false;
+  const waitingOn = invitation.employerAcceptedAt && !invitation.employeeAcceptedAt
+    ? 'EMPLOYEE'
+    : invitation.employeeAcceptedAt && !invitation.employerAcceptedAt
+      ? 'EMPLOYER'
+      : invitation.employerAcceptedAt && invitation.employeeAcceptedAt
+        ? 'NONE'
+        : 'BOTH';
+
+  return {
+    id: invitation.id,
+    role: invitation.role,
+    salary: invitation.salary ?? 0,
+    message: invitation.message ?? null,
+    status: invitation.status,
+    createdAt: invitation.createdAt.toISOString(),
+    updatedAt: invitation.updatedAt.toISOString(),
+    respondedAt: invitation.respondedAt ? invitation.respondedAt.toISOString() : null,
+    initiatedByRole: invitation.initiatedByRole,
+    employerAcceptedAt: invitation.employerAcceptedAt ? invitation.employerAcceptedAt.toISOString() : null,
+    employeeAcceptedAt: invitation.employeeAcceptedAt ? invitation.employeeAcceptedAt.toISOString() : null,
+    viewerRole,
+    needsViewerAcceptance,
+    waitingOn,
+    inviter: invitation.inviter,
+    invitee: invitation.invitee,
+    employee: invitation.employeeId === invitation.inviterId ? invitation.inviter : invitation.invitee,
+    employer: invitation.employerId === invitation.inviterId ? invitation.inviter : invitation.invitee,
+  };
+}
+
 function serializeBusiness(business: any, viewerId: string) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
   const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
@@ -398,20 +449,20 @@ function serializeBusiness(business: any, viewerId: string) {
       user: member.user,
     })),
     pendingInvitations: business.invitations.map((invite: any) => ({
-      id: invite.id,
-      role: invite.role,
-      status: invite.status,
-      createdAt: invite.createdAt.toISOString(),
-      invitee: invite.invitee,
+      ...serializeEmploymentInvitation(invite, viewerId),
     })),
     recentLoans: business.loans.map((loan: any) => ({
       id: loan.id,
       amount: loan.amount,
       termDays: loan.termMonths,
       interestRate: loan.interestRate,
+      motivationMessage: loan.motivationMessage ?? null,
+      collateralAura: loan.collateralAura ?? 0,
+      collateralAuraHeld: loan.collateralAuraHeld ?? 0,
       status: loan.status,
       repaidAmount: loan.repaidAmount ?? 0,
       decidedAt: loan.decidedAt ? loan.decidedAt.toISOString() : null,
+      collateralClaimedAt: loan.collateralClaimedAt ? loan.collateralClaimedAt.toISOString() : null,
       createdAt: loan.createdAt.toISOString(),
       borrower: loan.borrower,
     })),
@@ -460,13 +511,24 @@ function serializeBusiness(business: any, viewerId: string) {
       ? Math.round((business.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / business.ratings.length) * 10) / 10
       : null,
     ratingCount: business.ratings?.length ?? 0,
+    ratings: (business.ratings ?? []).map((entry: any) => ({
+      id: entry.id,
+      rating: entry.rating,
+      comment: entry.comment ?? null,
+      createdAt: entry.createdAt.toISOString(),
+      updatedAt: entry.updatedAt.toISOString(),
+      user: entry.user,
+    })),
   };
 }
 
-async function rateBusiness(userId: string, businessId: string, rating: number) {
+async function rateBusiness(userId: string, businessId: string, rating: number, comment?: string | null) {
   if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
     throw new Error('Rating must be an integer between 1 and 5');
   }
+  const normalizedComment = typeof comment === 'string'
+    ? comment.trim().slice(0, 500)
+    : null;
   const business = await prisma.business.findUnique({
     where: { id: businessId },
     select: { id: true, name: true },
@@ -476,11 +538,12 @@ async function rateBusiness(userId: string, businessId: string, rating: number) 
   }
   await prisma.businessRating.upsert({
     where: { businessId_userId: { businessId, userId } },
-    update: { rating },
-    create: { businessId, userId, rating },
+    update: { rating, comment: normalizedComment || null },
+    create: { businessId, userId, rating, comment: normalizedComment || null },
   });
   logYouAdmin('business_rate', userId, undefined, business.id, business.name, {
     rating,
+    comment: normalizedComment || null,
   });
 }
 
@@ -618,8 +681,11 @@ export async function getYouState(userId: string) {
     }),
     prisma.businessInvitation.findMany({
       where: {
-        inviteeId: userId,
         status: 'PENDING',
+        OR: [
+          { employerId: userId },
+          { employeeId: userId },
+        ],
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -745,10 +811,7 @@ export async function getYouState(userId: string) {
       alreadyInRelationship: relatedUserIds.has(player.id),
     })),
     jobOffers: pendingInvitations.map((invitation) => ({
-      id: invitation.id,
-      role: invitation.role,
-      createdAt: invitation.createdAt.toISOString(),
-      inviter: invitation.inviter,
+      ...serializeEmploymentInvitation(invitation, userId),
       business: {
         id: invitation.business.id,
         name: invitation.business.name,
@@ -973,14 +1036,19 @@ export async function createBusiness(userId: string, input: { name: string; type
   return serializeBusiness(business, userId);
 }
 
-async function handleInviteAction(userId: string, business: any, input: { inviteeIds: string[]; role: string }) {
+async function handleInviteAction(userId: string, business: any, input: { inviteeIds: string[]; role: string; salary?: number; message?: string }) {
   if (!isBusinessParticipant(userId, business)) {
     throw new Error('BUSINESS_INVITE_FORBIDDEN');
   }
 
   const inviteeIds = Array.from(new Set((input.inviteeIds || []).filter((inviteeId) => inviteeId && inviteeId !== userId)));
+  const salary = Number(input.salary ?? 0);
+  const message = typeof input.message === 'string' && input.message.trim() ? input.message.trim().slice(0, 240) : null;
   if (inviteeIds.length === 0) {
     throw new Error('INVITEE_REQUIRED');
+  }
+  if (!Number.isInteger(salary) || salary < 0) {
+    throw new Error('INVALID_SALARY');
   }
 
   const approvedInvitees = await prisma.user.findMany({
@@ -1002,14 +1070,14 @@ async function handleInviteAction(userId: string, business: any, input: { invite
   const existingInvitations = await prisma.businessInvitation.findMany({
     where: {
       businessId: business.id,
-      inviteeId: { in: inviteeIds },
+      employeeId: { in: inviteeIds },
       status: 'PENDING',
     },
-    select: { inviteeId: true },
+    select: { employeeId: true },
   });
 
   const memberIds = new Set(existingMembers.map((member) => member.userId));
-  const pendingIds = new Set(existingInvitations.map((invite) => invite.inviteeId));
+  const pendingIds = new Set(existingInvitations.map((invite) => invite.employeeId));
 
   const creatableInvitees = approvedInvitees.filter((invitee) => !memberIds.has(invitee.id) && !pendingIds.has(invitee.id));
 
@@ -1024,7 +1092,13 @@ async function handleInviteAction(userId: string, business: any, input: { invite
           businessId: business.id,
           inviterId: userId,
           inviteeId: invitee.id,
+          employerId: business.ownerId,
+          employeeId: invitee.id,
+          initiatedByRole: 'EMPLOYER',
           role: input.role || 'employee',
+          salary,
+          message,
+          employerAcceptedAt: new Date(),
         },
       })
     )
@@ -1037,13 +1111,14 @@ async function handleInviteAction(userId: string, business: any, input: { invite
       createNotification({
         userId: invitee.id,
         type: 'SYSTEM',
-        title: 'Invitation business',
-        body: `${business.owner.username} t'invite a rejoindre ${business.name} comme ${input.role || 'employee'}.`,
+        title: 'Proposition de contrat',
+        body: `${business.owner.username} te propose un poste chez ${business.name} comme ${input.role || 'employee'} pour ${salary.toLocaleString('fr-FR')} money/jour.`,
         data: {
           invitationId: invitationByInviteeId.get(invitee.id)?.id ?? null,
           businessId: business.id,
           businessName: business.name,
           role: input.role || 'employee',
+          salary,
           actionType: 'BUSINESS_INVITATION',
         },
         link: '/you?tab=travail',
@@ -1057,6 +1132,7 @@ async function handleInviteAction(userId: string, business: any, input: { invite
     inviteeIds: creatableInvitees.map((invitee) => invitee.id),
     inviteeNames: creatableInvitees.map((invitee) => invitee.username),
     role: input.role || 'employee',
+    salary,
   });
 
   return {
@@ -1064,7 +1140,121 @@ async function handleInviteAction(userId: string, business: any, input: { invite
   };
 }
 
-async function handleLoanAction(userId: string, business: any, input: { amount: number; durationDays: number }) {
+export async function applyToBusiness(userId: string, businessId: string, input: { role?: string; salary?: number; message?: string }) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      owner: { select: USER_PREVIEW_SELECT },
+    },
+  });
+
+  if (!business) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
+
+  if (business.ownerId === userId) {
+    throw new Error('BUSINESS_INVITE_FORBIDDEN');
+  }
+  if (!business.hiring) {
+    throw new Error('BUSINESS_ACTION_UNAVAILABLE');
+  }
+
+  const role = typeof input.role === 'string' && input.role.trim() ? input.role.trim().slice(0, 40) : 'employee';
+  const salary = Number(input.salary ?? 0);
+  const message = typeof input.message === 'string' && input.message.trim() ? input.message.trim().slice(0, 240) : null;
+
+  if (!Number.isInteger(salary) || salary < 0) {
+    throw new Error('INVALID_SALARY');
+  }
+
+  const [existingMember, existingPendingInvitation, applicant] = await Promise.all([
+    prisma.businessMember.findUnique({
+      where: {
+        businessId_userId: {
+          businessId,
+          userId,
+        },
+      },
+      select: { id: true },
+    }),
+    prisma.businessInvitation.findFirst({
+      where: {
+        businessId,
+        employeeId: userId,
+        status: 'PENDING',
+      },
+      select: { id: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: USER_PREVIEW_SELECT,
+    }),
+  ]);
+
+  if (!applicant) {
+    throw new Error('USER_NOT_FOUND');
+  }
+
+  if (existingMember || existingPendingInvitation) {
+    throw new Error('NO_NEW_INVITATIONS');
+  }
+
+  const invitation = await prisma.businessInvitation.create({
+    data: {
+      businessId,
+      inviterId: userId,
+      inviteeId: business.ownerId,
+      employerId: business.ownerId,
+      employeeId: userId,
+      initiatedByRole: 'EMPLOYEE',
+      role,
+      salary,
+      message,
+      employeeAcceptedAt: new Date(),
+    },
+  });
+
+  await Promise.allSettled([
+    createNotification({
+      userId: business.ownerId,
+      type: 'SYSTEM',
+      title: 'Nouvelle candidature',
+      body: `${applicant.username} candidate chez ${business.name} comme ${role} pour ${salary.toLocaleString('fr-FR')} money/jour.`,
+      data: {
+        invitationId: invitation.id,
+        businessId: business.id,
+        businessName: business.name,
+        role,
+        salary,
+        actionType: 'BUSINESS_INVITATION',
+      },
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Candidature envoyee',
+      body: `Ta candidature chez ${business.name} est en attente de validation.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+  ]);
+
+  logYouAdmin('business_invite', userId, applicant.username, business.id, business.name, {
+    application: true,
+    role,
+    salary,
+  });
+
+  return { id: invitation.id };
+}
+
+async function handleLoanAction(
+  userId: string,
+  business: any,
+  input: { amount: number; durationDays: number; collateralAura?: number; motivationMessage?: string }
+) {
   if (business.ownerId === userId) {
     throw new Error('BUSINESS_LOAN_SELF_FORBIDDEN');
   }
@@ -1077,6 +1267,16 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
 
   if (!Number.isFinite(durationDays) || durationDays < 1) {
     throw new Error('INVALID_LOAN_DURATION');
+  }
+
+  const collateralAura = Math.floor(Number(input.collateralAura ?? 0));
+  if (!Number.isFinite(collateralAura) || collateralAura < 0) {
+    throw new Error('INVALID_LOAN_COLLATERAL');
+  }
+
+  const motivationMessage = typeof input.motivationMessage === 'string' ? input.motivationMessage.trim() : '';
+  if (motivationMessage.length > 400) {
+    throw new Error('LOAN_MOTIVATION_TOO_LONG');
   }
 
   const [borrower, owner] = await Promise.all([
@@ -1094,6 +1294,10 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
     throw new Error('USER_NOT_FOUND');
   }
 
+  if (collateralAura > Number(borrower.aura ?? 0)) {
+    throw new Error('LOAN_COLLATERAL_AURA_TOO_LOW');
+  }
+
   const interestRate = business.loanInterestRate ?? 4;
 
   const loan = await prisma.businessLoan.create({
@@ -1103,6 +1307,8 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
       amount,
       termMonths: durationDays,
       interestRate,
+      motivationMessage: motivationMessage || null,
+      collateralAura,
       status: 'PENDING',
     },
   });
@@ -1112,7 +1318,7 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
       userId: owner.id,
       type: 'SYSTEM',
       title: 'Nouvelle demande de pret',
-      body: `${borrower.username} demande ${amount.toLocaleString('fr-FR')} money via ${business.name}.`,
+      body: `${borrower.username} demande ${amount.toLocaleString('fr-FR')} money via ${business.name}${collateralAura > 0 ? ` avec ${collateralAura.toLocaleString('fr-FR')} aura en hypothèque` : ''}.`,
       link: '/you?tab=travail',
       icon: 'credit-card',
     }),
@@ -1120,7 +1326,7 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
       userId: borrower.id,
       type: 'SYSTEM',
       title: 'Demande de pret envoyee',
-      body: `Ta demande de ${amount.toLocaleString('fr-FR')} money attend la validation de ${owner.username}.`,
+      body: `Ta demande de ${amount.toLocaleString('fr-FR')} money attend la validation de ${owner.username}${collateralAura > 0 ? ` avec ${collateralAura.toLocaleString('fr-FR')} aura mises en garantie` : ''}.`,
       link: '/you?tab=explore',
       icon: 'landmark',
     }),
@@ -1130,6 +1336,8 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
     amount,
     durationDays,
     interestRate,
+    collateralAura,
+    motivationMessage: motivationMessage || null,
   });
 
   return {
@@ -1137,6 +1345,8 @@ async function handleLoanAction(userId: string, business: any, input: { amount: 
     amount,
     durationDays,
     interestRate,
+    collateralAura,
+    motivationMessage: motivationMessage || null,
     status: loan.status,
   };
 }
@@ -1516,11 +1726,21 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const borrowerBalance = await tx.user.findUnique({
+      where: { id: loan.borrowerId },
+      select: { aura: true },
+    });
+
+    if (!borrowerBalance || Number(borrowerBalance.aura ?? 0) < (loan.collateralAura ?? 0)) {
+      throw new Error('LOAN_COLLATERAL_AURA_TOO_LOW');
+    }
+
     const updatedLoan = await tx.businessLoan.update({
       where: { id: loan.id },
       data: {
         status: 'ACTIVE',
         decidedAt: now,
+        collateralAuraHeld: loan.collateralAura ?? 0,
       },
     });
 
@@ -1531,7 +1751,10 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
 
     await tx.user.update({
       where: { id: loan.borrowerId },
-      data: { money: { increment: loan.amount } },
+      data: {
+        money: { increment: loan.amount },
+        aura: { decrement: loan.collateralAura ?? 0 },
+      },
     });
 
     return updatedLoan;
@@ -1549,7 +1772,7 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
       userId: loan.borrowerId,
       type: 'MONEY_RECEIVED',
       title: 'Pret accepte',
-      body: `${loan.amount.toLocaleString('fr-FR')} money recu depuis ${loan.business.name}.`,
+      body: `${loan.amount.toLocaleString('fr-FR')} money recu depuis ${loan.business.name}${(loan.collateralAuraHeld || loan.collateralAura) > 0 ? ` ; ${(loan.collateralAuraHeld || loan.collateralAura).toLocaleString('fr-FR')} aura sont bloquees jusqu'au remboursement` : ''}.`,
       link: '/you?tab=explore',
       icon: 'landmark',
     }),
@@ -1557,7 +1780,7 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
       userId,
       type: 'SYSTEM',
       title: 'Pret accorde',
-      body: `${loan.borrower.username} a recu ${loan.amount.toLocaleString('fr-FR')} money depuis ${loan.business.name}.`,
+      body: `${loan.borrower.username} a recu ${loan.amount.toLocaleString('fr-FR')} money depuis ${loan.business.name}${(loan.collateralAuraHeld || loan.collateralAura) > 0 ? ` avec ${(loan.collateralAuraHeld || loan.collateralAura).toLocaleString('fr-FR')} aura bloquees en garantie` : ''}.`,
       link: '/you?tab=travail',
       icon: 'credit-card',
     }),
@@ -1568,6 +1791,7 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
     borrowerId: loan.borrowerId,
     borrowerName: loan.borrower.username,
     amount: loan.amount,
+    collateralAura: loan.collateralAura ?? 0,
     decision: 'accept',
   });
 
@@ -1582,6 +1806,7 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
   const invitation = await prisma.businessInvitation.findUnique({
     where: { id: invitationId },
     include: {
+      inviter: { select: USER_PREVIEW_SELECT },
       invitee: { select: USER_PREVIEW_SELECT },
       business: {
         include: {
@@ -1595,7 +1820,7 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
     throw new Error('BUSINESS_INVITATION_NOT_FOUND');
   }
 
-  if (invitation.inviteeId !== userId) {
+  if (invitation.employerId !== userId && invitation.employeeId !== userId) {
     throw new Error('BUSINESS_INVITATION_FORBIDDEN');
   }
 
@@ -1604,6 +1829,7 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
   }
 
   const respondedAt = new Date();
+  const actingRole = invitation.employerId === userId ? 'EMPLOYER' : 'EMPLOYEE';
 
   if (decision === 'reject') {
     const rejectedInvitation = await prisma.businessInvitation.update({
@@ -1614,11 +1840,14 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
       },
     });
 
+    const targetUserId = actingRole === 'EMPLOYER' ? invitation.employeeId : invitation.employerId;
+    const actorUser = actingRole === 'EMPLOYER' ? invitation.business.owner : invitation.inviterId === invitation.employeeId ? invitation.inviter : invitation.invitee;
+
     await createNotification({
-      userId: invitation.business.ownerId,
+      userId: targetUserId,
       type: 'SYSTEM',
-      title: 'Invitation refusee',
-      body: `${invitation.invitee.username} a refuse l'invitation pour ${invitation.business.name}.`,
+      title: 'Contrat refuse',
+      body: `${actorUser.username} a refuse la proposition pour ${invitation.business.name}.`,
       link: '/you?tab=travail',
       icon: 'briefcase-business',
     });
@@ -1639,48 +1868,71 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
   }
 
   const acceptedInvitation = await prisma.$transaction(async (tx) => {
-    await tx.businessMember.upsert({
-      where: {
-        businessId_userId: {
-          businessId: invitation.businessId,
-          userId,
-        },
-      },
-      update: {
-        role: invitation.role,
-        status: 'ACTIVE',
-      },
-      create: {
-        businessId: invitation.businessId,
-        userId,
-        role: invitation.role,
-        status: 'ACTIVE',
-      },
-    });
-
-    return tx.businessInvitation.update({
+    const updatedInvitation = await tx.businessInvitation.update({
       where: { id: invitation.id },
       data: {
-        status: 'ACCEPTED',
+        employerAcceptedAt: actingRole === 'EMPLOYER' ? respondedAt : invitation.employerAcceptedAt,
+        employeeAcceptedAt: actingRole === 'EMPLOYEE' ? respondedAt : invitation.employeeAcceptedAt,
         respondedAt,
       },
     });
+
+    const employerAcceptedAt = actingRole === 'EMPLOYER' ? respondedAt : invitation.employerAcceptedAt;
+    const employeeAcceptedAt = actingRole === 'EMPLOYEE' ? respondedAt : invitation.employeeAcceptedAt;
+    const isFullyAccepted = Boolean(employerAcceptedAt && employeeAcceptedAt);
+
+    if (isFullyAccepted) {
+      await tx.businessMember.upsert({
+        where: {
+          businessId_userId: {
+            businessId: invitation.businessId,
+            userId: invitation.employeeId,
+          },
+        },
+        update: {
+          role: invitation.role,
+          salary: invitation.salary ?? 0,
+          status: 'ACTIVE',
+        },
+        create: {
+          businessId: invitation.businessId,
+          userId: invitation.employeeId,
+          role: invitation.role,
+          salary: invitation.salary ?? 0,
+          status: 'ACTIVE',
+        },
+      });
+
+      return tx.businessInvitation.update({
+        where: { id: invitation.id },
+        data: {
+          status: 'ACCEPTED',
+          respondedAt,
+        },
+      });
+    }
+
+    return updatedInvitation;
   });
 
   await Promise.allSettled([
     createNotification({
-      userId: invitation.business.ownerId,
+      userId: invitation.employerId,
       type: 'SYSTEM',
-      title: 'Invitation acceptee',
-      body: `${invitation.invitee.username} rejoint ${invitation.business.name}.`,
+      title: acceptedInvitation.status === 'ACCEPTED' ? 'Contrat valide' : 'Contrat partiellement accepte',
+      body: acceptedInvitation.status === 'ACCEPTED'
+        ? `${(invitation.inviterId === invitation.employeeId ? invitation.inviter : invitation.invitee).username} rejoint ${invitation.business.name} pour ${invitation.salary.toLocaleString('fr-FR')} money/jour.`
+        : `Le contrat de ${invitation.business.name} attend encore la validation de l'autre partie.`,
       link: '/you?tab=travail',
       icon: 'briefcase-business',
     }),
     createNotification({
-      userId,
+      userId: invitation.employeeId,
       type: 'SYSTEM',
-      title: 'Bienvenue dans le business',
-      body: `Tu fais maintenant partie de ${invitation.business.name}.`,
+      title: acceptedInvitation.status === 'ACCEPTED' ? 'Contrat signe' : 'Accord enregistre',
+      body: acceptedInvitation.status === 'ACCEPTED'
+        ? `Tu fais maintenant partie de ${invitation.business.name} avec un salaire de ${invitation.salary.toLocaleString('fr-FR')} money/jour.`
+        : `Ton accord a bien ete pris en compte pour ${invitation.business.name}.`,
       link: '/you?tab=travail',
       icon: 'briefcase-business',
     }),
@@ -1692,6 +1944,8 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
     role: invitation.role,
     ownerId: invitation.business.ownerId,
     ownerName: invitation.business.owner.username,
+    salary: invitation.salary ?? 0,
+    actingRole,
   });
 
   return {
@@ -3302,37 +3556,119 @@ export async function repayLoan(userId: string, loanId: string) {
 
   const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
   const remaining = totalOwed - (loan.repaidAmount ?? 0);
+  const collateralAuraHeld = loan.collateralAuraHeld ?? 0;
+  const dueDate = getLoanDueDateFromEntry(loan);
 
   if (remaining <= 0) throw new Error('LOAN_ALREADY_REPAID');
 
-  // Deduct from borrower's balance, add to bank treasury
   const borrowerHasMoney = await ensureSharedMoneyAvailable(prisma, loan.borrowerId, remaining);
-  if (!borrowerHasMoney) throw new Error('BORROWER_INSUFFICIENT_MONEY');
+  if (borrowerHasMoney) {
+    await prisma.$transaction(async (tx) => {
+      await debitSharedMoney(tx, loan.borrowerId, remaining);
+      await tx.business.update({
+        where: { id: loan.businessId },
+        data: { treasuryMoney: { increment: remaining } },
+      });
+      await tx.businessLoan.update({
+        where: { id: loanId },
+        data: { status: 'REPAID', repaidAmount: totalOwed, collateralAuraHeld: 0 },
+      });
+      if (collateralAuraHeld > 0) {
+        await tx.user.update({
+          where: { id: loan.borrowerId },
+          data: { aura: { increment: collateralAuraHeld } },
+        });
+      }
+    });
+
+    await emitSharedBalanceUpdates(prisma, loan.borrowerId);
+    await logBusinessTransaction(loan.businessId, 'LOAN_REPAY', remaining, `Remboursement de ${loan.borrower.username}`, loan.borrowerId);
+
+    await Promise.allSettled([
+      createNotification({
+        userId: loan.borrowerId,
+        type: 'SYSTEM',
+        title: 'Pret rembourse',
+        body: `Le pret de ${loan.business.name} a ete rembourse${collateralAuraHeld > 0 ? ` et tes ${collateralAuraHeld.toLocaleString('fr-FR')} aura te sont rendues` : ''}.`,
+        link: '/you?tab=explore',
+        icon: 'credit-card',
+      }),
+      createNotification({
+        userId,
+        type: 'SYSTEM',
+        title: 'Pret rembourse',
+        body: `${loan.borrower.username} a rembourse le pret de ${loan.business.name}.`,
+        link: '/you?tab=travail',
+        icon: 'credit-card',
+      }),
+    ]);
+
+    logYouAdmin('business_loan_repay', userId, undefined, loan.business.id, loan.business.name, {
+      loanId,
+      borrowerId: loan.borrowerId,
+      borrowerName: loan.borrower.username,
+      repaid: remaining,
+      totalOwed,
+      collateralAuraReturned: collateralAuraHeld,
+      status: 'REPAID',
+    });
+
+    return { repaid: remaining, totalOwed, collateralClaimed: 0, status: 'REPAID' };
+  }
+
+  if (new Date() < dueDate) throw new Error('LOAN_COLLATERAL_NOT_CLAIMABLE_YET');
+  if (collateralAuraHeld <= 0) throw new Error('BORROWER_INSUFFICIENT_MONEY');
 
   await prisma.$transaction(async (tx) => {
-    await debitSharedMoney(tx, loan.borrowerId, remaining);
-    await tx.business.update({
-      where: { id: loan.businessId },
-      data: { treasuryMoney: { increment: remaining } },
+    await tx.user.update({
+      where: { id: userId },
+      data: { aura: { increment: collateralAuraHeld } },
     });
     await tx.businessLoan.update({
       where: { id: loanId },
-      data: { status: 'REPAID', repaidAmount: totalOwed },
+      data: {
+        status: 'DEFAULTED',
+        collateralAuraHeld: 0,
+        collateralClaimedAt: new Date(),
+      },
     });
   });
 
-  await emitSharedBalanceUpdates(prisma, loan.borrowerId);
-  await logBusinessTransaction(loan.businessId, 'LOAN_REPAY', remaining, `Remboursement de ${loan.borrower.username}`, loan.borrowerId);
+  await Promise.all([
+    emitSharedBalanceUpdates(prisma, loan.borrowerId),
+    emitSharedBalanceUpdates(prisma, userId),
+  ]);
+
+  await Promise.allSettled([
+    createNotification({
+      userId: loan.borrowerId,
+      type: 'SYSTEM',
+      title: 'Hypotheque saisie',
+      body: `Tu n as pas rembourse a temps le pret de ${loan.business.name}. Tes ${collateralAuraHeld.toLocaleString('fr-FR')} aura en garantie ont ete saisies.`,
+      link: '/you?tab=explore',
+      icon: 'credit-card',
+    }),
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Hypotheque recuperee',
+      body: `${collateralAuraHeld.toLocaleString('fr-FR')} aura ont ete recuperees sur ${loan.borrower.username} suite au defaut du pret ${loan.business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'credit-card',
+    }),
+  ]);
 
   logYouAdmin('business_loan_repay', userId, undefined, loan.business.id, loan.business.name, {
     loanId,
     borrowerId: loan.borrowerId,
     borrowerName: loan.borrower.username,
-    repaid: remaining,
+    repaid: 0,
     totalOwed,
+    collateralAuraClaimed: collateralAuraHeld,
+    status: 'DEFAULTED',
   });
 
-  return { repaid: remaining, totalOwed };
+  return { repaid: 0, totalOwed, collateralClaimed: collateralAuraHeld, status: 'DEFAULTED' };
 }
 
 // --- Bank Account System ---
@@ -3694,6 +4030,14 @@ export async function updateMemberSalary(ownerId: string, businessId: string, me
 
   const previousSalary = member.salary;
   await prisma.businessMember.update({ where: { id: memberId }, data: { salary } });
+  await createNotification({
+    userId: member.user.id,
+    type: 'SYSTEM',
+    title: 'Salaire modifie',
+    body: `${member.user.username}, ton salaire chez cette entreprise passe a ${salary.toLocaleString('fr-FR')} money/jour.`,
+    link: '/you?tab=travail',
+    icon: 'briefcase-business',
+  });
   logYouAdmin('business_member_salary_update', ownerId, undefined, businessId, member.user.username, {
     memberId,
     previousSalary,
@@ -3717,12 +4061,116 @@ export async function sackMember(ownerId: string, businessId: string, memberId: 
   if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
 
   await prisma.businessMember.delete({ where: { id: memberId } });
+  await Promise.allSettled([
+    createNotification({
+      userId: member.user.id,
+      type: 'SYSTEM',
+      title: 'Contrat termine',
+      body: `Tu ne fais plus partie de cette entreprise.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+    prisma.businessInvitation.updateMany({
+      where: {
+        businessId,
+        employeeId: member.userId,
+        status: 'PENDING',
+      },
+      data: {
+        status: 'REJECTED',
+        respondedAt: new Date(),
+      },
+    }),
+  ]);
   logYouAdmin('business_member_sack', ownerId, undefined, businessId, member.user.username, {
     memberId,
     role: member.role,
     salary: member.salary,
   });
   return { ok: true };
+}
+
+export async function runDailyBusinessSalaryPayments(db = prisma) {
+  const { getParisDayKey } = await import('../../utils/dailyAura.js');
+  const todayKey = getParisDayKey(new Date());
+
+  const members = await db.businessMember.findMany({
+    where: {
+      status: 'ACTIVE',
+      salary: { gt: 0 },
+      OR: [
+        { lastSalaryPaymentDate: null },
+        { lastSalaryPaymentDate: { not: todayKey } },
+      ],
+    },
+    include: {
+      user: { select: USER_PREVIEW_SELECT },
+      business: {
+        select: {
+          id: true,
+          name: true,
+          ownerId: true,
+          treasuryMoney: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const paidUserIds = new Set<string>();
+
+  for (const member of members) {
+    if (member.business.treasuryMoney < member.salary) {
+      continue;
+    }
+
+    await db.$transaction(async (tx: any) => {
+      const businessUpdate = await tx.business.updateMany({
+        where: {
+          id: member.businessId,
+          treasuryMoney: { gte: member.salary },
+        },
+        data: {
+          treasuryMoney: { decrement: member.salary },
+        },
+      });
+
+      if (businessUpdate.count !== 1) {
+        return;
+      }
+
+      await tx.user.update({
+        where: { id: member.userId },
+        data: { money: { increment: member.salary } },
+      });
+
+      await tx.businessMember.update({
+        where: { id: member.id },
+        data: { lastSalaryPaymentDate: todayKey },
+      });
+    });
+
+    await Promise.allSettled([
+      createNotification({
+        userId: member.userId,
+        type: 'MONEY_RECEIVED',
+        title: 'Salaire verse',
+        body: `${member.salary.toLocaleString('fr-FR')} money recus de ${member.business.name}.`,
+        link: '/you?tab=travail',
+        icon: 'briefcase-business',
+      }),
+    ]);
+
+    await logBusinessTransaction(member.businessId, 'SALARY_PAYMENT', -member.salary, `Salaire verse a ${member.user.username}`, member.userId);
+    paidUserIds.add(member.userId);
+    paidUserIds.add(member.business.ownerId);
+  }
+
+  if (paidUserIds.size > 0) {
+    await emitSharedBalanceUpdatesForUserIds(db, Array.from(paidUserIds));
+  }
+
+  return { paidCount: paidUserIds.size };
 }
 
 // --- Admin Business Controls ---

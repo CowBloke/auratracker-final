@@ -210,7 +210,7 @@ function ShopCard({
   user: ReturnType<typeof useAuth>['user'];
   buyingItemId: string | null;
   ownedSkinItemIds: Set<string>;
-  clanStatus: { inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; clanBankMoney: number } | null;
+  clanStatus: { inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; maxMembers: number; clanBankMoney: number } | null;
   onPurchase: (item: ShopItem) => void;
 }) {
   const effectType = parseEffectType(item.effect);
@@ -222,7 +222,7 @@ function ShopCard({
   const isClanUpgrade = isClanTagUnlock || isClanSlotUpgrade || isClanMoneyBoost || isClanProfilePicture || isClanBanner;
   const isAlreadyPurchased =
     (isClanTagUnlock && !!clanStatus?.tagUnlocked) ||
-    (isClanSlotUpgrade && !!clanStatus?.slotUpgraded);
+    (isClanSlotUpgrade && (clanStatus?.maxMembers ?? 0) >= 7);
   const effectLabel = getEffectLabel(item.effect);
   const canAfford = isClanUpgrade
     ? (clanStatus?.clanBankMoney ?? 0) >= item.price
@@ -488,7 +488,7 @@ export default function Shop() {
   const [categories, setCategories] = useState<ShopCategory[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
-  const [clanStatus, setClanStatus] = useState<{ inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; clanBankMoney: number } | null>(null);
+  const [clanStatus, setClanStatus] = useState<{ inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; maxMembers: number; clanBankMoney: number } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -499,7 +499,7 @@ export default function Shop() {
           : Promise.resolve({ data: { items: [] as AdminInventoryItem[] } });
         const clanStatusRequest = user?.id
           ? clansApi.myStatus()
-          : Promise.resolve({ data: { inClan: false, tagUnlocked: false, slotUpgraded: false, clanBankMoney: 0, level: 1 } });
+          : Promise.resolve({ data: { inClan: false, tagUnlocked: false, slotUpgraded: false, maxMembers: 0, clanBankMoney: 0, level: 1 } });
         const [itemsRes, categoriesRes, inventoryRes, clanStatusRes] = await Promise.all([
           marketplaceApi.getItems({ limit: 100 }),
           marketplaceApi.getCategories(),
@@ -515,6 +515,7 @@ export default function Shop() {
           inClan: clanStatusRes.data.inClan,
           tagUnlocked: clanStatusRes.data.tagUnlocked,
           slotUpgraded: clanStatusRes.data.slotUpgraded,
+          maxMembers: clanStatusRes.data.maxMembers,
           clanBankMoney: clanStatusRes.data.clanBankMoney,
         });
       } catch {
@@ -602,7 +603,7 @@ export default function Shop() {
         setClanStatus(prev => prev ? { ...prev, tagUnlocked: true, clanBankMoney: prev.clanBankMoney - item.price } : prev);
       }
       if (isClanSlotUpgrade) {
-        setClanStatus(prev => prev ? { ...prev, slotUpgraded: true, clanBankMoney: prev.clanBankMoney - item.price } : prev);
+        setClanStatus(prev => prev ? { ...prev, slotUpgraded: true, maxMembers: prev.maxMembers + 1, clanBankMoney: prev.clanBankMoney - item.price } : prev);
       }
       if (isClanMoneyBoost || isClanProfilePicturePurchase || isClanBannerPurchase) {
         setClanStatus(prev => prev ? { ...prev, clanBankMoney: prev.clanBankMoney - item.price } : prev);
@@ -625,7 +626,7 @@ export default function Shop() {
           description: isClanTagUnlock
             ? 'Le tag est maintenant actif pour ton clan. Va dans Clans pour le personnaliser.'
             : isClanSlotUpgrade
-            ? 'Ton clan gagne un membre maximum supplémentaire.'
+            ? 'Ton clan gagne un membre maximum supplémentaire, jusqu\'à 7 membres.'
             : isClanMoneyBoost
             ? `${item.name} a ete ajoute aux objets du clan. Active-le depuis la page Clan.`
             : isClanProfilePicturePurchase

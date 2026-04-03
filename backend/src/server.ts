@@ -22,6 +22,7 @@ import leaderboardsRoutes from './routes/leaderboards.js';
 import usersRoutes from './routes/users.js';
 import adminRoutes from './routes/admin.js';
 import auraCoinRoutes, { startPriceEngine as startAuraCoinEngine, stopPriceEngine as stopAuraCoinEngine } from './routes/auracoin.js';
+import marketRoomRoutes, { startMarketRoomEngines, stopMarketRoomEngines } from './routes/marketRoom.js';
 import suggestionsRoutes from './routes/suggestions.js';
 import bombpartyRoutes from './routes/bombparty.js';
 import uploadsRoutes from './routes/uploads.js';
@@ -39,6 +40,7 @@ import clashRoutes from './routes/clash.js';
 import polytrackRoutes from './routes/polytrack.js';
 import changelogRoutes from './routes/changelog.js';
 import youRoutes from './routes/you.js';
+import messagesRoutes from './routes/messages.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -63,6 +65,7 @@ import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges
 import { ensureDefaultBadges } from './utils/seedBadges.js';
 import { recomputeOverallClassement, startOverallClassementScheduler, stopOverallClassementScheduler } from './utils/overallClassement.js';
 import { startDailyBankRevenueScheduler, stopDailyBankRevenueScheduler } from './utils/dailyBankRevenue.js';
+import { startDailyBusinessSalaryScheduler, stopDailyBusinessSalaryScheduler } from './utils/dailyBusinessSalaries.js';
 import { runDailyTax, startDailyTaxScheduler, stopDailyTaxScheduler } from './utils/dailyTax.js';
 import { advanceClanEventsState } from './utils/clanEvents.js';
 import {
@@ -120,6 +123,7 @@ app.use('/api/leaderboards', leaderboardsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auracoin', auraCoinRoutes);
+app.use('/api/market-room', marketRoomRoutes);
 app.use('/api/suggestions', suggestionsRoutes);
 app.use('/api/bombparty', bombpartyRoutes);
 app.use('/api/uploads', uploadsRoutes);
@@ -133,6 +137,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/badges', badgesRoutes);
 app.use('/api/custom-badges', customBadgesRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/messages', messagesRoutes);
 app.use('/api/clash', clashRoutes);
 app.use('/api/polytrack', polytrackRoutes);
 app.use('/api/changelog', changelogRoutes);
@@ -327,6 +332,7 @@ const start = async () => {
 
     // Start background jobs only after the HTTP server is actually bound.
     startAuraCoinEngine();
+    await startMarketRoomEngines();
     startOnlineCountBroadcast(io);
     startOnlineSnapshotRecording();
     startBombPartyCleanup(io);
@@ -335,6 +341,7 @@ const start = async () => {
     await recomputeOverallClassement(prisma);
     startOverallClassementScheduler(prisma);
     startDailyBankRevenueScheduler(prisma);
+    startDailyBusinessSalaryScheduler(prisma);
     await runDailyTax(prisma);
     startDailyTaxScheduler(prisma);
     await runDailyRacerRewards(prisma);
@@ -361,9 +368,11 @@ start();
 // Graceful shutdown
 process.on('SIGINT', async () => {
   stopAuraCoinEngine();
+  stopMarketRoomEngines();
   stopAutoBadgeScheduler();
   stopOverallClassementScheduler();
   stopDailyBankRevenueScheduler();
+  stopDailyBusinessSalaryScheduler();
   stopDailyTaxScheduler();
   stopDailyRacerRewardsScheduler();
   if (clanEventsTimer) clearInterval(clanEventsTimer);
@@ -373,9 +382,11 @@ process.on('SIGINT', async () => {
 
 process.on('SIGTERM', async () => {
   stopAuraCoinEngine();
+  stopMarketRoomEngines();
   stopAutoBadgeScheduler();
   stopOverallClassementScheduler();
   stopDailyBankRevenueScheduler();
+  stopDailyBusinessSalaryScheduler();
   stopDailyTaxScheduler();
   stopDailyRacerRewardsScheduler();
   if (clanEventsTimer) clearInterval(clanEventsTimer);

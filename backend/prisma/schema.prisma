@@ -51,6 +51,8 @@ model User {
   partyMemberships             PartyMember[]
   partyMessages                PartyMessage[]
   sentMessages                 ChatMessage[]
+  directConversationParticipants DirectConversationParticipant[]
+  sentDirectMessages           DirectMessage[]
   chatReactions                ChatReaction[]
   following                    UserFollow[]                  @relation("UserFollowing")
   followers                    UserFollow[]                  @relation("UserFollowers")
@@ -105,6 +107,9 @@ model User {
   polymarketBets               PolymarketBet[]
   createdUpdatePopups          UpdatePopup[]                 @relation("UpdatePopupCreator")
   updatePopupViews             UserUpdatePopupView[]
+  cryptoBalances               UserCryptoBalance[]
+  cryptoTransactions           CryptoTransaction[]
+  cryptoPositions              CryptoPosition[]
 
   // Daily Quests relations
   dailyQuests UserDailyQuest[]
@@ -421,6 +426,49 @@ model UserFollow {
   @@index([followingId, createdAt])
 }
 
+model DirectConversation {
+  id            String   @id @default(uuid())
+  directKey     String   @unique
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  participants DirectConversationParticipant[]
+  messages     DirectMessage[]
+
+  @@index([lastMessageAt])
+}
+
+model DirectConversationParticipant {
+  id               String    @id @default(uuid())
+  conversationId   String
+  userId           String
+  joinedAt         DateTime  @default(now())
+  lastReadAt       DateTime?
+  lastReadMessageId String?
+
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, joinedAt])
+  @@index([conversationId, joinedAt])
+}
+
+model DirectMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User               @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+}
+
 model Business {
   id                    String    @id @default(uuid())
   ownerId               String
@@ -486,6 +534,7 @@ model BusinessRating {
   businessId String
   userId     String
   rating     Int // 1-5
+  comment    String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -503,6 +552,7 @@ model BusinessMember {
   role       String
   status     String   @default("ACTIVE")
   salary     Int      @default(0)
+  lastSalaryPaymentDate String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -518,8 +568,15 @@ model BusinessInvitation {
   businessId  String
   inviterId   String
   inviteeId   String
+  employerId  String
+  employeeId  String
+  initiatedByRole String
   role        String
+  salary      Int       @default(0)
+  message     String?
   status      String    @default("PENDING")
+  employerAcceptedAt DateTime?
+  employeeAcceptedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   respondedAt DateTime?
@@ -528,8 +585,9 @@ model BusinessInvitation {
   inviter  User     @relation("BusinessInvitationSender", fields: [inviterId], references: [id], onDelete: Cascade)
   invitee  User     @relation("BusinessInvitationRecipient", fields: [inviteeId], references: [id], onDelete: Cascade)
 
-  @@unique([businessId, inviteeId])
   @@index([inviteeId, status])
+  @@index([employeeId, status])
+  @@index([employerId, status])
   @@index([businessId, status])
 }
 
@@ -540,9 +598,13 @@ model BusinessLoan {
   amount       Int
   termMonths   Int
   interestRate Float
+  motivationMessage String?
+  collateralAura Int       @default(0)
+  collateralAuraHeld Int   @default(0)
   status       String    @default("PENDING")
   repaidAmount Int       @default(0)
   decidedAt    DateTime?
+  collateralClaimedAt DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -1345,6 +1407,69 @@ model AuraCoinPosition {
   @@index([userId])
   @@index([isOpen])
   @@index([createdAt])
+}
+
+model UserCryptoBalance {
+  id        String   @id @default(uuid())
+  userId    String
+  coinKey   String
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, coinKey])
+  @@index([coinKey, balance])
+}
+
+model CryptoPrice {
+  id        String   @id @default(uuid())
+  coinKey   String
+  price     Float
+  volume    Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([coinKey, createdAt])
+}
+
+model CryptoTransaction {
+  id          String   @id @default(uuid())
+  userId      String
+  coinKey     String
+  type        String
+  coinAmount  Float
+  moneyAmount Int
+  price       Float
+  fee         Int
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, coinKey])
+  @@index([coinKey, createdAt])
+}
+
+model CryptoPosition {
+  id           String    @id @default(uuid())
+  userId       String
+  coinKey      String
+  type         String
+  leverage     Int
+  entryPrice   Float
+  coinAmount   Float
+  marginAmount Int
+  isOpen       Boolean   @default(true)
+  closedAt     DateTime?
+  exitPrice    Float?
+  pnl          Int?
+  liquidated   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, coinKey, isOpen])
+  @@index([coinKey, createdAt])
 }
 
 // Bug Report

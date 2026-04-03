@@ -178,6 +178,10 @@ export function FeedCard({
   }
 
   if (item.kind === 'job_offer') {
+    const directionLabel = item.offer.initiatedByRole === 'EMPLOYER' ? 'Offre de contrat' : 'Candidature';
+    const subtitle = item.offer.initiatedByRole === 'EMPLOYER'
+      ? `${item.offer.inviter.username} te propose le role ${item.offer.role}`
+      : `${item.offer.employee.username} candidate pour ${item.offer.role}`;
     return (
       <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 px-4 py-3">
         <div className="flex items-start gap-3">
@@ -187,14 +191,18 @@ export function FeedCard({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold">{item.offer.business.name}</p>
-              <Pill label="Offre de job" color="bg-violet-400/15 text-violet-300" />
+              <Pill label={directionLabel} color="bg-violet-400/15 text-violet-300" />
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">{item.offer.inviter.username} te propose le role {item.offer.role}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle} · {item.offer.salary.toLocaleString('fr-FR')} money/jour</p>
             <p className="mt-1.5 text-[11px] text-muted-foreground/60">{dateStr}</p>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" className="h-7 text-xs" onClick={() => void onRespondJobOffer(item.offer, 'accept')}>Accepter</Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRespondJobOffer(item.offer, 'reject')}>Refuser</Button>
-            </div>
+            {item.offer.needsViewerAcceptance ? (
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" className="h-7 text-xs" onClick={() => void onRespondJobOffer(item.offer, 'accept')}>Accepter</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRespondJobOffer(item.offer, 'reject')}>Refuser</Button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">En attente de validation par {item.offer.waitingOn === 'EMPLOYER' ? "l'employeur" : item.offer.waitingOn === 'EMPLOYEE' ? "l'employe" : "l'autre partie"}.</p>
+            )}
           </div>
         </div>
       </div>

@@ -21,7 +21,20 @@ const DB_SAVE_DEBOUNCE_MS = 1_500; // Save shortly after meaningful state change
 const ACTIVE_LEADERBOARD_POLL_MS = 5_000;
 
 // ---- Types ----
-type UpgradeTarget = 'click' | 'tree' | 'picker' | 'garden' | 'orchard' | 'factory' | 'plantation' | 'lab' | 'rocket' | 'dimension';
+type UpgradeTarget =
+  | 'click'
+  | 'tree'
+  | 'picker'
+  | 'garden'
+  | 'orchard'
+  | 'factory'
+  | 'plantation'
+  | 'lab'
+  | 'rocket'
+  | 'dimension'
+  | 'multiverse'
+  | 'chrono'
+  | 'divinity';
 
 interface BuildingDef {
   id: string;
@@ -64,6 +77,9 @@ const BUILDINGS: BuildingDef[] = [
   { id: 'lab',        name: 'Laboratoire',  emoji: '🔬', baseCost: 20000000,     baseGps: 7800,   description: 'Recherche génétique pour des goyaves surpuissantes.' },
   { id: 'rocket',     name: 'Vaisseau',     emoji: '🚀', baseCost: 330000000,    baseGps: 44000,  description: 'Agriculture en apesanteur dans l\'espace.' },
   { id: 'dimension',  name: 'Dimension',    emoji: '💫', baseCost: 5100000000,   baseGps: 260000, description: 'Exploitation de goyaves dans des dimensions parallèles.' },
+  { id: 'multiverse', name: 'Multivers',    emoji: '🌀', baseCost: 85000000000,  baseGps: 1500000, description: 'Des fermes de goyaves synchronisées à travers des univers infinis.' },
+  { id: 'chrono',     name: 'Chronoforge',  emoji: '⏳', baseCost: 1300000000000, baseGps: 8500000, description: 'Des serres temporelles qui récoltent hier, aujourd\'hui et demain.' },
+  { id: 'divinity',   name: 'Temple divin', emoji: '👑', baseCost: 19000000000000, baseGps: 48000000, description: 'Le sommet absolu de l\'empire goyave, sanctifié par des dieux tropicaux.' },
 ];
 
 const UPGRADES: UpgradeDef[] = [
@@ -91,16 +107,32 @@ const UPGRADES: UpgradeDef[] = [
   // Factory upgrades
   { id: 'automation',         name: 'Automatisation',       description: 'Usines ×2.',                      emoji: '⚙️', cost: 2600000,      target: 'factory',    multiplier: 2, unlockCount: 1  },
   { id: 'nano_processing',    name: 'Nano-traitement',      description: 'Usines ×2.',                      emoji: '🔬', cost: 39000000,     target: 'factory',    multiplier: 2, unlockCount: 5  },
+  { id: 'robo_packaging',     name: 'Emballage robotisé',   description: 'Usines ×2.',                      emoji: '📦', cost: 560000000,    target: 'factory',    multiplier: 2, unlockCount: 25 },
   // Plantation upgrades
   { id: 'tropical_genetics',  name: 'Génétique tropicale',  description: 'Plantations ×2.',                 emoji: '🌺', cost: 28000000,     target: 'plantation', multiplier: 2, unlockCount: 1  },
   { id: 'climate_dome',       name: 'Dôme climatique',      description: 'Plantations ×2.',                 emoji: '🔮', cost: 420000000,    target: 'plantation', multiplier: 2, unlockCount: 5  },
+  { id: 'solar_monsoon',      name: 'Mousson solaire',      description: 'Plantations ×2.',                 emoji: '☀️', cost: 6400000000,   target: 'plantation', multiplier: 2, unlockCount: 25 },
   // Lab upgrades
   { id: 'gmo_goyave',         name: 'OGM Goyave',           description: 'Laboratoires ×2.',                emoji: '🧪', cost: 400000000,    target: 'lab',        multiplier: 2, unlockCount: 1  },
   { id: 'super_goyave',       name: 'Super Goyave',         description: 'Laboratoires ×2.',                emoji: '💉', cost: 6000000000,   target: 'lab',        multiplier: 2, unlockCount: 5  },
+  { id: 'genome_forge',       name: 'Forge génomique',      description: 'Laboratoires ×2.',                emoji: '🧬', cost: 90000000000,  target: 'lab',        multiplier: 2, unlockCount: 25 },
   // Rocket upgrades
   { id: 'space_farming',      name: 'Agriculture spatiale', description: 'Vaisseaux ×2.',                   emoji: '🛸', cost: 6600000000,   target: 'rocket',     multiplier: 2, unlockCount: 1  },
+  { id: 'orbital_greenhouse', name: 'Serres orbitales',     description: 'Vaisseaux ×2.',                   emoji: '🛰️', cost: 99000000000,  target: 'rocket',     multiplier: 2, unlockCount: 5  },
+  { id: 'lunar_harvesters',   name: 'Moissonneurs lunaires',description: 'Vaisseaux ×2.',                   emoji: '🌕', cost: 1400000000000, target: 'rocket',     multiplier: 2, unlockCount: 25 },
   // Dimension upgrades
   { id: 'quantum_goyave',     name: 'Goyave quantique',     description: 'Dimensions ×2.',                  emoji: '⚛️', cost: 100000000000, target: 'dimension',  multiplier: 2, unlockCount: 1  },
+  { id: 'parallel_dynasties', name: 'Dynasties parallèles', description: 'Dimensions ×2.',                  emoji: '👥', cost: 1500000000000, target: 'dimension',  multiplier: 2, unlockCount: 5  },
+  { id: 'paradox_refinery',   name: 'Raffinerie du paradoxe',description: 'Dimensions ×2.',                 emoji: '♾️', cost: 20000000000000, target: 'dimension', multiplier: 2, unlockCount: 25 },
+  // Multiverse upgrades
+  { id: 'multiversal_rootstock', name: 'Porte-greffes multiversels', description: 'Multivers ×2.',          emoji: '🌌', cost: 2200000000000, target: 'multiverse', multiplier: 2, unlockCount: 1  },
+  { id: 'infinite_canopy',       name: 'Canopée infinie',           description: 'Multivers ×2.',          emoji: '🌠', cost: 32000000000000, target: 'multiverse', multiplier: 2, unlockCount: 5  },
+  // Chrono upgrades
+  { id: 'time_loops',         name: 'Boucles temporelles',  description: 'Chronoforges ×2.',                emoji: '🕰️', cost: 28000000000000, target: 'chrono',    multiplier: 2, unlockCount: 1  },
+  { id: 'frozen_harvest',     name: 'Récolte figée',        description: 'Chronoforges ×2.',                emoji: '❄️', cost: 380000000000000, target: 'chrono',   multiplier: 2, unlockCount: 5  },
+  // Divinity upgrades
+  { id: 'sacred_orchards',    name: 'Vergers sacrés',       description: 'Temples divins ×2.',              emoji: '✨', cost: 420000000000000, target: 'divinity', multiplier: 2, unlockCount: 1  },
+  { id: 'guava_ascension',    name: 'Ascension goyavique',  description: 'Temples divins ×2.',              emoji: '🌞', cost: 5500000000000000, target: 'divinity', multiplier: 2, unlockCount: 5  },
 ];
 
 // ---- Pure helpers ----
@@ -182,7 +214,7 @@ function defaultSave(): SaveState {
     guavas: 0,
     totalGuavas: 0,
     clickPower: 1,
-    buildings: { tree: 0, picker: 0, garden: 0, orchard: 0, factory: 0, plantation: 0, lab: 0, rocket: 0, dimension: 0 },
+    buildings: { tree: 0, picker: 0, garden: 0, orchard: 0, factory: 0, plantation: 0, lab: 0, rocket: 0, dimension: 0, multiverse: 0, chrono: 0, divinity: 0 },
     upgrades: [],
     lastTick: Date.now(),
     cashOutScore: 0,

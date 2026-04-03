@@ -216,7 +216,7 @@ export default function Inventory() {
           effectText += ` • +$${response.data.effect.bonusMoney}`;
         }
         if (response.data.effect.type === 'CLAN_SLOT_UPGRADE') {
-          effectText += ' • +1 slot clan';
+          effectText += ' • +1 slot clan (jusqu\'à 7 membres)';
         }
         if (response.data.effect.type === 'AWARD_BADGE' && response.data.effect.badgeName) {
           effectText += ` • Badge "${response.data.effect.badgeName}" obtenu`;

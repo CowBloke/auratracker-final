@@ -7,7 +7,7 @@ import { type YouBusiness, type YouPlayer, type YouState, youApi } from '@/servi
 import { BUSINESS_ICON_MAP } from '../constants';
 import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '../components/modals';
 import { ActionCard, ActionRow, Pill, SectionTitle } from '../components/ui';
-import { formatMoney } from '../utils';
+import { formatMoney, withRouteError } from '../utils';
 
 function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b: YouBusiness) => void }) {
   const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
@@ -34,7 +34,7 @@ function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b:
   );
 }
 
-export function TravailTab({ data, players, onReload }: { data: YouState; players: YouPlayer[]; onReload: (refreshBalance?: boolean) => Promise<void> }) {
+export function TravailTab({ data, players, currentUserId, onReload }: { data: YouState; players: YouPlayer[]; currentUserId: string; onReload: (refreshBalance?: boolean) => Promise<void> }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteBusinessId, setInviteBusinessId] = useState<string | null>(null);
   const [managedBusinessId, setManagedBusinessId] = useState<string | null>(null);
@@ -44,6 +44,12 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
   const allBusinesses = [...data.ownedBusinesses, ...data.memberBusinesses, ...data.shareholderBusinesses];
   const inviteBusiness = inviteBusinessId ? allBusinesses.find((business) => business.id === inviteBusinessId) ?? null : null;
   const managedBusiness = managedBusinessId ? allBusinesses.find((business) => business.id === managedBusinessId) ?? null : null;
+
+  const respondToJobOffer = async (offerId: string, decision: 'accept' | 'reject') => {
+    await withRouteError(() => youApi.respondToBusinessInvitation(offerId, decision), 'Impossible de traiter ce contrat.');
+    toast.success(decision === 'accept' ? 'Contrat mis a jour' : 'Contrat refuse');
+    await onReload(true);
+  };
 
   const cancelBuyoutOffer = async (offerId: string) => {
     setCancellingOfferId(offerId);
@@ -75,6 +81,44 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
               : data.ownedBusinesses.map((business) => <BusinessCard key={business.id} business={business} onOpen={(entry) => setManagedBusinessId(entry.id)} />)
             }
           </div>
+          {data.jobOffers.length > 0 && (
+            <div className="space-y-4">
+              <SectionTitle>Contrats en attente ({data.jobOffers.length})</SectionTitle>
+              {data.jobOffers.map((offer) => (
+                <Card key={offer.id}>
+                  <CardContent className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-base font-semibold">{offer.business.name}</p>
+                        <Pill
+                          label={offer.initiatedByRole === 'EMPLOYER' ? 'Offre' : 'Candidature'}
+                          color="bg-violet-400/15 text-violet-300"
+                        />
+                        <Pill label={`${offer.salary.toLocaleString('fr-FR')} / jour`} color="bg-emerald-400/15 text-emerald-300" />
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {offer.initiatedByRole === 'EMPLOYER'
+                          ? `${offer.employer.username} propose le role ${offer.role}`
+                          : `${offer.employee.username} candidate comme ${offer.role}`}
+                      </p>
+                      {offer.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{offer.message}"</p> : null}
+                      {!offer.needsViewerAcceptance ? (
+                        <p className="mt-1 text-xs text-muted-foreground/70">
+                          En attente de validation par {offer.waitingOn === 'EMPLOYER' ? "l'employeur" : offer.waitingOn === 'EMPLOYEE' ? "l'employe" : "l'autre partie"}.
+                        </p>
+                      ) : null}
+                    </div>
+                    {offer.needsViewerAcceptance ? (
+                      <div className="flex gap-2">
+                        <Button size="sm" className="text-xs" onClick={() => void respondToJobOffer(offer.id, 'accept')}>Accepter</Button>
+                        <Button size="sm" variant="outline" className="text-xs" onClick={() => void respondToJobOffer(offer.id, 'reject')}>Refuser</Button>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
           {data.memberBusinesses.length > 0 && (
             <div className="space-y-4">
               <SectionTitle>
@@ -84,7 +128,7 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
                 </span>
               </SectionTitle>
               {data.memberBusinesses.map((business) => {
-                const myMembership = business.members.find((m) => m.user.id === undefined);
+                const myMembership = business.members.find((m) => m.user.id === currentUserId);
                 const roleLabel = myMembership?.role ?? 'employe';
                 return (
                   <Card key={business.id}>
@@ -99,7 +143,7 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
                           <Pill label={roleLabel} color="bg-violet-400/15 text-violet-400" />
                         </div>
                         <p className="mt-1 text-sm text-muted-foreground">
-                          Proprietaire: {business.owner.username} · Revenue: +{formatMoney(business.monthlyRevenue)}
+                          Proprietaire: {business.owner.username} · Salaire: {formatMoney(myMembership?.salary ?? 0)} / jour
                         </p>
                       </div>
                       <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => setManagedBusinessId(business.id)}>Gerer</Button>
@@ -177,7 +221,7 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
       </div>
       <CreateBusinessModal open={createOpen} onClose={() => setCreateOpen(false)} businessTypes={data.businessTypes} unlockedBusinessLevel={data.unlockedBusinessLevel ?? 0} onCreated={() => onReload(true)} />
       <InvitePlayersModal open={Boolean(inviteBusiness)} onClose={() => setInviteBusinessId(null)} business={inviteBusiness} players={players} onSubmitted={() => onReload()} />
-      <ManageBusinessModal open={Boolean(managedBusiness)} onClose={() => setManagedBusinessId(null)} business={managedBusiness} onInviteRequested={(business) => setInviteBusinessId(business.id)} onSubmitted={onReload} />
+      <ManageBusinessModal open={Boolean(managedBusiness)} onClose={() => setManagedBusinessId(null)} business={managedBusiness} players={players} currentUserId={currentUserId} onInviteRequested={(business) => setInviteBusinessId(business.id)} onSubmitted={onReload} />
     </>
   );
 }

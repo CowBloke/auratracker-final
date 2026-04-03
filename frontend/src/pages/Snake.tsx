@@ -167,8 +167,6 @@ function pointsMatch(a: Point, b: Point): boolean {
 function getDirectionFromKey(key: string): Direction | null {
   switch (key) {
     case 'ArrowUp':
-    case 'w':
-    case 'W':
     case 'z':
     case 'Z':
       return 'up';
@@ -177,8 +175,6 @@ function getDirectionFromKey(key: string): Direction | null {
     case 'S':
       return 'down';
     case 'ArrowLeft':
-    case 'a':
-    case 'A':
     case 'q':
     case 'Q':
       return 'left';
@@ -565,7 +561,7 @@ export default function Snake() {
               <CardTitle className="text-sm font-medium">Commandes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 px-4 pb-4 text-sm text-muted-foreground">
-              <p>Fleches ou ZQSD/WASD pour tourner.</p>
+              <p>Fleches ou ZQSD pour tourner.</p>
               <p>Espace pour pause/reprise.</p>
               <p>R ou Entree pour relancer la run.</p>
             </CardContent>

@@ -132,7 +132,7 @@ const gameShortcuts: GameShortcut[] = [
   { id: 'poker', label: 'Poker', path: '/games/poker', description: 'Table rapide, mise prudente.', image: getGameImage('poker') },
   { id: 'petit-bac', label: 'Petit Bac', path: '/games/petit-bac', description: 'Catégories, lettres, vitesse.', image: getGameImage('petit-bac') },
   { id: 'casino', label: 'Casino', path: '/games/casino', description: 'Mini-jeux et mises rapides.', image: getGameImage('casino') },
-  { id: 'aura-coin', label: 'Aura Coin', path: '/games/aura-coin', description: 'Suivi des pièces aura.', image: getGameImage('aura-coin') },
+  { id: 'market-room', label: 'Salle de marché', path: '/games/salle-de-marche', description: 'Hub crypto avec trois marchés.', image: getGameImage('market-room') },
   { id: 'polymarket', label: 'Polymarket', path: '/polymarket', description: 'Paris en temps réel.' },
   { id: 'doodle-jump', label: 'Doodle Jump', path: '/games/doodle-jump', description: 'Grimpe sans fin.', image: getGameImage('doodle-jump') },
   { id: '2048', label: '2048', path: '/games/2048', description: "Fusionne jusqu'à 2048.", image: getGameImage('game-2048') },

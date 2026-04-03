@@ -51,6 +51,8 @@ const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
 const ANNOUNCEMENT_MAX_LENGTH = 120;
 const AURACOIN_BUY_FEE_PERCENTAGE_KEY = 'auracoin_buy_fee_percentage';
+const STABLE_COIN_BUY_FEE_PERCENTAGE_KEY = 'stable_coin_buy_fee_percentage';
+const CHAOS_COIN_BUY_FEE_PERCENTAGE_KEY = 'chaos_coin_buy_fee_percentage';
 const DUEL_MATCHMAKING_ENABLED_SETTING_KEY = 'duel_matchmaking_enabled';
 const CLASH_ATTACK_COOLDOWN_MINUTES_KEY = 'clash_attack_cooldown_minutes';
 const DAILY_AURA_DISTRIBUTION_LIMIT_KEY = DAILY_AURA_LIMIT_SETTING_KEY;
@@ -3231,10 +3233,10 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       return res.status(400).json({ error: 'Duel matchmaking enabled must be true or false' });
     }
 
-    if (key === AURACOIN_BUY_FEE_PERCENTAGE_KEY) {
+    if ([AURACOIN_BUY_FEE_PERCENTAGE_KEY, STABLE_COIN_BUY_FEE_PERCENTAGE_KEY, CHAOS_COIN_BUY_FEE_PERCENTAGE_KEY].includes(key)) {
       const numValue = Number.parseFloat(normalizedValue);
       if (!Number.isFinite(numValue) || numValue < 0 || numValue > 0.5) {
-        return res.status(400).json({ error: 'AuraCoin buy fee must be between 0 and 0.5' });
+        return res.status(400).json({ error: 'Crypto buy fee must be between 0 and 0.5' });
       }
     }
 
@@ -3391,10 +3393,10 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         continue;
       }
 
-      if (key === AURACOIN_BUY_FEE_PERCENTAGE_KEY) {
+      if ([AURACOIN_BUY_FEE_PERCENTAGE_KEY, STABLE_COIN_BUY_FEE_PERCENTAGE_KEY, CHAOS_COIN_BUY_FEE_PERCENTAGE_KEY].includes(key)) {
         const numValue = Number.parseFloat(normalizedValue);
         if (!Number.isFinite(numValue) || numValue < 0 || numValue > 0.5) {
-          errors.push(`${key}: AuraCoin buy fee must be between 0 and 0.5`);
+          errors.push(`${key}: Crypto buy fee must be between 0 and 0.5`);
           continue;
         }
       }
