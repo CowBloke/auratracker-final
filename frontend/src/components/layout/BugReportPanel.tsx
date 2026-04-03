@@ -1,6 +1,6 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
-import { bugReportApi } from '@/services/api';
+import { useState, type FormEvent, type ReactNode, useRef } from 'react';
+import { Loader2, X, Upload } from 'lucide-react';
+import { bugReportApi, uploadUserImage } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,13 +24,17 @@ interface BugReportPanelProps {
 export default function BugReportPanel({ open, onOpenChange, trigger }: BugReportPanelProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [images, setImages] = useState<string[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
     setTitle('');
     setDescription('');
+    setImages([]);
     setSubmitting(false);
     setSubmitted(false);
     setError(null);
@@ -41,6 +45,45 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
     if (!nextOpen) {
       resetForm();
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (!files) return;
+
+    if (images.length + files.length > 5) {
+      setError('Maximum 5 images autorisées');
+      return;
+    }
+
+    setUploadingImage(true);
+    setError(null);
+
+    try {
+      for (const file of files) {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const base64Data = event.target?.result as string;
+            const mimeType = file.type;
+            const { data } = await uploadUserImage({ base64Data, mimeType });
+            setImages((prev) => [...prev, data.imageUrl]);
+          } catch (err: any) {
+            setError(err.response?.data?.error || 'Erreur lors de l\'upload');
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -65,10 +108,15 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
     setError(null);
 
     try {
-      await bugReportApi.create({ title: title.trim(), description: description.trim() });
+      await bugReportApi.create({ 
+        title: title.trim(), 
+        description: description.trim(),
+        images: images.length > 0 ? images : undefined,
+      });
       setSubmitted(true);
       setTitle('');
       setDescription('');
+      setImages([]);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Une erreur est survenue');
     } finally {
@@ -83,7 +131,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
         <SheetHeader>
           <SheetTitle>Reporter un bug</SheetTitle>
           <SheetDescription>
-            Décris précisément le problème pour aider l’équipe à le reproduire.
+            Décris précisément le problème pour aider l'équipe à le reproduire.
           </SheetDescription>
         </SheetHeader>
 
@@ -141,6 +189,51 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                 <p className={cn(TYPOGRAPHY.XS, 'text-right')}>
                   {description.length}/2000
                 </p>
+              </div>
+
+              <div className={SPACING.CARD_SPACING}>
+                <label className={TYPOGRAPHY.SMALL}>Images (optionnel)</label>
+                <div className="flex gap-2 items-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={submitting || uploadingImage || images.length >= 5}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploadingImage ? 'Upload...' : `Ajouter image (${images.length}/5)`}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
+                {images.length > 0 && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {images.map((img, idx) => (
+                      <div key={idx} className="relative group">
+                        <img
+                          src={img}
+                          alt={`Upload ${idx}`}
+                          className="w-full h-24 object-cover rounded border border-border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Supprimer l'image"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between">

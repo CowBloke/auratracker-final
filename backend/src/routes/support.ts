@@ -29,7 +29,7 @@ router.post('/messages', authMiddleware, async (req: AuthRequest, res: Response)
   try {
     if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
 
-    const { body } = req.body;
+    const { body, images } = req.body;
     if (!body || typeof body !== 'string' || body.trim().length === 0) {
       return res.status(400).json({ error: 'Message body is required' });
     }
@@ -37,8 +37,23 @@ router.post('/messages', authMiddleware, async (req: AuthRequest, res: Response)
       return res.status(400).json({ error: 'Message must be 1000 characters or less' });
     }
 
+    // Validate images
+    let imagesJson: string | undefined;
+    if (images) {
+      if (!Array.isArray(images)) {
+        return res.status(400).json({ error: 'Images must be an array' });
+      }
+      if (images.length > 5) {
+        return res.status(400).json({ error: 'Maximum 5 images allowed' });
+      }
+      if (!images.every((img) => typeof img === 'string')) {
+        return res.status(400).json({ error: 'All images must be strings' });
+      }
+      imagesJson = JSON.stringify(images);
+    }
+
     const message = await prisma.supportMessage.create({
-      data: { userId: req.user.id, body: body.trim(), fromAdmin: false },
+      data: { userId: req.user.id, body: body.trim(), fromAdmin: false, images: imagesJson },
     });
 
     // Notify all admins via socket (they're in admin:support room)

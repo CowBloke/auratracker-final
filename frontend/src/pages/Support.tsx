@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send } from 'lucide-react';
+import { Send, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { supportApi, SupportMessage } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
+import { useSmartScroll } from '@/hooks/useSmartScroll';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -14,7 +15,9 @@ export default function Support() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
+    dependency: [messages],
+  });
   const { socket } = useSocketBase();
 
   const fetchMessages = useCallback(async () => {
@@ -33,10 +36,6 @@ export default function Support() {
     fetchMessages();
     supportApi.markRead().catch(() => {});
   }, [fetchMessages]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   useEffect(() => {
     if (!socket) return;
@@ -90,7 +89,12 @@ export default function Support() {
             <p className="text-sm font-medium text-foreground">Support</p>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div 
+            className="flex-1 overflow-y-auto px-5 py-5 relative"
+            ref={(el) => {
+              if (el) setScrollAreaRef(el);
+            }}
+          >
             {loading ? (
               <div className="flex h-full items-center justify-center">
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground/70" />
@@ -104,6 +108,18 @@ export default function Support() {
                 {messages.map((msg) => (
                   <MessageBubble key={msg.id} msg={msg} />
                 ))}
+                {hasNewMessage && (
+                  <div className="sticky bottom-0 flex justify-center py-2">
+                    <button
+                      onClick={scrollToBottom}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground/10 hover:bg-foreground/20 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      title="Aller au dernier message"
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                      <span>Nouveau message</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             <div ref={messagesEndRef} />

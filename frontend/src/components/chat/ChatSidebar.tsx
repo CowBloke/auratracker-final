@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, X, MoreHorizontal, Pin, PinOff, Reply, ImagePlus } from 'lucide-react';
+import { Send, X, MoreHorizontal, Pin, PinOff, Reply, ImagePlus, ChevronDown } from 'lucide-react';
+import { useSmartScroll } from '@/hooks/useSmartScroll';
 import {
   Sidebar,
   SidebarContent,
@@ -84,21 +85,26 @@ export default function ChatSidebar() {
   const [mentionIndex, setMentionIndex] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
+    dependency: [messages],
+  });
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const mentionMap = new Map<string, MentionableUser>();
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort((a, b) => {
-      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      if (a.pinned && b.pinned) {
+  const pinnedMessages = useMemo(() => {
+    return messages
+      .filter((message) => message.pinned)
+      .sort((a, b) => {
         const aTime = a.pinnedAt ?? a.timestamp;
         const bTime = b.pinnedAt ?? b.timestamp;
         return new Date(bTime).getTime() - new Date(aTime).getTime();
-      }
-      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-    });
+      });
+  }, [messages]);
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
   }, [messages]);
 
   onlineUsers.forEach((u) => {
@@ -122,10 +128,6 @@ export default function ChatSidebar() {
   });
 
   const mentionableUsers = Array.from(mentionMap.values());
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   useEffect(() => {
     setMentionIndex(0);
@@ -348,7 +350,61 @@ export default function ChatSidebar() {
 
       <SidebarContent className="flex flex-col">
         <div className="flex-1 flex flex-col min-h-0">
-          <ScrollArea className="flex-1 px-3">
+          {pinnedMessages.length > 0 && (
+            <div className="border-b border-border/40 bg-muted/20 px-3 py-3">
+              <div className="space-y-2">
+                {pinnedMessages.map((msg) => (
+                  <div
+                    key={`pinned-${msg.id}`}
+                    className="rounded-lg border border-border/50 bg-background/85 px-3 py-2"
+                  >
+                    <div className="mb-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <Pin className="h-3 w-3" />
+                      <span className="font-medium text-foreground">{msg.username}</span>
+                      <span className="tabular-nums">{formatTime(msg.timestamp)}</span>
+                      {user?.isAdmin && (
+                        <Button
+                          type="button"
+                          onClick={() => pinMessage(msg.id, false)}
+                          variant="ghost"
+                          size="icon"
+                          className="ml-auto h-6 w-6 text-muted-foreground/70 hover:text-foreground"
+                          title="Désépingler"
+                        >
+                          <PinOff className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {msg.message && (
+                        <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                          {renderMessageContent(msg.message)}
+                        </p>
+                      )}
+                      {msg.imageUrl && (
+                        <img
+                          src={resolveImageUrl(msg.imageUrl)}
+                          alt={`Image épinglée envoyee par ${msg.username}`}
+                          className="max-h-48 w-full rounded-md border border-border/50 object-cover"
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <ScrollArea 
+            className="flex-1 px-3 relative group"
+            ref={(el) => {
+              if (el) {
+                const viewport = el.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
+                if (viewport) {
+                  setScrollAreaRef(viewport);
+                }
+              }
+            }}
+          >
             <div className="space-y-3 py-4">
               {sortedMessages.map((msg) => {
                 const invite = parsePartyInvite(msg.message);
@@ -608,6 +664,18 @@ export default function ChatSidebar() {
                   </div>
                 );
               })}
+              {hasNewMessage && (
+                <div className="sticky bottom-0 flex justify-center py-2">
+                  <button
+                    onClick={scrollToBottom}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground/10 hover:bg-foreground/20 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    title="Aller au dernier message"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                    <span>Nouveau message</span>
+                  </button>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>

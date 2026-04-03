@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   usersApi,
+  adminApi,
   leaderboardsApi,
   auraCoinApi,
   bombPartyApi,
@@ -13,9 +14,13 @@ import {
   SocialRelationship,
   SocialStats,
 } from '../services/api';
-import { Building2, CalendarDays, Edit2, Heart, Loader2, Save, X } from 'lucide-react';
+import { AlertTriangle, Ban as BanIcon, Building2, CalendarDays, Edit2, Heart, Loader2, Save, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
@@ -116,8 +121,20 @@ interface Rankings {
   aura: { value: number; rank: number };
   money: { value: number; rank: number };
   overall?: { value: number; rank: number; totalPlayers?: number; updatedAt?: string };
-  [key: string]: any;
+  [key: string]: unknown;
 }
+
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof (error as { response?: { data?: { error?: unknown } } }).response?.data?.error === 'string'
+  ) {
+    return (error as { response?: { data?: { error?: string } } }).response?.data?.error ?? fallback;
+  }
+  return fallback;
+};
 
 export default function Profile() {
   const { userId } = useParams();
@@ -134,6 +151,15 @@ export default function Profile() {
   const [savingBio, setSavingBio] = useState(false);
   const [socialLoading, setSocialLoading] = useState(false);
   const [showAllGameStats, setShowAllGameStats] = useState(false);
+  const [warningDialogOpen, setWarningDialogOpen] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
+  const [warningSeverity, setWarningSeverity] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
+  const [creatingWarning, setCreatingWarning] = useState(false);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [banReason, setBanReason] = useState('');
+  const [banType, setBanType] = useState<'TEMPORARY' | 'PERMANENT'>('TEMPORARY');
+  const [banDuration, setBanDuration] = useState(24);
+  const [creatingBan, setCreatingBan] = useState(false);
 
   const [userBadges, setUserBadges] = useState<UserBadgeEntry[]>([]);
   const [allBadges, setAllBadges] = useState<Badge[]>([]);
@@ -143,6 +169,7 @@ export default function Profile() {
 
   const targetUserId = userId || currentUser?.id;
   const isOwnProfile = targetUserId === currentUser?.id;
+  const canModerateProfile = Boolean(currentUser?.isAdmin && !isOwnProfile && profileUser);
 
   useEffect(() => {
     if (targetUserId) {
@@ -274,6 +301,74 @@ export default function Profile() {
       console.error('Failed to toggle follow:', error);
     } finally {
       setSocialLoading(false);
+    }
+  };
+
+  const openWarningDialog = () => {
+    setWarningMessage('');
+    setWarningSeverity('MEDIUM');
+    setWarningDialogOpen(true);
+  };
+
+  const createWarning = async () => {
+    if (!profileUser || !warningMessage.trim()) return;
+
+    try {
+      setCreatingWarning(true);
+      const res = await adminApi.createWarning({
+        userId: profileUser.id,
+        message: warningMessage.trim(),
+        severity: warningSeverity,
+      });
+      setWarningDialogOpen(false);
+      setWarningMessage('');
+      setWarningSeverity('MEDIUM');
+      toast({
+        title: 'Avertissement envoye',
+        description: res.data.message || `L'utilisateur ${profileUser.username} verra un popup a confirmer.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: getApiErrorMessage(error, "Impossible d'envoyer l'avertissement."),
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingWarning(false);
+    }
+  };
+
+  const openBanDialog = () => {
+    setBanReason('');
+    setBanType('TEMPORARY');
+    setBanDuration(24);
+    setBanDialogOpen(true);
+  };
+
+  const createBan = async () => {
+    if (!profileUser || !banReason.trim()) return;
+
+    try {
+      setCreatingBan(true);
+      await adminApi.createBan({
+        userId: profileUser.id,
+        reason: banReason.trim(),
+        type: banType,
+        durationHours: banType === 'TEMPORARY' ? banDuration : undefined,
+      });
+      setBanDialogOpen(false);
+      toast({
+        title: 'Utilisateur banni',
+        description: `${profileUser.username} a ete banni avec succes.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: getApiErrorMessage(error, 'Erreur lors du bannissement.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingBan(false);
     }
   };
 
@@ -431,9 +526,10 @@ export default function Profile() {
   ];
 
   return (
-    <div className="w-full px-0 pb-8">
-      <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[28px] border border-border/60 bg-card shadow-sm">
-        <div className="relative h-36 overflow-hidden border-b border-border/60 bg-gradient-to-br from-muted via-background to-muted/70 md:h-48">
+    <>
+      <div className="w-full px-0 pb-8">
+        <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[28px] border border-border/60 bg-card shadow-sm">
+          <div className="relative h-36 overflow-hidden border-b border-border/60 bg-gradient-to-br from-muted via-background to-muted/70 md:h-48">
           {profileBannerUrl ? (
             <>
               <img
@@ -455,10 +551,10 @@ export default function Profile() {
               totalScore={overallTotalScore}
             />
           </div>
-        </div>
+          </div>
 
-        <div className="relative z-10 border-b border-border/60 px-5 pb-6 pt-4 md:px-8">
-          <div className="flex flex-col gap-5">
+          <div className="relative z-10 border-b border-border/60 px-5 pb-6 pt-4 md:px-8">
+            <div className="flex flex-col gap-5">
             <div className="relative z-20 -mt-16 flex flex-col gap-4 md:-mt-20 md:flex-row md:items-end md:justify-between">
               <ProfileAvatar profileUser={profileUser} />
               <div className="flex shrink-0 flex-wrap items-center gap-3 md:justify-end">
@@ -481,6 +577,26 @@ export default function Profile() {
                     {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
                   </Button>
                 )}
+                {canModerateProfile ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="rounded-full border-amber-500/50 px-5 text-amber-500 hover:bg-amber-500/10"
+                      onClick={openWarningDialog}
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                      Avertir
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-full border-orange-500/50 px-5 text-orange-500 hover:bg-orange-500/10"
+                      onClick={openBanDialog}
+                    >
+                      <BanIcon className="h-4 w-4" />
+                      Bannir
+                    </Button>
+                  </>
+                ) : null}
               </div>
             </div>
 
@@ -547,11 +663,11 @@ export default function Profile() {
                 </div>
               ))}
             </div>
+            </div>
           </div>
-        </div>
 
-        <div className="grid lg:grid-cols-[minmax(0,1.55fr)_340px]">
-          <div className="min-w-0 lg:border-r lg:border-border/60">
+          <div className="grid lg:grid-cols-[minmax(0,1.55fr)_340px]">
+            <div className="min-w-0 lg:border-r lg:border-border/60">
             <SectionBlock
               title="A propos"
               action={
@@ -664,10 +780,10 @@ export default function Profile() {
                 <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
               )}
             </SectionBlock>
-          </div>
+            </div>
 
-          <aside className="min-w-0">
-            <div className="flex flex-col lg:sticky lg:top-6">
+            <aside className="min-w-0">
+              <div className="flex flex-col lg:sticky lg:top-6">
               <SidebarPanel title="Highlights">
                 <div className="grid gap-3">
                   <CompactMetric
@@ -766,11 +882,140 @@ export default function Profile() {
                   </div>
                 </SidebarPanel>
               ) : null}
-            </div>
-          </aside>
+              </div>
+            </aside>
+          </div>
         </div>
       </div>
-    </div>
+
+      <Dialog open={warningDialogOpen} onOpenChange={setWarningDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Envoyer un avertissement</DialogTitle>
+            <DialogDescription>
+              {profileUser ? `${profileUser.username} verra un popup qu'il devra confirmer avoir lu.` : "L'utilisateur verra un popup qu'il devra confirmer avoir lu."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Severite</label>
+              <Select value={warningSeverity} onValueChange={(value: 'LOW' | 'MEDIUM' | 'HIGH') => setWarningSeverity(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LOW">Information</SelectItem>
+                  <SelectItem value="MEDIUM">Avertissement</SelectItem>
+                  <SelectItem value="HIGH">Grave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Message</label>
+              <Textarea
+                value={warningMessage}
+                onChange={(e) => setWarningMessage(e.target.value)}
+                placeholder="Entrez le message de l'avertissement..."
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWarningDialogOpen(false)} disabled={creatingWarning}>
+              Annuler
+            </Button>
+            <Button onClick={createWarning} disabled={creatingWarning || !warningMessage.trim()}>
+              {creatingWarning ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Envoi...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Envoyer
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bannir un utilisateur</DialogTitle>
+            <DialogDescription>
+              {profileUser ? `Empecher ${profileUser.username} d'acceder a la plateforme.` : "Empecher un utilisateur d'acceder a la plateforme."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Raison</label>
+              <Textarea
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+                placeholder="Indiquez la raison du bannissement..."
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Type de bannissement</label>
+              <Select value={banType} onValueChange={(value: 'TEMPORARY' | 'PERMANENT') => setBanType(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TEMPORARY">Temporaire</SelectItem>
+                  <SelectItem value="PERMANENT">Permanent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {banType === 'TEMPORARY' ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Duree (heures)</label>
+                <Input
+                  type="number"
+                  value={banDuration}
+                  onChange={(e) => setBanDuration(parseInt(e.target.value, 10) || 1)}
+                  min={1}
+                  placeholder="24"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Le bannissement expirera dans {banDuration} heure{banDuration > 1 ? 's' : ''}
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBanDialogOpen(false)} disabled={creatingBan}>
+              Annuler
+            </Button>
+            <Button
+              onClick={createBan}
+              disabled={creatingBan || !banReason.trim()}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {creatingBan ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Bannissement...
+                </>
+              ) : (
+                <>
+                  <BanIcon className="mr-2 h-4 w-4" />
+                  Bannir
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -179,7 +179,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
           title: suggestion.title,
           authorId: suggestion.user.id,
         },
-        link: '/suggestions',
+        link: `/suggestions?suggestionId=${suggestion.id}`,
         icon: 'lightbulb',
       })
     ));
@@ -268,7 +268,7 @@ router.post('/:id/comments', authMiddleware, async (req: AuthRequest, res: Respo
           suggestionId: id,
           commentId: comment.id,
         },
-        link: '/suggestions',
+        link: `/suggestions?suggestionId=${id}`,
         icon: 'message-square',
       }).catch(() => {});
     }
@@ -364,7 +364,7 @@ router.post('/:id/vote', authMiddleware, async (req: AuthRequest, res: Response)
           voterId: req.user!.id,
           value,
         },
-        link: '/suggestions',
+        link: `/suggestions?suggestionId=${id}`,
         icon: value === 1 ? 'thumbs-up' : 'thumbs-down',
       }).catch(() => {});
     }
@@ -505,7 +505,7 @@ router.post('/:id/rating', authMiddleware, async (req: AuthRequest, res: Respons
           rating,
           raterId: req.user!.id,
         },
-        link: '/suggestions',
+        link: `/suggestions?suggestionId=${id}`,
         icon: 'star',
       }).catch(() => {});
     }

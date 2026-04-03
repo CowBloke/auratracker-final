@@ -589,6 +589,38 @@ export interface ShopCategory {
   label: string;
 }
 
+export interface MarketplaceListingSeller {
+  id: string;
+  username: string;
+  usernameColor: string | null;
+  profilePicture: string | null;
+}
+
+export interface MarketplaceListingItem {
+  id: string;
+  name: string;
+  description: string;
+  type: 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE' | 'GIFT' | string;
+  price: number;
+  imageUrl: string | null;
+  effect: string | null;
+}
+
+export interface MarketplaceListing {
+  id: string;
+  sellerId: string;
+  seller: MarketplaceListingSeller;
+  item: MarketplaceListingItem;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  status: 'ACTIVE' | 'SOLD' | 'CANCELLED' | string;
+  createdAt: string;
+  updatedAt: string;
+  soldAt: string | null;
+  cancelledAt: string | null;
+}
+
 // Marketplace API
 export const marketplaceApi = {
   getCategories: () => api.get<{ categories: ShopCategory[] }>('/marketplace/categories'),
@@ -597,6 +629,14 @@ export const marketplaceApi = {
   purchase: (data: { itemId: string; quantity?: number }) =>
     api.post('/marketplace/purchase', data),
   getInventory: (userId: string) => api.get(`/marketplace/inventory/${userId}`),
+  getListings: (params?: { status?: 'ACTIVE' | 'SOLD' | 'CANCELLED' | 'ALL'; sellerId?: string }) =>
+    api.get<{ listings: MarketplaceListing[] }>('/marketplace/listings', { params }),
+  createListing: (data: { userItemId: string; quantity: number; unitPrice: number }) =>
+    api.post<{ listing: MarketplaceListing }>('/marketplace/listings', data),
+  buyListing: (listingId: string) =>
+    api.post<{ listing: MarketplaceListing; newBalance: { aura: number; money: number } }>('/marketplace/listings/buy', { listingId }),
+  cancelListing: (listingId: string) =>
+    api.delete<{ listing: MarketplaceListing }>(`/marketplace/listings/${listingId}`),
   useItem: (userItemId: string, effectData?: { color?: string; imageUrl?: string; name?: string; description?: string; icon?: string; backgroundColor?: string; borderColor?: string; rarity?: string }) =>
     api.post('/marketplace/use-item', { userItemId, effectData }),
   getDoodleSkins: () =>
@@ -1497,6 +1537,7 @@ export interface BugReport {
   userId: string;
   title: string;
   description: string;
+  images?: string | null; // JSON array of image URLs
   status: 'PENDING' | 'DONE';
   adminReply: string | null;
   createdAt: string;
@@ -1980,7 +2021,7 @@ export const maintenanceApi = {
 
 // Bug report API (for regular users)
 export const bugReportApi = {
-  create: (data: { title: string; description: string }) =>
+  create: (data: { title: string; description: string; images?: string[] }) =>
     api.post<{ bugReport: BugReport }>('/admin/bugs', data),
 };
 
@@ -2316,6 +2357,7 @@ export interface SupportMessage {
   id: string;
   userId: string;
   body: string;
+  images?: string | null; // JSON array of image URLs
   fromAdmin: boolean;
   isRead: boolean;
   createdAt: string;
@@ -2333,7 +2375,7 @@ export interface SupportThread {
 export const supportApi = {
   // User
   getMessages: () => api.get<{ messages: SupportMessage[] }>('/support/messages'),
-  sendMessage: (body: string) => api.post<{ message: SupportMessage }>('/support/messages', { body }),
+  sendMessage: (body: string, images?: string[]) => api.post<{ message: SupportMessage }>('/support/messages', { body, images }),
   getUnreadCount: () => api.get<{ count: number }>('/support/unread-count'),
   markRead: () => api.post<{ success: boolean }>('/support/messages/read'),
   // Admin

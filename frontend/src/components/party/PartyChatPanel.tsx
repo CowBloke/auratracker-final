@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { ChevronDown } from 'lucide-react';
+import { useSmartScroll } from '@/hooks/useSmartScroll';
 
 interface PartyChatPanelProps {
   title?: string;
@@ -22,11 +24,9 @@ export default function PartyChatPanel({
 }: PartyChatPanelProps) {
   const { currentParty, partyMessages, sendPartyMessage } = usePartySocket();
   const [message, setMessage] = useState('');
-  const endRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [partyMessages]);
+  const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
+    dependency: [partyMessages],
+  });
 
   if (!currentParty) return null;
 
@@ -46,7 +46,12 @@ export default function PartyChatPanel({
         </h3>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="max-h-80 overflow-y-auto rounded-lg border border-border/40 bg-muted/20 p-4">
+        <div 
+          className="max-h-80 overflow-y-auto rounded-lg border border-border/40 bg-muted/20 p-4 relative"
+          ref={(el) => {
+            if (el) setScrollAreaRef(el);
+          }}
+        >
           {partyMessages.length === 0 ? (
             <p className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground')}>
               {emptyLabel}
@@ -74,7 +79,19 @@ export default function PartyChatPanel({
                   </p>
                 </div>
               ))}
-              <div ref={endRef} />
+              {hasNewMessage && (
+                <div className="sticky bottom-0 flex justify-center py-2">
+                  <button
+                    onClick={scrollToBottom}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground/10 hover:bg-foreground/20 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    title="Aller au dernier message"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                    <span>Nouveau message</span>
+                  </button>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
           )}
         </div>

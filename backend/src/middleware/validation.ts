@@ -82,6 +82,16 @@ export const useItemSchema = z.object({
   }).optional(),
 });
 
+export const createMarketplaceListingSchema = z.object({
+  userItemId: z.string().uuid(),
+  quantity: z.number().int().min(1),
+  unitPrice: z.number().int().min(1),
+});
+
+export const marketplaceListingActionSchema = z.object({
+  listingId: z.string().uuid(),
+});
+
 // Admin rare actions
 export const adminRareActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('chat_clear') }),

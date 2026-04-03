@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageCircle, X, Send, Shield, ChevronDown } from 'lucide-react';
+import { MessageCircle, X, Send, Shield, ChevronDown, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { supportApi, SupportMessage } from '@/services/api';
+import { supportApi, SupportMessage, uploadUserImage } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { cn } from '@/lib/utils';
+import { useSmartScroll } from '@/hooks/useSmartScroll';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -17,9 +18,14 @@ export default function SupportChat({ rightOffset = '1.5rem' }: SupportChatProps
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [input, setInput] = useState('');
+  const [images, setImages] = useState<string[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
+    dependency: [messages],
+  });
   const { socket } = useSocketBase();
 
   const fetchMessages = useCallback(async () => {
@@ -58,13 +64,6 @@ export default function SupportChat({ rightOffset = '1.5rem' }: SupportChatProps
     }
   }, [open, fetchMessages]);
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    if (open) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, open]);
-
   // Socket listener for real-time messages
   useEffect(() => {
     if (!socket) return;
@@ -95,18 +94,58 @@ export default function SupportChat({ rightOffset = '1.5rem' }: SupportChatProps
 
   const handleSend = async () => {
     const trimmed = input.trim();
-    if (!trimmed || sending) return;
+    if ((!trimmed && images.length === 0) || sending) return;
 
     setSending(true);
     try {
-      const { data } = await supportApi.sendMessage(trimmed);
+      const { data } = await supportApi.sendMessage(trimmed, images.length > 0 ? images : undefined);
       setMessages((prev) => [...prev, data.message]);
       setInput('');
+      setImages([]);
     } catch {
       // ignore
     } finally {
       setSending(false);
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (!files) return;
+
+    if (images.length + files.length > 5) {
+      // Show error - could be a toast in real app
+      console.error('Maximum 5 images allowed');
+      return;
+    }
+
+    setUploadingImage(true);
+
+    try {
+      for (const file of files) {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const base64Data = event.target?.result as string;
+            const mimeType = file.type;
+            const { data } = await uploadUserImage({ base64Data, mimeType });
+            setImages((prev) => [...prev, data.imageUrl]);
+          } catch {
+            // ignore
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -138,7 +177,13 @@ export default function SupportChat({ rightOffset = '1.5rem' }: SupportChatProps
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0" style={{ minHeight: '200px', maxHeight: '280px' }}>
+          <div 
+            className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-0 relative" 
+            style={{ minHeight: '200px', maxHeight: '280px' }}
+            ref={(el) => {
+              if (el) setScrollAreaRef(el);
+            }}
+          >
             {loading ? (
               <p className="text-xs text-muted-foreground text-center py-4">Chargement…</p>
             ) : messages.length === 0 ? (
@@ -151,28 +196,85 @@ export default function SupportChat({ rightOffset = '1.5rem' }: SupportChatProps
                 <MessageBubble key={msg.id} msg={msg} />
               ))
             )}
+            {hasNewMessage && (
+              <div className="sticky bottom-0 flex justify-center py-2">
+                <button
+                  onClick={scrollToBottom}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground/10 hover:bg-foreground/20 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  title="Aller au dernier message"
+                >
+                  <ChevronDown className="h-3 w-3" />
+                  <span>Nouveau message</span>
+                </button>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
-          <div className="border-t border-border p-3 flex gap-2 items-end">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Votre message…"
-              className="resize-none text-sm min-h-[36px] max-h-24 py-2"
-              rows={1}
-              maxLength={1000}
-            />
-            <Button
-              size="icon"
-              className="h-9 w-9 shrink-0"
-              disabled={!input.trim() || sending}
-              onClick={handleSend}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+          <div className="border-t border-border p-3 space-y-2">
+            {images.length > 0 && (
+              <div className="flex gap-2 flex-wrap">
+                {images.map((img, idx) => (
+                  <div key={idx} className="relative group">
+                    <img
+                      src={img}
+                      alt={`Upload ${idx}`}
+                      className="h-12 w-12 object-cover rounded border border-border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(idx)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Supprimer l'image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2 items-end">
+              <div className="flex flex-col gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-2 hover:bg-primary/10 hover:text-primary text-xs"
+                  disabled={uploadingImage || images.length >= 5 || sending}
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Ajouter une image"
+                >
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                  Image
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Votre message…"
+                className="resize-none text-sm min-h-[36px] max-h-24 py-2"
+                rows={1}
+                maxLength={1000}
+              />
+              <Button
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                disabled={(!input.trim() && images.length === 0) || sending || uploadingImage}
+                onClick={handleSend}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -199,6 +301,8 @@ export default function SupportChat({ rightOffset = '1.5rem' }: SupportChatProps
 
 function MessageBubble({ msg }: { msg: SupportMessage }) {
   const isAdmin = msg.fromAdmin;
+  const messageImages = msg.images ? JSON.parse(msg.images) : [];
+  
   return (
     <div className={cn('flex', isAdmin ? 'justify-start' : 'justify-end')}>
       <div
@@ -213,6 +317,18 @@ function MessageBubble({ msg }: { msg: SupportMessage }) {
           <p className="text-[10px] font-semibold text-primary mb-0.5 flex items-center gap-1">
             <Shield className="h-3 w-3" /> Support
           </p>
+        )}
+        {messageImages.length > 0 && (
+          <div className="flex gap-1 mb-2 flex-wrap">
+            {messageImages.map((img: string, idx: number) => (
+              <img
+                key={idx}
+                src={img}
+                alt={`Message ${idx}`}
+                className="h-16 w-16 object-cover rounded"
+              />
+            ))}
+          </div>
         )}
         <p className="break-words whitespace-pre-wrap">{msg.body}</p>
         <p className={cn('text-[10px] mt-1', isAdmin ? 'text-muted-foreground' : 'text-primary-foreground/70')}>

@@ -16,6 +16,7 @@ import Numbers from './pages/Numbers';
 import Profile from './pages/Profile';
 import Inventory from './pages/Inventory';
 import Shop from './pages/Shop';
+import Marketplace from './pages/Marketplace';
 import Party from './pages/Party';
 import Clans from './pages/Clans';
 import BombParty from './pages/BombParty';
@@ -209,6 +210,8 @@ function App() {
         <Route path="games/minesweeper" element={<Minesweeper />} />
         <Route path="market" element={<Shop />} />
         <Route path="market/*" element={<Shop />} />
+        <Route path="marketplace" element={<Marketplace />} />
+        <Route path="marketplace/*" element={<Marketplace />} />
         <Route path="games/bomb-party" element={<BombParty />} />
         <Route path="games/poker" element={<Poker />} />
         <Route path="games/petit-bac" element={<PetitBac />} />

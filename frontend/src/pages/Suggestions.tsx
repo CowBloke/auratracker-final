@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestionsApi, Suggestion, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
@@ -142,6 +143,29 @@ export default function Suggestions() {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(SUGGESTIONS_VIEW_STORAGE_KEY, viewMode);
   }, [viewMode]);
+
+  // Handle scroll to suggestion from notification link
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const searchParams = new URLSearchParams(window.location.search);
+    const suggestionId = searchParams.get('suggestionId');
+    
+    if (suggestionId) {
+      // Wait a bit for the page to render before scrolling
+      const timeoutId = setTimeout(() => {
+        const element = document.getElementById(`suggestion-${suggestionId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Remove the query parameter from URL
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, []);
+
 
   const fetchSuggestions = async () => {
     try {
@@ -454,6 +478,7 @@ export default function Suggestions() {
           return (
             <Card
               key={suggestion.id}
+              id={`suggestion-${suggestion.id}`}
               className={cn('group hover:border-border/60 transition-colors', viewMode === 'grid' && 'h-full')}
             >
               <div className={cn('flex', viewMode === 'grid' && 'h-full flex-col')}>

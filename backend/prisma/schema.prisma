@@ -43,6 +43,7 @@ model User {
 
   // Relations
   ownedItems            UserItem[]
+  marketplaceListings   MarketplaceListing[]  @relation("MarketplaceListingSeller")
   sentTransfers         Transfer[]             @relation("SentTransfers")
   receivedTransfers     Transfer[]             @relation("ReceivedTransfers")
   gameStats             GameStats[]
@@ -192,6 +193,7 @@ model Item {
   createdAt   DateTime  @default(now())
 
   userItems       UserItem[]
+  marketplaceListings MarketplaceListing[]
   clanItems       ClanOwnedItem[]
   receivedAsGifts Gift[]     @relation("GiftedItem")
 }
@@ -208,6 +210,26 @@ model UserItem {
   item          Item           @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, itemId])
+}
+
+model MarketplaceListing {
+  id          String   @id @default(uuid())
+  sellerId    String
+  itemId      String
+  quantity    Int
+  unitPrice   Int
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  soldAt      DateTime?
+  cancelledAt DateTime?
+
+  seller User @relation("MarketplaceListingSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  item   Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([sellerId, status])
+  @@index([itemId])
 }
 
 // Transfer/Trade Model
@@ -1086,6 +1108,7 @@ model BugReport {
   userId      String
   title       String
   description String
+  images      String?   // JSON array of image URLs: ["url1", "url2"]
   status      String    @default("PENDING") // PENDING, DONE
   adminReply  String?   // Admin's response to the bug report
   createdAt   DateTime  @default(now())
@@ -1650,6 +1673,7 @@ model CustomBadgeRequest {
 model SupportMessage {
   id        String   @id @default(uuid())
   userId    String   // The user this thread belongs to
+  images    String?  // JSON array of image URLs: ["url1", "url2"]
   body      String
   fromAdmin Boolean  @default(false) // true = sent by an admin
   isRead    Boolean  @default(false)

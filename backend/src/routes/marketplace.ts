@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
-import { validate, createItemSchema, purchaseSchema, useItemSchema } from '../middleware/validation.js';
+import { validate, createItemSchema, purchaseSchema, useItemSchema, createMarketplaceListingSchema, marketplaceListingActionSchema } from '../middleware/validation.js';
 import { logMarketplace } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { createNotification } from '../utils/notifications.js';
@@ -24,6 +24,48 @@ const DEFAULT_SHOP_CATEGORIES = [
 const CLAN_BASE_MAX_MEMBERS = 5;
 
 const parseItemEffect = parseClanEffectPayload;
+
+const MARKETPLACE_LISTING_STATUSES = ['ACTIVE', 'SOLD', 'CANCELLED'] as const;
+
+type MarketplaceListingStatus = (typeof MARKETPLACE_LISTING_STATUSES)[number];
+
+const getMarketplaceListingStatus = (value: unknown): MarketplaceListingStatus | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.toUpperCase();
+  return MARKETPLACE_LISTING_STATUSES.includes(normalized as MarketplaceListingStatus)
+    ? (normalized as MarketplaceListingStatus)
+    : null;
+};
+
+const serializeMarketplaceListing = (listing: {
+  id: string;
+  sellerId: string;
+  seller: { id: string; username: string; usernameColor: string | null; profilePicture: string | null };
+  item: { id: string; name: string; description: string; type: string; price: number; imageUrl: string | null; effect: string | null };
+  quantity: number;
+  unitPrice: number;
+  status: MarketplaceListingStatus | string;
+  createdAt: Date;
+  updatedAt: Date;
+  soldAt: Date | null;
+  cancelledAt: Date | null;
+}) => ({
+  id: listing.id,
+  sellerId: listing.sellerId,
+  seller: listing.seller,
+  item: listing.item,
+  quantity: listing.quantity,
+  unitPrice: listing.unitPrice,
+  totalPrice: listing.unitPrice * listing.quantity,
+  status: listing.status,
+  createdAt: listing.createdAt.toISOString(),
+  updatedAt: listing.updatedAt.toISOString(),
+  soldAt: listing.soldAt ? listing.soldAt.toISOString() : null,
+  cancelledAt: listing.cancelledAt ? listing.cancelledAt.toISOString() : null,
+});
 
 const isDoodleJumpSkinItem = (item: { effect: string | null }) =>
   parseItemEffect(item.effect)?.type === 'DOODLE_JUMP_SKIN';
@@ -784,6 +826,451 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
   } catch (error) {
     console.error('Use item error:', error);
     res.status(500).json({ error: 'Failed to use item' });
+  }
+});
+
+// Marketplace listings
+router.get('/listings', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const status = getMarketplaceListingStatus(req.query.status);
+    const sellerId = typeof req.query.sellerId === 'string' ? req.query.sellerId : null;
+
+    const listings = await prisma.marketplaceListing.findMany({
+      where: {
+        ...(status ? { status } : {}),
+        ...(sellerId ? { sellerId } : {}),
+      },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+            profilePicture: true,
+          },
+        },
+        item: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            type: true,
+            price: true,
+            imageUrl: true,
+            effect: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ listings: listings.map(serializeMarketplaceListing) });
+  } catch (error) {
+    console.error('Get listings error:', error);
+    res.status(500).json({ error: 'Failed to get marketplace listings' });
+  }
+});
+
+router.post('/listings', authMiddleware, validate(createMarketplaceListingSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { userItemId, quantity, unitPrice } = req.body;
+    const userItem = await prisma.userItem.findUnique({
+      where: { id: userItemId },
+      include: { item: true },
+    });
+
+    if (!userItem || userItem.userId !== req.user.id) {
+      return res.status(404).json({ error: 'Item not found in inventory' });
+    }
+
+    if (userItem.item.type === 'GIFT') {
+      return res.status(400).json({ error: 'This item cannot be sold' });
+    }
+
+    if (quantity > userItem.quantity) {
+      return res.status(400).json({ error: 'Quantity exceeds inventory amount' });
+    }
+
+    const now = new Date();
+
+    const listing = await prisma.$transaction(async (tx) => {
+      if (quantity === userItem.quantity) {
+        await tx.userItem.delete({ where: { id: userItemId } });
+      } else {
+        await tx.userItem.update({
+          where: { id: userItemId },
+          data: { quantity: { decrement: quantity } },
+        });
+      }
+
+      return tx.marketplaceListing.create({
+        data: {
+          sellerId: req.user!.id,
+          itemId: userItem.itemId,
+          quantity,
+          unitPrice,
+          status: 'ACTIVE',
+        },
+        include: {
+          seller: {
+            select: {
+              id: true,
+              username: true,
+              usernameColor: true,
+              profilePicture: true,
+            },
+          },
+          item: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              type: true,
+              price: true,
+              imageUrl: true,
+              effect: true,
+            },
+          },
+        },
+      });
+    });
+
+    logMarketplace('listing_create', req.user.id, req.user.username, {
+      listingId: listing.id,
+      itemId: userItem.itemId,
+      itemName: userItem.item.name,
+      quantity,
+      unitPrice,
+      totalPrice: unitPrice * quantity,
+    });
+
+    res.status(201).json({ listing: serializeMarketplaceListing(listing) });
+  } catch (error) {
+    console.error('Create listing error:', error);
+    res.status(500).json({ error: 'Failed to create marketplace listing' });
+  }
+});
+
+router.post('/listings/buy', authMiddleware, validate(marketplaceListingActionSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { listingId } = req.body;
+    const listing = await prisma.marketplaceListing.findUnique({
+      where: { id: listingId },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+            profilePicture: true,
+          },
+        },
+        item: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            type: true,
+            price: true,
+            imageUrl: true,
+            effect: true,
+          },
+        },
+      },
+    });
+
+    if (!listing) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
+
+    if (listing.status !== 'ACTIVE') {
+      return res.status(400).json({ error: 'Listing is no longer active' });
+    }
+
+    if (listing.sellerId === req.user.id) {
+      return res.status(400).json({ error: 'You cannot buy your own listing' });
+    }
+
+    const totalPrice = listing.unitPrice * listing.quantity;
+    const buyer = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { money: true, aura: true, username: true },
+    });
+
+    if (!buyer) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (buyer.money < totalPrice) {
+      return res.status(400).json({ error: 'Insufficient money' });
+    }
+
+    const now = new Date();
+
+    const result = await prisma.$transaction(async (tx) => {
+      const currentListing = await tx.marketplaceListing.findUnique({
+        where: { id: listingId },
+        include: {
+          seller: {
+            select: {
+              id: true,
+              username: true,
+              usernameColor: true,
+              profilePicture: true,
+            },
+          },
+          item: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              type: true,
+              price: true,
+              imageUrl: true,
+              effect: true,
+            },
+          },
+        },
+      });
+      if (!currentListing || currentListing.status !== 'ACTIVE') {
+        throw new Error('LISTING_UNAVAILABLE');
+      }
+
+      await tx.user.update({
+        where: { id: req.user!.id },
+        data: { money: { decrement: totalPrice } },
+      });
+
+      await tx.user.update({
+        where: { id: currentListing.sellerId },
+        data: { money: { increment: totalPrice } },
+      });
+
+      await tx.userItem.upsert({
+        where: {
+          userId_itemId: {
+            userId: req.user!.id,
+            itemId: currentListing.itemId,
+          },
+        },
+        create: {
+          userId: req.user!.id,
+          itemId: currentListing.itemId,
+          quantity: currentListing.quantity,
+        },
+        update: {
+          quantity: { increment: currentListing.quantity },
+        },
+      });
+
+      return tx.marketplaceListing.update({
+        where: { id: listingId },
+        data: {
+          status: 'SOLD',
+          soldAt: now,
+        },
+        include: {
+          seller: {
+            select: {
+              id: true,
+              username: true,
+              usernameColor: true,
+              profilePicture: true,
+            },
+          },
+          item: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              type: true,
+              price: true,
+              imageUrl: true,
+              effect: true,
+            },
+          },
+        },
+      });
+    });
+
+    logMarketplace('listing_sold', req.user.id, buyer.username, {
+      listingId,
+      itemId: result.itemId,
+      itemName: result.itemName,
+      sellerId: result.sellerId,
+      quantity: result.quantity,
+      unitPrice: result.unitPrice,
+      totalPrice,
+    });
+
+    res.json({
+      listing: {
+        ...serializeMarketplaceListing(result),
+        status: 'SOLD',
+        soldAt: now.toISOString(),
+      },
+      newBalance: {
+        aura: buyer.aura,
+        money: buyer.money - totalPrice,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'LISTING_UNAVAILABLE') {
+      return res.status(400).json({ error: 'Listing is no longer active' });
+    }
+    console.error('Buy listing error:', error);
+    res.status(500).json({ error: 'Failed to buy marketplace listing' });
+  }
+});
+
+router.delete('/listings/:listingId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const listing = await prisma.marketplaceListing.findUnique({
+      where: { id: req.params.listingId },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+            profilePicture: true,
+          },
+        },
+        item: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            type: true,
+            price: true,
+            imageUrl: true,
+            effect: true,
+          },
+        },
+      },
+    });
+
+    if (!listing) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
+
+    if (listing.sellerId !== req.user.id) {
+      return res.status(403).json({ error: 'You cannot cancel this listing' });
+    }
+
+    if (listing.status !== 'ACTIVE') {
+      return res.status(400).json({ error: 'Listing is no longer active' });
+    }
+
+    const now = new Date();
+
+    const restoredListing = await prisma.$transaction(async (tx) => {
+      const currentListing = await tx.marketplaceListing.findUnique({
+        where: { id: req.params.listingId },
+        include: {
+          seller: {
+            select: {
+              id: true,
+              username: true,
+              usernameColor: true,
+              profilePicture: true,
+            },
+          },
+          item: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              type: true,
+              price: true,
+              imageUrl: true,
+              effect: true,
+            },
+          },
+        },
+      });
+
+      if (!currentListing || currentListing.status !== 'ACTIVE') {
+        throw new Error('LISTING_UNAVAILABLE');
+      }
+
+      await tx.userItem.upsert({
+        where: {
+          userId_itemId: {
+            userId: req.user!.id,
+            itemId: currentListing.itemId,
+          },
+        },
+        create: {
+          userId: req.user!.id,
+          itemId: currentListing.itemId,
+          quantity: currentListing.quantity,
+        },
+        update: {
+          quantity: { increment: currentListing.quantity },
+        },
+      });
+
+      return tx.marketplaceListing.update({
+        where: { id: currentListing.id },
+        data: {
+          status: 'CANCELLED',
+          cancelledAt: now,
+        },
+        include: {
+          seller: {
+            select: {
+              id: true,
+              username: true,
+              usernameColor: true,
+              profilePicture: true,
+            },
+          },
+          item: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              type: true,
+              price: true,
+              imageUrl: true,
+              effect: true,
+            },
+          },
+        },
+      });
+    });
+
+    logMarketplace('listing_cancel', req.user.id, req.user.username, {
+      listingId: restoredListing.id,
+      itemId: restoredListing.itemId,
+      itemName: restoredListing.itemName,
+      quantity: restoredListing.quantity,
+      unitPrice: restoredListing.unitPrice,
+    });
+
+    res.json({
+      listing: {
+        ...serializeMarketplaceListing(restoredListing),
+        status: 'CANCELLED',
+        cancelledAt: now.toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Cancel listing error:', error);
+    res.status(500).json({ error: 'Failed to cancel marketplace listing' });
   }
 });
 

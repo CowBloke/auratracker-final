@@ -46,8 +46,10 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const [input, setInput] = useState('');
   const [showUsers, setShowUsers] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const lastMessageIdRef = useRef<string | null>(null);
+  const unreadMessageRef = useRef<HTMLDivElement>(null);
   const canViewConnectedStatus = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const chatBlockedForUser = Boolean(
     maintenanceStatus.chatBlocked &&
@@ -60,23 +62,28 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     maintenanceStatus.chatAutoBlockEnd
     ? `Blocage auto: ${maintenanceStatus.chatAutoBlockStart} -> ${maintenanceStatus.chatAutoBlockEnd} (${maintenanceStatus.chatBlockTimezone})`
     : null;
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort((a, b) => {
-      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      if (a.pinned && b.pinned) {
+  const pinnedMessages = useMemo(() => {
+    return messages
+      .filter((message) => message.pinned)
+      .sort((a, b) => {
         const aTime = a.pinnedAt ?? a.timestamp;
         const bTime = b.pinnedAt ?? b.timestamp;
         return new Date(bTime).getTime() - new Date(aTime).getTime();
-      }
-      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-    });
+      });
+  }, [messages]);
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
   }, [messages]);
 
   useEffect(() => {
     if (isOpen) {
       setUnreadCount(0);
       if (messages.length > 0) {
-        lastMessageIdRef.current = messages[messages.length - 1].id;
+        const lastMsg = messages[messages.length - 1].id;
+        setLastReadMessageId(lastMsg);
+        lastMessageIdRef.current = lastMsg;
       }
     }
   }, [isOpen, messages]);
@@ -129,6 +136,10 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     });
   };
 
+  const scrollToUnread = () => {
+    unreadMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   return (
     <div
       className={cn(
@@ -161,143 +172,198 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
         <CollapsibleContent className="flex h-[calc(100%-3rem)]">
           {/* Messages */}
           <div className="flex-1 flex flex-col">
+            {pinnedMessages.length > 0 && (
+              <div className="border-b border-border/40 bg-muted/30 px-6 py-3">
+                <div className="space-y-2">
+                  {pinnedMessages.map((msg) => (
+                    <div
+                      key={`pinned-${msg.id}`}
+                      className="rounded-lg border border-border/50 bg-background/80 px-3 py-2"
+                    >
+                      <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Pin className="h-3 w-3" />
+                        <span className="font-medium text-foreground">{msg.username}</span>
+                        <span>{formatTime(msg.timestamp)}</span>
+                      </div>
+                      <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                        {msg.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <ScrollArea className="flex-1 px-6">
               <div className="space-y-3 py-3">
-                {[...sortedMessages].reverse().map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      "flex flex-col group",
-                      msg.userId === user?.id && 'items-end'
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "max-w-[70%] min-w-0 px-3 py-2 rounded-lg relative",
-                        msg.userId === user?.id
-                          ? 'bg-foreground/10'
-                          : 'bg-muted'
-                      )}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        {msg.profilePicture && (
-                          <img
-                            src={resolveImageUrl(msg.profilePicture)}
-                            alt={msg.username}
-                            className="w-5 h-5 rounded-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
+                {[...sortedMessages].reverse().map((msg, index) => {
+                  const isLastRead = msg.id === lastReadMessageId;
+                  const nextMsg = [...sortedMessages].reverse()[index + 1];
+                  const showSeparator = isLastRead && nextMsg;
+                  
+                  return (
+                    <div key={msg.id}>
+                      <div
+                        className={cn(
+                          "flex flex-col group",
+                          msg.userId === user?.id && 'items-end'
                         )}
-                        <UserBadges
-                          badges={msg.badges ?? []}
-                          size="xs"
-                          tooltipSide="top"
-                          showEmptySlots={false}
-                        />
-                        <PlayerHoverCard
-                          userId={msg.userId!}
-                          username={msg.username}
-                          usernameColor={msg.usernameColor}
-                          clanTag={toClanTagData(msg.clanTag)}
-                          profilePicture={msg.profilePicture}
+                      >
+                        <div
                           className={cn(
-                            "text-xs font-medium",
-                            !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
+                            "max-w-[70%] min-w-0 px-3 py-2 rounded-lg relative",
+                            msg.userId === user?.id
+                              ? 'bg-foreground/10'
+                              : 'bg-muted'
                           )}
                         >
-                          <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} clanTag={toClanTagData(msg.clanTag)} />
-                        </PlayerHoverCard>
-                        <span className="text-[10px] text-muted-foreground/60 tabular-nums">
-                          {formatTime(msg.timestamp)}
-                        </span>
-                        {msg.pinned && (
-                          <Pin className="h-3 w-3 text-muted-foreground" />
-                        )}
-                        <div className="ml-auto flex items-center gap-2">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
-                                title="Réagir"
-                              >
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align={msg.userId === user?.id ? 'end' : 'start'}
-                              className="flex items-center gap-1 p-2"
+                          <div className="flex items-center gap-2 mb-1">
+                            {msg.profilePicture && (
+                              <img
+                                src={resolveImageUrl(msg.profilePicture)}
+                                alt={msg.username}
+                                className="w-5 h-5 rounded-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <UserBadges
+                              badges={msg.badges ?? []}
+                              size="xs"
+                              tooltipSide="top"
+                              showEmptySlots={false}
+                            />
+                            <PlayerHoverCard
+                              userId={msg.userId!}
+                              username={msg.username}
+                              usernameColor={msg.usernameColor}
+                              clanTag={toClanTagData(msg.clanTag)}
+                              profilePicture={msg.profilePicture}
+                              className={cn(
+                                "text-xs font-medium",
+                                !msg.usernameColor && (msg.userId === user?.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')
+                              )}
                             >
-                              {REACTION_OPTIONS.map((reaction) => (
-                                <Button
-                                  key={reaction.value}
-                                  type="button"
-                                  onClick={() => reactToMessage(msg.id, reaction.value)}
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  title={reaction.label}
+                              <UsernameDisplay username={msg.username} usernameColor={msg.usernameColor} clanTag={toClanTagData(msg.clanTag)} />
+                            </PlayerHoverCard>
+                            <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                              {formatTime(msg.timestamp)}
+                            </span>
+                            {msg.pinned && (
+                              <Pin className="h-3 w-3 text-muted-foreground" />
+                            )}
+                            <div className="ml-auto flex items-center gap-2">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
+                                    title="Réagir"
+                                  >
+                                    <MoreHorizontal className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align={msg.userId === user?.id ? 'end' : 'start'}
+                                  className="flex items-center gap-1 p-2"
                                 >
-                                  <span className="text-base">{reaction.value}</span>
-                                </Button>
+                                  {REACTION_OPTIONS.map((reaction) => (
+                                    <Button
+                                      key={reaction.value}
+                                      type="button"
+                                      onClick={() => reactToMessage(msg.id, reaction.value)}
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      title={reaction.label}
+                                    >
+                                      <span className="text-base">{reaction.value}</span>
+                                    </Button>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              {user?.isAdmin && (
+                                <>
+                                  <Button
+                                    type="button"
+                                    onClick={() => pinMessage(msg.id, !msg.pinned)}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
+                                    title={msg.pinned ? 'Désépingler' : 'Épingler'}
+                                  >
+                                    {msg.pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    onClick={() => deleteMessage(msg.id)}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 transition-opacity text-destructive group-hover:opacity-100 hover:text-destructive/80"
+                                    title="Delete message"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.message}</p>
+                          {msg.reactions.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {msg.reactions.map((reaction) => (
+                                <span
+                                  key={`${msg.id}-${reaction.emoji}`}
+                                  className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                                  title={getReactionUsersLabel(reaction.users)}
+                                  aria-label={getReactionUsersLabel(reaction.users)}
+                                >
+                                  <span>{reaction.emoji}</span>
+                                  <span className="tabular-nums">{reaction.count}</span>
+                                </span>
                               ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          {user?.isAdmin && (
-                            <>
-                              <Button
-                                type="button"
-                                onClick={() => pinMessage(msg.id, !msg.pinned)}
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
-                                title={msg.pinned ? 'Désépingler' : 'Épingler'}
-                              >
-                                {msg.pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
-                              </Button>
-                              <Button
-                                type="button"
-                                onClick={() => deleteMessage(msg.id)}
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 transition-opacity text-destructive group-hover:opacity-100 hover:text-destructive/80"
-                                title="Delete message"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </>
+                            </div>
                           )}
                         </div>
                       </div>
-                      <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.message}</p>
-                      {msg.reactions.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {msg.reactions.map((reaction) => (
-                            <span
-                              key={`${msg.id}-${reaction.emoji}`}
-                              className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
-                              title={getReactionUsersLabel(reaction.users)}
-                              aria-label={getReactionUsersLabel(reaction.users)}
-                            >
-                              <span>{reaction.emoji}</span>
-                              <span className="tabular-nums">{reaction.count}</span>
-                            </span>
-                          ))}
+                      {showSeparator && (
+                        <div
+                          ref={unreadMessageRef}
+                          className="flex items-center gap-3 my-3"
+                        >
+                          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-foreground/30 to-transparent" />
+                          <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+                            Messages non lus
+                          </span>
+                          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-foreground/30 to-transparent" />
                         </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
 
             {typingUsers.length > 0 && (
               <div className="px-6 py-2 text-xs text-muted-foreground">
                 {typingUsers.map((u) => u.username).join(', ')} écrit...
+              </div>
+            )}
+
+            {lastReadMessageId && lastReadMessageId !== messages[messages.length - 1]?.id && (
+              <div className="px-6 py-2 border-t border-border/40">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={scrollToUnread}
+                  className="w-full text-xs"
+                >
+                  <ChevronDown className="h-3 w-3 mr-1" />
+                  Aller aux messages non lus
+                </Button>
               </div>
             )}
 

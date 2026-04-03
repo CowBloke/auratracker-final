@@ -1894,7 +1894,7 @@ router.post('/rare', authMiddleware, requireAdmin, validate(adminRareActionSchem
 // Create bug report (any authenticated user)
 router.post('/bugs', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, images } = req.body;
     
     if (!title || !description) {
       return res.status(400).json({ error: 'Title and description are required' });
@@ -1907,12 +1907,28 @@ router.post('/bugs', authMiddleware, async (req: AuthRequest, res: Response) => 
     if (description.length > 2000) {
       return res.status(400).json({ error: 'Description must be less than 2000 characters' });
     }
+
+    // Validate images
+    let imagesJson: string | undefined;
+    if (images) {
+      if (!Array.isArray(images)) {
+        return res.status(400).json({ error: 'Images must be an array' });
+      }
+      if (images.length > 5) {
+        return res.status(400).json({ error: 'Maximum 5 images allowed' });
+      }
+      if (!images.every((img) => typeof img === 'string')) {
+        return res.status(400).json({ error: 'All images must be strings' });
+      }
+      imagesJson = JSON.stringify(images);
+    }
     
     const bugReport = await prisma.bugReport.create({
       data: {
         userId: req.user!.id,
         title: title.trim(),
         description: description.trim(),
+        images: imagesJson,
       },
       include: {
         user: {

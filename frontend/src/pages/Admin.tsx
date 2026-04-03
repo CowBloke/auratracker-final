@@ -4066,6 +4066,21 @@ export default function Admin() {
                             <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
                               <p className="text-sm whitespace-pre-wrap break-words">{bug.description}</p>
                             </div>
+                            {bug.images && JSON.parse(bug.images).length > 0 && (
+                              <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                                <p className="text-xs font-medium text-muted-foreground/70 mb-3">Images jointes</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {JSON.parse(bug.images).map((imgUrl: string, idx: number) => (
+                                    <img
+                                      key={idx}
+                                      src={imgUrl}
+                                      alt={`Bug image ${idx + 1}`}
+                                      className="w-full h-32 object-cover rounded border border-border/30"
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             {bug.adminReply && (
                               <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-4">
                                 <p className="text-xs font-medium text-indigo-400/70 mb-2">Réponse envoyée</p>
@@ -9579,24 +9594,39 @@ export default function Admin() {
                     <h3 className={TYPOGRAPHY.H4}>{activeThreadUser?.username ?? activeThreadUserId}</h3>
                   </div>
                   <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-                    {activeThreadMessages.map((msg) => (
-                      <div key={msg.id} className={cn('flex', msg.fromAdmin ? 'justify-end' : 'justify-start')}>
-                        <div className={cn(
-                          'max-w-[75%] rounded-2xl px-3 py-2 text-sm',
-                          msg.fromAdmin
-                            ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                            : 'bg-muted text-foreground rounded-tl-sm'
-                        )}>
-                          {!msg.fromAdmin && (
-                            <p className="text-[10px] font-semibold text-primary mb-0.5">{activeThreadUser?.username}</p>
-                          )}
-                          <p className="break-words whitespace-pre-wrap">{msg.body}</p>
-                          <p className={cn('text-[10px] mt-1', msg.fromAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                            {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                    {activeThreadMessages.map((msg) => {
+                      const messageImages = msg.images ? JSON.parse(msg.images) : [];
+                      return (
+                        <div key={msg.id} className={cn('flex', msg.fromAdmin ? 'justify-end' : 'justify-start')}>
+                          <div className={cn(
+                            'max-w-[75%] rounded-2xl px-3 py-2 text-sm',
+                            msg.fromAdmin
+                              ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                              : 'bg-muted text-foreground rounded-tl-sm'
+                          )}>
+                            {!msg.fromAdmin && (
+                              <p className="text-[10px] font-semibold text-primary mb-0.5">{activeThreadUser?.username}</p>
+                            )}
+                            {messageImages.length > 0 && (
+                              <div className="flex gap-1 mb-2 flex-wrap">
+                                {messageImages.map((img: string, idx: number) => (
+                                  <img
+                                    key={idx}
+                                    src={img}
+                                    alt={`Message ${idx}`}
+                                    className="h-16 w-16 object-cover rounded"
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            <p className="break-words whitespace-pre-wrap">{msg.body}</p>
+                            <p className={cn('text-[10px] mt-1', msg.fromAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                              {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     <div ref={supportMessagesEndRef} />
                   </div>
                   <div className="border-t border-border p-3 flex gap-2 items-end">

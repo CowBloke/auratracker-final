@@ -1,12 +1,13 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, Minimize2, Send, Users } from 'lucide-react';
+import { MessageCircle, Minimize2, Send, Users, ChevronDown } from 'lucide-react';
 import { usePartySocket } from '@/contexts/PartySocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
+import { useSmartScroll } from '@/hooks/useSmartScroll';
 
 interface PartyChatFloatingProps {
   rightOffset: string;
@@ -18,14 +19,12 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
   const [minimized, setMinimized] = useState(false);
   const [message, setMessage] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
-  const endRef = useRef<HTMLDivElement | null>(null);
+  const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
+    dependency: [partyMessages, minimized],
+  });
   const lastMessageIdRef = useRef<string | null>(null);
   const initializedRef = useRef(false);
   const partyIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [partyMessages, minimized]);
 
   useEffect(() => {
     if (partyIdRef.current !== currentParty?.id) {
@@ -137,7 +136,12 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
               </Link>
             </div>
 
-            <div className="max-h-80 min-h-56 overflow-y-auto px-4 py-3">
+            <div 
+              className="max-h-80 min-h-56 overflow-y-auto px-4 py-3 relative"
+              ref={(el) => {
+                if (el) setScrollAreaRef(el);
+              }}
+            >
               {partyMessages.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucun message pour le moment</p>
               ) : (
@@ -163,7 +167,19 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
                       </p>
                     </div>
                   ))}
-                  <div ref={endRef} />
+                  {hasNewMessage && (
+                    <div className="sticky bottom-0 flex justify-center py-2">
+                      <button
+                        onClick={scrollToBottom}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground/10 hover:bg-foreground/20 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        title="Aller au dernier message"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                        <span>Nouveau message</span>
+                      </button>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
