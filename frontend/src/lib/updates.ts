@@ -46,6 +46,24 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-03-you-ux',
+    date: '2026-04-03',
+    title: 'Explorer — Notes, filtres et tutoriel',
+    summary: 'La liste des entreprises est maintenant scrollable indépendamment du panneau de détail. Les filtres latéraux ont été compactés. Un système de notation 5 étoiles permet d\'évaluer les services utilisés, et les entreprises sont triées par note. Un tutoriel de démarrage s\'affiche dans le tableau de bord pour les nouveaux joueurs.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-04-03-business-ratings-1', text: '**Notes · Évaluation des services** — Après avoir utilisé un service (investissement, transfert, formation, achat...) une modale apparaît pour noter l\'expérience de 1 à 5 étoiles. La note moyenne s\'affiche sur chaque business dans l\'explorateur.' },
+          { id: '2026-04-03-business-ratings-2', text: '**Explorateur · Tri par note** — Les entreprises sont désormais triées par note décroissante (puis par revenu en cas d\'égalité) dans chaque catégorie.' },
+          { id: '2026-04-03-explore-scroll-1', text: '**Explorateur · Liste scrollable** — La liste centrale des entreprises défile indépendamment du panneau de détail à droite, ce qui permet d\'interagir avec un business tout en parcourant la liste.' },
+          { id: '2026-04-03-explore-filters-1', text: '**Explorateur · Filtres compacts** — Le panneau de filtres a été redessiné en liste compacte, plus lisible et moins encombrant.' },
+          { id: '2026-04-03-you-tutorial-1', text: '**Tableau de bord · Tutoriel** — Quand le fil d\'actualité est vide, un guide interactif en 3 étapes explique comment créer une entreprise, explorer les businesses et nouer des relations. Il est ignorable en un clic.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-02-bank-loan-rate',
     date: '2026-04-02',
     title: 'Banques, prêts et mariage',
