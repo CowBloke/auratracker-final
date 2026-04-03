@@ -8,10 +8,20 @@
   const scoreDisplay = document.getElementById('scoreDisplay');
   const coinDisplay = document.getElementById('coinDisplay');
   const hud = document.getElementById('hud');
+  const moneyHud = document.getElementById('moneyHud');
+  const moneyDisplay = document.getElementById('moneyDisplay');
+  const comboDisplay = document.getElementById('comboDisplay');
+  const cashoutBtn = document.getElementById('cashoutBtn');
   const startScreen = document.getElementById('startScreen');
+  const startSubtitle = document.getElementById('startSubtitle');
+  const startTap = document.getElementById('startTap');
   const gameOverPanel = document.getElementById('gameOverPanel');
+  const gameOverTitle = document.getElementById('gameOverTitle');
+  const finalScoreLabel = document.getElementById('finalScoreLabel');
   const finalScore = document.getElementById('finalScore');
+  const finalBestLabel = document.getElementById('finalBestLabel');
   const finalBest = document.getElementById('finalBest');
+  const gameOverNote = document.getElementById('gameOverNote');
   const restartBtn = document.getElementById('restartBtn');
 
   // ── Constants ──
@@ -26,6 +36,8 @@
   const IDLE_TIMEOUT = 7.0;
   const EAGLE_SWOOP_DURATION = 1.2;
   const CAMERA_BEHIND = 4;
+  const params = new URLSearchParams(window.location.search);
+  const GAME_MODE = params.get('mode') === 'money' ? 'money' : 'classic';
 
   const LANE_TYPE = { GRASS: 0, ROAD: 1, WATER: 2, RAIL: 3 };
 
@@ -76,6 +88,9 @@
   let bestScore = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10) || 0;
   let totalCoins = parseInt(localStorage.getItem(COIN_KEY) || '0', 10) || 0;
   let sessionCoins = 0;
+  let comboStreak = 0;
+  let moneyBank = 0;
+  let runWon = false;
 
   let lanes = [];
   let laneMap = new Map();
@@ -98,13 +113,14 @@
   }
 
   function postHostMessage(type) {
+    const reportedScore = type === 'game-over' && GAME_MODE === 'money' && !runWon ? 0 : score;
     if (window.parent === window) return;
     window.parent.postMessage(
       {
         source: GAME_SOURCE,
         type,
         status: getHostStatus(),
-        score,
+        score: reportedScore,
         highScore: bestScore,
       },
       window.location.origin
@@ -118,6 +134,61 @@
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function lerp(a, b, t) { return a + (b - a) * t; }
   function ease(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+  function formatMoney(value) { return `${Math.round(value).toLocaleString('fr-FR')}$`; }
+  function getLaneBaseReward(lane) {
+    if (!lane) return 55;
+    switch (lane.type) {
+      case LANE_TYPE.ROAD:
+        return 90;
+      case LANE_TYPE.WATER:
+        return 130;
+      case LANE_TYPE.RAIL:
+        return 170;
+      default:
+        return 55;
+    }
+  }
+  function getComboMultiplier() {
+    return Math.min(1 + comboStreak * 0.12, 3.5);
+  }
+  function refreshMoneyHud() {
+    if (GAME_MODE !== 'money') return;
+    moneyDisplay.textContent = formatMoney(moneyBank);
+    comboDisplay.textContent = `x${getComboMultiplier().toFixed(2)}`;
+    scoreDisplay.textContent = formatMoney(moneyBank);
+  }
+  function refreshModeCopy() {
+    if (GAME_MODE === 'money') {
+      startSubtitle.textContent = 'Chaque ligne augmente la cagnotte. Cash out pour repartir avec tes dollars.';
+      startTap.textContent = 'Appuie pour jouer, Entrée pour cash out';
+      gameOverTitle.textContent = runWon ? 'CASH OUT' : 'CRASH';
+      finalScoreLabel.textContent = 'GAIN';
+      finalBestLabel.textContent = 'RECORD';
+      if (runWon) {
+        gameOverNote.textContent = 'Tu as sécurisé ta cagnotte juste avant le crash.';
+        gameOverNote.classList.remove('hidden');
+      } else {
+        gameOverNote.textContent = 'Tu as tout perdu. La prochaine fois, pense à cash out plus tôt.';
+        gameOverNote.classList.remove('hidden');
+      }
+      moneyHud.classList.remove('hidden');
+      return;
+    }
+
+    startSubtitle.textContent = 'Traverse jusqu’au bout.';
+    startTap.textContent = 'Appuie pour jouer';
+    gameOverTitle.textContent = 'GAME OVER';
+    finalScoreLabel.textContent = 'SCORE';
+    finalBestLabel.textContent = 'RECORD';
+    gameOverNote.classList.add('hidden');
+    moneyHud.classList.add('hidden');
+  }
+  function finishMoneyRun() {
+    if (GAME_MODE !== 'money' || gameState !== 'playing' || player.dead) return;
+    runWon = true;
+    score = Math.round(moneyBank);
+    killPlayer('cashout');
+  }
 
   // Seeded random for lane generation consistency
   function hashY(y) {
@@ -207,6 +278,7 @@
       trainX: 0,
       trainLength: 0,
       trainWarning: false,
+      rewardMultiplier: 1,
     };
 
     // Alternate direction from previous same-type lane
@@ -283,6 +355,17 @@
         lane.trainLength = rand(6, 10);
         break;
       }
+    }
+
+    if (y > 0) {
+      const baseMultiplier = type === LANE_TYPE.ROAD
+        ? rand(1.05, 1.55 + difficulty * 0.35)
+        : type === LANE_TYPE.WATER
+          ? rand(1.2, 1.95 + difficulty * 0.35)
+          : type === LANE_TYPE.RAIL
+            ? rand(1.5, 2.35 + difficulty * 0.4)
+            : rand(0.95, 1.2 + difficulty * 0.2);
+      lane.rewardMultiplier = Math.round(baseMultiplier * 100) / 100;
     }
 
     // Coins (rare)
@@ -399,9 +482,25 @@
         if (player.y > player.maxY) {
           const gained = player.y - player.maxY;
           player.maxY = player.y;
-          score += gained;
-          scoreDisplay.textContent = score;
+          if (GAME_MODE === 'money') {
+            const lane = laneMap.get(player.y);
+            for (let step = 0; step < gained; step += 1) {
+              comboStreak += 1;
+              const comboMultiplier = getComboMultiplier();
+              const laneBase = getLaneBaseReward(lane);
+              const laneRisk = lane?.rewardMultiplier ?? 1;
+              moneyBank += Math.round(laneBase * laneRisk * comboMultiplier);
+            }
+            score = Math.round(moneyBank);
+            refreshMoneyHud();
+          } else {
+            score += gained;
+            scoreDisplay.textContent = score;
+          }
         }
+      } else if (GAME_MODE === 'money' && player.toY <= player.fromY) {
+        comboStreak = Math.max(0, comboStreak - 1);
+        refreshMoneyHud();
       }
     }
 
@@ -453,6 +552,11 @@
           localStorage.setItem(COIN_KEY, String(totalCoins));
           coinDisplay.textContent = sessionCoins;
           coinDisplay.style.display = 'block';
+          if (GAME_MODE === 'money') {
+            moneyBank += 25;
+            score = Math.round(moneyBank);
+            refreshMoneyHud();
+          }
           // Coin particles
           for (let i = 0; i < 8; i++) {
             particles.push({
@@ -604,8 +708,12 @@
       y: player.y,
     };
 
-    if (score > bestScore) {
-      bestScore = score;
+    const finalRunScore = GAME_MODE === 'money'
+      ? (runWon ? Math.round(moneyBank) : 0)
+      : score;
+
+    if (finalRunScore > bestScore) {
+      bestScore = finalRunScore;
       localStorage.setItem(STORAGE_KEY, String(bestScore));
     }
 
@@ -613,8 +721,9 @@
 
     // Delay showing game over
     setTimeout(() => {
-      finalScore.textContent = score;
-      finalBest.textContent = bestScore;
+      refreshModeCopy();
+      finalScore.textContent = GAME_MODE === 'money' ? formatMoney(finalRunScore) : score;
+      finalBest.textContent = GAME_MODE === 'money' ? formatMoney(bestScore) : bestScore;
       gameOverPanel.classList.remove('hidden');
     }, 800);
   }
@@ -651,6 +760,21 @@
   function drawRect(x, y, w, h, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, w, h);
+  }
+
+  function drawRoundedRect(x, y, w, h, r) {
+    const radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
   }
 
   // Draw a voxel-style box (top + front face visible)
@@ -784,6 +908,24 @@
           ctx.fillRect(ws.x + 8, ws.y + 12, TILE * 0.4, 2);
         }
       }
+    }
+
+    if (GAME_MODE === 'money' && lane.y > player.maxY && lane.y <= player.maxY + 7) {
+      const badge = toScreen(HALF_COLS - 1.35, lane.y);
+      const color = lane.type === LANE_TYPE.RAIL
+        ? '#ff8b5c'
+        : lane.type === LANE_TYPE.WATER
+          ? '#4dc8ff'
+          : lane.type === LANE_TYPE.ROAD
+            ? '#ffcf4f'
+            : '#97f39f';
+      ctx.fillStyle = 'rgba(16,20,38,0.68)';
+      drawRoundedRect(badge.x - 18, badge.y + 9, 56, 22, 10);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ctx.font = '900 12px Trebuchet MS';
+      ctx.textAlign = 'center';
+      ctx.fillText(`x${lane.rewardMultiplier.toFixed(2)}`, badge.x + 10, badge.y + 24);
     }
   }
 
@@ -1295,9 +1437,12 @@
   function startGame() {
     if (gameState === 'start') {
       hostPaused = false;
+      runWon = false;
       gameState = 'playing';
       startScreen.classList.add('hidden');
       hud.style.display = 'flex';
+      refreshModeCopy();
+      if (GAME_MODE === 'money') refreshMoneyHud();
       postHostMessage('state');
     }
   }
@@ -1309,17 +1454,24 @@
     camera.y = 0;
     score = 0;
     sessionCoins = 0;
+    comboStreak = 0;
+    moneyBank = 0;
     idleTimer = 0;
     eagle = null;
     deathAnim = null;
     queuedMoves = [];
     particles = [];
     hostPaused = false;
+    runWon = false;
 
     scoreDisplay.textContent = '0';
     coinDisplay.textContent = '0';
     coinDisplay.style.display = 'none';
     gameOverPanel.classList.add('hidden');
+    refreshModeCopy();
+    if (GAME_MODE === 'money') {
+      refreshMoneyHud();
+    }
 
     ensureLanes(-6, 30);
     gameState = 'playing';
@@ -1374,6 +1526,9 @@
     if (key === 'arrowup' || key === 'w' || key === 'z') {
       e.preventDefault();
       tryMove('up');
+    } else if ((key === 'enter' || key === 'c') && GAME_MODE === 'money' && gameState === 'playing') {
+      e.preventDefault();
+      finishMoneyRun();
     } else if (key === 'arrowdown' || key === 's') {
       e.preventDefault();
       tryMove('down');
@@ -1422,6 +1577,7 @@
   });
 
   restartBtn.addEventListener('click', restartGame);
+  cashoutBtn.addEventListener('click', finishMoneyRun);
 
   // Start screen click
   startScreen.addEventListener('click', startGame);
@@ -1439,6 +1595,10 @@
 
     hud.style.display = 'none';
     scoreDisplay.textContent = '0';
+    refreshModeCopy();
+    if (GAME_MODE === 'money') {
+      refreshMoneyHud();
+    }
     postHostMessage('ready');
 
     requestAnimationFrame((now) => {

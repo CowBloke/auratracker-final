@@ -11,6 +11,11 @@ import {
   parseClanEffectPayload,
   serializeClanEffect,
 } from '../utils/clanEffects.js';
+import {
+  getFeaturedClanEvent,
+  submitClanEventMiniGame,
+  trackClanEventActivity,
+} from '../utils/clanEvents.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 
 const router = Router();
@@ -246,6 +251,13 @@ type ClanWithMembers = Prisma.ClanGetPayload<{ include: typeof clanSummaryInclud
 type ClanDetailPayload = Prisma.ClanGetPayload<{ include: typeof clanDetailInclude }>;
 type ClanWarCurrentPayload = Prisma.ClanWarGetPayload<{ include: typeof currentWarInclude }>;
 type ClanWarHistoryPayload = Prisma.ClanWarGetPayload<{ include: typeof historyWarInclude }>;
+type ClanBankContributionPayload = Prisma.ClanBankContributionGetPayload<{
+  include: {
+    user: {
+      select: typeof clanLeaderSelect;
+    };
+  };
+}>;
 
 type DefenseType = 'FORTRESS' | 'ARMORY' | 'BANNER';
 type AttackType = 'RAID' | 'SIEGE' | 'SABOTAGE';
@@ -423,6 +435,13 @@ const mapClanOwnedItem = (entry: {
   quantity: entry.quantity,
   acquiredAt: entry.acquiredAt,
   item: entry.item,
+});
+
+const mapClanBankContribution = (entry: ClanBankContributionPayload) => ({
+  id: entry.id,
+  amount: entry.amount,
+  createdAt: entry.createdAt,
+  user: entry.user,
 });
 
 const getClanDefenseLevel = (defenses: ClanWarCurrentPayload['defenses'] | ClanWarHistoryPayload['defenses'], clanId: string, type: DefenseType) => {
@@ -1110,6 +1129,52 @@ router.get('/me/status', authMiddleware, async (req: AuthRequest, res: Response)
   }
 });
 
+router.get('/events/featured', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const selectedClanId = typeof req.query.clanId === 'string' ? req.query.clanId : null;
+    const event = await getFeaturedClanEvent(selectedClanId, req.user?.id ?? null);
+    res.json({ event });
+  } catch (error) {
+    console.error('Get featured clan event error:', error);
+    res.status(500).json({ error: 'Failed to get clan event' });
+  }
+});
+
+router.post('/events/:eventId/minigames/:miniGameId/submit', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const { eventId, miniGameId } = req.params;
+    const rawScore = Number(req.body?.rawScore);
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!Number.isFinite(rawScore) || rawScore < 0) {
+      return res.status(400).json({ error: 'Score invalide.' });
+    }
+
+    const result = await submitClanEventMiniGame({
+      eventId,
+      miniGameId,
+      userId,
+      rawScore,
+    });
+
+    res.json({
+      success: true,
+      result: {
+        ...result,
+        nextAvailableAt: result.nextAvailableAt ? result.nextAvailableAt.toISOString() : null,
+      },
+    });
+  } catch (error: any) {
+    const message = error instanceof Error ? error.message : 'Failed to submit clan event mini-game';
+    const status = /Unauthorized|introuvable|actif|recharge|tentatives|clan/i.test(message) ? 400 : 500;
+    res.status(status).json({ error: message });
+  }
+});
+
 // Deposit personal money into clan bank (members only)
 router.post('/:id/bank/deposit', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -1175,12 +1240,24 @@ router.post('/:id/bank/deposit', authMiddleware, async (req: AuthRequest, res: R
             clanBankMoney: true,
           },
         }),
+        tx.clanBankContribution.create({
+          data: {
+            clanId: id,
+            userId,
+            amount,
+          },
+        }),
       ]);
 
       return {
         updatedUser,
         clanBankMoney: updatedClan.clanBankMoney,
       };
+    });
+
+    void trackClanEventActivity(userId, 'CLAN_BANK_DEPOSIT', amount, {
+      clanId: id,
+      amount,
     });
 
     res.json({
@@ -1295,7 +1372,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     const isMember = clan.members.some((member) => member.userId === userId);
     const isLeader = clan.members.some((member) => member.userId === userId && member.isLeader);
 
-    const [pendingRequest, currentWar, warHistory, cooldownEndsAt, eligibleOpponentsResult, clanOwnedItems, clanEffects] = await Promise.all([
+    const [pendingRequest, currentWar, warHistory, cooldownEndsAt, eligibleOpponentsResult, clanOwnedItems, clanEffects, clanBankContributions] = await Promise.all([
       userId
         ? prisma.clanJoinRequest.findUnique({
             where: {
@@ -1333,6 +1410,18 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         },
         orderBy: [{ activeUntil: 'desc' }],
       }),
+      prisma.clanBankContribution.findMany({
+        where: { clanId: clan.id },
+        include: {
+          user: {
+            select: clanLeaderSelect,
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 100,
+      }),
     ]);
 
     res.json({
@@ -1364,6 +1453,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           isLeader,
           hasPendingRequest: Boolean(pendingRequest),
         },
+        bankContributionHistory: isMember ? clanBankContributions.map(mapClanBankContribution) : [],
         ownedItems: isMember ? clanOwnedItems.map(mapClanOwnedItem) : [],
         activeEffects: isMember ? clanEffects.map(serializeClanEffect) : [],
         warHub: {
@@ -1714,6 +1804,11 @@ router.post('/:id/chat', authMiddleware, async (req: AuthRequest, res: Response)
         )
       ).catch(() => {});
     }
+
+    void trackClanEventActivity(userId, 'CLAN_CHAT_MESSAGE', 1, {
+      clanId: id,
+      messageId: createdMessage.id,
+    });
 
     res.status(201).json({
       message: {
@@ -2141,6 +2236,11 @@ router.post('/:id/war/fortify', authMiddleware, async (req: AuthRequest, res: Re
     });
 
     const refreshedWar = await getCurrentWarForClan(id);
+    void trackClanEventActivity(userId, 'CLAN_WAR_SUPPORT', 1, {
+      clanId: id,
+      defenseType: rawDefenseType,
+      warId: refreshedWar?.id ?? null,
+    });
     res.json({ war: refreshedWar ? await mapWar(refreshedWar, id, userId) : null });
   } catch (error) {
     console.error('Fortify clan war error:', error);
@@ -2269,6 +2369,12 @@ router.post('/:id/war/attack', authMiddleware, async (req: AuthRequest, res: Res
     await advanceClanWarsState();
 
     const refreshedWar = await getCurrentWarForClan(id);
+    void trackClanEventActivity(userId, 'CLAN_WAR_ATTACK', 1, {
+      clanId: id,
+      attackType: rawAttackType,
+      finalPoints,
+      warId: war.id,
+    });
     if (!refreshedWar) {
       const completedWar = await prisma.clanWar.findUnique({
         where: { id: war.id },
@@ -3129,6 +3235,14 @@ router.post('/:id/war/games/memory', authMiddleware, async (req: AuthRequest, re
       await prisma.clanWarGameLog.create({
         data: { warId: war.id, userId, clanId: id, gameType: 'MEMORY', score, pointsAwarded: totalFortifs, isPractice: false },
       });
+
+      void trackClanEventActivity(userId, 'CLAN_WAR_SUPPORT', Math.max(1, totalFortifs), {
+        clanId: id,
+        warId: war.id,
+        source: 'memory_game',
+        fortificationsAdded: totalFortifs,
+        score,
+      });
     }
 
     return res.json({ success: true, isPractice });
@@ -3203,6 +3317,14 @@ router.post('/:id/war/games/bomb', authMiddleware, async (req: AuthRequest, res:
 
       await prisma.clanWarGameLog.create({
         data: { warId: war.id, userId, clanId: id, gameType: 'BOMB', score, pointsAwarded: finalPoints, isPractice: false },
+      });
+
+      void trackClanEventActivity(userId, 'CLAN_WAR_ATTACK', 1, {
+        clanId: id,
+        warId: war.id,
+        source: 'bomb_game',
+        finalPoints,
+        hits,
       });
 
       await advanceClanWarsState();
@@ -3314,6 +3436,13 @@ router.post('/:id/war/games/naval/shot', authMiddleware, async (req: AuthRequest
     });
 
     if (isHit && points > 0) {
+      void trackClanEventActivity(userId, 'CLAN_WAR_ATTACK', 1, {
+        clanId: id,
+        warId: war.id,
+        source: 'naval_shot',
+        points,
+        building,
+      });
       await advanceClanWarsState();
     }
 

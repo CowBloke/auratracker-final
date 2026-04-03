@@ -6,7 +6,6 @@ import {
   Check,
   User,
   Copy,
-  Sparkles,
   Ticket,
   Keyboard,
   RotateCcw,
@@ -770,13 +769,11 @@ function ParrainageSection({
   referralLoading,
   referralSummary,
   onCopy,
-  onClaim,
 }: {
   referralEnabled: boolean;
   referralLoading: boolean;
   referralSummary: ReferralSummary | null;
   onCopy: () => void;
-  onClaim: () => void;
 }) {
   if (!referralEnabled) {
     return (
@@ -1248,7 +1245,6 @@ export default function Settings() {
               referralLoading={referralLoading}
               referralSummary={referralSummary}
               onCopy={handleReferralCopy}
-              onClaim={() => setReferralClaimOpen(true)}
             />
           )}
 

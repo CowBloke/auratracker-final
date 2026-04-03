@@ -12,24 +12,37 @@
     <div class="hud" id="hud">
       <div class="hud__score" id="scoreDisplay">0</div>
       <div class="hud__coins" id="coinDisplay">0</div>
+      <div class="hud__money hidden" id="moneyHud">
+        <div class="hud__money-pill">
+          <span class="hud__money-label">Cagnotte</span>
+          <span class="hud__money-value" id="moneyDisplay">0$</span>
+        </div>
+        <div class="hud__money-pill hud__money-pill--muted">
+          <span class="hud__money-label">Combo</span>
+          <span class="hud__money-value" id="comboDisplay">x1.00</span>
+        </div>
+        <button class="hud__cashout" id="cashoutBtn" type="button">Cash out</button>
+      </div>
     </div>
 
     <div class="start-screen" id="startScreen">
       <div class="start-screen__title">CROSSY ROAD</div>
-      <div class="start-screen__tap">Appuie pour jouer</div>
+      <div class="start-screen__subtitle" id="startSubtitle">Traverse jusqu'au bout.</div>
+      <div class="start-screen__tap" id="startTap">Appuie pour jouer</div>
     </div>
 
     <div class="game-over hidden" id="gameOverPanel">
       <div class="game-over__card">
-        <div class="game-over__title">GAME OVER</div>
+        <div class="game-over__title" id="gameOverTitle">GAME OVER</div>
         <div class="game-over__score-row">
-          <div class="game-over__score-label">SCORE</div>
+          <div class="game-over__score-label" id="finalScoreLabel">SCORE</div>
           <div class="game-over__score-value" id="finalScore">0</div>
         </div>
         <div class="game-over__best-row">
-          <div class="game-over__best-label">RECORD</div>
+          <div class="game-over__best-label" id="finalBestLabel">RECORD</div>
           <div class="game-over__best-value" id="finalBest">0</div>
         </div>
+        <div class="game-over__note hidden" id="gameOverNote"></div>
         <button id="restartBtn" class="game-over__btn" type="button">REJOUER</button>
       </div>
     </div>

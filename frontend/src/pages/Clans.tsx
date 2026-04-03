@@ -3,8 +3,11 @@ import { AlertTriangle, Axe, Check, Coins, Crown, Loader2, LogOut, Pencil, Plus,
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClanActiveEffect,
+  ClanBankContribution,
   ClanChatMessage,
   ClanDetail,
+  ClanEventMiniGame,
+  ClanEventView,
   ClanOwnedItem,
   ClanPumpUpMessage,
   ClanWarParticipantStats,
@@ -96,6 +99,44 @@ const getStatusLabel = (status: ClanWarState['status']) => {
   }
 };
 
+const getClanEventStatusLabel = (status: ClanEventView['status']) => {
+  switch (status) {
+    case 'ACTIVE':
+      return 'En cours';
+    case 'SCHEDULED':
+      return 'Bientôt';
+    case 'COMPLETED':
+      return 'Terminée';
+    case 'DRAFT':
+      return 'Brouillon';
+    default:
+      return 'Annulée';
+  }
+};
+
+const getClanEventActivityLabel = (activityType: string) => {
+  switch (activityType) {
+    case 'PLAY_ANY_GAME':
+      return 'Parties jouées';
+    case 'WIN_ANY_GAME':
+      return 'Victoires';
+    case 'CLAN_CHAT_MESSAGE':
+      return 'Messages clan';
+    case 'CLAN_BANK_DEPOSIT':
+      return 'Money déposée';
+    case 'CLAN_WAR_ATTACK':
+      return 'Actions d’attaque';
+    case 'CLAN_WAR_SUPPORT':
+      return 'Actions de support';
+    case 'EVENT_MINIGAME_PLAY':
+      return 'Mini-jeux joués';
+    case 'EVENT_MINIGAME_POINTS':
+      return 'Points mini-jeux';
+    default:
+      return activityType.replace(/_/g, ' ').toLowerCase();
+  }
+};
+
 const getStatusVariant = (status: ClanWarState['status']) => {
   switch (status) {
     case 'ACTIVE':
@@ -122,8 +163,28 @@ const getWarEnemyDefenseSet = (war: ClanWarState, clanId: string) =>
 const getWarParticipantStats = (war: ClanWarState, clanId: string) =>
   war.attackerClan.id === clanId ? war.participantStats.attacker : war.participantStats.defender;
 
-
 const getAvatarFallback = (value: string) => value.trim().slice(0, 2);
+
+const BankContributionRow = ({ entry }: { entry: ClanBankContribution }) => (
+  <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
+    <div className="flex min-w-0 items-center gap-3">
+      <Avatar className="h-9 w-9">
+        <AvatarImage src={resolveImageUrl(entry.user.profilePicture)} alt={entry.user.username} />
+        <AvatarFallback>{getAvatarFallback(entry.user.username)}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0">
+        <div className="text-sm font-medium">
+          <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
+        </div>
+        <div className="text-xs text-muted-foreground">{formatDate(entry.createdAt)}</div>
+      </div>
+    </div>
+    <div className="text-right">
+      <div className="text-sm font-semibold text-emerald-600">{formatSignedValue(entry.amount)}</div>
+      <div className="text-xs text-muted-foreground">ajoutés à la banque</div>
+    </div>
+  </div>
+);
 
 const SectionTitle = ({
   title,
@@ -281,7 +342,7 @@ export default function Clans() {
   const [savingTag, setSavingTag] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'info' | 'chat' | 'guerre' | 'tag' | 'messages'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'event' | 'historique-solde' | 'chat' | 'guerre' | 'tag' | 'messages'>('info');
 
   // Pump-up messages
   const [pumpUpMessages, setPumpUpMessages] = useState<ClanPumpUpMessage[]>([]);
@@ -301,6 +362,15 @@ export default function Clans() {
     NAVAL: localStorage.getItem('war_tutorial_NAVAL') === '1',
   }));
   const [showTutorial, setShowTutorial] = useState<'MEMORY' | 'BOMB' | 'NAVAL' | null>(null);
+  const [featuredEvent, setFeaturedEvent] = useState<ClanEventView | null>(null);
+  const [featuredEventLoading, setFeaturedEventLoading] = useState(false);
+  const [activeEventMiniGame, setActiveEventMiniGame] = useState<ClanEventMiniGame | null>(null);
+  const [eventMiniGameSubmitting, setEventMiniGameSubmitting] = useState(false);
+  const [reflexPhase, setReflexPhase] = useState<'idle' | 'waiting' | 'go' | 'result'>('idle');
+  const [reflexScore, setReflexScore] = useState<number | null>(null);
+  const [tapFrenzyRunning, setTapFrenzyRunning] = useState(false);
+  const [tapFrenzyScore, setTapFrenzyScore] = useState(0);
+  const [tapFrenzyTimeLeft, setTapFrenzyTimeLeft] = useState(0);
 
   const fetchGameStatus = useCallback(async (clanId: string) => {
     try {
@@ -308,6 +378,18 @@ export default function Clans() {
       setGameStatus(res.data);
     } catch {
       // Non-member or no war — silently ignore
+    }
+  }, []);
+
+  const fetchFeaturedEvent = useCallback(async (clanId?: string | null, withLoader = true) => {
+    try {
+      if (withLoader) setFeaturedEventLoading(true);
+      const res = await clansApi.getFeaturedEvent(clanId ?? undefined);
+      setFeaturedEvent(res.data.event ?? null);
+    } catch {
+      setFeaturedEvent(null);
+    } finally {
+      if (withLoader) setFeaturedEventLoading(false);
     }
   }, []);
 
@@ -360,6 +442,15 @@ export default function Clans() {
       setGameStatus(null);
     }
   }, [selectedClanId, selectedClan?.viewer.isMember, fetchGameStatus]);
+
+  useEffect(() => {
+    if (!selectedClanId) {
+      setFeaturedEvent(null);
+      return;
+    }
+
+    void fetchFeaturedEvent(selectedClanId);
+  }, [selectedClanId, fetchFeaturedEvent]);
 
   const fetchPumpUpMessages = useCallback(async (clanId: string) => {
     setPumpUpLoading(true);
@@ -544,9 +635,13 @@ export default function Clans() {
     const nextClanId = preferredClanId ?? selectedClanId ?? viewerClanId ?? clans[0]?.id ?? null;
     if (nextClanId) {
       setSelectedClanId(nextClanId);
-      await fetchClanDetail(nextClanId);
+      await Promise.all([
+        fetchClanDetail(nextClanId),
+        fetchFeaturedEvent(nextClanId, false),
+      ]);
     } else {
       setSelectedClan(null);
+      setFeaturedEvent(null);
     }
   };
 
@@ -577,6 +672,96 @@ export default function Clans() {
       await refreshData(selectedClan.id);
       await fetchGameStatus(selectedClan.id);
     }
+  };
+
+  const closeEventMiniGame = () => {
+    setActiveEventMiniGame(null);
+    setEventMiniGameSubmitting(false);
+    setReflexPhase('idle');
+    setReflexScore(null);
+    setTapFrenzyRunning(false);
+    setTapFrenzyScore(0);
+    setTapFrenzyTimeLeft(0);
+  };
+
+  const submitEventMiniGameScore = async (miniGame: ClanEventMiniGame, rawScore: number) => {
+    if (!featuredEvent) return;
+    try {
+      setEventMiniGameSubmitting(true);
+      const res = await clansApi.submitEventMiniGame(featuredEvent.id, miniGame.id, { rawScore });
+      toast({
+        title: 'Score enregistré',
+        description: `+${res.data.result.pointsAwarded} points pour ton clan.`,
+      });
+      await fetchFeaturedEvent(selectedClanId, false);
+      closeEventMiniGame();
+    } catch (error: any) {
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || 'Impossible d’enregistrer ce score.',
+        variant: 'destructive',
+      });
+      setEventMiniGameSubmitting(false);
+    }
+  };
+
+  const startReflexMiniGame = (miniGame: ClanEventMiniGame) => {
+    setActiveEventMiniGame(miniGame);
+    setReflexPhase('waiting');
+    setReflexScore(null);
+
+    const config = miniGame.config ?? {};
+    const minDelay = typeof config.minDelayMs === 'number' ? config.minDelayMs : 1200;
+    const maxDelay = typeof config.maxDelayMs === 'number' ? config.maxDelayMs : 2800;
+    const delay = Math.max(minDelay, Math.floor(minDelay + Math.random() * Math.max(200, maxDelay - minDelay)));
+    const startAt = Date.now() + delay;
+
+    window.setTimeout(() => {
+      setReflexPhase('go');
+      setReflexScore(startAt);
+    }, delay);
+  };
+
+  const handleReflexClick = async () => {
+    if (!activeEventMiniGame) return;
+
+    if (reflexPhase === 'waiting') {
+      setReflexPhase('result');
+      setReflexScore(0);
+      return;
+    }
+
+    if (reflexPhase !== 'go' || typeof reflexScore !== 'number') return;
+    const reactionMs = Math.max(1, Date.now() - reflexScore);
+    const rawScore = Math.max(0, 1200 - reactionMs);
+    setReflexPhase('result');
+    setReflexScore(rawScore);
+    await submitEventMiniGameScore(activeEventMiniGame, rawScore);
+  };
+
+  useEffect(() => {
+    if (!tapFrenzyRunning || !activeEventMiniGame) return;
+
+    if (tapFrenzyTimeLeft <= 0) {
+      setTapFrenzyRunning(false);
+      void submitEventMiniGameScore(activeEventMiniGame, tapFrenzyScore);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setTapFrenzyTimeLeft((current) => current - 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [tapFrenzyRunning, tapFrenzyTimeLeft, tapFrenzyScore, activeEventMiniGame]);
+
+  const startTapFrenzyMiniGame = (miniGame: ClanEventMiniGame) => {
+    const config = miniGame.config ?? {};
+    const durationSeconds = typeof config.durationSeconds === 'number' ? config.durationSeconds : 8;
+    setActiveEventMiniGame(miniGame);
+    setTapFrenzyRunning(true);
+    setTapFrenzyScore(0);
+    setTapFrenzyTimeLeft(Math.max(3, durationSeconds));
   };
 
   const handleMemoryComplete = async (result: { matchedPairs: Record<string, number>; score: number }) => {
@@ -1223,11 +1408,21 @@ export default function Clans() {
                   </Card>
 
                   {/* Tabs: Infos / Chat / Tag / Guerre */}
-                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'chat' | 'guerre' | 'tag' | 'messages')}>
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'historique-solde' | 'chat' | 'guerre' | 'tag' | 'messages')}>
                     <TabsList className="w-full">
                       <TabsTrigger value="info" className="flex-1">
                         Infos
                       </TabsTrigger>
+                      {featuredEvent ? (
+                        <TabsTrigger value="event" className="flex-1">
+                          Événement
+                        </TabsTrigger>
+                      ) : null}
+                      {selectedClan.viewer.isMember ? (
+                        <TabsTrigger value="historique-solde" className="flex-1">
+                          Historique solde
+                        </TabsTrigger>
+                      ) : null}
                       {selectedClan.viewer.isMember ? (
                         <TabsTrigger value="chat" className="flex-1">
                           Chat
@@ -1459,6 +1654,232 @@ export default function Clans() {
                         </Card>
                       ) : null}
 
+                    </TabsContent>
+
+                    <TabsContent value="event" className="mt-4 space-y-4">
+                      {featuredEventLoading ? (
+                        <Card className={panelClassName}>
+                          <CardContent className="flex items-center justify-center p-12">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </CardContent>
+                        </Card>
+                      ) : !featuredEvent ? (
+                        <Card className={panelClassName}>
+                          <CardContent className="p-8 text-sm text-muted-foreground">
+                            Aucun événement de clan n’est publié pour le moment.
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <>
+                          <Card className={panelClassName}>
+                            <CardContent className="space-y-4 p-4">
+                              <div
+                                className="rounded-2xl border border-border/50 p-4"
+                                style={{
+                                  background: featuredEvent.highlightColor
+                                    ? `linear-gradient(135deg, ${featuredEvent.highlightColor}22, transparent 60%)`
+                                    : undefined,
+                                }}
+                              >
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge variant="secondary">{getClanEventStatusLabel(featuredEvent.status)}</Badge>
+                                  <Badge variant="outline">
+                                    {featuredEvent.status === 'SCHEDULED'
+                                      ? `Débute ${formatDate(featuredEvent.startsAt)}`
+                                      : featuredEvent.status === 'ACTIVE'
+                                        ? `Fin ${formatDate(featuredEvent.endsAt)}`
+                                        : `Clôturé ${formatDate(featuredEvent.endsAt)}`}
+                                  </Badge>
+                                </div>
+                                <h2 className="mt-3 text-xl font-semibold tracking-tight">{featuredEvent.title}</h2>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                  {featuredEvent.description || 'Un événement compétitif de clan est en cours.'}
+                                </p>
+                                {featuredEvent.rulesSummary ? (
+                                  <div className="mt-3 rounded-xl border border-border/50 bg-background/70 p-3 text-sm text-muted-foreground">
+                                    {featuredEvent.rulesSummary}
+                                  </div>
+                                ) : null}
+                              </div>
+
+                              <div className="grid gap-3 md:grid-cols-3">
+                                <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Rang du clan</div>
+                                  <div className="mt-2 text-2xl font-semibold">
+                                    {featuredEvent.selectedClanEntry?.rank ? `#${featuredEvent.selectedClanEntry.rank}` : 'Non classé'}
+                                  </div>
+                                </div>
+                                <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Points</div>
+                                  <div className="mt-2 text-2xl font-semibold">
+                                    {(featuredEvent.selectedClanEntry?.totalPoints ?? 0).toLocaleString('fr-FR')}
+                                  </div>
+                                </div>
+                                <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Participation</div>
+                                  <div className="mt-2 text-sm font-medium">
+                                    {featuredEvent.canParticipate ? 'Ton clan peut jouer maintenant' : 'Lecture seule sur ce clan'}
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                            <Card className={panelClassName}>
+                              <CardContent className="space-y-4 p-4">
+                                <SectionTitle title="Quêtes d’événement" description="Chaque quête terminée ajoute des points au clan." />
+                                <div className="space-y-3">
+                                  {featuredEvent.quests.map((quest) => (
+                                    <div key={quest.id} className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                                      <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <div>
+                                          <div className="text-sm font-medium">{quest.title}</div>
+                                          <p className="mt-1 text-xs text-muted-foreground">
+                                            {quest.description || getClanEventActivityLabel(quest.activityType)}
+                                          </p>
+                                        </div>
+                                        <Badge variant={quest.progress.isCompleted ? 'secondary' : 'outline'}>
+                                          +{quest.pointsReward} pts
+                                        </Badge>
+                                      </div>
+                                      <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                                        <span>{getClanEventActivityLabel(quest.activityType)}</span>
+                                        <span>
+                                          {Math.min(quest.progress.currentValue, quest.targetValue)}/{quest.targetValue}
+                                        </span>
+                                      </div>
+                                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                                        <div
+                                          className={cn('h-full rounded-full transition-all', quest.progress.isCompleted ? 'bg-emerald-500' : 'bg-primary')}
+                                          style={{ width: `${Math.min(100, (quest.progress.currentValue / quest.targetValue) * 100)}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <div className="space-y-4">
+                              <Card className={panelClassName}>
+                                <CardContent className="space-y-4 p-4">
+                                  <SectionTitle title="Mini-jeux" description="Joue pour ajouter des points instantanément." />
+                                  <div className="space-y-3">
+                                    {featuredEvent.miniGames.map((miniGame) => {
+                                      const isCoolingDown = Boolean(miniGame.viewerStats.nextAvailableAt && new Date(miniGame.viewerStats.nextAvailableAt).getTime() > Date.now());
+                                      return (
+                                        <div key={miniGame.id} className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                              <div className="text-sm font-medium">{miniGame.title}</div>
+                                              <p className="mt-1 text-xs text-muted-foreground">{miniGame.description || miniGame.instructions || 'Mini-jeu de score instantané.'}</p>
+                                            </div>
+                                            <Badge variant="outline">Cap {miniGame.maxPointsPerAttempt} pts</Badge>
+                                          </div>
+                                          <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
+                                            <span>Meilleur score: {miniGame.viewerStats.bestScore.toLocaleString('fr-FR')}</span>
+                                            <span>Tentatives: {miniGame.viewerStats.attemptsUsed}{miniGame.maxAttemptsPerUser ? `/${miniGame.maxAttemptsPerUser}` : ''}</span>
+                                            {isCoolingDown ? <span>Recharge: {formatCountdown(miniGame.viewerStats.nextAvailableAt)}</span> : null}
+                                          </div>
+                                          <Button
+                                            className="mt-3 w-full"
+                                            disabled={!featuredEvent.canParticipate || isCoolingDown || eventMiniGameSubmitting}
+                                            onClick={() => {
+                                              if (miniGame.type === 'REFLEX') startReflexMiniGame(miniGame);
+                                              else startTapFrenzyMiniGame(miniGame);
+                                            }}
+                                          >
+                                            Jouer
+                                          </Button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card className={panelClassName}>
+                                <CardContent className="space-y-4 p-4">
+                                  <SectionTitle title="Top clans" description="Classement de l’événement." />
+                                  <div className="space-y-2">
+                                    {featuredEvent.leaderboard.map((entry) => (
+                                      <div key={entry.clan.id} className="flex items-center justify-between rounded-xl border border-border/50 px-3 py-2.5">
+                                        <div className="min-w-0">
+                                          <div className="text-sm font-medium">#{entry.rank} {entry.clan.name}</div>
+                                          <div className="text-xs text-muted-foreground">{entry.clan.memberCount} membres • niv. {entry.clan.level}</div>
+                                        </div>
+                                        <div className="text-sm font-semibold">{entry.totalPoints.toLocaleString('fr-FR')} pts</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CardContent>
+                              </Card>
+
+                              <Card className={panelClassName}>
+                                <CardContent className="space-y-4 p-4">
+                                  <SectionTitle title="Récompenses" description="Répartition selon le rang final du clan." />
+                                  <div className="space-y-2">
+                                    {featuredEvent.rewardTiers.map((tier) => (
+                                      <div key={tier.id} className="rounded-xl border border-border/50 bg-muted/15 p-3 text-sm">
+                                        <div className="font-medium">{tier.title}</div>
+                                        <div className="mt-1 text-xs text-muted-foreground">
+                                          Rangs {tier.minRank}{tier.maxRank !== tier.minRank ? `-${tier.maxRank}` : ''} • {tier.moneyReward} money • {tier.auraReward} aura{tier.item ? ` • ${tier.item.name}` : ''}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+                          </div>
+
+                          <Card className={panelClassName}>
+                            <CardContent className="space-y-4 p-4">
+                              <SectionTitle title="Activité récente" description="Derniers points inscrits dans l’événement." />
+                              <div className="space-y-2">
+                                {featuredEvent.recentActivity.length === 0 ? (
+                                  <div className="rounded-xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
+                                    Aucun point enregistré pour l’instant.
+                                  </div>
+                                ) : featuredEvent.recentActivity.map((activity) => (
+                                  <div key={activity.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 px-3 py-2.5">
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-medium">{activity.label}</div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {activity.clan.name} • {formatDate(activity.createdAt)}
+                                      </div>
+                                    </div>
+                                    <Badge variant="secondary">+{activity.points} pts</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="historique-solde" className="mt-4 space-y-4">
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-3 p-4">
+                          <SectionTitle
+                            title="Historique des participations"
+                            description="Chaque dépôt effectué par un membre dans la banque du clan."
+                          />
+                          {selectedClan.bankContributionHistory.length > 0 ? (
+                            <div className="space-y-2">
+                              {selectedClan.bankContributionHistory.map((entry) => (
+                                <BankContributionRow key={entry.id} entry={entry} />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
+                              Aucun dépôt enregistré pour le moment.
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
                     </TabsContent>
 
                     {/* ── Chat tab (members only) ── */}
@@ -2083,6 +2504,58 @@ export default function Clans() {
           </div>
         </div>
       </PageShell>
+
+      <Dialog open={Boolean(activeEventMiniGame)} onOpenChange={(open) => !open && closeEventMiniGame()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{activeEventMiniGame?.title ?? 'Mini-jeu événement'}</DialogTitle>
+            <DialogDescription>{activeEventMiniGame?.instructions || activeEventMiniGame?.description || 'Fais le meilleur score possible pour ton clan.'}</DialogDescription>
+          </DialogHeader>
+
+          {activeEventMiniGame?.type === 'REFLEX' ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 text-sm text-muted-foreground">
+                {reflexPhase === 'waiting'
+                  ? 'Attends le signal vert, puis clique immédiatement.'
+                  : reflexPhase === 'go'
+                    ? 'CLIQUE MAINTENANT'
+                    : reflexPhase === 'result'
+                      ? reflexScore === 0
+                        ? 'Trop tôt. Cette tentative vaut 0.'
+                        : `Score brut: ${Math.floor(reflexScore ?? 0)}`
+                      : 'Prêt ?'}
+              </div>
+              <Button
+                className={cn('h-28 w-full text-lg', reflexPhase === 'go' ? 'bg-emerald-600 hover:bg-emerald-600/90' : '')}
+                disabled={eventMiniGameSubmitting}
+                onClick={() => { void handleReflexClick(); }}
+              >
+                {reflexPhase === 'waiting' ? '...' : reflexPhase === 'go' ? 'CLIQUE' : 'Tenter'}
+              </Button>
+            </div>
+          ) : activeEventMiniGame?.type === 'TAP_FRENZY' ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Temps restant</div>
+                  <div className="mt-2 text-2xl font-semibold">{tapFrenzyTimeLeft}s</div>
+                </div>
+                <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Score brut</div>
+                  <div className="mt-2 text-2xl font-semibold">{tapFrenzyScore}</div>
+                </div>
+              </div>
+              <Button
+                className="h-28 w-full text-lg"
+                disabled={!tapFrenzyRunning || eventMiniGameSubmitting}
+                onClick={() => setTapFrenzyScore((current) => current + 10)}
+              >
+                Tap tap tap
+              </Button>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[85vh] overflow-hidden p-0 sm:max-w-lg">

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage } from '../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -131,6 +131,75 @@ const DEFAULT_TAX_BRACKET: EditableTaxBracket = {
   rate: '1',
 };
 
+type ClanEventQuestForm = {
+  title: string;
+  description: string;
+  activityType: string;
+  targetValue: number;
+  pointsReward: number;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+type ClanEventMiniGameForm = {
+  title: string;
+  description: string;
+  type: 'REFLEX' | 'TAP_FRENZY';
+  instructions: string;
+  scoreMultiplier: number;
+  flatPointsBonus: number;
+  maxPointsPerAttempt: number;
+  maxAttemptsPerUser: number | null;
+  cooldownMinutes: number;
+  sortOrder: number;
+  isActive: boolean;
+  config: string;
+};
+
+type ClanEventRewardTierForm = {
+  title: string;
+  minRank: number;
+  maxRank: number;
+  moneyReward: number;
+  auraReward: number;
+  itemId: string;
+};
+
+type ClanEventForm = {
+  title: string;
+  description: string;
+  bannerUrl: string;
+  status: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  highlightColor: string;
+  rulesSummary: string;
+  startsAt: string;
+  endsAt: string;
+  quests: ClanEventQuestForm[];
+  miniGames: ClanEventMiniGameForm[];
+  rewardTiers: ClanEventRewardTierForm[];
+};
+
+const DEFAULT_CLAN_EVENT_FORM: ClanEventForm = {
+  title: '',
+  description: '',
+  bannerUrl: '',
+  status: 'SCHEDULED',
+  highlightColor: '#f59e0b',
+  rulesSummary: '',
+  startsAt: '',
+  endsAt: '',
+  quests: [
+    { title: 'Jouer 10 parties', description: 'Toutes les parties terminées comptent.', activityType: 'PLAY_ANY_GAME', targetValue: 10, pointsReward: 40, sortOrder: 0, isActive: true },
+  ],
+  miniGames: [
+    { title: 'Réflexe éclair', description: 'Clique dès que le signal apparaît.', type: 'REFLEX', instructions: 'Attends le signal vert, puis clique le plus vite possible.', scoreMultiplier: 0.5, flatPointsBonus: 0, maxPointsPerAttempt: 120, maxAttemptsPerUser: 5, cooldownMinutes: 15, sortOrder: 0, isActive: true, config: '{"minDelayMs":1200,"maxDelayMs":2800}' },
+  ],
+  rewardTiers: [
+    { title: 'Top 1', minRank: 1, maxRank: 1, moneyReward: 1500, auraReward: 80, itemId: '' },
+    { title: 'Top 2-3', minRank: 2, maxRank: 3, moneyReward: 900, auraReward: 45, itemId: '' },
+  ],
+};
+
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
   reviewedAt?: string;
@@ -156,6 +225,48 @@ const parseLegacyArchivedRegistrations = (): ArchivedRegistration[] => {
     return [];
   }
 };
+
+const mapClanEventToForm = (event: AdminClanEvent): ClanEventForm => ({
+  title: event.title,
+  description: event.description || '',
+  bannerUrl: event.bannerUrl || '',
+  status: event.storedStatus,
+  highlightColor: event.highlightColor || '#f59e0b',
+  rulesSummary: event.rulesSummary || '',
+  startsAt: toDateTimeLocalValue(event.startsAt),
+  endsAt: toDateTimeLocalValue(event.endsAt),
+  quests: event.quests.map((quest) => ({
+    title: quest.title,
+    description: quest.description || '',
+    activityType: quest.activityType,
+    targetValue: quest.targetValue,
+    pointsReward: quest.pointsReward,
+    sortOrder: quest.sortOrder,
+    isActive: quest.isActive,
+  })),
+  miniGames: event.miniGames.map((miniGame) => ({
+    title: miniGame.title,
+    description: miniGame.description || '',
+    type: miniGame.type,
+    instructions: miniGame.instructions || '',
+    scoreMultiplier: miniGame.scoreMultiplier,
+    flatPointsBonus: miniGame.flatPointsBonus,
+    maxPointsPerAttempt: miniGame.maxPointsPerAttempt,
+    maxAttemptsPerUser: miniGame.maxAttemptsPerUser,
+    cooldownMinutes: miniGame.cooldownMinutes,
+    sortOrder: miniGame.sortOrder,
+    isActive: miniGame.isActive,
+    config: miniGame.config ? JSON.stringify(miniGame.config) : '',
+  })),
+  rewardTiers: event.rewardTiers.map((tier) => ({
+    title: tier.title,
+    minRank: tier.minRank,
+    maxRank: tier.maxRank,
+    moneyReward: tier.moneyReward,
+    auraReward: tier.auraReward,
+    itemId: tier.itemId || '',
+  })),
+});
 
 const mapRegistrationReviewToArchivedRegistration = (review: RegistrationReview): ArchivedRegistration => ({
   id: review.registrationUserId,
@@ -1272,6 +1383,12 @@ export default function Admin() {
   const [savingClan, setSavingClan] = useState(false);
   const [deletingClan, setDeletingClan] = useState<string | null>(null);
   const [transferringClanLeader, setTransferringClanLeader] = useState<string | null>(null);
+  const [clanEvents, setClanEvents] = useState<AdminClanEvent[]>([]);
+  const [loadingClanEvents, setLoadingClanEvents] = useState(false);
+  const [editingClanEventId, setEditingClanEventId] = useState<string | null>(null);
+  const [clanEventForm, setClanEventForm] = useState<ClanEventForm>(DEFAULT_CLAN_EVENT_FORM);
+  const [savingClanEvent, setSavingClanEvent] = useState(false);
+  const [deletingClanEvent, setDeletingClanEvent] = useState<string | null>(null);
 
   // Items state
   const [items, setItems] = useState<ShopItem[]>([]);
@@ -1646,6 +1763,7 @@ export default function Admin() {
   useEffect(() => {
     fetchUsers();
     fetchClans();
+    fetchClanEvents();
     fetchItems();
     fetchDjForcedSkin();
     fetchShopCategories();
@@ -2114,6 +2232,19 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des clans');
     } finally {
       setLoadingClans(false);
+    }
+  };
+
+  const fetchClanEvents = async () => {
+    try {
+      setLoadingClanEvents(true);
+      const res = await adminApi.getClanEvents();
+      setClanEvents(res.data.events);
+    } catch (error) {
+      console.error('Failed to fetch clan events:', error);
+      showMessage('error', 'Erreur lors du chargement des événements de clan');
+    } finally {
+      setLoadingClanEvents(false);
     }
   };
 
@@ -3331,6 +3462,103 @@ export default function Admin() {
       showMessage('error', error.response?.data?.error || 'Erreur');
     } finally {
       setDeletingClan(null);
+    }
+  };
+
+  const resetClanEventForm = () => {
+    setEditingClanEventId(null);
+    setClanEventForm(DEFAULT_CLAN_EVENT_FORM);
+  };
+
+  const startEditingClanEvent = (event: AdminClanEvent) => {
+    setEditingClanEventId(event.id);
+    setClanEventForm(mapClanEventToForm(event));
+    setActiveTab('clubs');
+  };
+
+  const saveClanEvent = async () => {
+    if (!clanEventForm.title.trim()) {
+      showMessage('error', 'Le titre de l’événement est requis');
+      return;
+    }
+
+    try {
+      setSavingClanEvent(true);
+      const payload = {
+        title: clanEventForm.title.trim(),
+        description: clanEventForm.description.trim() || null,
+        bannerUrl: clanEventForm.bannerUrl.trim() || null,
+        status: clanEventForm.status,
+        highlightColor: clanEventForm.highlightColor.trim() || null,
+        rulesSummary: clanEventForm.rulesSummary.trim() || null,
+        startsAt: new Date(clanEventForm.startsAt).toISOString(),
+        endsAt: new Date(clanEventForm.endsAt).toISOString(),
+        quests: clanEventForm.quests.map((quest, index) => ({
+          title: quest.title.trim(),
+          description: quest.description.trim() || null,
+          activityType: quest.activityType,
+          targetValue: quest.targetValue,
+          pointsReward: quest.pointsReward,
+          sortOrder: index,
+          isActive: quest.isActive,
+        })),
+        miniGames: clanEventForm.miniGames.map((miniGame, index) => ({
+          title: miniGame.title.trim(),
+          description: miniGame.description.trim() || null,
+          type: miniGame.type,
+          instructions: miniGame.instructions.trim() || null,
+          scoreMultiplier: miniGame.scoreMultiplier,
+          flatPointsBonus: miniGame.flatPointsBonus,
+          maxPointsPerAttempt: miniGame.maxPointsPerAttempt,
+          maxAttemptsPerUser: miniGame.maxAttemptsPerUser,
+          cooldownMinutes: miniGame.cooldownMinutes,
+          sortOrder: index,
+          isActive: miniGame.isActive,
+          config: miniGame.config.trim() ? JSON.parse(miniGame.config) : null,
+        })),
+        rewardTiers: clanEventForm.rewardTiers.map((tier) => ({
+          title: tier.title.trim(),
+          minRank: tier.minRank,
+          maxRank: tier.maxRank,
+          moneyReward: tier.moneyReward,
+          auraReward: tier.auraReward,
+          itemId: tier.itemId || null,
+        })),
+      };
+
+      const res = editingClanEventId
+        ? await adminApi.updateClanEvent(editingClanEventId, payload)
+        : await adminApi.createClanEvent(payload);
+
+      if (editingClanEventId) {
+        setClanEvents((prev) => prev.map((entry) => entry.id === editingClanEventId ? res.data.event : entry));
+      } else {
+        setClanEvents((prev) => [res.data.event, ...prev]);
+      }
+      resetClanEventForm();
+      showMessage('success', editingClanEventId ? 'Événement mis à jour' : 'Événement créé');
+    } catch (error: any) {
+      console.error('Failed to save clan event:', error);
+      showMessage('error', error.response?.data?.error || 'Erreur lors de la sauvegarde de l’événement');
+    } finally {
+      setSavingClanEvent(false);
+    }
+  };
+
+  const deleteClanEvent = async (id: string) => {
+    try {
+      setDeletingClanEvent(id);
+      await adminApi.deleteClanEvent(id);
+      setClanEvents((prev) => prev.filter((entry) => entry.id !== id));
+      if (editingClanEventId === id) {
+        resetClanEventForm();
+      }
+      showMessage('success', 'Événement supprimé');
+    } catch (error: any) {
+      console.error('Failed to delete clan event:', error);
+      showMessage('error', error.response?.data?.error || 'Erreur lors de la suppression');
+    } finally {
+      setDeletingClanEvent(null);
     }
   };
 
@@ -4915,6 +5143,272 @@ export default function Admin() {
                     );
                   })()
                 )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_480px]">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardDescription>Événements de clan</CardDescription>
+                    <p className="text-sm text-muted-foreground">{clanEvents.length} événement(s)</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={resetClanEventForm}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nouvel événement
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loadingClanEvents ? (
+                  <div className="py-10 text-center text-muted-foreground">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                  </div>
+                ) : clanEvents.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                    Aucun événement de clan configuré.
+                  </div>
+                ) : clanEvents.map((event) => (
+                  <div key={event.id} className="rounded-xl border border-border/50 p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-medium">{event.title}</h3>
+                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-400">{event.status}</span>
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.quests.length} quête(s)</span>
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.miniGames.length} mini-jeu(x)</span>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{event.description || 'Aucune description.'}</p>
+                        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <span>Début: {new Date(event.startsAt).toLocaleString('fr-FR')}</span>
+                          <span>Fin: {new Date(event.endsAt).toLocaleString('fr-FR')}</span>
+                          <span>Leaderboard: {event.leaderboard.length} clan(s)</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => startEditingClanEvent(event)}>
+                          <Edit2 className="mr-2 h-4 w-4" />
+                          Gérer
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                          disabled={deletingClanEvent === event.id}
+                          onClick={() => { void deleteClanEvent(event.id); }}
+                        >
+                          {deletingClanEvent === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardDescription>{editingClanEventId ? 'Édition événement' : 'Créer un événement de clan'}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Titre</label>
+                  <Input value={clanEventForm.title} onChange={(e) => setClanEventForm((prev) => ({ ...prev, title: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Description</label>
+                  <Textarea value={clanEventForm.description} onChange={(e) => setClanEventForm((prev) => ({ ...prev, description: e.target.value }))} rows={3} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Bannière</label>
+                  <ImagePicker
+                    value={clanEventForm.bannerUrl}
+                    onChange={(url) => setClanEventForm((prev) => ({ ...prev, bannerUrl: url }))}
+                    uploadFn={uploadItemImageFile}
+                    hidePreview
+                  />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Statut</label>
+                    <Select value={clanEventForm.status} onValueChange={(value) => setClanEventForm((prev) => ({ ...prev, status: value as ClanEventForm['status'] }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DRAFT">Brouillon</SelectItem>
+                        <SelectItem value="SCHEDULED">Planifié</SelectItem>
+                        <SelectItem value="ACTIVE">Actif</SelectItem>
+                        <SelectItem value="COMPLETED">Terminé</SelectItem>
+                        <SelectItem value="CANCELLED">Annulé</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Couleur accent</label>
+                    <Input value={clanEventForm.highlightColor} onChange={(e) => setClanEventForm((prev) => ({ ...prev, highlightColor: e.target.value }))} placeholder="#f59e0b" />
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Début</label>
+                    <Input type="datetime-local" value={clanEventForm.startsAt} onChange={(e) => setClanEventForm((prev) => ({ ...prev, startsAt: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Fin</label>
+                    <Input type="datetime-local" value={clanEventForm.endsAt} onChange={(e) => setClanEventForm((prev) => ({ ...prev, endsAt: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Résumé des règles</label>
+                  <Textarea value={clanEventForm.rulesSummary} onChange={(e) => setClanEventForm((prev) => ({ ...prev, rulesSummary: e.target.value }))} rows={2} />
+                </div>
+
+                <div className="space-y-3 border-t border-border/40 pt-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Quêtes</h3>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setClanEventForm((prev) => ({
+                        ...prev,
+                        quests: [...prev.quests, { title: '', description: '', activityType: 'PLAY_ANY_GAME', targetValue: 5, pointsReward: 25, sortOrder: prev.quests.length, isActive: true }],
+                      }))}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ajouter
+                    </Button>
+                  </div>
+                  {clanEventForm.quests.map((quest, index) => (
+                    <div key={`quest-${index}`} className="rounded-xl border border-border/50 p-3 space-y-3">
+                      <Input value={quest.title} onChange={(e) => setClanEventForm((prev) => ({ ...prev, quests: prev.quests.map((entry, entryIndex) => entryIndex === index ? { ...entry, title: e.target.value } : entry) }))} placeholder="Titre de quête" />
+                      <Textarea value={quest.description} onChange={(e) => setClanEventForm((prev) => ({ ...prev, quests: prev.quests.map((entry, entryIndex) => entryIndex === index ? { ...entry, description: e.target.value } : entry) }))} rows={2} placeholder="Description" />
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <Select value={quest.activityType} onValueChange={(value) => setClanEventForm((prev) => ({ ...prev, quests: prev.quests.map((entry, entryIndex) => entryIndex === index ? { ...entry, activityType: value } : entry) }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PLAY_ANY_GAME">Parties jouées</SelectItem>
+                            <SelectItem value="WIN_ANY_GAME">Victoires</SelectItem>
+                            <SelectItem value="CLAN_CHAT_MESSAGE">Messages clan</SelectItem>
+                            <SelectItem value="CLAN_BANK_DEPOSIT">Money déposée</SelectItem>
+                            <SelectItem value="CLAN_WAR_ATTACK">Actions guerre attaque</SelectItem>
+                            <SelectItem value="CLAN_WAR_SUPPORT">Actions guerre support</SelectItem>
+                            <SelectItem value="EVENT_MINIGAME_PLAY">Mini-jeux joués</SelectItem>
+                            <SelectItem value="EVENT_MINIGAME_POINTS">Points mini-jeux</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input type="number" value={quest.targetValue} onChange={(e) => setClanEventForm((prev) => ({ ...prev, quests: prev.quests.map((entry, entryIndex) => entryIndex === index ? { ...entry, targetValue: parseInt(e.target.value) || 1 } : entry) }))} placeholder="Objectif" />
+                        <Input type="number" value={quest.pointsReward} onChange={(e) => setClanEventForm((prev) => ({ ...prev, quests: prev.quests.map((entry, entryIndex) => entryIndex === index ? { ...entry, pointsReward: parseInt(e.target.value) || 1 } : entry) }))} placeholder="Points" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-muted-foreground">Active</div>
+                        <div className="flex items-center gap-2">
+                          <Switch checked={quest.isActive} onCheckedChange={(checked) => setClanEventForm((prev) => ({ ...prev, quests: prev.quests.map((entry, entryIndex) => entryIndex === index ? { ...entry, isActive: checked } : entry) }))} />
+                          <Button size="sm" variant="ghost" onClick={() => setClanEventForm((prev) => ({ ...prev, quests: prev.quests.filter((_, entryIndex) => entryIndex !== index) }))}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-3 border-t border-border/40 pt-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Mini-jeux</h3>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setClanEventForm((prev) => ({
+                        ...prev,
+                        miniGames: [...prev.miniGames, { title: '', description: '', type: 'TAP_FRENZY', instructions: '', scoreMultiplier: 1, flatPointsBonus: 0, maxPointsPerAttempt: 100, maxAttemptsPerUser: 3, cooldownMinutes: 10, sortOrder: prev.miniGames.length, isActive: true, config: '{"durationSeconds":8}' }],
+                      }))}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ajouter
+                    </Button>
+                  </div>
+                  {clanEventForm.miniGames.map((miniGame, index) => (
+                    <div key={`mini-${index}`} className="rounded-xl border border-border/50 p-3 space-y-3">
+                      <Input value={miniGame.title} onChange={(e) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, title: e.target.value } : entry) }))} placeholder="Titre du mini-jeu" />
+                      <Textarea value={miniGame.description} onChange={(e) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, description: e.target.value } : entry) }))} rows={2} placeholder="Description" />
+                      <Select value={miniGame.type} onValueChange={(value) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, type: value as ClanEventMiniGameForm['type'] } : entry) }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="REFLEX">Réflexe</SelectItem>
+                          <SelectItem value="TAP_FRENZY">Tap frenzy</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Textarea value={miniGame.instructions} onChange={(e) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, instructions: e.target.value } : entry) }))} rows={2} placeholder="Instructions" />
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Input type="number" step="0.1" value={miniGame.scoreMultiplier} onChange={(e) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, scoreMultiplier: parseFloat(e.target.value) || 0 } : entry) }))} placeholder="Multiplicateur" />
+                        <Input type="number" value={miniGame.flatPointsBonus} onChange={(e) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, flatPointsBonus: parseInt(e.target.value) || 0 } : entry) }))} placeholder="Bonus fixe" />
+                        <Input type="number" value={miniGame.maxPointsPerAttempt} onChange={(e) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, maxPointsPerAttempt: parseInt(e.target.value) || 1 } : entry) }))} placeholder="Cap points" />
+                        <Input type="number" value={miniGame.cooldownMinutes} onChange={(e) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, cooldownMinutes: parseInt(e.target.value) || 0 } : entry) }))} placeholder="Cooldown" />
+                        <Input type="number" value={miniGame.maxAttemptsPerUser ?? ''} onChange={(e) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, maxAttemptsPerUser: e.target.value === '' ? null : (parseInt(e.target.value) || 1) } : entry) }))} placeholder="Tentatives max" />
+                      </div>
+                      <Textarea value={miniGame.config} onChange={(e) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, config: e.target.value } : entry) }))} rows={2} placeholder='Config JSON, ex: {"durationSeconds":8}' />
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-muted-foreground">Actif</div>
+                        <div className="flex items-center gap-2">
+                          <Switch checked={miniGame.isActive} onCheckedChange={(checked) => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.map((entry, entryIndex) => entryIndex === index ? { ...entry, isActive: checked } : entry) }))} />
+                          <Button size="sm" variant="ghost" onClick={() => setClanEventForm((prev) => ({ ...prev, miniGames: prev.miniGames.filter((_, entryIndex) => entryIndex !== index) }))}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-3 border-t border-border/40 pt-5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Récompenses</h3>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setClanEventForm((prev) => ({
+                        ...prev,
+                        rewardTiers: [...prev.rewardTiers, { title: '', minRank: prev.rewardTiers.length + 1, maxRank: prev.rewardTiers.length + 1, moneyReward: 0, auraReward: 0, itemId: '' }],
+                      }))}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Ajouter
+                    </Button>
+                  </div>
+                  {clanEventForm.rewardTiers.map((tier, index) => (
+                    <div key={`reward-${index}`} className="rounded-xl border border-border/50 p-3 space-y-3">
+                      <Input value={tier.title} onChange={(e) => setClanEventForm((prev) => ({ ...prev, rewardTiers: prev.rewardTiers.map((entry, entryIndex) => entryIndex === index ? { ...entry, title: e.target.value } : entry) }))} placeholder="Titre du palier" />
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Input type="number" value={tier.minRank} onChange={(e) => setClanEventForm((prev) => ({ ...prev, rewardTiers: prev.rewardTiers.map((entry, entryIndex) => entryIndex === index ? { ...entry, minRank: parseInt(e.target.value) || 1 } : entry) }))} placeholder="Rang min" />
+                        <Input type="number" value={tier.maxRank} onChange={(e) => setClanEventForm((prev) => ({ ...prev, rewardTiers: prev.rewardTiers.map((entry, entryIndex) => entryIndex === index ? { ...entry, maxRank: parseInt(e.target.value) || 1 } : entry) }))} placeholder="Rang max" />
+                        <Input type="number" value={tier.moneyReward} onChange={(e) => setClanEventForm((prev) => ({ ...prev, rewardTiers: prev.rewardTiers.map((entry, entryIndex) => entryIndex === index ? { ...entry, moneyReward: parseInt(e.target.value) || 0 } : entry) }))} placeholder="Money" />
+                        <Input type="number" value={tier.auraReward} onChange={(e) => setClanEventForm((prev) => ({ ...prev, rewardTiers: prev.rewardTiers.map((entry, entryIndex) => entryIndex === index ? { ...entry, auraReward: parseInt(e.target.value) || 0 } : entry) }))} placeholder="Aura" />
+                      </div>
+                      <Select value={tier.itemId || '__none__'} onValueChange={(value) => setClanEventForm((prev) => ({ ...prev, rewardTiers: prev.rewardTiers.map((entry, entryIndex) => entryIndex === index ? { ...entry, itemId: value === '__none__' ? '' : value } : entry) }))}>
+                        <SelectTrigger><SelectValue placeholder="Objet bonus" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Aucun objet</SelectItem>
+                          {items.map((item) => (
+                            <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" variant="ghost" onClick={() => setClanEventForm((prev) => ({ ...prev, rewardTiers: prev.rewardTiers.filter((_, entryIndex) => entryIndex !== index) }))}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Retirer
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={() => { void saveClanEvent(); }} disabled={savingClanEvent}>
+                    {savingClanEvent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    Sauvegarder l’événement
+                  </Button>
+                  <Button variant="outline" onClick={resetClanEventForm}>Réinitialiser</Button>
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Coins, Map, Shield, Sparkles, Sword, Target, Trophy } from 'lucide-react';
+import { AlertTriangle, Coins, Map, Shield, Sparkles, Sword, Target, Trash2, Trophy } from 'lucide-react';
 import { clashApi, type ClashBattleEntry, type ClashBuilding, type ClashLeaderboardEntry, type ClashStateResponse, type ClashTarget } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
@@ -230,6 +230,8 @@ export default function ClashVillage() {
   const [refreshingTargets, setRefreshingTargets] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
   const [attackLoading, setAttackLoading] = useState<string | null>(null);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -246,16 +248,29 @@ export default function ClashVillage() {
   const loadPage = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const [stateRes, targetsRes, historyRes, leaderboardRes] = await Promise.all([
-        clashApi.getState().catch(() => clashApi.bootstrap()),
-        clashApi.getMatchmaking(),
-        clashApi.getHistory(),
+      const [stateRes, leaderboardRes] = await Promise.all([
+        clashApi.getState(),
         clashApi.getLeaderboard(),
       ]);
+
       setState(stateRes.data);
-      setTargets(targetsRes.data.targets);
-      setHistory(historyRes.data);
       setLeaderboard(leaderboardRes.data);
+
+      if (stateRes.data.village) {
+        const [targetsRes, historyRes] = await Promise.all([
+          clashApi.getMatchmaking(),
+          clashApi.getHistory(),
+        ]);
+        setTargets(targetsRes.data.targets);
+        setHistory(historyRes.data);
+      } else {
+        setTargets([]);
+        setHistory({
+          attacks: [],
+          defenses: [],
+          activities: [],
+        });
+      }
     } catch (error: any) {
       toast({
         title: 'Erreur',
@@ -272,6 +287,11 @@ export default function ClashVillage() {
   }, [loadPage]);
 
   const refreshTargets = useCallback(async () => {
+    if (!state?.village) {
+      setTargets([]);
+      return;
+    }
+
     setRefreshingTargets(true);
     try {
       const response = await clashApi.getMatchmaking();
@@ -284,6 +304,62 @@ export default function ClashVillage() {
       });
     } finally {
       setRefreshingTargets(false);
+    }
+  }, [state?.village]);
+
+  const handleCreateVillage = useCallback(async () => {
+    setCreateLoading(true);
+    try {
+      const response = await clashApi.bootstrap();
+      setState(response.data);
+      await loadPage({ silent: true });
+      toast({
+        title: 'Village créé',
+        description: 'Ton village Clash est prêt à être joué et peut désormais être attaqué.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Création impossible',
+        description: error.response?.data?.error || 'Impossible de créer ton village.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCreateLoading(false);
+    }
+  }, [loadPage]);
+
+  const handleDeleteVillage = useCallback(async () => {
+    if (!window.confirm('Supprimer ton village Clash ? Cette action retirera ton village du jeu et personne ne pourra plus l’attaquer tant que tu n’en recrées pas un.')) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      await clashApi.deleteVillage();
+      setState({
+        village: null,
+        activities: [],
+        recentAttacks: [],
+        recentDefenses: [],
+      });
+      setTargets([]);
+      setHistory({
+        attacks: [],
+        defenses: [],
+        activities: [],
+      });
+      toast({
+        title: 'Village supprimé',
+        description: 'Ton village a été retiré du jeu. Tu restes inattaquable tant que tu n’en recrées pas un.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Suppression impossible',
+        description: error.response?.data?.error || 'Impossible de supprimer ton village.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleteLoading(false);
     }
   }, []);
 
@@ -377,10 +453,22 @@ export default function ClashVillage() {
     return (
       <PageShell>
         <Card className="rounded-3xl border-border/50 shadow-none">
-          <CardContent className="space-y-4 p-6">
+          <CardContent className="space-y-5 p-6">
             <h1 className={TYPOGRAPHY.PAGE_TITLE}>Clash Village</h1>
-            <p className="text-sm text-muted-foreground">Impossible de charger le village pour le moment.</p>
-            <Button onClick={() => void loadPage()}>Réessayer</Button>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Crée ton village pour commencer à jouer.</p>
+              <p className="text-sm text-muted-foreground">
+                Tant que tu n’as pas créé ton village, il n’existe pas dans le matchmaking et personne ne peut t’attaquer.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={() => void handleCreateVillage()} disabled={createLoading}>
+                {createLoading ? 'Création...' : 'Créer mon village'}
+              </Button>
+              <Button variant="outline" onClick={() => void loadPage()} disabled={createLoading}>
+                Réessayer
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </PageShell>
@@ -394,6 +482,15 @@ export default function ClashVillage() {
         description="Construis ton village, renforce tes défenses et lance des raids asynchrones sur les autres joueurs."
         actions={
           <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleDeleteVillage()}
+              disabled={deleteLoading}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              {deleteLoading ? 'Suppression...' : 'Supprimer le village'}
+            </Button>
             <Badge variant="secondary" className="rounded-full px-3 py-1">
               HDV {village.townHallLevel}
             </Badge>

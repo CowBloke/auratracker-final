@@ -62,6 +62,64 @@ canvas {
   content: '● ';
 }
 
+.hud__money {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  pointer-events: auto;
+}
+
+.hud__money.hidden {
+  display: none;
+}
+
+.hud__money-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 124px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(13, 20, 47, 0.8);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+}
+
+.hud__money-pill--muted {
+  background: rgba(29, 39, 69, 0.82);
+}
+
+.hud__money-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.7);
+}
+
+.hud__money-value {
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff2a8;
+}
+
+.hud__cashout {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #ffcc43, #ff8c37);
+  color: #241500;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(255, 163, 46, 0.28);
+}
+
+.hud__cashout:active {
+  transform: translateY(1px);
+}
+
 /* ── Start screen ── */
 .start-screen {
   position: fixed;
@@ -87,6 +145,19 @@ canvas {
     -2px -2px 0 rgba(0,0,0,0.1);
   letter-spacing: 2px;
   margin-bottom: 24px;
+}
+
+.start-screen__subtitle {
+  max-width: min(90vw, 520px);
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(14, 17, 39, 0.28);
+  color: rgba(255,255,255,0.92);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
 }
 
 .start-screen__tap {
@@ -164,6 +235,20 @@ canvas {
   padding-top: 10px;
 }
 
+.game-over__note {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.18);
+  color: rgba(255,255,255,0.84);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.game-over__note.hidden {
+  display: none;
+}
+
 .game-over__btn {
   margin-top: 20px;
   width: 100%;
@@ -226,5 +311,35 @@ canvas {
 @media (hover: hover) and (pointer: fine) {
   .mobile-controls {
     display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .hud {
+    top: max(10px, env(safe-area-inset-top));
+    width: calc(100% - 20px);
+  }
+
+  .hud__score {
+    font-size: 52px;
+  }
+
+  .hud__money {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .hud__money-pill {
+    min-width: 0;
+  }
+
+  .hud__cashout {
+    width: 100%;
+    max-width: 220px;
+  }
+
+  .start-screen__tap {
+    font-size: 18px;
   }
 }

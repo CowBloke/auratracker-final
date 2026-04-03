@@ -391,15 +391,15 @@ router.patch('/:id/status', authMiddleware, async (req: AuthRequest, res: Respon
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!['PENDING', 'DONE'].includes(status)) {
-      return res.status(400).json({ error: 'Status must be PENDING or DONE' });
+    if (!['PENDING', 'DONE', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be PENDING, DONE or REJECTED' });
     }
 
     const updated = await prisma.suggestion.update({
       where: { id },
       data: {
         status,
-        resolvedAt: status === 'DONE' ? new Date() : null,
+        resolvedAt: status === 'PENDING' ? null : new Date(),
       },
       include: {
         ratings: {

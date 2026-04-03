@@ -37,6 +37,15 @@ import {
   getDefaultChatBlockMessage,
   isValidChatBlockTimeValue,
 } from '../utils/chatSettings.js';
+import {
+  buildClanEventSlug,
+  clanEventAdminInclude,
+  CLAN_EVENT_ACTIVITY_TYPES,
+  CLAN_EVENT_MINI_GAME_TYPES,
+  serializeClanEventAdmin,
+  advanceClanEventsState,
+  finalizeClanEvent,
+} from '../utils/clanEvents.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -70,6 +79,40 @@ const MAX_TAX_BRACKETS = 25;
 type TaxBracketInput = {
   threshold: number;
   rate: number;
+};
+
+type ClanEventQuestInput = {
+  title: string;
+  description?: string | null;
+  activityType: string;
+  targetValue: number;
+  pointsReward: number;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+type ClanEventMiniGameInput = {
+  title: string;
+  description?: string | null;
+  type: string;
+  instructions?: string | null;
+  scoreMultiplier: number;
+  flatPointsBonus: number;
+  maxPointsPerAttempt: number;
+  maxAttemptsPerUser: number | null;
+  cooldownMinutes: number;
+  sortOrder: number;
+  isActive: boolean;
+  configJson: string | null;
+};
+
+type ClanEventRewardTierInput = {
+  title: string;
+  minRank: number;
+  maxRank: number;
+  moneyReward: number;
+  auraReward: number;
+  itemId: string | null;
 };
 
 type ShopItemImportInput = {
@@ -212,6 +255,263 @@ const normalizeTaxBracketsInput = (value: unknown): { brackets: TaxBracketInput[
   brackets.sort((a, b) => a.threshold - b.threshold);
 
   return { brackets };
+};
+
+const toOptionalTrimmedString = (value: unknown) => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+};
+
+const parseJsonString = (value: unknown): string | null | { error: string } => {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      JSON.parse(trimmed);
+      return trimmed;
+    } catch {
+      return { error: 'Le JSON de configuration du mini-jeu est invalide.' };
+    }
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return { error: 'Impossible de sérialiser la configuration du mini-jeu.' };
+    }
+  }
+  return { error: 'La configuration du mini-jeu doit être un objet JSON ou une chaîne JSON.' };
+};
+
+const ensureUniqueClanEventSlug = async (title: string, excludeId?: string) => {
+  const base = buildClanEventSlug(title);
+  let slug = base;
+  let suffix = 2;
+
+  while (true) {
+    const existing = await prisma.clanEvent.findFirst({
+      where: {
+        slug,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return slug;
+    }
+
+    slug = `${base.slice(0, Math.max(1, 48 - String(suffix).length - 1))}-${suffix}`;
+    suffix += 1;
+  }
+};
+
+const normalizeClanEventInput = (body: Record<string, unknown>): (
+  {
+    title: string;
+    description: string | null;
+    bannerUrl: string | null;
+    status: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+    highlightColor: string | null;
+    rulesSummary: string | null;
+    startsAt: Date;
+    endsAt: Date;
+    quests: ClanEventQuestInput[];
+    miniGames: ClanEventMiniGameInput[];
+    rewardTiers: ClanEventRewardTierInput[];
+  } | { error: string }
+) => {
+  const title = typeof body.title === 'string' ? body.title.trim() : '';
+  if (title.length < 3 || title.length > 80) {
+    return { error: 'Le titre de l’événement doit contenir entre 3 et 80 caractères.' };
+  }
+
+  const status = typeof body.status === 'string' ? body.status.trim().toUpperCase() : 'DRAFT';
+  if (!['DRAFT', 'SCHEDULED', 'ACTIVE', 'COMPLETED', 'CANCELLED'].includes(status)) {
+    return { error: 'Statut d’événement invalide.' };
+  }
+
+  const startsAt = new Date(String(body.startsAt ?? ''));
+  const endsAt = new Date(String(body.endsAt ?? ''));
+  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+    return { error: 'Les dates de début et de fin sont invalides.' };
+  }
+  if (endsAt <= startsAt) {
+    return { error: 'La date de fin doit être après la date de début.' };
+  }
+
+  const description = toOptionalTrimmedString(body.description);
+  if (description && description.length > 1200) {
+    return { error: 'La description est trop longue (max 1200 caractères).' };
+  }
+
+  const bannerUrl = toOptionalTrimmedString(body.bannerUrl);
+  if (bannerUrl && !isAllowedImageUrl(bannerUrl)) {
+    return { error: 'La bannière doit être une image téléversée ou une URL valide.' };
+  }
+
+  const highlightColor = toOptionalTrimmedString(body.highlightColor);
+  if (highlightColor && !/^#([0-9a-fA-F]{6})$/.test(highlightColor)) {
+    return { error: 'La couleur d’accent doit être au format hexadécimal (#RRGGBB).' };
+  }
+
+  const rulesSummary = toOptionalTrimmedString(body.rulesSummary);
+  if (rulesSummary && rulesSummary.length > 300) {
+    return { error: 'Le résumé des règles est trop long (max 300 caractères).' };
+  }
+
+  if (!Array.isArray(body.quests) || body.quests.length === 0) {
+    return { error: 'Ajoute au moins une quête à l’événement.' };
+  }
+  if (!Array.isArray(body.miniGames) || body.miniGames.length === 0) {
+    return { error: 'Ajoute au moins un mini-jeu à l’événement.' };
+  }
+  if (!Array.isArray(body.rewardTiers) || body.rewardTiers.length === 0) {
+    return { error: 'Ajoute au moins un palier de récompense.' };
+  }
+
+  const quests: ClanEventQuestInput[] = [];
+  for (const [index, rawQuest] of body.quests.entries()) {
+    if (!rawQuest || typeof rawQuest !== 'object') {
+      return { error: `La quête #${index + 1} est invalide.` };
+    }
+    const quest = rawQuest as Record<string, unknown>;
+    const questTitle = typeof quest.title === 'string' ? quest.title.trim() : '';
+    const activityType = typeof quest.activityType === 'string' ? quest.activityType.trim().toUpperCase() : '';
+    const targetValue = Number.parseInt(String(quest.targetValue ?? ''), 10);
+    const pointsReward = Number.parseInt(String(quest.pointsReward ?? ''), 10);
+    const sortOrder = Number.parseInt(String(quest.sortOrder ?? index), 10);
+    const isActive = quest.isActive !== false;
+
+    if (!questTitle) return { error: `La quête #${index + 1} doit avoir un titre.` };
+    if (!CLAN_EVENT_ACTIVITY_TYPES.includes(activityType as typeof CLAN_EVENT_ACTIVITY_TYPES[number])) {
+      return { error: `Le type d’activité de la quête "${questTitle}" est invalide.` };
+    }
+    if (!Number.isInteger(targetValue) || targetValue <= 0) {
+      return { error: `La quête "${questTitle}" doit avoir un objectif entier supérieur à 0.` };
+    }
+    if (!Number.isInteger(pointsReward) || pointsReward <= 0) {
+      return { error: `La quête "${questTitle}" doit attribuer un nombre entier de points supérieur à 0.` };
+    }
+
+    quests.push({
+      title: questTitle,
+      description: toOptionalTrimmedString(quest.description),
+      activityType,
+      targetValue,
+      pointsReward,
+      sortOrder: Number.isInteger(sortOrder) ? sortOrder : index,
+      isActive,
+    });
+  }
+
+  const miniGames: ClanEventMiniGameInput[] = [];
+  for (const [index, rawMiniGame] of body.miniGames.entries()) {
+    if (!rawMiniGame || typeof rawMiniGame !== 'object') {
+      return { error: `Le mini-jeu #${index + 1} est invalide.` };
+    }
+    const miniGame = rawMiniGame as Record<string, unknown>;
+    const miniGameTitle = typeof miniGame.title === 'string' ? miniGame.title.trim() : '';
+    const type = typeof miniGame.type === 'string' ? miniGame.type.trim().toUpperCase() : '';
+    const scoreMultiplier = Number.parseFloat(String(miniGame.scoreMultiplier ?? '1'));
+    const flatPointsBonus = Number.parseInt(String(miniGame.flatPointsBonus ?? '0'), 10);
+    const maxPointsPerAttempt = Number.parseInt(String(miniGame.maxPointsPerAttempt ?? '100'), 10);
+    const cooldownMinutes = Number.parseInt(String(miniGame.cooldownMinutes ?? '0'), 10);
+    const sortOrder = Number.parseInt(String(miniGame.sortOrder ?? index), 10);
+    const maxAttemptsRaw = miniGame.maxAttemptsPerUser;
+    const maxAttemptsPerUser = maxAttemptsRaw == null || String(maxAttemptsRaw).trim() === ''
+      ? null
+      : Number.parseInt(String(maxAttemptsRaw), 10);
+    const configJson = parseJsonString(miniGame.config);
+    if (typeof configJson === 'object' && configJson && 'error' in configJson) {
+      return configJson;
+    }
+
+    if (!miniGameTitle) return { error: `Le mini-jeu #${index + 1} doit avoir un titre.` };
+    if (!CLAN_EVENT_MINI_GAME_TYPES.includes(type as typeof CLAN_EVENT_MINI_GAME_TYPES[number])) {
+      return { error: `Le type du mini-jeu "${miniGameTitle}" est invalide.` };
+    }
+    if (!Number.isFinite(scoreMultiplier) || scoreMultiplier < 0) {
+      return { error: `Le multiplicateur du mini-jeu "${miniGameTitle}" est invalide.` };
+    }
+    if (!Number.isInteger(flatPointsBonus) || flatPointsBonus < 0) {
+      return { error: `Le bonus fixe du mini-jeu "${miniGameTitle}" est invalide.` };
+    }
+    if (!Number.isInteger(maxPointsPerAttempt) || maxPointsPerAttempt <= 0) {
+      return { error: `Le cap de points du mini-jeu "${miniGameTitle}" est invalide.` };
+    }
+    if (!Number.isInteger(cooldownMinutes) || cooldownMinutes < 0) {
+      return { error: `Le cooldown du mini-jeu "${miniGameTitle}" est invalide.` };
+    }
+    if (maxAttemptsPerUser !== null && (!Number.isInteger(maxAttemptsPerUser) || maxAttemptsPerUser <= 0)) {
+      return { error: `Le nombre max de tentatives du mini-jeu "${miniGameTitle}" est invalide.` };
+    }
+
+    miniGames.push({
+      title: miniGameTitle,
+      description: toOptionalTrimmedString(miniGame.description),
+      type,
+      instructions: toOptionalTrimmedString(miniGame.instructions),
+      scoreMultiplier: Number(scoreMultiplier.toFixed(4)),
+      flatPointsBonus,
+      maxPointsPerAttempt,
+      maxAttemptsPerUser,
+      cooldownMinutes,
+      sortOrder: Number.isInteger(sortOrder) ? sortOrder : index,
+      isActive: miniGame.isActive !== false,
+      configJson,
+    });
+  }
+
+  const rewardTiers: ClanEventRewardTierInput[] = [];
+  for (const [index, rawTier] of body.rewardTiers.entries()) {
+    if (!rawTier || typeof rawTier !== 'object') {
+      return { error: `Le palier #${index + 1} est invalide.` };
+    }
+    const tier = rawTier as Record<string, unknown>;
+    const title = typeof tier.title === 'string' ? tier.title.trim() : '';
+    const minRank = Number.parseInt(String(tier.minRank ?? ''), 10);
+    const maxRank = Number.parseInt(String(tier.maxRank ?? ''), 10);
+    const moneyReward = Number.parseInt(String(tier.moneyReward ?? '0'), 10);
+    const auraReward = Number.parseInt(String(tier.auraReward ?? '0'), 10);
+    const itemId = toOptionalTrimmedString(tier.itemId);
+
+    if (!title) return { error: `Le palier #${index + 1} doit avoir un titre.` };
+    if (!Number.isInteger(minRank) || !Number.isInteger(maxRank) || minRank <= 0 || maxRank < minRank) {
+      return { error: `Le palier "${title}" doit avoir un intervalle de rang valide.` };
+    }
+    if (!Number.isInteger(moneyReward) || moneyReward < 0) {
+      return { error: `Le reward money du palier "${title}" est invalide.` };
+    }
+    if (!Number.isInteger(auraReward) || auraReward < 0) {
+      return { error: `Le reward aura du palier "${title}" est invalide.` };
+    }
+
+    rewardTiers.push({
+      title,
+      minRank,
+      maxRank,
+      moneyReward,
+      auraReward,
+      itemId,
+    });
+  }
+
+  return {
+    title,
+    description,
+    bannerUrl,
+    status: status as 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED',
+    highlightColor,
+    rulesSummary,
+    startsAt,
+    endsAt,
+    quests,
+    miniGames,
+    rewardTiers,
+  };
 };
 
 const parseLogDateBoundary = (value: unknown, boundary: 'start' | 'end'): Date | null => {
@@ -1444,6 +1744,169 @@ router.delete('/clans/:id', authMiddleware, requireAdmin, async (req: AuthReques
   } catch (error) {
     console.error('Admin delete clan error:', error);
     res.status(500).json({ error: 'Failed to delete clan' });
+  }
+});
+
+router.get('/clan-events', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    await advanceClanEventsState();
+    const events = await prisma.clanEvent.findMany({
+      include: clanEventAdminInclude,
+      orderBy: [
+        { endsAt: 'desc' },
+        { startsAt: 'desc' },
+      ],
+    });
+
+    res.json({ events: events.map(serializeClanEventAdmin) });
+  } catch (error) {
+    console.error('Admin get clan events error:', error);
+    res.status(500).json({ error: 'Failed to get clan events' });
+  }
+});
+
+router.post('/clan-events', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const normalized = normalizeClanEventInput(req.body as Record<string, unknown>);
+    if ('error' in normalized) {
+      return res.status(400).json({ error: normalized.error });
+    }
+
+    const rewardItemIds = normalized.rewardTiers
+      .map((tier) => tier.itemId)
+      .filter((itemId): itemId is string => Boolean(itemId));
+
+    if (rewardItemIds.length > 0) {
+      const foundItems = await prisma.item.findMany({
+        where: { id: { in: rewardItemIds } },
+        select: { id: true },
+      });
+      if (foundItems.length !== rewardItemIds.length) {
+        return res.status(400).json({ error: 'Un objet de récompense est introuvable.' });
+      }
+    }
+
+    const slug = await ensureUniqueClanEventSlug(normalized.title);
+    const event = await prisma.clanEvent.create({
+      data: {
+        title: normalized.title,
+        slug,
+        description: normalized.description,
+        bannerUrl: normalized.bannerUrl,
+        status: normalized.status,
+        highlightColor: normalized.highlightColor,
+        rulesSummary: normalized.rulesSummary,
+        startsAt: normalized.startsAt,
+        endsAt: normalized.endsAt,
+        createdById: req.user!.id,
+        quests: {
+          create: normalized.quests,
+        },
+        miniGames: {
+          create: normalized.miniGames,
+        },
+        rewardTiers: {
+          create: normalized.rewardTiers,
+        },
+      },
+      include: clanEventAdminInclude,
+    });
+
+    if (normalized.status === 'COMPLETED') {
+      await finalizeClanEvent(event.id);
+    } else {
+      await advanceClanEventsState();
+    }
+    res.status(201).json({ event: serializeClanEventAdmin(event) });
+  } catch (error) {
+    console.error('Admin create clan event error:', error);
+    res.status(500).json({ error: 'Failed to create clan event' });
+  }
+});
+
+router.put('/clan-events/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const normalized = normalizeClanEventInput(req.body as Record<string, unknown>);
+    if ('error' in normalized) {
+      return res.status(400).json({ error: normalized.error });
+    }
+
+    const existing = await prisma.clanEvent.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Événement introuvable.' });
+    }
+
+    const rewardItemIds = normalized.rewardTiers
+      .map((tier) => tier.itemId)
+      .filter((itemId): itemId is string => Boolean(itemId));
+
+    if (rewardItemIds.length > 0) {
+      const foundItems = await prisma.item.findMany({
+        where: { id: { in: rewardItemIds } },
+        select: { id: true },
+      });
+      if (foundItems.length !== rewardItemIds.length) {
+        return res.status(400).json({ error: 'Un objet de récompense est introuvable.' });
+      }
+    }
+
+    const slug = await ensureUniqueClanEventSlug(normalized.title, id);
+    const event = await prisma.$transaction(async (tx) => {
+      await tx.clanEventQuest.deleteMany({ where: { eventId: id } });
+      await tx.clanEventMiniGame.deleteMany({ where: { eventId: id } });
+      await tx.clanEventRewardTier.deleteMany({ where: { eventId: id } });
+
+      return tx.clanEvent.update({
+        where: { id },
+        data: {
+          title: normalized.title,
+          slug,
+          description: normalized.description,
+          bannerUrl: normalized.bannerUrl,
+          status: normalized.status,
+          highlightColor: normalized.highlightColor,
+          rulesSummary: normalized.rulesSummary,
+          startsAt: normalized.startsAt,
+          endsAt: normalized.endsAt,
+          quests: {
+            create: normalized.quests,
+          },
+          miniGames: {
+            create: normalized.miniGames,
+          },
+          rewardTiers: {
+            create: normalized.rewardTiers,
+          },
+        },
+        include: clanEventAdminInclude,
+      });
+    });
+
+    if (normalized.status === 'COMPLETED') {
+      await finalizeClanEvent(event.id);
+    } else {
+      await advanceClanEventsState();
+    }
+    res.json({ event: serializeClanEventAdmin(event) });
+  } catch (error) {
+    console.error('Admin update clan event error:', error);
+    res.status(500).json({ error: 'Failed to update clan event' });
+  }
+});
+
+router.delete('/clan-events/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.clanEvent.delete({
+      where: { id: req.params.id },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin delete clan event error:', error);
+    res.status(500).json({ error: 'Failed to delete clan event' });
   }
 });
 

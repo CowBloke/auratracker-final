@@ -378,8 +378,24 @@ async function ensureVillage(db: PrismaClient | Prisma.TransactionClient, userId
   return created;
 }
 
+async function getVillageByUserId(
+  db: PrismaClient | Prisma.TransactionClient,
+  userId: string,
+) {
+  return db.clashVillage.findUnique({ where: { userId } });
+}
+
 async function fetchVillageState(userId: string) {
-  const village = await ensureVillage(prisma, userId);
+  const village = await getVillageByUserId(prisma, userId);
+  if (!village) {
+    return {
+      village: null,
+      activities: [],
+      recentAttacks: [],
+      recentDefenses: [],
+    };
+  }
+
   const [withUser, activities, attacks, defenses] = await Promise.all([
     prisma.clashVillage.findUnique({
       where: { id: village.id },
@@ -466,7 +482,11 @@ router.post('/upgrade', authMiddleware, async (req: AuthRequest, res: Response) 
   try {
     const { buildingType } = upgradeSchema.parse(req.body);
     const result = await prisma.$transaction(async (tx) => {
-      const village = await ensureVillage(tx, req.user!.id);
+      const village = await getVillageByUserId(tx, req.user!.id);
+      if (!village) {
+        throw new HttpError(400, 'Tu dois d’abord créer ton village');
+      }
+
       const user = await tx.user.findUnique({ where: { id: req.user!.id }, select: { id: true, username: true, money: true } });
       if (!user) throw new HttpError(404, 'Utilisateur introuvable');
 
@@ -554,7 +574,11 @@ router.post('/upgrade', authMiddleware, async (req: AuthRequest, res: Response) 
 
 router.get('/matchmaking', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const village = await ensureVillage(prisma, req.user!.id);
+    const village = await getVillageByUserId(prisma, req.user!.id);
+    if (!village) {
+      return res.json({ targets: [] });
+    }
+
     const now = new Date();
 
     const fetchCandidates = async (range: number) => prisma.clashVillage.findMany({
@@ -614,7 +638,11 @@ router.post('/attack', authMiddleware, async (req: AuthRequest, res: Response) =
     const battle = await prisma.$transaction(async (tx) => {
       const now = new Date();
       const attackCooldownMinutes = await getAttackCooldownMinutes(tx);
-      const attackerVillage = await ensureVillage(tx, req.user!.id);
+      const attackerVillage = await getVillageByUserId(tx, req.user!.id);
+      if (!attackerVillage) {
+        throw new HttpError(400, 'Tu dois d’abord créer ton village');
+      }
+
       const defenderVillage = await tx.clashVillage.findUnique({
         where: { userId: payload.defenderUserId },
         include: {
@@ -810,7 +838,15 @@ router.post('/attack', authMiddleware, async (req: AuthRequest, res: Response) =
 
 router.get('/history', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    await ensureVillage(prisma, req.user!.id);
+    const village = await getVillageByUserId(prisma, req.user!.id);
+    if (!village) {
+      return res.json({
+        attacks: [],
+        defenses: [],
+        activities: [],
+      });
+    }
+
     const [attacks, defenses, activities] = await Promise.all([
       prisma.clashBattle.findMany({
         where: { attackerUserId: req.user!.id },
@@ -863,6 +899,30 @@ router.get('/history', authMiddleware, async (req: AuthRequest, res: Response) =
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load clash history';
+    return res.status(500).json({ error: message });
+  }
+});
+
+router.delete('/village', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const village = await getVillageByUserId(prisma, req.user!.id);
+    if (!village) {
+      throw new HttpError(404, 'Aucun village à supprimer');
+    }
+
+    await prisma.clashVillage.delete({
+      where: { id: village.id },
+    });
+
+    return res.json({
+      success: true,
+      villageDeleted: true,
+    });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      return res.status(error.status).json({ error: error.message });
+    }
+    const message = error instanceof Error ? error.message : 'Failed to delete clash village';
     return res.status(500).json({ error: message });
   }
 });

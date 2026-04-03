@@ -7,7 +7,9 @@ import { checkQuestProgress } from './quests.js';
 import { recheckBadgeForCondition, awardBadgeByKey } from '../utils/badgeAwards.js';
 import { announceGameRecordBroken } from '../socket/chat.js';
 import { getActiveClanMoneyBoostForUser } from '../utils/clanEffects.js';
+import { trackClanEventActivity } from '../utils/clanEvents.js';
 import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
+import { getParisDayKey, getParisDayStart } from '../utils/dailyAura.js';
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
@@ -35,13 +37,16 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   hexgl: 'HexGL',
 };
 
-function getUtcDayStart(date = new Date()): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
 function getRacerDaySeed(trackDate: Date): number {
-  const dayIndex = Math.floor(trackDate.getTime() / 86400000);
-  const seed = ((dayIndex * 2654435761) ^ 0x9e3779b9) >>> 0;
+  const dayKey = getParisDayKey(trackDate);
+  let seed = 2166136261;
+
+  for (let i = 0; i < dayKey.length; i++) {
+    seed ^= dayKey.charCodeAt(i);
+    seed = Math.imul(seed, 16777619);
+  }
+
+  seed >>>= 0;
   return seed === 0 ? 1 : seed;
 }
 
@@ -98,15 +103,16 @@ const GAME_REWARDS = {
     ],
   },
   chrome_dino: {
-    minScoreForReward: 120,
+    minScoreForReward: 100,
     scoreTiers: [
       { minScore: 0, moneyReward: 0, auraBonus: 0 },
-      { minScore: 120, moneyReward: 16, auraBonus: 1 },
-      { minScore: 260, moneyReward: 34, auraBonus: 3 },
-      { minScore: 420, moneyReward: 60, auraBonus: 6 },
-      { minScore: 650, moneyReward: 105, auraBonus: 10 },
-      { minScore: 950, moneyReward: 170, auraBonus: 16 },
-      { minScore: 1350, moneyReward: 260, auraBonus: 24 },
+      { minScore: 100, moneyReward: 18, auraBonus: 1 },
+      { minScore: 220, moneyReward: 38, auraBonus: 3 },
+      { minScore: 380, moneyReward: 68, auraBonus: 6 },
+      { minScore: 580, moneyReward: 115, auraBonus: 10 },
+      { minScore: 850, moneyReward: 185, auraBonus: 17 },
+      { minScore: 1200, moneyReward: 285, auraBonus: 26 },
+      { minScore: 1700, moneyReward: 410, auraBonus: 36 },
     ],
   },
   snake: {
@@ -416,8 +422,8 @@ function calculateChromeDinoRewards(score: number, isNewHighScore: boolean): { m
   let auraReward = selectedTier.auraBonus;
 
   if (isNewHighScore) {
-    moneyReward += Math.min(Math.floor(score / 180) * 5, 55);
-    auraReward += Math.min(Math.floor(score / 240), 10);
+    moneyReward += Math.min(Math.floor(score / 160) * 6, 78);
+    auraReward += Math.min(Math.floor(score / 220), 12);
   }
 
   return { money: moneyReward, aura: auraReward };
@@ -818,7 +824,7 @@ router.get('/daily/racer', authMiddleware, async (req: AuthRequest, res: Respons
     }
 
     const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? '20'), 10) || 20, 100));
-    const trackDate = getUtcDayStart();
+    const trackDate = getParisDayStart();
 
     const allRuns = await prisma.dailyRacerRun.findMany({
       where: { trackDate },
@@ -879,7 +885,7 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
       return res.status(400).json({ error: 'lapTimeMs must be an integer between 1000 and 3600000' });
     }
 
-    const trackDate = getUtcDayStart();
+    const trackDate = getParisDayStart();
     const previousBest = await prisma.dailyRacerRun.findFirst({
       where: { userId: req.user.id, trackDate },
       orderBy: [{ lapTimeMs: 'asc' }, { createdAt: 'asc' }],
@@ -1504,6 +1510,18 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
+    }
+
+    void trackClanEventActivity(req.user.id, 'PLAY_ANY_GAME', 1, {
+      gameType,
+      score,
+      won,
+    });
+    if (won) {
+      void trackClanEventActivity(req.user.id, 'WIN_ANY_GAME', 1, {
+        gameType,
+        score,
+      });
     }
 
     if (badgeUpdateTasks.length > 0) {

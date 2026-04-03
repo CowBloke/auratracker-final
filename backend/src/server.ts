@@ -64,9 +64,16 @@ import { ensureDefaultBadges } from './utils/seedBadges.js';
 import { recomputeOverallClassement, startOverallClassementScheduler, stopOverallClassementScheduler } from './utils/overallClassement.js';
 import { startDailyBankRevenueScheduler, stopDailyBankRevenueScheduler } from './utils/dailyBankRevenue.js';
 import { runDailyTax, startDailyTaxScheduler, stopDailyTaxScheduler } from './utils/dailyTax.js';
+import { advanceClanEventsState } from './utils/clanEvents.js';
+import {
+  runDailyRacerRewards,
+  startDailyRacerRewardsScheduler,
+  stopDailyRacerRewardsScheduler,
+} from './utils/dailyRacerRewards.js';
 
 // Initialize Prisma
 export const prisma = new PrismaClient();
+let clanEventsTimer: ReturnType<typeof setInterval> | null = null;
 
 // Initialize logger with Prisma client
 initLogger(prisma);
@@ -330,7 +337,15 @@ const start = async () => {
     startDailyBankRevenueScheduler(prisma);
     await runDailyTax(prisma);
     startDailyTaxScheduler(prisma);
+    await runDailyRacerRewards(prisma);
+    startDailyRacerRewardsScheduler(prisma);
     await advanceClanWarsState(); // activate any PREPARING wars immediately on startup
+    await advanceClanEventsState();
+    if (!clanEventsTimer) {
+      clanEventsTimer = setInterval(() => {
+        void advanceClanEventsState();
+      }, 60_000);
+    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
       console.error(`Failed to start server: port ${config.port} is already in use`);
@@ -350,6 +365,8 @@ process.on('SIGINT', async () => {
   stopOverallClassementScheduler();
   stopDailyBankRevenueScheduler();
   stopDailyTaxScheduler();
+  stopDailyRacerRewardsScheduler();
+  if (clanEventsTimer) clearInterval(clanEventsTimer);
   await prisma.$disconnect();
   process.exit(0);
 });
@@ -360,6 +377,8 @@ process.on('SIGTERM', async () => {
   stopOverallClassementScheduler();
   stopDailyBankRevenueScheduler();
   stopDailyTaxScheduler();
+  stopDailyRacerRewardsScheduler();
+  if (clanEventsTimer) clearInterval(clanEventsTimer);
   await prisma.$disconnect();
   process.exit(0);
 });

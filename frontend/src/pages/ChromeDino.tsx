@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
@@ -19,6 +20,7 @@ const GAME_WIDTH = 1200;
 const GAME_HEIGHT = 420;
 const HOST_SOURCE = 'aura-chrome-dino-host';
 const GAME_SOURCE = 'aura-chrome-dino';
+const MIN_REWARD_SCORE = 100;
 
 type RunnerStatus = 'idle' | 'running' | 'paused' | 'crashed';
 
@@ -40,6 +42,9 @@ export default function ChromeDino() {
 
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [highScore, setHighScore] = useState(0);
+  const [lastScore, setLastScore] = useState<number | null>(null);
+  const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
+  const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [status, setStatus] = useState<RunnerStatus>('idle');
   const [sessionKey, setSessionKey] = useState(0);
@@ -109,6 +114,12 @@ export default function ChromeDino() {
           won: true,
         });
 
+        setLastScore(score);
+        setRewards({
+          aura: response.data.auraReward,
+          money: response.data.moneyReward,
+        });
+        setIsNewHighScore(response.data.isNewHighScore);
         if (response.data.isNewHighScore) {
           setHighScore(score);
         }
@@ -190,6 +201,9 @@ export default function ChromeDino() {
   const resetUiSession = () => {
     setIsPaused(false);
     setStatus('idle');
+    setLastScore(null);
+    setRewards(null);
+    setIsNewHighScore(false);
     lastSubmittedScoreRef.current = null;
   };
 
@@ -261,6 +275,35 @@ export default function ChromeDino() {
               description="La run est mise en pause sans remplacer le jeu Chromium embarque."
             />
           </GameFullscreenStage>
+
+          {!isFullscreen && (
+            <Card className="border-border/60 bg-card/80">
+              <CardContent className="flex flex-col gap-2 p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  Score minimum récompensé: <span className="font-semibold text-foreground">{MIN_REWARD_SCORE}</span>.
+                  Les gros runs et les nouveaux records paient un peu mieux.
+                </div>
+                <div className="text-right">
+                  {lastScore !== null ? (
+                    rewards && (rewards.money > 0 || rewards.aura > 0) ? (
+                      <span className="font-medium text-foreground">
+                        Dernière run {lastScore}: {rewards.money > 0 && `+$${rewards.money}`}
+                        {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                        {rewards.aura > 0 && `+${rewards.aura} aura`}
+                        {isNewHighScore ? ' · nouveau record' : ''}
+                      </span>
+                    ) : (
+                      <span>
+                        Dernière run {lastScore}: pas de récompense, il faut atteindre {MIN_REWARD_SCORE}.
+                      </span>
+                    )
+                  ) : (
+                    <span>Vise {MIN_REWARD_SCORE}+ pour commencer à gagner.</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {!isFullscreen && (
             <GameLeaderboard

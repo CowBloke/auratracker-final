@@ -41,6 +41,14 @@ const getParisDateParts = (date: Date) => {
 
 export const getParisDayKey = (date: Date) => dayFormatter.format(date);
 
+export const getParisDayStart = (date = new Date()) => {
+  const { year, month, day, hour, minute, second } = getParisDateParts(date);
+  const currentUtcMillis = Date.UTC(year, month - 1, day, hour, minute, second);
+  const offsetMs = currentUtcMillis - date.getTime();
+  const localMidnightUtc = Date.UTC(year, month - 1, day, 0, 0, 0);
+  return new Date(localMidnightUtc - offsetMs);
+};
+
 export const getNextParisMidnight = (date = new Date()) => {
   const { year, month, day, hour, minute, second } = getParisDateParts(date);
   const currentUtcMillis = Date.UTC(year, month - 1, day, hour, minute, second);

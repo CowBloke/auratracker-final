@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestionsApi, Suggestion, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
@@ -25,9 +24,11 @@ import { PageShell } from '@/components/layout/page-shell';
 
 type PendingSortOption = 'trending' | 'newest' | 'top' | 'discussed';
 type DoneSortOption = 'recently-done' | 'best-rated' | 'most-rated' | 'discussed';
+type RejectedSortOption = 'recently-updated' | 'newest' | 'top' | 'discussed';
 type ParticipationFilter = 'all' | 'mine' | 'voted' | 'commented';
 type ContentFilter = 'all' | 'with-image' | 'without-image' | 'boosted';
 type FeedbackFilter = 'all' | 'rated' | 'to-rate' | 'with-comments';
+type RejectedFilter = 'all' | 'with-image' | 'without-image' | 'with-comments';
 type SuggestionsViewMode = 'list' | 'grid';
 
 const SUGGESTIONS_VIEW_STORAGE_KEY = 'auratracker:suggestions-view-mode';
@@ -44,13 +45,15 @@ export default function Suggestions() {
   const [statusUpdating, setStatusUpdating] = useState<Record<string, boolean>>({});
   const [ratingInputs, setRatingInputs] = useState<Record<string, number>>({});
   const [ratingSubmitting, setRatingSubmitting] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState<'pending' | 'done'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'done' | 'rejected'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [pendingSortBy, setPendingSortBy] = useState<PendingSortOption>('trending');
   const [doneSortBy, setDoneSortBy] = useState<DoneSortOption>('recently-done');
+  const [rejectedSortBy, setRejectedSortBy] = useState<RejectedSortOption>('recently-updated');
   const [participationFilter, setParticipationFilter] = useState<ParticipationFilter>('all');
   const [pendingContentFilter, setPendingContentFilter] = useState<ContentFilter>('all');
   const [doneFeedbackFilter, setDoneFeedbackFilter] = useState<FeedbackFilter>('all');
+  const [rejectedFilter, setRejectedFilter] = useState<RejectedFilter>('all');
   const [viewMode, setViewMode] = useState<SuggestionsViewMode>(() => {
     if (typeof window === 'undefined') return 'list';
     const stored = window.localStorage.getItem(SUGGESTIONS_VIEW_STORAGE_KEY);
@@ -135,6 +138,23 @@ export default function Suggestions() {
     });
   };
 
+  const getRejectedSuggestionsSorted = (items: Suggestion[], sortBy: RejectedSortOption) => {
+    return [...items].sort((a, b) => {
+      if (sortBy === 'recently-updated') {
+        const aResolvedAt = a.resolvedAt ? new Date(a.resolvedAt).getTime() : 0;
+        const bResolvedAt = b.resolvedAt ? new Date(b.resolvedAt).getTime() : 0;
+        return bResolvedAt - aResolvedAt || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === 'newest') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      if (sortBy === 'top') {
+        return b.score - a.score || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return b.comments.length - a.comments.length || b.score - a.score;
+    });
+  };
+
   useEffect(() => {
     fetchSuggestions();
   }, []);
@@ -173,6 +193,7 @@ export default function Suggestions() {
       const sorted = [
         ...sortPendingSuggestions(res.data.suggestions.filter((suggestion) => suggestion.status === 'PENDING')),
         ...sortDoneSuggestions(res.data.suggestions.filter((suggestion) => suggestion.status === 'DONE')),
+        ...sortDoneSuggestions(res.data.suggestions.filter((suggestion) => suggestion.status === 'REJECTED')),
       ];
       setSuggestions(sorted);
     } catch (error) {
@@ -212,6 +233,7 @@ export default function Suggestions() {
         return [
           ...sortPendingSuggestions(updated.filter((suggestion) => suggestion.status === 'PENDING')),
           ...sortDoneSuggestions(updated.filter((suggestion) => suggestion.status === 'DONE')),
+          ...sortDoneSuggestions(updated.filter((suggestion) => suggestion.status === 'REJECTED')),
         ];
       });
       setTitle('');
@@ -266,6 +288,7 @@ export default function Suggestions() {
       return [
         ...sortPendingSuggestions(updated.filter((suggestion) => suggestion.status === 'PENDING')),
         ...sortDoneSuggestions(updated.filter((suggestion) => suggestion.status === 'DONE')),
+        ...sortDoneSuggestions(updated.filter((suggestion) => suggestion.status === 'REJECTED')),
       ];
     });
 
@@ -331,7 +354,7 @@ export default function Suggestions() {
     }
   };
 
-  const handleStatusUpdate = async (suggestionId: string, status: 'PENDING' | 'DONE') => {
+  const handleStatusUpdate = async (suggestionId: string, status: 'PENDING' | 'DONE' | 'REJECTED') => {
     setStatusUpdating((prev) => ({ ...prev, [suggestionId]: true }));
     try {
       const res = await suggestionsApi.updateStatus(suggestionId, status);
@@ -456,15 +479,37 @@ export default function Suggestions() {
     return getDoneSuggestionsSorted(filtered, doneSortBy);
   }, [suggestions, participationFilter, normalizedSearchQuery, doneFeedbackFilter, doneSortBy, user?.id]);
 
-  const renderSuggestions = (items: Suggestion[], showRatings: boolean) => {
+  const filteredRejectedSuggestions = useMemo(() => {
+    const filtered = suggestions.filter((suggestion) => {
+      if (suggestion.status !== 'REJECTED') return false;
+      if (!matchesParticipationFilter(suggestion)) return false;
+      if (!matchesSearchQuery(suggestion)) return false;
+      if (rejectedFilter === 'with-image' && !suggestion.imageUrl) return false;
+      if (rejectedFilter === 'without-image' && suggestion.imageUrl) return false;
+      if (rejectedFilter === 'with-comments' && suggestion.comments.length === 0) return false;
+      return true;
+    });
+
+    return getRejectedSuggestionsSorted(filtered, rejectedSortBy);
+  }, [suggestions, participationFilter, normalizedSearchQuery, rejectedFilter, rejectedSortBy, user?.id]);
+
+  const renderSuggestions = (
+    items: Suggestion[],
+    options: {
+      showRatings: boolean;
+      emptyTitle: string;
+      emptySubtitle: string;
+    }
+  ) => {
+    const { showRatings, emptyTitle, emptySubtitle } = options;
     if (items.length === 0) {
       return (
         <div className="text-center py-16">
           <p className={cn(TYPOGRAPHY.H5, "text-muted-foreground")}>
-            {showRatings ? 'Aucune suggestion réalisée pour le moment' : 'Aucune suggestion active'}
+            {emptyTitle}
           </p>
           <p className={cn(TYPOGRAPHY.MUTED, "mt-1")}>
-            {showRatings ? 'Revenez plus tard pour noter les mises à jour !' : 'Soyez le premier à proposer une idée !'}
+            {emptySubtitle}
           </p>
         </div>
       );
@@ -554,7 +599,8 @@ export default function Suggestions() {
                         {suggestion.resolvedAt && (
                           <>
                             {' · '}
-                            réalisée le {formatDate(suggestion.resolvedAt)}
+                            {suggestion.status === 'DONE' ? 'réalisée le ' : 'non réalisée le '}
+                            {formatDate(suggestion.resolvedAt)}
                           </>
                         )}
                       </p>
@@ -562,24 +608,47 @@ export default function Suggestions() {
 
                     <div className="flex items-center gap-2">
                       {user?.isAdmin && (
-                        <Button
-                          type="button"
-                          onClick={() =>
-                            handleStatusUpdate(
-                              suggestion.id,
-                              suggestion.status === 'DONE' ? 'PENDING' : 'DONE'
-                            )
-                          }
-                          disabled={statusUpdating[suggestion.id]}
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                        >
+                        <div className="flex flex-wrap items-center gap-2">
                           {statusUpdating[suggestion.id] ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : null}
-                          {suggestion.status === 'DONE' ? 'Remettre en cours' : 'Marquer comme réalisée'}
-                        </Button>
+                          {suggestion.status !== 'PENDING' && (
+                            <Button
+                              type="button"
+                              onClick={() => handleStatusUpdate(suggestion.id, 'PENDING')}
+                              disabled={statusUpdating[suggestion.id]}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                            >
+                              Remettre en cours
+                            </Button>
+                          )}
+                          {suggestion.status !== 'DONE' && (
+                            <Button
+                              type="button"
+                              onClick={() => handleStatusUpdate(suggestion.id, 'DONE')}
+                              disabled={statusUpdating[suggestion.id]}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                            >
+                              Marquer réalisée
+                            </Button>
+                          )}
+                          {suggestion.status !== 'REJECTED' && (
+                            <Button
+                              type="button"
+                              onClick={() => handleStatusUpdate(suggestion.id, 'REJECTED')}
+                              disabled={statusUpdating[suggestion.id]}
+                              variant="outline"
+                              size="sm"
+                              className="text-xs text-rose-500 border-rose-500/40 hover:text-rose-400"
+                            >
+                              Marquer non réalisée
+                            </Button>
+                          )}
+                        </div>
                       )}
 
                       {/* Delete button for author or admin */}
@@ -773,7 +842,7 @@ export default function Suggestions() {
         <PageShell>
         <div className={SPACING.PAGE_CONTENT}>
           {/* Tab Selector */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done')}>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done' | 'rejected')}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <TabsList className="h-auto flex-wrap">
                 <TabsTrigger value="pending">
@@ -782,22 +851,41 @@ export default function Suggestions() {
                 <TabsTrigger value="done">
                   Réalisées ({filteredDoneSuggestions.length})
                 </TabsTrigger>
+                <TabsTrigger value="rejected">
+                  Non réalisées ({filteredRejectedSuggestions.length})
+                </TabsTrigger>
               </TabsList>
 
               <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row">
                 <Input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder={activeTab === 'pending' ? 'Rechercher une suggestion' : 'Rechercher une réalisation'}
+                  placeholder={
+                    activeTab === 'pending'
+                      ? 'Rechercher une suggestion'
+                      : activeTab === 'done'
+                        ? 'Rechercher une réalisation'
+                        : 'Rechercher une suggestion non réalisée'
+                  }
                   className="lg:w-[250px]"
                 />
 
                 <div className="lg:w-[220px]">
                   <Select
-                    value={activeTab === 'pending' ? pendingSortBy : doneSortBy}
+                    value={
+                      activeTab === 'pending'
+                        ? pendingSortBy
+                        : activeTab === 'done'
+                          ? doneSortBy
+                          : rejectedSortBy
+                    }
                     onValueChange={(value) => {
                       if (activeTab === 'pending') {
                         setPendingSortBy(value as PendingSortOption);
+                        return;
+                      }
+                      if (activeTab === 'rejected') {
+                        setRejectedSortBy(value as RejectedSortOption);
                         return;
                       }
                       setDoneSortBy(value as DoneSortOption);
@@ -814,11 +902,18 @@ export default function Suggestions() {
                           <SelectItem value="top">Mieux votées</SelectItem>
                           <SelectItem value="discussed">Plus discutées</SelectItem>
                         </>
-                      ) : (
+                      ) : activeTab === 'done' ? (
                         <>
                           <SelectItem value="recently-done">Réalisées récemment</SelectItem>
                           <SelectItem value="best-rated">Mieux notées</SelectItem>
                           <SelectItem value="most-rated">Plus notées</SelectItem>
+                          <SelectItem value="discussed">Plus discutées</SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value="recently-updated">Mises à jour récemment</SelectItem>
+                          <SelectItem value="newest">Plus récentes</SelectItem>
+                          <SelectItem value="top">Mieux votées</SelectItem>
                           <SelectItem value="discussed">Plus discutées</SelectItem>
                         </>
                       )}
@@ -853,7 +948,7 @@ export default function Suggestions() {
                         <SelectItem value="boosted">Nouvelles en avant</SelectItem>
                       </SelectContent>
                     </Select>
-                  ) : (
+                  ) : activeTab === 'done' ? (
                     <Select value={doneFeedbackFilter} onValueChange={(value) => setDoneFeedbackFilter(value as FeedbackFilter)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Retours" />
@@ -862,6 +957,18 @@ export default function Suggestions() {
                         <SelectItem value="all">Tous les retours</SelectItem>
                         <SelectItem value="rated">Déjà notées</SelectItem>
                         <SelectItem value="to-rate">À noter</SelectItem>
+                        <SelectItem value="with-comments">Avec commentaires</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select value={rejectedFilter} onValueChange={(value) => setRejectedFilter(value as RejectedFilter)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Contenu" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Toutes</SelectItem>
+                        <SelectItem value="with-image">Avec image</SelectItem>
+                        <SelectItem value="without-image">Sans image</SelectItem>
                         <SelectItem value="with-comments">Avec commentaires</SelectItem>
                       </SelectContent>
                     </Select>
@@ -900,10 +1007,25 @@ export default function Suggestions() {
 
             {/* Content */}
             <TabsContent value="pending" className={SPACING.SECTION_SPACING}>
-              {renderSuggestions(filteredPendingSuggestions, false)}
+              {renderSuggestions(filteredPendingSuggestions, {
+                showRatings: false,
+                emptyTitle: 'Aucune suggestion active',
+                emptySubtitle: 'Soyez le premier à proposer une idée !',
+              })}
             </TabsContent>
             <TabsContent value="done" className={SPACING.SECTION_SPACING}>
-              {renderSuggestions(filteredDoneSuggestions, true)}
+              {renderSuggestions(filteredDoneSuggestions, {
+                showRatings: true,
+                emptyTitle: 'Aucune suggestion réalisée pour le moment',
+                emptySubtitle: 'Revenez plus tard pour noter les mises à jour !',
+              })}
+            </TabsContent>
+            <TabsContent value="rejected" className={SPACING.SECTION_SPACING}>
+              {renderSuggestions(filteredRejectedSuggestions, {
+                showRatings: false,
+                emptyTitle: 'Aucune suggestion non réalisée',
+                emptySubtitle: 'Les suggestions refusées apparaîtront ici.',
+              })}
             </TabsContent>
           </Tabs>
         </div>

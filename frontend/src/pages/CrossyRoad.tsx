@@ -1,10 +1,11 @@
-import { Bird, Play, RotateCcw } from 'lucide-react';
+import { Bird, Coins, Play, RotateCcw, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
@@ -23,6 +24,30 @@ const GAME_SOURCE = 'aura-crossy-road';
 const DUPLICATE_SCORE_WINDOW_MS = 1500;
 
 type RunnerStatus = 'idle' | 'running' | 'paused' | 'crashed';
+type CrossyMode = 'classic' | 'money';
+
+const MODE_META: Record<CrossyMode, {
+  label: string;
+  title: string;
+  summary: string;
+  accent: string;
+  detail: string;
+}> = {
+  classic: {
+    label: 'Classique',
+    title: 'Crossy Road original',
+    summary: 'Traverse le plus loin possible et score chaque ligne franchie.',
+    accent: 'from-lime-500/30 via-emerald-500/20 to-transparent',
+    detail: 'Mode fidèle: routes, rails, rivières, pièces et score distance.',
+  },
+  money: {
+    label: 'Dollar Run',
+    title: 'Mission Uncrossable vibe',
+    summary: 'Chaque palier augmente ta cagnotte. Si tu meurs, tu repars avec 0.',
+    accent: 'from-amber-500/30 via-orange-500/20 to-transparent',
+    detail: 'Fais monter le combo, prends le risque, puis cash out avant de te faire écraser.',
+  },
+};
 
 interface CrossyRoadMessage {
   source?: string;
@@ -46,9 +71,13 @@ export default function CrossyRoad() {
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [highScore, setHighScore] = useState(0);
   const [status, setStatus] = useState<RunnerStatus>('idle');
+  const [selectedMode, setSelectedMode] = useState<CrossyMode>('classic');
+  const [showModeSelector, setShowModeSelector] = useState(true);
 
   const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const canPause = buildDetected === true && status === 'running';
+  const currentMode = MODE_META[selectedMode];
+  const gameSrc = `${GAME_SRC}?mode=${selectedMode}&k=${sessionKey}`;
 
   const postToGame = useCallback((type: 'pause' | 'resume' | 'restart' | 'focus') => {
     iframeRef.current?.contentWindow?.postMessage(
@@ -149,6 +178,14 @@ export default function CrossyRoad() {
   };
 
   const hardReloadSession = () => {
+    setIsPaused(false);
+    setStatus('idle');
+    setSessionKey((prev) => prev + 1);
+  };
+
+  const selectMode = (mode: CrossyMode) => {
+    setSelectedMode(mode);
+    setShowModeSelector(false);
     setIsPaused(false);
     setStatus('idle');
     setSessionKey((prev) => prev + 1);
@@ -262,6 +299,19 @@ export default function CrossyRoad() {
               onToggle={handlePauseToggle}
               disabled={!canPause && !isPaused}
             />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setShowModeSelector(true);
+                setIsPaused(false);
+                setStatus('idle');
+              }}
+              disabled={!buildDetected}
+            >
+              <Trophy className="mr-2 h-4 w-4" />
+              Choisir la version
+            </Button>
             <Button size="sm" variant="outline" onClick={restartSession} disabled={!buildDetected}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Relancer
@@ -274,19 +324,57 @@ export default function CrossyRoad() {
 
           {buildDetected ? (
             <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={GAME_WIDTH} baseHeight={GAME_HEIGHT}>
-              <iframe
-                ref={iframeRef}
-                key={sessionKey}
-                src={`${GAME_SRC}?k=${sessionKey}`}
-                title="Crossy Road"
-                className="block h-full w-full rounded-lg border border-border/30 bg-black"
-                allow="fullscreen; autoplay; clipboard-read; clipboard-write; pointer-lock; keyboard-map; gamepad"
-                tabIndex={0}
-                onLoad={focusGame}
-                onMouseDown={focusGame}
-              />
+              {showModeSelector ? (
+                <div className="flex h-full w-full items-center justify-center rounded-lg border border-border/30 bg-black px-4 py-5">
+                  <div className="grid w-full max-w-5xl gap-4 md:grid-cols-2">
+                    {(['classic', 'money'] as CrossyMode[]).map((mode) => {
+                      const meta = MODE_META[mode];
+                      const active = selectedMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => selectMode(mode)}
+                          className={cn(
+                            'group relative overflow-hidden rounded-3xl border p-6 text-left transition hover:-translate-y-1 hover:border-primary/50 hover:bg-accent/40',
+                            active ? 'border-primary/60 bg-accent/30' : 'border-border/50 bg-background/80'
+                          )}
+                        >
+                          <div className={cn('pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80', meta.accent)} />
+                          <div className="relative space-y-4">
+                            <Badge variant="outline" className="border-white/20 bg-black/20 text-white">
+                              {meta.label}
+                            </Badge>
+                            <div className="space-y-2">
+                              <h3 className="text-2xl font-black tracking-tight text-foreground">{meta.title}</h3>
+                              <p className="text-sm text-muted-foreground">{meta.summary}</p>
+                            </div>
+                            <p className="text-sm text-foreground/80">{meta.detail}</p>
+                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                              {mode === 'classic' ? <Bird className="h-4 w-4" /> : <Coins className="h-4 w-4" />}
+                              Lancer cette version
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <iframe
+                  ref={iframeRef}
+                  key={sessionKey}
+                  src={gameSrc}
+                  title={`Crossy Road - ${currentMode.label}`}
+                  className="block h-full w-full rounded-lg border border-border/30 bg-black"
+                  allow="fullscreen; autoplay; clipboard-read; clipboard-write; pointer-lock; keyboard-map; gamepad"
+                  tabIndex={0}
+                  onLoad={focusGame}
+                  onMouseDown={focusGame}
+                />
+              )}
               <GamePauseOverlay
-                visible={isPaused}
+                visible={isPaused && !showModeSelector}
                 onResume={() => {
                   handlePauseToggle();
                 }}
@@ -313,7 +401,7 @@ export default function CrossyRoad() {
               personalHighScore={highScore}
               isAdmin={isAdmin}
               onDeleteScore={handleDeleteScore}
-              title="Classement Crossy Road"
+              title={`Classement ${currentMode.label}`}
             />
           )}
         </div>
@@ -327,11 +415,13 @@ export default function CrossyRoad() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">{currentMode.label}</Badge>
+                {selectedMode === 'money' && <Badge variant="outline">Cash out pour valider</Badge>}
+              </div>
+              <p>{currentMode.summary}</p>
               <p>
-                Traverse les routes, les rails et les rivières en enchaînant les sauts sans te faire percuter.
-              </p>
-              <p>
-                Ton meilleur score est enregistré automatiquement à chaque fin de run, avec le classement en direct sous le jeu.
+                Ton meilleur score est enregistré automatiquement à chaque fin de run. En mode Dollar Run, seule une sortie avec cash out valide la récompense.
               </p>
             </CardContent>
           </Card>

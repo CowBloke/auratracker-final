@@ -10,12 +10,53 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
-  type YouBankAccount, type YouBusiness, type YouBusinessTransaction,
+  type YouBankAccount, type YouBusiness, type YouBusinessLoan, type YouBusinessTransaction,
   type YouBusinessType, type YouFormationProduct, type YouPlayer, type YouRelationship, type YouStartupProduct, youApi,
 } from '@/services/api';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';
 import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, SectionTitle, SelectBox, UserAvatar } from './ui';
+
+function getLoanStartDate(loan: YouBusinessLoan) {
+  return new Date(loan.decidedAt ?? loan.createdAt);
+}
+
+function getLoanDueDate(loan: YouBusinessLoan) {
+  const dueDate = new Date(getLoanStartDate(loan));
+  dueDate.setDate(dueDate.getDate() + Math.max(0, loan.termDays));
+  return dueDate;
+}
+
+function formatLoanDate(value: string | Date) {
+  return new Date(value).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function getLoanTimeLeftLabel(loan: YouBusinessLoan) {
+  const dueDate = getLoanDueDate(loan);
+  const diffMs = dueDate.getTime() - Date.now();
+
+  if (diffMs <= 0) {
+    return 'Echeance depassee';
+  }
+
+  const totalHours = Math.ceil(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  if (days <= 0) {
+    return `${hours}h restantes`;
+  }
+
+  if (hours === 0) {
+    return `${days} jour${days > 1 ? 's' : ''} restant${days > 1 ? 's' : ''}`;
+  }
+
+  return `${days}j ${hours}h restantes`;
+}
 
 function BusinessTypePickerModal({
   open,
@@ -834,8 +875,8 @@ export function ManageBusinessModal({
   const repayLoanNow = async (loanId: string) => {
     setRepayingLoanId(loanId);
     try {
-      await withRouteError(() => youApi.repayLoan(loanId), 'Impossible de rembourser ce pret.');
-      toast.success('Pret rembourse');
+      await withRouteError(() => youApi.repayLoan(loanId), 'Impossible d encaisser ce pret.');
+      toast.success('Pret encaisse');
       await onSubmitted(true);
     } finally {
       setRepayingLoanId(null);
@@ -1129,14 +1170,34 @@ export function ManageBusinessModal({
                   {activeLoans.map((loan) => {
                     const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
                     const repaid = loan.repaidAmount ?? 0;
+                    const remaining = Math.max(0, totalOwed - repaid);
                     const pct = totalOwed > 0 ? Math.round((repaid / totalOwed) * 100) : 0;
+                    const dueDate = getLoanDueDate(loan);
                     return (
                       <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-2">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold">{loan.borrower.username}</p>
-                            <p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} € principal · {loan.interestRate} %</p>
-                            <p className="mt-1 text-xs text-muted-foreground">{repaid.toLocaleString('fr-FR')} / {totalOwed.toLocaleString('fr-FR')} € remboursé</p>
+                            <p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} € principal · {loan.interestRate} % · {loan.termDays} jours</p>
+                            <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                              <div className="rounded-lg bg-background/50 px-3 py-2">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Reste du</p>
+                                <p className="mt-1 text-sm font-semibold text-foreground">{remaining.toLocaleString('fr-FR')} €</p>
+                              </div>
+                              <div className="rounded-lg bg-background/50 px-3 py-2">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Echeance</p>
+                                <p className="mt-1 text-sm font-semibold text-foreground">{formatLoanDate(dueDate)}</p>
+                              </div>
+                              <div className="rounded-lg bg-background/50 px-3 py-2">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Temps restant</p>
+                                <p className="mt-1 text-sm font-semibold text-foreground">{getLoanTimeLeftLabel(loan)}</p>
+                              </div>
+                              <div className="rounded-lg bg-background/50 px-3 py-2">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Accorde le</p>
+                                <p className="mt-1 text-sm font-semibold text-foreground">{formatLoanDate(loan.decidedAt ?? loan.createdAt)}</p>
+                              </div>
+                            </div>
+                            <p className="mt-2 text-xs text-muted-foreground">{repaid.toLocaleString('fr-FR')} / {totalOwed.toLocaleString('fr-FR')} € rembourses</p>
                             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
                               <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} />
                             </div>
@@ -1148,7 +1209,7 @@ export function ManageBusinessModal({
                             onClick={() => void repayLoanNow(loan.id)}
                             disabled={repayingLoanId !== null}
                           >
-                            Rembourser maintenant
+                            Encaisser le solde
                           </Button>
                         </div>
                       </div>

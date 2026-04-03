@@ -1104,7 +1104,7 @@ router.post('/listings/buy', authMiddleware, validate(marketplaceListingActionSc
     logMarketplace('listing_sold', req.user.id, buyer.username, {
       listingId,
       itemId: result.itemId,
-      itemName: result.itemName,
+      itemName: result.item.name,
       sellerId: result.sellerId,
       quantity: result.quantity,
       unitPrice: result.unitPrice,
@@ -1256,7 +1256,7 @@ router.delete('/listings/:listingId', authMiddleware, async (req: AuthRequest, r
     logMarketplace('listing_cancel', req.user.id, req.user.username, {
       listingId: restoredListing.id,
       itemId: restoredListing.itemId,
-      itemName: restoredListing.itemName,
+      itemName: restoredListing.item.name,
       quantity: restoredListing.quantity,
       unitPrice: restoredListing.unitPrice,
     });

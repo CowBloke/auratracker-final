@@ -826,7 +826,7 @@ export interface ClashBattleEntry {
 }
 
 export interface ClashStateResponse {
-  village: ClashVillageState;
+  village: ClashVillageState | null;
   activities: ClashActivity[];
   recentAttacks: ClashBattleEntry[];
   recentDefenses: ClashBattleEntry[];
@@ -852,6 +852,7 @@ export interface ClashLeaderboardEntry {
 export const clashApi = {
   getState: () => api.get<ClashStateResponse>('/clash/state'),
   bootstrap: () => api.post<ClashStateResponse>('/clash/bootstrap'),
+  deleteVillage: () => api.delete<{ success: boolean; villageDeleted: boolean }>('/clash/village'),
   upgrade: (buildingType: ClashBuilding['type']) =>
     api.post<ClashStateResponse & { upgrade: { buildingType: ClashBuilding['type']; cost: number; newBalance: { money: number } } }>('/clash/upgrade', { buildingType }),
   getMatchmaking: () => api.get<{ targets: ClashTarget[] }>('/clash/matchmaking'),
@@ -1122,9 +1123,22 @@ export interface ClanDetail extends ClanSummary {
     isLeader: boolean;
     hasPendingRequest: boolean;
   };
+  bankContributionHistory: ClanBankContribution[];
   ownedItems: ClanOwnedItem[];
   activeEffects: ClanActiveEffect[];
   warHub: ClanWarHub;
+}
+
+export interface ClanBankContribution {
+  id: string;
+  amount: number;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+  };
 }
 
 export interface ClanOwnedItem {
@@ -1376,6 +1390,113 @@ export interface ClanWarGamesStatus {
   } | null;
 }
 
+export interface ClanEventRewardTier {
+  id: string;
+  title: string;
+  minRank: number;
+  maxRank: number;
+  moneyReward: number;
+  auraReward: number;
+  item?: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+  } | null;
+}
+
+export interface ClanEventLeaderboardEntry {
+  rank: number | null;
+  totalPoints: number;
+  clan: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+    warTrophies: number;
+    level: number;
+    memberCount: number;
+  };
+}
+
+export interface ClanEventQuestProgress {
+  currentValue: number;
+  completedAt: string | null;
+  isCompleted: boolean;
+}
+
+export interface ClanEventQuest {
+  id: string;
+  title: string;
+  description: string | null;
+  activityType: string;
+  targetValue: number;
+  pointsReward: number;
+  sortOrder: number;
+  progress: ClanEventQuestProgress;
+}
+
+export interface ClanEventMiniGame {
+  id: string;
+  title: string;
+  description: string | null;
+  type: 'REFLEX' | 'TAP_FRENZY';
+  instructions: string | null;
+  scoreMultiplier: number;
+  flatPointsBonus: number;
+  maxPointsPerAttempt: number;
+  maxAttemptsPerUser: number | null;
+  cooldownMinutes: number;
+  config: Record<string, unknown> | null;
+  viewerStats: {
+    attemptsUsed: number;
+    bestScore: number;
+    lastPlayedAt: string | null;
+    nextAvailableAt: string | null;
+  };
+}
+
+export interface ClanEventActivityFeedItem {
+  id: string;
+  sourceType: string;
+  label: string;
+  points: number;
+  createdAt: string;
+  clan: {
+    id: string;
+    name: string;
+    imageUrl: string | null;
+  };
+  user: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+  } | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface ClanEventView {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  bannerUrl: string | null;
+  status: 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'DRAFT' | 'CANCELLED';
+  highlightColor: string | null;
+  rulesSummary: string | null;
+  startsAt: string;
+  endsAt: string;
+  finalizedAt: string | null;
+  rewardsDistributedAt: string | null;
+  canParticipate: boolean;
+  selectedClanEntry: ClanEventLeaderboardEntry | null;
+  viewerClanEntry: ClanEventLeaderboardEntry | null;
+  leaderboard: ClanEventLeaderboardEntry[];
+  rewardTiers: ClanEventRewardTier[];
+  quests: ClanEventQuest[];
+  miniGames: ClanEventMiniGame[];
+  recentActivity: ClanEventActivityFeedItem[];
+}
+
 export const clansApi = {
   list: () => api.get<ClansListResponse>('/clans'),
   myStatus: () => api.get<{ inClan: boolean; isLeader?: boolean; tagUnlocked: boolean; slotUpgraded: boolean; clanBankMoney: number; level: number }>('/clans/me/status'),
@@ -1419,6 +1540,10 @@ export const clansApi = {
   // War mini-games
   getWarGamesStatus: (clanId: string) =>
     api.get<ClanWarGamesStatus>(`/clans/${clanId}/war/games/status`),
+  getFeaturedEvent: (clanId?: string) =>
+    api.get<{ event: ClanEventView | null }>('/clans/events/featured', { params: clanId ? { clanId } : undefined }),
+  submitEventMiniGame: (eventId: string, miniGameId: string, data: { rawScore: number }) =>
+    api.post<{ success: boolean; result: { rawScore: number; pointsAwarded: number; attemptsUsed: number; maxAttemptsPerUser: number | null; nextAvailableAt: string | null } }>(`/clans/events/${eventId}/minigames/${miniGameId}/submit`, data),
   submitMemoryGame: (clanId: string, data: { matchedPairs: Record<string, number>; score: number; isPractice: boolean }) =>
     api.post<{ success: boolean; isPractice: boolean }>(`/clans/${clanId}/war/games/memory`, data),
   submitBombGame: (clanId: string, data: { score: number; hits: number; isPractice: boolean }) =>
@@ -1518,6 +1643,58 @@ export interface AdminClan {
     startsAt: string;
     endsAt: string;
   } | null;
+}
+
+export interface AdminClanEventQuest {
+  id: string;
+  title: string;
+  description: string | null;
+  activityType: string;
+  targetValue: number;
+  pointsReward: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminClanEventMiniGame {
+  id: string;
+  title: string;
+  description: string | null;
+  type: 'REFLEX' | 'TAP_FRENZY';
+  instructions: string | null;
+  scoreMultiplier: number;
+  flatPointsBonus: number;
+  maxPointsPerAttempt: number;
+  maxAttemptsPerUser: number | null;
+  cooldownMinutes: number;
+  sortOrder: number;
+  isActive: boolean;
+  config: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminClanEventRewardTier extends ClanEventRewardTier {
+  itemId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminClanEvent extends Omit<ClanEventView, 'quests' | 'miniGames' | 'rewardTiers' | 'recentActivity' | 'canParticipate' | 'selectedClanEntry' | 'viewerClanEntry'> {
+  storedStatus: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  createdAt: string;
+  updatedAt: string;
+  createdBy: {
+    id: string;
+    username: string;
+    usernameColor: string | null;
+    profilePicture: string | null;
+  };
+  quests: AdminClanEventQuest[];
+  miniGames: AdminClanEventMiniGame[];
+  rewardTiers: AdminClanEventRewardTier[];
 }
 
 
@@ -1673,7 +1850,7 @@ export interface Suggestion {
   title: string;
   description: string;
   imageUrl: string | null;
-  status: 'PENDING' | 'DONE';
+  status: 'PENDING' | 'DONE' | 'REJECTED';
   createdAt: string;
   resolvedAt: string | null;
   user: {
@@ -1702,9 +1879,9 @@ export const suggestionsApi = {
       `/suggestions/${id}/vote`,
       { value }
     ),
-  updateStatus: (id: string, status: 'PENDING' | 'DONE') =>
+  updateStatus: (id: string, status: 'PENDING' | 'DONE' | 'REJECTED') =>
     api.patch<{
-      status: 'PENDING' | 'DONE';
+      status: 'PENDING' | 'DONE' | 'REJECTED';
       resolvedAt: string | null;
       averageRating: number | null;
       ratingCount: number;
@@ -1814,6 +1991,34 @@ export const adminApi = {
   runRareAction,
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   getClans: () => api.get<{ clans: AdminClan[] }>('/admin/clans'),
+  getClanEvents: () => api.get<{ events: AdminClanEvent[] }>('/admin/clan-events'),
+  createClanEvent: (data: {
+    title: string;
+    description?: string | null;
+    bannerUrl?: string | null;
+    status: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+    highlightColor?: string | null;
+    rulesSummary?: string | null;
+    startsAt: string;
+    endsAt: string;
+    quests: Array<{ title: string; description?: string | null; activityType: string; targetValue: number; pointsReward: number; sortOrder: number; isActive: boolean }>;
+    miniGames: Array<{ title: string; description?: string | null; type: 'REFLEX' | 'TAP_FRENZY'; instructions?: string | null; scoreMultiplier: number; flatPointsBonus: number; maxPointsPerAttempt: number; maxAttemptsPerUser: number | null; cooldownMinutes: number; sortOrder: number; isActive: boolean; config?: Record<string, unknown> | null }>;
+    rewardTiers: Array<{ title: string; minRank: number; maxRank: number; moneyReward: number; auraReward: number; itemId: string | null }>;
+  }) => api.post<{ event: AdminClanEvent }>('/admin/clan-events', data),
+  updateClanEvent: (id: string, data: {
+    title: string;
+    description?: string | null;
+    bannerUrl?: string | null;
+    status: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+    highlightColor?: string | null;
+    rulesSummary?: string | null;
+    startsAt: string;
+    endsAt: string;
+    quests: Array<{ title: string; description?: string | null; activityType: string; targetValue: number; pointsReward: number; sortOrder: number; isActive: boolean }>;
+    miniGames: Array<{ title: string; description?: string | null; type: 'REFLEX' | 'TAP_FRENZY'; instructions?: string | null; scoreMultiplier: number; flatPointsBonus: number; maxPointsPerAttempt: number; maxAttemptsPerUser: number | null; cooldownMinutes: number; sortOrder: number; isActive: boolean; config?: Record<string, unknown> | null }>;
+    rewardTiers: Array<{ title: string; minRank: number; maxRank: number; moneyReward: number; auraReward: number; itemId: string | null }>;
+  }) => api.put<{ event: AdminClanEvent }>(`/admin/clan-events/${id}`, data),
+  deleteClanEvent: (id: string) => api.delete<{ success: boolean }>(`/admin/clan-events/${id}`),
   updateClan: (id: string, data: { name?: string; description?: string; imageUrl?: string; isPublic?: boolean; maxMembers?: number }) =>
     api.put<{ clan: AdminClan }>(`/admin/clans/${id}`, data),
   transferClanLeadership: (id: string, targetUserId: string) =>
