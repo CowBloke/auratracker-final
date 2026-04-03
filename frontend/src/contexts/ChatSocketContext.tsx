@@ -57,6 +57,23 @@ export interface OnlineUser {
   clanTag?: { text: string; style: string | null } | null;
 }
 
+export interface ChatPollOption {
+  id: string;
+  text: string;
+  votes: number;
+}
+
+export interface ChatPoll {
+  id: string;
+  question: string;
+  createdByUserId: string;
+  createdByUsername: string;
+  createdAt: string;
+  totalVotes: number;
+  userVoteOptionId: string | null;
+  options: ChatPollOption[];
+}
+
 export interface DoodleSpectateSession {
   hostUserId: string;
   hostUsername: string;
@@ -84,6 +101,7 @@ interface TypingUser {
 
 interface ChatSocketContextValue {
   messages: ChatMessage[];
+  activePoll: ChatPoll | null;
   onlineUsers: OnlineUser[];
   onlineCount: number;
   typingUsers: TypingUser[];
@@ -94,6 +112,9 @@ interface ChatSocketContextValue {
   setTyping: (isTyping: boolean) => void;
   deleteMessage: (messageId: string) => void;
   pinMessage: (messageId: string, pinned: boolean) => void;
+  createPoll: (question: string, options: string[]) => void;
+  votePoll: (pollId: string, optionId: string) => void;
+  closePoll: (pollId: string) => void;
   requestOnlineUsers: () => void;
   requestDoodleSpectateSessions: () => void;
   requestChessSpectateSessions: () => void;
@@ -105,6 +126,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const { user, updateBalance } = useAuth();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [activePoll, setActivePoll] = useState<ChatPoll | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
@@ -234,6 +256,16 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       setOnlineCount(data.users.length);
     });
 
+    s.on('chat:poll-state', (data: { poll: ChatPoll | null }) => {
+      setActivePoll(data.poll ?? null);
+    });
+
+    s.on('chat:poll-error', (data: { message?: string }) => {
+      if (typeof window !== 'undefined') {
+        toast(data.message || 'Impossible de mettre a jour le sondage.');
+      }
+    });
+
     // Incremental updates — throttled via pending queue
     s.on('users:online-count', (data: { count: number }) => {
       pendingCountRef.current = data.count;
@@ -273,6 +305,8 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       s.off('chat:reactions-updated');
       s.off('chat:pin-updated');
       s.off('chat:typing');
+      s.off('chat:poll-state');
+      s.off('chat:poll-error');
       s.off('users:online-list');
       s.off('users:online-count');
       s.off('user:online');
@@ -316,6 +350,27 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     [user?.id]
   );
 
+  const createPoll = useCallback(
+    (question: string, options: string[]) => {
+      if (user) chatEvents.createPoll(user.id, question, options);
+    },
+    [user?.id]
+  );
+
+  const votePoll = useCallback(
+    (pollId: string, optionId: string) => {
+      if (user) chatEvents.votePoll(user.id, pollId, optionId);
+    },
+    [user?.id]
+  );
+
+  const closePoll = useCallback(
+    (pollId: string) => {
+      if (user) chatEvents.closePoll(user.id, pollId);
+    },
+    [user?.id]
+  );
+
   const requestOnlineUsers = useCallback(() => {
     getSocket()?.emit('chat:request-online-users');
   }, []);
@@ -331,6 +386,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const value = useMemo(
     () => ({
       messages,
+      activePoll,
       onlineUsers,
       onlineCount,
       typingUsers,
@@ -341,12 +397,16 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       setTyping,
       deleteMessage,
       pinMessage,
+      createPoll,
+      votePoll,
+      closePoll,
       requestOnlineUsers,
       requestDoodleSpectateSessions,
       requestChessSpectateSessions,
     }),
     [
       messages,
+      activePoll,
       onlineUsers,
       onlineCount,
       typingUsers,
@@ -357,6 +417,9 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       setTyping,
       deleteMessage,
       pinMessage,
+      createPoll,
+      votePoll,
+      closePoll,
       requestOnlineUsers,
       requestDoodleSpectateSessions,
       requestChessSpectateSessions,

@@ -57,6 +57,15 @@ export const chatEvents = {
   setPresence: (userId: string, isPageActive: boolean) => {
     socket?.emit('chat:presence', { userId, isPageActive });
   },
+  createPoll: (userId: string, question: string, options: string[]) => {
+    socket?.emit('chat:poll-create', { userId, question, options });
+  },
+  votePoll: (userId: string, pollId: string, optionId: string) => {
+    socket?.emit('chat:poll-vote', { userId, pollId, optionId });
+  },
+  closePoll: (userId: string, pollId: string) => {
+    socket?.emit('chat:poll-close', { userId, pollId });
+  },
 };
 
 // Party events

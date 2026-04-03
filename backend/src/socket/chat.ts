@@ -14,6 +14,21 @@ interface OnlineUser {
   isPageActive: boolean;
 }
 
+interface ActiveChatPollOption {
+  id: string;
+  text: string;
+  voterIds: Set<string>;
+}
+
+interface ActiveChatPoll {
+  id: string;
+  question: string;
+  options: ActiveChatPollOption[];
+  createdByUserId: string;
+  createdByUsername: string;
+  createdAt: Date;
+}
+
 const BADGE_SELECT = {
   id: true,
   name: true,
@@ -281,6 +296,49 @@ const getTopLeaderboardIds = async () => {
 };
 
 const CHAT_SYSTEM_USERNAME = 'AuraTracker';
+let activeChatPoll: ActiveChatPoll | null = null;
+
+const serializeChatPoll = (poll: ActiveChatPoll, viewerUserId?: string) => {
+  const totalVotes = poll.options.reduce((sum, option) => sum + option.voterIds.size, 0);
+  const userVoteOptionId =
+    viewerUserId
+      ? poll.options.find((option) => option.voterIds.has(viewerUserId))?.id ?? null
+      : null;
+
+  return {
+    id: poll.id,
+    question: poll.question,
+    createdByUserId: poll.createdByUserId,
+    createdByUsername: poll.createdByUsername,
+    createdAt: poll.createdAt.toISOString(),
+    totalVotes,
+    userVoteOptionId,
+    options: poll.options.map((option) => ({
+      id: option.id,
+      text: option.text,
+      votes: option.voterIds.size,
+    })),
+  };
+};
+
+const emitChatPollStateToSocket = (socket: Socket, userId?: string) => {
+  socket.emit('chat:poll-state', {
+    poll: activeChatPoll ? serializeChatPoll(activeChatPoll, userId) : null,
+  });
+};
+
+const broadcastChatPollState = (io: Server) => {
+  if (!activeChatPoll) {
+    io.to('global-chat').emit('chat:poll-state', { poll: null });
+    return;
+  }
+
+  for (const user of onlineUsers.values()) {
+    io.to(user.socketId).emit('chat:poll-state', {
+      poll: serializeChatPoll(activeChatPoll, user.userId),
+    });
+  }
+};
 
 const formatGameScoreForChat = (gameType: string, score: number) => {
   if (gameType === 'racer') {
@@ -627,6 +685,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         timestamp: m.createdAt.toISOString(),
       })),
     });
+
+    emitChatPollStateToSocket(socket, userId);
     
     await sendDisplayedOnlineState(socket);
     void broadcastUserJoined(socket, userId);
@@ -855,6 +915,125 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   // On-demand: client requests the full online users list (with pages)
   socket.on('chat:request-online-users', async () => {
     await sendDisplayedOnlineState(socket);
+  });
+
+  socket.on('chat:poll-create', async (data: { question?: string; options?: string[] }) => {
+    const adminId = socket.data.userId as string | undefined;
+    if (!adminId) return;
+
+    const adminUser = await prisma.user.findUnique({
+      where: { id: adminId },
+      select: { username: true, isAdmin: true, isSuperAdmin: true },
+    });
+
+    if (!adminUser || (!adminUser.isAdmin && !adminUser.isSuperAdmin)) {
+      socket.emit('chat:poll-error', { message: 'Seuls les admins peuvent creer un sondage.' });
+      return;
+    }
+
+    const question = typeof data?.question === 'string' ? data.question.trim() : '';
+    const rawOptions = Array.isArray(data?.options) ? data.options : [];
+    const options = rawOptions
+      .map((option) => (typeof option === 'string' ? option.trim() : ''))
+      .filter(Boolean);
+
+    if (question.length < 3 || question.length > 180) {
+      socket.emit('chat:poll-error', {
+        message: 'La question doit contenir entre 3 et 180 caracteres.',
+      });
+      return;
+    }
+
+    if (options.length < 2 || options.length > 6) {
+      socket.emit('chat:poll-error', {
+        message: 'Le sondage doit avoir entre 2 et 6 options.',
+      });
+      return;
+    }
+
+    const normalizedSet = new Set<string>();
+    for (const option of options) {
+      const normalized = option.toLowerCase();
+      if (normalizedSet.has(normalized)) {
+        socket.emit('chat:poll-error', {
+          message: 'Les options du sondage doivent etre uniques.',
+        });
+        return;
+      }
+      if (option.length > 80) {
+        socket.emit('chat:poll-error', {
+          message: 'Chaque option doit faire 80 caracteres maximum.',
+        });
+        return;
+      }
+      normalizedSet.add(normalized);
+    }
+
+    activeChatPoll = {
+      id: `poll-${Date.now()}`,
+      question,
+      options: options.map((option, index) => ({
+        id: `opt-${index + 1}`,
+        text: option,
+        voterIds: new Set<string>(),
+      })),
+      createdByUserId: adminId,
+      createdByUsername: adminUser.username,
+      createdAt: new Date(),
+    };
+
+    broadcastChatPollState(io);
+    await createAndBroadcastSystemMessage(io, `${adminUser.username} a lance un sondage dans le chat.`);
+  });
+
+  socket.on('chat:poll-vote', (data: { pollId?: string; optionId?: string }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId || !activeChatPoll) return;
+
+    if (typeof data?.pollId !== 'string' || data.pollId !== activeChatPoll.id) {
+      socket.emit('chat:poll-error', { message: 'Ce sondage n est plus actif.' });
+      emitChatPollStateToSocket(socket, userId);
+      return;
+    }
+
+    const optionId = typeof data?.optionId === 'string' ? data.optionId : '';
+    const selectedOption = activeChatPoll.options.find((option) => option.id === optionId);
+    if (!selectedOption) {
+      socket.emit('chat:poll-error', { message: 'Option de sondage introuvable.' });
+      return;
+    }
+
+    for (const option of activeChatPoll.options) {
+      option.voterIds.delete(userId);
+    }
+    selectedOption.voterIds.add(userId);
+
+    broadcastChatPollState(io);
+  });
+
+  socket.on('chat:poll-close', async (data: { pollId?: string }) => {
+    const adminId = socket.data.userId as string | undefined;
+    if (!adminId || !activeChatPoll) return;
+
+    const adminUser = await prisma.user.findUnique({
+      where: { id: adminId },
+      select: { username: true, isAdmin: true, isSuperAdmin: true },
+    });
+
+    if (!adminUser || (!adminUser.isAdmin && !adminUser.isSuperAdmin)) {
+      socket.emit('chat:poll-error', { message: 'Seuls les admins peuvent cloturer un sondage.' });
+      return;
+    }
+
+    if (typeof data?.pollId !== 'string' || data.pollId !== activeChatPoll.id) {
+      socket.emit('chat:poll-error', { message: 'Ce sondage n est plus actif.' });
+      emitChatPollStateToSocket(socket, adminId);
+      return;
+    }
+
+    activeChatPoll = null;
+    broadcastChatPollState(io);
+    await createAndBroadcastSystemMessage(io, `${adminUser.username} a cloture le sondage actif.`);
   });
 
   socket.on('chat:reaction', async (data: { messageId: string; emoji: string }) => {
