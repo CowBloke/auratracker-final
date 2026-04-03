@@ -20,17 +20,20 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
+import { useFeatures } from '../contexts/FeaturesContext';
 import {
   AuraTransferEntry,
   ClanPumpUpMessage,
   ClanWarState,
   DailyAuraState,
+  ReferralSummary,
+  authApi,
   auraCoinApi,
   clansApi,
   economyApi,
   usersApi,
 } from '../services/api';
-import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, Swords, Loader2 } from 'lucide-react';
+import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, Swords, Loader2, Ticket, Copy } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -91,7 +94,8 @@ type DashboardWidgetId =
   | 'aura-history'
   | 'live'
   | 'auracoin'
-  | 'clan-wars';
+  | 'clan-wars'
+  | 'referral';
 
 const shortcutStorageKey = 'auratracker:dashboard-shortcuts';
 const dashboardLayoutStorageKey = 'auratracker:dashboard-layout';
@@ -159,6 +163,7 @@ const defaultShortcutSet = new Set(defaultShortcuts);
 
 const defaultDashboardLayout: DashboardWidgetId[] = [
   'shortcuts',
+  'referral',
   'aura-flow',
   'aura-history',
   'live',
@@ -167,6 +172,7 @@ const defaultDashboardLayout: DashboardWidgetId[] = [
 ];
 const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
   shortcuts: { title: 'Raccourcis jeux', description: 'Accès rapide à tes jeux favoris.' },
+  referral: { title: 'Parrainage', description: 'Ton code, tes stats et un accès rapide au partage.' },
   'aura-flow': { title: 'Distribution d aura', description: 'Envoie ou retire ton quota d aura journalier.' },
   'aura-history': { title: 'Historique aura', description: 'Tous les envois et retraits d aura du site.' },
   'clan-wars': { title: 'Guerres de clan', description: 'Suivi rapide des affrontements en cours.' },
@@ -175,7 +181,7 @@ const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; descript
 };
 
 const isDashboardWidgetId = (value: string): value is DashboardWidgetId =>
-  ['shortcuts', 'aura-flow', 'aura-history', 'live', 'auracoin', 'clan-wars'].includes(value);
+  ['shortcuts', 'referral', 'aura-flow', 'aura-history', 'live', 'auracoin', 'clan-wars'].includes(value);
 
 const dashboardWidgetCardClass = "flex h-full flex-col overflow-hidden rounded-2xl border border-border/50 bg-background shadow-none";
 const dashboardWidgetHeaderClass = "px-4 pb-3 pt-4 sm:px-5";
@@ -349,6 +355,7 @@ function coerceVisibleDashboardWidgets(value: unknown): DashboardWidgetId[] | nu
 
 export default function Dashboard() {
   const { user, refreshUser } = useAuth();
+  const { maintenanceStatus } = useFeatures();
   const { theme } = useTheme();
   const { socket } = useSocketBase();
   const { fetchPublicParties, publicParties, currentParty, joinParty, requestJoinParty, pendingJoinRequests } = usePartySocket();
@@ -378,8 +385,17 @@ export default function Dashboard() {
   const [auraWidgetLoading, setAuraWidgetLoading] = useState(false);
   const [submittingAuraTransfer, setSubmittingAuraTransfer] = useState(false);
   const [resetCountdown, setResetCountdown] = useState('--:--:--');
+  const [referralSummary, setReferralSummary] = useState<ReferralSummary | null>(null);
+  const [referralLoading, setReferralLoading] = useState(false);
+
+  const referralWidgetEnabled = maintenanceStatus.referralDashboardCardEnabled;
+  const referralEnabled = maintenanceStatus.referralEnabled;
 
   const shortcutMap = useMemo(() => new Map(gameShortcuts.map((item) => [item.id, item])), []);
+  const availableDashboardWidgets = useMemo(
+    () => defaultDashboardLayout.filter((widgetId) => widgetId !== 'referral' || referralWidgetEnabled),
+    [referralWidgetEnabled]
+  );
   const orderedShortcuts = useMemo(
     () => shortcutWidgets.slice(0, maxShortcutWidgets).map((id) => shortcutMap.get(id)).filter(Boolean) as GameShortcut[],
     [shortcutMap, shortcutWidgets]
@@ -395,8 +411,8 @@ export default function Dashboard() {
     })
   );
   const visibleDashboardLayout = useMemo(
-    () => dashboardLayout.filter((widgetId) => visibleWidgets.includes(widgetId)),
-    [dashboardLayout, visibleWidgets]
+    () => dashboardLayout.filter((widgetId) => visibleWidgets.includes(widgetId) && availableDashboardWidgets.includes(widgetId)),
+    [availableDashboardWidgets, dashboardLayout, visibleWidgets]
   );
   const featuredWars = useMemo<ClanWarWidgetItem[]>(() => {
     const prioritized = [...activeWars].sort((a, b) => {
@@ -517,6 +533,37 @@ export default function Dashboard() {
       setSubmittingAuraTransfer(false);
     }
   };
+
+  useEffect(() => {
+    if (!referralWidgetEnabled) {
+      setReferralSummary(null);
+      setReferralLoading(false);
+      return;
+    }
+
+    if (!referralEnabled) {
+      setReferralSummary(null);
+      setReferralLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setReferralLoading(true);
+    authApi.getReferralSummary()
+      .then((res) => {
+        if (!cancelled) setReferralSummary(res.data);
+      })
+      .catch(() => {
+        if (!cancelled) setReferralSummary(null);
+      })
+      .finally(() => {
+        if (!cancelled) setReferralLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [referralEnabled, referralWidgetEnabled]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -681,6 +728,19 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    setDashboardLayout((current) => {
+      const filtered = current.filter((widgetId) => availableDashboardWidgets.includes(widgetId));
+      const missing = availableDashboardWidgets.filter((widgetId) => !filtered.includes(widgetId));
+      return [...filtered, ...missing];
+    });
+
+    setVisibleWidgets((current) => {
+      const filtered = current.filter((widgetId) => availableDashboardWidgets.includes(widgetId));
+      return filtered.length > 0 ? filtered : availableDashboardWidgets;
+    });
+  }, [availableDashboardWidgets]);
+
+  useEffect(() => {
     if (!shortcutsLoaded) return;
     try {
       localStorage.setItem(shortcutStorageKey, JSON.stringify(shortcutWidgets));
@@ -733,6 +793,16 @@ export default function Dashboard() {
     return ((auraCoinPrice - auraCoinPreviousPrice) / auraCoinPreviousPrice) * 100;
   }, [auraCoinPrice, auraCoinPreviousPrice]);
 
+  const handleReferralCopy = async () => {
+    if (!referralSummary?.referralCode) return;
+    try {
+      await navigator.clipboard.writeText(referralSummary.referralCode);
+      toast.success('Code de parrainage copie.');
+    } catch {
+      toast.error('Copie impossible pour le moment.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -775,10 +845,10 @@ export default function Dashboard() {
                   </DialogDescription>
                 </DialogHeader>
                 <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
-                  {visibleWidgets.length}/{defaultDashboardLayout.length} visibles
+                  {visibleDashboardLayout.length}/{availableDashboardWidgets.length} visibles
                 </p>
                 <div className="space-y-3">
-                  {defaultDashboardLayout.map((widgetId) => {
+                  {availableDashboardWidgets.map((widgetId) => {
                     const widget = dashboardWidgetLabels[widgetId];
                     const checked = visibleWidgets.includes(widgetId);
                     const isLastVisible = checked && visibleWidgets.length === 1;
@@ -818,7 +888,7 @@ export default function Dashboard() {
                   <Button
                     variant="ghost"
                     className="hover:bg-muted/30"
-                    onClick={() => setVisibleWidgets(defaultDashboardLayout)}
+                    onClick={() => setVisibleWidgets(availableDashboardWidgets)}
                   >
                     Tout afficher
                   </Button>
@@ -830,8 +900,8 @@ export default function Dashboard() {
               variant="ghost"
               className="hover:bg-muted/30"
               onClick={() => {
-                setDashboardLayout(defaultDashboardLayout);
-                setVisibleWidgets(defaultDashboardLayout);
+                setDashboardLayout(availableDashboardWidgets);
+                setVisibleWidgets(availableDashboardWidgets);
               }}
             >
               Réinitialiser la grille
@@ -939,6 +1009,86 @@ export default function Dashboard() {
                             </Card>
                           )}
                         </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {widgetId === 'referral' && (
+                    <Card className={dashboardWidgetCardClass}>
+                      <CardHeader className={dashboardWidgetHeaderClass}>
+                        <div className="flex items-center justify-between gap-3">
+                          <DashboardWidgetTitle
+                            title="Parrainage"
+                            icon={Ticket}
+                            iconClassName="text-fuchsia-500"
+                            iconWrapperClassName="bg-fuchsia-500/15"
+                          />
+                          {referralSummary ? (
+                            <Badge variant="secondary" className="border border-border/50 bg-muted/30">
+                              +{referralSummary.rewardAmount} chacun
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </CardHeader>
+                      <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
+                        {referralLoading ? (
+                          <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-muted-foreground">
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Chargement...
+                          </div>
+                        ) : !referralEnabled ? (
+                          <div className="flex min-h-0 flex-1 flex-col justify-between gap-4">
+                            <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
+                              <p className="text-sm font-medium">Parrainage désactivé</p>
+                              <p className="mt-1 text-xs text-muted-foreground">Le système de parrainage est masqué pour le moment.</p>
+                            </div>
+                            <Button asChild variant="outline" className={dashboardGhostButtonClass}>
+                              <Link to="/settings">Ouvrir les paramètres</Link>
+                            </Button>
+                          </div>
+                        ) : !referralSummary ? (
+                          <div className="flex min-h-0 flex-1 flex-col justify-between gap-4">
+                            <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-4">
+                              <p className="text-sm text-muted-foreground">Impossible de charger le parrainage pour le moment.</p>
+                            </div>
+                            <Button asChild variant="outline" className={dashboardGhostButtonClass}>
+                              <Link to="/settings">Réessayer depuis les paramètres</Link>
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="min-h-0 flex-1 space-y-4">
+                              <div className="rounded-2xl border border-border/50 bg-muted/20 px-4 py-4">
+                                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Code de parrainage</p>
+                                <p className="mt-2 font-mono text-2xl font-semibold tracking-[0.22em]">
+                                  {referralSummary.referralCode}
+                                </p>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-2">
+                                <div className="rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
+                                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Validés</p>
+                                  <p className="mt-1 text-lg font-semibold tabular-nums">{referralSummary.successfulReferrals}</p>
+                                </div>
+                                <div className="rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
+                                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">En attente</p>
+                                  <p className="mt-1 text-lg font-semibold tabular-nums">{referralSummary.pendingReferrals}</p>
+                                </div>
+                                <div className="rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
+                                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Gagné</p>
+                                  <p className="mt-1 text-lg font-semibold tabular-nums">{referralSummary.totalRewardsEarned}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-3">
+                              <Button variant="outline" className={dashboardGhostButtonClass} onClick={handleReferralCopy}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                Copier
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   )}

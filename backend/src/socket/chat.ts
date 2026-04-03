@@ -297,6 +297,39 @@ const getTopLeaderboardIds = async () => {
 
 const CHAT_SYSTEM_USERNAME = 'AuraTracker';
 let activeChatPoll: ActiveChatPoll | null = null;
+const CHAT_HISTORY_PAGE_SIZE = 100;
+const CHAT_MESSAGE_INCLUDE = {
+  user: {
+    select: {
+      id: true,
+      username: true,
+      usernameColor: true,
+      profilePicture: true,
+    },
+  },
+  reactions: {
+    select: {
+      emoji: true,
+      user: {
+        select: {
+          username: true,
+        },
+      },
+    },
+  },
+  replyTo: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          usernameColor: true,
+          profilePicture: true,
+        },
+      },
+    },
+  },
+} as const;
 
 const serializeChatPoll = (poll: ActiveChatPoll, viewerUserId?: string) => {
   const totalVotes = poll.options.reduce((sum, option) => sum + option.voterIds.size, 0);
@@ -389,6 +422,66 @@ const buildChatMessagePayload = async (
         }
       : null,
     timestamp: message.createdAt.toISOString(),
+  };
+};
+
+const fetchChatHistoryPage = async (
+  beforeMessageId?: string | null,
+  limit: number = CHAT_HISTORY_PAGE_SIZE
+) => {
+  const messages = await prisma.chatMessage.findMany({
+    take: limit + 1,
+    ...(beforeMessageId
+      ? {
+          cursor: { id: beforeMessageId },
+          skip: 1,
+        }
+      : {}),
+    orderBy: { createdAt: 'desc' },
+    include: CHAT_MESSAGE_INCLUDE,
+  });
+
+  const hasMore = messages.length > limit;
+  const pageMessages = hasMore ? messages.slice(0, limit) : messages;
+  const senderIds = [
+    ...new Set(pageMessages.map((message) => message.userId).filter((id): id is string => Boolean(id))),
+  ];
+  const [leaderboardState, badgeMap, clanTagMap] = await Promise.all([
+    getTopLeaderboardIds(),
+    getBatchEquippedBadges(senderIds),
+    getBatchClanTags(senderIds),
+  ]);
+
+  return {
+    hasMore,
+    messages: pageMessages.reverse().map((message) => ({
+      id: message.id,
+      type: message.type ?? 'user',
+      userId: message.userId ?? null,
+      username: message.user?.username ?? CHAT_SYSTEM_USERNAME,
+      usernameColor: message.user?.usernameColor ?? null,
+      profilePicture: message.user?.profilePicture ?? null,
+      message: message.message,
+      imageUrl: message.imageUrl ?? null,
+      pinned: message.pinned,
+      pinnedAt: message.pinnedAt ? message.pinnedAt.toISOString() : null,
+      isTopMoney: message.userId ? leaderboardState.topMoneyIds.has(message.userId) : false,
+      isTopAura: message.userId ? leaderboardState.topAuraIds.has(message.userId) : false,
+      badges: message.userId ? badgeMap.get(message.userId) ?? [] : [],
+      clanTag: message.userId ? clanTagMap.get(message.userId) ?? null : null,
+      reactions: summarizeReactions(message.reactions),
+      replyTo: message.replyTo
+        ? {
+            id: message.replyTo.id,
+            userId: message.replyTo.userId ?? null,
+            username: message.replyTo.user?.username ?? CHAT_SYSTEM_USERNAME,
+            usernameColor: message.replyTo.user?.usernameColor ?? null,
+            message: message.replyTo.message,
+            imageUrl: message.replyTo.imageUrl ?? null,
+          }
+        : null,
+      timestamp: message.createdAt.toISOString(),
+    })),
   };
 };
 
@@ -612,79 +705,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     // Join global chat room
     socket.join('global-chat');
     
-    const { topMoneyIds, topAuraIds } = await getTopLeaderboardIds();
-
-    // Send chat history with user cosmetics
-    const messages = await prisma.chatMessage.findMany({
-      take: 100,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            usernameColor: true,
-            profilePicture: true,
-          },
-        },
-        reactions: {
-          select: {
-            emoji: true,
-            user: {
-              select: {
-                username: true,
-              },
-            },
-          },
-        },
-        replyTo: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                usernameColor: true,
-                profilePicture: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    // Batch-fetch equipped badges for all unique senders
-    const uniqueSenderIds = [...new Set(messages.map((m) => m.userId).filter((id): id is string => Boolean(id)))];
-    const badgeMap = await getBatchEquippedBadges(uniqueSenderIds);
-
-    socket.emit('chat:history', {
-      messages: messages.reverse().map((m) => ({
-        id: m.id,
-        type: m.type ?? 'user',
-        userId: m.userId ?? null,
-        username: m.user?.username ?? CHAT_SYSTEM_USERNAME,
-        usernameColor: m.user?.usernameColor ?? null,
-        profilePicture: m.user?.profilePicture ?? null,
-        message: m.message,
-        imageUrl: m.imageUrl ?? null,
-        pinned: m.pinned,
-        pinnedAt: m.pinnedAt ? m.pinnedAt.toISOString() : null,
-        isTopMoney: m.userId ? topMoneyIds.has(m.userId) : false,
-        isTopAura: m.userId ? topAuraIds.has(m.userId) : false,
-        badges: m.userId ? badgeMap.get(m.userId) ?? [] : [],
-        reactions: summarizeReactions(m.reactions),
-        replyTo: m.replyTo
-          ? {
-              id: m.replyTo.id,
-              userId: m.replyTo.userId ?? null,
-              username: m.replyTo.user?.username ?? CHAT_SYSTEM_USERNAME,
-              usernameColor: m.replyTo.user?.usernameColor ?? null,
-              message: m.replyTo.message,
-              imageUrl: m.replyTo.imageUrl ?? null,
-            }
-          : null,
-        timestamp: m.createdAt.toISOString(),
-      })),
-    });
+    socket.emit('chat:history', await fetchChatHistoryPage());
 
     emitChatPollStateToSocket(socket, userId);
     
@@ -915,6 +936,13 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   // On-demand: client requests the full online users list (with pages)
   socket.on('chat:request-online-users', async () => {
     await sendDisplayedOnlineState(socket);
+  });
+
+  socket.on('chat:load-older', async (data?: { beforeMessageId?: string | null }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+
+    socket.emit('chat:history-older', await fetchChatHistoryPage(data?.beforeMessageId ?? null));
   });
 
   socket.on('chat:poll-create', async (data: { question?: string; options?: string[] }) => {

@@ -19,6 +19,7 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   flappy_bird: 'Flappy Bird',
   chrome_dino: 'Chrome Dino',
   snake: 'Snake',
+  blockblast: 'BlockBlast',
   crossy_road: 'Crossy Road',
   stack_tower: 'Stack Tower',
   geometry_dash: 'Geometry Dash',
@@ -118,6 +119,18 @@ const GAME_REWARDS = {
       { minScore: 220, moneyReward: 90, auraBonus: 10 },
       { minScore: 320, moneyReward: 145, auraBonus: 16 },
       { minScore: 460, moneyReward: 230, auraBonus: 24 },
+    ],
+  },
+  blockblast: {
+    minScoreForReward: 50,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 50, moneyReward: 16, auraBonus: 1 },
+      { minScore: 120, moneyReward: 38, auraBonus: 4 },
+      { minScore: 220, moneyReward: 72, auraBonus: 8 },
+      { minScore: 360, moneyReward: 120, auraBonus: 12 },
+      { minScore: 550, moneyReward: 185, auraBonus: 18 },
+      { minScore: 800, moneyReward: 280, auraBonus: 26 },
     ],
   },
   stack_tower: {
@@ -431,6 +444,32 @@ function calculateSnakeRewards(score: number, isNewHighScore: boolean): { money:
   if (isNewHighScore) {
     moneyReward += Math.min(Math.floor(score / 45) * 4, 72);
     auraReward += Math.min(Math.floor(score / 80), 10);
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+function calculateBlockBlastRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.blockblast;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    moneyReward += Math.min(Math.floor(score / 70) * 4, 96);
+    auraReward += Math.min(Math.floor(score / 120), 12);
   }
 
   return { money: moneyReward, aura: auraReward };
@@ -1084,6 +1123,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       const rewards = calculateSnakeRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
+    } else if (gameType === 'blockblast') {
+      const rewards = calculateBlockBlastRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'stack_tower') {
       const rewards = calculateStackTowerRewards(score, isNewHighScore);
       moneyReward = rewards.money;
@@ -1393,6 +1436,11 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
     } else if (gameType === 'snake') {
+      await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
+      if (won) {
+        await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
+      }
+    } else if (gameType === 'blockblast') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);

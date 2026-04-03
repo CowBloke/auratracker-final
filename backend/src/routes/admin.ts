@@ -369,20 +369,6 @@ const extractGameTypeFromMetadata = (metadata: string | null): string | null => 
   }
 };
 
-const extractDurationSecondsFromMetadata = (metadata: string | null): number | null => {
-  if (!metadata) return null;
-  try {
-    const parsed = JSON.parse(metadata) as Record<string, unknown>;
-    const rawDuration = parsed.duration;
-    if (typeof rawDuration !== 'number' || !Number.isFinite(rawDuration) || rawDuration <= 0) {
-      return null;
-    }
-    return rawDuration;
-  } catch {
-    return null;
-  }
-};
-
 type SnapshotUser = {
   userId?: string | null;
   username?: string | null;
@@ -398,6 +384,136 @@ const parseSnapshotUsers = (raw: string): SnapshotUser[] => {
   } catch {
     return [];
   }
+};
+
+const GAME_PAGE_PATH_TO_TYPE: Record<string, string> = {
+  '/games/2048': 'game_2048',
+  '/games/ball-arena': 'ball_arena',
+  '/games/bataille-navale': 'battleship',
+  '/games/bomb-party': 'bombparty',
+  '/games/casino': 'casino',
+  '/games/chrome-dino': 'chrome_dino',
+  '/games/crossy-road': 'crossy_road',
+  '/games/doodle-jump': 'doodle_jump',
+  '/games/eaglercraft': 'eaglercraft',
+  '/games/echecs': 'chess',
+  '/games/flappy-bird': 'flappy_bird',
+  '/games/fruit-ninja': 'fruit_ninja',
+  '/games/geometry-dash': 'geometry_dash',
+  '/games/goyave-empire': 'goyave_empire',
+  '/games/hexgl': 'hexgl',
+  '/games/knife-hit': 'knife_hit',
+  '/games/logic-lab': 'logic_lab',
+  '/games/minesweeper': 'minesweeper',
+  '/games/morpion': 'morpion',
+  '/games/opengd': 'opengd',
+  '/games/petit-bac': 'petit_bac',
+  '/games/poker': 'poker',
+  '/games/polytrack': 'polytrack',
+  '/games/puissance-quatre': 'puissance_4',
+  '/games/qs-watermelon': 'qs_watermelon',
+  '/games/racer': 'racer',
+  '/games/russian-roulette': 'russian_roulette',
+  '/games/snake': 'snake',
+  '/games/solitaire': 'solitaire',
+  '/games/stack-tower': 'stack_tower',
+  '/games/subway-surfers': 'subway_surfers',
+  '/games/tetris': 'tetris',
+  '/games/uno': 'uno',
+};
+
+const getGameTypeFromCurrentPage = (currentPage: unknown): string | null => {
+  const normalizedPage = normalizeTrackedPagePath(currentPage);
+  if (!normalizedPage) return null;
+  return GAME_PAGE_PATH_TO_TYPE[normalizedPage] ?? null;
+};
+
+type SnapshotRecord = {
+  createdAt: Date;
+  usernames: string;
+};
+
+const buildSnapshotWindow = (
+  snapshotBeforeStart: SnapshotRecord | null,
+  snapshotsInRange: SnapshotRecord[],
+  snapshotAfterEnd: SnapshotRecord | null,
+) => (
+  [snapshotBeforeStart, ...snapshotsInRange, snapshotAfterEnd]
+    .filter((snapshot): snapshot is SnapshotRecord => Boolean(snapshot))
+    .filter((snapshot, index, array) => (
+      array.findIndex((entry) => entry.createdAt.getTime() === snapshot.createdAt.getTime()) === index
+    ))
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+);
+
+const addSecondsToMap = (map: Map<string, number>, key: string, seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return;
+  map.set(key, (map.get(key) ?? 0) + seconds);
+};
+
+const addDurationToHourlyBuckets = (
+  buckets: ReturnType<typeof createHourlyBuckets>,
+  gameType: string,
+  intervalStartMs: number,
+  intervalEndMs: number,
+) => {
+  let cursor = intervalStartMs;
+
+  while (cursor < intervalEndMs) {
+    const current = new Date(cursor);
+    const hourEnd = new Date(current);
+    hourEnd.setMinutes(59, 59, 999);
+
+    const segmentEnd = Math.min(intervalEndMs, hourEnd.getTime() + 1);
+    const segmentSeconds = (segmentEnd - cursor) / 1000;
+
+    if (segmentSeconds > 0) {
+      const bucket = buckets[current.getHours()];
+      bucket.values[gameType] = (bucket.values[gameType] ?? 0) + segmentSeconds;
+      bucket.total += segmentSeconds;
+    }
+
+    cursor = segmentEnd;
+  }
+};
+
+const collectGameTimeFromSnapshots = (
+  snapshots: SnapshotRecord[],
+  start: Date,
+  end: Date,
+) => {
+  const totalSecondsByUser = new Map<string, number>();
+  const totalSecondsByGame = new Map<string, number>();
+  const gameDurationBuckets = createHourlyBuckets();
+
+  for (let index = 0; index < snapshots.length - 1; index += 1) {
+    const currentSnapshot = snapshots[index];
+    const nextSnapshot = snapshots[index + 1];
+    const intervalStartMs = Math.max(currentSnapshot.createdAt.getTime(), start.getTime());
+    const intervalEndMs = Math.min(nextSnapshot.createdAt.getTime(), end.getTime());
+    const durationSeconds = (intervalEndMs - intervalStartMs) / 1000;
+
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+      continue;
+    }
+
+    for (const user of parseSnapshotUsers(currentSnapshot.usernames)) {
+      if (typeof user.userId !== 'string' || user.userId === '') continue;
+
+      const gameType = getGameTypeFromCurrentPage(user.currentPage);
+      if (!gameType) continue;
+
+      addSecondsToMap(totalSecondsByUser, user.userId, durationSeconds);
+      addSecondsToMap(totalSecondsByGame, gameType, durationSeconds);
+      addDurationToHourlyBuckets(gameDurationBuckets, gameType, intervalStartMs, intervalEndMs);
+    }
+  }
+
+  return {
+    totalSecondsByUser,
+    totalSecondsByGame,
+    gameDurationBuckets,
+  };
 };
 
 // Middleware to check if user is admin
@@ -1772,6 +1888,95 @@ router.delete('/users/:id', authMiddleware, requireAdmin, async (req: AuthReques
   } catch (error) {
     console.error('Admin delete user error:', error);
     res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+router.get('/chat/export', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const messages = await prisma.chatMessage.findMany({
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+            profilePicture: true,
+          },
+        },
+        replyTo: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                usernameColor: true,
+                profilePicture: true,
+              },
+            },
+          },
+        },
+        reactions: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    logAdmin('chat_export', req.user!.id, undefined, undefined, undefined, {
+      messagesExported: messages.length,
+    });
+
+    const exportedAt = new Date();
+    const payload = {
+      exportedAt: exportedAt.toISOString(),
+      messageCount: messages.length,
+      messages: messages.map((message) => ({
+        id: message.id,
+        userId: message.userId,
+        type: message.type,
+        message: message.message,
+        imageUrl: message.imageUrl,
+        replyToId: message.replyToId,
+        pinned: message.pinned,
+        pinnedAt: message.pinnedAt?.toISOString() ?? null,
+        createdAt: message.createdAt.toISOString(),
+        user: message.user,
+        replyTo: message.replyTo ? {
+          id: message.replyTo.id,
+          userId: message.replyTo.userId,
+          type: message.replyTo.type,
+          message: message.replyTo.message,
+          imageUrl: message.replyTo.imageUrl,
+          pinned: message.replyTo.pinned,
+          pinnedAt: message.replyTo.pinnedAt?.toISOString() ?? null,
+          createdAt: message.replyTo.createdAt.toISOString(),
+          user: message.replyTo.user,
+        } : null,
+        reactions: message.reactions.map((reaction) => ({
+          id: reaction.id,
+          emoji: reaction.emoji,
+          createdAt: reaction.createdAt.toISOString(),
+          userId: reaction.userId,
+          user: reaction.user,
+        })),
+      })),
+    };
+
+    const fileDate = exportedAt.toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="chat-export-${fileDate}.json"`);
+    res.send(JSON.stringify(payload, null, 2));
+  } catch (error) {
+    console.error('Admin chat export error:', error);
+    res.status(500).json({ error: 'Failed to export chat messages' });
   }
 });
 
@@ -3432,9 +3637,19 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
       return res.status(400).json({ error: 'Invalid date' });
     }
 
-    const [snapshots, gameLogs] = await Promise.all([
+    const [snapshotBeforeStart, snapshotsInRange, snapshotAfterEnd, gameLogs] = await Promise.all([
+      prisma.onlineSnapshot.findFirst({
+        where: { createdAt: { lt: start } },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true, usernames: true },
+      }),
       prisma.onlineSnapshot.findMany({
         where: { createdAt: { gte: start, lte: end } },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true, usernames: true },
+      }),
+      prisma.onlineSnapshot.findFirst({
+        where: { createdAt: { gt: end } },
         orderBy: { createdAt: 'asc' },
         select: { createdAt: true, usernames: true },
       }),
@@ -3449,10 +3664,12 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
       }),
     ]);
 
+    const snapshots = buildSnapshotWindow(snapshotBeforeStart, snapshotsInRange, snapshotAfterEnd);
+
     const pageBuckets = createHourlyBuckets();
     const pageTotals = new Map<string, number>();
 
-    for (const snapshot of snapshots) {
+    for (const snapshot of snapshotsInRange) {
       let users: Array<{ currentPage?: string | null }> = [];
       try {
         const parsed = JSON.parse(snapshot.usernames) as unknown;
@@ -3503,8 +3720,10 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
 
     const gameBuckets = createHourlyBuckets();
     const gameTotals = new Map<string, number>();
-    const gameDurationBuckets = createHourlyBuckets();
-    const gameDurationTotals = new Map<string, number>();
+    const {
+      totalSecondsByGame: gameDurationTotals,
+      gameDurationBuckets,
+    } = collectGameTimeFromSnapshots(snapshots, start, end);
 
     for (const log of gameLogs) {
       const gameType = extractGameTypeFromMetadata(log.metadata);
@@ -3514,16 +3733,6 @@ router.get('/activity-breakdown', authMiddleware, requireAdmin, async (req: Auth
       bucket.values[gameType] = (bucket.values[gameType] ?? 0) + 1;
       bucket.total += 1;
       gameTotals.set(gameType, (gameTotals.get(gameType) ?? 0) + 1);
-
-      if (log.action === 'game_complete') {
-        const durationSeconds = extractDurationSecondsFromMetadata(log.metadata);
-        if (durationSeconds !== null) {
-          const durationBucket = gameDurationBuckets[log.createdAt.getHours()];
-          durationBucket.values[gameType] = (durationBucket.values[gameType] ?? 0) + durationSeconds;
-          durationBucket.total += durationSeconds;
-          gameDurationTotals.set(gameType, (gameDurationTotals.get(gameType) ?? 0) + durationSeconds);
-        }
-      }
     }
 
     const topGames = Array.from(gameTotals.entries())
@@ -4247,8 +4456,8 @@ router.get('/playtime-leaderboard', authMiddleware, requireAdmin, async (req: Au
         if (!startDate || !endDate) {
           return res.status(400).json({ error: 'startDate and endDate required for custom period' });
         }
-        start = new Date(startDate);
-        end = new Date(endDate);
+        start = parseLogDateBoundary(startDate, 'start') ?? new Date('invalid');
+        end = parseLogDateBoundary(endDate, 'end') ?? new Date('invalid');
         if (isNaN(start.getTime()) || isNaN(end.getTime())) {
           return res.status(400).json({ error: 'Invalid date format' });
         }
@@ -4290,31 +4499,8 @@ router.get('/playtime-leaderboard', authMiddleware, requireAdmin, async (req: Au
       }),
     ]);
 
-    const snapshots = [snapshotBeforeStart, ...snapshotsInRange, snapshotAfterEnd]
-      .filter((snapshot): snapshot is { createdAt: Date; usernames: string } => Boolean(snapshot))
-      .filter((snapshot, index, array) => (
-        array.findIndex((entry) => entry.createdAt.getTime() === snapshot.createdAt.getTime()) === index
-      ))
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-
-    const screenTimeByUser = new Map<string, number>();
-
-    for (let index = 0; index < snapshots.length - 1; index += 1) {
-      const currentSnapshot = snapshots[index];
-      const nextSnapshot = snapshots[index + 1];
-      const intervalStart = Math.max(currentSnapshot.createdAt.getTime(), start.getTime());
-      const intervalEnd = Math.min(nextSnapshot.createdAt.getTime(), end.getTime());
-      const durationSeconds = (intervalEnd - intervalStart) / 1000;
-
-      if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-        continue;
-      }
-
-      for (const user of parseSnapshotUsers(currentSnapshot.usernames)) {
-        if (typeof user.userId !== 'string' || user.userId === '') continue;
-        screenTimeByUser.set(user.userId, (screenTimeByUser.get(user.userId) ?? 0) + durationSeconds);
-      }
-    }
+    const snapshots = buildSnapshotWindow(snapshotBeforeStart, snapshotsInRange, snapshotAfterEnd);
+    const { totalSecondsByUser: screenTimeByUser } = collectGameTimeFromSnapshots(snapshots, start, end);
 
     const gamesPlayedByUser = new Map<string, number>();
     for (const log of gameLogs) {

@@ -123,6 +123,18 @@ const games: Game[] = [
     hasRewards: true,
   },
   {
+    id: 'blockblast',
+    pageKey: 'game-blockblast',
+    name: 'BlockBlast',
+    description: 'Le port Blockerino: pose des blocs, casse lignes et colonnes, puis tiens jusqu à ce qu aucun placement ne soit possible.',
+    type: 'Logique',
+    emoji: '🟪',
+    image: getGameImage('blockblast'),
+    statsKeys: ['blockblast'],
+    releaseRank: 38,
+    hasRewards: true,
+  },
+  {
     id: 'logic-lab',
     pageKey: 'game-logic-lab',
     name: 'Sudoku',
@@ -586,6 +598,9 @@ export default function Games() {
     }
     if (gameId === 'minesweeper') {
       return '/games/minesweeper';
+    }
+    if (gameId === 'blockblast') {
+      return '/games/blockblast';
     }
     if (gameId === 'solitaire') {
       return '/games/solitaire';

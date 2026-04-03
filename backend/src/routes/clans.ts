@@ -25,6 +25,8 @@ const CLAN_WAR_MIN_MEMBERS = 3;
 const CLAN_WAR_STAMINA_PER_24H = 3;
 const CLAN_WAR_FORTIFICATIONS_PER_MEMBER = 2;
 const CLAN_WAR_HISTORY_LIMIT = 5;
+const CLAN_WAR_STARTING_TROPHIES = 1000;
+const CLAN_WAR_MIN_TROPHIES = 0;
 
 const clanMemberUserSelect = {
   id: true,
@@ -315,6 +317,60 @@ const addHours = (date: Date, hours: number) => new Date(date.getTime() + hours 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const getRollingWindowStart = (hours: number) => new Date(Date.now() - hours * 60 * 60 * 1000);
+const getTrophyGap = (a: number, b: number) => Math.abs(a - b);
+
+const getWarMarginBonus = (scoreGap: number) => {
+  if (scoreGap >= 90) return 18;
+  if (scoreGap >= 65) return 14;
+  if (scoreGap >= 40) return 10;
+  if (scoreGap >= 20) return 6;
+  if (scoreGap >= 10) return 3;
+  return 0;
+};
+
+const calculateClanWarTrophyChanges = ({
+  attackerScore,
+  defenderScore,
+  attackerTrophies,
+  defenderTrophies,
+}: {
+  attackerScore: number;
+  defenderScore: number;
+  attackerTrophies: number;
+  defenderTrophies: number;
+}) => {
+  const scoreGap = Math.abs(attackerScore - defenderScore);
+  const marginBonus = getWarMarginBonus(scoreGap);
+
+  if (attackerScore === defenderScore) {
+    const diff = attackerTrophies - defenderTrophies;
+    if (Math.abs(diff) < 50) {
+      return {
+        attackerChange: 0,
+        defenderChange: 0,
+      };
+    }
+
+    const swing = clamp(4 + Math.floor(Math.abs(diff) / 125), 4, 12);
+    return diff > 0
+      ? { attackerChange: -swing, defenderChange: swing }
+      : { attackerChange: swing, defenderChange: -swing };
+  }
+
+  const attackerWon = attackerScore > defenderScore;
+  const winnerTrophies = attackerWon ? attackerTrophies : defenderTrophies;
+  const loserTrophies = attackerWon ? defenderTrophies : attackerTrophies;
+  const trophyDiff = loserTrophies - winnerTrophies;
+  const upsetBonus = trophyDiff > 0 ? clamp(Math.floor(trophyDiff / 40), 0, 16) : 0;
+  const protection = trophyDiff < 0 ? clamp(Math.floor(Math.abs(trophyDiff) / 55), 0, 10) : 0;
+
+  const winnerGain = 22 + marginBonus + upsetBonus;
+  const loserLoss = clamp(16 + Math.floor(marginBonus * 0.8) - protection, 6, 32);
+
+  return attackerWon
+    ? { attackerChange: winnerGain, defenderChange: -loserLoss }
+    : { attackerChange: -loserLoss, defenderChange: winnerGain };
+};
 
 const getDefenseMaxDurability = (type: DefenseType, level: number) =>
   defenseConfig[type].baseDurability + Math.max(0, level - 1) * defenseConfig[type].durabilityPerLevel;
@@ -341,6 +397,10 @@ const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   tagText: clan.tagText ?? null,
   tagStyle: clan.tagStyle ?? null,
   slotUpgraded: clan.slotUpgraded,
+  warTrophies: clan.warTrophies,
+  warWins: clan.warWins,
+  warLosses: clan.warLosses,
+  warDraws: clan.warDraws,
   clanBankMoney: clan.clanBankMoney,
   level: clan.level,
 });
@@ -596,6 +656,10 @@ const mapWar = async (
     attackerScore: war.attackerScore,
     defenderScore: war.defenderScore,
     scoreGap: Math.abs(war.attackerScore - war.defenderScore),
+    trophyChanges: {
+      attacker: war.attackerTrophyChange,
+      defender: war.defenderTrophyChange,
+    },
     viewerSide: viewerClanId
       ? isViewerAttacker
         ? 'ATTACKER'
@@ -613,10 +677,20 @@ const mapWar = async (
       winner: {
         money: war.winnerRewardMoney,
         aura: war.winnerRewardAura,
+        trophies: war.winnerClanId === null
+          ? 0
+          : war.winnerClanId === war.attackerClanId
+            ? war.attackerTrophyChange
+            : war.defenderTrophyChange,
       },
       loser: {
         money: war.loserRewardMoney,
         aura: war.loserRewardAura,
+        trophies: war.winnerClanId === null
+          ? Math.min(war.attackerTrophyChange, war.defenderTrophyChange)
+          : war.winnerClanId === war.attackerClanId
+            ? war.defenderTrophyChange
+            : war.attackerTrophyChange,
       },
     },
     defenses: {
@@ -699,6 +773,74 @@ const getClanCooldownEndsAt = async (clanId: string) => {
   return cooldownEndsAt > new Date() ? cooldownEndsAt : null;
 };
 
+const getClosestWarOpponents = async (clanId: string) => {
+  const sourceClan = await prisma.clan.findUnique({
+    where: { id: clanId },
+    include: clanSummaryInclude,
+  });
+
+  if (!sourceClan) {
+    return {
+      sourceClan: null,
+      opponents: [],
+      closestGap: null,
+    };
+  }
+
+  const clans = await prisma.clan.findMany({
+    where: {
+      id: { not: clanId },
+    },
+    include: clanSummaryInclude,
+    orderBy: [
+      { warTrophies: 'asc' },
+      { createdAt: 'desc' },
+    ],
+  });
+
+  const availableCandidates: Array<ReturnType<typeof mapClanSummary> & { trophyGap: number }> = [];
+
+  for (const candidate of clans) {
+    if (candidate.members.length < CLAN_WAR_MIN_MEMBERS) continue;
+
+    const [activeWar, cooldownEndsAt] = await Promise.all([
+      getCurrentWarForClan(candidate.id),
+      getClanCooldownEndsAt(candidate.id),
+    ]);
+
+    if (activeWar || cooldownEndsAt) continue;
+
+    availableCandidates.push({
+      ...mapClanSummary(candidate),
+      trophyGap: getTrophyGap(sourceClan.warTrophies, candidate.warTrophies),
+    });
+  }
+
+  if (availableCandidates.length === 0) {
+    return {
+      sourceClan,
+      opponents: [],
+      closestGap: null,
+    };
+  }
+
+  const closestGap = Math.min(...availableCandidates.map((candidate) => candidate.trophyGap));
+  const opponents = availableCandidates
+    .filter((candidate) => candidate.trophyGap === closestGap)
+    .sort((a, b) => {
+      if (a.warTrophies !== b.warTrophies) {
+        return a.warTrophies - b.warTrophies;
+      }
+      return a.name.localeCompare(b.name, 'fr');
+    });
+
+  return {
+    sourceClan,
+    opponents,
+    closestGap,
+  };
+};
+
 const notifyClanMembers = async (userIds: string[], payload: Omit<Parameters<typeof createNotification>[0], 'userId'>) => {
   await Promise.allSettled(
     userIds.map((userId) => createNotification({ userId, ...payload }))
@@ -737,6 +879,12 @@ const finalizeClanWar = async (warId: string) => {
   const attackerWon = war.attackerScore > war.defenderScore;
   const defenderWon = war.defenderScore > war.attackerScore;
   const winnerClanId = attackerWon ? war.attackerClanId : defenderWon ? war.defenderClanId : null;
+  const trophyChanges = calculateClanWarTrophyChanges({
+    attackerScore: war.attackerScore,
+    defenderScore: war.defenderScore,
+    attackerTrophies: war.attackerTrophiesBefore,
+    defenderTrophies: war.defenderTrophiesBefore,
+  });
 
   const winnerContribution = new Map<string, number>();
   for (const attack of war.attacks) {
@@ -761,6 +909,28 @@ const finalizeClanWar = async (warId: string) => {
         completedAt: now,
         winnerClanId,
         winnerUserId,
+        attackerTrophyChange: trophyChanges.attackerChange,
+        defenderTrophyChange: trophyChanges.defenderChange,
+      },
+    });
+
+    await tx.clan.update({
+      where: { id: war.attackerClanId },
+      data: {
+        warTrophies: Math.max(CLAN_WAR_MIN_TROPHIES, war.attackerTrophiesBefore + trophyChanges.attackerChange),
+        warWins: { increment: attackerWon ? 1 : 0 },
+        warLosses: { increment: defenderWon ? 1 : 0 },
+        warDraws: { increment: winnerClanId ? 0 : 1 },
+      },
+    });
+
+    await tx.clan.update({
+      where: { id: war.defenderClanId },
+      data: {
+        warTrophies: Math.max(CLAN_WAR_MIN_TROPHIES, war.defenderTrophiesBefore + trophyChanges.defenderChange),
+        warWins: { increment: defenderWon ? 1 : 0 },
+        warLosses: { increment: attackerWon ? 1 : 0 },
+        warDraws: { increment: winnerClanId ? 0 : 1 },
       },
     });
 
@@ -802,7 +972,7 @@ const finalizeClanWar = async (warId: string) => {
       notifyClanMembers(attackerMemberIds, {
         type: 'CLAN_WAR_COMPLETED',
         title: 'Guerre terminee',
-        body: `Le conflit contre ${war.defenderClan.name} se termine sur une egalite.`,
+        body: `Le conflit contre ${war.defenderClan.name} se termine sur une egalite (${trophyChanges.attackerChange >= 0 ? '+' : ''}${trophyChanges.attackerChange} trophées).`,
         data: { warId: war.id, clanId: war.attackerClanId },
         link: '/clans',
         icon: 'swords',
@@ -810,7 +980,7 @@ const finalizeClanWar = async (warId: string) => {
       notifyClanMembers(defenderMemberIds, {
         type: 'CLAN_WAR_COMPLETED',
         title: 'Guerre terminee',
-        body: `Le conflit contre ${war.attackerClan.name} se termine sur une egalite.`,
+        body: `Le conflit contre ${war.attackerClan.name} se termine sur une egalite (${trophyChanges.defenderChange >= 0 ? '+' : ''}${trophyChanges.defenderChange} trophées).`,
         data: { warId: war.id, clanId: war.defenderClanId },
         link: '/clans',
         icon: 'swords',
@@ -823,7 +993,7 @@ const finalizeClanWar = async (warId: string) => {
     notifyClanMembers(winnerClanId === war.attackerClanId ? attackerMemberIds : defenderMemberIds, {
       type: 'CLAN_WAR_WON',
       title: 'Victoire de clan',
-      body: `${winnerName} remporte la guerre et empoche les meilleures récompenses.`,
+      body: `${winnerName} remporte la guerre et gagne ${winnerClanId === war.attackerClanId ? trophyChanges.attackerChange : trophyChanges.defenderChange} trophées.`,
       data: { warId: war.id, clanId: winnerClanId },
       link: '/clans',
       icon: 'trophy',
@@ -831,7 +1001,7 @@ const finalizeClanWar = async (warId: string) => {
     notifyClanMembers(winnerClanId === war.attackerClanId ? defenderMemberIds : attackerMemberIds, {
       type: 'CLAN_WAR_LOST',
       title: 'Défaite de clan',
-      body: `${winnerName} a remporté la guerre. Les récompenses de consolation ont été versées.`,
+      body: `${winnerName} a remporté la guerre. Votre clan perd ${Math.abs(winnerClanId === war.attackerClanId ? trophyChanges.defenderChange : trophyChanges.attackerChange)} trophées.`,
       data: { warId: war.id, clanId: winnerClanId },
       link: '/clans',
       icon: 'shield',
@@ -886,26 +1056,11 @@ export const advanceClanWarsState = async () => {
 };
 
 const getEligibleOpponents = async (clanId: string) => {
-  const clans = await prisma.clan.findMany({
-    include: clanSummaryInclude,
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  const result = [];
-  for (const candidate of clans) {
-    if (candidate.id === clanId) continue;
-    if (candidate.members.length < CLAN_WAR_MIN_MEMBERS) continue;
-    const [activeWar, cooldownEndsAt] = await Promise.all([
-      getCurrentWarForClan(candidate.id),
-      getClanCooldownEndsAt(candidate.id),
-    ]);
-    if (activeWar || cooldownEndsAt) continue;
-    result.push(mapClanSummary(candidate));
-  }
-
-  return result;
+  const { opponents, closestGap } = await getClosestWarOpponents(clanId);
+  return {
+    opponents,
+    closestGap,
+  };
 };
 
 const getClanMembership = (clanId: string, userId: string) =>
@@ -1140,7 +1295,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     const isMember = clan.members.some((member) => member.userId === userId);
     const isLeader = clan.members.some((member) => member.userId === userId && member.isLeader);
 
-    const [pendingRequest, currentWar, warHistory, cooldownEndsAt, eligibleOpponents, clanOwnedItems, clanEffects] = await Promise.all([
+    const [pendingRequest, currentWar, warHistory, cooldownEndsAt, eligibleOpponentsResult, clanOwnedItems, clanEffects] = await Promise.all([
       userId
         ? prisma.clanJoinRequest.findUnique({
             where: {
@@ -1165,7 +1320,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         take: CLAN_WAR_HISTORY_LIMIT,
       }),
       getClanCooldownEndsAt(clan.id),
-      isLeader ? getEligibleOpponents(clan.id) : Promise.resolve([]),
+      isLeader ? getEligibleOpponents(clan.id) : Promise.resolve({ opponents: [], closestGap: null }),
       prisma.clanOwnedItem.findMany({
         where: { clanId: clan.id, quantity: { gt: 0 } },
         include: { item: true },
@@ -1214,9 +1369,14 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
         warHub: {
           currentWar: currentWar ? await mapWar(currentWar, isMember ? clan.id : null, userId) : null,
           history: await Promise.all(warHistory.map((war) => mapWar(war, isMember ? clan.id : null, userId))),
-          eligibleOpponents,
+          eligibleOpponents: eligibleOpponentsResult.opponents,
+          closestTrophyGap: eligibleOpponentsResult.closestGap,
           cooldownEndsAt,
-          canDeclareWar: isLeader && clan.members.length >= CLAN_WAR_MIN_MEMBERS && !currentWar && !cooldownEndsAt,
+          canDeclareWar: isLeader
+            && clan.members.length >= CLAN_WAR_MIN_MEMBERS
+            && !currentWar
+            && !cooldownEndsAt
+            && eligibleOpponentsResult.opponents.length > 0,
           minimumMembersRequired: CLAN_WAR_MIN_MEMBERS,
           attackTypes: getAttackTypes().map((type) => ({
             type,
@@ -1760,7 +1920,7 @@ router.post('/:id/war/declare', authMiddleware, async (req: AuthRequest, res: Re
       return res.status(400).json({ error: 'Choisis un clan adverse valide.' });
     }
 
-    const [leaderMembership, attackerClan, defenderClan, attackerWar, defenderWar, attackerCooldown, defenderCooldown] = await Promise.all([
+    const [leaderMembership, attackerClan, defenderClan, attackerWar, defenderWar, attackerCooldown, defenderCooldown, opponentSelection] = await Promise.all([
       prisma.clanMember.findUnique({
         where: {
           clanId_userId: {
@@ -1784,6 +1944,7 @@ router.post('/:id/war/declare', authMiddleware, async (req: AuthRequest, res: Re
       getCurrentWarForClan(targetClanId),
       getClanCooldownEndsAt(id),
       getClanCooldownEndsAt(targetClanId),
+      getClosestWarOpponents(id),
     ]);
 
     if (!leaderMembership?.isLeader) {
@@ -1808,6 +1969,18 @@ router.post('/:id/war/declare', authMiddleware, async (req: AuthRequest, res: Re
       return res.status(400).json({ error: 'Un des deux clans est encore en période de récupération.' });
     }
 
+    const closestOpponentIds = new Set(opponentSelection.opponents.map((opponent) => opponent.id));
+    if (!closestOpponentIds.has(targetClanId)) {
+      const closestOpponent = opponentSelection.opponents[0] ?? null;
+      if (!closestOpponent) {
+        return res.status(400).json({ error: 'Aucun adversaire disponible pour lancer une guerre actuellement.' });
+      }
+
+      return res.status(400).json({
+        error: `Tu peux seulement déclarer la guerre au clan disponible le plus proche en trophées. Match autorisé: ${closestOpponent.name} (${closestOpponent.warTrophies} trophées).`,
+      });
+    }
+
     const now = new Date();
     const endsAt = addHours(now, CLAN_WAR_DURATION_HOURS);
 
@@ -1819,6 +1992,8 @@ router.post('/:id/war/declare', authMiddleware, async (req: AuthRequest, res: Re
         status: 'ACTIVE',
         startsAt: now,
         endsAt,
+        attackerTrophiesBefore: attackerClan.warTrophies ?? CLAN_WAR_STARTING_TROPHIES,
+        defenderTrophiesBefore: defenderClan.warTrophies ?? CLAN_WAR_STARTING_TROPHIES,
         targetScore: CLAN_WAR_TARGET_SCORE,
       },
     });
@@ -2702,6 +2877,35 @@ router.put('/:id/image', authMiddleware, async (req: AuthRequest, res: Response)
   } catch (error) {
     console.error('Update clan image error:', error);
     res.status(500).json({ error: 'Failed to update clan image' });
+  }
+});
+
+// Update clan description (leader only)
+router.put('/:id/description', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const membership = await getClanMembership(id, userId);
+    if (!membership) return res.status(403).json({ error: 'Not a member' });
+    if (!membership.isLeader) return res.status(403).json({ error: 'Seul le chef peut modifier la description du clan.' });
+
+    const description = typeof req.body?.description === 'string' ? req.body.description.trim() : '';
+    if (description.length > 300) {
+      return res.status(400).json({ error: 'Description trop longue (max 300 caracteres).' });
+    }
+
+    const updated = await prisma.clan.update({
+      where: { id },
+      data: { description: description || null },
+      select: { id: true, description: true },
+    });
+
+    res.json({ success: true, description: updated.description });
+  } catch (error) {
+    console.error('Update clan description error:', error);
+    res.status(500).json({ error: 'Failed to update clan description' });
   }
 });
 

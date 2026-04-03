@@ -12,6 +12,7 @@ const BLOCKED_MESSAGE_KEY = 'blocked_message';
 const LOGIN_MESSAGE_KEY = 'login_message';
 const LOGIN_REGISTER_CTA_ENABLED_KEY = 'login_register_cta_enabled';
 const REFERRAL_ENABLED_KEY = 'referral_enabled';
+const REFERRAL_DASHBOARD_CARD_ENABLED_KEY = 'referral_dashboard_card_enabled';
 const DUEL_MATCHMAKING_ENABLED_KEY = 'duel_matchmaking_enabled';
 const DEFAULT_LANDING_PAGE_KEY = 'default_landing_page';
 const YOU_LOGO_ADMIN_ONLY_KEY = 'you_logo_admin_only';
@@ -46,6 +47,7 @@ router.get('/', async (_req, res) => {
       loginMessageSetting,
       loginRegisterCtaEnabledSetting,
       referralEnabledSetting,
+      referralDashboardCardEnabledSetting,
       duelMatchmakingEnabledSetting,
       defaultLandingPageSetting,
       youLogoAdminOnlySetting,
@@ -62,6 +64,7 @@ router.get('/', async (_req, res) => {
       prisma.gameSettings.findUnique({ where: { key: LOGIN_MESSAGE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: LOGIN_REGISTER_CTA_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: REFERRAL_ENABLED_KEY } }),
+      prisma.gameSettings.findUnique({ where: { key: REFERRAL_DASHBOARD_CARD_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: DUEL_MATCHMAKING_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: DEFAULT_LANDING_PAGE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: YOU_LOGO_ADMIN_ONLY_KEY } }),
@@ -109,6 +112,7 @@ router.get('/', async (_req, res) => {
       loginMessage: loginMessageSetting?.value ?? '',
       loginRegisterCtaEnabled: loginRegisterCtaEnabledSetting?.value !== 'false',
       referralEnabled: referralEnabledSetting?.value !== 'false',
+      referralDashboardCardEnabled: referralDashboardCardEnabledSetting?.value !== 'false',
       duelMatchmakingEnabled: duelMatchmakingEnabledSetting?.value !== 'false',
       defaultLandingPage: defaultLandingPageSetting?.value ?? '/dashboard',
       youLogoAdminOnly: youLogoAdminOnlySetting?.value === 'true',

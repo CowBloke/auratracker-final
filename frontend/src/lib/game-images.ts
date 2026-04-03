@@ -5,6 +5,7 @@ const GAME_IMAGE_BY_ID: Record<string, string> = {
   'aura-coin': '/images/games/auracoin.png',
   'ball-arena': '/images/games/ball.png',
   'bataille-navale': '/images/games/bataille.png',
+  blockblast: '/images/games/blockblast.png',
   'bomb-party': '/images/games/bomb.png',
   casino: '/images/games/casino.png',
   'clash-village': '/images/games/clash.png',

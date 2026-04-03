@@ -45,6 +45,8 @@ import {
   sackMember,
   repayLoan,
   rateBusiness,
+  createBusinessShareProposal,
+  respondToBusinessShareProposal,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
@@ -153,6 +155,14 @@ const ERROR_STATUS: Record<string, number> = {
   LOAN_NOT_ACTIVE: 400,
   LOAN_ALREADY_REPAID: 400,
   BORROWER_INSUFFICIENT_MONEY: 400,
+  SHARE_SELF_FORBIDDEN: 400,
+  INVALID_SHARE_PERCENT: 400,
+  INVALID_SHARE_AMOUNT: 400,
+  SHARE_PROPOSAL_ALREADY_PENDING: 400,
+  SHARE_PROPOSAL_NOT_FOUND: 404,
+  SHARE_PROPOSAL_REVIEW_FORBIDDEN: 403,
+  SHARE_PROPOSAL_ALREADY_RESOLVED: 400,
+  BUSINESS_SHARE_CAP_EXCEEDED: 400,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -241,6 +251,14 @@ const ERROR_MESSAGE: Record<string, string> = {
   LOAN_NOT_ACTIVE: 'Ce pret n est pas actif.',
   LOAN_ALREADY_REPAID: 'Ce pret a deja ete rembourse.',
   BORROWER_INSUFFICIENT_MONEY: 'L emprunteur n a pas assez de money pour rembourser.',
+  SHARE_SELF_FORBIDDEN: 'Tu ne peux pas proposer de devenir actionnaire de ton propre business.',
+  INVALID_SHARE_PERCENT: 'La part proposee doit etre comprise entre 0 et 100.',
+  INVALID_SHARE_AMOUNT: 'La somme proposee est invalide.',
+  SHARE_PROPOSAL_ALREADY_PENDING: 'Tu as deja une proposition d actionnariat en attente pour ce business.',
+  SHARE_PROPOSAL_NOT_FOUND: 'Proposition d actionnariat introuvable.',
+  SHARE_PROPOSAL_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette proposition d actionnariat.',
+  SHARE_PROPOSAL_ALREADY_RESOLVED: 'Cette proposition d actionnariat a deja ete traitee.',
+  BUSINESS_SHARE_CAP_EXCEEDED: 'La repartition du capital depasse 100%.',
 };
 
 async function requireYouAccess(req: AuthRequest, res: Response, next: () => void) {
@@ -349,6 +367,29 @@ router.post('/businesses/:businessId/buyout-offers', authMiddleware, requireYouA
     res.status(201).json({ offer });
   } catch (error) {
     handleRouteError(error, res, 'Create buyout offer error');
+  }
+});
+
+router.post('/businesses/:businessId/shareholder-proposals', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const proposal = await createBusinessShareProposal(req.user!.id, req.params.businessId, {
+      sharePercent: Number(req.body?.sharePercent ?? 0),
+      amount: Number(req.body?.amount ?? 0),
+      message: typeof req.body?.message === 'string' ? req.body.message : undefined,
+    });
+    res.status(201).json({ proposal });
+  } catch (error) {
+    handleRouteError(error, res, 'Create shareholder proposal error');
+  }
+});
+
+router.post('/shareholder-proposals/:proposalId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
+    const result = await respondToBusinessShareProposal(req.user!.id, req.params.proposalId, decision);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Respond shareholder proposal error');
   }
 });
 

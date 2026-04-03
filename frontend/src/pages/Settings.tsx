@@ -845,10 +845,6 @@ function ParrainageSection({
               </Badge>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={onClaim}>
-                <Sparkles className="mr-2 h-3.5 w-3.5" />
-                Réclamer
-              </Button>
               <Button variant="outline" size="sm" onClick={onCopy}>
                 <Copy className="mr-2 h-3.5 w-3.5" />
                 Copier

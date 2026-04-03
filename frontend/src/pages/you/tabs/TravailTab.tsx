@@ -21,6 +21,7 @@ function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b:
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-base font-semibold">{business.name}</p>
             {business.type ? <Pill label={business.type.label} color="bg-sky-400/15 text-sky-400" /> : null}
+            {business.isShared ? <Pill label={`Partagee · ${business.ownerSharePercent.toFixed(0)}% fondateur`} color="bg-amber-400/15 text-amber-300" /> : null}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Revenue: +{formatMoney(business.monthlyRevenue)}
@@ -40,7 +41,7 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
   const [cancellingOfferId, setCancellingOfferId] = useState<string | null>(null);
   const canCreateBusiness = data.ownedBusinesses.length < data.businessSlots;
   const unlockedLevel = data.unlockedBusinessLevel ?? 0;
-  const allBusinesses = [...data.ownedBusinesses, ...data.memberBusinesses];
+  const allBusinesses = [...data.ownedBusinesses, ...data.memberBusinesses, ...data.shareholderBusinesses];
   const inviteBusiness = inviteBusinessId ? allBusinesses.find((business) => business.id === inviteBusinessId) ?? null : null;
   const managedBusiness = managedBusinessId ? allBusinesses.find((business) => business.id === managedBusinessId) ?? null : null;
 
@@ -109,6 +110,30 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
               <p className="text-xs text-muted-foreground/60 px-1">Ces entreprises ne comptent pas dans ton quota de slots.</p>
             </div>
           )}
+          {data.shareholderBusinesses.length > 0 && (
+            <div className="space-y-4">
+              <SectionTitle>Participations actionnaires ({data.shareholderBusinesses.length})</SectionTitle>
+              {data.shareholderBusinesses.map((business) => (
+                <Card key={business.id}>
+                  <CardContent className="flex items-center gap-4 px-5 py-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/20">
+                      {(() => { const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2; return <Icon className="h-5 w-5 text-foreground" />; })()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-base font-semibold">{business.name}</p>
+                        <Pill label={`${business.viewerSharePercent.toFixed(0)}% a toi`} color="bg-amber-400/15 text-amber-300" />
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Proprietaire: {business.owner.username} · Investi: {formatMoney(business.viewerInvestedAmount)}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => setManagedBusinessId(business.id)}>Voir</Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
           {data.sentBuyoutOffers.length > 0 && (
             <div className="space-y-4">
               <SectionTitle>Offres de rachat envoyees ({data.sentBuyoutOffers.length})</SectionTitle>
@@ -121,6 +146,28 @@ export function TravailTab({ data, players, onReload }: { data: YouState; player
                       {offer.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{offer.message}"</p> : null}
                     </div>
                     {offer.status === 'PENDING' ? <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => void cancelBuyoutOffer(offer.id)} disabled={cancellingOfferId !== null}>Annuler</Button> : null}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {data.sentShareholderProposals.length > 0 && (
+            <div className="space-y-4">
+              <SectionTitle>Propositions actionnaires envoyees ({data.sentShareholderProposals.length})</SectionTitle>
+              {data.sentShareholderProposals.map((proposal) => (
+                <Card key={proposal.id}>
+                  <CardContent className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold">{proposal.business?.name ?? 'Business'}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {proposal.sharePercent.toLocaleString('fr-FR')}% · {formatMoney(proposal.amount)} · {proposal.status}
+                      </p>
+                      {proposal.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{proposal.message}"</p> : null}
+                    </div>
+                    <div className="text-xs text-muted-foreground sm:text-right">
+                      <p>Suggestion: {formatMoney(proposal.suggestedAmount)}</p>
+                      <p>Proprio: {proposal.owner.username}</p>
+                    </div>
                   </CardContent>
                 </Card>
               ))}

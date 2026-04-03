@@ -53,6 +53,9 @@ const formatMoney = (value: number | string) => {
   return numericValue.toLocaleString('fr-FR');
 };
 
+const formatSignedValue = (value: number) =>
+  `${value > 0 ? '+' : ''}${value.toLocaleString('fr-FR')}`;
+
 const formatDate = (value: string | null | undefined) => {
   if (!value) return 'N/A';
   return new Date(value).toLocaleString('fr-FR', {
@@ -261,6 +264,9 @@ export default function Clans() {
   const [imageEditOpen, setImageEditOpen] = useState(false);
   const [editImageUrl, setEditImageUrl] = useState('');
   const [savingImage, setSavingImage] = useState(false);
+  const [descriptionEditOpen, setDescriptionEditOpen] = useState(false);
+  const [editDescription, setEditDescription] = useState('');
+  const [savingDescription, setSavingDescription] = useState(false);
 
   // Banner item dialog state
   const [bannerItemDialogOpen, setBannerItemDialogOpen] = useState(false);
@@ -327,6 +333,11 @@ export default function Clans() {
       setTagStyle(parseClanTagStyle(selectedClan.tagStyle));
     }
   }, [selectedClan?.id]);
+
+  useEffect(() => {
+    setEditDescription(selectedClan?.description ?? '');
+    setDescriptionEditOpen(false);
+  }, [selectedClan?.id, selectedClan?.description]);
 
   useEffect(() => {
     if (!selectedClanId || !selectedClan?.viewer.isMember) {
@@ -908,6 +919,22 @@ export default function Clans() {
     }
   };
 
+  const handleSaveDescription = async () => {
+    if (!selectedClan || !selectedClan.viewer.isLeader) return;
+    try {
+      setSavingDescription(true);
+      const res = await clansApi.updateDescription(selectedClan.id, editDescription.trim() || null);
+      setSelectedClan((prev) => prev ? { ...prev, description: res.data.description } : prev);
+      setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, description: res.data.description } : c));
+      setDescriptionEditOpen(false);
+      toast({ title: 'Description mise à jour' });
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de modifier la description.', variant: 'destructive' });
+    } finally {
+      setSavingDescription(false);
+    }
+  };
+
   const handleSendChatMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedClan || !selectedClan.viewer.isMember) return;
@@ -1070,7 +1097,7 @@ export default function Clans() {
                   {/* Twitter-style clan profile header */}
                   <Card className={cn(panelClassName, "overflow-hidden")}>
                     {/* Banner */}
-                    <div className="relative h-28 overflow-hidden bg-gradient-to-br from-muted via-background to-muted/70">
+                    <div className="relative h-40 overflow-hidden bg-gradient-to-br from-muted via-background to-muted/70 sm:h-48 lg:h-56">
                       {selectedClan.banner ? (
                         <>
                           <img
@@ -1081,7 +1108,7 @@ export default function Clans() {
                           <div className="absolute inset-0 bg-black/20" />
                         </>
                       ) : null}
-                      <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-card to-transparent" />
                     </div>
 
                     <CardContent className="px-4 pb-5 pt-0">
@@ -1123,9 +1150,55 @@ export default function Clans() {
                           {selectedClan.viewer.isLeader ? <Crown className="h-4 w-4 text-amber-500" /> : null}
                         </div>
 
-                        {selectedClan.description ? (
-                          <p className="text-sm text-muted-foreground">{selectedClan.description}</p>
-                        ) : null}
+                        {descriptionEditOpen ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              value={editDescription}
+                              onChange={(event) => setEditDescription(event.target.value)}
+                              maxLength={300}
+                              rows={3}
+                              placeholder="Décris l'identité, le style de jeu et l'objectif du clan."
+                              disabled={savingDescription}
+                            />
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Button type="button" size="sm" onClick={handleSaveDescription} disabled={savingDescription}>
+                                {savingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                Enregistrer
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditDescription(selectedClan.description ?? '');
+                                  setDescriptionEditOpen(false);
+                                }}
+                                disabled={savingDescription}
+                              >
+                                Annuler
+                              </Button>
+                              <span className="text-xs text-muted-foreground">{editDescription.length}/300</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap items-start gap-2">
+                            <p className="text-sm text-muted-foreground">
+                              {selectedClan.description || 'Aucune description pour le moment.'}
+                            </p>
+                            {selectedClan.viewer.isLeader ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2"
+                                onClick={() => setDescriptionEditOpen(true)}
+                              >
+                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                                Modifier
+                              </Button>
+                            ) : null}
+                          </div>
+                        )}
 
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                           <span>
@@ -1133,6 +1206,10 @@ export default function Clans() {
                             /{selectedClan.maxMembers} membres
                           </span>
                           <span>{formatAura(selectedClan.totalAura)} aura</span>
+                          <span>
+                            <span className="font-medium text-foreground">{formatMoney(selectedClan.warTrophies)}</span>
+                            {' '}trophées
+                          </span>
                           <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Niv. {selectedClan.level}</Badge>
                           {!selectedClan.isPublic ? <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Prive</Badge> : null}
                         </div>
@@ -1645,6 +1722,20 @@ export default function Clans() {
                             <div className="flex flex-wrap gap-3">
                               <div className={mutedPanelClassName}>
                                 <div className="px-3 py-2">
+                                  <div className="text-xs text-muted-foreground">Trophées de guerre</div>
+                                  <div className="text-sm font-medium">{formatMoney(selectedClan.warTrophies)}</div>
+                                </div>
+                              </div>
+                              <div className={mutedPanelClassName}>
+                                <div className="px-3 py-2">
+                                  <div className="text-xs text-muted-foreground">Bilan</div>
+                                  <div className="text-sm">
+                                    {selectedClan.warWins}V • {selectedClan.warLosses}D • {selectedClan.warDraws}N
+                                  </div>
+                                </div>
+                              </div>
+                              <div className={mutedPanelClassName}>
+                                <div className="px-3 py-2">
                                   <div className="text-xs text-muted-foreground">Éligibilité</div>
                                   <div className="text-sm">
                                     {selectedClan.memberCount >= selectedClan.warHub.minimumMembersRequired
@@ -1663,6 +1754,14 @@ export default function Clans() {
                                   </div>
                                 </div>
                               </div>
+                              {selectedClan.warHub.closestTrophyGap !== null ? (
+                                <div className={mutedPanelClassName}>
+                                  <div className="px-3 py-2">
+                                    <div className="text-xs text-muted-foreground">Matchmaking</div>
+                                    <div className="text-sm">Écart mini: {selectedClan.warHub.closestTrophyGap} trophées</div>
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
                             {selectedClan.warHub.canDeclareWar ? (
                               <Button onClick={() => setWarDialogOpen(true)}>
@@ -1822,11 +1921,11 @@ export default function Clans() {
                                     <div className="grid gap-2 sm:grid-cols-2">
                                       <div className="rounded-2xl border border-border/50 bg-emerald-500/5 p-3 text-sm">
                                         <div className="font-medium">Victoire</div>
-                                        <div className="mt-1 text-muted-foreground">+{selectedWar.rewardTable.winner.money} money et +{selectedWar.rewardTable.winner.aura} aura par membre.</div>
+                                        <div className="mt-1 text-muted-foreground">+{selectedWar.rewardTable.winner.money} money, +{selectedWar.rewardTable.winner.aura} aura et {formatSignedValue(selectedWar.rewardTable.winner.trophies)} trophées pour le clan.</div>
                                       </div>
                                       <div className="rounded-2xl border border-border/50 bg-background p-3 text-sm">
                                         <div className="font-medium">Défaite / égalité</div>
-                                        <div className="mt-1 text-muted-foreground">+{selectedWar.rewardTable.loser.money} money et +{selectedWar.rewardTable.loser.aura} aura par membre.</div>
+                                        <div className="mt-1 text-muted-foreground">+{selectedWar.rewardTable.loser.money} money, +{selectedWar.rewardTable.loser.aura} aura et {formatSignedValue(selectedWar.rewardTable.loser.trophies)} trophées pour le clan.</div>
                                       </div>
                                     </div>
                                     {selectedWar.winnerClan ? (
@@ -1877,7 +1976,9 @@ export default function Clans() {
                               ? 'Le chef peut choisir un clan adverse et démarrer la guerre immédiatement.'
                               : selectedClan.warHub.cooldownEndsAt
                                 ? `Le clan récupère encore jusqu'au ${formatDate(selectedClan.warHub.cooldownEndsAt)}.`
-                                : `Le clan doit atteindre ${selectedClan.warHub.minimumMembersRequired} membres pour entrer en guerre.`}
+                                : selectedClan.memberCount < selectedClan.warHub.minimumMembersRequired
+                                  ? `Le clan doit atteindre ${selectedClan.warHub.minimumMembersRequired} membres pour entrer en guerre.`
+                                  : 'Aucun adversaire disponible avec un total de trophées assez proche pour lancer une guerre.'}
                           </AlertDescription>
                         </Alert>
                       )}
@@ -1900,7 +2001,7 @@ export default function Clans() {
                                       <div className="text-sm font-medium">Contre {opponent.name}</div>
                                       <div className="text-sm text-muted-foreground">
                                         {formatDate(war.completedAt)} • Score final {war.attackerScore} - {war.defenderScore}
-                                        {war.winnerUser ? ` • MVP: ${war.winnerUser.username}` : ''}
+                                        {war.winnerUser ? ` • MVP: ${war.winnerUser.username}` : ''} • Trophées {formatSignedValue(selectedClan.id === war.attackerClan.id ? war.trophyChanges.attacker : war.trophyChanges.defender)}
                                       </div>
                                     </div>
                                     <Badge variant={isDraw ? 'outline' : isWin ? 'secondary' : 'destructive'}>
@@ -1955,8 +2056,8 @@ export default function Clans() {
                                         Score final: {war.attackerScore} - {war.defenderScore}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        Récompense victoire: +{war.rewardTable.winner.money} money, +{war.rewardTable.winner.aura} aura •
-                                        Récompense défaite/égalité: +{war.rewardTable.loser.money} money, +{war.rewardTable.loser.aura} aura
+                                        Récompense victoire: +{war.rewardTable.winner.money} money, +{war.rewardTable.winner.aura} aura, {formatSignedValue(war.rewardTable.winner.trophies)} trophées •
+                                        Récompense défaite/égalité: +{war.rewardTable.loser.money} money, +{war.rewardTable.loser.aura} aura, {formatSignedValue(war.rewardTable.loser.trophies)} trophées
                                       </div>
                                       <div className="text-xs text-muted-foreground">
                                         {war.winnerClan
@@ -2105,7 +2206,7 @@ export default function Clans() {
           <DialogHeader>
             <DialogTitle>Déclarer une guerre</DialogTitle>
             <DialogDescription>
-              La guerre démarre immédiatement. Choisis un adversaire disponible.
+              La guerre démarre immédiatement. Seuls les clans disponibles avec l’écart de trophées le plus faible peuvent être ciblés.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
@@ -2122,6 +2223,9 @@ export default function Clans() {
                       <div className="text-sm text-muted-foreground">
                         {opponent.memberCount}/{opponent.maxMembers} membres • {formatAura(opponent.totalAura)} aura
                       </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatMoney(opponent.warTrophies)} trophées • écart {Math.abs(opponent.warTrophies - selectedClan.warTrophies)}
+                      </div>
                     </div>
                   </div>
                   <Button
@@ -2135,7 +2239,7 @@ export default function Clans() {
               ))
             ) : (
               <div className="rounded-2xl border border-dashed border-border/60 p-6 text-sm text-muted-foreground">
-                Aucun adversaire disponible actuellement.
+                Aucun adversaire disponible actuellement avec un nombre de trophées compatible.
               </div>
             )}
           </div>

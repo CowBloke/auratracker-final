@@ -39,6 +39,9 @@ export const chatEvents = {
   join: (userId: string, username: string, currentPage?: string, isPageActive?: boolean) => {
     socket?.emit('chat:join', { userId, username, currentPage, isPageActive });
   },
+  loadOlder: (beforeMessageId?: string | null) => {
+    socket?.emit('chat:load-older', { beforeMessageId });
+  },
   sendMessage: (userId: string, message?: string, replyToId?: string | null, imageUrl?: string | null) => {
     socket?.emit('chat:message', { userId, message, replyToId, imageUrl });
   },

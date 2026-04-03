@@ -240,6 +240,7 @@ const ACTION_LABELS: Record<string, string> = {
   inventory_update: 'Inventaire modifié',
   inventory_remove: 'Inventaire retiré',
   chat_clear: 'Chat vidé',
+  chat_export: 'Chat exporté',
   stats_delete: 'Stats supprimées',
   business_create: 'Entreprise créée',
   business_delete: 'Entreprise supprimée',
@@ -409,6 +410,7 @@ const GAME_TYPE_LABELS: Record<string, string> = {
   flappy_bird: 'Flappy Bird',
   chrome_dino: 'Chrome Dino',
   snake: 'Snake',
+  blockblast: 'BlockBlast',
   crossy_road: 'Crossy Road',
   aura_coin: 'Aura Coin',
   stack_tower: 'Tour empilée',
@@ -810,6 +812,7 @@ const GAME_TYPES = [
   { value: 'flappy_bird', label: 'Flappy Bird' },
   { value: 'chrome_dino', label: 'Chrome Dino' },
   { value: 'snake', label: 'Snake' },
+  { value: 'blockblast', label: 'BlockBlast' },
   { value: 'crossy_road', label: 'Crossy Road' },
   { value: 'aura_coin', label: 'Aura Coin' },
   { value: 'stack_tower', label: 'Tour empilée' },
@@ -945,6 +948,7 @@ export default function Admin() {
   });
   const [editPassword, setEditPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [downloadingUsersCsv, setDownloadingUsersCsv] = useState(false);
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [mutingUser, setMutingUser] = useState<string | null>(null);
@@ -958,6 +962,7 @@ export default function Admin() {
   const [massDeleteOpen, setMassDeleteOpen] = useState(false);
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
+  const [exportingChat, setExportingChat] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>('inbox');
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [loginCommOpen, setLoginCommOpen] = useState(false);
@@ -1233,6 +1238,7 @@ export default function Admin() {
   const [loadingGamesLeaderboard, setLoadingGamesLeaderboard] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
   const [hoveredActivity, setHoveredActivity] = useState<ActivityHoverState | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityHoverState | null>(null);
   const [activityZoomDomain, setActivityZoomDomain] = useState<[number, number] | null>(null);
   const activityZoomDomainRef = useRef<[number, number] | null>(null);
   const activityFullDomainRef = useRef<[number, number]>([0, 0]);
@@ -1401,6 +1407,8 @@ export default function Admin() {
   const [duelMatchmakingEnabled, setDuelMatchmakingEnabled] = useState(true);
   const [savingDuelMatchmakingEnabled, setSavingDuelMatchmakingEnabled] = useState(false);
   const [referralEnabled, setReferralEnabled] = useState(true);
+  const [referralDashboardCardEnabled, setReferralDashboardCardEnabled] = useState(true);
+  const [savingReferralDashboardCardEnabled, setSavingReferralDashboardCardEnabled] = useState(false);
   const [savingReferralEnabled, setSavingReferralEnabled] = useState(false);
   const [referralRewardAmount, setReferralRewardAmount] = useState('250');
   const [savingReferralReward, setSavingReferralReward] = useState(false);
@@ -1907,7 +1915,6 @@ export default function Admin() {
     if (!el) return;
     const [fullStart, fullEnd] = activityFullDomainRef.current;
     const [currentStart, currentEnd] = activityZoomDomainRef.current ?? [fullStart, fullEnd];
-    if (currentEnd - currentStart >= fullEnd - fullStart) return;
     activityPanRef.current = {
       pointerId: e.pointerId,
       startClientX: e.clientX,
@@ -1920,7 +1927,9 @@ export default function Admin() {
   const handleActivityPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const panState = activityPanRef.current;
     if (!panState || panState.pointerId !== e.pointerId) {
-      setHoveredActivity(resolveActivityHoverState(e.clientX));
+      if (!selectedActivity) {
+        setHoveredActivity(resolveActivityHoverState(e.clientX));
+      }
       return;
     }
     const metrics = getActivityPlotMetrics();
@@ -1929,7 +1938,12 @@ export default function Admin() {
     const fullRange = fullEnd - fullStart;
     const [domainStart, domainEnd] = panState.domain;
     const domainRange = domainEnd - domainStart;
-    if (domainRange >= fullRange) return;
+    if (domainRange >= fullRange) {
+      if (!selectedActivity) {
+        setHoveredActivity(resolveActivityHoverState(e.clientX));
+      }
+      return;
+    }
     const deltaX = e.clientX - panState.startClientX;
     if (Math.abs(deltaX) > 3) activityDidPanRef.current = true;
     let newStart = domainStart - (deltaX / metrics.chartWidth) * domainRange;
@@ -1943,11 +1957,23 @@ export default function Admin() {
       newEnd = fullEnd;
     }
     setActivityDomain([newStart, newEnd]);
-    setHoveredActivity(resolveActivityHoverState(e.clientX));
+    if (!selectedActivity) {
+      setHoveredActivity(resolveActivityHoverState(e.clientX));
+    }
   };
 
   const handleActivityPointerEnd = (e: ReactPointerEvent<HTMLDivElement>) => {
     const el = activityChartRef.current;
+    const panState = activityPanRef.current;
+    if (panState && panState.pointerId === e.pointerId && !activityDidPanRef.current) {
+      const nextSelection = resolveActivityHoverState(e.clientX);
+      setSelectedActivity((prev) => {
+        if (!nextSelection) return prev;
+        if (prev?.point.timestamp === nextSelection.point.timestamp) return null;
+        return nextSelection;
+      });
+      setHoveredActivity(nextSelection);
+    }
     if (el && el.hasPointerCapture(e.pointerId)) {
       el.releasePointerCapture(e.pointerId);
     }
@@ -1958,7 +1984,7 @@ export default function Admin() {
   };
 
   const handleActivityPointerLeave = () => {
-    if (!activityPanRef.current) {
+    if (!activityPanRef.current && !selectedActivity) {
       setHoveredActivity(null);
     }
   };
@@ -2243,6 +2269,7 @@ export default function Admin() {
       });
       setOnlineStats(statsRes.data);
       setHoveredActivity(null);
+      setSelectedActivity(null);
       setActivityZoomDomain(null);
       activityZoomDomainRef.current = null;
     } catch {
@@ -2376,6 +2403,79 @@ export default function Admin() {
     }
   };
 
+  const handleExportUsersCsv = async () => {
+    try {
+      setDownloadingUsersCsv(true);
+
+      const escapeCsv = (value: unknown) => {
+        if (value === null || value === undefined) {
+          return '""';
+        }
+        const text = String(value).replace(/"/g, '""');
+        return `"${text}"`;
+      };
+
+      const header = [
+        'id',
+        'username',
+        'firstName',
+        'email',
+        'role',
+        'isChatMuted',
+        'schoolLevel',
+        'classLetter',
+        'aura',
+        'money',
+        'auraCoinBalance',
+        'dailyAuraGiven',
+        'dailyAuraLimit',
+        'lastDailyReset',
+        'createdAt',
+        'updatedAt',
+      ].join(',');
+
+      const rows = filteredUsers.map((entry) => [
+        escapeCsv(entry.id),
+        escapeCsv(entry.username),
+        escapeCsv(entry.firstName),
+        escapeCsv(entry.email),
+        escapeCsv(getAdminRole(entry)),
+        escapeCsv(entry.isChatMuted),
+        escapeCsv(entry.schoolLevel),
+        escapeCsv(entry.classLetter),
+        escapeCsv(entry.aura),
+        escapeCsv(entry.money),
+        escapeCsv(entry.auraCoinBalance),
+        escapeCsv(entry.dailyAuraGiven),
+        escapeCsv(entry.dailyAuraLimit),
+        escapeCsv(entry.lastDailyReset),
+        escapeCsv(entry.createdAt),
+        escapeCsv(entry.updatedAt),
+      ].join(','));
+
+      const csv = [header, ...rows].join('\n');
+      const blob = new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const hasFilter = userSearchQuery.trim().length > 0;
+      const dateLabel = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = hasFilter
+        ? `admin-users-${dateLabel}-filtered.csv`
+        : `admin-users-${dateLabel}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      showMessage('success', `Export CSV prêt (${filteredUsers.length} utilisateur(s)).`);
+    } catch (error) {
+      console.error('Failed to export users CSV:', error);
+      showMessage('error', 'Erreur lors de l export CSV des utilisateurs');
+    } finally {
+      setDownloadingUsersCsv(false);
+    }
+  };
+
   const fetchLogStats = async () => {
     try {
       const res = await adminApi.getLogStats();
@@ -2397,6 +2497,7 @@ export default function Admin() {
       setChatBlockMessage(res.data.settings.chat_block_message || 'Le chat est temporairement bloque par l administration.');
       setDuelMatchmakingEnabled(res.data.settings.duel_matchmaking_enabled !== 'false');
       setReferralEnabled(res.data.settings.referral_enabled !== 'false');
+      setReferralDashboardCardEnabled(res.data.settings.referral_dashboard_card_enabled !== 'false');
       setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
       setDailyAuraDistributionLimit(res.data.settings.daily_aura_distribution_limit || '100');
       setAuraCoinBuyFeePercentage(res.data.settings.auracoin_buy_fee_percentage || '0.02');
@@ -2783,6 +2884,23 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde du parrainage');
     } finally {
       setSavingReferralEnabled(false);
+    }
+  };
+
+  const saveReferralDashboardCardEnabled = async (value: boolean) => {
+    const previousValue = referralDashboardCardEnabled;
+    try {
+      setReferralDashboardCardEnabled(value);
+      setSavingReferralDashboardCardEnabled(true);
+      await adminApi.updateSetting('referral_dashboard_card_enabled', value ? 'true' : 'false');
+      refreshFeatures();
+      showMessage('success', value ? 'Carte de parrainage sur le dashboard activee' : 'Carte de parrainage sur le dashboard desactivee');
+    } catch (error) {
+      setReferralDashboardCardEnabled(previousValue);
+      console.error('Failed to save referral dashboard card enabled setting:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde de la carte de parrainage');
+    } finally {
+      setSavingReferralDashboardCardEnabled(false);
     }
   };
 
@@ -3605,6 +3723,29 @@ export default function Admin() {
     }
   };
 
+  const exportChat = async () => {
+    setExportingChat(true);
+    try {
+      const res = await adminApi.exportChat();
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const contentDisposition = res.headers?.['content-disposition'] as string | undefined;
+      const match = contentDisposition?.match(/filename="([^"]+)"/);
+      link.href = url;
+      link.download = match?.[1] ?? `chat-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      showMessage('success', 'Export du chat téléchargé');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors de l’export du chat');
+    } finally {
+      setExportingChat(false);
+    }
+  };
+
   const openInventory = (u: AdminUser) => {
     setInventoryUser(u);
     setInventoryDialogOpen(true);
@@ -3763,6 +3904,15 @@ export default function Admin() {
   const wealthUsers = users.filter((entry) => !entry.isSuperAdmin);
   const moneyDistribution = calculateWealthDistribution(wealthUsers, (entry) => entry.money);
   const auraDistribution = calculateWealthDistribution(wealthUsers, (entry) => entry.aura);
+  const normalizedUserSearchQuery = userSearchQuery.trim().toLowerCase();
+  const filteredUsers = normalizedUserSearchQuery
+    ? users.filter((entry) => (
+      entry.username.toLowerCase().includes(normalizedUserSearchQuery)
+      || (entry.firstName || '').toLowerCase().includes(normalizedUserSearchQuery)
+    ))
+    : users;
+  const selectableUsers = filteredUsers.filter((entry) => !entry.isSuperAdmin && entry.id !== user?.id);
+  const allSelected = selectableUsers.length > 0 && selectableUsers.every((entry) => selectedUserIds.includes(entry.id));
 
 
   return (
@@ -4291,6 +4441,16 @@ export default function Admin() {
                     className="pl-9 bg-transparent border-border/50 h-9"
                   />
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExportUsersCsv}
+                  disabled={downloadingUsersCsv || filteredUsers.length === 0}
+                  className="h-9 border-border/50 shrink-0"
+                >
+                  {downloadingUsersCsv ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Download className="h-4 w-4 mr-1" />}
+                  Export CSV ({filteredUsers.length})
+                </Button>
                 {selectedUserIds.length > 0 && (
                   <Button size="sm" variant="outline" onClick={() => setSelectedUserIds([])} className="h-9 border-border/50 shrink-0">
                     <X className="h-4 w-4 mr-1" />
@@ -4327,18 +4487,8 @@ export default function Admin() {
                 <div className="flex justify-center py-12">
                   <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                 </div>
-              ) : (() => {
-                const filteredUsers = userSearchQuery.trim()
-                  ? users.filter(u =>
-                      u.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-                      (u.firstName || '').toLowerCase().includes(userSearchQuery.toLowerCase())
-                    )
-                  : users;
-
-                const selectableUsers = filteredUsers.filter(u => !u.isSuperAdmin && u.id !== user?.id);
-                const allSelected = selectableUsers.length > 0 && selectableUsers.every(u => selectedUserIds.includes(u.id));
-
-                return filteredUsers.length === 0 ? (
+              ) : (
+                filteredUsers.length === 0 ? (
                   <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>
                     {userSearchQuery.trim() ? 'Aucun utilisateur trouvé' : 'Aucun utilisateur'}
                   </p>
@@ -4553,8 +4703,8 @@ export default function Admin() {
                       </div>
                     ))}
                   </div>
-                );
-              })()}
+                )
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -5156,6 +5306,17 @@ export default function Admin() {
                   <div className="text-xs text-muted-foreground">Coupe l&apos;usage des codes de parrainage sur l&apos;inscription et masque le module côté joueur.</div>
                 </div>
                 <Switch checked={referralEnabled} disabled={savingReferralEnabled} onCheckedChange={saveReferralEnabled} />
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Carte de parrainage sur le dashboard</div>
+                  <div className="text-xs text-muted-foreground">Affiche la carte de suivi du parrainage sur la page dashboard des joueurs.</div>
+                </div>
+                <Switch
+                  checked={referralDashboardCardEnabled}
+                  disabled={savingReferralDashboardCardEnabled}
+                  onCheckedChange={saveReferralDashboardCardEnabled}
+                />
               </div>
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
@@ -5928,30 +6089,36 @@ export default function Admin() {
                   <div className="text-sm font-medium text-destructive">Vider le chat</div>
                   <div className="text-xs text-muted-foreground">Supprime définitivement tous les messages du chat global. Cette action est irréversible.</div>
                 </div>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="border-destructive/50 text-destructive hover:bg-destructive/10 shrink-0" disabled={clearingChat}>
-                      {clearingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-destructive" />
-                        Vider le chat ?
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Tous les messages du chat seront définitivement supprimés. Cette action ne peut pas être annulée.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction onClick={clearChat} className="bg-destructive hover:bg-destructive/90">
-                        Vider le chat
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button variant="outline" size="sm" onClick={exportChat} disabled={exportingChat}>
+                    {exportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                    Exporter
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="border-destructive/50 text-destructive hover:bg-destructive/10" disabled={clearingChat}>
+                        {clearingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-destructive" />
+                          Vider le chat ?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tous les messages du chat seront définitivement supprimés. Cette action ne peut pas être annulée.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={clearChat} className="bg-destructive hover:bg-destructive/90">
+                          Vider le chat
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </div>
           </div>
@@ -8339,7 +8506,10 @@ export default function Admin() {
                   </div>
 
                   {/* Chart + side panel */}
-                  <div className="flex gap-4 items-start">
+                  {(() => {
+                    const activeActivity = selectedActivity ?? hoveredActivity;
+                    return (
+                      <div className="flex gap-4 items-start">
                     <div className="flex-1 min-w-0">
                       {(() => {
                         const MS_HOUR = 3600000;
@@ -8435,7 +8605,7 @@ export default function Admin() {
                           <div className="space-y-2">
                           <div className="flex items-center justify-between gap-3">
                             <p className="text-xs text-muted-foreground">
-                              Molette pour zoomer, glisser pour dÃ©placer
+                              Molette pour zoomer, glisser pour déplacer, clic pour figer
                             </p>
                             <div className="flex items-center gap-1">
                               <Button
@@ -8554,17 +8724,17 @@ export default function Admin() {
                                   strokeWidth={1.5}
                                 />
                               ))}
-                              {hoveredActivity && (
+                              {activeActivity && (
                                 <>
                                   <ReferenceLine
-                                    x={hoveredActivity.cursorTs}
+                                    x={activeActivity.cursorTs}
                                     stroke="hsl(var(--foreground))"
                                     strokeDasharray="4 4"
                                     strokeWidth={1.25}
                                   />
                                   <ReferenceDot
-                                    x={hoveredActivity.cursorTs}
-                                    y={hoveredActivity.point.max}
+                                    x={activeActivity.cursorTs}
+                                    y={activeActivity.point.max}
                                     r={5}
                                     fill="hsl(var(--foreground))"
                                     stroke="hsl(var(--background))"
@@ -8592,7 +8762,7 @@ export default function Admin() {
 
                     {/* User list side panel — always visible */}
                     {(() => {
-                      const displayPoint = hoveredActivity?.point ?? null;
+                      const displayPoint = activeActivity?.point ?? null;
                       const users = displayPoint?.usernames ?? [];
                       return (
                         <div className="w-44 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
@@ -8601,11 +8771,14 @@ export default function Admin() {
                               <>
                                 <p className="text-xs font-medium tabular-nums">{displayPoint.max} joueur{displayPoint.max !== 1 ? 's' : ''}</p>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                  {new Date(hoveredActivity!.cursorTs).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                                  {new Date(activeActivity!.cursorTs).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
                                 </p>
+                                {selectedActivity && (
+                                  <p className="text-[10px] text-muted-foreground/70 mt-1">Cliquer à nouveau pour libérer</p>
+                                )}
                               </>
                             ) : (
-                              <p className="text-xs text-muted-foreground/60">Survolez le graphe</p>
+                              <p className="text-xs text-muted-foreground/60">Survolez ou cliquez sur le graphe</p>
                             )}
                           </div>
                           <div className="overflow-y-auto flex-1 p-1.5">
@@ -8627,6 +8800,8 @@ export default function Admin() {
                       );
                     })()}
                   </div>
+                    );
+                  })()}
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">

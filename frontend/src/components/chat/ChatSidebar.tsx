@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, X, MoreHorizontal, Pin, PinOff, Reply, ImagePlus, ChevronDown, BarChart3 } from 'lucide-react';
+import { Send, X, MoreHorizontal, Pin, PinOff, Reply, ImagePlus, ChevronDown, BarChart3, Loader2 } from 'lucide-react';
 import { useSmartScroll } from '@/hooks/useSmartScroll';
 import {
   Sidebar,
@@ -67,6 +67,8 @@ export default function ChatSidebar() {
   const { user } = useAuth();
   const {
     messages,
+    hasOlderMessages,
+    isLoadingOlderMessages,
     activePoll,
     onlineUsers,
     typingUsers,
@@ -77,6 +79,7 @@ export default function ChatSidebar() {
     createPoll,
     votePoll,
     closePoll,
+    loadOlderMessages,
     joinParty,
     requestJoinParty,
     currentParty,
@@ -91,6 +94,9 @@ export default function ChatSidebar() {
   const [mentionIndex, setMentionIndex] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const scrollViewportRef = useRef<HTMLElement | null>(null);
+  const pendingScrollRestoreRef = useRef<number | null>(null);
+  const [showLoadOlderButton, setShowLoadOlderButton] = useState(false);
   const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
     dependency: [messages],
   });
@@ -190,6 +196,29 @@ export default function ChatSidebar() {
     textarea.style.height = '0px';
     textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
   }, [input]);
+
+  useEffect(() => {
+    const viewport = scrollViewportRef.current;
+    if (!viewport) return;
+
+    const handleScroll = () => {
+      setShowLoadOlderButton(viewport.scrollTop <= 24 && hasOlderMessages);
+    };
+
+    handleScroll();
+    viewport.addEventListener('scroll', handleScroll);
+    return () => viewport.removeEventListener('scroll', handleScroll);
+  }, [hasOlderMessages]);
+
+  useEffect(() => {
+    if (isLoadingOlderMessages) return;
+    const viewport = scrollViewportRef.current;
+    const previousHeight = pendingScrollRestoreRef.current;
+    if (!viewport || previousHeight === null) return;
+
+    viewport.scrollTop = viewport.scrollHeight - previousHeight + viewport.scrollTop;
+    pendingScrollRestoreRef.current = null;
+  }, [isLoadingOlderMessages, messages]);
 
   const getMentionState = (value: string, cursor: number | null): MentionState | null => {
     if (cursor === null) return null;
@@ -406,6 +435,14 @@ export default function ChatSidebar() {
     markAllAsRead();
   };
 
+  const handleLoadOlderMessages = () => {
+    const viewport = scrollViewportRef.current;
+    if (viewport) {
+      pendingScrollRestoreRef.current = viewport.scrollHeight;
+    }
+    loadOlderMessages();
+  };
+
   return (
     <Sidebar variant="inset" side="right" collapsible="offcanvas" className="border-l border-border/40">
       <SidebarRail />
@@ -525,12 +562,34 @@ export default function ChatSidebar() {
               if (el) {
                 const viewport = el.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement;
                 if (viewport) {
+                  scrollViewportRef.current = viewport;
                   setScrollAreaRef(viewport);
                 }
               }
             }}
           >
             <div className="space-y-3 py-4">
+              {showLoadOlderButton && (
+                <div className="sticky top-0 z-10 flex justify-center pb-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLoadOlderMessages}
+                    disabled={isLoadingOlderMessages}
+                    className="h-8 rounded-full border-border/60 bg-background/95 px-3 text-xs shadow-sm backdrop-blur"
+                  >
+                    {isLoadingOlderMessages ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        Chargement...
+                      </>
+                    ) : (
+                      'Charger les messages plus anciens'
+                    )}
+                  </Button>
+                </div>
+              )}
               {sortedMessages.map((msg) => {
                 const invite = parsePartyInvite(msg.message);
                 const isSystemMessage = msg.type === 'system';

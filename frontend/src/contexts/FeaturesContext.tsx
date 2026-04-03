@@ -10,6 +10,7 @@ interface MaintenanceStatus {
   disabledPages: string[];
   blockedMessage: string;
   referralEnabled: boolean;
+  referralDashboardCardEnabled: boolean;
   duelMatchmakingEnabled: boolean;
   defaultLandingPage: string;
   youLogoAdminOnly: boolean;
@@ -33,6 +34,7 @@ const DEFAULT_STATUS: MaintenanceStatus = {
   disabledPages: [],
   blockedMessage: '',
   referralEnabled: true,
+  referralDashboardCardEnabled: true,
   duelMatchmakingEnabled: true,
   defaultLandingPage: '/dashboard',
   youLogoAdminOnly: false,
@@ -75,6 +77,7 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
         disabledPages: res.data.blockedPages || [],
         blockedMessage: res.data.blockedMessage || '',
         referralEnabled: res.data.referralEnabled !== false,
+        referralDashboardCardEnabled: res.data.referralDashboardCardEnabled !== false,
         duelMatchmakingEnabled: res.data.duelMatchmakingEnabled !== false,
         defaultLandingPage: normalizeDefaultLandingPage(res.data.defaultLandingPage),
         youLogoAdminOnly: res.data.youLogoAdminOnly === true,

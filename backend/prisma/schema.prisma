@@ -58,6 +58,9 @@ model User {
   businessMemberships   BusinessMember[]
   buyoutOffersPlaced    BusinessBuyoutOffer[]    @relation("BuyoutBidder")
   buyoutOffersReceived  BusinessBuyoutOffer[]    @relation("BusinessBuyoutOwner")
+  businessShareholdings BusinessShareholder[]
+  sentShareholderProposals BusinessShareProposal[] @relation("BusinessShareProposalInvestor")
+  receivedShareholderProposals BusinessShareProposal[] @relation("BusinessShareProposalOwner")
   sentBusinessTransfers BusinessTransferTransaction[] @relation("BusinessTransferSender")
   receivedBusinessTransfers BusinessTransferTransaction[] @relation("BusinessTransferRecipient")
   sentBusinessInvitations BusinessInvitation[]   @relation("BusinessInvitationSender")
@@ -443,6 +446,8 @@ model Business {
   invitations BusinessInvitation[]
   loans       BusinessLoan[]
   investments BusinessInvestment[]
+  shareholders BusinessShareholder[]
+  shareholderProposals BusinessShareProposal[]
   buyoutOffers BusinessBuyoutOffer[]
   transferHistory BusinessTransferTransaction[]
   startupProducts BusinessStartupProduct[]
@@ -558,6 +563,47 @@ model BusinessInvestment {
 
   @@index([businessId, createdAt])
   @@index([investorId, createdAt])
+}
+
+model BusinessShareholder {
+  id                String   @id @default(uuid())
+  businessId        String
+  userId            String
+  sharePercent      Float
+  investedAmount    Int      @default(0)
+  averagePrice      Float    @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([businessId, sharePercent])
+  @@index([userId, createdAt])
+}
+
+model BusinessShareProposal {
+  id              String   @id @default(uuid())
+  businessId      String
+  investorId      String
+  ownerId         String
+  sharePercent    Float
+  amount          Int
+  suggestedAmount Int
+  message         String?
+  status          String   @default("PENDING")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  decidedAt       DateTime?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  investor User     @relation("BusinessShareProposalInvestor", fields: [investorId], references: [id], onDelete: Cascade)
+  owner    User     @relation("BusinessShareProposalOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, status])
+  @@index([investorId, status])
+  @@index([ownerId, status])
 }
 
 model BusinessBuyoutOffer {
@@ -719,6 +765,10 @@ model Clan {
   banner      String?
   isPublic    Boolean  @default(true)
   maxMembers  Int      @default(5)
+  warTrophies Int      @default(1000)
+  warWins     Int      @default(0)
+  warLosses   Int      @default(0)
+  warDraws    Int      @default(0)
   clanBankMoney Int    @default(0)
   level       Int      @default(1)
   ownerId     String
@@ -749,6 +799,7 @@ model Clan {
 
   @@index([isPublic])
   @@index([createdAt])
+  @@index([warTrophies])
 }
 
 model ClanOwnedItem {
@@ -844,6 +895,10 @@ model ClanWar {
   completedAt       DateTime?
   attackerScore     Int      @default(0)
   defenderScore     Int      @default(0)
+  attackerTrophiesBefore Int @default(1000)
+  defenderTrophiesBefore Int @default(1000)
+  attackerTrophyChange Int   @default(0)
+  defenderTrophyChange Int   @default(0)
   targetScore       Int      @default(180)
   winnerRewardMoney Int      @default(1200)
   loserRewardMoney  Int      @default(300)

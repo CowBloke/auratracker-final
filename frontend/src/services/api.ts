@@ -231,6 +231,36 @@ export interface YouBusinessInvestment {
   investor: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
+export interface YouBusinessShareholder {
+  id: string;
+  sharePercent: number;
+  investedAmount: number;
+  averagePrice: number;
+  createdAt: string;
+  user: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
+export interface YouBusinessShareProposal {
+  id: string;
+  businessId: string;
+  sharePercent: number;
+  amount: number;
+  suggestedAmount: number;
+  message: string | null;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | string;
+  createdAt: string;
+  updatedAt: string;
+  decidedAt: string | null;
+  direction: 'sent' | 'received';
+  investor: Omit<YouPlayer, 'alreadyInRelationship'>;
+  owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  business?: {
+    id: string;
+    name: string;
+    typeKey: string;
+  };
+}
+
 export interface YouBusinessBuyoutOffer {
   id: string;
   businessId: string;
@@ -315,6 +345,13 @@ export interface YouBusiness {
   pendingInvitations: YouBusinessInvitation[];
   recentLoans: YouBusinessLoan[];
   recentInvestments: YouBusinessInvestment[];
+  shareholders: YouBusinessShareholder[];
+  ownerSharePercent: number;
+  isShared: boolean;
+  viewerSharePercent: number;
+  viewerInvestedAmount: number;
+  suggestedShareAmount: number;
+  pendingShareholderProposals: YouBusinessShareProposal[];
   transferHistory: YouBusinessTransferHistoryEntry[];
   pendingBuyoutOffers: YouBusinessBuyoutOffer[];
   startupProducts: YouStartupProduct[];
@@ -403,8 +440,10 @@ export interface YouState {
   ownedBusinesses: YouBusiness[];
   exploreBusinesses: YouBusiness[];
   memberBusinesses: YouBusiness[];
+  shareholderBusinesses: YouBusiness[];
   pendingBuyoutOffers: YouBusinessBuyoutOffer[];
   sentBuyoutOffers: YouBusinessBuyoutOffer[];
+  sentShareholderProposals: YouBusinessShareProposal[];
 }
 
 export const youApi = {
@@ -424,8 +463,12 @@ export const youApi = {
     api.post<{ result: { recipientId: string; amount: number; fee: number; debited: number } }>(`/you/businesses/${businessId}/actions/transfer`, data),
   createBuyoutOffer: (businessId: string, data: { amount: number; message?: string }) =>
     api.post<{ offer: YouBusinessBuyoutOffer }>(`/you/businesses/${businessId}/buyout-offers`, data),
+  createShareholderProposal: (businessId: string, data: { sharePercent: number; amount: number; message?: string }) =>
+    api.post<{ proposal: YouBusinessShareProposal }>(`/you/businesses/${businessId}/shareholder-proposals`, data),
   respondToBuyoutOffer: (offerId: string, decision: 'accept' | 'reject') =>
     api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/buyout-offers/${offerId}/respond`, { decision }),
+  respondToShareholderProposal: (proposalId: string, decision: 'accept' | 'reject') =>
+    api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/shareholder-proposals/${proposalId}/respond`, { decision }),
   cancelBuyoutOffer: (offerId: string) =>
     api.delete<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/buyout-offers/${offerId}`),
   createRelationship: (targetUserId: string, type: 'FRIEND' | 'DATING' = 'DATING') =>
@@ -1042,6 +1085,10 @@ export interface ClanSummary {
   tagText: string | null;
   tagStyle: string | null;
   slotUpgraded: boolean;
+  warTrophies: number;
+  warWins: number;
+  warLosses: number;
+  warDraws: number;
   clanBankMoney: number;
   level: number;
 }
@@ -1231,6 +1278,10 @@ export interface ClanWarState {
   attackerScore: number;
   defenderScore: number;
   scoreGap: number;
+  trophyChanges: {
+    attacker: number;
+    defender: number;
+  };
   viewerSide: 'ATTACKER' | 'DEFENDER' | 'SPECTATOR';
   viewerScore: number;
   opponentScore: number;
@@ -1251,10 +1302,12 @@ export interface ClanWarState {
     winner: {
       money: number;
       aura: number;
+      trophies: number;
     };
     loser: {
       money: number;
       aura: number;
+      trophies: number;
     };
   };
   defenses: {
@@ -1281,6 +1334,7 @@ export interface ClanWarHub {
   currentWar: ClanWarState | null;
   history: ClanWarState[];
   eligibleOpponents: ClanSummary[];
+  closestTrophyGap: number | null;
   cooldownEndsAt: string | null;
   canDeclareWar: boolean;
   minimumMembersRequired: number;
@@ -1354,6 +1408,8 @@ export const clansApi = {
     api.delete(`/clans/${clanId}/members/${userId}`),
   depositToBank: (clanId: string, amount: number) =>
     api.post<{ success: boolean; deposited: number; clanBankMoney: number; newBalance: { aura: number | string; money: number } }>(`/clans/${clanId}/bank/deposit`, { amount }),
+  updateDescription: (id: string, description: string | null) =>
+    api.put<{ success: boolean; description: string | null }>(`/clans/${id}/description`, { description }),
   updateImage: (id: string, imageUrl: string | null) =>
     api.put<{ success: boolean; imageUrl: string | null }>(`/clans/${id}/image`, { imageUrl }),
   updateTag: (id: string, data: { tagText?: string; tagStyle?: object }) =>
@@ -1776,6 +1832,7 @@ export const adminApi = {
     api.delete<{ success: boolean }>(`/admin/users/${id}/inventory/${userItemId}`),
   clearChat: () =>
     runRareAction({ action: 'chat_clear' }) as Promise<{ data: { success: boolean; message: string; messagesDeleted: number } }>,
+  exportChat: () => api.get<Blob>('/admin/chat/export', { responseType: 'blob' }),
   // Pending users management
   getPendingUsers: () => api.get<{ pendingUsers: PendingUser[] }>('/admin/pending-users'),
   getRegistrationReviews: () => api.get<{ registrationReviews: RegistrationReview[] }>('/admin/registration-reviews'),
@@ -2003,6 +2060,7 @@ export const maintenanceApi = {
     loginMessage?: string;
     loginRegisterCtaEnabled?: boolean;
     referralEnabled?: boolean;
+    referralDashboardCardEnabled?: boolean;
     duelMatchmakingEnabled?: boolean;
     defaultLandingPage?: string;
     youLogoAdminOnly?: boolean;

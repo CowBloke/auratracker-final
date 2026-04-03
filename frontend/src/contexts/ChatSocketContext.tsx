@@ -101,6 +101,8 @@ interface TypingUser {
 
 interface ChatSocketContextValue {
   messages: ChatMessage[];
+  hasOlderMessages: boolean;
+  isLoadingOlderMessages: boolean;
   activePoll: ChatPoll | null;
   onlineUsers: OnlineUser[];
   onlineCount: number;
@@ -115,6 +117,7 @@ interface ChatSocketContextValue {
   createPoll: (question: string, options: string[]) => void;
   votePoll: (pollId: string, optionId: string) => void;
   closePoll: (pollId: string) => void;
+  loadOlderMessages: () => void;
   requestOnlineUsers: () => void;
   requestDoodleSpectateSessions: () => void;
   requestChessSpectateSessions: () => void;
@@ -126,6 +129,8 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const { user, updateBalance } = useAuth();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [activePoll, setActivePoll] = useState<ChatPoll | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
@@ -186,7 +191,9 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     if (s.connected) handleConnect();
     s.on('connect', handleConnect);
 
-    s.on('chat:history', (data: { messages: ChatMessage[] }) => {
+    s.on('chat:history', (data: { messages: ChatMessage[]; hasMore?: boolean }) => {
+      setHasOlderMessages(Boolean(data.hasMore));
+      setIsLoadingOlderMessages(false);
       setMessages(
         data.messages.map((m) => ({
           ...m,
@@ -195,6 +202,23 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
           pinnedAt: m.pinnedAt ?? null,
         }))
       );
+    });
+
+    s.on('chat:history-older', (data: { messages: ChatMessage[]; hasMore?: boolean }) => {
+      setHasOlderMessages(Boolean(data.hasMore));
+      setIsLoadingOlderMessages(false);
+      setMessages((prev) => {
+        const seenIds = new Set(prev.map((message) => message.id));
+        const olderMessages = data.messages
+          .map((m) => ({
+            ...m,
+            reactions: m.reactions ?? [],
+            pinned: m.pinned ?? false,
+            pinnedAt: m.pinnedAt ?? null,
+          }))
+          .filter((message) => !seenIds.has(message.id));
+        return [...olderMessages, ...prev];
+      });
     });
 
     s.on('chat:message', (message: ChatMessage) => {
@@ -298,6 +322,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     return () => {
       s.off('connect', handleConnect);
       s.off('chat:history');
+      s.off('chat:history-older');
       s.off('chat:message');
       s.off('chat:muted');
       s.off('chat:blocked');
@@ -371,6 +396,12 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     [user?.id]
   );
 
+  const loadOlderMessages = useCallback(() => {
+    if (isLoadingOlderMessages || !hasOlderMessages || messages.length === 0) return;
+    setIsLoadingOlderMessages(true);
+    chatEvents.loadOlder(messages[0]?.id ?? null);
+  }, [hasOlderMessages, isLoadingOlderMessages, messages]);
+
   const requestOnlineUsers = useCallback(() => {
     getSocket()?.emit('chat:request-online-users');
   }, []);
@@ -386,6 +417,8 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const value = useMemo(
     () => ({
       messages,
+      hasOlderMessages,
+      isLoadingOlderMessages,
       activePoll,
       onlineUsers,
       onlineCount,
@@ -400,12 +433,15 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       createPoll,
       votePoll,
       closePoll,
+      loadOlderMessages,
       requestOnlineUsers,
       requestDoodleSpectateSessions,
       requestChessSpectateSessions,
     }),
     [
       messages,
+      hasOlderMessages,
+      isLoadingOlderMessages,
       activePoll,
       onlineUsers,
       onlineCount,
@@ -420,6 +456,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       createPoll,
       votePoll,
       closePoll,
+      loadOlderMessages,
       requestOnlineUsers,
       requestDoodleSpectateSessions,
       requestChessSpectateSessions,

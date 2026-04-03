@@ -30,6 +30,7 @@ import {
   FormationCatalogModal,
   InvestModal,
   LoanModal,
+  ShareholderProposalModal,
   TransferBusinessModal,
 } from '../components/modals';
 import { Input, ModalWrap, Pill, SectionTitle } from '../components/ui';
@@ -184,7 +185,7 @@ function BusinessInteractionModal({
   userId: string;
   isAdmin: boolean;
   onClose: () => void;
-  onAction: (action: 'bank' | 'loan' | 'invest' | 'buyout' | 'transfer' | 'formation' | 'purchase') => void;
+  onAction: (action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase') => void;
   onAdminDelete: () => Promise<void>;
 }) {
   if (!business) return null;
@@ -338,6 +339,16 @@ function BusinessInteractionModal({
                 {stats.map((s) => <StatTile key={s.label} label={s.label} value={s.value} color={s.color} />)}
               </div>
 
+              {business.isShared ? (
+                <div className="rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-300">Capital partage</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Fondateur: {business.ownerSharePercent.toFixed(2)}% · {business.shareholders.length} actionnaire(s)
+                    {business.viewerSharePercent > 0 ? ` · toi: ${business.viewerSharePercent.toFixed(2)}%` : ''}
+                  </p>
+                </div>
+              ) : null}
+
               {business.typeKey === 'bank' && business.livretEpargneUnlocked ? (
                 <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2 text-xs text-amber-300">
                   <Sparkles className="h-3.5 w-3.5 shrink-0" />
@@ -357,6 +368,13 @@ function BusinessInteractionModal({
                     onClick={() => onAction('loan')}
                   />
                 ) : null}
+                <ActionButton
+                  icon={HandCoins}
+                  label={business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}
+                  sub="Proposer un pourcentage et une somme au proprietaire."
+                  tone="bg-amber-400/15 text-amber-400"
+                  onClick={() => onAction('shareholder')}
+                />
                 <ActionButton
                   icon={HandCoins}
                   label="Faire une offre de rachat"
@@ -554,6 +572,7 @@ export function ExploreTab({
   const [loanBusinessId, setLoanBusinessId] = useState<string | null>(null);
   const [investBusinessId, setInvestBusinessId] = useState<string | null>(null);
   const [buyoutBusinessId, setBuyoutBusinessId] = useState<string | null>(null);
+  const [shareholderBusinessId, setShareholderBusinessId] = useState<string | null>(null);
   const [transferBusinessId, setTransferBusinessId] = useState<string | null>(null);
   const [formationBusinessId, setFormationBusinessId] = useState<string | null>(null);
   const [purchaseBusinessId, setPurchaseBusinessId] = useState<string | null>(null);
@@ -612,18 +631,20 @@ export function ExploreTab({
   const loanBusiness = loanBusinessId ? allBusinesses.find((b) => b.id === loanBusinessId) ?? null : null;
   const investBusiness = investBusinessId ? allBusinesses.find((b) => b.id === investBusinessId) ?? null : null;
   const buyoutBusiness = buyoutBusinessId ? allBusinesses.find((b) => b.id === buyoutBusinessId) ?? null : null;
+  const shareholderBusiness = shareholderBusinessId ? allBusinesses.find((b) => b.id === shareholderBusinessId) ?? null : null;
   const transferBusiness = transferBusinessId ? allBusinesses.find((b) => b.id === transferBusinessId) ?? null : null;
   const formationBusiness = formationBusinessId ? allBusinesses.find((b) => b.id === formationBusinessId) ?? null : null;
   const purchaseBusiness = purchaseBusinessId ? allBusinesses.find((b) => b.id === purchaseBusinessId) ?? null : null;
 
   // Open an action modal after closing the detail modal
-  const openAction = (businessId: string, action: 'bank' | 'loan' | 'invest' | 'buyout' | 'transfer' | 'formation' | 'purchase') => {
+  const openAction = (businessId: string, action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase') => {
     setDetailBusinessId(null);
     setTimeout(() => {
       if (action === 'bank') setBankBusinessId(businessId);
       else if (action === 'loan') setLoanBusinessId(businessId);
       else if (action === 'invest') setInvestBusinessId(businessId);
       else if (action === 'buyout') setBuyoutBusinessId(businessId);
+      else if (action === 'shareholder') setShareholderBusinessId(businessId);
       else if (action === 'transfer') setTransferBusinessId(businessId);
       else if (action === 'formation') setFormationBusinessId(businessId);
       else if (action === 'purchase') setPurchaseBusinessId(businessId);
@@ -787,6 +808,7 @@ export function ExploreTab({
                                       <p className="text-sm font-semibold">{business.name}</p>
                                       {isNewBusiness(business) ? <Pill label="New" color="bg-rose-400/15 text-rose-300" /> : null}
                                       {business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}
+                                      {business.isShared ? <Pill label={`Capital partage · ${business.shareholders.length + 1}`} color="bg-amber-400/15 text-amber-300" /> : null}
                                     </div>
                                     <div className="mt-0.5 flex items-center gap-2">
                                       <p className="text-xs text-muted-foreground">{business.owner.username}</p>
@@ -843,6 +865,7 @@ export function ExploreTab({
       <BankAccountModal open={Boolean(bankBusiness)} onClose={() => setBankBusinessId(null)} business={bankBusiness} onSubmitted={bankBusiness ? handleServiceSuccess(bankBusiness.id) : () => onReload(true)} />
       <LoanModal open={Boolean(loanBusiness)} onClose={() => setLoanBusinessId(null)} business={loanBusiness} onSubmitted={loanBusiness ? handleServiceSuccess(loanBusiness.id) : () => onReload(true)} />
       <InvestModal open={Boolean(investBusiness)} onClose={() => setInvestBusinessId(null)} business={investBusiness} onSubmitted={investBusiness ? handleServiceSuccess(investBusiness.id) : () => onReload(true)} />
+      <ShareholderProposalModal open={Boolean(shareholderBusiness)} onClose={() => setShareholderBusinessId(null)} business={shareholderBusiness} onSubmitted={() => onReload(true)} />
       <BuyoutOfferModal open={Boolean(buyoutBusiness)} onClose={() => setBuyoutBusinessId(null)} business={buyoutBusiness} onSubmitted={() => onReload(true)} />
       <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} onSubmitted={transferBusiness ? handleServiceSuccess(transferBusiness.id) : () => onReload(true)} />
       <FormationCatalogModal open={Boolean(formationBusiness)} onClose={() => setFormationBusinessId(null)} business={formationBusiness} onSubmitted={formationBusiness ? handleServiceSuccess(formationBusiness.id) : () => onReload(true)} />

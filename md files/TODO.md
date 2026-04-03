@@ -1,28 +1,9 @@
+## TODO
+
 - textes partout qui sert UI minimaliste
+- immobilier
+- interface chargée : alléger mons de textes
+
+## PROJECTS
+
 - merch/qr code
-- marketplace
-- systeme de tr clans pouvoir attaquer que mm niveau sinon les forts farment les moins forts
-- appuyer sur le graph pour voir les cos
-- jeu block blast
-- temps decran dashbaord
-- ui pass/clan
-- bannière clan image coupée
-- chat : ligne séparatrice + bouton pour aller au dernier message non lu
-- justice
-- pas clair uI you quand on arrive
-- objet shop modif clan
-- imobilier
-- charger plus de message chat
-- pb theme burgandy
-- temps passé par jeu manque des jeux
-- ajouter image support et bug 
-- nouvelle entry : school
-- sauvegarde chat exporter
-- ajouter jeux
-- parraingae dahsboard
-- inetrface chargé : alléger mons de textes
-- opti
-- abonnement
-- actionnaires
-- échange d'objets rares
-- ligne message non lu

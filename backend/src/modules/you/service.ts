@@ -72,6 +72,25 @@ const BUSINESS_BASE_INCLUDE = {
       },
     },
   },
+  shareholders: {
+    orderBy: { sharePercent: 'desc' as const },
+    include: {
+      user: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  },
+  shareholderProposals: {
+    orderBy: { createdAt: 'desc' as const },
+    include: {
+      investor: {
+        select: USER_PREVIEW_SELECT,
+      },
+      owner: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  },
   transferHistory: {
     orderBy: { createdAt: 'desc' as const },
     take: 12,
@@ -278,6 +297,49 @@ function serializeTransferHistoryEntry(entry: any) {
   };
 }
 
+function serializeShareholder(shareholder: any) {
+  return {
+    id: shareholder.id,
+    sharePercent: shareholder.sharePercent,
+    investedAmount: shareholder.investedAmount,
+    averagePrice: shareholder.averagePrice,
+    createdAt: shareholder.createdAt.toISOString(),
+    user: shareholder.user,
+  };
+}
+
+function serializeShareProposal(proposal: any, viewerId: string) {
+  return {
+    id: proposal.id,
+    businessId: proposal.businessId,
+    sharePercent: proposal.sharePercent,
+    amount: proposal.amount,
+    suggestedAmount: proposal.suggestedAmount,
+    message: proposal.message ?? null,
+    status: proposal.status,
+    createdAt: proposal.createdAt.toISOString(),
+    updatedAt: proposal.updatedAt.toISOString(),
+    decidedAt: proposal.decidedAt ? proposal.decidedAt.toISOString() : null,
+    direction: proposal.investorId === viewerId ? 'sent' : 'received',
+    investor: proposal.investor,
+    owner: proposal.owner,
+  };
+}
+
+function computeBusinessSuggestedShareAmount(business: {
+  startingCapital: number;
+  treasuryMoney: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+}, sharePercent: number) {
+  const safeSharePercent = Math.max(1, Math.min(95, sharePercent));
+  const valuationBase = Math.max(
+    1000,
+    business.startingCapital + business.treasuryMoney + Math.max(0, (business.monthlyRevenue - business.monthlyExpenses) * 6),
+  );
+  return Math.max(500, Math.round((valuationBase * safeSharePercent) / 100));
+}
+
 function serializeBusiness(business: any, viewerId: string) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
   const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
@@ -295,6 +357,16 @@ function serializeBusiness(business: any, viewerId: string) {
   const monthlyExpenses = business.typeKey === 'bank'
     ? 0
     : business.monthlyExpenses;
+  const shareholders = (business.shareholders ?? []).map((shareholder: any) => serializeShareholder(shareholder));
+  const soldSharePercent = shareholders.reduce((sum: number, shareholder: any) => sum + shareholder.sharePercent, 0);
+  const ownerSharePercent = Math.max(0, Math.round((100 - soldSharePercent) * 100) / 100);
+  const viewerShareholding = shareholders.find((shareholder: any) => shareholder.user.id === viewerId) ?? null;
+  const suggestedShareAmount = computeBusinessSuggestedShareAmount({
+    startingCapital: business.startingCapital,
+    treasuryMoney,
+    monthlyRevenue,
+    monthlyExpenses,
+  }, 10);
 
   return {
     id: business.id,
@@ -352,6 +424,15 @@ function serializeBusiness(business: any, viewerId: string) {
       createdAt: investment.createdAt.toISOString(),
       investor: investment.investor,
     })),
+    shareholders,
+    ownerSharePercent,
+    isShared: shareholders.length > 0,
+    viewerSharePercent: viewerShareholding?.sharePercent ?? 0,
+    viewerInvestedAmount: viewerShareholding?.investedAmount ?? 0,
+    suggestedShareAmount,
+    pendingShareholderProposals: (business.shareholderProposals ?? [])
+      .filter((proposal: any) => proposal.status === 'PENDING')
+      .map((proposal: any) => serializeShareProposal(proposal, viewerId)),
     transferHistory: business.transferHistory.map((entry: any) => serializeTransferHistoryEntry(entry)),
     pendingBuyoutOffers: business.buyoutOffers
       .filter((offer: any) => offer.status === 'PENDING')
@@ -495,7 +576,7 @@ export async function getYouState(userId: string) {
     }
   });
 
-  const [players, ownedBusinesses, exploreBusinesses, memberBusinesses, pendingInvitations, pendingBuyoutOffers, sentBuyoutOffers, skills] = await Promise.all([
+  const [players, ownedBusinesses, exploreBusinesses, memberBusinesses, shareholderBusinesses, pendingInvitations, pendingBuyoutOffers, sentBuyoutOffers, sentShareholderProposals, skills] = await Promise.all([
     prisma.user.findMany({
       where: {
         isApproved: true,
@@ -523,6 +604,14 @@ export async function getYouState(userId: string) {
       where: {
         ownerId: { not: userId },
         members: { some: { userId, status: 'ACTIVE' } },
+      },
+      include: BUSINESS_BASE_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.business.findMany({
+      where: {
+        ownerId: { not: userId },
+        shareholders: { some: { userId } },
       },
       include: BUSINESS_BASE_INCLUDE,
       orderBy: { createdAt: 'desc' },
@@ -579,13 +668,30 @@ export async function getYouState(userId: string) {
         },
       },
     }),
+    prisma.businessShareProposal.findMany({
+      where: {
+        investorId: userId,
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        investor: { select: USER_PREVIEW_SELECT },
+        owner: { select: USER_PREVIEW_SELECT },
+        business: {
+          select: {
+            id: true,
+            name: true,
+            typeKey: true,
+          },
+        },
+      },
+    }),
     prisma.userSkill.findMany({
       where: { userId },
       orderBy: { createdAt: 'asc' },
     }),
   ]);
 
-  const startupBusinessIds = [...ownedBusinesses, ...exploreBusinesses, ...memberBusinesses]
+  const startupBusinessIds = [...ownedBusinesses, ...exploreBusinesses, ...memberBusinesses, ...shareholderBusinesses]
     .filter((business) => business.typeKey === 'startup')
     .map((business) => business.id);
 
@@ -593,7 +699,7 @@ export async function getYouState(userId: string) {
     await Promise.all(startupBusinessIds.map((businessId) => ensureStartupProducts(businessId)));
   }
 
-  const [ownedBusinessesWithProducts, exploreBusinessesWithProducts, memberBusinessesWithProducts] = startupBusinessIds.length > 0
+  const [ownedBusinessesWithProducts, exploreBusinessesWithProducts, memberBusinessesWithProducts, shareholderBusinessesWithProducts] = startupBusinessIds.length > 0
     ? await Promise.all([
         prisma.business.findMany({
           where: { id: { in: ownedBusinesses.map((business) => business.id) } },
@@ -610,8 +716,13 @@ export async function getYouState(userId: string) {
           include: BUSINESS_BASE_INCLUDE,
           orderBy: { createdAt: 'desc' },
         }),
+        prisma.business.findMany({
+          where: { id: { in: shareholderBusinesses.map((business) => business.id) } },
+          include: BUSINESS_BASE_INCLUDE,
+          orderBy: { createdAt: 'desc' },
+        }),
       ])
-    : [ownedBusinesses, exploreBusinesses, memberBusinesses];
+    : [ownedBusinesses, exploreBusinesses, memberBusinesses, shareholderBusinesses];
 
   const serializedSkills = skills
     .map((skill) => serializeSkill(skill))
@@ -653,6 +764,10 @@ export async function getYouState(userId: string) {
       ...serializeBuyoutOffer(offer, userId),
       business: offer.business,
     })),
+    sentShareholderProposals: sentShareholderProposals.map((proposal) => ({
+      ...serializeShareProposal(proposal, userId),
+      business: proposal.business,
+    })),
     relationships: relationships.map((relationship) => serializeRelationship(relationship, userId, { viewerIsMarried, pendingCourtCaseIds })),
     courtCases: pendingCourtCases.map((c: any) => ({
       id: c.id,
@@ -663,6 +778,7 @@ export async function getYouState(userId: string) {
     ownedBusinesses: ownedBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
     exploreBusinesses: exploreBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
     memberBusinesses: memberBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
+    shareholderBusinesses: shareholderBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
   };
 }
 
@@ -1671,6 +1787,261 @@ async function handleInvestAction(userId: string, business: any, input: { amount
     expectedReturnMin: riskRange.min,
     expectedReturnMax: riskRange.max,
   };
+}
+
+export async function createBusinessShareProposal(
+  userId: string,
+  businessId: string,
+  input: { sharePercent: number; amount: number; message?: string },
+) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      owner: { select: USER_PREVIEW_SELECT },
+      shareholders: {
+        include: {
+          user: { select: USER_PREVIEW_SELECT },
+        },
+      },
+    },
+  });
+
+  if (!business) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
+
+  if (business.ownerId === userId) {
+    throw new Error('SHARE_SELF_FORBIDDEN');
+  }
+
+  const sharePercent = Math.round(Number(input.sharePercent) * 100) / 100;
+  const amount = Number(input.amount);
+
+  if (!Number.isFinite(sharePercent) || sharePercent <= 0 || sharePercent >= 100) {
+    throw new Error('INVALID_SHARE_PERCENT');
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('INVALID_SHARE_AMOUNT');
+  }
+
+  const existingPendingProposal = await prisma.businessShareProposal.findFirst({
+    where: {
+      businessId,
+      investorId: userId,
+      status: 'PENDING',
+    },
+    select: { id: true },
+  });
+
+  if (existingPendingProposal) {
+    throw new Error('SHARE_PROPOSAL_ALREADY_PENDING');
+  }
+
+  const soldSharePercent = business.shareholders.reduce((sum, shareholder) => sum + shareholder.sharePercent, 0);
+  if (soldSharePercent + sharePercent > 100) {
+    throw new Error('BUSINESS_SHARE_CAP_EXCEEDED');
+  }
+
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, amount);
+  if (!hasSharedMoney) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  const suggestedAmount = computeBusinessSuggestedShareAmount(business, sharePercent);
+
+  const proposal = await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, amount);
+    return tx.businessShareProposal.create({
+      data: {
+        businessId,
+        investorId: userId,
+        ownerId: business.ownerId,
+        sharePercent,
+        amount,
+        suggestedAmount,
+        message: input.message?.trim() ? input.message.trim() : null,
+      },
+      include: {
+        investor: { select: USER_PREVIEW_SELECT },
+        owner: { select: USER_PREVIEW_SELECT },
+      },
+    });
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  await Promise.allSettled([
+    createNotification({
+      userId: business.ownerId,
+      type: 'SYSTEM',
+      title: 'Nouvelle proposition d actionnariat',
+      body: `${proposal.investor.username} propose ${sharePercent.toLocaleString('fr-FR')} % de ${business.name} pour ${amount.toLocaleString('fr-FR')} money.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Proposition envoyee',
+      body: `Ta proposition pour ${business.name} est en attente. ${amount.toLocaleString('fr-FR')} money est bloque.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+  ]);
+
+  logYouAdmin('business_share_proposal_create', userId, proposal.investor.username, business.id, business.name, {
+    sharePercent,
+    amount,
+    suggestedAmount,
+  });
+
+  return serializeShareProposal(proposal, userId);
+}
+
+export async function respondToBusinessShareProposal(userId: string, proposalId: string, decision: 'accept' | 'reject') {
+  const proposal = await prisma.businessShareProposal.findUnique({
+    where: { id: proposalId },
+    include: {
+      business: {
+        include: {
+          owner: { select: USER_PREVIEW_SELECT },
+          shareholders: {
+            include: {
+              user: { select: USER_PREVIEW_SELECT },
+            },
+          },
+        },
+      },
+      investor: { select: USER_PREVIEW_SELECT },
+      owner: { select: USER_PREVIEW_SELECT },
+    },
+  });
+
+  if (!proposal) {
+    throw new Error('SHARE_PROPOSAL_NOT_FOUND');
+  }
+
+  if (proposal.ownerId !== userId) {
+    throw new Error('SHARE_PROPOSAL_REVIEW_FORBIDDEN');
+  }
+
+  if (proposal.status !== 'PENDING') {
+    throw new Error('SHARE_PROPOSAL_ALREADY_RESOLVED');
+  }
+
+  const decidedAt = new Date();
+
+  if (decision === 'reject') {
+    await prisma.$transaction(async (tx) => {
+      await tx.businessShareProposal.update({
+        where: { id: proposal.id },
+        data: { status: 'REJECTED', decidedAt },
+      });
+      await tx.user.update({
+        where: { id: proposal.investorId },
+        data: { money: { increment: proposal.amount } },
+      });
+    });
+
+    await emitSharedBalanceUpdates(prisma, proposal.investorId);
+
+    await Promise.allSettled([
+      createNotification({
+        userId: proposal.investorId,
+        type: 'SYSTEM',
+        title: 'Proposition refusee',
+        body: `${proposal.business.name} a refuse ta proposition. ${proposal.amount.toLocaleString('fr-FR')} money t a ete rendu.`,
+        link: '/you?tab=travail',
+        icon: 'briefcase-business',
+      }),
+    ]);
+
+    logYouAdmin('business_share_proposal_review', userId, proposal.owner.username, proposal.business.id, proposal.business.name, {
+      proposalId,
+      decision,
+      sharePercent: proposal.sharePercent,
+      amount: proposal.amount,
+    });
+
+    return { id: proposal.id, status: 'REJECTED', decidedAt: decidedAt.toISOString() };
+  }
+
+  const existingShareholder = proposal.business.shareholders.find((shareholder) => shareholder.userId === proposal.investorId);
+  const soldSharePercentExcludingInvestor = proposal.business.shareholders
+    .filter((shareholder) => shareholder.userId !== proposal.investorId)
+    .reduce((sum, shareholder) => sum + shareholder.sharePercent, 0);
+  const currentInvestorShare = existingShareholder?.sharePercent ?? 0;
+
+  if (soldSharePercentExcludingInvestor + currentInvestorShare + proposal.sharePercent > 100) {
+    throw new Error('BUSINESS_SHARE_CAP_EXCEEDED');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.businessShareProposal.update({
+      where: { id: proposal.id },
+      data: { status: 'ACCEPTED', decidedAt },
+    });
+    await tx.user.update({
+      where: { id: proposal.ownerId },
+      data: { money: { increment: proposal.amount } },
+    });
+    await tx.businessShareholder.upsert({
+      where: {
+        businessId_userId: {
+          businessId: proposal.businessId,
+          userId: proposal.investorId,
+        },
+      },
+      update: {
+        sharePercent: { increment: proposal.sharePercent },
+        investedAmount: { increment: proposal.amount },
+        averagePrice: existingShareholder
+          ? ((existingShareholder.averagePrice * existingShareholder.sharePercent) + proposal.amount)
+            / Math.max(0.01, existingShareholder.sharePercent + proposal.sharePercent)
+          : proposal.amount / proposal.sharePercent,
+      },
+      create: {
+        businessId: proposal.businessId,
+        userId: proposal.investorId,
+        sharePercent: proposal.sharePercent,
+        investedAmount: proposal.amount,
+        averagePrice: proposal.amount / proposal.sharePercent,
+      },
+    });
+  });
+
+  await emitSharedBalanceUpdatesForUserIds(prisma, [proposal.ownerId]);
+
+  await Promise.allSettled([
+    createNotification({
+      userId: proposal.investorId,
+      type: 'SYSTEM',
+      title: 'Tu deviens actionnaire',
+      body: `${proposal.owner.username} a accepte. Tu possedes maintenant une part de ${proposal.business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+    createNotification({
+      userId: proposal.ownerId,
+      type: 'MONEY_RECEIVED',
+      title: 'Actionnariat partage',
+      body: `${proposal.amount.toLocaleString('fr-FR')} money recu pour ${proposal.sharePercent.toLocaleString('fr-FR')} % de ${proposal.business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+  ]);
+
+  logYouAdmin('business_share_proposal_review', userId, proposal.owner.username, proposal.business.id, proposal.business.name, {
+    proposalId,
+    decision,
+    sharePercent: proposal.sharePercent,
+    amount: proposal.amount,
+    investorId: proposal.investorId,
+    investorName: proposal.investor.username,
+  });
+
+  return { id: proposal.id, status: 'ACCEPTED', decidedAt: decidedAt.toISOString() };
 }
 
 async function handleCollectNpcAction(userId: string, business: any, _input: unknown) {

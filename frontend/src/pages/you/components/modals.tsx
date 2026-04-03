@@ -379,6 +379,73 @@ export function BuyoutOfferModal({ open, onClose, business, onSubmitted }: { ope
   );
 }
 
+export function ShareholderProposalModal({ open, onClose, business, onSubmitted }: { open: boolean; onClose: () => void; business: YouBusiness | null; onSubmitted: () => Promise<void> }) {
+  const [sharePercent, setSharePercent] = useState('10');
+  const [amount, setAmount] = useState('');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setSharePercent('10');
+      setAmount('');
+      setMessage('');
+      return;
+    }
+    const suggested = business?.suggestedShareAmount ?? 0;
+    setAmount(suggested > 0 ? String(suggested) : '');
+  }, [business?.suggestedShareAmount, open]);
+
+  const numericSharePercent = Math.max(0, Number(sharePercent) || 0);
+  const suggestedAmount = business
+    ? Math.max(500, Math.round((business.suggestedShareAmount * Math.max(1, numericSharePercent)) / 10))
+    : 0;
+
+  const submit = async () => {
+    if (!business) return;
+    setSubmitting(true);
+    try {
+      await withRouteError(
+        () => youApi.createShareholderProposal(business.id, { sharePercent: numericSharePercent, amount: Number(amount), message: message.trim() || undefined }),
+        'Impossible d envoyer la proposition d actionnariat.',
+      );
+      toast.success('Proposition d actionnariat envoyee');
+      await onSubmitted();
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title={business ? `Devenir actionnaire · ${business.name}` : 'Devenir actionnaire'} desc="Propose un pourcentage et une somme. Le proprietaire devra accepter pour partager l entreprise.">
+      <FieldRow label="Part souhaitee (%)">
+        <Input type="number" min={1} max={99} step={0.5} value={sharePercent} onChange={(event) => setSharePercent(event.target.value)} />
+      </FieldRow>
+      <FieldRow label="Somme proposee">
+        <Input type="number" min={1} value={amount} onChange={(event) => setAmount(event.target.value)} />
+      </FieldRow>
+      <div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-2">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-muted-foreground">Montant suggere auto-calcule</span>
+          <button type="button" className="font-semibold text-amber-300 transition-opacity hover:opacity-80" onClick={() => setAmount(String(suggestedAmount))}>
+            Utiliser {formatMoney(suggestedAmount)}
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Ta part</p><p className="text-sm font-bold text-amber-300">{numericSharePercent.toLocaleString('fr-FR')}%</p></div>
+          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Owner restant</p><p className="text-sm font-bold">{Math.max(0, 100 - numericSharePercent).toLocaleString('fr-FR')}%</p></div>
+          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Base actuelle</p><p className="text-sm font-bold">{formatMoney(business?.treasuryMoney ?? 0)}</p></div>
+        </div>
+      </div>
+      <FieldRow label="Message (optionnel)">
+        <Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ex : je veux financer votre croissance." />
+      </FieldRow>
+      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || numericSharePercent <= 0 || numericSharePercent >= 100 || Number(amount) <= 0}>Envoyer</Button></div>
+    </ModalWrap>
+  );
+}
+
 export function MeetModal({ open, onClose, players, onSubmitted }: { open: boolean; onClose: () => void; players: YouPlayer[]; onSubmitted: () => Promise<void> }) {
   const [search, setSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -572,6 +639,7 @@ export function ManageBusinessModal({
   const [reviewingLoanId, setReviewingLoanId] = useState<string | null>(null);
   const [repayingLoanId, setRepayingLoanId] = useState<string | null>(null);
   const [reviewingBuyoutId, setReviewingBuyoutId] = useState<string | null>(null);
+  const [reviewingShareProposalId, setReviewingShareProposalId] = useState<string | null>(null);
   const [actingProductKey, setActingProductKey] = useState<string | null>(null);
   const [loanRateInput, setLoanRateInput] = useState('4');
   const [transferFeeInput, setTransferFeeInput] = useState('2');
@@ -619,6 +687,7 @@ export function ManageBusinessModal({
   const pendingLoans = business?.recentLoans.filter((loan) => loan.status === 'PENDING') ?? [];
   const activeLoans = business?.recentLoans.filter((loan) => loan.status === 'ACTIVE') ?? [];
   const pendingBuyoutOffers = business?.pendingBuyoutOffers.filter((offer) => offer.status === 'PENDING') ?? [];
+  const pendingShareholderProposals = business?.pendingShareholderProposals.filter((proposal) => proposal.status === 'PENDING') ?? [];
   const isBank = business?.typeKey === 'bank';
   const isStartup = business?.typeKey === 'startup';
   const isTransfer = business?.typeKey === 'transfer';
@@ -675,6 +744,17 @@ export function ManageBusinessModal({
       }
     } finally {
       setReviewingBuyoutId(null);
+    }
+  };
+
+  const reviewShareholderProposal = async (proposalId: string, decision: 'accept' | 'reject') => {
+    setReviewingShareProposalId(proposalId);
+    try {
+      await withRouteError(() => youApi.respondToShareholderProposal(proposalId, decision), 'Impossible de traiter cette proposition d actionnariat.');
+      toast.success(decision === 'accept' ? 'Actionnaire ajoute' : 'Proposition refusee');
+      await onSubmitted(true);
+    } finally {
+      setReviewingShareProposalId(null);
     }
   };
 
@@ -1016,6 +1096,28 @@ export function ManageBusinessModal({
                     </div>
                   ))}
                 </div>
+                <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Capital partage</p>
+                      <p className="mt-1 text-sm font-semibold">{business.isShared ? 'Entreprise partagee' : 'Fondateur seul'}</p>
+                    </div>
+                    <Pill label={`${business.ownerSharePercent.toFixed(0)}% fondateur`} color="bg-amber-400/15 text-amber-300" />
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between rounded-lg bg-background/50 px-3 py-2 text-sm">
+                      <span>{business.owner.username}</span>
+                      <span className="font-semibold">{business.ownerSharePercent.toFixed(2)}%</span>
+                    </div>
+                    {business.shareholders.map((shareholder) => (
+                      <div key={shareholder.id} className="flex items-center justify-between rounded-lg bg-background/50 px-3 py-2 text-sm">
+                        <span>{shareholder.user.username}</span>
+                        <span className="font-semibold">{shareholder.sharePercent.toFixed(2)}%</span>
+                      </div>
+                    ))}
+                    {business.shareholders.length === 0 ? <p className="text-xs text-muted-foreground">Aucun actionnaire externe pour l instant.</p> : null}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -1124,6 +1226,30 @@ export function ManageBusinessModal({
                         <div className="flex gap-2">
                           <Button size="sm" className="text-xs" onClick={() => void reviewBuyout(offer.id, 'accept')} disabled={reviewingBuyoutId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button>
                           <Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewBuyout(offer.id, 'reject')} disabled={reviewingBuyoutId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
+
+            {pendingShareholderProposals.length > 0 ? (
+              <Card>
+                <CardContent className="space-y-3 px-5 py-4">
+                  <SectionTitle>Propositions actionnaires ({pendingShareholderProposals.length})</SectionTitle>
+                  {pendingShareholderProposals.map((proposal) => (
+                    <div key={proposal.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{proposal.investor.username}</p>
+                          <p className="text-xs text-muted-foreground">{proposal.sharePercent.toLocaleString('fr-FR')}% contre {proposal.amount.toLocaleString('fr-FR')} €</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground/70">Suggestion systeme: {proposal.suggestedAmount.toLocaleString('fr-FR')} €</p>
+                          {proposal.message ? <p className="mt-1 text-xs text-muted-foreground/70">"{proposal.message}"</p> : null}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="text-xs" onClick={() => void reviewShareholderProposal(proposal.id, 'accept')} disabled={reviewingShareProposalId !== null}><Check className="mr-1.5 h-3.5 w-3.5" />Accepter</Button>
+                          <Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewShareholderProposal(proposal.id, 'reject')} disabled={reviewingShareProposalId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button>
                         </div>
                       </div>
                     </div>

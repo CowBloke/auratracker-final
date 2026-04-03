@@ -22,6 +22,7 @@ export const BLOCKABLE_PAGES: BlockablePage[] = [
   { key: 'game-doodle-jump', path: '/games/doodle-jump', label: 'Doodle Jump', category: 'Jeux', description: 'Jeu de plateforme — grimpez le plus haut possible.' },
   { key: 'game-logic-lab', path: '/games/logic-lab', label: 'Sudoku', category: 'Jeux', description: 'Jeu de Sudoku en plusieurs niveaux de difficulté.' },
   { key: 'game-minesweeper', path: '/games/minesweeper', label: 'Démineur', category: 'Jeux', description: 'Jeu du Démineur classique.' },
+  { key: 'game-blockblast', path: '/games/blockblast', label: 'BlockBlast', category: 'Jeux', description: 'Puzzle arcade façon Block Blast inspiré de Blockerino, avec main de pièces et score persistant.' },
   { key: 'game-flappy-bird', path: '/games/flappy-bird', label: 'Flappy Bird', category: 'Jeux', description: 'Traversez les tuyaux sans toucher les obstacles.' },
   { key: 'game-chrome-dino', path: '/games/chrome-dino', label: 'Chrome Dino', category: 'Jeux', description: 'Le dino de Chrome — évitez les cactus le plus longtemps possible.' },
   { key: 'game-snake', path: '/games/snake', label: 'Snake', category: 'Jeux', description: 'Snake arcade natif — mangez, allongez-vous et tenez le plus longtemps possible.' },
