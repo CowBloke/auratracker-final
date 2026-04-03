@@ -2381,7 +2381,8 @@ export const supportApi = {
   // Admin
   getThreads: () => api.get<{ threads: SupportThread[] }>('/support/admin/threads'),
   getThread: (userId: string) => api.get<{ messages: SupportMessage[]; user: SupportThread['user'] }>(`/support/admin/threads/${userId}`),
-  reply: (userId: string, body: string) => api.post<{ message: SupportMessage }>(`/support/admin/reply/${userId}`, { body }),
+  reply: (userId: string, body: string, images?: string[]) =>
+    api.post<{ message: SupportMessage }>(`/support/admin/reply/${userId}`, { body, images }),
   markThreadRead: (userId: string) => api.post<{ success: boolean }>(`/support/admin/threads/${userId}/read`),
 };
 

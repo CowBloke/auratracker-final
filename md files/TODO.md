@@ -26,4 +26,3 @@
 - actionnaires
 - échange d'objets rares
 - ligne message non lu
-- image support

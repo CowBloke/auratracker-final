@@ -6,6 +6,7 @@ import { supportApi, SupportMessage, uploadUserImage } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { cn } from '@/lib/utils';
 import { useSmartScroll } from '@/hooks/useSmartScroll';
+import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -122,19 +123,15 @@ export default function SupportChat({ rightOffset = '1.5rem' }: SupportChatProps
     setUploadingImage(true);
 
     try {
+      const uploadedUrls: string[] = [];
       for (const file of files) {
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          try {
-            const base64Data = event.target?.result as string;
-            const mimeType = file.type;
-            const { data } = await uploadUserImage({ base64Data, mimeType });
-            setImages((prev) => [...prev, data.imageUrl]);
-          } catch {
-            // ignore
-          }
-        };
-        reader.readAsDataURL(file);
+        const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+        const { data } = await uploadUserImage({ base64Data, mimeType });
+        uploadedUrls.push(data.imageUrl);
+      }
+
+      if (uploadedUrls.length > 0) {
+        setImages((prev) => [...prev, ...uploadedUrls]);
       }
     } finally {
       setUploadingImage(false);

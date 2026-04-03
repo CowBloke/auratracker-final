@@ -1,20 +1,24 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, ChevronDown } from 'lucide-react';
+import { Send, ChevronDown, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { supportApi, SupportMessage } from '@/services/api';
+import { supportApi, SupportMessage, uploadUserImage } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
 import { useSmartScroll } from '@/hooks/useSmartScroll';
+import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export default function Support() {
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [input, setInput] = useState('');
+  const [images, setImages] = useState<string[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
     dependency: [messages],
   });
@@ -60,18 +64,59 @@ export default function Support() {
 
   const handleSend = async () => {
     const trimmed = input.trim();
-    if (!trimmed || sending) return;
+    if ((!trimmed && images.length === 0) || sending || uploadingImage) return;
 
     setSending(true);
     try {
-      const { data } = await supportApi.sendMessage(trimmed);
+      const { data } = await supportApi.sendMessage(trimmed, images.length > 0 ? images : undefined);
       setMessages((prev) => [...prev, data.message]);
       setInput('');
+      setImages([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch {
       // ignore
     } finally {
       setSending(false);
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (!files) return;
+
+    if (images.length + files.length > 5) {
+      console.error('Maximum 5 images allowed');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setUploadingImage(true);
+
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+        const { data } = await uploadUserImage({ base64Data, mimeType });
+        uploadedUrls.push(data.imageUrl);
+      }
+
+      if (uploadedUrls.length > 0) {
+        setImages((prev) => [...prev, ...uploadedUrls]);
+      }
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -127,7 +172,50 @@ export default function Support() {
 
           <div className="border-t bg-muted/20 p-4">
             <div className="rounded-2xl border bg-background p-2">
-              <div className="flex gap-3">
+              {images.length > 0 && (
+                <div className="mb-2 flex gap-2 flex-wrap px-2 pt-1">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <img
+                        src={img}
+                        alt={`Upload ${idx}`}
+                        className="h-12 w-12 object-cover rounded border border-border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Supprimer l'image"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-3 items-end">
+                <div className="flex flex-col gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2 hover:bg-primary/10 hover:text-primary text-xs"
+                    disabled={uploadingImage || images.length >= 5 || sending}
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Ajouter une image"
+                  >
+                    <Upload className="h-3.5 w-3.5 mr-1.5" />
+                    Image
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
                 <Textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -140,7 +228,7 @@ export default function Support() {
                 <Button
                   size="icon"
                   className="mt-auto h-11 w-11 shrink-0 rounded-xl"
-                  disabled={!input.trim() || sending}
+                  disabled={(!input.trim() && images.length === 0) || sending || uploadingImage}
                   onClick={handleSend}
                 >
                   <Send className="h-4 w-4" />
@@ -156,6 +244,7 @@ export default function Support() {
 
 function MessageBubble({ msg }: { msg: SupportMessage }) {
   const isAdmin = msg.fromAdmin;
+  const messageImages = msg.images ? JSON.parse(msg.images) : [];
 
   return (
     <div className={cn('flex', isAdmin ? 'justify-start' : 'justify-end')}>
@@ -167,6 +256,18 @@ function MessageBubble({ msg }: { msg: SupportMessage }) {
             : 'rounded-tr-sm bg-primary/5 text-foreground'
         )}
       >
+        {messageImages.length > 0 && (
+          <div className="mb-2 flex gap-1 flex-wrap">
+            {messageImages.map((img: string, idx: number) => (
+              <img
+                key={idx}
+                src={img}
+                alt={`Message ${idx}`}
+                className="h-16 w-16 object-cover rounded"
+              />
+            ))}
+          </div>
+        )}
         <p className="break-words whitespace-pre-wrap leading-relaxed">{msg.body}</p>
         <p className="mt-2 text-[11px] text-muted-foreground">
           {format(new Date(msg.createdAt), 'dd MMM, HH:mm', { locale: fr })}

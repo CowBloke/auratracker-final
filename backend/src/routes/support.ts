@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
+import { isAllowedImageUrl } from '../utils/uploads.js';
 
 const router = Router();
 
@@ -30,15 +31,14 @@ router.post('/messages', authMiddleware, async (req: AuthRequest, res: Response)
     if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
 
     const { body, images } = req.body;
-    if (!body || typeof body !== 'string' || body.trim().length === 0) {
-      return res.status(400).json({ error: 'Message body is required' });
-    }
-    if (body.trim().length > 1000) {
+    const messageBody = typeof body === 'string' ? body.trim() : '';
+    if (messageBody.length > 1000) {
       return res.status(400).json({ error: 'Message must be 1000 characters or less' });
     }
 
     // Validate images
     let imagesJson: string | undefined;
+    let validatedImages: string[] = [];
     if (images) {
       if (!Array.isArray(images)) {
         return res.status(400).json({ error: 'Images must be an array' });
@@ -49,11 +49,30 @@ router.post('/messages', authMiddleware, async (req: AuthRequest, res: Response)
       if (!images.every((img) => typeof img === 'string')) {
         return res.status(400).json({ error: 'All images must be strings' });
       }
-      imagesJson = JSON.stringify(images);
+
+      validatedImages = images
+        .map((img) => img.trim())
+        .filter((img) => img.length > 0);
+
+      if (validatedImages.length > 5) {
+        return res.status(400).json({ error: 'Maximum 5 images allowed' });
+      }
+
+      if (!validatedImages.every((img) => isAllowedImageUrl(img))) {
+        return res.status(400).json({ error: 'Invalid image URL' });
+      }
+
+      if (validatedImages.length > 0) {
+        imagesJson = JSON.stringify(validatedImages);
+      }
+    }
+
+    if (!messageBody && validatedImages.length === 0) {
+      return res.status(400).json({ error: 'Message body or at least one image is required' });
     }
 
     const message = await prisma.supportMessage.create({
-      data: { userId: req.user.id, body: body.trim(), fromAdmin: false, images: imagesJson },
+      data: { userId: req.user.id, body: messageBody, fromAdmin: false, images: imagesJson },
     });
 
     // Notify all admins via socket (they're in admin:support room)
@@ -68,11 +87,12 @@ router.post('/messages', authMiddleware, async (req: AuthRequest, res: Response)
       select: { id: true },
     });
     for (const admin of admins) {
+      const preview = messageBody || 'Image';
       createNotification({
         userId: admin.id,
         type: 'SUPPORT_MESSAGE',
         title: 'Nouveau message de support',
-        body: `${req.user.username} : "${body.trim().slice(0, 80)}${body.trim().length > 80 ? '…' : ''}"`,
+        body: `${req.user.username} : "${preview.slice(0, 80)}${preview.length > 80 ? '…' : ''}"`,
         data: { userId: req.user.id, username: req.user.username },
         link: '/admin',
         icon: 'message-circle',
@@ -213,20 +233,52 @@ router.post('/admin/reply/:userId', authMiddleware, async (req: AuthRequest, res
     if (!requireAdmin(req, res)) return;
 
     const { userId } = req.params;
-    const { body } = req.body;
+    const { body, images } = req.body;
+    const messageBody = typeof body === 'string' ? body.trim() : '';
 
-    if (!body || typeof body !== 'string' || body.trim().length === 0) {
-      return res.status(400).json({ error: 'Message body is required' });
-    }
-    if (body.trim().length > 1000) {
+    if (messageBody.length > 1000) {
       return res.status(400).json({ error: 'Message must be 1000 characters or less' });
+    }
+
+    let imagesJson: string | undefined;
+    let validatedImages: string[] = [];
+    if (images) {
+      if (!Array.isArray(images)) {
+        return res.status(400).json({ error: 'Images must be an array' });
+      }
+      if (images.length > 5) {
+        return res.status(400).json({ error: 'Maximum 5 images allowed' });
+      }
+      if (!images.every((img) => typeof img === 'string')) {
+        return res.status(400).json({ error: 'All images must be strings' });
+      }
+
+      validatedImages = images
+        .map((img) => img.trim())
+        .filter((img) => img.length > 0);
+
+      if (validatedImages.length > 5) {
+        return res.status(400).json({ error: 'Maximum 5 images allowed' });
+      }
+
+      if (!validatedImages.every((img) => isAllowedImageUrl(img))) {
+        return res.status(400).json({ error: 'Invalid image URL' });
+      }
+
+      if (validatedImages.length > 0) {
+        imagesJson = JSON.stringify(validatedImages);
+      }
+    }
+
+    if (!messageBody && validatedImages.length === 0) {
+      return res.status(400).json({ error: 'Message body or at least one image is required' });
     }
 
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const message = await prisma.supportMessage.create({
-      data: { userId, body: body.trim(), fromAdmin: true },
+      data: { userId, body: messageBody, fromAdmin: true, images: imagesJson },
     });
 
     // Push to user in real-time
@@ -239,7 +291,7 @@ router.post('/admin/reply/:userId', authMiddleware, async (req: AuthRequest, res
       userId,
       type: 'SUPPORT_MESSAGE',
       title: 'Réponse du support',
-      body: `Support : "${body.trim().slice(0, 80)}${body.trim().length > 80 ? '…' : ''}"`,
+      body: `Support : "${(messageBody || 'Image').slice(0, 80)}${(messageBody || 'Image').length > 80 ? '…' : ''}"`,
       data: { fromAdmin: true },
       link: '/support',
       icon: 'message-circle',
@@ -279,11 +331,12 @@ router.post('/admin/threads/:userId/read', authMiddleware, async (req: AuthReque
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function serializeMessage(msg: { id: string; userId: string; body: string; fromAdmin: boolean; isRead: boolean; createdAt: Date }) {
+function serializeMessage(msg: { id: string; userId: string; body: string; images?: string | null; fromAdmin: boolean; isRead: boolean; createdAt: Date }) {
   return {
     id: msg.id,
     userId: msg.userId,
     body: msg.body,
+    images: msg.images ?? null,
     fromAdmin: msg.fromAdmin,
     isRead: msg.isRead,
     createdAt: msg.createdAt instanceof Date ? msg.createdAt.toISOString() : msg.createdAt,

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile } from '../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -991,9 +991,12 @@ export default function Admin() {
   const [activeThreadMessages, setActiveThreadMessages] = useState<SupportMessage[]>([]);
   const [activeThreadUser, setActiveThreadUser] = useState<SupportThread['user'] | null>(null);
   const [supportReply, setSupportReply] = useState('');
+  const [supportReplyImages, setSupportReplyImages] = useState<string[]>([]);
+  const [supportUploadingImage, setSupportUploadingImage] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
   const supportMessagesEndRef = useRef<HTMLDivElement>(null);
+  const supportImageInputRef = useRef<HTMLInputElement>(null);
   const [newThreadOpen, setNewThreadOpen] = useState(false);
   const [newThreadUserId, setNewThreadUserId] = useState('');
   const [newThreadBody, setNewThreadBody] = useState('');
@@ -1028,14 +1031,59 @@ export default function Admin() {
   };
 
   const handleSupportReply = async () => {
-    if (!activeThreadUserId || !supportReply.trim() || supportSending) return;
+    if (!activeThreadUserId || (!supportReply.trim() && supportReplyImages.length === 0) || supportSending || supportUploadingImage) return;
     setSupportSending(true);
     try {
-      const res = await supportApi.reply(activeThreadUserId, supportReply.trim());
+      const res = await supportApi.reply(
+        activeThreadUserId,
+        supportReply.trim(),
+        supportReplyImages.length > 0 ? supportReplyImages : undefined,
+      );
       setActiveThreadMessages((prev) => prev.some((m) => m.id === res.data.message.id) ? prev : [...prev, res.data.message]);
       setSupportReply('');
+      setSupportReplyImages([]);
+      if (supportImageInputRef.current) {
+        supportImageInputRef.current.value = '';
+      }
     } catch { /* non-critical */ }
     finally { setSupportSending(false); }
+  };
+
+  const handleSupportImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (!files || files.length === 0) return;
+
+    if (supportReplyImages.length + files.length > 5) {
+      showMessage('error', 'Maximum 5 images autorisées');
+      if (supportImageInputRef.current) {
+        supportImageInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setSupportUploadingImage(true);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+        const { data } = await uploadUserImage({ base64Data, mimeType });
+        uploadedUrls.push(data.imageUrl);
+      }
+      if (uploadedUrls.length > 0) {
+        setSupportReplyImages((prev) => [...prev, ...uploadedUrls]);
+      }
+    } catch {
+      showMessage('error', 'Erreur lors du téléversement de l\'image');
+    } finally {
+      setSupportUploadingImage(false);
+      if (supportImageInputRef.current) {
+        supportImageInputRef.current.value = '';
+      }
+    }
+  };
+
+  const removeSupportReplyImage = (index: number) => {
+    setSupportReplyImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleStartThread = async () => {
@@ -9629,26 +9677,71 @@ export default function Admin() {
                     })}
                     <div ref={supportMessagesEndRef} />
                   </div>
-                  <div className="border-t border-border p-3 flex gap-2 items-end">
-                    <Textarea
-                      value={supportReply}
-                      onChange={(e) => setSupportReply(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSupportReply(); }
-                      }}
-                      placeholder="Répondre…"
-                      className="resize-none text-sm min-h-[36px] max-h-24 py-2"
-                      rows={1}
-                      maxLength={1000}
-                    />
-                    <Button
-                      size="icon"
-                      className="h-9 w-9 shrink-0"
-                      disabled={!supportReply.trim() || supportSending}
-                      onClick={handleSupportReply}
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                  <div className="border-t border-border p-3 space-y-2">
+                    {supportReplyImages.length > 0 && (
+                      <div className="flex gap-2 flex-wrap">
+                        {supportReplyImages.map((img, idx) => (
+                          <div key={idx} className="relative group">
+                            <img
+                              src={img}
+                              alt={`Support ${idx}`}
+                              className="h-12 w-12 object-cover rounded border border-border"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeSupportReplyImage(idx)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Supprimer l'image"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2 items-end">
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2 hover:bg-primary/10 hover:text-primary text-xs"
+                          disabled={supportUploadingImage || supportReplyImages.length >= 5 || supportSending}
+                          onClick={() => supportImageInputRef.current?.click()}
+                          title="Ajouter une image"
+                        >
+                          <Upload className="h-3.5 w-3.5 mr-1.5" />
+                          Image
+                        </Button>
+                        <input
+                          ref={supportImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleSupportImageUpload}
+                          className="hidden"
+                        />
+                      </div>
+                      <Textarea
+                        value={supportReply}
+                        onChange={(e) => setSupportReply(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSupportReply(); }
+                        }}
+                        placeholder="Répondre…"
+                        className="resize-none text-sm min-h-[36px] max-h-24 py-2"
+                        rows={1}
+                        maxLength={1000}
+                      />
+                      <Button
+                        size="icon"
+                        className="h-9 w-9 shrink-0"
+                        disabled={(!supportReply.trim() && supportReplyImages.length === 0) || supportSending || supportUploadingImage}
+                        onClick={handleSupportReply}
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </>
               )}
