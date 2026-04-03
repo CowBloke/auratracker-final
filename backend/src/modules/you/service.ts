@@ -98,6 +98,9 @@ const BUSINESS_BASE_INCLUDE = {
   startupProducts: {
     orderBy: { slotIndex: 'asc' as const },
   },
+  formationProducts: {
+    orderBy: { createdAt: 'asc' as const },
+  },
   ratings: {
     select: { rating: true },
   },
@@ -303,6 +306,7 @@ function serializeBusiness(business: any, viewerId: string) {
     ownerKind,
     verified: business.verified,
     description: business.description,
+    logoUrl: business.logoUrl ?? null,
     location: business.location,
     foundedAt: business.createdAt.toISOString(),
     foundedLabel: business.createdAt.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
@@ -358,6 +362,15 @@ function serializeBusiness(business: any, viewerId: string) {
     transferFeeRate: business.typeKey === 'transfer' ? (business.transferFeeRate ?? 2) : undefined,
     formationUrl: business.typeKey === 'formation' ? (business.formationUrl ?? null) : undefined,
     formationPrice: business.typeKey === 'formation' ? (business.formationPrice ?? 500) : undefined,
+    formationProducts: business.typeKey === 'formation' ? (business.formationProducts ?? []).map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description ?? null,
+      price: p.price,
+      url: p.url,
+      imageUrl: p.imageUrl ?? null,
+      createdAt: p.createdAt.toISOString(),
+    })) : undefined,
     npcLastCollectedAt: (business.typeKey === 'lemonade' || business.typeKey === 'epicerie')
       ? (business.npcLastCollectedAt ? new Date(business.npcLastCollectedAt).toISOString() : null)
       : undefined,
@@ -2992,6 +3005,141 @@ export async function buyFormation(userId: string, businessId: string) {
   await logBusinessTransaction(businessId, 'FORMATION_SALE', price, `Achat formation par ${user.username}`, userId);
 
   return { formationUrl: business.formationUrl, price };
+}
+
+// --- Business Profile ---
+
+export async function updateBusinessProfile(
+  userId: string,
+  businessId: string,
+  data: { name?: string; description?: string | null; logoUrl?: string | null },
+) {
+  if (data.name !== undefined && !data.name.trim()) throw new Error('INVALID_BUSINESS_NAME');
+
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { id: true, ownerId: true } });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  const updated = await prisma.business.update({
+    where: { id: businessId },
+    data: {
+      ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+      ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
+      ...(data.logoUrl !== undefined ? { logoUrl: data.logoUrl?.trim() || null } : {}),
+    },
+  });
+  return { name: updated.name, description: updated.description, logoUrl: updated.logoUrl };
+}
+
+// --- Formation Product System (multi-formation) ---
+
+export async function listFormationProducts(businessId: string) {
+  const products = await prisma.formationProduct.findMany({
+    where: { businessId },
+    orderBy: { createdAt: 'asc' },
+  });
+  return products;
+}
+
+export async function addFormationProduct(
+  userId: string,
+  businessId: string,
+  data: { title: string; description?: string; price: number; url: string; imageUrl?: string },
+) {
+  if (!data.title?.trim()) throw new Error('INVALID_FORMATION_TITLE');
+  if (!Number.isFinite(data.price) || data.price < 0) throw new Error('INVALID_FORMATION_PRICE');
+  if (!data.url?.trim()) throw new Error('INVALID_FORMATION_URL');
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true },
+  });
+  if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+
+  const product = await prisma.formationProduct.create({
+    data: {
+      businessId,
+      title: data.title.trim(),
+      description: data.description?.trim() || null,
+      price: data.price,
+      url: data.url.trim(),
+      imageUrl: data.imageUrl?.trim() || null,
+    },
+  });
+  return product;
+}
+
+export async function updateFormationProduct(
+  userId: string,
+  businessId: string,
+  productId: string,
+  data: { title?: string; description?: string | null; price?: number; url?: string; imageUrl?: string | null },
+) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true },
+  });
+  if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+
+  const product = await prisma.formationProduct.findUnique({ where: { id: productId } });
+  if (!product || product.businessId !== businessId) throw new Error('FORMATION_PRODUCT_NOT_FOUND');
+
+  if (data.price !== undefined && (!Number.isFinite(data.price) || data.price < 0)) throw new Error('INVALID_FORMATION_PRICE');
+  if (data.title !== undefined && !data.title.trim()) throw new Error('INVALID_FORMATION_TITLE');
+  if (data.url !== undefined && !data.url.trim()) throw new Error('INVALID_FORMATION_URL');
+
+  const updated = await prisma.formationProduct.update({
+    where: { id: productId },
+    data: {
+      ...(data.title !== undefined ? { title: data.title.trim() } : {}),
+      ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
+      ...(data.price !== undefined ? { price: data.price } : {}),
+      ...(data.url !== undefined ? { url: data.url.trim() } : {}),
+      ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl?.trim() || null } : {}),
+    },
+  });
+  return updated;
+}
+
+export async function deleteFormationProduct(userId: string, businessId: string, productId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true },
+  });
+  if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+
+  const product = await prisma.formationProduct.findUnique({ where: { id: productId } });
+  if (!product || product.businessId !== businessId) throw new Error('FORMATION_PRODUCT_NOT_FOUND');
+
+  await prisma.formationProduct.delete({ where: { id: productId } });
+  return { ok: true };
+}
+
+export async function buyFormationProduct(userId: string, businessId: string, productId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true },
+  });
+  if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId === userId) throw new Error('FORMATION_SELF_BUY_FORBIDDEN');
+
+  const product = await prisma.formationProduct.findUnique({ where: { id: productId } });
+  if (!product || product.businessId !== businessId) throw new Error('FORMATION_PRODUCT_NOT_FOUND');
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { money: true, username: true } });
+  if (!user || user.money < product.price) throw new Error('INSUFFICIENT_MONEY');
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { money: { decrement: product.price } } }),
+    prisma.business.update({ where: { id: businessId }, data: { treasuryMoney: { increment: product.price } } }),
+  ]);
+
+  await logBusinessTransaction(businessId, 'FORMATION_SALE', product.price, `Achat "${product.title}" par ${user.username}`, userId);
+
+  return { url: product.url, title: product.title, price: product.price };
 }
 
 // --- Team Management ---

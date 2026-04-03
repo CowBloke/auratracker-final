@@ -21,6 +21,20 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-03-you-page-upgrades',
+    date: '2026-04-03',
+    title: 'YOU — Explorer, formations multiples, tutoriel et profil',
+    summary: "L'onglet Explorer devient modal, les centres de formation supportent plusieurs formations, le tutoriel est revu et les entreprises sont personnalisables.",
+    items: [
+      { category: 'BIG_FEATURE', text: "**Explorer modal** — Cliquer sur un business dans l'onglet Explorer ouvre maintenant une modal avec toutes les actions, au lieu du panneau lateral.", order: 0 },
+      { category: 'BIG_FEATURE', text: "**Formations multiples** — Les centres de formation peuvent desormais proposer plusieurs formations independantes avec titre, description, image et prix differents.", order: 1 },
+      { category: 'BIG_FEATURE', text: "**Profil entreprise** — Chaque proprietaire peut modifier le nom, la description et le logo (URL) de son entreprise depuis ManageBusinessModal.", order: 2 },
+      { category: 'SMALL_FEATURE', text: "**Tutoriel revu** — Le guide de demarrage est maintenant toujours visible sur la page Overview (pas seulement quand le fil est vide) avec 5 etapes centrees sur la creation d'une epicerie. Un bouton 'Rejouer' permet de le relancer a tout moment.", order: 3 },
+      { category: 'SMALL_FEATURE', text: "**Notation apres action** — La popup de notation apparait automatiquement apres avoir utilise un service (formation, transfert, investissement...).", order: 4 },
+      { category: 'SMALL_FEATURE', text: "**Boutiques** — Les articles dans les epiceries et stands de limonade sont achetables directement depuis la modal du business.", order: 5 },
+    ],
+  },
+  {
     id: '2026-04-01-party-dropdown-members',
     date: '2026-04-01',
     title: 'Groupes plus lisibles',

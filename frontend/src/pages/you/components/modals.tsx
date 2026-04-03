@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, Check, ChevronRight,
-  CreditCard, ExternalLink, GraduationCap, Landmark, Link2, Percent,
+  CreditCard, Download, Edit2, ExternalLink, GraduationCap, Landmark, Percent,
   Plus, Sparkles, Trash2, TrendingUp, UserPlus, Users, Wallet, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
   type YouBankAccount, type YouBusiness, type YouBusinessTransaction,
-  type YouBusinessType, type YouPlayer, type YouRelationship, type YouStartupProduct, youApi,
+  type YouBusinessType, type YouFormationProduct, type YouPlayer, type YouRelationship, type YouStartupProduct, youApi,
 } from '@/services/api';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';
@@ -565,7 +565,7 @@ export function ManageBusinessModal({
   onInviteRequested: (business: YouBusiness) => void;
   onSubmitted: (refreshBalance?: boolean) => Promise<void>;
 }) {
-  const [activeSection, setActiveSection] = useState<'deposit' | 'withdraw' | 'loanRate' | 'transferFee' | 'formation' | null>(null);
+  const [activeSection, setActiveSection] = useState<'deposit' | 'withdraw' | 'loanRate' | 'transferFee' | null>(null);
   const [depositAmount, setDepositAmount] = useState('1000');
   const [withdrawAmount, setWithdrawAmount] = useState('1000');
   const [activeTreasuryAction, setActiveTreasuryAction] = useState<'deposit' | 'withdraw' | null>(null);
@@ -575,17 +575,16 @@ export function ManageBusinessModal({
   const [actingProductKey, setActingProductKey] = useState<string | null>(null);
   const [loanRateInput, setLoanRateInput] = useState('4');
   const [transferFeeInput, setTransferFeeInput] = useState('2');
-  const [formationUrlInput, setFormationUrlInput] = useState('');
-  const [formationPriceInput, setFormationPriceInput] = useState('500');
   const [savingBankRate, setSavingBankRate] = useState(false);
   const [savingTransferFee, setSavingTransferFee] = useState(false);
-  const [savingFormation, setSavingFormation] = useState(false);
   const [liquidating, setLiquidating] = useState(false);
   const [collectingNpc, setCollectingNpc] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | 'in' | 'out'>('all');
   const [transactions, setTransactions] = useState<YouBusinessTransaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
   const [manageTeamOpen, setManageTeamOpen] = useState(false);
+  const [manageFormationsOpen, setManageFormationsOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   const toggleSection = (s: typeof activeSection) => setActiveSection((prev) => (prev === s ? null : s));
 
@@ -601,8 +600,6 @@ export function ManageBusinessModal({
       setActingProductKey(null);
       setLoanRateInput(String(business?.loanInterestRate ?? 4));
       setTransferFeeInput(String(business?.transferFeeRate ?? 2));
-      setFormationUrlInput(business?.formationUrl ?? '');
-      setFormationPriceInput(String(business?.formationPrice ?? 500));
       setTransactions([]);
     }
   }, [open, business?.id]);
@@ -691,22 +688,6 @@ export function ManageBusinessModal({
       setActiveSection(null);
     } finally {
       setSavingBankRate(false);
-    }
-  };
-
-  const saveFormation = async () => {
-    if (!business) return;
-    setSavingFormation(true);
-    try {
-      await withRouteError(
-        () => youApi.setFormationDetails(business.id, { formationUrl: formationUrlInput.trim() || null, formationPrice: Number(formationPriceInput) }),
-        'Impossible de modifier les paramètres de la formation.',
-      );
-      toast.success('Formation mise à jour');
-      await onSubmitted(true);
-      setActiveSection(null);
-    } finally {
-      setSavingFormation(false);
     }
   };
 
@@ -869,6 +850,11 @@ export function ManageBusinessModal({
                 <ActionRow icon={Users} label="Gérer l'équipe" sub="Salaires, invitations et départs" iconBg="bg-violet-400/15" iconColor="text-violet-400" onClick={() => setManageTeamOpen(true)} />
               ) : null}
 
+              {/* Modifier le profil */}
+              {business.ownerKind === 'you' ? (
+                <ActionRow icon={Edit2} label="Modifier le profil" sub="Nom, description et logo" iconBg="bg-sky-400/15" iconColor="text-sky-400" onClick={() => setEditProfileOpen(true)} />
+              ) : null}
+
               {/* Settings section */}
               {(isBank || isTransfer || isFormation) ? (
                 <>
@@ -926,27 +912,16 @@ export function ManageBusinessModal({
                     </>
                   ) : null}
 
-                  {/* Formation: URL & price */}
+                  {/* Formation: manage products */}
                   {isFormation ? (
-                    <>
-                      <ActionRow
-                        icon={Link2}
-                        label="Formation en ligne"
-                        sub={business.formationUrl ? `Prix : ${formatMoney(business.formationPrice ?? 500)}` : 'Aucune formation configurée'}
-                        iconBg="bg-amber-400/15"
-                        iconColor="text-amber-400"
-                        onClick={() => toggleSection('formation')}
-                      />
-                      <InlineSection open={activeSection === 'formation'}>
-                        <div className="space-y-2">
-                          <Input value={formationUrlInput} onChange={(e) => setFormationUrlInput(e.target.value)} placeholder="URL du PDF (ex : drive.google.com/...)" />
-                          <div className="flex gap-2">
-                            <Input type="number" min={0} value={formationPriceInput} onChange={(e) => setFormationPriceInput(e.target.value)} placeholder="Prix en €" />
-                            <Button size="sm" onClick={() => void saveFormation()} disabled={savingFormation}>Enregistrer</Button>
-                          </div>
-                        </div>
-                      </InlineSection>
-                    </>
+                    <ActionRow
+                      icon={GraduationCap}
+                      label="Gérer les formations"
+                      sub={`${business.formationProducts?.length ?? 0} formation(s) en ligne`}
+                      iconBg="bg-amber-400/15"
+                      iconColor="text-amber-400"
+                      onClick={() => setManageFormationsOpen(true)}
+                    />
                   ) : null}
                 </>
               ) : null}
@@ -1167,6 +1142,22 @@ export function ManageBusinessModal({
         onClose={() => setManageTeamOpen(false)}
         business={business}
         onInviteRequested={() => { setManageTeamOpen(false); onClose(); onInviteRequested(business); }}
+        onSubmitted={onSubmitted}
+      />
+    ) : null}
+    {business ? (
+      <ManageFormationsModal
+        open={manageFormationsOpen}
+        onClose={() => setManageFormationsOpen(false)}
+        business={business}
+        onSubmitted={onSubmitted}
+      />
+    ) : null}
+    {business ? (
+      <BusinessProfileModal
+        open={editProfileOpen}
+        onClose={() => setEditProfileOpen(false)}
+        business={business}
         onSubmitted={onSubmitted}
       />
     ) : null}
@@ -1511,6 +1502,348 @@ export function FormationPurchaseModal({
               Acheter · {price.toLocaleString('fr-FR')} €
             </Button>
           </div>
+        </div>
+      )}
+    </ModalWrap>
+  );
+}
+
+// --- ManageFormationsModal (owner: add/edit/delete formation products) ---
+
+type FormationDraft = { title: string; description: string; price: string; url: string; imageUrl: string };
+
+const EMPTY_DRAFT: FormationDraft = { title: '', description: '', price: '500', url: '', imageUrl: '' };
+
+export function ManageFormationsModal({
+  open,
+  onClose,
+  business,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness;
+  onSubmitted: (refreshBalance?: boolean) => Promise<void>;
+}) {
+  const [draft, setDraft] = useState<FormationDraft>(EMPTY_DRAFT);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+
+  const products: YouFormationProduct[] = business.formationProducts ?? [];
+
+  useEffect(() => {
+    if (!open) { setDraft(EMPTY_DRAFT); setEditingId(null); setFormOpen(false); }
+  }, [open]);
+
+  const startEdit = (p: YouFormationProduct) => {
+    setDraft({ title: p.title, description: p.description ?? '', price: String(p.price), url: p.url, imageUrl: p.imageUrl ?? '' });
+    setEditingId(p.id);
+    setFormOpen(true);
+  };
+
+  const startAdd = () => {
+    setDraft(EMPTY_DRAFT);
+    setEditingId(null);
+    setFormOpen(true);
+  };
+
+  const cancelForm = () => { setFormOpen(false); setEditingId(null); setDraft(EMPTY_DRAFT); };
+
+  const save = async () => {
+    if (!draft.title.trim() || !draft.url.trim()) return;
+    setSaving(true);
+    try {
+      if (editingId) {
+        await withRouteError(
+          () => youApi.updateFormationProduct(business.id, editingId, {
+            title: draft.title, description: draft.description || null,
+            price: Number(draft.price), url: draft.url, imageUrl: draft.imageUrl || null,
+          }),
+          'Impossible de modifier la formation.',
+        );
+        toast.success('Formation mise à jour');
+      } else {
+        await withRouteError(
+          () => youApi.addFormationProduct(business.id, {
+            title: draft.title, description: draft.description || undefined,
+            price: Number(draft.price), url: draft.url, imageUrl: draft.imageUrl || undefined,
+          }),
+          'Impossible d\'ajouter la formation.',
+        );
+        toast.success('Formation ajoutée');
+      }
+      await onSubmitted(true);
+      cancelForm();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (productId: string) => {
+    if (!window.confirm('Supprimer cette formation ?')) return;
+    setDeletingId(productId);
+    try {
+      await withRouteError(() => youApi.deleteFormationProduct(business.id, productId), 'Impossible de supprimer.');
+      toast.success('Formation supprimée');
+      await onSubmitted(true);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Gérer les formations" desc="Ajoute, modifie ou supprime les formations vendues sur ce centre." wide>
+      {products.length === 0 && !formOpen ? (
+        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
+          Aucune formation configurée. Clique sur "Ajouter" pour commencer.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {products.map((p) => (
+            <div key={p.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              {p.imageUrl ? (
+                <img src={p.imageUrl} alt={p.title} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-400/15">
+                  <GraduationCap className="h-5 w-5 text-amber-400" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">{p.title}</p>
+                {p.description ? <p className="text-xs text-muted-foreground line-clamp-1">{p.description}</p> : null}
+                <p className="text-xs font-medium text-amber-300">{p.price.toLocaleString('fr-FR')} €</p>
+              </div>
+              <div className="flex shrink-0 gap-1">
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-xs" onClick={() => startEdit(p)}>
+                  <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 w-7 p-0 border-red-400/30 text-red-300 hover:bg-red-500/10"
+                  onClick={() => void remove(p.id)}
+                  disabled={deletingId === p.id}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {formOpen ? (
+        <div className="space-y-3 rounded-xl border border-border/40 bg-muted/5 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {editingId ? 'Modifier la formation' : 'Nouvelle formation'}
+          </p>
+          <FieldRow label="Titre">
+            <Input value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="ex : Formation Excel Avancé" />
+          </FieldRow>
+          <FieldRow label="Description (optionnel)">
+            <Input value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} placeholder="Ce que l'acheteur apprend..." />
+          </FieldRow>
+          <FieldRow label="Prix (€)">
+            <Input type="number" min={0} value={draft.price} onChange={(e) => setDraft((d) => ({ ...d, price: e.target.value }))} />
+          </FieldRow>
+          <FieldRow label="Lien (PDF, vidéo, site...)">
+            <Input value={draft.url} onChange={(e) => setDraft((d) => ({ ...d, url: e.target.value }))} placeholder="https://drive.google.com/..." />
+          </FieldRow>
+          <FieldRow label="Miniature (URL image, optionnel)">
+            <Input value={draft.imageUrl} onChange={(e) => setDraft((d) => ({ ...d, imageUrl: e.target.value }))} placeholder="https://..." />
+          </FieldRow>
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={cancelForm} disabled={saving}>Annuler</Button>
+            <Button size="sm" onClick={() => void save()} disabled={saving || !draft.title.trim() || !draft.url.trim()}>
+              {editingId ? 'Enregistrer' : 'Ajouter'}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button size="sm" variant="outline" className="w-full justify-start" onClick={startAdd}>
+          <Plus className="mr-2 h-4 w-4" />Ajouter une formation
+        </Button>
+      )}
+    </ModalWrap>
+  );
+}
+
+// --- BusinessProfileModal (owner: rename, description, logo) ---
+
+export function BusinessProfileModal({
+  open,
+  onClose,
+  business,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness;
+  onSubmitted: (refreshBalance?: boolean) => Promise<void>;
+}) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setName(business.name);
+      setDescription(business.description ?? '');
+      setLogoUrl(business.logoUrl ?? '');
+    }
+  }, [open, business.name, business.description, business.logoUrl]);
+
+  const save = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      await withRouteError(
+        () => youApi.updateBusinessProfile(business.id, {
+          name: name.trim(),
+          description: description.trim() || null,
+          logoUrl: logoUrl.trim() || null,
+        }),
+        'Impossible de modifier le profil.',
+      );
+      toast.success('Profil mis à jour');
+      await onSubmitted(true);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Modifier le profil" desc="Personnalise le nom, la description et le logo de ton entreprise.">
+      <FieldRow label="Nom">
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l'entreprise" />
+      </FieldRow>
+      <FieldRow label="Description (optionnel)">
+        <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ce que fait cette entreprise..." />
+      </FieldRow>
+      <FieldRow label="Logo (URL d'image, optionnel)">
+        <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
+      </FieldRow>
+      {logoUrl.trim() ? (
+        <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+          <img src={logoUrl} alt="apercu" className="h-10 w-10 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <p className="text-xs text-muted-foreground">Apercu du logo</p>
+        </div>
+      ) : null}
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>Annuler</Button>
+        <Button size="sm" onClick={() => void save()} disabled={saving || !name.trim()}>Enregistrer</Button>
+      </div>
+    </ModalWrap>
+  );
+}
+
+// --- FormationCatalogModal (buyer: browse and buy formation products) ---
+
+export function FormationCatalogModal({
+  open,
+  onClose,
+  business,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness | null;
+  onSubmitted: () => Promise<void>;
+}) {
+  const [buyingId, setBuyingId] = useState<string | null>(null);
+  const [purchasedUrl, setPurchasedUrl] = useState<{ title: string; url: string } | null>(null);
+
+  useEffect(() => {
+    if (!open) { setPurchasedUrl(null); setBuyingId(null); }
+  }, [open]);
+
+  const products: YouFormationProduct[] = business?.formationProducts ?? [];
+
+  const buy = async (product: YouFormationProduct) => {
+    if (!business) return;
+    setBuyingId(product.id);
+    try {
+      const res = await withRouteError(
+        () => youApi.buyFormationProduct(business.id, product.id),
+        'Impossible d\'acheter cette formation.',
+      );
+      toast.success(`Formation "${product.title}" achetée !`);
+      setPurchasedUrl({ title: res.data.result.title, url: res.data.result.url });
+      await onSubmitted();
+    } finally {
+      setBuyingId(null);
+    }
+  };
+
+  if (!business) return null;
+
+  return (
+    <ModalWrap
+      open={open}
+      onClose={onClose}
+      title={business.name}
+      desc={purchasedUrl ? 'Accède à ta formation ci-dessous.' : `${products.length} formation(s) disponible(s)`}
+    >
+      {purchasedUrl ? (
+        <div className="space-y-4 text-center">
+          <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-6">
+            <GraduationCap className="mx-auto h-10 w-10 text-emerald-400" />
+            <p className="mt-3 text-sm font-semibold">{purchasedUrl.title}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Clique pour accéder au contenu.</p>
+          </div>
+          <a href={purchasedUrl.url} target="_blank" rel="noopener noreferrer" className="block">
+            <Button className="w-full"><Download className="mr-2 h-4 w-4" />Accéder à la formation</Button>
+          </a>
+          {products.length > 1 ? (
+            <Button variant="ghost" className="w-full text-xs" onClick={() => setPurchasedUrl(null)}>
+              Voir les autres formations
+            </Button>
+          ) : null}
+        </div>
+      ) : products.length === 0 ? (
+        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+          Aucune formation disponible pour le moment.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {products.map((product) => (
+            <div key={product.id} className="overflow-hidden rounded-xl border border-border/40 bg-muted/10">
+              {product.imageUrl ? (
+                <img
+                  src={product.imageUrl}
+                  alt={product.title}
+                  className="h-32 w-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : null}
+              <div className="px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/15">
+                    <GraduationCap className="h-4 w-4 text-amber-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">{product.title}</p>
+                    {product.description ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">{product.description}</p>
+                    ) : null}
+                    <p className="mt-1.5 text-sm font-bold text-amber-300">{product.price.toLocaleString('fr-FR')} €</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="mt-3 w-full"
+                  onClick={() => void buy(product)}
+                  disabled={buyingId !== null}
+                >
+                  Acheter · {product.price.toLocaleString('fr-FR')} €
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </ModalWrap>

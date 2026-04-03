@@ -35,6 +35,12 @@ import {
   bankAccountWithdraw,
   setFormationDetails,
   buyFormation,
+  updateBusinessProfile,
+  listFormationProducts,
+  addFormationProduct,
+  updateFormationProduct,
+  deleteFormationProduct,
+  buyFormationProduct,
   updateMemberSalary,
   sackMember,
   repayLoan,
@@ -126,9 +132,13 @@ const ERROR_STATUS: Record<string, number> = {
   INVALID_BANK_AMOUNT: 400,
   BANK_BALANCE_TOO_LOW: 400,
   FORMATION_EDIT_FORBIDDEN: 403,
+  BUSINESS_EDIT_FORBIDDEN: 403,
   FORMATION_SELF_BUY_FORBIDDEN: 403,
   FORMATION_URL_NOT_SET: 400,
   INVALID_FORMATION_PRICE: 400,
+  INVALID_FORMATION_TITLE: 400,
+  INVALID_FORMATION_URL: 400,
+  FORMATION_PRODUCT_NOT_FOUND: 404,
   INVALID_SALARY: 400,
   MEMBER_NOT_FOUND: 404,
   CHEATING_ACCUSATION_ALREADY_PENDING: 400,
@@ -593,6 +603,71 @@ router.post('/businesses/:businessId/buy-formation', authMiddleware, requireYouA
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Buy formation error');
+  }
+});
+
+// Business profile update (name, description, logo)
+router.patch('/businesses/:businessId/profile', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, description, logoUrl } = req.body;
+    const result = await updateBusinessProfile(req.user!.id, req.params.businessId, { name, description, logoUrl });
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Update business profile error');
+  }
+});
+
+// Formation Products (multi-formation)
+router.get('/businesses/:businessId/formations', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const products = await listFormationProducts(req.params.businessId);
+    res.json({ result: { products } });
+  } catch (error) {
+    handleRouteError(error, res, 'List formation products error');
+  }
+});
+
+router.post('/businesses/:businessId/formations', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const { title, description, price, url, imageUrl } = req.body;
+    const product = await addFormationProduct(req.user!.id, req.params.businessId, { title, description, price: Number(price), url, imageUrl });
+    res.json({ result: { product } });
+  } catch (error) {
+    handleRouteError(error, res, 'Add formation product error');
+  }
+});
+
+router.patch('/businesses/:businessId/formations/:productId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const { title, description, price, url, imageUrl } = req.body;
+    const product = await updateFormationProduct(req.user!.id, req.params.businessId, req.params.productId, {
+      ...(title !== undefined ? { title } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(price !== undefined ? { price: Number(price) } : {}),
+      ...(url !== undefined ? { url } : {}),
+      ...(imageUrl !== undefined ? { imageUrl } : {}),
+    });
+    res.json({ result: { product } });
+  } catch (error) {
+    handleRouteError(error, res, 'Update formation product error');
+  }
+});
+
+router.delete('/businesses/:businessId/formations/:productId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await deleteFormationProduct(req.user!.id, req.params.businessId, req.params.productId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Delete formation product error');
+  }
+});
+
+router.post('/businesses/:businessId/formations/:productId/buy', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await buyFormationProduct(req.user!.id, req.params.businessId, req.params.productId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Buy formation product error');
   }
 });
 

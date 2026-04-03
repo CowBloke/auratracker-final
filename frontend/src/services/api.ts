@@ -278,6 +278,16 @@ export interface YouStartupProduct {
   isMaxLevel: boolean;
 }
 
+export interface YouFormationProduct {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  url: string;
+  imageUrl: string | null;
+  createdAt: string;
+}
+
 export interface YouBusiness {
   id: string;
   name: string;
@@ -288,6 +298,7 @@ export interface YouBusiness {
   ownerKind: 'you' | 'player';
   verified: boolean;
   description: string | null;
+  logoUrl: string | null;
   location: string | null;
   foundedAt: string;
   foundedLabel: string;
@@ -312,6 +323,7 @@ export interface YouBusiness {
   transferFeeRate?: number;
   formationUrl?: string | null;
   formationPrice?: number;
+  formationProducts?: YouFormationProduct[];
   npcLastCollectedAt?: string | null;
   avgRating: number | null;
   ratingCount: number;
@@ -440,6 +452,8 @@ export const youApi = {
     api.post<{ decision: string }>(`/you/cheating-accusations/${accusationId}/respond`, { decision }),
   deleteBusiness: (businessId: string) =>
     api.delete<{ result: { id: string } }>(`/you/businesses/${businessId}`),
+  updateBusinessProfile: (businessId: string, data: { name?: string; description?: string | null; logoUrl?: string | null }) =>
+    api.patch<{ result: { name: string; description: string | null; logoUrl: string | null } }>(`/you/businesses/${businessId}/profile`, data),
   buyLivretEpargneUpgrade: (businessId: string) =>
     api.post<{ result: { livretEpargneUnlocked: boolean } }>(`/you/businesses/${businessId}/upgrades/livret-epargne`, {}),
   setLoanRate: (businessId: string, rate: number) =>
@@ -460,6 +474,16 @@ export const youApi = {
     api.patch<{ result: { formationUrl: string | null; formationPrice: number } }>(`/you/businesses/${businessId}/formation`, data),
   buyFormation: (businessId: string) =>
     api.post<{ result: { formationUrl: string; price: number } }>(`/you/businesses/${businessId}/buy-formation`, {}),
+  listFormationProducts: (businessId: string) =>
+    api.get<{ result: { products: YouFormationProduct[] } }>(`/you/businesses/${businessId}/formations`),
+  addFormationProduct: (businessId: string, data: { title: string; description?: string; price: number; url: string; imageUrl?: string }) =>
+    api.post<{ result: { product: YouFormationProduct } }>(`/you/businesses/${businessId}/formations`, data),
+  updateFormationProduct: (businessId: string, productId: string, data: Partial<{ title: string; description: string | null; price: number; url: string; imageUrl: string | null }>) =>
+    api.patch<{ result: { product: YouFormationProduct } }>(`/you/businesses/${businessId}/formations/${productId}`, data),
+  deleteFormationProduct: (businessId: string, productId: string) =>
+    api.delete<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/formations/${productId}`),
+  buyFormationProduct: (businessId: string, productId: string) =>
+    api.post<{ result: { url: string; title: string; price: number } }>(`/you/businesses/${businessId}/formations/${productId}/buy`, {}),
   updateMemberSalary: (businessId: string, memberId: string, salary: number) =>
     api.patch<{ result: { salary: number } }>(`/you/businesses/${businessId}/members/${memberId}/salary`, { salary }),
   sackMember: (businessId: string, memberId: string) =>

@@ -397,6 +397,7 @@ model Business {
   name            String
   typeKey         String
   description     String?
+  logoUrl         String?
   location        String?
   verified        Boolean  @default(false)
   hiring          Boolean  @default(true)
@@ -426,10 +427,26 @@ model Business {
   bankAccounts    BankAccount[]
   transactions    BusinessTransaction[]
   ratings         BusinessRating[]
+  formationProducts FormationProduct[]
 
   @@index([ownerId])
   @@index([typeKey, createdAt])
   @@index([hiring])
+}
+
+model FormationProduct {
+  id          String   @id @default(uuid())
+  businessId  String
+  title       String
+  description String?
+  price       Int      @default(500)
+  url         String
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
 }
 
 model BusinessRating {
