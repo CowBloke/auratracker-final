@@ -2959,6 +2959,13 @@ export default function Admin() {
     setBanDialogOpen(true);
   };
 
+  const openWarningDialog = (userId: string) => {
+    setActiveTab('bans');
+    setWarningUserId(userId);
+    setWarningMessage('');
+    setWarningSeverity('MEDIUM');
+    setWarningDialogOpen(true);
+  };
   const createBan = async () => {
     if (!banReason.trim()) {
       showMessage('error', 'La raison est requise');
@@ -4476,6 +4483,18 @@ export default function Admin() {
                               </Button>
                             )}
 
+                            {/* Warning */}
+                            {getAdminRole(u) === 'USER' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openWarningDialog(u.id)}
+                                className="h-8 w-8 p-0 border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                                title="Avertir"
+                              >
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             {/* Ban */}
                             {getAdminRole(u) === 'USER' && (
                               <Button
@@ -6385,18 +6404,24 @@ export default function Admin() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Utilisateur</label>
-                  <Select value={warningUserId} onValueChange={setWarningUserId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un utilisateur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.username}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {warningUserId ? (
+                    <div className="px-3 py-2 rounded border border-border/50 bg-muted/30 text-sm font-medium">
+                      {users.find(u => u.id === warningUserId)?.username || 'Utilisateur'}
+                    </div>
+                  ) : (
+                    <Select value={warningUserId} onValueChange={setWarningUserId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un utilisateur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users.map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Sévérité</label>

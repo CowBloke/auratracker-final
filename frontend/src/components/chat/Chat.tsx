@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useChatSocket } from '../../contexts/ChatSocketContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFeatures } from '../../contexts/FeaturesContext';
-import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff, Monitor, BarChart3, X } from 'lucide-react';
+import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -43,25 +42,8 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { maintenanceStatus } = useFeatures();
-  const {
-    messages,
-    activePoll,
-    onlineUsers,
-    onlineCount,
-    requestOnlineUsers,
-    typingUsers,
-    sendMessage,
-    setTyping,
-    deleteMessage,
-    reactToMessage,
-    pinMessage,
-    createPoll,
-    votePoll,
-    closePoll,
-  } = useChatSocket();
+  const { messages, onlineUsers, onlineCount, requestOnlineUsers, typingUsers, sendMessage, setTyping, deleteMessage, reactToMessage, pinMessage } = useChatSocket();
   const [input, setInput] = useState('');
-  const [pollQuestion, setPollQuestion] = useState('');
-  const [pollOptionsText, setPollOptionsText] = useState('');
   const [showUsers, setShowUsers] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
@@ -94,13 +76,6 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
   }, [messages]);
-
-  const pollOptionsPreview = useMemo(() => {
-    return pollOptionsText
-      .split('\n')
-      .map((value) => value.trim())
-      .filter(Boolean);
-  }, [pollOptionsText]);
 
   useEffect(() => {
     if (isOpen) {
@@ -165,21 +140,6 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     unreadMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  const handleCreatePoll = () => {
-    const options = pollOptionsText
-      .split('\n')
-      .map((value) => value.trim())
-      .filter(Boolean);
-    createPoll(pollQuestion.trim(), options);
-    setPollQuestion('');
-    setPollOptionsText('');
-  };
-
-  const getPollOptionPercent = (votes: number) => {
-    if (!activePoll || activePoll.totalVotes === 0) return 0;
-    return Math.round((votes / activePoll.totalVotes) * 100);
-  };
-
   return (
     <div
       className={cn(
@@ -230,58 +190,6 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                       </p>
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-            {activePoll && (
-              <div className="border-b border-border/40 bg-muted/20 px-6 py-3">
-                <div className="rounded-lg border border-border/60 bg-background/90 p-3">
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <BarChart3 className="h-3.5 w-3.5" />
-                      <span className="font-medium text-foreground">Sondage actif</span>
-                      <span>par {activePoll.createdByUsername}</span>
-                      <span>• {activePoll.totalVotes} vote{activePoll.totalVotes > 1 ? 's' : ''}</span>
-                    </div>
-                    {(user?.isAdmin || user?.isSuperAdmin) && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs text-muted-foreground"
-                        onClick={() => closePoll(activePoll.id)}
-                      >
-                        <X className="mr-1 h-3.5 w-3.5" />
-                        Cloturer
-                      </Button>
-                    )}
-                  </div>
-                  <p className="mb-3 text-sm font-medium text-foreground">{activePoll.question}</p>
-                  <div className="space-y-2">
-                    {activePoll.options.map((option) => {
-                      const percent = getPollOptionPercent(option.votes);
-                      const isSelected = activePoll.userVoteOptionId === option.id;
-                      return (
-                        <Button
-                          key={option.id}
-                          type="button"
-                          variant={isSelected ? 'secondary' : 'outline'}
-                          className="relative h-auto w-full justify-between overflow-hidden px-3 py-2 text-left"
-                          onClick={() => votePoll(activePoll.id, option.id)}
-                        >
-                          <span
-                            className="pointer-events-none absolute inset-y-0 left-0 bg-foreground/10"
-                            style={{ width: `${percent}%` }}
-                            aria-hidden="true"
-                          />
-                          <span className="relative z-10 truncate text-xs">{option.text}</span>
-                          <span className="relative z-10 ml-3 shrink-0 text-[11px] text-muted-foreground tabular-nums">
-                            {option.votes} ({percent}%)
-                          </span>
-                        </Button>
-                      );
-                    })}
-                  </div>
                 </div>
               </div>
             )}
@@ -465,43 +373,6 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                 {chatScheduleLabel && (
                   <p className="mt-1 text-[11px] text-amber-100/80">{chatScheduleLabel}</p>
                 )}
-              </div>
-            )}
-
-            {(user?.isAdmin || user?.isSuperAdmin) && !activePoll && (
-              <div className="border-t border-border/40 bg-muted/20 px-6 py-3">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">Creer un sondage</p>
-                <div className="space-y-2">
-                  <Input
-                    type="text"
-                    value={pollQuestion}
-                    onChange={(e) => setPollQuestion(e.target.value)}
-                    placeholder="Question du sondage"
-                    className="h-8 bg-transparent border-border/50 text-sm"
-                    maxLength={180}
-                  />
-                  <Textarea
-                    value={pollOptionsText}
-                    onChange={(e) => setPollOptionsText(e.target.value)}
-                    placeholder={'Une option par ligne\nExemple:\nOui\nNon'}
-                    className="min-h-[72px] resize-none bg-transparent border-border/50 text-xs"
-                  />
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-muted-foreground">
-                      {pollOptionsPreview.length} option{pollOptionsPreview.length > 1 ? 's' : ''} detectee{pollOptionsPreview.length > 1 ? 's' : ''}
-                    </span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={handleCreatePoll}
-                      disabled={pollQuestion.trim().length < 3 || pollOptionsPreview.length < 2}
-                      className="h-8"
-                    >
-                      Lancer le sondage
-                    </Button>
-                  </div>
-                </div>
               </div>
             )}
 

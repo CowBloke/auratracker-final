@@ -82,7 +82,7 @@ export default function ChatSidebar() {
     currentParty,
     pendingJoinRequests,
   } = useSocket();
-  const { unreadCount } = useChatSidebar();
+  const { unreadCount, lastReadMessageId, lastReadTimestamp, markAllAsRead } = useChatSidebar();
   const [input, setInput] = useState('');
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptionsText, setPollOptionsText] = useState('');
@@ -95,6 +95,7 @@ export default function ChatSidebar() {
     dependency: [messages],
   });
   const typingTimeoutRef = useRef<TimeoutRef>(null);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [imageUrl, setImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const mentionMap = new Map<string, MentionableUser>();
@@ -113,6 +114,43 @@ export default function ChatSidebar() {
     );
   }, [messages]);
   const canManagePolls = Boolean(user?.isAdmin || user?.isSuperAdmin);
+  const firstUnreadMessageId = useMemo(() => {
+    if (!user || unreadCount <= 0 || sortedMessages.length === 0) return null;
+
+    const lastReadIndex = lastReadMessageId
+      ? sortedMessages.findIndex((message) => message.id === lastReadMessageId)
+      : -1;
+
+    const unreadCandidates =
+      lastReadIndex >= 0
+        ? sortedMessages.slice(lastReadIndex + 1)
+        : sortedMessages.filter((message) => {
+            if (!lastReadTimestamp) return false;
+            return new Date(message.timestamp).getTime() > new Date(lastReadTimestamp).getTime();
+          });
+
+    const firstUnread = unreadCandidates.find((message) => message.userId !== user.id);
+    return firstUnread?.id ?? null;
+  }, [user, unreadCount, sortedMessages, lastReadMessageId, lastReadTimestamp]);
+  const latestUnreadMessageId = useMemo(() => {
+    if (!user || unreadCount <= 0 || sortedMessages.length === 0) return null;
+
+    const lastReadIndex = lastReadMessageId
+      ? sortedMessages.findIndex((message) => message.id === lastReadMessageId)
+      : -1;
+
+    const unreadCandidates =
+      lastReadIndex >= 0
+        ? sortedMessages.slice(lastReadIndex + 1)
+        : sortedMessages.filter((message) => {
+            if (!lastReadTimestamp) return false;
+            return new Date(message.timestamp).getTime() > new Date(lastReadTimestamp).getTime();
+          });
+
+    const unreadFromOthers = unreadCandidates.filter((message) => message.userId !== user.id);
+    const latestUnread = unreadFromOthers[unreadFromOthers.length - 1];
+    return latestUnread?.id ?? null;
+  }, [user, unreadCount, sortedMessages, lastReadMessageId, lastReadTimestamp]);
   const pollOptionsPreview = useMemo(() => {
     return pollOptionsText
       .split('\n')
@@ -360,6 +398,14 @@ export default function ChatSidebar() {
     return Math.round((votes / activePoll.totalVotes) * 100);
   };
 
+  const scrollToLatestUnread = () => {
+    if (!latestUnreadMessageId) return;
+    const node = messageRefs.current[latestUnreadMessageId];
+    if (!node) return;
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    markAllAsRead();
+  };
+
   return (
     <Sidebar variant="inset" side="right" collapsible="offcanvas" className="border-l border-border/40">
       <SidebarRail />
@@ -503,24 +549,36 @@ export default function ChatSidebar() {
                       : 'Rejoindre';
 
                 return (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      "flex flex-col group",
-                      msg.userId === user?.id && !isSystemMessage && 'items-end'
+                  <div key={msg.id}>
+                    {msg.id === firstUnreadMessageId && (
+                      <div className="my-2 flex items-center gap-2 px-1">
+                        <div className="h-px flex-1 bg-border/70" />
+                        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Non lus
+                        </span>
+                        <div className="h-px flex-1 bg-border/70" />
+                      </div>
                     )}
-                  >
                     <div
+                      ref={(el) => {
+                        messageRefs.current[msg.id] = el;
+                      }}
                       className={cn(
-                        "relative w-fit max-w-[85%] min-w-0 px-3 py-2 rounded-lg",
-                        !isSystemMessage && 'pr-12',
-                        isSystemMessage
-                          ? 'border border-amber-500/30 bg-amber-500/10'
-                          : msg.userId === user?.id
-                          ? 'bg-foreground/10'
-                          : 'bg-muted'
+                        "flex flex-col group",
+                        msg.userId === user?.id && !isSystemMessage && 'items-end'
                       )}
                     >
+                      <div
+                        className={cn(
+                          "relative w-fit max-w-[85%] min-w-0 px-3 py-2 rounded-lg",
+                          !isSystemMessage && 'pr-12',
+                          isSystemMessage
+                            ? 'border border-amber-500/30 bg-amber-500/10'
+                            : msg.userId === user?.id
+                            ? 'bg-foreground/10'
+                            : 'bg-muted'
+                        )}
+                      >
                       {!isSystemMessage && (
                         <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md bg-background/70 p-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                           <DropdownMenu>
@@ -739,10 +797,23 @@ export default function ChatSidebar() {
                           ))}
                         </div>
                       )}
+                      </div>
                     </div>
                   </div>
                 );
               })}
+              {latestUnreadMessageId && (
+                <div className="sticky bottom-0 flex justify-center py-2">
+                  <button
+                    onClick={scrollToLatestUnread}
+                    className="flex items-center gap-1 rounded-full bg-foreground/15 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-foreground/25"
+                    title="Aller au message non lu le plus récent"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                    <span>Dernier non lu</span>
+                  </button>
+                </div>
+              )}
               {hasNewMessage && (
                 <div className="sticky bottom-0 flex justify-center py-2">
                   <button

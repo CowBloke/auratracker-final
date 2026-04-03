@@ -41,6 +41,9 @@ const ChatSidebarContext = createContext<{
   open: boolean;
   setOpen: Dispatch<SetStateAction<boolean>>;
   unreadCount: number;
+  lastReadMessageId: string | null;
+  lastReadTimestamp: string | null;
+  markAllAsRead: () => void;
 } | null>(null);
 
 export function useChatSidebar() {
@@ -61,6 +64,25 @@ export function ChatSidebarProvider({ children }: { children: ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const hasInitializedUnreadRef = useRef(false);
   const lastReadRef = useRef<StoredLastRead>(readLastReadState());
+
+  const markAllAsRead = () => {
+    if (messages.length === 0) {
+      const emptyState = { messageId: null, timestamp: null };
+      lastReadRef.current = emptyState;
+      persistLastReadState(emptyState);
+      setUnreadCount(0);
+      return;
+    }
+
+    const lastMessage = messages[messages.length - 1];
+    const nextLastRead = {
+      messageId: lastMessage.id,
+      timestamp: lastMessage.timestamp,
+    };
+    lastReadRef.current = nextLastRead;
+    persistLastReadState(nextLastRead);
+    setUnreadCount(0);
+  };
 
   useEffect(() => {
     localStorage.setItem(CHAT_SIDEBAR_STORAGE_KEY, String(open));
@@ -99,11 +121,6 @@ export function ChatSidebarProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    if (open) {
-      markCurrentMessagesAsRead();
-      return;
-    }
-
     const { messageId: lastReadMessageId, timestamp: lastReadTimestamp } = lastReadRef.current;
     const lastReadIndex = lastReadMessageId
       ? messages.findIndex((message) => message.id === lastReadMessageId)
@@ -121,7 +138,16 @@ export function ChatSidebarProvider({ children }: { children: ReactNode }) {
   }, [messages, open, user]);
 
   return (
-    <ChatSidebarContext.Provider value={{ open, setOpen, unreadCount }}>
+    <ChatSidebarContext.Provider
+      value={{
+        open,
+        setOpen,
+        unreadCount,
+        lastReadMessageId: lastReadRef.current.messageId,
+        lastReadTimestamp: lastReadRef.current.timestamp,
+        markAllAsRead,
+      }}
+    >
       {children}
     </ChatSidebarContext.Provider>
   );
