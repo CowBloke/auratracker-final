@@ -34,3 +34,21 @@
 - logs
 - bloquer chat
 - ajouter jeux
+- parraingae dahsboard
+- valider videos
+- tutotiel
+- mieux trier suggestions
+- inetrface chargé : alléger mons de textes
+- relancer tutoriel
+- confort : fleches en haut pour logs
+- plusieurs formations
+- opti
+- bug score watermelon pas enregistré
+- vrai toasts et non sonners
+- abonnement
+- actionnaires
+- black jack fix quitter partie bug
+- systeme de reset
+- impot : possible de grger 50%
+- stats inégalotés répartition ricjsses
+- échange d'objets rares
