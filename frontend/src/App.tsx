@@ -104,10 +104,12 @@ function DefaultLandingRedirect() {
 function App() {
   const location = useLocation();
   const { maintenanceStatus, maintenanceLoading } = useFeatures();
+  const { user, loading } = useAuth();
+  const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
 
   // Vérifier si la page actuelle est en maintenance
   const isCurrentPageInMaintenance = () => {
-    if (maintenanceLoading || !maintenanceStatus.enabled) {
+    if (maintenanceLoading || loading || !maintenanceStatus.enabled || isAdmin) {
       return false;
     }
 
@@ -126,7 +128,7 @@ function App() {
   };
 
   const isCurrentPageBlocked = () => {
-    if (maintenanceLoading) {
+    if (maintenanceLoading || loading || isAdmin) {
       return false;
     }
 
@@ -159,11 +161,21 @@ function App() {
     });
   };
 
-  if (!maintenanceLoading && isCurrentPageInMaintenance()) {
+  if (loading || maintenanceLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-primary text-xl">
+          Chargement...
+        </div>
+      </div>
+    );
+  }
+
+  if (isCurrentPageInMaintenance()) {
     return <Maintenance message={maintenanceStatus.message} endDate={maintenanceStatus.endDate} />;
   }
 
-  if (!maintenanceLoading && isCurrentPageBlocked()) {
+  if (isCurrentPageBlocked()) {
     return <Blocked message={maintenanceStatus.blockedMessage} />;
   }
 
