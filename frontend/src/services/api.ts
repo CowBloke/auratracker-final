@@ -1751,6 +1751,7 @@ export interface AdminUser {
   auraCoinBalance: number;
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  isBetaTester: boolean;
   isChatMuted: boolean;
   dailyAuraGiven: number;
   dailyAuraLimit: number;
@@ -2203,7 +2204,7 @@ export const adminApi = {
   transferClanLeadership: (id: string, targetUserId: string) =>
     api.post<{ success: boolean }>(`/admin/clans/${id}/transfer-leadership`, { targetUserId }),
   deleteClan: (id: string) => api.delete<{ success: boolean }>(`/admin/clans/${id}`),
-  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; role?: 'USER' | 'ADMIN' | 'SUPER_ADMIN' }) =>
+  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; role?: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   getUserInventory: (id: string) =>
@@ -2814,18 +2815,103 @@ export interface SupportThread {
   unreadCount: number;
 }
 
+export interface MessagingParticipant {
+  user: {
+    id: string;
+    username: string;
+    profilePicture: string | null;
+    usernameColor: string | null;
+  };
+  role: string;
+  lastReadAt: string | null;
+}
+
+export interface MessagingConversationMessage {
+  id: string;
+  conversationId: string;
+  senderId: string | null;
+  body: string;
+  type: string;
+  createdAt: string;
+  sender: {
+    id: string;
+    username: string;
+    profilePicture: string | null;
+    usernameColor: string | null;
+  } | null;
+}
+
+export interface MessagingConversationSummary {
+  id: string;
+  type: 'SUPPORT' | 'DM' | 'GROUP' | string;
+  title: string | null;
+  icon: string | null;
+  displayName: string;
+  isPinned: boolean;
+  unreadCount: number;
+  lastMessage: {
+    body: string;
+    createdAt: string;
+    senderId?: string | null;
+  } | MessagingConversationMessage | null;
+  participants: MessagingParticipant[];
+}
+
+export interface MessagingConversationDetail {
+  conversation: MessagingConversationSummary;
+  messages: Array<
+    MessagingConversationMessage & {
+      userId?: string;
+      fromAdmin?: boolean;
+      isRead?: boolean;
+      images?: string | null;
+    }
+  >;
+}
+
+export interface MessagingReport {
+  id: string;
+  conversationId: string;
+  conversationType?: string;
+  conversationTitle?: string | null;
+  participants?: Array<{ user: MessagingParticipant['user']; role: string }>;
+  reporter: MessagingParticipant['user'];
+  reason: string | null;
+  status: 'PENDING' | 'ACTION_TAKEN' | 'DISMISSED' | string;
+  snapshot: MessagingConversationMessage[];
+  reviewerNote?: string | null;
+  reviewedAt?: string | null;
+  reviewedBy?: { id: string; username: string } | null;
+  createdAt: string;
+}
+
 export const supportApi = {
   // User
   getMessages: () => api.get<{ messages: SupportMessage[] }>('/support/messages'),
   sendMessage: (body: string, images?: string[]) => api.post<{ message: SupportMessage }>('/support/messages', { body, images }),
   getUnreadCount: () => api.get<{ count: number }>('/support/unread-count'),
   markRead: () => api.post<{ success: boolean }>('/support/messages/read'),
+  getConversations: () => api.get<{ conversations: MessagingConversationSummary[] }>('/support/conversations'),
+  getConversation: (conversationId: string) => api.get<MessagingConversationDetail>(`/support/conversations/${conversationId}`),
+  createConversation: (data: { type: 'DM' | 'GROUP'; title?: string; participantIds: string[]; body?: string }) =>
+    api.post<{ conversation: MessagingConversationSummary; alreadyExisted: boolean }>('/support/conversations', data),
+  sendConversationMessage: (conversationId: string, body: string) =>
+    api.post<{ message: MessagingConversationDetail['messages'][number] }>(`/support/conversations/${conversationId}/messages`, { body }),
+  markConversationRead: (conversationId: string) =>
+    api.post<{ success: boolean }>(`/support/conversations/${conversationId}/read`),
+  reportConversation: (conversationId: string, reason?: string) =>
+    api.post<{ report: MessagingReport }>(`/support/conversations/${conversationId}/report`, { reason }),
+  updateConversation: (conversationId: string, data: { title?: string; icon?: string }) =>
+    api.patch<{ conversation: { id: string; title: string | null; icon: string | null } }>(`/support/conversations/${conversationId}`, data),
   // Admin
   getThreads: () => api.get<{ threads: SupportThread[] }>('/support/admin/threads'),
   getThread: (userId: string) => api.get<{ messages: SupportMessage[]; user: SupportThread['user'] }>(`/support/admin/threads/${userId}`),
   reply: (userId: string, body: string, images?: string[]) =>
     api.post<{ message: SupportMessage }>(`/support/admin/reply/${userId}`, { body, images }),
   markThreadRead: (userId: string) => api.post<{ success: boolean }>(`/support/admin/threads/${userId}/read`),
+  getReports: () => api.get<{ reports: MessagingReport[] }>('/support/admin/reports'),
+  reviewReport: (reportId: string, data: { action: 'ACTION_TAKEN' | 'DISMISSED'; reviewerNote?: string }) =>
+    api.post<{ report: { id: string; status: string; reviewerNote: string | null; reviewedAt: string | null } }>(`/support/admin/reports/${reportId}/review`, data),
 };
 
 export interface DirectConversationUser {

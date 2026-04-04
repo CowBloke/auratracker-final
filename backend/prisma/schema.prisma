@@ -21,6 +21,7 @@ model User {
   auraCoinBalance         Float     @default(0) // Aura Coin balance for trading game
   isAdmin                 Boolean   @default(false)
   isSuperAdmin            Boolean   @default(false)
+  isBetaTester            Boolean   @default(false)
   isChatMuted             Boolean   @default(false)
   isApproved              Boolean   @default(false) // Account must be approved by admin before login
   dailyAuraGiven          Int       @default(0) // Aura given today
@@ -136,7 +137,12 @@ model User {
   warningsIssued   AdminWarning[] @relation("WarningsIssued")
 
   // Support Messages
-  supportMessages SupportMessage[] @relation("UserSupportMessages")
+  supportMessages              SupportMessage[]                 @relation("UserSupportMessages")
+  messagingConversationsCreated MessageConversation[]          @relation("MessageConversationCreator")
+  messagingParticipants       MessageConversationParticipant[]
+  messagingMessages           MessageConversationMessage[]      @relation("MessageConversationSender")
+  sentMessageReports          MessageConversationReport[]       @relation("MessageReportReporter")
+  reviewedMessageReports      MessageConversationReport[]       @relation("MessageReportReviewer")
 
   // Badge System
   equippedBadge1Id    String?
@@ -568,9 +574,9 @@ model BusinessInvitation {
   businessId  String
   inviterId   String
   inviteeId   String
-  employerId  String
-  employeeId  String
-  initiatedByRole String
+  employerId  String    @default("")
+  employeeId  String    @default("")
+  initiatedByRole String  @default("EMPLOYER")
   role        String
   salary      Int       @default(0)
   message     String?
@@ -2052,6 +2058,77 @@ model SupportMessage {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+model MessageConversation {
+  id             String   @id @default(uuid())
+  type           String   // DM | GROUP
+  title          String?
+  icon           String?  // emoji for group icon
+  createdById    String?
+  createdAt      DateTime @default(now())
+  lastMessageAt  DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  createdBy    User?                            @relation("MessageConversationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  participants MessageConversationParticipant[]
+  messages     MessageConversationMessage[]
+  reports      MessageConversationReport[]
+
+  @@index([type, lastMessageAt])
+  @@index([createdById])
+}
+
+model MessageConversationParticipant {
+  id             String   @id @default(uuid())
+  conversationId String
+  userId         String
+  role           String   @default("MEMBER") // MEMBER | OWNER
+  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime?
+
+  conversation MessageConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, joinedAt])
+  @@index([conversationId, lastReadAt])
+}
+
+model MessageConversationMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String?
+  body           String
+  type           String   @default("TEXT") // TEXT | SYSTEM | REPORT_NOTICE
+  createdAt      DateTime @default(now())
+
+  conversation MessageConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?               @relation("MessageConversationSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+}
+
+model MessageConversationReport {
+  id                  String   @id @default(uuid())
+  conversationId      String
+  reporterId          String
+  reason              String?
+  snapshotJson        String   @default("[]") // JSON array of recent messages
+  status              String   @default("PENDING") // PENDING | ACTION_TAKEN | DISMISSED
+  reviewedAt          DateTime?
+  reviewedById        String?
+  reviewerNote        String?
+  createdAt           DateTime @default(now())
+
+  conversation MessageConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reporter     User                @relation("MessageReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewedBy   User?               @relation("MessageReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@index([reporterId, createdAt])
+  @@index([status, createdAt])
 }
 
 // ============================================

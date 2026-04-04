@@ -1,652 +1,700 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
+  AlertTriangle,
   ArrowLeft,
   MessageCircleMore,
-  MessageSquare,
-  PencilLine,
+  MessagesSquare,
+  Plus,
   Search,
   SendHorizonal,
-  Sparkles,
+  Settings2,
+  Shield,
+  ShieldAlert,
+  Users,
+  X,
 } from 'lucide-react';
 import { PageShell } from '@/components/layout/page-shell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSocketBase } from '@/contexts/SocketContext';
 import { toast } from '@/hooks/use-toast';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
-import {
-  DirectConversation,
-  DirectConversationMessage,
-  messagesApi,
-  SocialUser,
-  usersApi,
-} from '@/services/api';
+import { MessagingConversationDetail, MessagingConversationSummary, SocialUser, supportApi, usersApi } from '@/services/api';
 
 const POLL_INTERVAL_MS = 15000;
 
+const GROUP_ICONS = ['👥', '🎮', '🎯', '🏆', '💬', '🔥', '⚡', '🌟', '🎲', '🎪', '🚀', '🎭', '🦁', '🐉', '💎', '🌈'];
+
 const formatMessageTime = (value: string) => {
   const date = new Date(value);
-
-  if (isToday(date)) {
-    return format(date, 'HH:mm');
-  }
-
-  if (isYesterday(date)) {
-    return 'Hier';
-  }
-
+  if (isToday(date)) return format(date, 'HH:mm');
+  if (isYesterday(date)) return 'Hier';
   return format(date, 'dd MMM', { locale: fr });
 };
 
-const formatMessageMeta = (value: string) =>
-  formatDistanceToNow(new Date(value), { addSuffix: true, locale: fr });
-
-const getConversationPreview = (conversation: DirectConversation) => {
-  if (!conversation.lastMessage) {
-    return 'Commencez la discussion.';
-  }
-
-  return conversation.lastMessage.body;
-};
-
-const getInitials = (username?: string | null) => {
-  const value = (username ?? '?').trim();
-  return value.slice(0, 2).toUpperCase();
-};
+const getInitials = (username?: string | null) => ((username ?? '?').trim().slice(0, 2) || '?').toUpperCase();
+const getConversationPreview = (conversation: MessagingConversationSummary) => conversation.lastMessage?.body || 'Commence la discussion.';
+const getConversationAvatar = (conversation: MessagingConversationSummary) => conversation.participants.find((entry) => entry.user.id !== 'support')?.user ?? null;
 
 export default function MessagesPage() {
   const { user } = useAuth();
+  const { socket } = useSocketBase();
   const navigate = useNavigate();
   const location = useLocation();
-  const [conversations, setConversations] = useState<DirectConversation[]>([]);
+  const [conversations, setConversations] = useState<MessagingConversationSummary[]>([]);
   const [players, setPlayers] = useState<SocialUser[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<DirectConversationMessage[]>([]);
+  const [detail, setDetail] = useState<MessagingConversationDetail | null>(null);
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
-  const [isBootLoading, setIsBootLoading] = useState(true);
-  const [isConversationLoading, setIsConversationLoading] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [isStartingConversation, setIsStartingConversation] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [conversationLoading, setConversationLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createMode, setCreateMode] = useState<'DM' | 'GROUP'>('DM');
+  const [createTitle, setCreateTitle] = useState('');
+  const [createSearch, setCreateSearch] = useState('');
+  const [createParticipantIds, setCreateParticipantIds] = useState<string[]>([]);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [respectOpen, setRespectOpen] = useState(false);
+  const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
+  const [groupEditName, setGroupEditName] = useState('');
+  const [groupEditIcon, setGroupEditIcon] = useState('');
+  const [groupSettingsSaving, setGroupSettingsSaving] = useState(false);
   const initializedFromQueryRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const deferredSearch = useDeferredValue(search);
-  const selectedConversation = conversations.find((conversation) => conversation.id === selectedConversationId) ?? null;
-  const selectedOtherUser = selectedConversation?.otherUser ?? null;
+  const selectedConversation = detail?.conversation ?? conversations.find((c) => c.id === selectedConversationId) ?? null;
+  const selectedConversationIdSafe = selectedConversation?.id ?? null;
 
-  const refreshConversations = async (options?: { preserveSelection?: boolean }) => {
-    const response = await messagesApi.getConversations();
-    const nextConversations = response.data.conversations;
-    setConversations(nextConversations);
-
-    if (!options?.preserveSelection && !selectedConversationId && nextConversations[0]) {
-      setSelectedConversationId(nextConversations[0].id);
-    }
-
-    if (
-      options?.preserveSelection &&
-      selectedConversationId &&
-      !nextConversations.some((conversation) => conversation.id === selectedConversationId)
-    ) {
-      setSelectedConversationId(nextConversations[0]?.id ?? null);
-    }
-
-    return nextConversations;
+  const refreshConversations = async () => {
+    const response = await supportApi.getConversations();
+    setConversations(response.data.conversations);
+    return response.data.conversations;
   };
 
-  const loadConversationMessages = async (conversationId: string, options?: { markRead?: boolean }) => {
-    setIsConversationLoading(true);
-
+  const loadConversation = async (conversationId: string, markRead = true) => {
+    setConversationLoading(true);
     try {
-      const response = await messagesApi.getMessages(conversationId);
-      setMessages(response.data.messages);
-
-      if (options?.markRead) {
-        await messagesApi.markRead(conversationId);
-        setConversations((current) =>
-          current.map((conversation) =>
-            conversation.id === conversationId
-              ? { ...conversation, unreadCount: 0 }
-              : conversation
-          )
-        );
+      const response = await supportApi.getConversation(conversationId);
+      setDetail(response.data);
+      if (markRead) {
+        await supportApi.markConversationRead(conversationId);
+        setConversations((current) => current.map((c) => c.id === conversationId ? { ...c, unreadCount: 0 } : c));
       }
     } finally {
-      setIsConversationLoading(false);
+      setConversationLoading(false);
     }
   };
 
   useEffect(() => {
     let cancelled = false;
-
     const bootstrap = async () => {
       try {
-        const [conversationResponse, playersResponse] = await Promise.all([
-          messagesApi.getConversations(),
-          usersApi.getAll(),
-        ]);
-
+        const [conversationResponse, playersResponse] = await Promise.all([supportApi.getConversations(), usersApi.getAll()]);
         if (cancelled) return;
-
-        const nextConversations = conversationResponse.data.conversations;
-        setConversations(nextConversations);
+        setConversations(conversationResponse.data.conversations);
         setPlayers(playersResponse.data.users ?? []);
-        setSelectedConversationId((current) => current ?? nextConversations[0]?.id ?? null);
+        setSelectedConversationId((current) => current ?? conversationResponse.data.conversations[0]?.id ?? null);
       } catch (error) {
-        console.error('Failed to bootstrap messages page:', error);
-        toast({
-          title: 'Messagerie indisponible',
-          description: "Impossible de charger les conversations pour l'instant.",
-          variant: 'destructive',
-        });
+        console.error('Failed to bootstrap messaging center:', error);
+        toast({ title: 'Messagerie indisponible', description: 'Impossible de charger les conversations.', variant: 'destructive' });
       } finally {
-        if (!cancelled) {
-          setIsBootLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     };
-
     bootstrap();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (!selectedConversationId) {
-      setMessages([]);
-      return;
-    }
-
-    loadConversationMessages(selectedConversationId, { markRead: true }).catch((error) => {
-      console.error('Failed to load conversation messages:', error);
-      toast({
-        title: 'Conversation indisponible',
-        description: "Impossible d'ouvrir cette conversation.",
-        variant: 'destructive',
-      });
+    if (!selectedConversationId) { setDetail(null); return; }
+    loadConversation(selectedConversationId, true).catch((error) => {
+      console.error('Failed to load conversation:', error);
+      toast({ title: 'Conversation indisponible', description: 'Impossible d\'ouvrir cette conversation.', variant: 'destructive' });
     });
   }, [selectedConversationId]);
 
   useEffect(() => {
-    if (isBootLoading) return;
+    const key = `messaging-rules-seen-${user?.id ?? 'anon'}`;
+    if (user && !localStorage.getItem(key)) setRespectOpen(true);
+  }, [user?.id]);
 
+  useEffect(() => {
+    if (loading) return;
     const params = new URLSearchParams(location.search);
     const conversationId = params.get('conversation');
-    const targetUserId = params.get('user');
-
-    if (initializedFromQueryRef.current && !conversationId && !targetUserId) {
-      return;
-    }
-
-    const hydrateFromQuery = async () => {
-      if (conversationId) {
-        initializedFromQueryRef.current = true;
-        setSelectedConversationId(conversationId);
-        return;
-      }
-
-      if (!targetUserId || isStartingConversation) return;
-
-      initializedFromQueryRef.current = true;
-      setIsStartingConversation(true);
-
-      try {
-        const response = await messagesApi.createConversation(targetUserId);
-        const conversation = response.data.conversation;
-        setConversations((current) => {
-          const next = [conversation, ...current.filter((item) => item.id !== conversation.id)];
-          next.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
-          return next;
-        });
-        setSelectedConversationId(conversation.id);
-        navigate('/messages', { replace: true });
-      } catch (error) {
-        console.error('Failed to create direct conversation:', error);
-        toast({
-          title: 'DM impossible',
-          description: "Impossible d'ouvrir cette conversation.",
-          variant: 'destructive',
-        });
-      } finally {
-        setIsStartingConversation(false);
-      }
-    };
-
-    hydrateFromQuery().catch(() => {});
-  }, [isBootLoading, isStartingConversation, location.search, navigate]);
+    if (initializedFromQueryRef.current || !conversationId) return;
+    initializedFromQueryRef.current = true;
+    setSelectedConversationId(conversationId);
+  }, [loading, location.search]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
-      refreshConversations({ preserveSelection: true }).catch(() => {});
-
-      if (selectedConversationId) {
-        loadConversationMessages(selectedConversationId).catch(() => {});
-      }
+      refreshConversations().catch(() => {});
+      if (selectedConversationIdSafe) loadConversation(selectedConversationIdSafe, false).catch(() => {});
     }, POLL_INTERVAL_MS);
-
     return () => window.clearInterval(interval);
-  }, [selectedConversationId]);
+  }, [selectedConversationIdSafe]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => {
+      refreshConversations().catch(() => {});
+      if (selectedConversationIdSafe) loadConversation(selectedConversationIdSafe, false).catch(() => {});
+    };
+    socket.on('messaging:message', refresh);
+    socket.on('messaging:conversation', refresh);
+    socket.on('support:message', refresh);
+    return () => {
+      socket.off('messaging:message', refresh);
+      socket.off('messaging:conversation', refresh);
+      socket.off('support:message', refresh);
+    };
+  }, [socket, selectedConversationIdSafe]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages.length, selectedConversationId]);
+  }, [detail?.messages.length, selectedConversationIdSafe]);
 
   const filteredConversations = useMemo(() => {
     const term = deferredSearch.trim().toLowerCase();
     if (!term) return conversations;
-
-    return conversations.filter((conversation) => {
-      const username = conversation.otherUser?.username.toLowerCase() ?? '';
-      const firstName = conversation.otherUser?.firstName?.toLowerCase() ?? '';
-      const preview = getConversationPreview(conversation).toLowerCase();
-
-      return username.includes(term) || firstName.includes(term) || preview.includes(term);
+    return conversations.filter((c) => {
+      const names = [c.displayName, c.title ?? '', ...c.participants.map((e) => e.user.username)].join(' ').toLowerCase();
+      return names.includes(term) || getConversationPreview(c).toLowerCase().includes(term);
     });
   }, [conversations, deferredSearch]);
 
-  const suggestedPlayers = useMemo(() => {
-    const activeConversationUserIds = new Set(
-      conversations
-        .map((conversation) => conversation.otherUser?.id)
-        .filter((value): value is string => Boolean(value))
-    );
-    const term = deferredSearch.trim().toLowerCase();
-
-    return players
-      .filter((player) => player.id !== user?.id)
-      .filter((player) => !activeConversationUserIds.has(player.id))
-      .filter((player) => {
-        if (!term) return true;
-
-        const username = player.username.toLowerCase();
-        const firstName = player.firstName?.toLowerCase() ?? '';
-        const bio = player.bio?.toLowerCase() ?? '';
-        return username.includes(term) || firstName.includes(term) || bio.includes(term);
-      })
-      .slice(0, term ? 8 : 5);
-  }, [conversations, deferredSearch, players, user?.id]);
-
-  const handleOpenConversation = (conversationId: string) => {
-    setSelectedConversationId(conversationId);
-    navigate('/messages', { replace: true });
-  };
-
-  const handleStartConversation = async (targetUserId: string) => {
-    try {
-      setIsStartingConversation(true);
-      const response = await messagesApi.createConversation(targetUserId);
-      const conversation = response.data.conversation;
-
-      setConversations((current) => {
-        const next = [conversation, ...current.filter((item) => item.id !== conversation.id)];
-        next.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
-        return next;
-      });
-      setSelectedConversationId(conversation.id);
-      navigate('/messages', { replace: true });
-    } catch (error) {
-      console.error('Failed to start direct conversation:', error);
-      toast({
-        title: 'DM impossible',
-        description: "Impossible de démarrer cette conversation.",
-        variant: 'destructive',
-      });
-    } finally {
-      setIsStartingConversation(false);
-    }
-  };
+  const filteredPlayers = useMemo(() => {
+    const term = createSearch.trim().toLowerCase();
+    const list = players.filter((p) => p.id !== user?.id);
+    if (!term) return list;
+    return list.filter((p) => p.username.toLowerCase().includes(term) || (p.bio ?? '').toLowerCase().includes(term));
+  }, [players, user?.id, createSearch]);
 
   const handleSendMessage = async () => {
-    if (!selectedConversationId) return;
-
+    if (!selectedConversationIdSafe) return;
     const body = draft.trim();
     if (!body) return;
-
     try {
-      setIsSending(true);
-      const response = await messagesApi.sendMessage(selectedConversationId, body);
-      const createdMessage = response.data.message;
-
-      setMessages((current) => [...current, createdMessage]);
+      setSending(true);
+      await supportApi.sendConversationMessage(selectedConversationIdSafe, body);
       setDraft('');
-
-      await refreshConversations({ preserveSelection: true });
+      if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
+      await refreshConversations();
+      await loadConversation(selectedConversationIdSafe, false);
     } catch (error) {
-      console.error('Failed to send direct message:', error);
-      toast({
-        title: 'Envoi impossible',
-        description: "Le message n'a pas pu être envoyé.",
-        variant: 'destructive',
-      });
+      console.error('Failed to send message:', error);
+      toast({ title: 'Envoi impossible', description: 'Le message n\'a pas pu etre envoye.', variant: 'destructive' });
     } finally {
-      setIsSending(false);
+      setSending(false);
     }
   };
 
-  if (isBootLoading) {
+  const handleCreateConversation = async () => {
+    if (createParticipantIds.length === 0) return;
+    if (createMode === 'DM' && createParticipantIds.length !== 1) return;
+    if (createMode === 'GROUP' && createParticipantIds.length < 2) return;
+    try {
+      const response = await supportApi.createConversation({
+        type: createMode,
+        title: createMode === 'GROUP' ? createTitle.trim() : undefined,
+        participantIds: createParticipantIds,
+      });
+      setCreateOpen(false);
+      setCreateMode('DM');
+      setCreateTitle('');
+      setCreateSearch('');
+      setCreateParticipantIds([]);
+      await refreshConversations();
+      setSelectedConversationId(response.data.conversation.id);
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+      toast({ title: 'Creation impossible', description: 'Impossible de creer cette conversation.', variant: 'destructive' });
+    }
+  };
+
+  const handleReportConversation = async () => {
+    if (!selectedConversation || selectedConversation.type === 'SUPPORT') return;
+    try {
+      await supportApi.reportConversation(selectedConversation.id, reportReason.trim() || undefined);
+      setReportOpen(false);
+      setReportReason('');
+      toast({ title: 'Conversation signalee', description: 'Le signalement a ete envoye.' });
+    } catch (error) {
+      console.error('Failed to report conversation:', error);
+      toast({ title: 'Signalement impossible', description: 'Impossible d\'envoyer ce signalement.', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveGroupSettings = async () => {
+    if (!selectedConversation || selectedConversation.type !== 'GROUP') return;
+    setGroupSettingsSaving(true);
+    try {
+      await supportApi.updateConversation(selectedConversation.id, {
+        title: groupEditName,
+        icon: groupEditIcon,
+      });
+      await refreshConversations();
+      if (selectedConversationIdSafe) await loadConversation(selectedConversationIdSafe, false);
+      setGroupSettingsOpen(false);
+    } catch (error) {
+      console.error('Failed to save group settings:', error);
+      toast({ title: 'Erreur', description: 'Impossible de sauvegarder les parametres.', variant: 'destructive' });
+    } finally {
+      setGroupSettingsSaving(false);
+    }
+  };
+
+  const handleHeaderClick = () => {
+    if (!selectedConversation) return;
+    if (selectedConversation.type === 'GROUP') {
+      setGroupEditName(selectedConversation.title ?? '');
+      setGroupEditIcon(selectedConversation.icon ?? '');
+      setGroupSettingsOpen(true);
+    } else if (selectedConversation.type === 'DM') {
+      const other = selectedConversation.participants.find((e) => e.user.id !== user?.id)?.user;
+      if (other) navigate(`/profile/${other.id}`);
+    }
+  };
+
+  const currentMessages = detail?.messages ?? [];
+
+  if (loading) {
     return (
       <PageShell size="full" className="space-y-0 px-4 pb-8 lg:px-6">
-        <div className="min-h-[calc(100vh-9rem)] rounded-[32px] border border-border/60 bg-card/80 p-6 shadow-sm">
-          <div className="grid h-full gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
-            <div className="rounded-[28px] border border-border/50 bg-muted/40" />
-            <div className="rounded-[28px] border border-border/50 bg-muted/30" />
-          </div>
-        </div>
+        <div className="min-h-[calc(100vh-9rem)] rounded-2xl border border-border/60 bg-card" />
       </PageShell>
     );
   }
 
   return (
     <PageShell size="full" className="space-y-0 px-4 pb-8 lg:px-6">
-      <div className="relative min-h-[calc(100vh-9rem)] overflow-hidden rounded-[32px] border border-border/60 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.94),rgba(255,255,255,0.84))] shadow-[0_28px_90px_-48px_rgba(15,23,42,0.45)] dark:bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_28%),radial-gradient(circle_at_top_right,rgba(249,115,22,0.18),transparent_26%),linear-gradient(180deg,rgba(6,10,18,0.96),rgba(8,12,22,0.9))]">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-background/40 to-transparent" />
+      {/* Respect modal */}
+      <Dialog open={respectOpen} onOpenChange={setRespectOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-amber-500" />Avant d'utiliser la messagerie</DialogTitle>
+            <DialogDescription>Reste respectueux, ne harcele personne, et n'utilise pas les DMs ou groupes pour mettre quelqu'un mal a l'aise.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button size="sm" onClick={() => { localStorage.setItem(`messaging-rules-seen-${user?.id ?? 'anon'}`, '1'); setRespectOpen(false); }}>J'ai compris</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <div className="grid min-h-[calc(100vh-9rem)] lg:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className={cn('border-r border-border/60 bg-background/50 backdrop-blur-xl', selectedConversationId ? 'hidden lg:flex' : 'flex')}>
-            <div className="flex w-full flex-col">
-              <div className="border-b border-border/60 px-5 pb-5 pt-6">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground/70">Aura DM</p>
-                    <h1 className="mt-2 text-3xl font-semibold tracking-tight">Messages</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Une messagerie privee reservee aux joueurs connectes.
-                    </p>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-background/80 shadow-sm">
-                    <MessageCircleMore className="h-5 w-5" />
-                  </div>
-                </div>
-
-                <div className="relative mt-5">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Rechercher une conversation ou un joueur"
-                    className="h-12 rounded-2xl border-border/60 bg-background/80 pl-11 pr-4"
-                  />
-                </div>
-              </div>
-
-              <ScrollArea className="flex-1">
-                <div className="space-y-6 px-3 py-4">
-                  <section className="space-y-2">
-                    <div className="flex items-center justify-between px-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground/70">Conversations</p>
-                      <span className="rounded-full border border-border/60 px-2 py-1 text-[11px] text-muted-foreground">
-                        {filteredConversations.length}
-                      </span>
-                    </div>
-
-                    {filteredConversations.length === 0 ? (
-                      <Card className="rounded-[24px] border-border/60 bg-background/70 p-5">
-                        <p className="text-sm font-medium text-foreground">Aucune conversation pour l'instant</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Lancez un DM depuis un profil ou en choisissant un joueur ci-dessous.
-                        </p>
-                      </Card>
-                    ) : (
-                      filteredConversations.map((conversation) => {
-                        const isActive = conversation.id === selectedConversationId;
-                        const otherUser = conversation.otherUser;
-
-                        return (
-                          <button
-                            key={conversation.id}
-                            type="button"
-                            onClick={() => handleOpenConversation(conversation.id)}
-                            className={cn(
-                              'flex w-full items-start gap-3 rounded-[24px] border px-4 py-4 text-left transition-all',
-                              isActive
-                                ? 'border-sky-400/50 bg-sky-500/10 shadow-[0_14px_40px_-28px_rgba(14,165,233,0.8)]'
-                                : 'border-transparent bg-background/55 hover:border-border/60 hover:bg-background/85'
-                            )}
-                          >
-                            <Avatar className="h-12 w-12 border border-border/50">
-                              {otherUser?.profilePicture ? (
-                                <AvatarImage src={resolveImageUrl(otherUser.profilePicture)} alt={otherUser.username} />
-                              ) : null}
-                              <AvatarFallback>{getInitials(otherUser?.username)}</AvatarFallback>
-                            </Avatar>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p
-                                    className="truncate text-sm font-semibold"
-                                    style={otherUser?.usernameColor ? { color: otherUser.usernameColor } : undefined}
-                                  >
-                                    {otherUser?.username ?? 'Conversation'}
-                                  </p>
-                                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                                    {getConversationPreview(conversation)}
-                                  </p>
-                                </div>
-                                <div className="flex shrink-0 flex-col items-end gap-2">
-                                  <span className="text-[11px] text-muted-foreground">
-                                    {formatMessageTime(conversation.lastMessageAt)}
-                                  </span>
-                                  {conversation.unreadCount > 0 ? (
-                                    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-sky-500 px-2 py-1 text-[11px] font-semibold text-white">
-                                      {conversation.unreadCount}
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })
-                    )}
-                  </section>
-
-                  <section className="space-y-2">
-                    <div className="flex items-center justify-between px-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground/70">Nouveau DM</p>
-                      <PencilLine className="h-4 w-4 text-muted-foreground" />
-                    </div>
-
-                    {suggestedPlayers.length === 0 ? (
-                      <Card className="rounded-[24px] border-border/60 bg-background/70 p-5">
-                        <p className="text-sm text-muted-foreground">
-                          Aucun joueur supplementaire ne correspond a cette recherche.
-                        </p>
-                      </Card>
-                    ) : (
-                      suggestedPlayers.map((player) => (
-                        <button
-                          key={player.id}
-                          type="button"
-                          onClick={() => handleStartConversation(player.id)}
-                          className="flex w-full items-center gap-3 rounded-[22px] border border-transparent bg-background/50 px-4 py-3 text-left transition hover:border-border/60 hover:bg-background/85"
-                        >
-                          <Avatar className="h-11 w-11 border border-border/50">
-                            {player.profilePicture ? (
-                              <AvatarImage src={resolveImageUrl(player.profilePicture)} alt={player.username} />
-                            ) : null}
-                            <AvatarFallback>{getInitials(player.username)}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className="truncate text-sm font-semibold"
-                              style={player.usernameColor ? { color: player.usernameColor } : undefined}
-                            >
-                              {player.username}
-                            </p>
-                            <p className="truncate text-sm text-muted-foreground">
-                              {player.bio?.trim() || 'Ouvrir une nouvelle conversation'}
-                            </p>
-                          </div>
-                          <Sparkles className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                      ))
-                    )}
-                  </section>
-                </div>
-              </ScrollArea>
+      {/* Create conversation modal */}
+      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateSearch(''); setCreateParticipantIds([]); setCreateTitle(''); setCreateMode('DM'); } }}>
+        <DialogContent className="max-w-md gap-0 p-0 overflow-hidden">
+          <div className="border-b border-border/60 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">Nouvelle conversation</DialogTitle>
+          </div>
+          <div className="flex border-b border-border/60">
+            <button
+              type="button"
+              onClick={() => { setCreateMode('DM'); setCreateParticipantIds([]); }}
+              className={cn('flex-1 py-2 text-xs font-medium transition-colors', createMode === 'DM' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50 text-muted-foreground')}
+            >
+              Message privé
+            </button>
+            <button
+              type="button"
+              onClick={() => { setCreateMode('GROUP'); setCreateParticipantIds([]); }}
+              className={cn('flex-1 py-2 text-xs font-medium transition-colors', createMode === 'GROUP' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50 text-muted-foreground')}
+            >
+              Groupe
+            </button>
+          </div>
+          <div className="p-3 space-y-2">
+            {createMode === 'GROUP' && (
+              <Input
+                value={createTitle}
+                onChange={(e) => setCreateTitle(e.target.value)}
+                placeholder="Nom du groupe (optionnel)"
+                className="h-8 text-sm"
+              />
+            )}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={createSearch}
+                onChange={(e) => setCreateSearch(e.target.value)}
+                placeholder="Rechercher un joueur..."
+                className="h-8 pl-8 text-xs"
+              />
             </div>
-          </aside>
-
-          <section className={cn('flex min-h-[calc(100vh-9rem)] min-w-0 flex-col', selectedConversationId ? 'flex' : 'hidden lg:flex')}>
-            {selectedConversation && selectedOtherUser ? (
-              <>
-                <div className="border-b border-border/60 bg-background/45 px-4 py-4 backdrop-blur-xl sm:px-6">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full lg:hidden"
-                      onClick={() => setSelectedConversationId(null)}
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-
-                    <Avatar className="h-11 w-11 border border-border/60">
-                      {selectedOtherUser.profilePicture ? (
-                        <AvatarImage src={resolveImageUrl(selectedOtherUser.profilePicture)} alt={selectedOtherUser.username} />
-                      ) : null}
-                      <AvatarFallback>{getInitials(selectedOtherUser.username)}</AvatarFallback>
+            {createMode === 'GROUP' && createParticipantIds.length > 0 && (
+              <p className="text-xs text-muted-foreground">{createParticipantIds.length} selectionne{createParticipantIds.length > 1 ? 's' : ''}</p>
+            )}
+          </div>
+          <ScrollArea className="max-h-64 border-t border-border/60">
+            <div className="divide-y divide-border/40">
+              {filteredPlayers.map((player) => {
+                const checked = createParticipantIds.includes(player.id);
+                const disabled = createMode === 'DM' && !checked && createParticipantIds.length >= 1;
+                return (
+                  <label
+                    key={player.id}
+                    className={cn('flex cursor-pointer items-center gap-2.5 px-3 py-2 transition-colors', disabled ? 'cursor-not-allowed opacity-40' : checked ? 'bg-primary/8' : 'hover:bg-muted/40')}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      disabled={disabled}
+                      onCheckedChange={(value) => {
+                        setCreateParticipantIds((current) => value ? [...current, player.id] : current.filter((id) => id !== player.id));
+                      }}
+                      className="shrink-0"
+                    />
+                    <Avatar className="h-7 w-7 shrink-0">
+                      {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} alt={player.username} /> : null}
+                      <AvatarFallback className="text-[10px]">{getInitials(player.username)}</AvatarFallback>
                     </Avatar>
+                    <span className="truncate text-sm font-medium" style={player.usernameColor ? { color: player.usernameColor } : undefined}>
+                      {player.username}
+                    </span>
+                  </label>
+                );
+              })}
+              {filteredPlayers.length === 0 && (
+                <p className="px-3 py-4 text-center text-xs text-muted-foreground">Aucun joueur trouve.</p>
+              )}
+            </div>
+          </ScrollArea>
+          <div className="flex items-center justify-end gap-2 border-t border-border/60 px-3 py-2.5">
+            <Button variant="ghost" size="sm" onClick={() => setCreateOpen(false)}>Annuler</Button>
+            <Button
+              size="sm"
+              disabled={createParticipantIds.length === 0 || (createMode === 'DM' && createParticipantIds.length !== 1) || (createMode === 'GROUP' && createParticipantIds.length < 2)}
+              onClick={handleCreateConversation}
+            >
+              Creer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-                    <div className="min-w-0 flex-1">
-                      <button
-                        type="button"
-                        className="truncate text-left text-base font-semibold transition hover:opacity-80"
-                        style={selectedOtherUser.usernameColor ? { color: selectedOtherUser.usernameColor } : undefined}
-                        onClick={() => navigate(`/profile/${selectedOtherUser.id}`)}
-                      >
-                        {selectedOtherUser.username}
-                      </button>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {selectedOtherUser.bio?.trim() || 'Discussion privee entre joueurs'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+      {/* Report modal */}
+      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Signaler cette conversation</DialogTitle>
+            <DialogDescription className="text-xs">Les derniers messages seront transmis a l'inbox admin.</DialogDescription>
+          </DialogHeader>
+          <textarea
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            placeholder="Explique rapidement le probleme (optionnel)"
+            maxLength={280}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+          />
+          <DialogFooter>
+            <Button variant="ghost" size="sm" onClick={() => setReportOpen(false)}>Annuler</Button>
+            <Button variant="destructive" size="sm" onClick={handleReportConversation}>Signaler</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-                <div className="relative flex-1 overflow-hidden">
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.08),transparent_38%),linear-gradient(180deg,transparent,rgba(2,6,23,0.04))]" />
+      {/* Group settings modal */}
+      <Dialog open={groupSettingsOpen} onOpenChange={setGroupSettingsOpen}>
+        <DialogContent className="max-w-sm gap-0 p-0 overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">Parametres du groupe</DialogTitle>
+          </div>
+          <div className="p-4 space-y-4">
+            <div>
+              <p className="mb-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">Nom du groupe</p>
+              <Input
+                value={groupEditName}
+                onChange={(e) => setGroupEditName(e.target.value)}
+                placeholder="Nom du groupe"
+                className="h-8 text-sm"
+                maxLength={80}
+              />
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">Icone du groupe</p>
+              <div className="grid grid-cols-8 gap-1">
+                {GROUP_ICONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setGroupEditIcon(groupEditIcon === emoji ? '' : emoji)}
+                    className={cn(
+                      'flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors',
+                      groupEditIcon === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'hover:bg-muted/60'
+                    )}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              {groupEditIcon && (
+                <button
+                  type="button"
+                  onClick={() => setGroupEditIcon('')}
+                  className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />Retirer l'icone
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-2.5">
+            <Button variant="ghost" size="sm" onClick={() => setGroupSettingsOpen(false)}>Annuler</Button>
+            <Button size="sm" disabled={groupSettingsSaving} onClick={handleSaveGroupSettings}>
+              {groupSettingsSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-                  <ScrollArea className="h-full px-4 py-6 sm:px-6">
-                    <div className="mx-auto flex max-w-3xl flex-col gap-3">
-                      <div className="mb-3 flex justify-center">
-                        <div className="rounded-full border border-border/60 bg-background/80 px-4 py-2 text-xs text-muted-foreground shadow-sm">
-                          Conversation ouverte {formatMessageMeta(selectedConversation.createdAt)}
+      {/* Main layout */}
+      <div className="relative min-h-[calc(100vh-9rem)] overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+        <div className="grid min-h-[calc(100vh-9rem)] lg:grid-cols-[300px_minmax(0,1fr)]">
+
+          {/* Sidebar */}
+          <aside className={cn('flex flex-col border-r border-border/60 bg-card', selectedConversationIdSafe ? 'hidden lg:flex' : 'flex')}>
+            {/* Sidebar header */}
+            <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
+              <h1 className="flex-1 text-sm font-semibold">Messages</h1>
+              <Button type="button" size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            {/* Search */}
+            <div className="border-b border-border/60 px-3 py-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Rechercher..."
+                  className="w-full rounded-lg border border-border/60 bg-background/60 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-primary/50 focus:bg-background"
+                />
+              </div>
+            </div>
+            {/* Conversation list */}
+            <ScrollArea className="flex-1">
+              <div className="py-1">
+                {filteredConversations.map((conversation) => {
+                  const isActive = conversation.id === selectedConversationIdSafe;
+                  const avatarUser = getConversationAvatar(conversation);
+                  const hasIcon = conversation.type === 'GROUP' && conversation.icon;
+                  return (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      onClick={() => { setSelectedConversationId(conversation.id); navigate('/messages', { replace: true }); }}
+                      className={cn(
+                        'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors',
+                        isActive ? 'bg-primary/10' : 'hover:bg-muted/50'
+                      )}
+                    >
+                      <div className="relative shrink-0">
+                        <Avatar className="h-9 w-9">
+                          {hasIcon ? (
+                            <AvatarFallback className="text-base">{conversation.icon}</AvatarFallback>
+                          ) : avatarUser?.profilePicture ? (
+                            <AvatarImage src={resolveImageUrl(avatarUser.profilePicture)} alt={conversation.displayName} />
+                          ) : null}
+                          {!hasIcon && <AvatarFallback className="text-xs">{conversation.type === 'SUPPORT' ? 'SP' : getInitials(conversation.displayName)}</AvatarFallback>}
+                        </Avatar>
+                        {conversation.type === 'SUPPORT' && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-sky-500 p-0.5"><Shield className="h-2.5 w-2.5 text-white" /></span>}
+                        {conversation.type === 'GROUP' && !hasIcon && <span className="absolute -bottom-0.5 -right-0.5 rounded-full bg-amber-500 p-0.5"><Users className="h-2.5 w-2.5 text-white" /></span>}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-1">
+                          <p className={cn('truncate text-xs font-semibold', isActive && 'text-primary')}>{conversation.displayName}</p>
+                          <span className="shrink-0 text-[10px] text-muted-foreground">{conversation.lastMessage?.createdAt ? formatMessageTime(conversation.lastMessage.createdAt) : ''}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="truncate text-[11px] text-muted-foreground">{getConversationPreview(conversation)}</p>
+                          {conversation.unreadCount > 0 && (
+                            <span className="shrink-0 inline-flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                              {conversation.unreadCount}
+                            </span>
+                          )}
                         </div>
                       </div>
+                    </button>
+                  );
+                })}
+                {filteredConversations.length === 0 && (
+                  <p className="px-3 py-6 text-center text-xs text-muted-foreground">Aucune conversation.</p>
+                )}
+              </div>
+            </ScrollArea>
+          </aside>
 
-                      {isConversationLoading ? (
-                        <Card className="rounded-[24px] border-border/60 bg-background/75 p-6 text-sm text-muted-foreground">
-                          Chargement des messages...
-                        </Card>
-                      ) : messages.length === 0 ? (
-                        <Card className="rounded-[28px] border-border/60 bg-background/75 p-8 text-center shadow-sm">
-                          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border/60 bg-muted/50">
-                            <MessageSquare className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                          <h2 className="mt-4 text-lg font-semibold">Lance la conversation</h2>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            Envoie un premier message a {selectedOtherUser.username} pour demarrer ce DM.
-                          </p>
-                        </Card>
-                      ) : (
-                        messages.map((message) => {
-                          const isOwnMessage = message.sender.id === user?.id;
-
-                          return (
-                            <div
-                              key={message.id}
-                              className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}
-                            >
-                              <div
-                                className={cn(
-                                  'max-w-[85%] rounded-[26px] px-4 py-3 shadow-sm sm:max-w-[70%]',
-                                  isOwnMessage
-                                    ? 'rounded-br-md bg-sky-500 text-white shadow-[0_16px_44px_-30px_rgba(14,165,233,0.85)]'
-                                    : 'rounded-bl-md border border-border/60 bg-background/88 text-foreground'
-                                )}
-                              >
-                                {!isOwnMessage ? (
-                                  <p
-                                    className="mb-1 text-xs font-semibold"
-                                    style={message.sender.usernameColor ? { color: message.sender.usernameColor } : undefined}
-                                  >
-                                    {message.sender.username}
-                                  </p>
-                                ) : null}
-                                <p className="whitespace-pre-wrap break-words text-sm leading-6">{message.body}</p>
-                                <p className={cn('mt-2 text-[11px]', isOwnMessage ? 'text-white/75' : 'text-muted-foreground')}>
-                                  {formatMessageTime(message.createdAt)}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })
+          {/* Chat area */}
+          <section className={cn('flex min-h-[calc(100vh-9rem)] min-w-0 flex-col', selectedConversationIdSafe ? 'flex' : 'hidden lg:flex')}>
+            {selectedConversation ? (
+              <>
+                {/* Chat header */}
+                <div className="flex items-center gap-2 border-b border-border/60 bg-card px-3 py-2 shadow-sm">
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg lg:hidden" onClick={() => setSelectedConversationId(null)}>
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 min-w-0 flex-1 rounded-lg px-1.5 py-1 transition-colors hover:bg-muted/50 text-left"
+                    onClick={handleHeaderClick}
+                  >
+                    <Avatar className="h-8 w-8 shrink-0">
+                      {selectedConversation.type === 'GROUP' && selectedConversation.icon ? (
+                        <AvatarFallback className="text-base">{selectedConversation.icon}</AvatarFallback>
+                      ) : getConversationAvatar(selectedConversation)?.profilePicture ? (
+                        <AvatarImage src={resolveImageUrl(getConversationAvatar(selectedConversation)!.profilePicture!)} alt={selectedConversation.displayName} />
+                      ) : null}
+                      {!(selectedConversation.type === 'GROUP' && selectedConversation.icon) && !(getConversationAvatar(selectedConversation)?.profilePicture) && (
+                        <AvatarFallback className="text-xs">{selectedConversation.type === 'SUPPORT' ? 'SP' : getInitials(selectedConversation.displayName)}</AvatarFallback>
                       )}
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold leading-tight">{selectedConversation.displayName}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        {selectedConversation.type === 'SUPPORT' ? 'Support' : selectedConversation.type === 'GROUP' ? `${selectedConversation.participants.length} membres` : 'Discussion privee'}
+                      </p>
+                    </div>
+                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {selectedConversation.type === 'GROUP' && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg text-muted-foreground"
+                        onClick={() => { setGroupEditName(selectedConversation.title ?? ''); setGroupEditIcon(selectedConversation.icon ?? ''); setGroupSettingsOpen(true); }}
+                      >
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {selectedConversation.type !== 'SUPPORT' && (
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-destructive" onClick={() => setReportOpen(true)}>
+                        <ShieldAlert className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
+                {/* Messages */}
+                <div className="relative flex-1 overflow-hidden bg-muted/20">
+                  <ScrollArea className="h-full px-3 py-4 sm:px-5">
+                    <div className="mx-auto flex max-w-2xl flex-col gap-1.5">
+                      {conversationLoading ? (
+                        <p className="py-8 text-center text-xs text-muted-foreground">Chargement...</p>
+                      ) : currentMessages.length === 0 ? (
+                        <div className="flex flex-col items-center py-12 text-center">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-card">
+                            <MessagesSquare className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <p className="mt-3 text-sm font-medium">Lance la conversation</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Envoie un premier message.</p>
+                        </div>
+                      ) : currentMessages.map((message, index) => {
+                        const isOwn = (message.sender?.id ?? message.userId) === user?.id && !message.fromAdmin;
+                        const prevMessage = currentMessages[index - 1];
+                        const prevIsOwn = prevMessage ? (prevMessage.sender?.id ?? prevMessage.userId) === user?.id && !prevMessage.fromAdmin : false;
+                        const showSender = !isOwn && (!prevMessage || prevIsOwn || prevMessage.sender?.id !== message.sender?.id);
+                        const supportImages = message.images ? JSON.parse(message.images) as string[] : [];
+                        return (
+                          <div key={message.id} className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}>
+                            <div className={cn(
+                              'max-w-[75%] rounded-2xl px-3 py-2 text-sm sm:max-w-[60%]',
+                              isOwn
+                                ? 'rounded-br-sm bg-primary text-primary-foreground'
+                                : 'rounded-bl-sm bg-card border border-border/60 text-foreground'
+                            )}>
+                              {showSender && (
+                                <p className="mb-0.5 text-[11px] font-semibold" style={message.sender?.usernameColor ? { color: message.sender.usernameColor } : undefined}>
+                                  {message.sender?.username ?? (message.fromAdmin ? 'Support' : 'Systeme')}
+                                </p>
+                              )}
+                              {supportImages.length > 0 && (
+                                <div className="mb-1.5 flex flex-wrap gap-1.5">
+                                  {supportImages.map((img, i) => <img key={i} src={resolveImageUrl(img)} alt="" className="h-16 w-16 rounded-lg object-cover" />)}
+                                </div>
+                              )}
+                              <p className="whitespace-pre-wrap break-words leading-5">{message.body}</p>
+                              <p className={cn('mt-1 text-[10px] text-right', isOwn ? 'text-primary-foreground/60' : 'text-muted-foreground')}>
+                                {formatMessageTime(message.createdAt)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
                       <div ref={messagesEndRef} />
                     </div>
                   </ScrollArea>
                 </div>
 
-                <div className="border-t border-border/60 bg-background/55 px-4 py-4 backdrop-blur-xl sm:px-6">
-                  <div className="mx-auto flex max-w-3xl flex-col gap-3">
-                    <Textarea
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.shiftKey) {
-                          event.preventDefault();
-                          if (!isSending) {
-                            void handleSendMessage();
+                {/* Inline input bar */}
+                <div className="border-t border-border/60 bg-card px-3 py-2.5 sm:px-4">
+                  <div className="mx-auto flex max-w-2xl items-end gap-2">
+                    <div className="flex-1 rounded-2xl border border-border/60 bg-background/80 px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-colors">
+                      <textarea
+                        ref={textareaRef}
+                        value={draft}
+                        rows={1}
+                        onChange={(e) => {
+                          setDraft(e.target.value);
+                          e.currentTarget.style.height = 'auto';
+                          e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 112) + 'px';
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            if (!sending) void handleSendMessage();
                           }
-                        }
-                      }}
-                      placeholder={`Envoyer un message a ${selectedOtherUser.username}`}
-                      className="min-h-[88px] resize-none rounded-[24px] border-border/60 bg-background/85 px-4 py-3"
-                      maxLength={1500}
-                    />
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs text-muted-foreground">
-                        Entrée pour envoyer, Maj + Entrée pour passer a la ligne
-                      </p>
-                      <Button
-                        type="button"
-                        className="rounded-full px-5"
-                        disabled={isSending || !draft.trim()}
-                        onClick={() => void handleSendMessage()}
-                      >
-                        <SendHorizonal className="h-4 w-4" />
-                        Envoyer
-                      </Button>
+                        }}
+                        placeholder={`Message ${selectedConversation.displayName}`}
+                        className="w-full resize-none bg-transparent text-sm outline-none leading-5 placeholder:text-muted-foreground/60"
+                        maxLength={1000}
+                        style={{ height: 'auto', minHeight: '20px' }}
+                      />
                     </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 rounded-xl"
+                      disabled={sending || !draft.trim()}
+                      onClick={() => void handleSendMessage()}
+                    >
+                      <SendHorizonal className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center p-6">
-                <Card className="w-full max-w-xl rounded-[30px] border-border/60 bg-background/80 p-8 text-center shadow-sm">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-border/60 bg-muted/50">
-                    <MessageCircleMore className="h-7 w-7 text-muted-foreground" />
+                <div className="text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border/60 bg-muted/40">
+                    <MessageCircleMore className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <h2 className="mt-5 text-2xl font-semibold tracking-tight">Ta messagerie privee</h2>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Choisis une conversation sur la gauche ou demarre un nouveau DM avec un joueur de la communaute.
-                  </p>
-                </Card>
+                  <p className="mt-3 text-sm font-medium">Aucune conversation selectionnee</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Choisis une conversation ou cree un nouveau DM.</p>
+                </div>
               </div>
             )}
           </section>

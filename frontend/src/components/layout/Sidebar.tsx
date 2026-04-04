@@ -21,7 +21,6 @@ import {
   Target,
   Bug,
   SendHorizonal,
-  MessageCircle,
   Megaphone,
   Briefcase,
 } from 'lucide-react';
@@ -41,7 +40,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { usersApi, supportApi, changelogApi, messagesApi } from '@/services/api';
+import { usersApi, supportApi, changelogApi } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -146,8 +145,12 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const { socket } = useSocketBase();
   const { theme } = useTheme();
   const disabledPages = maintenanceStatus.disabledPages;
+  const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
 
   const isDisabled = (path: string) => {
+    if (canBypassMaintenance) {
+      return false;
+    }
     const page = BLOCKABLE_PAGES.find((p) => p.path === path);
     return page ? disabledPages.includes(page.key) : false;
   };
@@ -155,8 +158,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const isOnGames = location.pathname.startsWith('/games');
   const isOnYou = location.pathname.startsWith('/you');
   const isOnDashboard = location.pathname === '/' || location.pathname === '/dashboard';
-  const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || !!user?.isAdmin;
-  const [supportUnread, setSupportUnread] = useState(0);
+  const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
   const [messagesUnread, setMessagesUnread] = useState(0);
   const [updatesUnread, setUpdatesUnread] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -167,51 +169,21 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const [hasFetchedUsers, setHasFetchedUsers] = useState(false);
   const [isBugReportOpen, setIsBugReportOpen] = useState(false);
 
-  // Support unread count
   useEffect(() => {
     if (!user) return;
-    supportApi.getUnreadCount().then(({ data }) => setSupportUnread(data.count)).catch(() => {});
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-
-    const syncMessagesUnread = () => {
-      messagesApi.getUnreadCount().then(({ data }) => {
-        if (!cancelled) {
-          setMessagesUnread(data.count);
-        }
-      }).catch(() => {});
-    };
-
-    syncMessagesUnread();
-    const interval = window.setInterval(syncMessagesUnread, 15000);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
+    supportApi.getUnreadCount().then(({ data }) => setMessagesUnread(data.count)).catch(() => {});
   }, [user]);
 
   useEffect(() => {
     if (!socket) return;
     const handler = (data: { message: { fromAdmin: boolean; userId?: string } }) => {
-      if (!data.message.fromAdmin) return;
-      if (location.pathname !== '/support') {
-        setSupportUnread((c) => c + 1);
+      if (location.pathname !== '/messages' && data.message.fromAdmin) {
+        setMessagesUnread((c) => c + 1);
       }
     };
     socket.on('support:message', handler);
     return () => { socket.off('support:message', handler); };
   }, [socket, location.pathname]);
-
-  // Reset unread when visiting /support
-  useEffect(() => {
-    if (location.pathname === '/support') {
-      setSupportUnread(0);
-    }
-  }, [location.pathname]);
 
   useEffect(() => {
     if (location.pathname === '/messages') {
@@ -543,7 +515,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               >
                 <NavLink to="/messages">
                   <SendHorizonal className="h-4 w-4" />
-                  <span className="group-data-[collapsible=icon]:hidden">Messages</span>
+                  <span className="group-data-[collapsible=icon]:hidden">Messagerie</span>
                   {messagesUnread > 0 && (
                     <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-sky-500 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
                       {messagesUnread > 99 ? '99+' : messagesUnread}
@@ -616,31 +588,6 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                   {updatesUnread > 0 && (
                     <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
                       {updatesUnread > 99 ? '99+' : updatesUnread}
-                    </span>
-                  )}
-                </NavLink>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-
-            {/* Support */}
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={location.pathname === '/support'}
-                tooltip="Support"
-                className={cn(
-                  'h-9 px-3 text-sm font-normal',
-                  location.pathname === '/support'
-                    ? 'text-foreground bg-muted/50'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                )}
-              >
-                <NavLink to="/support">
-                  <MessageCircle className="h-4 w-4" />
-                  <span className="group-data-[collapsible=icon]:hidden">Support</span>
-                  {supportUnread > 0 && (
-                    <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
-                      {supportUnread > 99 ? '99+' : supportUnread}
                     </span>
                   )}
                 </NavLink>

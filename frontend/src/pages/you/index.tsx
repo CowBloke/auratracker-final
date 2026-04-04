@@ -36,8 +36,9 @@ export default function You() {
 
   const tab = params.get('tab');
   const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' ? tab : 'overview';
+  const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
 
-  if (maintenanceStatus.youLogoAdminOnly && !user?.isAdmin) {
+  if (maintenanceStatus.youLogoAdminOnly && !canBypassMaintenance) {
     return <Navigate to="/dashboard" replace />;
   }
 
