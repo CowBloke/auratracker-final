@@ -288,7 +288,7 @@ export default function Polymarket() {
   const [suggestions, setSuggestions] = useState<PolymarketSuggestion[]>([]);
   const [bets, setBets] = useState<PolymarketBet[]>([]);
   const [allBets, setAllBets] = useState<PolymarketBet[]>([]);
-  const [activeTab, setActiveTab] = useState<'events' | 'history' | 'admin'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'resolved' | 'history' | 'admin'>('events');
   const [betHistoryTab, setBetHistoryTab] = useState<'my' | 'all' | 'summary'>('my');
   const [betHistorySortOrder, setBetHistorySortOrder] = useState<'recent' | 'end_date' | 'gain'>('recent');
   const [sortOrder, setSortOrder] = useState<'recent' | 'ends_soon' | 'popular' | 'best_odds'>('recent');
@@ -690,6 +690,11 @@ export default function Polymarket() {
     }
   });
   const resolvedEvents = events.filter((e) => e.status === 'RESOLVED');
+  const sortedResolvedEvents = [...resolvedEvents].sort((a, b) => {
+    const aTime = a.resolvedAt ? new Date(a.resolvedAt).getTime() : new Date(a.createdAt).getTime();
+    const bTime = b.resolvedAt ? new Date(b.resolvedAt).getTime() : new Date(b.createdAt).getTime();
+    return bTime - aTime;
+  });
   const pendingSuggestions = suggestions.filter((s) => s.status === 'PENDING');
 
   // Bet stats for "Mes paris"
@@ -762,6 +767,7 @@ export default function Polymarket() {
           <div className="flex items-center justify-between gap-3">
             <TabsList className="h-auto flex-wrap">
               <TabsTrigger value="events">Événements</TabsTrigger>
+              <TabsTrigger value="resolved">Historique résolus</TabsTrigger>
               <TabsTrigger value="history">Mes paris</TabsTrigger>
               {user?.isAdmin && (
                 <TabsTrigger value="admin">Paris admin</TabsTrigger>
@@ -966,40 +972,64 @@ export default function Polymarket() {
               </div>
             )}
 
-            {/* Resolved events */}
-            {resolvedEvents.length > 0 && (
-              <div className={SPACING.CARD_SPACING}>
-                <h2 className={TYPOGRAPHY.H2}>Événements résolus</h2>
-                <div className="grid grid-cols-1 gap-4">
-                  {resolvedEvents.slice(0, 6).map((event) => {
-                    const resOpt = event.resolution ? getOptionByKey(event, event.resolution) : undefined;
-                    return (
-                      <Card key={event.id} className="opacity-75">
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <CardTitle className="text-lg">{event.title}</CardTitle>
-                            <Badge
-                              variant="secondary"
-                              style={resOpt ? { borderColor: resOpt.color + '66', color: resOpt.color } : undefined}
-                            >
-                              {event.resolution === 'YES' ? (
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                              ) : event.resolution === 'NO' ? (
-                                <XCircle className="h-3 w-3 mr-1" />
-                              ) : null}
-                              {resOpt?.label || event.resolution}
-                            </Badge>
+          </TabsContent>
+
+          {/* ── Resolved events tab ── */}
+          <TabsContent value="resolved" className={SPACING.SECTION_SPACING}>
+            {resolvedEvents.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  Aucun événement résolu pour le moment
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {sortedResolvedEvents.map((event) => {
+                  const accentColor = '#64748b';
+                  const eventBetCount = event.betCount ?? 0;
+                  const eventTotalVolume = event.totalVolume ?? 0;
+                  return (
+                    <Card key={event.id} className="overflow-hidden">
+                      <div className="flex items-stretch min-h-[78px]">
+                        <div className="w-1 shrink-0" style={{ background: accentColor }} />
+
+                        <div className="w-14 h-14 shrink-0 m-2.5 mr-0 rounded-lg overflow-hidden self-center">
+                          {event.imageUrl ? (
+                            <img
+                              src={resolveImageUrl(event.imageUrl)}
+                              alt={event.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full" style={{ background: accentColor + '18' }} />
+                          )}
+                        </div>
+
+                        <div className="flex flex-1 items-center gap-3 px-3 py-2.5 min-w-0">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold leading-snug truncate">{event.title}</div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              <Badge variant="secondary">Résolu</Badge>
+                              <span className="text-xs text-muted-foreground">
+                                Fin le {new Date(event.eventDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                Résolu le {event.resolvedAt ? new Date(event.resolvedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'date inconnue'}
+                              </span>
+                            </div>
                           </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-sm text-muted-foreground">
-                            Résolu le {new Date(event.resolvedAt!).toLocaleDateString('fr-FR')}
+
+                          <div className="shrink-0 text-right">
+                            <div className="text-xs text-muted-foreground">Nombre de paris</div>
+                            <div className="text-lg font-bold tabular-nums">{eventBetCount.toLocaleString('fr-FR')}</div>
+                            <div className="text-xs text-muted-foreground mt-1">Total misé (site)</div>
+                            <div className="text-sm font-semibold tabular-nums">{eventTotalVolume.toLocaleString('fr-FR')}</div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
