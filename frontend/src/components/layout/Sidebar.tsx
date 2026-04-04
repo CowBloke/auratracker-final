@@ -517,12 +517,17 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                   <SendHorizonal className="h-4 w-4" />
                   <span className="group-data-[collapsible=icon]:hidden">Messagerie</span>
                   {messagesUnread > 0 && (
-                    <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-sky-500 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
+                    <span className="ml-auto inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold group-data-[collapsible=icon]:hidden">
                       {messagesUnread > 99 ? '99+' : messagesUnread}
                     </span>
                   )}
                 </NavLink>
               </SidebarMenuButton>
+              {messagesUnread > 0 && (
+                <span className="pointer-events-none absolute right-0 top-0 hidden h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-semibold text-white group-data-[collapsible=icon]:inline-flex">
+                  {messagesUnread > 99 ? '99+' : messagesUnread}
+                </span>
+              )}
             </SidebarMenuItem>
 
             {/* Other nav items */}
@@ -592,6 +597,11 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                   )}
                 </NavLink>
               </SidebarMenuButton>
+              {updatesUnread > 0 && (
+                <span className="pointer-events-none absolute right-0 top-0 hidden h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-semibold text-white group-data-[collapsible=icon]:inline-flex">
+                  {updatesUnread > 99 ? '99+' : updatesUnread}
+                </span>
+              )}
             </SidebarMenuItem>
 
             {/* Admin items (only for admins) */}

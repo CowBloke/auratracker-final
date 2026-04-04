@@ -24,7 +24,7 @@ const SEED_ENTRIES = [
     id: '2026-04-04-xp-system-skills',
     date: '2026-04-04',
     title: 'Système XP automatique & score Illégalité',
-    summary: 'Les compétences You gagnent maintenant de l\'XP automatiquement via vos actions. L\'agence immobilière vend des biens, un score Illégalité est introduit, la page Salle de marché est allégée, Polymarket sépare désormais les événements résolus dans un historique dédié, les switchers liste/grille sont harmonisés, et l\'avatar utilisateur de la top bar revient en affichage rond sans card.',
+    summary: 'Les compétences You gagnent maintenant de l\'XP automatiquement via vos actions. L\'agence immobilière vend des biens, un score Illégalité est introduit, la page Salle de marché est allégée, Polymarket sépare désormais les événements résolus dans un historique dédié, les switchers liste/grille sont harmonisés, l\'avatar utilisateur de la top bar revient en affichage rond sans card, et les badges non lus de sidebar restent visibles même en mode réduit.',
     items: [
       { category: 'BIG_FEATURE', text: '**XP automatique** — Les compétences progressent via vos actions : Affaires (collecte NPC), Finance (dépôt en banque), Intelligence (achat de formations), Charisme (aura reçue), Social (achat immobilier via agence).', order: 0 },
       { category: 'BIG_FEATURE', text: '**Agence immobilière** — Achetez des biens immobiliers (Studio, T3, Maison, Villa) depuis une agence pour gagner du XP Social.', order: 1 },
@@ -40,6 +40,8 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Switch liste/grille unifié** — Les pages avec bascule de vue (`Inventaire`, `Suggestions`, `Polymarket`, `Quêtes`) utilisent désormais exactement le même composant et le même style, avec le switch aligné à droite de la ligne de filtres.', order: 10 },
       { category: 'BUG_FIX', text: '**Avatar top bar sans card** — Le menu utilisateur dans la barre du haut n\'utilise plus de conteneur ovale: seul l\'avatar (photo/icone) rond reste visible.', order: 11 },
       { category: 'SMALL_FEATURE', text: '**Page Pass ultra-minimaliste** — L\'UI de la page Pass a été simplifiée au maximum: suppression des textes non essentiels, retrait du titre `Pass`, suppression des dégradés, retour du compte à rebours et barre de progression en noir.', order: 12 },
+      { category: 'SMALL_FEATURE', text: '**Badge Messages en sidebar réduite** — La pastille de non lus de la page Messagerie reste maintenant visible aussi quand la sidebar est en mode `collapsed` (icône).', order: 13 },
+      { category: 'SMALL_FEATURE', text: '**Badge Changelog en sidebar réduite** — La pastille rouge du Changelog reste maintenant visible aussi quand la sidebar est en mode `collapsed` (icône).', order: 14 },
     ],
   },
   {
