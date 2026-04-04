@@ -96,6 +96,7 @@ function serializeConversationMessage(message: {
   senderId: string | null;
   body: string;
   type: string;
+  courtRole?: string | null;
   createdAt: Date;
   sender?: BasicUser | null;
 }) {
@@ -105,6 +106,7 @@ function serializeConversationMessage(message: {
     senderId: message.senderId,
     body: message.body,
     type: message.type,
+    courtRole: message.courtRole ?? null,
     createdAt: message.createdAt instanceof Date ? message.createdAt.toISOString() : message.createdAt,
     sender: message.sender ? serializeBasicUser(message.sender) : null,
   };
@@ -243,6 +245,7 @@ async function buildConversationSummaryForUser(conversationId: string, currentUs
     title: participant.conversation.title,
     icon: participant.conversation.icon ?? null,
     imageUrl: participant.conversation.imageUrl ?? null,
+    courtCaseId: (participant.conversation as any).courtCaseId ?? null,
     isFavorite: participant.isFavorite,
     displayName: buildConversationName(participant.conversation.type, participant.conversation.title, participants, currentUserId),
     isPinned: false,
@@ -261,6 +264,7 @@ async function buildConversationSummaryForUser(conversationId: string, currentUs
     participants: participants.map((entry) => ({
       user: serializeBasicUser(entry.user),
       role: entry.role,
+      courtRole: (entry as any).courtRole ?? null,
       lastReadAt: entry.lastReadAt?.toISOString() ?? null,
     })),
   };
@@ -274,6 +278,7 @@ async function listMessagingConversationsForUser(userId: string) {
         include: {
           participants: {
             include: { user: { select: USER_PREVIEW_SELECT } },
+            // courtRole is a scalar, automatically included
           },
           messages: {
             include: { sender: { select: USER_PREVIEW_SELECT } },
@@ -305,6 +310,7 @@ async function listMessagingConversationsForUser(userId: string) {
         title: membership.conversation.title,
         icon: membership.conversation.icon ?? null,
         imageUrl: membership.conversation.imageUrl ?? null,
+        courtCaseId: (membership.conversation as any).courtCaseId ?? null,
         isFavorite: membership.isFavorite,
         displayName: buildConversationName(membership.conversation.type, membership.conversation.title, participants, userId),
         isPinned: false,
@@ -323,6 +329,7 @@ async function listMessagingConversationsForUser(userId: string) {
         participants: participants.map((entry) => ({
           user: serializeBasicUser(entry.user),
           role: entry.role,
+          courtRole: (entry as any).courtRole ?? null,
           lastReadAt: entry.lastReadAt?.toISOString() ?? null,
         })),
       };
@@ -492,6 +499,7 @@ router.get('/conversations/:conversationId', authMiddleware, async (req: AuthReq
           senderId: message.senderId,
           body: message.body,
           type: message.type,
+          courtRole: (message as any).courtRole ?? null,
           createdAt: message.createdAt,
           sender: message.sender,
         }),
@@ -627,12 +635,18 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
 
     const { conversationId } = req.params;
     const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+    const courtRole = typeof req.body?.courtRole === 'string' ? req.body.courtRole : null;
 
     if (!body) {
       return res.status(400).json({ error: 'Message body is required' });
     }
     if (body.length > MAX_MESSAGE_LENGTH) {
       return res.status(400).json({ error: 'Message must be 1000 characters or less' });
+    }
+
+    // Only admins can send with a court role
+    if (courtRole && !req.user?.isAdmin) {
+      return res.status(403).json({ error: 'Seuls les juges peuvent envoyer avec un role de tribunal.' });
     }
 
     if (conversationId === SUPPORT_CONVERSATION_ID) {
@@ -678,6 +692,7 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
           senderId: user.id,
           body,
           type: 'TEXT',
+          ...(courtRole ? { courtRole } : {}),
         },
       });
 
@@ -705,6 +720,7 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       senderId: message.senderId,
       body: message.body,
       type: message.type,
+      courtRole: (message as any).courtRole ?? null,
       createdAt: message.createdAt,
       sender: {
         id: user.id,

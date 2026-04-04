@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestionsApi, Suggestion, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { ChevronUp, ChevronDown, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, Loader2, Plus, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -15,7 +15,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
@@ -33,6 +44,48 @@ type RejectedFilter = 'all' | 'with-image' | 'without-image' | 'with-comments';
 type SuggestionsViewMode = 'list' | 'grid';
 
 const SUGGESTIONS_VIEW_STORAGE_KEY = 'auratracker:suggestions-view-mode';
+
+const PENDING_SORT_LABELS: Record<PendingSortOption, string> = {
+  trending: 'Tendance',
+  newest: 'Plus récentes',
+  top: 'Mieux votées',
+  discussed: 'Plus discutées',
+};
+
+const DONE_SORT_LABELS: Record<DoneSortOption, string> = {
+  'recently-done': 'Réalisées récemment',
+  'best-rated': 'Mieux notées',
+  'most-rated': 'Plus notées',
+  discussed: 'Plus discutées',
+};
+
+const REJECTED_SORT_LABELS: Record<RejectedSortOption, string> = {
+  'recently-updated': 'Mises à jour récemment',
+  newest: 'Plus récentes',
+  top: 'Mieux votées',
+  discussed: 'Plus discutées',
+};
+
+const CONTENT_FILTER_LABELS: Record<ContentFilter, string> = {
+  all: 'Tous les formats',
+  'with-image': 'Avec image',
+  'without-image': 'Sans image',
+  boosted: 'Nouvelles en avant',
+};
+
+const FEEDBACK_FILTER_LABELS: Record<FeedbackFilter, string> = {
+  all: 'Tous les retours',
+  rated: 'Déjà notées',
+  'to-rate': 'À noter',
+  'with-comments': 'Avec commentaires',
+};
+
+const REJECTED_FILTER_LABELS: Record<RejectedFilter, string> = {
+  all: 'Toutes',
+  'with-image': 'Avec image',
+  'without-image': 'Sans image',
+  'with-comments': 'Avec commentaires',
+};
 
 export default function Suggestions() {
   const { user } = useAuth();
@@ -426,6 +479,34 @@ export default function Suggestions() {
   };
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const activeSortLabel =
+    activeTab === 'pending'
+      ? PENDING_SORT_LABELS[pendingSortBy]
+      : activeTab === 'done'
+        ? DONE_SORT_LABELS[doneSortBy]
+        : REJECTED_SORT_LABELS[rejectedSortBy];
+  const activeSecondaryFilterLabel =
+    activeTab === 'pending'
+      ? CONTENT_FILTER_LABELS[pendingContentFilter]
+      : activeTab === 'done'
+        ? FEEDBACK_FILTER_LABELS[doneFeedbackFilter]
+        : REJECTED_FILTER_LABELS[rejectedFilter];
+  const defaultSortLabel =
+    activeTab === 'pending'
+      ? PENDING_SORT_LABELS.trending
+      : activeTab === 'done'
+        ? DONE_SORT_LABELS['recently-done']
+        : REJECTED_SORT_LABELS['recently-updated'];
+  const defaultSecondaryFilterLabel =
+    activeTab === 'pending'
+      ? CONTENT_FILTER_LABELS.all
+      : activeTab === 'done'
+        ? FEEDBACK_FILTER_LABELS.all
+        : REJECTED_FILTER_LABELS.all;
+  const activeFiltersCount =
+    (activeSortLabel !== defaultSortLabel ? 1 : 0) +
+    (participationFilter !== 'all' ? 1 : 0) +
+    (activeSecondaryFilterLabel !== defaultSecondaryFilterLabel ? 1 : 0);
 
   const matchesParticipationFilter = (suggestion: Suggestion) => {
     if (!user) return participationFilter === 'all';
@@ -871,110 +952,82 @@ export default function Suggestions() {
                   className="lg:w-[250px]"
                 />
 
-                <div className="lg:w-[220px]">
-                  <Select
-                    value={
-                      activeTab === 'pending'
-                        ? pendingSortBy
-                        : activeTab === 'done'
-                          ? doneSortBy
-                          : rejectedSortBy
-                    }
-                    onValueChange={(value) => {
-                      if (activeTab === 'pending') {
-                        setPendingSortBy(value as PendingSortOption);
-                        return;
-                      }
-                      if (activeTab === 'rejected') {
-                        setRejectedSortBy(value as RejectedSortOption);
-                        return;
-                      }
-                      setDoneSortBy(value as DoneSortOption);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Trier les suggestions" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activeTab === 'pending' ? (
-                        <>
-                          <SelectItem value="trending">Tendance</SelectItem>
-                          <SelectItem value="newest">Plus récentes</SelectItem>
-                          <SelectItem value="top">Mieux votées</SelectItem>
-                          <SelectItem value="discussed">Plus discutées</SelectItem>
-                        </>
-                      ) : activeTab === 'done' ? (
-                        <>
-                          <SelectItem value="recently-done">Réalisées récemment</SelectItem>
-                          <SelectItem value="best-rated">Mieux notées</SelectItem>
-                          <SelectItem value="most-rated">Plus notées</SelectItem>
-                          <SelectItem value="discussed">Plus discutées</SelectItem>
-                        </>
-                      ) : (
-                        <>
-                          <SelectItem value="recently-updated">Mises à jour récemment</SelectItem>
-                          <SelectItem value="newest">Plus récentes</SelectItem>
-                          <SelectItem value="top">Mieux votées</SelectItem>
-                          <SelectItem value="discussed">Plus discutées</SelectItem>
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="justify-between gap-2">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <SlidersHorizontal className="h-4 w-4 shrink-0" />
+                        <span className="truncate">filtres ({activeFiltersCount})</span>
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-72">
+                    <DropdownMenuLabel>Tri</DropdownMenuLabel>
+                    {activeTab === 'pending' ? (
+                      <DropdownMenuRadioGroup value={pendingSortBy} onValueChange={(value) => setPendingSortBy(value as PendingSortOption)}>
+                        <DropdownMenuRadioItem value="trending">Tendance</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="newest">Plus récentes</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="top">Mieux votées</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="discussed">Plus discutées</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    ) : activeTab === 'done' ? (
+                      <DropdownMenuRadioGroup value={doneSortBy} onValueChange={(value) => setDoneSortBy(value as DoneSortOption)}>
+                        <DropdownMenuRadioItem value="recently-done">Réalisées récemment</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="best-rated">Mieux notées</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="most-rated">Plus notées</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="discussed">Plus discutées</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    ) : (
+                      <DropdownMenuRadioGroup value={rejectedSortBy} onValueChange={(value) => setRejectedSortBy(value as RejectedSortOption)}>
+                        <DropdownMenuRadioItem value="recently-updated">Mises à jour récemment</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="newest">Plus récentes</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="top">Mieux votées</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="discussed">Plus discutées</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    )}
 
-                <div className="lg:w-[220px]">
-                  <Select value={participationFilter} onValueChange={(value) => setParticipationFilter(value as ParticipationFilter)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Participation" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Toute la communauté</SelectItem>
-                      <SelectItem value="mine">Mes suggestions</SelectItem>
-                      <SelectItem value="voted">J&apos;ai voté</SelectItem>
-                      <SelectItem value="commented">J&apos;ai commenté</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>Participation</DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-56">
+                        <DropdownMenuRadioGroup value={participationFilter} onValueChange={(value) => setParticipationFilter(value as ParticipationFilter)}>
+                          <DropdownMenuRadioItem value="all">Toute la communauté</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="mine">Mes suggestions</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="voted">J&apos;ai voté</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="commented">J&apos;ai commenté</DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
 
-                <div className="lg:w-[220px]">
-                  {activeTab === 'pending' ? (
-                    <Select value={pendingContentFilter} onValueChange={(value) => setPendingContentFilter(value as ContentFilter)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Contenu" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tous les formats</SelectItem>
-                        <SelectItem value="with-image">Avec image</SelectItem>
-                        <SelectItem value="without-image">Sans image</SelectItem>
-                        <SelectItem value="boosted">Nouvelles en avant</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : activeTab === 'done' ? (
-                    <Select value={doneFeedbackFilter} onValueChange={(value) => setDoneFeedbackFilter(value as FeedbackFilter)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Retours" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tous les retours</SelectItem>
-                        <SelectItem value="rated">Déjà notées</SelectItem>
-                        <SelectItem value="to-rate">À noter</SelectItem>
-                        <SelectItem value="with-comments">Avec commentaires</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Select value={rejectedFilter} onValueChange={(value) => setRejectedFilter(value as RejectedFilter)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Contenu" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Toutes</SelectItem>
-                        <SelectItem value="with-image">Avec image</SelectItem>
-                        <SelectItem value="without-image">Sans image</SelectItem>
-                        <SelectItem value="with-comments">Avec commentaires</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>{activeTab === 'done' ? 'Retours' : 'Contenu'}</DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-56">
+                        {activeTab === 'pending' ? (
+                          <DropdownMenuRadioGroup value={pendingContentFilter} onValueChange={(value) => setPendingContentFilter(value as ContentFilter)}>
+                            <DropdownMenuRadioItem value="all">Tous les formats</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="with-image">Avec image</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="without-image">Sans image</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="boosted">Nouvelles en avant</DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        ) : activeTab === 'done' ? (
+                          <DropdownMenuRadioGroup value={doneFeedbackFilter} onValueChange={(value) => setDoneFeedbackFilter(value as FeedbackFilter)}>
+                            <DropdownMenuRadioItem value="all">Tous les retours</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="rated">Déjà notées</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="to-rate">À noter</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="with-comments">Avec commentaires</DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        ) : (
+                          <DropdownMenuRadioGroup value={rejectedFilter} onValueChange={(value) => setRejectedFilter(value as RejectedFilter)}>
+                            <DropdownMenuRadioItem value="all">Toutes</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="with-image">Avec image</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="without-image">Sans image</DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value="with-comments">Avec commentaires</DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
 

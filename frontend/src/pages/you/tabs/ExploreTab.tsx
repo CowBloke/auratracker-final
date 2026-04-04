@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeftRight,
+  Briefcase,
   Building2,
   ChevronDown,
   ChevronRight,
   Coffee,
+  Crown,
+  FileText,
   GraduationCap,
   HandCoins,
   Landmark,
   PiggyBank,
+  Scale,
   Search,
   ShieldAlert,
   ShoppingBasket,
@@ -16,6 +21,7 @@ import {
   Sparkles,
   Star,
   Store,
+  Trash2,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
@@ -24,7 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { type YouBusiness, type YouPlayer, type YouState, youApi } from '@/services/api';
+import { type JusticePlainte, type YouBusiness, type YouPlayer, type YouState, youApi, justiceApi } from '@/services/api';
 import {
   BankAccountModal,
   BuyoutOfferModal,
@@ -43,12 +49,14 @@ function formatMoney(n: number) {
   return `${n.toLocaleString('fr-FR')} EUR`;
 }
 
-const BUSINESS_TYPE_ORDER = ['bank', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'epicerie', 'coffee_shop'] as const;
+const BUSINESS_TYPE_ORDER = ['supreme_court', 'law_firm', 'bank', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'epicerie', 'coffee_shop'] as const;
 
 const SECTION_META: Record<
   (typeof BUSINESS_TYPE_ORDER)[number],
   { label: string; icon: typeof Building2; pillColor: string }
 > = {
+  supreme_court: { label: 'Cour Suprême', icon: Scale, pillColor: 'bg-indigo-400/15 text-indigo-300' },
+  law_firm: { label: "Cabinets d'avocats", icon: Briefcase, pillColor: 'bg-purple-400/15 text-purple-400' },
   bank: { label: 'Banks', icon: Landmark, pillColor: 'bg-emerald-400/15 text-emerald-400' },
   transfer: { label: 'Transfer', icon: ArrowLeftRight, pillColor: 'bg-cyan-400/15 text-cyan-300' },
   formation: { label: 'Formations', icon: GraduationCap, pillColor: 'bg-amber-400/15 text-amber-400' },
@@ -180,15 +188,59 @@ function BusinessInteractionModal({
   isAdmin,
   onClose,
   onAction,
-  onAdminDelete,
+  onAdminDeleteRequest,
 }: {
   business: YouBusiness | null;
   userId: string;
   isAdmin: boolean;
   onClose: () => void;
-  onAction: (action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase' | 'apply') => void;
-  onAdminDelete: () => Promise<void>;
+  onAction: (action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase' | 'apply' | 'plainte') => void;
+  onAdminDeleteRequest: () => void;
 }) {
+  const navigate = useNavigate();
+  const [plaintes, setPlaintes] = useState<JusticePlainte[]>([]);
+  const [plaintesLoading, setPlaintesLoading] = useState(false);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [plaintesProcessing, setPlaintesProcessing] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!business || business.typeKey !== 'supreme_court' || !isAdmin) return;
+    let cancelled = false;
+    setPlaintesLoading(true);
+    justiceApi.listPlaintes({ courtId: business.id }).then((r) => {
+      if (!cancelled) setPlaintes(r.data.plaintes);
+    }).catch(() => {}).finally(() => { if (!cancelled) setPlaintesLoading(false); });
+    return () => { cancelled = true; };
+  }, [business?.id, isAdmin]);
+
+  const handleAcceptPlainte = async (id: string) => {
+    setPlaintesProcessing((s) => new Set([...s, id]));
+    try {
+      const r = await justiceApi.acceptPlainte(id);
+      setPlaintes((prev) => prev.map((p) => p.id === id ? { ...p, status: 'ACCEPTED' } : p));
+      navigate(`/messages?conversation=${r.data.courtCase.conversationId}`);
+    } catch {
+      toast({ title: 'Erreur', variant: 'destructive' });
+    } finally {
+      setPlaintesProcessing((s) => { const n = new Set(s); n.delete(id); return n; });
+    }
+  };
+
+  const handleRejectPlainte = async (id: string) => {
+    setPlaintesProcessing((s) => new Set([...s, id]));
+    try {
+      await justiceApi.rejectPlainte(id, rejectReason.trim() || undefined);
+      setPlaintes((prev) => prev.map((p) => p.id === id ? { ...p, status: 'REJECTED' } : p));
+      setRejectingId(null);
+      setRejectReason('');
+    } catch {
+      toast({ title: 'Erreur', variant: 'destructive' });
+    } finally {
+      setPlaintesProcessing((s) => { const n = new Set(s); n.delete(id); return n; });
+    }
+  };
+
   if (!business) return null;
 
   const isOwned = business.ownerId === userId;
@@ -229,27 +281,25 @@ function BusinessInteractionModal({
         <DialogTitle className="sr-only">{business.name}</DialogTitle>
         <div className="space-y-4 p-6">
           {/* Header */}
-          <BusinessHeader business={business} userId={userId} />
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <BusinessHeader business={business} userId={userId} />
+            </div>
+            {isAdmin ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="h-8 w-8 shrink-0 border-red-400/30 text-red-300 hover:bg-red-500/10 hover:text-red-200"
+                onClick={onAdminDeleteRequest}
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only">Supprimer ce business</span>
+              </Button>
+            ) : null}
+          </div>
           {business.description ? (
             <p className="text-xs text-muted-foreground">{business.description}</p>
-          ) : null}
-
-          {/* Admin controls */}
-          {isAdmin ? (
-            <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 px-4 py-3">
-              <div className="flex items-center gap-2 text-xs text-amber-300">
-                <ShieldAlert className="h-3.5 w-3.5" />
-                <span>Mode admin</span>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="mt-2 w-full justify-start border-red-400/30 text-red-300 hover:bg-red-500/10"
-                onClick={() => { void onAdminDelete(); onClose(); }}
-              >
-                Supprimer ce business
-              </Button>
-            </div>
           ) : null}
 
           {/* Owned business */}
@@ -261,7 +311,116 @@ function BusinessInteractionModal({
           ) : (
             <div className="space-y-3">
               {/* Primary action */}
-              {business.typeKey === 'bank' ? (
+              {business.typeKey === 'supreme_court' ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-indigo-400/20 bg-indigo-400/8 px-4 py-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-indigo-300">
+                      <Crown className="h-4 w-4 shrink-0" />
+                      <span>Institution de l'État</span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">Cette cour traite les plaintes formelles entre joueurs. Les juges examinent chaque dossier.</p>
+                  </div>
+                  <ActionButton
+                    icon={Scale}
+                    label="Déposer une plainte"
+                    sub="Initier une procédure judiciaire formelle contre un autre joueur."
+                    tone="bg-indigo-400/15 text-indigo-300"
+                    primary
+                    onClick={() => onAction('plainte')}
+                  />
+                  {/* Admin plainte review */}
+                  {isAdmin && (
+                    <div className="space-y-2">
+                      <SectionTitle>Plaintes en attente</SectionTitle>
+                      {plaintesLoading && <p className="text-xs text-muted-foreground">Chargement...</p>}
+                      {!plaintesLoading && plaintes.filter(p => p.status === 'PENDING').length === 0 && (
+                        <p className="text-xs text-muted-foreground italic">Aucune plainte en attente.</p>
+                      )}
+                      {plaintes.filter(p => p.status === 'PENDING').map((plainte) => (
+                        <div key={plainte.id} className="rounded-xl border border-border/60 bg-card p-3 space-y-2">
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold truncate">{plainte.title}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                Par <span className="text-sky-400">{plainte.plaintif?.username ?? '?'}</span>
+                                {plainte.defendant && <> contre <span className="text-red-400">{plainte.defendant.username}</span></>}
+                              </p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-500">
+                              En attente
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{plainte.description}</p>
+                          {plainte.evidence && (
+                            <p className="text-xs text-foreground/70 italic">Preuves : {plainte.evidence}</p>
+                          )}
+                          {rejectingId === plainte.id ? (
+                            <div className="space-y-1.5">
+                              <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+                                rows={2} maxLength={280} placeholder="Motif du rejet (optionnel)"
+                                className="w-full resize-none rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
+                              <div className="flex gap-1.5">
+                                <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => setRejectingId(null)}>Annuler</Button>
+                                <Button size="sm" variant="destructive" className="h-6 text-[10px] px-2"
+                                  disabled={plaintesProcessing.has(plainte.id)}
+                                  onClick={() => handleRejectPlainte(plainte.id)}>Confirmer le rejet</Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex gap-1.5">
+                              <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border-0"
+                                disabled={plaintesProcessing.has(plainte.id)}
+                                onClick={() => handleAcceptPlainte(plainte.id)}>
+                                Accepter & ouvrir le dossier
+                              </Button>
+                              <Button size="sm" variant="destructive" className="h-6 text-[10px] px-2"
+                                disabled={plaintesProcessing.has(plainte.id)}
+                                onClick={() => setRejectingId(plainte.id)}>
+                                Rejeter
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {/* Closed plaintes (last 5) */}
+                      {plaintes.filter(p => p.status !== 'PENDING').length > 0 && (
+                        <details className="group">
+                          <summary className="cursor-pointer text-[10px] text-muted-foreground hover:text-foreground">
+                            Voir les dossiers traités ({plaintes.filter(p => p.status !== 'PENDING').length})
+                          </summary>
+                          <div className="mt-2 space-y-1.5">
+                            {plaintes.filter(p => p.status !== 'PENDING').slice(0, 5).map((plainte) => (
+                              <div key={plainte.id} className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2 flex items-center gap-2">
+                                <p className="flex-1 truncate text-xs">{plainte.title}</p>
+                                <span className={cn('shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
+                                  plainte.status === 'ACCEPTED' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-destructive/15 text-destructive')}>
+                                  {plainte.status === 'ACCEPTED' ? 'Acceptée' : 'Rejetée'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : business.typeKey === 'law_firm' ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-purple-400/20 bg-purple-400/8 px-4 py-3">
+                    <p className="text-sm font-semibold text-purple-300">Cabinet d'avocats</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Ce cabinet peut vous représenter lors d'une procédure judiciaire en cours.</p>
+                  </div>
+                  <ActionButton
+                    icon={FileText}
+                    label="Engager ce cabinet"
+                    sub="Disponible dans votre affaire judiciaire, depuis la messagerie."
+                    tone="bg-purple-400/15 text-purple-400"
+                    primary
+                    onClick={() => {}}
+                    disabled
+                  />
+                </div>
+              ) : business.typeKey === 'bank' ? (
                 <ActionButton
                   icon={Landmark}
                   label="Gerer mes comptes"
@@ -355,20 +514,6 @@ function BusinessInteractionModal({
                 {stats.map((s) => <StatTile key={s.label} label={s.label} value={s.value} color={s.color} />)}
               </div>
 
-              {canApply ? (
-                <ActionButton
-                  icon={HandCoins}
-                  label="Postuler"
-                  sub="Envoyer une proposition de role et de salaire au proprietaire."
-                  tone="bg-violet-400/15 text-violet-300"
-                  onClick={() => onAction('apply')}
-                />
-              ) : hasPendingApplication ? (
-                <div className="rounded-xl border border-violet-400/20 bg-violet-400/5 px-4 py-3 text-xs text-muted-foreground">
-                  Une candidature ou proposition de contrat est deja en attente pour toi.
-                </div>
-              ) : null}
-
               {business.typeKey === 'formation' ? (
                 <div className="space-y-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
@@ -427,37 +572,52 @@ function BusinessInteractionModal({
               {business.typeKey === 'bank' && business.livretEpargneUnlocked ? (
                 <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2 text-xs text-amber-300">
                   <Sparkles className="h-3.5 w-3.5 shrink-0" />
-                  <span>Livret epargne disponible · +0,5 % / jour</span>
+                  <span>Livret epargne disponible</span>
                 </div>
               ) : null}
 
-              {/* Secondary actions */}
-              <div className="space-y-2 pt-1">
-                <SectionTitle>Autres actions</SectionTitle>
-                {business.typeKey === 'bank' ? (
+              {/* Secondary actions — hide for state institutions */}
+              {!business.isStateOwned ? (
+                <div className="space-y-2 pt-1">
+                  <SectionTitle>Autres actions</SectionTitle>
+                  {business.typeKey === 'bank' ? (
+                    <ActionButton
+                      icon={Landmark}
+                      label="Demander un pret"
+                      sub={`Taux ${business.loanInterestRate ?? 4} % · Le proprietaire doit accepter.`}
+                      tone="bg-amber-400/15 text-amber-400"
+                      onClick={() => onAction('loan')}
+                    />
+                  ) : null}
                   <ActionButton
-                    icon={Landmark}
-                    label="Demander un pret"
-                    sub={`Taux ${business.loanInterestRate ?? 4} % · Le proprietaire doit accepter.`}
+                    icon={HandCoins}
+                    label={business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}
+                    sub="Proposer un pourcentage et une somme au proprietaire."
                     tone="bg-amber-400/15 text-amber-400"
-                    onClick={() => onAction('loan')}
+                    onClick={() => onAction('shareholder')}
                   />
-                ) : null}
-                <ActionButton
-                  icon={HandCoins}
-                  label={business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}
-                  sub="Proposer un pourcentage et une somme au proprietaire."
-                  tone="bg-amber-400/15 text-amber-400"
-                  onClick={() => onAction('shareholder')}
-                />
-                <ActionButton
-                  icon={HandCoins}
-                  label="Faire une offre de rachat"
-                  sub="Le montant est bloque jusqu'a la decision du proprietaire."
-                  tone="bg-rose-400/15 text-rose-400"
-                  onClick={() => onAction('buyout')}
-                />
-              </div>
+                  {canApply ? (
+                    <ActionButton
+                      icon={HandCoins}
+                      label="Postuler"
+                      sub="Envoyer une proposition de role et de salaire au proprietaire."
+                      tone="bg-violet-400/15 text-violet-300"
+                      onClick={() => onAction('apply')}
+                    />
+                  ) : hasPendingApplication ? (
+                    <div className="rounded-xl border border-violet-400/20 bg-violet-400/5 px-4 py-3 text-xs text-muted-foreground">
+                      Une candidature ou proposition de contrat est deja en attente pour toi.
+                    </div>
+                  ) : null}
+                  <ActionButton
+                    icon={HandCoins}
+                    label="Faire une offre de rachat"
+                    sub="Le montant est bloque jusqu'a la decision du proprietaire."
+                    tone="bg-rose-400/15 text-rose-400"
+                    onClick={() => onAction('buyout')}
+                  />
+                </div>
+              ) : null}
             </div>
           )}
         </div>
@@ -645,6 +805,159 @@ function RatingModal({
   );
 }
 
+// --- File Plainte Modal ---
+
+function FilePlainteModal({
+  business,
+  userId,
+  players,
+  open,
+  onClose,
+  onSubmitted,
+}: {
+  business: YouBusiness | null;
+  userId: string;
+  players: YouPlayer[];
+  open: boolean;
+  onClose: () => void;
+  onSubmitted: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [evidence, setEvidence] = useState('');
+  const [defendantId, setDefendantId] = useState('');
+  const [defendantSearch, setDefendantSearch] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const filteredPlayers = useMemo(
+    () => players.filter((p) => p.id !== userId && p.username.toLowerCase().includes(defendantSearch.toLowerCase())).slice(0, 10),
+    [players, userId, defendantSearch],
+  );
+
+  const selectedPlayer = players.find((p) => p.id === defendantId);
+
+  const submit = async () => {
+    if (!business) return;
+    setSubmitting(true);
+    try {
+      await justiceApi.filePlainte({
+        courtId: business.id,
+        title: title.trim(),
+        description: description.trim(),
+        evidence: evidence.trim() || undefined,
+        defendantId: defendantId || undefined,
+      });
+      toast.success('Plainte déposée. Les juges vont l\'examiner.');
+      setTitle(''); setDescription(''); setEvidence(''); setDefendantId(''); setDefendantSearch('');
+      onSubmitted();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error ?? 'Impossible de déposer la plainte.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Déposer une plainte">
+      {business ? (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-indigo-400/20 bg-indigo-400/8 px-4 py-3">
+            <div className="flex items-center gap-2 text-xs text-indigo-300">
+              <Scale className="h-3.5 w-3.5 shrink-0" />
+              <span>Cour : <span className="font-semibold">{business.name}</span></span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground/70">Les juges examineront votre plainte. Si acceptée, une procédure judiciaire sera ouverte.</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Titre de la plainte *</p>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={100}
+              placeholder="Ex: Arnaque lors d'un échange de monnaie"
+              className="w-full rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-indigo-400/40"
+            />
+            <p className="text-[10px] text-muted-foreground/50">{title.length}/100</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Description des faits *</p>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={2000}
+              rows={4}
+              placeholder="Décrivez les faits en détail : que s'est-il passé, quand, et pourquoi c'est une violation des règles..."
+              className="w-full resize-none rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-indigo-400/40"
+            />
+            <p className="text-[10px] text-muted-foreground/50">{description.length}/2000</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Défendeur (optionnel)</p>
+            {selectedPlayer ? (
+              <div className="flex items-center gap-2 rounded-xl border border-border/40 bg-muted/10 px-3 py-2">
+                <span className="flex-1 text-sm font-medium">{selectedPlayer.username}</span>
+                <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => { setDefendantId(''); setDefendantSearch(''); }}>✕</button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <input
+                  value={defendantSearch}
+                  onChange={(e) => setDefendantSearch(e.target.value)}
+                  placeholder="Rechercher un joueur..."
+                  className="w-full rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-border/60"
+                />
+                {defendantSearch.length > 0 && filteredPlayers.length > 0 && (
+                  <div className="rounded-xl border border-border/40 bg-background">
+                    {filteredPlayers.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => { setDefendantId(p.id); setDefendantSearch(''); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/20 first:rounded-t-xl last:rounded-b-xl"
+                      >
+                        <span>{p.username}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Preuves (optionnel)</p>
+            <textarea
+              value={evidence}
+              onChange={(e) => setEvidence(e.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder="Captures d'écran, liens, témoignages..."
+              className="w-full resize-none rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-border/60"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
+              Annuler
+            </Button>
+            <Button
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+              onClick={() => void submit()}
+              disabled={submitting || title.trim().length < 5 || description.trim().length < 20}
+            >
+              {submitting ? 'Dépôt...' : 'Déposer la plainte'}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </ModalWrap>
+  );
+}
+
 // --- Main ExploreTab ---
 
 export function ExploreTab({
@@ -679,6 +992,8 @@ export function ExploreTab({
   const [purchaseBusinessId, setPurchaseBusinessId] = useState<string | null>(null);
   const [applyBusinessId, setApplyBusinessId] = useState<string | null>(null);
   const [ratingBusinessId, setRatingBusinessId] = useState<string | null>(null);
+  const [adminDeleteBusinessId, setAdminDeleteBusinessId] = useState<string | null>(null);
+  const [plainteBusinessId, setPlainteBusinessId] = useState<string | null>(null);
   const formationRatingTimeoutRef = useRef<number | null>(null);
   const FORMATION_RATING_DELAY_MS = 15000;
 
@@ -760,9 +1075,11 @@ export function ExploreTab({
   const formationBusiness = formationBusinessId ? allBusinesses.find((b) => b.id === formationBusinessId) ?? null : null;
   const purchaseBusiness = purchaseBusinessId ? allBusinesses.find((b) => b.id === purchaseBusinessId) ?? null : null;
   const applyBusiness = applyBusinessId ? allBusinesses.find((b) => b.id === applyBusinessId) ?? null : null;
+  const adminDeleteBusiness = adminDeleteBusinessId ? allBusinesses.find((b) => b.id === adminDeleteBusinessId) ?? null : null;
+  const plainteBusiness = plainteBusinessId ? allBusinesses.find((b) => b.id === plainteBusinessId) ?? null : null;
 
   // Open an action modal after closing the detail modal
-  const openAction = (businessId: string, action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase' | 'apply') => {
+  const openAction = (businessId: string, action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase' | 'apply' | 'plainte') => {
     setDetailBusinessId(null);
     setTimeout(() => {
       if (action === 'bank') setBankBusinessId(businessId);
@@ -774,13 +1091,15 @@ export function ExploreTab({
       else if (action === 'formation') setFormationBusinessId(businessId);
       else if (action === 'purchase') setPurchaseBusinessId(businessId);
       else if (action === 'apply') setApplyBusinessId(businessId);
+      else if (action === 'plainte') setPlainteBusinessId(businessId);
     }, 150);
   };
 
   const deleteDetailBusiness = async () => {
-    if (!detailBusiness || !isAdmin) return;
-    await withRouteError(() => youApi.deleteBusiness(detailBusiness.id), 'Impossible de supprimer le business.');
+    if (!adminDeleteBusiness || !isAdmin) return;
+    await withRouteError(() => youApi.deleteBusiness(adminDeleteBusiness.id), 'Impossible de supprimer le business.');
     toast.success('Business supprime');
+    setAdminDeleteBusinessId(null);
     setDetailBusinessId(null);
     await onReload();
   };
@@ -897,8 +1216,54 @@ export function ExploreTab({
             <CardContent className="p-0">
               <div className="max-h-[calc(100vh-16rem)] overflow-y-auto px-4 py-4">
                 <div className="space-y-5">
+                  {/* State institutions always at top */}
+                  {allBusinesses.some((b) => b.isStateOwned) && typeFilter === 'all' && !search && ownerFilter === 'all' ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 px-1">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-400/15">
+                          <Crown className="h-4 w-4 text-indigo-300" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">Institutions de l'État</p>
+                          <p className="text-[11px] text-muted-foreground">Organismes officiels gérés par les administrateurs</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {allBusinesses.filter((b) => b.isStateOwned).map((business) => {
+                          const BusinessIcon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Scale;
+                          return (
+                            <button
+                              key={business.id}
+                              type="button"
+                              onClick={() => setDetailBusinessId(business.id)}
+                              className="w-full rounded-2xl border border-indigo-400/20 bg-indigo-400/5 px-4 py-3 text-left transition-colors hover:bg-indigo-400/10"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-400/15">
+                                  <BusinessIcon className="h-4 w-4 text-indigo-300" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <p className="text-sm font-semibold">{business.name}</p>
+                                    <span className="rounded-full bg-indigo-400/15 px-2 py-0.5 text-[10px] font-semibold text-indigo-300">État</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{business.type?.label ?? business.typeKey}</p>
+                                </div>
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {groupedBusinesses.map((section) => {
-                    const meta = SECTION_META[section.typeKey];
+                    // In "show all" view, state-owned businesses are already shown in the top "Institutions" section
+                    const showingStateInstitutions = typeFilter === 'all' && !search && ownerFilter === 'all';
+                    const isStateSectionHidden = showingStateInstitutions && allBusinesses.some((b) => b.isStateOwned && b.typeKey === section.typeKey);
+                    if (isStateSectionHidden) return null;
+                    const meta = SECTION_META[section.typeKey as keyof typeof SECTION_META];
                     const Icon = meta.icon;
                     const sectionStyle = BUSINESS_STYLE_MAP[section.typeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
                     return (
@@ -983,9 +1348,33 @@ export function ExploreTab({
           isAdmin={isAdmin}
           onClose={() => setDetailBusinessId(null)}
           onAction={(action) => openAction(detailBusiness.id, action)}
-          onAdminDelete={deleteDetailBusiness}
+          onAdminDeleteRequest={() => setAdminDeleteBusinessId(detailBusiness.id)}
         />
       ) : null}
+
+      <ModalWrap
+        open={Boolean(adminDeleteBusiness)}
+        onClose={() => setAdminDeleteBusinessId(null)}
+        title={adminDeleteBusiness ? `Supprimer ${adminDeleteBusiness.name} ?` : 'Supprimer ce business ?'}
+        desc="Cette action est reservee aux admins et ne peut pas etre annulee."
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl border border-red-400/20 bg-red-500/5 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-red-300">
+              <ShieldAlert className="h-4 w-4 shrink-0" />
+              <span>Le business sera supprime definitivement.</span>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setAdminDeleteBusinessId(null)}>
+              Annuler
+            </Button>
+            <Button size="sm" variant="destructive" onClick={() => void deleteDetailBusiness()}>
+              Supprimer
+            </Button>
+          </div>
+        </div>
+      </ModalWrap>
 
       {/* Action modals */}
       <BankAccountModal open={Boolean(bankBusiness)} onClose={() => setBankBusinessId(null)} business={bankBusiness} onSubmitted={bankBusiness ? handleServiceSuccess(bankBusiness.id) : () => onReload(true)} />
@@ -1004,6 +1393,14 @@ export function ExploreTab({
       <PurchaseItemModal open={Boolean(purchaseBusiness)} onClose={() => setPurchaseBusinessId(null)} business={purchaseBusiness} onSubmitted={purchaseBusiness ? () => { void handleServiceSuccess(purchaseBusiness.id)(); } : () => onReload(true)} />
       <ApplyBusinessModal open={Boolean(applyBusiness)} onClose={() => setApplyBusinessId(null)} business={applyBusiness} onSubmitted={applyBusiness ? handleServiceSuccess(applyBusiness.id) : () => onReload(true)} />
       <RatingModal open={Boolean(ratingBusinessId)} onClose={() => setRatingBusinessId(null)} businessId={ratingBusinessId} businesses={allBusinesses} onSubmitted={() => onReload()} />
+      <FilePlainteModal
+        open={Boolean(plainteBusiness)}
+        onClose={() => setPlainteBusinessId(null)}
+        business={plainteBusiness}
+        userId={userId}
+        players={players}
+        onSubmitted={() => void onReload()}
+      />
     </>
   );
 }

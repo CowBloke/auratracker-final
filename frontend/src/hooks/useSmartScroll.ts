@@ -11,6 +11,7 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLElement | null>(null);
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const wasAtBottomRef = useRef(true);
 
   // Initialize scroll area ref
@@ -38,6 +39,7 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
     const handleScroll = () => {
       const isAtBottom = checkIfAtBottom();
       wasAtBottomRef.current = isAtBottom;
+      setIsAtBottom(isAtBottom);
       
       // Hide new message indicator when user scrolls back to bottom
       if (isAtBottom) {
@@ -45,6 +47,7 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
       }
     };
 
+    handleScroll();
     scrollArea.addEventListener('scroll', handleScroll);
     return () => scrollArea.removeEventListener('scroll', handleScroll);
   }, []);
@@ -68,6 +71,7 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
   return {
     messagesEndRef,
     hasNewMessage,
+    isAtBottom,
     scrollToBottom,
     setScrollAreaRef: (ref: HTMLElement) => {
       scrollAreaRef.current = ref;

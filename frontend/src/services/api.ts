@@ -162,6 +162,8 @@ export interface YouBusinessType {
   satisfaction: number;
   level: number;
   actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item'>;
+  isAdminOnly?: boolean;
+  isStateOwned?: boolean;
 }
 
 export interface YouSkill {
@@ -392,6 +394,7 @@ export interface YouBusiness {
   avgRating: number | null;
   ratingCount: number;
   ratings: YouBusinessRating[];
+  isStateOwned: boolean;
 }
 
 export interface YouMarriageProposal {
@@ -2823,6 +2826,7 @@ export interface MessagingParticipant {
     usernameColor: string | null;
   };
   role: string;
+  courtRole: string | null;
   lastReadAt: string | null;
 }
 
@@ -2832,6 +2836,7 @@ export interface MessagingConversationMessage {
   senderId: string | null;
   body: string;
   type: string;
+  courtRole: string | null;
   createdAt: string;
   sender: {
     id: string;
@@ -2847,6 +2852,7 @@ export interface MessagingConversationSummary {
   title: string | null;
   icon: string | null;
   imageUrl: string | null;
+  courtCaseId: string | null;
   isFavorite: boolean;
   displayName: string;
   isPinned: boolean;
@@ -2905,8 +2911,8 @@ export const supportApi = {
   getConversation: (conversationId: string) => api.get<MessagingConversationDetail>(`/support/conversations/${conversationId}`),
   createConversation: (data: { type: 'DM' | 'GROUP'; title?: string; participantIds: string[]; body?: string }) =>
     api.post<{ conversation: MessagingConversationSummary; alreadyExisted: boolean }>('/support/conversations', data),
-  sendConversationMessage: (conversationId: string, body: string) =>
-    api.post<{ message: MessagingConversationDetail['messages'][number] }>(`/support/conversations/${conversationId}/messages`, { body }),
+  sendConversationMessage: (conversationId: string, body: string, courtRole?: string | null) =>
+    api.post<{ message: MessagingConversationDetail['messages'][number] }>(`/support/conversations/${conversationId}/messages`, { body, courtRole }),
   markConversationRead: (conversationId: string) =>
     api.post<{ success: boolean }>(`/support/conversations/${conversationId}/read`),
   reportConversation: (conversationId: string, reason?: string) =>
@@ -3065,6 +3071,102 @@ export const changelogApi = {
     api.post<ChangelogItem>(`/changelog/${entryId}/items`, data),
   deleteItem: (entryId: string, itemId: string) =>
     api.delete(`/changelog/${entryId}/items/${itemId}`),
+};
+
+// ─── Justice System ──────────────────────────────────────────────────────────
+
+export interface JusticePlainte {
+  id: string;
+  title: string;
+  description: string;
+  evidence: string | null;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CLOSED' | string;
+  rejectionReason: string | null;
+  courtId: string;
+  plaintifId: string;
+  defendantId: string | null;
+  plaintif: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  defendant: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  courtCase: { id: string; caseNumber: string; conversationId: string } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourtPartyInfo {
+  id: string;
+  userId: string;
+  courtRole: string;
+  user: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+}
+
+export interface CourtCase {
+  id: string;
+  caseNumber: string;
+  conversationId: string;
+  plaintifId: string;
+  defendantId: string;
+  status: 'OPEN' | 'DELIBERATION' | 'VERDICT_GIVEN' | 'CLOSED' | string;
+  verdict: string | null;
+  verdictAt: string | null;
+  sentencing: string | null;
+  plaintif: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  defendant: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  parties: CourtPartyInfo[];
+  plainte: { id: string; title: string } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourtArgument {
+  id: string;
+  caseId: string;
+  side: 'PLAINTIFF' | 'DEFENDANT' | string;
+  content: string;
+  authorId: string;
+  author: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  canSeeOpposite: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LawFirmPreview {
+  id: string;
+  name: string;
+  description: string | null;
+  logoUrl: string | null;
+  ownerId: string;
+  owner: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  memberCount: number;
+  satisfaction: number;
+}
+
+export const justiceApi = {
+  filePlainte: (data: { courtId: string; title: string; description: string; evidence?: string; defendantId?: string }) =>
+    api.post<{ plainte: JusticePlainte }>('/justice/plaintes', data),
+  listPlaintes: (params?: { courtId?: string }) =>
+    api.get<{ plaintes: JusticePlainte[] }>('/justice/plaintes', { params }),
+  acceptPlainte: (id: string) =>
+    api.patch<{ courtCase: CourtCase }>(`/justice/plaintes/${id}/accept`),
+  rejectPlainte: (id: string, reason?: string) =>
+    api.patch<{ plainte: JusticePlainte }>(`/justice/plaintes/${id}/reject`, { reason }),
+  listCases: () =>
+    api.get<{ cases: CourtCase[] }>('/justice/cases'),
+  getCase: (id: string) =>
+    api.get<{ courtCase: CourtCase }>(`/justice/cases/${id}`),
+  chooseRepresentation: (caseId: string, data: { type: 'PRIVATE_LAWYER' | 'PUBLIC_DEFENDER'; lawFirmId?: string }) =>
+    api.post<{ courtCase: CourtCase }>(`/justice/cases/${caseId}/representation`, data),
+  submitArgument: (caseId: string, content: string) =>
+    api.put<{ argument: CourtArgument }>(`/justice/cases/${caseId}/argument`, { content }),
+  getArguments: (caseId: string) =>
+    api.get<{ arguments: CourtArgument[] }>(`/justice/cases/${caseId}/arguments`),
+  changeStatus: (caseId: string, status: string) =>
+    api.patch<{ courtCase: CourtCase }>(`/justice/cases/${caseId}/status`, { status }),
+  deliverVerdict: (caseId: string, data: { verdict: string; sentencing?: string }) =>
+    api.post<{ courtCase: CourtCase }>(`/justice/cases/${caseId}/verdict`, data),
+  getLawFirms: () =>
+    api.get<{ lawFirms: LawFirmPreview[] }>('/justice/law-firms'),
+  getCaseByCaseId: (id: string) =>
+    api.get<{ courtCase: CourtCase }>(`/justice/cases/${id}`),
 };
 
 export default api;

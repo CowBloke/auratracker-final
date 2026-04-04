@@ -68,6 +68,7 @@ const ERROR_STATUS: Record<string, number> = {
   USER_NOT_FOUND: 404,
   BUSINESS_NOT_FOUND: 404,
   BUSINESS_SLOT_LIMIT_REACHED: 400,
+  BUSINESS_TYPE_ADMIN_ONLY: 403,
   BUSINESS_LIQUIDATION_FORBIDDEN: 403,
   BUSINESS_ACTION_UNAVAILABLE: 400,
   BUSINESS_INVITE_FORBIDDEN: 403,
@@ -189,6 +190,7 @@ const ERROR_MESSAGE: Record<string, string> = {
   USER_NOT_FOUND: 'Utilisateur introuvable.',
   BUSINESS_NOT_FOUND: 'Business introuvable.',
   BUSINESS_SLOT_LIMIT_REACHED: 'Tu as deja atteint ton nombre maximum de business.',
+  BUSINESS_TYPE_ADMIN_ONLY: 'Ce type de business est reserve aux administrateurs.',
   BUSINESS_LIQUIDATION_FORBIDDEN: 'Tu ne peux pas liquider ce business.',
   BUSINESS_ACTION_UNAVAILABLE: 'Cette action n est pas disponible pour ce business.',
   BUSINESS_INVITE_FORBIDDEN: 'Seul le proprietaire peut inviter des joueurs.',
@@ -345,13 +347,14 @@ router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthReq
     if (creationSetting?.value === 'false' && !req.user?.isAdmin) {
       return res.status(403).json({ error: 'La creation d entreprise est temporairement desactivee.', code: 'BUSINESS_CREATION_DISABLED' });
     }
+    const isAdmin = Boolean(req.user?.isAdmin || req.user?.isSuperAdmin);
     const business = await createBusiness(req.user!.id, {
       name: String(req.body?.name ?? ''),
       typeKey: String(req.body?.typeKey ?? ''),
       capital: Number(req.body?.capital ?? 0),
       description: typeof req.body?.description === 'string' ? req.body.description : undefined,
       location: typeof req.body?.location === 'string' ? req.body.location : undefined,
-    });
+    }, isAdmin);
     res.status(201).json({ business });
   } catch (error) {
     handleRouteError(error, res, 'Create business error');

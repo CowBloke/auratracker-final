@@ -552,6 +552,7 @@ function serializeBusiness(business: any, viewerId: string) {
       updatedAt: entry.updatedAt.toISOString(),
       user: entry.user,
     })),
+    isStateOwned: business.isStateOwned ?? false,
   };
 }
 
@@ -967,12 +968,17 @@ export async function trainUserSkill(userId: string, skillKey: string) {
   return serialized;
 }
 
-export async function createBusiness(userId: string, input: { name: string; typeKey: string; capital: number; description?: string; location?: string }) {
+export async function createBusiness(userId: string, input: { name: string; typeKey: string; capital: number; description?: string; location?: string }, callerIsAdmin = false) {
   await ensureUserSkills(userId);
 
   const type = BUSINESS_TYPE_MAP.get(input.typeKey);
   if (!type) {
     throw new Error('INVALID_BUSINESS_TYPE');
+  }
+
+  // Admin-only business types
+  if (type.isAdminOnly && !callerIsAdmin) {
+    throw new Error('BUSINESS_TYPE_ADMIN_ONLY');
   }
 
   const name = input.name.trim();
@@ -984,54 +990,62 @@ export async function createBusiness(userId: string, input: { name: string; type
     throw new Error('BUSINESS_CAPITAL_TOO_LOW');
   }
 
-  const creationCost = type.creationFee;
+  const creationCost = callerIsAdmin ? 0 : type.creationFee;
   const startingCapital = type.key === 'bank' ? 0 : input.capital;
-  const [skills, ownedBusinessCount, viewer] = await Promise.all([
-    prisma.userSkill.findMany({
-      where: { userId },
-      select: { key: true, level: true },
-    }),
-    prisma.business.count({
-      where: { ownerId: userId },
-    }),
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { unlockedBusinessLevel: true },
-    }),
-  ]);
-  const businessSlots = getBusinessSlots(skills);
-  if (ownedBusinessCount >= businessSlots) {
-    throw new Error('BUSINESS_SLOT_LIMIT_REACHED');
-  }
 
-  const unlockedLevel = viewer?.unlockedBusinessLevel ?? 0;
-  const requiredUnlock = type.level - 1; // to create level N, must have unlocked N-1
-  if (type.level > 1 && unlockedLevel < requiredUnlock) {
-    throw new Error('BUSINESS_LEVEL_LOCKED');
+  if (!callerIsAdmin) {
+    const [skills, ownedBusinessCount, viewer] = await Promise.all([
+      prisma.userSkill.findMany({
+        where: { userId },
+        select: { key: true, level: true },
+      }),
+      prisma.business.count({
+        where: { ownerId: userId },
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { unlockedBusinessLevel: true },
+      }),
+    ]);
+    const businessSlots = getBusinessSlots(skills);
+    if (ownedBusinessCount >= businessSlots) {
+      throw new Error('BUSINESS_SLOT_LIMIT_REACHED');
+    }
+
+    const unlockedLevel = viewer?.unlockedBusinessLevel ?? 0;
+    const requiredUnlock = type.level - 1; // to create level N, must have unlocked N-1
+    if (type.level > 1 && unlockedLevel < requiredUnlock) {
+      throw new Error('BUSINESS_LEVEL_LOCKED');
+    }
   }
 
   const totalCost = creationCost + startingCapital;
-  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, totalCost);
-  if (!hasSharedMoney) {
-    throw new Error('INSUFFICIENT_MONEY');
+  if (totalCost > 0) {
+    const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, totalCost);
+    if (!hasSharedMoney) {
+      throw new Error('INSUFFICIENT_MONEY');
+    }
   }
 
   const business = await prisma.$transaction(async (tx) => {
-    await debitSharedMoney(tx, userId, totalCost);
+    if (totalCost > 0) {
+      await debitSharedMoney(tx, userId, totalCost);
+    }
     const createdBusiness = await tx.business.create({
       data: {
         ownerId: userId,
         name,
         typeKey: type.key,
         description: input.description?.trim() || type.description,
-        location: input.location?.trim() || 'Quartier joueur',
+        location: input.location?.trim() || 'Institution de l\'Etat',
         startingCapital,
         treasuryMoney: startingCapital,
         monthlyRevenue: type.monthlyRevenue,
         monthlyExpenses: type.monthlyExpenses,
         satisfaction: type.satisfaction,
-        verified: false,
-        hiring: true,
+        verified: type.isStateOwned ? true : false,
+        hiring: type.isAdminOnly ? false : true,
+        isStateOwned: type.isStateOwned ?? false,
       },
     });
 

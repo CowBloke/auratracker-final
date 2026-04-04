@@ -41,6 +41,7 @@ import polytrackRoutes from './routes/polytrack.js';
 import changelogRoutes from './routes/changelog.js';
 import youRoutes from './routes/you.js';
 import messagesRoutes from './routes/messages.js';
+import justiceRoutes from './routes/justice.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -142,6 +143,7 @@ app.use('/api/clash', clashRoutes);
 app.use('/api/polytrack', polytrackRoutes);
 app.use('/api/changelog', changelogRoutes);
 app.use('/api/you', youRoutes);
+app.use('/api/justice', justiceRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

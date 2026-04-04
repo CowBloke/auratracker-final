@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Axe, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -173,7 +174,28 @@ const getWarEnemyDefenseSet = (war: ClanWarState, clanId: string) =>
 const getWarParticipantStats = (war: ClanWarState, clanId: string) =>
   war.attackerClan.id === clanId ? war.participantStats.attacker : war.participantStats.defender;
 
+const getWarOpponentParticipantStats = (war: ClanWarState, clanId: string) =>
+  war.attackerClan.id === clanId ? war.participantStats.defender : war.participantStats.attacker;
+
 const getAvatarFallback = (value: string) => value.trim().slice(0, 2);
+
+const getWarResultBadge = (war: ClanWarState, clanId: string) => {
+  const isCurrentWar = war.status !== 'COMPLETED';
+  if (isCurrentWar) {
+    return {
+      label: getStatusLabel(war.status),
+      variant: getStatusVariant(war.status),
+    };
+  }
+
+  if (!war.winnerClan) {
+    return { label: 'Égalité', variant: 'outline' as const };
+  }
+
+  return war.winnerClan.id === clanId
+    ? { label: 'Victoire', variant: 'secondary' as const }
+    : { label: 'Défaite', variant: 'destructive' as const };
+};
 
 const BankContributionRow = ({ entry }: { entry: ClanBankContribution }) => (
   <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
@@ -363,6 +385,8 @@ export default function Clans() {
   // Tab state
   const [activeTab, setActiveTab] = useState<'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages'>('info');
   const [bankHistoryOpen, setBankHistoryOpen] = useState(false);
+  const [warListDialogOpen, setWarListDialogOpen] = useState(false);
+  const [warGamesDialogOpen, setWarGamesDialogOpen] = useState(false);
 
   // Pump-up messages
   const [pumpUpMessages, setPumpUpMessages] = useState<ClanPumpUpMessage[]>([]);
@@ -503,6 +527,58 @@ export default function Clans() {
   const isOwnClan = viewerClanId === selectedClan?.id;
   const canCreateClan = !viewerClanId;
   const canJoinSelectedClan = Boolean(selectedClan && !selectedClan.viewer.isMember && !viewerClanId);
+  const clanWars = useMemo(() => {
+    if (!selectedClan) return [];
+    const currentWar = selectedClan.warHub.currentWar ? [selectedClan.warHub.currentWar] : [];
+    const historyWars = selectedClan.warHub.history.filter(
+      (war) => war.id !== selectedClan.warHub.currentWar?.id
+    );
+    return [...currentWar, ...historyWars];
+  }, [selectedClan]);
+  const pendingWarGames = useMemo(() => {
+    if (!selectedWar || !isOwnClan || !selectedClan?.viewer.isMember || !gameStatus) return [];
+
+    const games: Array<{
+      type: 'MEMORY' | 'BOMB' | 'NAVAL';
+      title: string;
+      description: string;
+      actionLabel: string;
+      remainingLabel: string;
+    }> = [];
+
+    if (gameStatus.canPlayMemory) {
+      games.push({
+        type: 'MEMORY',
+        title: 'Jeu mémoire',
+        description: 'Renforce les défenses de ton clan.',
+        actionLabel: 'Jouer',
+        remainingLabel: '1 partie dispo aujourd’hui',
+      });
+    }
+
+    if (gameStatus.canPlayBomb) {
+      games.push({
+        type: 'BOMB',
+        title: 'Bombardement',
+        description: 'Marque des points en détruisant la base ennemie.',
+        actionLabel: 'Attaquer',
+        remainingLabel: '1 attaque dispo aujourd’hui',
+      });
+    }
+
+    if ((gameStatus.naval?.shotsRemaining ?? 0) > 0) {
+      games.push({
+        type: 'NAVAL',
+        title: 'Guerre navale',
+        description: 'Utilise tes tirs restants sur la grille ennemie.',
+        actionLabel: 'Jouer',
+        remainingLabel: `${gameStatus.naval?.shotsRemaining ?? 0} tir(s) restant(s)`,
+      });
+    }
+
+    return games;
+  }, [gameStatus, isOwnClan, selectedClan?.viewer.isMember, selectedWar]);
+  const totalWarCount = clanWars.length;
 
   const resetForm = () => {
     setName('');
@@ -684,6 +760,11 @@ export default function Clans() {
   const closeGame = () => {
     setActiveGame(null);
     setShowTutorial(null);
+  };
+
+  const launchWarGameFromDialog = (type: 'MEMORY' | 'BOMB' | 'NAVAL') => {
+    setWarGamesDialogOpen(false);
+    openGame(type, false);
   };
 
   const afterGame = async () => {
@@ -2148,7 +2229,167 @@ export default function Clans() {
 
                     {/* ── Guerre tab ── */}
                     <TabsContent value="guerre" className="mt-4 space-y-4">
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                        <button
+                          type="button"
+                          onClick={() => setWarGamesDialogOpen(true)}
+                          disabled={!selectedWar || !isOwnClan || !selectedClan.viewer.isMember}
+                          className={cn(
+                            'min-h-[220px] rounded-3xl border p-5 text-left transition-colors',
+                            selectedWar
+                              ? 'border-emerald-500/30 bg-emerald-500/10 hover:border-emerald-500/50'
+                              : 'border-border/50 bg-muted/15',
+                            (!selectedWar || !isOwnClan || !selectedClan.viewer.isMember) && 'cursor-default'
+                          )}
+                        >
+                          <div className="flex h-full flex-col justify-between gap-5">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <div className={cn(
+                                    'flex h-11 w-11 items-center justify-center rounded-2xl',
+                                    selectedWar ? 'bg-emerald-600 text-white' : 'bg-muted text-muted-foreground'
+                                  )}>
+                                    <Swords className="h-5 w-5" />
+                                  </div>
+                                  <div>
+                                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Ta guerre</div>
+                                    <div className="text-sm font-medium">
+                                      {selectedWar && isOwnClan ? 'En guerre' : 'Aucune guerre'}
+                                    </div>
+                                  </div>
+                                </div>
+                                {selectedWar && isOwnClan ? (
+                                  <Badge variant={getStatusVariant(selectedWar.status)}>{getStatusLabel(selectedWar.status)}</Badge>
+                                ) : null}
+                              </div>
+
+                              {selectedWar && isOwnClan ? (
+                                <>
+                                  <div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {getWarOwnSide(selectedWar, selectedClan.id).name} contre {getWarOpponent(selectedWar, selectedClan.id).name}
+                                    </div>
+                                    <div className="mt-2 text-3xl font-semibold tabular-nums">
+                                      {selectedWar.viewerScore} - {selectedWar.opponentScore}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div className="rounded-2xl border border-border/40 bg-background/70 px-3 py-2">
+                                      <div className="text-xs text-muted-foreground">Jeux restants</div>
+                                      <div className="mt-1 font-medium">{pendingWarGames.length}</div>
+                                    </div>
+                                    <div className="rounded-2xl border border-border/40 bg-background/70 px-3 py-2">
+                                      <div className="text-xs text-muted-foreground">Fin</div>
+                                      <div className="mt-1 font-medium">{formatCountdown(selectedWar.endsAt) ?? 'N/A'}</div>
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="rounded-2xl border border-dashed border-border/50 bg-background/60 px-4 py-5 text-sm text-muted-foreground">
+                                  {isOwnClan && selectedClan.viewer.isMember
+                                    ? "Tu n'es pas en guerre pour le moment."
+                                    : "Tu ne participes pas aux guerres de ce clan."}
+                                </div>
+                              )}
+                            </div>
+
+                            {selectedWar && isOwnClan ? (
+                              <div className="rounded-2xl border border-border/40 bg-background/70 px-4 py-3">
+                                <div className="text-sm font-medium">
+                                  {pendingWarGames.length > 0 ? 'Tu as encore des parties de guerre à jouer.' : 'Tu as terminé tes parties disponibles.'}
+                                </div>
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {pendingWarGames.length > 0
+                                    ? 'Clique pour ouvrir la liste et lancer directement les jeux restants.'
+                                    : 'Tu peux quand même ouvrir ce panneau pour vérifier ton état de guerre.'}
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setWarListDialogOpen(true)}
+                          className="min-h-[220px] rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-left transition-colors hover:border-amber-500/50"
+                        >
+                          <div className="flex h-full flex-col justify-between gap-5">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500 text-white">
+                                    <History className="h-5 w-5" />
+                                  </div>
+                                  <div>
+                                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Guerres</div>
+                                    <div className="text-sm font-medium">Historique du clan</div>
+                                  </div>
+                                </div>
+                                <Badge variant="secondary">{totalWarCount}</Badge>
+                              </div>
+
+                              <div className="text-4xl font-semibold tabular-nums">{totalWarCount}</div>
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                <div className="rounded-2xl border border-border/40 bg-background/70 px-3 py-2">
+                                  <div className="text-xs text-muted-foreground">Bilan</div>
+                                  <div className="mt-1 font-medium">{selectedClan.warWins}V • {selectedClan.warLosses}D • {selectedClan.warDraws}N</div>
+                                </div>
+                                <div className="rounded-2xl border border-border/40 bg-background/70 px-3 py-2">
+                                  <div className="text-xs text-muted-foreground">Trophées</div>
+                                  <div className="mt-1 font-medium">{formatMoney(selectedClan.warTrophies)}</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-border/40 bg-background/70 px-4 py-3">
+                              <div className="text-sm font-medium">Voir toutes les guerres</div>
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                Ouvre la liste complète avec les détails dépliables de chaque conflit.
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+
+                        <div className="flex flex-col gap-3">
+                          <div className={mutedPanelClassName}>
+                            <div className="px-4 py-3">
+                              <div className="text-xs text-muted-foreground">Éligibilité</div>
+                              <div className="mt-1 text-sm font-medium">
+                                {selectedClan.memberCount >= selectedClan.warHub.minimumMembersRequired
+                                  ? 'Éligible'
+                                  : `${selectedClan.warHub.minimumMembersRequired} membres requis`}
+                              </div>
+                            </div>
+                          </div>
+                          <div className={mutedPanelClassName}>
+                            <div className="px-4 py-3">
+                              <div className="text-xs text-muted-foreground">Temps de recharge</div>
+                              <div className="mt-1 text-sm font-medium">
+                                {selectedClan.warHub.cooldownEndsAt
+                                  ? `Disponible dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}`
+                                  : 'Disponible'}
+                              </div>
+                            </div>
+                          </div>
+                          {selectedClan.warHub.closestTrophyGap !== null ? (
+                            <div className={mutedPanelClassName}>
+                              <div className="px-4 py-3">
+                                <div className="text-xs text-muted-foreground">Matchmaking</div>
+                                <div className="mt-1 text-sm font-medium">Écart mini: {selectedClan.warHub.closestTrophyGap} trophées</div>
+                              </div>
+                            </div>
+                          ) : null}
+                          {selectedClan.warHub.canDeclareWar ? (
+                            <Button onClick={() => setWarDialogOpen(true)} className="rounded-2xl">
+                              <Swords className="mr-2 h-4 w-4" />
+                              Déclarer une guerre
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
                       {/* War status bar */}
+                      <div className="hidden">
                       <Card className={panelClassName}>
                         <CardContent className="p-4">
                           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2205,6 +2446,7 @@ export default function Clans() {
                           </div>
                         </CardContent>
                       </Card>
+                      </div>
 
                       {/* Active war */}
                       {selectedWar ? (
@@ -2417,6 +2659,7 @@ export default function Clans() {
                       )}
 
                       {/* War history */}
+                      <div className="hidden">
                       <Card className={panelClassName}>
                         <CardContent className="space-y-3 p-4">
                           <SectionTitle title="Historique des guerres" description="Conflits terminés." />
@@ -2461,6 +2704,7 @@ export default function Clans() {
                           )}
                         </CardContent>
                       </Card>
+                      </div>
 
                       {/* Global war history */}
                       <Card className={panelClassName}>
@@ -2529,6 +2773,174 @@ export default function Clans() {
                           </div>
                         )}
                       </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={warListDialogOpen} onOpenChange={setWarListDialogOpen}>
+                    <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-4xl">
+                      <DialogHeader>
+                        <DialogTitle>Guerres du clan</DialogTitle>
+                        <DialogDescription>
+                          Toutes les guerres de {selectedClan.name}, avec les détails dépliables de chaque conflit.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="max-h-[65vh] overflow-y-auto pr-1">
+                        {clanWars.length === 0 ? (
+                          <div className="rounded-2xl border border-dashed border-border/60 p-6 text-sm text-muted-foreground">
+                            Aucune guerre enregistrée pour ce clan.
+                          </div>
+                        ) : (
+                          <Accordion type="single" collapsible className="w-full space-y-3">
+                            {clanWars.map((war) => {
+                              const opponent = getWarOpponent(war, selectedClan.id);
+                              const resultBadge = getWarResultBadge(war, selectedClan.id);
+                              const ownTrophyChange = selectedClan.id === war.attackerClan.id ? war.trophyChanges.attacker : war.trophyChanges.defender;
+                              const ownParticipants = getWarParticipantStats(war, selectedClan.id);
+                              const opponentParticipants = getWarOpponentParticipantStats(war, selectedClan.id);
+                              return (
+                                <AccordionItem
+                                  key={war.id}
+                                  value={war.id}
+                                  className="overflow-hidden rounded-2xl border border-border/50 bg-muted/15 px-4"
+                                >
+                                  <AccordionTrigger className="py-4 hover:no-underline">
+                                    <div className="flex min-w-0 flex-1 items-center justify-between gap-4 text-left">
+                                      <div className="min-w-0">
+                                        <div className="text-sm font-medium">Contre {opponent.name}</div>
+                                        <div className="mt-1 text-xs text-muted-foreground">
+                                          {war.status === 'COMPLETED'
+                                            ? `${formatDate(war.completedAt)} • Score ${war.attackerScore} - ${war.defenderScore}`
+                                            : `${formatDate(war.startsAt)} • En cours ${war.viewerScore} - ${war.opponentScore}`}
+                                        </div>
+                                      </div>
+                                      <div className="flex shrink-0 items-center gap-2">
+                                        <Badge variant={resultBadge.variant}>{resultBadge.label}</Badge>
+                                        <span className="text-xs font-medium text-muted-foreground">
+                                          {formatSignedValue(ownTrophyChange)} trophées
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="pb-4">
+                                    <div className="space-y-4">
+                                      <div className="grid gap-3 md:grid-cols-3">
+                                        <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
+                                          <div className="text-xs text-muted-foreground">Score</div>
+                                          <div className="mt-1 text-lg font-semibold">{war.attackerScore} - {war.defenderScore}</div>
+                                          <div className="mt-1 text-xs text-muted-foreground">
+                                            {war.attackerClan.name} contre {war.defenderClan.name}
+                                          </div>
+                                        </div>
+                                        <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
+                                          <div className="text-xs text-muted-foreground">Dates</div>
+                                          <div className="mt-1 text-sm font-medium">Début: {formatDate(war.startsAt)}</div>
+                                          <div className="mt-1 text-xs text-muted-foreground">
+                                            {war.completedAt ? `Fin: ${formatDate(war.completedAt)}` : `Fin prévue: ${formatDate(war.endsAt)}`}
+                                          </div>
+                                        </div>
+                                        <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
+                                          <div className="text-xs text-muted-foreground">Récompenses</div>
+                                          <div className="mt-1 text-sm font-medium">
+                                            +{war.rewardTable.winner.money} money / +{war.rewardTable.winner.aura} aura
+                                          </div>
+                                          <div className="mt-1 text-xs text-muted-foreground">
+                                            {formatSignedValue(war.rewardTable.winner.trophies)} trophées en victoire
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="grid gap-4 lg:grid-cols-2">
+                                        <div className="space-y-2">
+                                          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                            Participation de {selectedClan.name}
+                                          </div>
+                                          {ownParticipants.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
+                                              Aucune donnée de participation.
+                                            </div>
+                                          ) : (
+                                            <div className="space-y-2">
+                                              {ownParticipants.map((member) => (
+                                                <WarMemberRow key={`${war.id}:${member.user.id}`} member={member} />
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                            Participation de {opponent.name}
+                                          </div>
+                                          {opponentParticipants.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
+                                              Aucune donnée de participation.
+                                            </div>
+                                          ) : (
+                                            <div className="space-y-2">
+                                              {opponentParticipants.map((member) => (
+                                                <WarMemberRow key={`${war.id}:opponent:${member.user.id}`} member={member} showClanName />
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {war.recentAttacks.length > 0 ? (
+                                        <div className="space-y-2">
+                                          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                            Attaques récentes
+                                          </div>
+                                          <div className="space-y-2">
+                                            {war.recentAttacks.slice(0, 5).map((attack) => (
+                                              <div key={attack.id} className="rounded-2xl border border-border/50 bg-background/70 px-3 py-2 text-sm">
+                                                <span className="font-medium">{attack.attackLabel}</span> par {attack.user.username} • {attack.finalPoints} pts
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              );
+                            })}
+                          </Accordion>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={warGamesDialogOpen} onOpenChange={setWarGamesDialogOpen}>
+                    <DialogContent className="sm:max-w-xl">
+                      <DialogHeader>
+                        <DialogTitle>Mes parties de guerre</DialogTitle>
+                        <DialogDescription>
+                          {selectedWar && isOwnClan
+                            ? `Score actuel: ${selectedWar.viewerScore} - ${selectedWar.opponentScore}. Lance tes parties restantes depuis cette fenêtre.`
+                            : "Tu n'es pas dans une guerre active avec ce clan."}
+                        </DialogDescription>
+                      </DialogHeader>
+                      {!selectedWar || !isOwnClan || !selectedClan.viewer.isMember ? (
+                        <div className="rounded-2xl border border-dashed border-border/60 p-5 text-sm text-muted-foreground">
+                          Aucune guerre active pour toi dans ce clan.
+                        </div>
+                      ) : pendingWarGames.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-border/60 p-5 text-sm text-muted-foreground">
+                          Tu as déjà joué toutes tes parties disponibles pour le moment.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {pendingWarGames.map((game) => (
+                            <div key={game.type} className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-muted/15 p-4">
+                              <div>
+                                <div className="text-sm font-medium">{game.title}</div>
+                                <div className="mt-1 text-xs text-muted-foreground">{game.description}</div>
+                                <div className="mt-2 text-xs font-medium text-emerald-600">{game.remainingLabel}</div>
+                              </div>
+                              <Button onClick={() => launchWarGameFromDialog(game.type)}>
+                                {game.actionLabel}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </DialogContent>
                   </Dialog>
                 </>

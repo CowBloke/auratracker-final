@@ -21,6 +21,21 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-04-justice-system',
+    date: '2026-04-04',
+    title: 'Système judiciaire — Cour Suprême & Cabinets d\'avocats',
+    summary: 'Un système judiciaire complet fait son entrée : déposez des plaintes formelles, ouvrez des dossiers avec juges, avocats et plaidoiries, et prononcez des verdicts depuis la messagerie.',
+    items: [
+      { category: 'BIG_FEATURE', text: '**Cour Suprême** — Nouvelle institution d\'État visible en tête de la page Entreprises. Permet de déposer une plainte formelle contre un autre joueur (titre, description, preuves).', order: 0 },
+      { category: 'BIG_FEATURE', text: '**Cabinets d\'avocats** — Nouvelle catégorie d\'entreprise. Un cabinet peut représenter une partie lors d\'un procès.', order: 1 },
+      { category: 'BIG_FEATURE', text: '**Dossiers judiciaires** — Quand un admin accepte une plainte, un groupe de messagerie est automatiquement créé avec les admins en rôle de Juge, et les deux parties assignées. Chaque rôle a sa propre couleur dans le chat.', order: 2 },
+      { category: 'BIG_FEATURE', text: '**Plaidoiries confidentielles** — Chaque partie peut soumettre un argument écrit visible uniquement par les juges. Accès via le bouton "Plaidoiries" dans le bandeau du dossier.', order: 3 },
+      { category: 'BIG_FEATURE', text: '**Verdict & sanction** — Les juges peuvent changer le statut du dossier (En cours → Délibération → Verdict rendu) et rédiger un verdict officiel avec sanction optionnelle, affiché dans le fil de messagerie.', order: 4 },
+      { category: 'SMALL_FEATURE', text: '**Interface admin** — Dans la Cour Suprême, les admins voient les plaintes en attente avec boutons Accepter / Rejeter. Accepter ouvre automatiquement le dossier et redirige vers le groupe de messagerie.', order: 5 },
+      { category: 'SMALL_FEATURE', text: '**Sélecteur de rôle** — Dans un groupe de tribunal, les admins peuvent choisir en quel rôle ils envoient leurs messages (Juge, Défenseur public plaignant, Défenseur public défendeur, etc.).', order: 6 },
+    ],
+  },
+  {
     id: '2026-04-04-xp-system-skills',
     date: '2026-04-04',
     title: 'Système XP automatique & score Illégalité',

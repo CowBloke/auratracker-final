@@ -100,7 +100,7 @@ export default function ChatSidebar() {
   const scrollViewportRef = useRef<HTMLElement | null>(null);
   const pendingScrollRestoreRef = useRef<number | null>(null);
   const [showLoadOlderButton, setShowLoadOlderButton] = useState(false);
-  const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
+  const { messagesEndRef, hasNewMessage, isAtBottom, scrollToBottom, setScrollAreaRef } = useSmartScroll({
     dependency: [messages],
   });
   const typingTimeoutRef = useRef<TimeoutRef>(null);
@@ -614,7 +614,7 @@ export default function ChatSidebar() {
 
                 return (
                   <div key={msg.id}>
-                    {msg.id === firstUnreadMessageId && (
+                    {msg.id === firstUnreadMessageId && !isAtBottom && (
                       <div className="my-2 flex items-center gap-2 px-1">
                         <div className="h-px flex-1 bg-border/70" />
                         <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -866,7 +866,7 @@ export default function ChatSidebar() {
                   </div>
                 );
               })}
-              {latestUnreadMessageId && (
+              {latestUnreadMessageId && !isAtBottom && (
                 <div className="sticky bottom-0 flex justify-center py-2">
                   <button
                     onClick={scrollToLatestUnread}

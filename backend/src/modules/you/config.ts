@@ -13,6 +13,8 @@ export interface BusinessTypeDefinition {
   satisfaction: number;
   level: number; // 1 = always available; 2 = requires having owned a level 1; 3 = requires level 2
   actions: BusinessActionKey[];
+  isAdminOnly?: boolean;   // only admins can create
+  isStateOwned?: boolean;  // automatically marked as state institution
 }
 
 export interface StartupProductDefinition {
@@ -127,6 +129,36 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     satisfaction: 91,
     level: 3,
     actions: ['loan', 'invest', 'invite', 'deposit', 'withdraw'],
+  },
+  // --- Justice ---
+  {
+    key: 'law_firm',
+    label: "Cabinet d'avocats",
+    category: 'Justice',
+    description: "Representez des clients lors de proces. Les plaideurs peuvent vous engager comme avocat prive.",
+    minCapital: 2000,
+    creationFee: 2000,
+    monthlyRevenue: 1500,
+    monthlyExpenses: 500,
+    satisfaction: 85,
+    level: 2,
+    actions: ['invite', 'deposit', 'withdraw'],
+  },
+  // --- Etat (admin only) ---
+  {
+    key: 'supreme_court',
+    label: 'Cour Supreme',
+    category: 'Etat',
+    description: "Institution judiciaire d'Etat. Les joueurs peuvent y deposer des plaintes formelles.",
+    minCapital: 0,
+    creationFee: 0,
+    monthlyRevenue: 0,
+    monthlyExpenses: 0,
+    satisfaction: 100,
+    level: 1,
+    actions: [],
+    isAdminOnly: true,
+    isStateOwned: true,
   },
 ];
 

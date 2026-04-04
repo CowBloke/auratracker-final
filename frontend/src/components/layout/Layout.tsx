@@ -50,6 +50,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const mainRef = useRef<HTMLDivElement>(null);
   const keyboardShortcuts = useKeyboardShortcuts();
+  const isMessagesPage = location.pathname === '/messages';
 
   useEffect(() => {
     if (connected) {
@@ -137,8 +138,8 @@ export default function Layout() {
           <SidebarInset className="min-h-0 overflow-hidden">
             <SiteHeader />
             <div className="@container/main flex min-h-0 flex-1 flex-col">
-              <div ref={mainRef} className="min-h-0 flex-1 overflow-auto">
-                <div className={cn('mx-auto flex w-full flex-1 flex-col pt-6 lg:pt-8', CONTAINER.DEFAULT)}>
+              <div ref={mainRef} className={cn('min-h-0 flex-1', isMessagesPage ? 'overflow-hidden' : 'overflow-auto')}>
+                <div className={cn('mx-auto flex w-full flex-1 flex-col', isMessagesPage ? 'h-full pt-0' : 'pt-6 lg:pt-8', CONTAINER.DEFAULT)}>
                   <Outlet />
                 </div>
               </div>

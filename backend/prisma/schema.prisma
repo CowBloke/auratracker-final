@@ -147,6 +147,14 @@ model User {
   blocksGiven                 UserBlock[]                       @relation("UserBlocker")
   blocksReceived              UserBlock[]                       @relation("UserBlocked")
 
+  // Justice System
+  plaintePlaignant            Plainte[]                         @relation("PlaintifPlaintes")
+  plaintePlaigne              Plainte[]                         @relation("DefendantPlaintes")
+  caseAsPlaintif              CourtCase[]                       @relation("CasePlaintif")
+  caseAsDefendant             CourtCase[]                       @relation("CaseDefendant")
+  courtParties                CourtParty[]
+  courtArguments              CourtArgument[]
+
   // Badge System
   equippedBadge1Id    String?
   equippedBadge2Id    String?
@@ -500,6 +508,7 @@ model Business {
   formationUrl          String?
   formationPrice        Int       @default(500)
   npcLastCollectedAt    DateTime? // For lemonade/epicerie NPC collect cooldown
+  isStateOwned          Boolean   @default(false) // True for state-owned institutions (supreme court, etc.)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -517,10 +526,12 @@ model Business {
   transactions         BusinessTransaction[]
   ratings              BusinessRating[]
   formationProducts    FormationProduct[]
+  plaintes             Plainte[]
 
   @@index([ownerId])
   @@index([typeKey, createdAt])
   @@index([hiring])
+  @@index([isStateOwned])
 }
 
 model FormationProduct {
@@ -2070,6 +2081,7 @@ model MessageConversation {
   icon           String?  // emoji for group icon
   imageUrl       String?  // custom group photo
   createdById    String?
+  courtCaseId    String?  @unique // if set, this is a court case conversation
   createdAt      DateTime @default(now())
   lastMessageAt  DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -2079,6 +2091,7 @@ model MessageConversation {
   messages     MessageConversationMessage[]
   reports      MessageConversationReport[]
   reactions    MessageConversationReaction[]
+  courtCase    CourtCase?
 
   @@index([type, lastMessageAt])
   @@index([createdById])
@@ -2089,6 +2102,7 @@ model MessageConversationParticipant {
   conversationId String
   userId         String
   role           String   @default("MEMBER") // MEMBER | OWNER
+  courtRole      String?  // JUDGE | PLAINTIFF | DEFENDANT | LAWYER_PLAINTIFF | LAWYER_DEFENDANT | PUBLIC_DEFENDER_PLAINTIFF | PUBLIC_DEFENDER_DEFENDANT
   isFavorite     Boolean  @default(false)
   joinedAt       DateTime @default(now())
   lastReadAt     DateTime?
@@ -2106,7 +2120,8 @@ model MessageConversationMessage {
   conversationId String
   senderId       String?
   body           String
-  type           String   @default("TEXT") // TEXT | SYSTEM | REPORT_NOTICE
+  type           String   @default("TEXT") // TEXT | SYSTEM | REPORT_NOTICE | COURT_SYSTEM
+  courtRole      String?  // when admin sends as a court role (JUDGE | PUBLIC_DEFENDER_PLAINTIFF | PUBLIC_DEFENDER_DEFENDANT)
   createdAt      DateTime @default(now())
 
   conversation MessageConversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
@@ -2246,4 +2261,92 @@ model BusinessTransaction {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId, createdAt])
+}
+
+// ============================================
+// JUSTICE SYSTEM
+// ============================================
+
+// A formal complaint filed at a supreme_court business
+model Plainte {
+  id              String    @id @default(uuid())
+  plaintifId      String
+  defendantId     String?
+  courtId         String    // business id of the supreme court
+  title           String
+  description     String
+  evidence        String?   // optional text evidence / URL
+  status          String    @default("PENDING") // PENDING | ACCEPTED | REJECTED | CLOSED
+  rejectionReason String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  plaintif  User      @relation("PlaintifPlaintes", fields: [plaintifId], references: [id], onDelete: Cascade)
+  defendant User?     @relation("DefendantPlaintes", fields: [defendantId], references: [id], onDelete: SetNull)
+  court     Business  @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  courtCase CourtCase?
+
+  @@index([courtId, status])
+  @@index([plaintifId])
+  @@index([defendantId])
+}
+
+// An active court case, linked to a group conversation
+model CourtCase {
+  id             String    @id @default(uuid())
+  caseNumber     String    @unique
+  plainteId      String    @unique
+  conversationId String    @unique
+  plaintifId     String
+  defendantId    String
+  status         String    @default("OPEN") // OPEN | DELIBERATION | VERDICT_GIVEN | CLOSED
+  verdict        String?   // free text verdict
+  verdictAt      DateTime?
+  sentencing     String?   // actions taken (ban, fine, etc.)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  plainte      Plainte             @relation(fields: [plainteId], references: [id])
+  conversation MessageConversation @relation(fields: [conversationId], references: [id])
+  plaintif     User                @relation("CasePlaintif", fields: [plaintifId], references: [id])
+  defendant    User                @relation("CaseDefendant", fields: [defendantId], references: [id])
+  parties      CourtParty[]
+  arguments    CourtArgument[]
+
+  @@index([status])
+  @@index([plaintifId])
+  @@index([defendantId])
+}
+
+// Participants with specific court roles
+model CourtParty {
+  id        String   @id @default(uuid())
+  caseId    String
+  userId    String
+  courtRole String   // JUDGE | PLAINTIFF | DEFENDANT | LAWYER_PLAINTIFF | LAWYER_DEFENDANT | PUBLIC_DEFENDER_PLAINTIFF | PUBLIC_DEFENDER_DEFENDANT
+  createdAt DateTime @default(now())
+
+  case CourtCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, userId])
+  @@index([caseId])
+  @@index([userId])
+}
+
+// Written argument documents for each side (only judges can read both)
+model CourtArgument {
+  id        String   @id @default(uuid())
+  caseId    String
+  authorId  String
+  side      String   // PLAINTIFF | DEFENDANT
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  case   CourtCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  author User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, side])
+  @@index([caseId])
 }

@@ -7,10 +7,14 @@ import {
   ArrowLeft,
   Ban,
   Camera,
+  ChevronDown,
+  FileText,
+  Gavel,
   MessageCircleMore,
   MessagesSquare,
   MoreVertical,
   Plus,
+  Scale,
   Search,
   SendHorizonal,
   Settings2,
@@ -51,10 +55,13 @@ import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import {
+  CourtArgument,
+  CourtCase,
   MessagingConversationDetail,
   MessagingConversationSummary,
   SocialUser,
   SupportThread,
+  justiceApi,
   supportApi,
   uploadUserImage,
   usersApi,
@@ -65,6 +72,33 @@ const POLL_INTERVAL_MS = 15000;
 const REACTION_OPTIONS = ['❤️', '👍', '😂', '😮', '😢', '🔥'];
 
 const GROUP_ICONS = ['👥', '🎮', '🎯', '🏆', '💬', '🔥', '⚡', '🌟', '🎲', '🎪', '🚀', '🎭', '🦁', '🐉', '💎', '🌈'];
+
+const COURT_ROLE_LABELS: Record<string, string> = {
+  JUDGE: 'Juge',
+  PLAINTIFF: 'Plaignant',
+  DEFENDANT: 'Défendeur',
+  LAWYER_PLAINTIFF: 'Avocat (Plaignant)',
+  LAWYER_DEFENDANT: 'Avocat (Défendeur)',
+  PUBLIC_DEFENDER_PLAINTIFF: 'Défenseur public (Plaignant)',
+  PUBLIC_DEFENDER_DEFENDANT: 'Défenseur public (Défendeur)',
+};
+
+const COURT_ROLE_COLORS: Record<string, { bubble: string; badge: string; sender: string }> = {
+  JUDGE: { bubble: 'bg-amber-500/10 border border-amber-500/30 text-foreground', badge: 'bg-amber-500/15 text-amber-500', sender: 'text-amber-500' },
+  PLAINTIFF: { bubble: 'bg-sky-500/10 border border-sky-500/30 text-foreground', badge: 'bg-sky-500/15 text-sky-500', sender: 'text-sky-500' },
+  DEFENDANT: { bubble: 'bg-red-500/10 border border-red-500/30 text-foreground', badge: 'bg-red-500/15 text-red-500', sender: 'text-red-500' },
+  LAWYER_PLAINTIFF: { bubble: 'bg-emerald-500/10 border border-emerald-500/30 text-foreground', badge: 'bg-emerald-500/15 text-emerald-500', sender: 'text-emerald-500' },
+  LAWYER_DEFENDANT: { bubble: 'bg-emerald-500/10 border border-emerald-500/30 text-foreground', badge: 'bg-emerald-500/15 text-emerald-500', sender: 'text-emerald-500' },
+  PUBLIC_DEFENDER_PLAINTIFF: { bubble: 'bg-teal-500/10 border border-teal-500/30 text-foreground', badge: 'bg-teal-500/15 text-teal-500', sender: 'text-teal-500' },
+  PUBLIC_DEFENDER_DEFENDANT: { bubble: 'bg-teal-500/10 border border-teal-500/30 text-foreground', badge: 'bg-teal-500/15 text-teal-500', sender: 'text-teal-500' },
+};
+
+const COURT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  OPEN: { label: 'En cours', color: 'text-sky-500' },
+  DELIBERATION: { label: 'Délibération', color: 'text-amber-500' },
+  VERDICT_GIVEN: { label: 'Verdict rendu', color: 'text-emerald-500' },
+  CLOSED: { label: 'Clôturé', color: 'text-muted-foreground' },
+};
 
 const formatTime = (value: string) => {
   const date = new Date(value);
@@ -120,6 +154,7 @@ const buildAdminSupportConversationSummary = (thread: SupportThread): MessagingC
   title: 'Support',
   icon: null,
   imageUrl: null,
+  courtCaseId: null,
   isFavorite: false,
   displayName: thread.user?.username ?? 'Support',
   isPinned: true,
@@ -130,7 +165,7 @@ const buildAdminSupportConversationSummary = (thread: SupportThread): MessagingC
     senderId: thread.lastFromAdmin ? 'support' : thread.userId,
   },
   participants: thread.user
-    ? [{ user: thread.user, role: 'USER', lastReadAt: null }]
+    ? [{ user: thread.user, role: 'USER', courtRole: null, lastReadAt: null }]
     : [],
 });
 
@@ -184,6 +219,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [convLoading, setConvLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [isMessagesAtBottom, setIsMessagesAtBottom] = useState(true);
 
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
@@ -204,6 +240,19 @@ export default function MessagesPage() {
   const [addMemberSearch, setAddMemberSearch] = useState('');
   const [blockConfirmId, setBlockConfirmId] = useState<string | null>(null);
 
+  // Court case state
+  const [courtCase, setCourtCase] = useState<CourtCase | null>(null);
+  const [selectedCourtRole, setSelectedCourtRole] = useState<string | null>(null);
+  const [showArgumentsPanel, setShowArgumentsPanel] = useState(false);
+  const [courtArguments, setCourtArguments] = useState<CourtArgument[]>([]);
+  const [argumentDraft, setArgumentDraft] = useState('');
+  const [argumentSaving, setArgumentSaving] = useState(false);
+  const [showVerdictPanel, setShowVerdictPanel] = useState(false);
+  const [verdictDraft, setVerdictDraft] = useState('');
+  const [sentencingDraft, setSentencingDraft] = useState('');
+  const [verdictSaving, setVerdictSaving] = useState(false);
+  const [statusChanging, setStatusChanging] = useState(false);
+
   const initializedRef = useRef(false);
   const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -213,6 +262,9 @@ export default function MessagesPage() {
   const deferredSearch = useDeferredValue(search);
   const isAdminViewer = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const selectedConversation = detail?.conversation ?? conversations.find((c) => c.id === selectedId) ?? null;
+  const isCourtConversation = Boolean(selectedConversation?.courtCaseId);
+  const myCourtParty = courtCase?.parties?.find((p) => p.userId === user?.id);
+  const myCourtRole = myCourtParty?.courtRole ?? null;
   const selectedIdSafe = selectedConversation?.id ?? null;
   const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
   const supportReactionsEnabled = selectedConversation?.type !== 'SUPPORT';
@@ -221,6 +273,7 @@ export default function MessagesPage() {
     if (!viewport) return;
     viewport.scrollTop = viewport.scrollHeight;
   };
+
 
   // ── Data Loading ─────────────────────────────────────────────────────────
   const refreshConversations = async () => {
@@ -274,6 +327,7 @@ export default function MessagesPage() {
                   profilePicture: threadRes.data.user?.profilePicture ?? null,
                   usernameColor: threadRes.data.user?.usernameColor ?? null,
                 },
+            courtRole: null,
             reactions: [],
           })),
         });
@@ -376,6 +430,29 @@ export default function MessagesPage() {
     return () => window.cancelAnimationFrame(frame);
   }, [detail?.messages.length, selectedIdSafe, convLoading]);
 
+  // Load court case when switching to a court conversation
+  useEffect(() => {
+    const caseId = selectedConversation?.courtCaseId;
+    if (!caseId) {
+      setCourtCase(null);
+      setSelectedCourtRole(null);
+      setCourtArguments([]);
+      return;
+    }
+    let cancelled = false;
+    justiceApi.getCase(caseId).then((r) => {
+      if (cancelled) return;
+      setCourtCase(r.data.courtCase);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedConversation?.courtCaseId]);
+
+  const loadArguments = async () => {
+    if (!courtCase) return;
+    const r = await justiceApi.getArguments(courtCase.id);
+    setCourtArguments(r.data.arguments);
+  };
+
   // ── Filtered lists ────────────────────────────────────────────────────────
   const { favorites, regular } = useMemo(() => {
     const term = deferredSearch.trim().toLowerCase();
@@ -416,7 +493,10 @@ export default function MessagesPage() {
       if (selectedAdminSupportUserId) {
         await supportApi.reply(selectedAdminSupportUserId, body);
       } else {
-        await supportApi.sendConversationMessage(selectedIdSafe, body);
+        const roleToSend = isCourtConversation
+          ? (isAdminViewer ? selectedCourtRole : myCourtRole)
+          : null;
+        await supportApi.sendConversationMessage(selectedIdSafe, body, roleToSend);
       }
       await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
     } catch {
@@ -552,6 +632,51 @@ export default function MessagesPage() {
     }
   };
 
+  const handleSaveArgument = async () => {
+    if (!courtCase || !argumentDraft.trim()) return;
+    setArgumentSaving(true);
+    try {
+      await justiceApi.submitArgument(courtCase.id, argumentDraft.trim());
+      await loadArguments();
+      toast({ title: 'Argument soumis' });
+    } catch {
+      toast({ title: 'Erreur', variant: 'destructive' });
+    } finally {
+      setArgumentSaving(false);
+    }
+  };
+
+  const handleChangeStatus = async (status: string) => {
+    if (!courtCase) return;
+    setStatusChanging(true);
+    try {
+      const r = await justiceApi.changeStatus(courtCase.id, status);
+      setCourtCase(r.data.courtCase);
+      await Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false, false) : Promise.resolve()]);
+      toast({ title: 'Statut mis à jour' });
+    } catch {
+      toast({ title: 'Erreur', variant: 'destructive' });
+    } finally {
+      setStatusChanging(false);
+    }
+  };
+
+  const handleDeliverVerdict = async () => {
+    if (!courtCase || !verdictDraft.trim()) return;
+    setVerdictSaving(true);
+    try {
+      const r = await justiceApi.deliverVerdict(courtCase.id, { verdict: verdictDraft.trim(), sentencing: sentencingDraft.trim() || undefined });
+      setCourtCase(r.data.courtCase);
+      setShowVerdictPanel(false);
+      await Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false, false) : Promise.resolve()]);
+      toast({ title: 'Verdict rendu' });
+    } catch {
+      toast({ title: 'Erreur', variant: 'destructive' });
+    } finally {
+      setVerdictSaving(false);
+    }
+  };
+
   const openGroupSettings = () => {
     if (!selectedConversation || selectedConversation.type !== 'GROUP') return;
     setGroupEditName(selectedConversation.title ?? '');
@@ -590,9 +715,23 @@ export default function MessagesPage() {
       return Date.parse(message.createdAt) > Date.parse(viewerLastReadAt);
     })?.id ?? null;
 
+  useEffect(() => {
+    const viewport = messagesScrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+    if (!viewport) return;
+
+    const updateIsAtBottom = () => {
+      const distanceFromBottom = viewport.scrollHeight - (viewport.scrollTop + viewport.clientHeight);
+      setIsMessagesAtBottom(distanceFromBottom < 100);
+    };
+
+    updateIsAtBottom();
+    viewport.addEventListener('scroll', updateIsAtBottom);
+    return () => viewport.removeEventListener('scroll', updateIsAtBottom);
+  }, [selectedIdSafe, convLoading, currentMessages.length]);
+
   if (loading) {
     return (
-      <PageShell size="full" className="min-h-0 h-[calc(100svh-var(--header-height)-1.5rem)] overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:h-[calc(100svh-var(--header-height)-2rem)] lg:!px-6">
+      <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
         <div className="h-full rounded-2xl border border-border/60 bg-card" />
       </PageShell>
     );
@@ -600,7 +739,7 @@ export default function MessagesPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <PageShell size="full" className="min-h-0 h-[calc(100svh-var(--header-height)-1.5rem)] overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:h-[calc(100svh-var(--header-height)-2rem)] lg:!px-6">
+    <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
 
       {/* ── Respect modal ── */}
       <Dialog open={respectOpen} onOpenChange={setRespectOpen}>
@@ -840,6 +979,96 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Arguments panel ── */}
+      <Dialog open={showArgumentsPanel} onOpenChange={(open) => { setShowArgumentsPanel(open); if (open) void loadArguments(); }}>
+        <DialogContent className="max-w-2xl gap-0 p-0 overflow-hidden">
+          <div className="border-b border-border/60 px-4 py-3 flex items-center gap-2">
+            <FileText className="h-4 w-4 text-indigo-400" />
+            <DialogTitle className="text-sm font-semibold">Documents de plaidoirie</DialogTitle>
+            {courtCase && <span className="ml-auto text-[10px] font-mono text-muted-foreground">#{courtCase.caseNumber}</span>}
+          </div>
+          <div className="p-4 space-y-4">
+            <p className="text-xs text-muted-foreground">Ces documents sont confidentiels et uniquement visibles par les juges. Chaque partie soumet un seul argument écrit.</p>
+            {isAdminViewer ? (
+              <div className="space-y-3">
+                {courtArguments.length === 0 && <p className="text-xs text-muted-foreground italic">Aucun argument soumis pour le moment.</p>}
+                {courtArguments.map((arg) => (
+                  <div key={arg.id} className={cn('rounded-xl border p-3 space-y-1', arg.side === 'PLAINTIFF' ? 'border-sky-500/30 bg-sky-500/5' : 'border-red-500/30 bg-red-500/5')}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={cn('text-[10px] font-semibold uppercase tracking-wide', arg.side === 'PLAINTIFF' ? 'text-sky-500' : 'text-red-500')}>
+                        {arg.side === 'PLAINTIFF' ? 'Plaignant' : 'Défendeur'}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground ml-auto">{format(new Date(arg.createdAt), 'dd MMM HH:mm', { locale: fr })}</span>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{arg.content}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(() => {
+                  const mySide = myCourtRole === 'PLAINTIFF' || myCourtRole === 'LAWYER_PLAINTIFF' ? 'PLAINTIFF'
+                    : myCourtRole === 'DEFENDANT' || myCourtRole === 'LAWYER_DEFENDANT' ? 'DEFENDANT' : null;
+                  const myArg = courtArguments.find((a) => a.side === mySide);
+                  if (!mySide) return <p className="text-xs text-muted-foreground">Vous n'avez pas accès aux plaidoiries.</p>;
+                  return (
+                    <>
+                      {myArg && (
+                        <div className={cn('rounded-xl border p-3', mySide === 'PLAINTIFF' ? 'border-sky-500/30 bg-sky-500/5' : 'border-red-500/30 bg-red-500/5')}>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Votre argument actuel</p>
+                          <p className="text-sm whitespace-pre-wrap">{myArg.content}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs font-medium mb-1">{myArg ? 'Modifier votre argument' : 'Soumettre votre argument'}</p>
+                        <textarea value={argumentDraft} onChange={(e) => setArgumentDraft(e.target.value)} rows={6} maxLength={2000}
+                          placeholder="Rédigez votre plaidoirie ici..."
+                          className="w-full resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring" />
+                        <div className="flex justify-end mt-2">
+                          <Button size="sm" disabled={argumentSaving || !argumentDraft.trim()} onClick={handleSaveArgument}>
+                            {argumentSaving ? 'Envoi...' : 'Soumettre'}
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Verdict panel ── */}
+      <Dialog open={showVerdictPanel} onOpenChange={setShowVerdictPanel}>
+        <DialogContent className="max-w-lg gap-0 p-0 overflow-hidden">
+          <div className="border-b border-border/60 px-4 py-3 flex items-center gap-2">
+            <Gavel className="h-4 w-4 text-amber-400" />
+            <DialogTitle className="text-sm font-semibold">Rendre le verdict</DialogTitle>
+          </div>
+          <div className="p-4 space-y-4">
+            <div>
+              <p className="text-xs font-medium mb-1">Verdict <span className="text-destructive">*</span></p>
+              <textarea value={verdictDraft} onChange={(e) => setVerdictDraft(e.target.value)} rows={4} maxLength={1000}
+                placeholder="Résumez votre décision judiciaire..."
+                className="w-full resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring" />
+            </div>
+            <div>
+              <p className="text-xs font-medium mb-1">Sanction / Peine (optionnel)</p>
+              <textarea value={sentencingDraft} onChange={(e) => setSentencingDraft(e.target.value)} rows={2} maxLength={500}
+                placeholder="Amende, suspension, etc."
+                className="w-full resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-2.5">
+            <Button variant="ghost" size="sm" onClick={() => setShowVerdictPanel(false)}>Annuler</Button>
+            <Button size="sm" disabled={verdictSaving || !verdictDraft.trim()} onClick={handleDeliverVerdict}>
+              {verdictSaving ? 'Envoi...' : 'Rendre le verdict'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Main layout ── */}
       <div className="relative h-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
         <div className="grid h-full min-h-0 lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -941,6 +1170,63 @@ export default function MessagesPage() {
                   </div>
                 </div>
 
+                {/* Court banner */}
+                {isCourtConversation && courtCase && (
+                  <div className="border-b border-amber-500/20 bg-amber-500/5 px-3 py-2 flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <Scale className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      <span className="text-[11px] font-mono font-semibold text-amber-500">#{courtCase.caseNumber}</span>
+                    </div>
+                    <span className={cn('text-[10px] font-semibold uppercase tracking-wide', COURT_STATUS_LABELS[courtCase.status]?.color ?? 'text-muted-foreground')}>
+                      {COURT_STATUS_LABELS[courtCase.status]?.label ?? courtCase.status}
+                    </span>
+                    {courtCase.plaintif && (
+                      <span className="text-[10px] text-sky-500 font-medium">{courtCase.plaintif.username} (plaignant)</span>
+                    )}
+                    {courtCase.defendant && (
+                      <span className="text-[10px] text-red-500 font-medium">{courtCase.defendant.username} (défendeur)</span>
+                    )}
+                    <div className="ml-auto flex items-center gap-1">
+                      {(isAdminViewer || myCourtRole === 'PLAINTIFF' || myCourtRole === 'DEFENDANT' || myCourtRole?.startsWith('LAWYER') || myCourtRole?.startsWith('PUBLIC')) && (
+                        <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1"
+                          onClick={() => { setArgumentDraft(''); void loadArguments().then(() => setShowArgumentsPanel(true)); }}>
+                          <FileText className="h-3 w-3" />Plaidoiries
+                        </Button>
+                      )}
+                      {isAdminViewer && (
+                        <>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1" disabled={statusChanging}>
+                                Statut <ChevronDown className="h-2.5 w-2.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {Object.entries(COURT_STATUS_LABELS).map(([s, meta]) => (
+                                <DropdownMenuItem key={s} onClick={() => void handleChangeStatus(s)}
+                                  className={cn(courtCase.status === s && 'bg-muted/60 font-medium')}>
+                                  <span className={meta.color}>{meta.label}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
+                            onClick={() => { setVerdictDraft(courtCase.verdict ?? ''); setSentencingDraft(courtCase.sentencing ?? ''); setShowVerdictPanel(true); }}>
+                            <Gavel className="h-3 w-3" />Verdict
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {isCourtConversation && courtCase?.verdict && (
+                  <div className="border-b border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                    <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-0.5">Verdict</p>
+                    <p className="text-xs text-foreground">{courtCase.verdict}</p>
+                    {courtCase.sentencing && <p className="text-[11px] text-muted-foreground mt-0.5">Sanction : {courtCase.sentencing}</p>}
+                  </div>
+                )}
+
                 {/* Messages */}
                 <div className="relative min-h-0 flex-1 overflow-hidden bg-muted/15">
                   <ScrollArea ref={messagesScrollAreaRef} className="h-full px-4 py-4 sm:px-6">
@@ -956,6 +1242,19 @@ export default function MessagesPage() {
                           <p className="mt-1 text-xs text-muted-foreground">Envoie un premier message.</p>
                         </div>
                       ) : currentMessages.map((msg, index) => {
+                        // COURT_SYSTEM messages render as centered announcements
+                        if (msg.type === 'COURT_SYSTEM') {
+                          return (
+                            <div key={msg.id} className="flex justify-center py-2">
+                              <span className="flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/8 px-3 py-1 text-[11px] font-medium text-amber-600 shadow-sm">
+                                <Scale className="h-3 w-3 shrink-0" />
+                                {msg.body}
+                              </span>
+                            </div>
+                          );
+                        }
+                        const msgCourtRole = msg.courtRole ?? null;
+                        const courtColors = msgCourtRole ? COURT_ROLE_COLORS[msgCourtRole] : null;
                         const isOwn = selectedConversation.type === 'SUPPORT'
                           ? Boolean(selectedAdminSupportUserId ? msg.fromAdmin : !msg.fromAdmin)
                           : (msg.sender?.id ?? msg.senderId ?? msg.userId) === user?.id && !msg.fromAdmin;
@@ -976,7 +1275,7 @@ export default function MessagesPage() {
                         const isFirst = !sameSenderAsPrev;
                         const isLast = !sameSenderAsNext;
                         const showDaySeparator = !prevMsg || !isSameCalendarDay(prevMsg.createdAt, msg.createdAt);
-                        const showUnreadSeparator = firstUnreadMessageId === msg.id;
+                        const showUnreadSeparator = firstUnreadMessageId === msg.id && !isMessagesAtBottom;
                         const showAvatar = !isOwn && selectedConversation.type === 'GROUP' && isLast;
                         const showSender = !isOwn && isFirst && selectedConversation.type === 'GROUP';
                         const reactions = msg.reactions ?? [];
@@ -1016,18 +1315,27 @@ export default function MessagesPage() {
                             )}
                             <div className={cn('flex max-w-[72%] flex-col', isOwn ? 'items-end' : 'items-start')}>
                               {showSender && (
-                                <p className="mb-0.5 px-1 text-[11px] font-semibold" style={msg.sender?.usernameColor ? { color: msg.sender.usernameColor } : undefined}>
-                                  {msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système')}
-                                </p>
+                                <div className="mb-0.5 px-1 flex items-center gap-1.5">
+                                  <p className={cn('text-[11px] font-semibold', courtColors ? courtColors.sender : undefined)} style={!courtColors && msg.sender?.usernameColor ? { color: msg.sender.usernameColor } : undefined}>
+                                    {msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système')}
+                                  </p>
+                                  {msgCourtRole && courtColors && (
+                                    <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', courtColors.badge)}>
+                                      {COURT_ROLE_LABELS[msgCourtRole] ?? msgCourtRole}
+                                    </span>
+                                  )}
+                                </div>
                               )}
                               {supportReactionsEnabled ? (
                                 <Popover>
                                   <PopoverTrigger asChild>
                                     <div className={cn(
                                       'group cursor-pointer select-text px-3 py-1.5 text-sm leading-5',
-                                      isOwn
-                                        ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
-                                        : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
+                                      courtColors
+                                        ? cn(courtColors.bubble, 'rounded-2xl')
+                                        : isOwn
+                                          ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
+                                          : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
                                       isBlocked && !isOwn && 'opacity-50'
                                     )}>
                                       {supportImages.length > 0 && (
@@ -1056,9 +1364,11 @@ export default function MessagesPage() {
                               ) : (
                                 <div className={cn(
                                   'group select-text px-3 py-1.5 text-sm leading-5',
-                                  isOwn
-                                    ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
-                                    : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
+                                  courtColors
+                                    ? cn(courtColors.bubble, 'rounded-2xl')
+                                    : isOwn
+                                      ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
+                                      : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
                                   isBlocked && !isOwn && 'opacity-50'
                                 )}>
                                   {supportImages.length > 0 && (
@@ -1097,6 +1407,30 @@ export default function MessagesPage() {
 
                 {/* Input bar */}
                 <div className="border-t border-border/60 bg-card px-3 py-2.5 sm:px-4">
+                  {/* Admin court role selector */}
+                  {isCourtConversation && isAdminViewer && (
+                    <div className="mb-2 flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] text-muted-foreground font-medium">Envoyer en tant que :</span>
+                      {Object.entries(COURT_ROLE_LABELS).map(([role, label]) => (
+                        <button key={role} type="button"
+                          onClick={() => setSelectedCourtRole(selectedCourtRole === role ? null : role)}
+                          className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors border', selectedCourtRole === role
+                            ? cn(COURT_ROLE_COLORS[role]?.badge ?? 'bg-primary/15 text-primary', 'border-transparent')
+                            : 'border-border/50 text-muted-foreground hover:border-border hover:text-foreground')}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {/* My court role badge (non-admin in court chat) */}
+                  {isCourtConversation && !isAdminViewer && myCourtRole && (
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground">Vous parlez en tant que</span>
+                      <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold', COURT_ROLE_COLORS[myCourtRole]?.badge ?? 'bg-muted text-muted-foreground')}>
+                        {COURT_ROLE_LABELS[myCourtRole] ?? myCourtRole}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex w-full items-end gap-2">
                     <div className="flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 focus-within:border-primary/40 focus-within:bg-background transition-colors">
                       <textarea ref={textareaRef} value={draft} rows={1}
@@ -1157,6 +1491,11 @@ function ConvRow({
             {conversation.type === 'SUPPORT' && (
               <span className="shrink-0 rounded-full bg-sky-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sky-600">
                 Support
+              </span>
+            )}
+            {conversation.courtCaseId && (
+              <span className="shrink-0 rounded-full bg-amber-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-600 flex items-center gap-0.5">
+                <Scale className="h-2.5 w-2.5" />Tribunal
               </span>
             )}
           </div>
