@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, X, MoreHorizontal, Pin, PinOff, Reply, ImagePlus, ChevronDown, BarChart3, Loader2 } from 'lucide-react';
+import { Send, X, MoreHorizontal, Pin, PinOff, Reply, Plus, ChevronDown, BarChart3, Loader2, ImagePlus } from 'lucide-react';
 import { useSmartScroll } from '@/hooks/useSmartScroll';
 import {
   Sidebar,
@@ -13,6 +13,8 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -23,6 +25,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UserBadges } from '@/components/badges/UserBadges';
 import { toClanTagData } from '@/components/clans/ClanTag';
 import { uploadUserImage } from '@/services/api';
@@ -104,6 +107,7 @@ export default function ChatSidebar() {
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [imageUrl, setImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [pollModalOpen, setPollModalOpen] = useState(false);
   const mentionMap = new Map<string, MentionableUser>();
   const pinnedMessages = useMemo(() => {
     return messages
@@ -420,6 +424,7 @@ export default function ChatSidebar() {
     createPoll(pollQuestion.trim(), options);
     setPollQuestion('');
     setPollOptionsText('');
+    setPollModalOpen(false);
   };
 
   const getPollOptionPercent = (votes: number) => {
@@ -895,43 +900,6 @@ export default function ChatSidebar() {
             </div>
           )}
 
-          {canManagePolls && !activePoll && (
-            <div className="border-t border-border/40 bg-muted/20 px-3 py-3">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Creer un sondage</p>
-              <div className="space-y-2">
-                <Textarea
-                  value={pollQuestion}
-                  onChange={(e) => setPollQuestion(e.target.value)}
-                  placeholder="Question du sondage"
-                  rows={2}
-                  className="min-h-9 resize-none text-sm bg-transparent border-border/50 py-2"
-                />
-                <Textarea
-                  value={pollOptionsText}
-                  onChange={(e) => setPollOptionsText(e.target.value)}
-                  placeholder={'Une option par ligne\nExemple:\nOui\nNon'}
-                  rows={3}
-                  className="min-h-[72px] resize-none text-xs bg-transparent border-border/50 py-2"
-                />
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted-foreground">
-                    {pollOptionsPreview.length} option{pollOptionsPreview.length > 1 ? 's' : ''} detectee{pollOptionsPreview.length > 1 ? 's' : ''}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCreatePoll}
-                    disabled={pollQuestion.trim().length < 3 || pollOptionsPreview.length < 2}
-                    className="h-8"
-                  >
-                    Lancer le sondage
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="p-3 border-t border-border/40">
             <input
               ref={imageInputRef}
@@ -1035,17 +1003,35 @@ export default function ChatSidebar() {
                   </div>
                 )}
               </div>
-              <Button
-                type="button"
-                onClick={() => imageInputRef.current?.click()}
-                disabled={isUploadingImage}
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 text-muted-foreground"
-                title={isUploadingImage ? "Upload de l'image..." : "Ajouter une image"}
-              >
-                <ImagePlus className="h-3.5 w-3.5" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    disabled={isUploadingImage}
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground"
+                    title="Actions"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="top" className="w-48">
+                  <DropdownMenuItem onClick={() => imageInputRef.current?.click()} disabled={isUploadingImage}>
+                    <ImagePlus className="mr-2 h-4 w-4" />
+                    {isUploadingImage ? "Upload de l'image..." : 'Image'}
+                  </DropdownMenuItem>
+                  {canManagePolls && !activePoll && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setPollModalOpen(true)}>
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        Sondage
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 type="submit"
                 disabled={(!input.trim() && !imageUrl) || isUploadingImage}
@@ -1059,6 +1045,47 @@ export default function ChatSidebar() {
           </form>
         </div>
       </SidebarContent>
+      <Dialog open={pollModalOpen} onOpenChange={setPollModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Creer un sondage</DialogTitle>
+            <DialogDescription>
+              Ajoute une question et au moins deux options. Le sondage sera publie dans le chat.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={pollQuestion}
+              onChange={(e) => setPollQuestion(e.target.value)}
+              placeholder="Question du sondage"
+              rows={2}
+              className="min-h-9 resize-none text-sm bg-transparent border-border/50 py-2"
+            />
+            <Textarea
+              value={pollOptionsText}
+              onChange={(e) => setPollOptionsText(e.target.value)}
+              placeholder={'Une option par ligne\nExemple:\nOui\nNon'}
+              rows={4}
+              className="min-h-[96px] resize-none text-xs bg-transparent border-border/50 py-2"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {pollOptionsPreview.length} option{pollOptionsPreview.length > 1 ? 's' : ''} detectee{pollOptionsPreview.length > 1 ? 's' : ''}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPollModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreatePoll}
+              disabled={pollQuestion.trim().length < 3 || pollOptionsPreview.length < 2}
+            >
+              Lancer le sondage
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
     </Sidebar>
   );
