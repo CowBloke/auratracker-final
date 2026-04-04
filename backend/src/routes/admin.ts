@@ -826,9 +826,10 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
-const toUserRoleFlags = (role: 'USER' | 'ADMIN' | 'SUPER_ADMIN') => ({
-  isAdmin: role !== 'USER',
+const toUserRoleFlags = (role: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN') => ({
+  isAdmin: role === 'ADMIN' || role === 'SUPER_ADMIN',
   isSuperAdmin: role === 'SUPER_ADMIN',
+  isBetaTester: role === 'BETA_TESTER',
 });
 
 const serializeRegistrationReview = (review: {
@@ -1927,6 +1928,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
         auraCoinBalance: true,
         isAdmin: true,
         isSuperAdmin: true,
+        isBetaTester: true,
         isChatMuted: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
@@ -1966,6 +1968,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       isChatMuted?: boolean;
       isAdmin?: boolean;
       isSuperAdmin?: boolean;
+      isBetaTester?: boolean;
     } = {};
 
     if (username !== undefined) {
@@ -2035,7 +2038,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       updateData.passwordHash = await bcrypt.hash(normalizedPassword, 10);
     }
     if (role !== undefined) {
-      if (role !== 'USER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+      if (role !== 'USER' && role !== 'BETA_TESTER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
         return res.status(400).json({ error: 'Invalid role' });
       }
       if (req.user?.id === id) {
@@ -2057,6 +2060,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         isChatMuted: true,
         isAdmin: true,
         isSuperAdmin: true,
+        isBetaTester: true,
       },
     });
 
@@ -2073,6 +2077,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         auraCoinBalance: true,
         isAdmin: true,
         isSuperAdmin: true,
+        isBetaTester: true,
         isChatMuted: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,

@@ -684,6 +684,7 @@ export default function Games() {
   const { user } = useAuth();
   const disabledPages = maintenanceStatus.disabledPages;
   const isAdmin = Boolean(user?.isAdmin);
+  const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
 
   useEffect(() => {
     setManagedBetaGameIds(maintenanceStatus.betaGameIds ?? []);
@@ -713,7 +714,10 @@ export default function Games() {
     };
   }, [user]);
 
-  const visibleGames = useMemo(() => games.filter((game) => !disabledPages.includes(game.pageKey)), [disabledPages]);
+  const visibleGames = useMemo(
+    () => (canBypassMaintenance ? games : games.filter((game) => !disabledPages.includes(game.pageKey))),
+    [canBypassMaintenance, disabledPages]
+  );
   const betaGameSet = useMemo(() => new Set(managedBetaGameIds), [managedBetaGameIds]);
   const newGameSet = useMemo(() => new Set(managedNewGameIds), [managedNewGameIds]);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();

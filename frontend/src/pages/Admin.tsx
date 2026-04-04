@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage } from '../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage } from '../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -111,6 +111,7 @@ const CHAT_BLOCK_TIMEZONE = 'Europe/Paris';
 const isValidChatTimeValue = (value: string) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
 const ROLE_LABELS = {
   USER: 'membre',
+  BETA_TESTER: 'beta tester',
   ADMIN: 'admin',
   SUPER_ADMIN: 'super admin',
 } as const;
@@ -282,9 +283,10 @@ const mapRegistrationReviewToArchivedRegistration = (review: RegistrationReview)
   importedFromLegacy: review.importedFromLegacy,
 });
 
-const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin'>): AdminRole => {
+const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin' | 'isBetaTester'>): AdminRole => {
   if (user.isSuperAdmin) return 'SUPER_ADMIN';
   if (user.isAdmin) return 'ADMIN';
+  if (user.isBetaTester) return 'BETA_TESTER';
   return 'USER';
 };
 
@@ -1111,6 +1113,9 @@ export default function Admin() {
   const [supportUploadingImage, setSupportUploadingImage] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
+  const [supportReports, setSupportReports] = useState<MessagingReport[]>([]);
+  const [supportReportsLoading, setSupportReportsLoading] = useState(false);
+  const [reviewingSupportReportId, setReviewingSupportReportId] = useState<string | null>(null);
   const supportMessagesEndRef = useRef<HTMLDivElement>(null);
   const supportImageInputRef = useRef<HTMLInputElement>(null);
   const [newThreadOpen, setNewThreadOpen] = useState(false);
@@ -1127,6 +1132,15 @@ export default function Admin() {
       setSupportUnread(res.data.threads.reduce((sum, t) => sum + t.unreadCount, 0));
     } catch { /* non-critical */ }
     finally { setSupportThreadsLoading(false); }
+  };
+
+  const fetchSupportReports = async () => {
+    setSupportReportsLoading(true);
+    try {
+      const res = await supportApi.getReports();
+      setSupportReports(res.data.reports);
+    } catch { /* non-critical */ }
+    finally { setSupportReportsLoading(false); }
   };
 
   const openSupportThread = async (userId: string) => {
@@ -1215,6 +1229,21 @@ export default function Admin() {
       await openSupportThread(newThreadUserId);
     } catch { /* non-critical */ }
     finally { setNewThreadSending(false); }
+  };
+
+  const handleReviewSupportReport = async (reportId: string, action: 'ACTION_TAKEN' | 'DISMISSED') => {
+    if (reviewingSupportReportId) return;
+    setReviewingSupportReportId(reportId);
+    try {
+      const res = await supportApi.reviewReport(reportId, { action });
+      setSupportReports((prev) => prev.map((report) => report.id === reportId ? {
+        ...report,
+        status: res.data.report.status,
+        reviewerNote: res.data.report.reviewerNote,
+        reviewedAt: res.data.report.reviewedAt,
+      } : report));
+    } catch { /* non-critical */ }
+    finally { setReviewingSupportReportId(null); }
   };
 
   const fetchBadges = async () => {
@@ -1790,6 +1819,7 @@ export default function Admin() {
     fetchPlatformStats();
     fetchGamesLeaderboard();
     fetchSupportThreads();
+    fetchSupportReports();
   }, []);
 
   useEffect(() => {
@@ -1842,7 +1872,11 @@ export default function Admin() {
       }
     };
     socket.on('support:message', handleSupportMessage);
-    return () => { socket.off('support:message', handleSupportMessage); };
+    socket.on('messaging:report', fetchSupportReports);
+    return () => {
+      socket.off('support:message', handleSupportMessage);
+      socket.off('messaging:report', fetchSupportReports);
+    };
   }, [socket, activeThreadUserId]);
 
   useEffect(() => {
@@ -4819,6 +4853,10 @@ export default function Admin() {
                                 <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 shrink-0">
                                   <Shield className="h-2.5 w-2.5" />admin
                                 </span>
+                              ) : u.isBetaTester ? (
+                                <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-400 shrink-0">
+                                  <Shield className="h-2.5 w-2.5" />beta tester
+                                </span>
                               ) : null}
                               {u.isChatMuted && (
                                 <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 shrink-0">muet</span>
@@ -7780,6 +7818,7 @@ export default function Admin() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USER">{ROLE_LABELS.USER}</SelectItem>
+                  <SelectItem value="BETA_TESTER">{ROLE_LABELS.BETA_TESTER}</SelectItem>
                   <SelectItem value="ADMIN">{ROLE_LABELS.ADMIN}</SelectItem>
                   <SelectItem value="SUPER_ADMIN">{ROLE_LABELS.SUPER_ADMIN}</SelectItem>
                 </SelectContent>
@@ -10361,6 +10400,60 @@ export default function Admin() {
             </DialogContent>
           </Dialog>
 
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/10 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className={TYPOGRAPHY.H4}>Signalements de conversations</h3>
+                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Les derniers messages sont envoyes ici quand un joueur signale un DM ou un groupe.</p>
+                </div>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchSupportReports}>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {supportReportsLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : supportReports.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.MUTED, 'text-center')}>Aucun signalement.</p>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {supportReports.slice(0, 8).map((report) => (
+                    <div key={report.id} className="rounded-lg border border-border/60 bg-background p-3 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold">{report.conversationTitle || report.conversationType || 'Conversation'}</p>
+                          <p className="text-xs text-muted-foreground">Signale par {report.reporter.username} • {new Date(report.createdAt).toLocaleString('fr-FR')}</p>
+                        </div>
+                        <span className={cn('rounded-full px-2 py-1 text-[10px] font-semibold', report.status === 'PENDING' ? 'bg-amber-500/15 text-amber-400' : report.status === 'ACTION_TAKEN' ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400')}>
+                          {report.status}
+                        </span>
+                      </div>
+                      {report.reason && <p className="text-sm text-foreground">{report.reason}</p>}
+                      <div className="space-y-2 rounded-md border border-border/50 bg-muted/20 p-2">
+                        {report.snapshot.slice(-4).map((message) => (
+                          <div key={message.id} className="rounded-md bg-background/80 px-2 py-1.5 text-xs">
+                            <span className="font-semibold">{message.sender?.username ?? 'Systeme'}:</span> {message.body}
+                          </div>
+                        ))}
+                      </div>
+                      {report.status === 'PENDING' && (
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="destructive" disabled={reviewingSupportReportId === report.id} onClick={() => handleReviewSupportReport(report.id, 'ACTION_TAKEN')}>
+                            Action prise
+                          </Button>
+                          <Button size="sm" variant="outline" disabled={reviewingSupportReportId === report.id} onClick={() => handleReviewSupportReport(report.id, 'DISMISSED')}>
+                            Ignorer
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           <div className="flex gap-4 h-[600px]">
             {/* Thread list */}
             <div className="w-72 shrink-0 flex flex-col border border-border rounded-lg overflow-hidden">
@@ -10528,6 +10621,7 @@ export default function Admin() {
                 </>
               )}
             </div>
+          </div>
           </div>
         </TabsContent>
 

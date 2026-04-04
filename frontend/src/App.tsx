@@ -111,11 +111,11 @@ function App() {
   const location = useLocation();
   const { maintenanceStatus, maintenanceLoading } = useFeatures();
   const { user, loading } = useAuth();
-  const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
+  const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
 
   // Vérifier si la page actuelle est en maintenance
   const isCurrentPageInMaintenance = () => {
-    if (maintenanceLoading || loading || !maintenanceStatus.enabled || isAdmin) {
+    if (maintenanceLoading || loading || !maintenanceStatus.enabled || canBypassMaintenance) {
       return false;
     }
 
@@ -134,7 +134,7 @@ function App() {
   };
 
   const isCurrentPageBlocked = () => {
-    if (maintenanceLoading || loading || isAdmin) {
+    if (maintenanceLoading || loading || canBypassMaintenance) {
       return false;
     }
 

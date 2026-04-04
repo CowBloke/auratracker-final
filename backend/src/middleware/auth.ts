@@ -10,6 +10,7 @@ export interface AuthRequest extends Request {
     username: string;
     isAdmin: boolean;
     isSuperAdmin: boolean;
+    isBetaTester: boolean;
     referralCode?: string | null;
   };
 }
@@ -41,6 +42,7 @@ export const authMiddleware = async (
         username: true,
         isAdmin: true,
         isSuperAdmin: true,
+        isBetaTester: true,
         referralCode: true,
       },
     });
