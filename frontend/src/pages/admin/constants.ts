@@ -26,7 +26,6 @@ export type AdminTab =
   | 'settings'
   | 'activity'
   | 'badges'
-  | 'support'
   | 'communication';
 
 export const ADMIN_TABS: AdminTab[] = [
@@ -40,6 +39,5 @@ export const ADMIN_TABS: AdminTab[] = [
   'settings',
   'activity',
   'badges',
-  'support',
   'communication',
 ];

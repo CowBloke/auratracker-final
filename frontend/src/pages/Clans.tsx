@@ -343,7 +343,8 @@ export default function Clans() {
   const [savingTag, setSavingTag] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'info' | 'event' | 'historique-solde' | 'chat' | 'guerre' | 'tag' | 'messages'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages'>('info');
+  const [bankHistoryOpen, setBankHistoryOpen] = useState(false);
 
   // Pump-up messages
   const [pumpUpMessages, setPumpUpMessages] = useState<ClanPumpUpMessage[]>([]);
@@ -1409,7 +1410,7 @@ export default function Clans() {
                   </Card>
 
                   {/* Tabs: Infos / Chat / Tag / Guerre */}
-                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'historique-solde' | 'chat' | 'guerre' | 'tag' | 'messages')}>
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages')}>
                     <TabsList className="w-full">
                       <TabsTrigger value="info" className="flex-1">
                         Infos
@@ -1420,8 +1421,13 @@ export default function Clans() {
                         </TabsTrigger>
                       ) : null}
                       {selectedClan.viewer.isMember ? (
-                        <TabsTrigger value="historique-solde" className="flex-1">
-                          Historique solde
+                        <TabsTrigger value="bank" className="flex-1">
+                          Banque
+                        </TabsTrigger>
+                      ) : null}
+                      {selectedClan.viewer.isMember ? (
+                        <TabsTrigger value="inventory" className="flex-1">
+                          Inventaire
                         </TabsTrigger>
                       ) : null}
                       {selectedClan.viewer.isMember ? (
@@ -1451,43 +1457,6 @@ export default function Clans() {
 
                     {/* â”€â”€ Info tab â”€â”€ */}
                     <TabsContent value="info" className="mt-4 space-y-4">
-                      <Card className={panelClassName}>
-                        <CardContent className="space-y-3 p-4">
-                          <SectionTitle
-                            title="Banque de clan"
-                            description="Les membres peuvent dÃ©poser. Seul le chef peut dÃ©penser cet argent pour les amÃ©liorations du clan."
-                            action={<Badge variant="secondary">Niveau {selectedClan.level}</Badge>}
-                          />
-                          <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <CurrencyIcon type="money" className="h-4 w-4" />
-                              Solde actuel
-                            </div>
-                            <div className="mt-2 text-2xl font-semibold tabular-nums">
-                              {formatMoney(selectedClan.clanBankMoney)}
-                            </div>
-                          </div>
-                          {selectedClan.viewer.isMember ? (
-                            <div className="flex flex-wrap items-end gap-2">
-                              <div className="w-full max-w-[180px] space-y-1">
-                                <label className="text-xs text-muted-foreground">Montant Ã  dÃ©poser</label>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  step={1}
-                                  value={bankDepositAmount}
-                                  onChange={(event) => setBankDepositAmount(event.target.value)}
-                                  disabled={depositingBank}
-                                />
-                              </div>
-                              <Button type="button" onClick={handleDepositToBank} disabled={depositingBank}>
-                                {depositingBank ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CurrencyIcon type="money" className="mr-2 h-4 w-4" />}
-                                DÃ©poser
-                              </Button>
-                            </div>
-                          ) : null}
-                        </CardContent>
-                      </Card>
 
                       <Card className={panelClassName}>
                         <CardContent className="space-y-3 p-4">
@@ -1520,48 +1489,6 @@ export default function Clans() {
                         </CardContent>
                       </Card>
 
-                      <Card className={panelClassName}>
-                        <CardContent className="space-y-3 p-4">
-                          <SectionTitle
-                            title="Objets de clan"
-                            description="AchetÃ©s avec la banque du clan. Le chef peut les activer."
-                          />
-                          {selectedClan.ownedItems.length > 0 ? (
-                            <div className="space-y-2">
-                              {selectedClan.ownedItems.map((clanItem) => (
-                                <div key={clanItem.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-2 text-sm font-medium">
-                                      <span>{clanItem.item.name} Ã—{clanItem.quantity}</span>
-                                      {['CLAN_BANNER', 'CLAN_PROFILE_PICTURE'].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? '') ? (
-                                        <Badge variant="secondary">Upload image</Badge>
-                                      ) : null}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">{clanItem.item.description}</div>
-                                  </div>
-                                  {selectedClan.viewer.isLeader ? (
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      onClick={() => handleUseClanItem(clanItem)}
-                                      disabled={usingClanItemId === clanItem.id}
-                                    >
-                                      {usingClanItemId === clanItem.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                      {['CLAN_BANNER', 'CLAN_PROFILE_PICTURE'].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? '') ? 'Choisir lâ€™image' : 'Activer'}
-                                    </Button>
-                                  ) : (
-                                    <Badge variant="outline">Chef requis</Badge>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
-                              Aucun objet de clan en stock. Les achats apparaÃ®tront ici.
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
 
                       {/* Roster */}
                       <Card className={panelClassName}>
@@ -1861,28 +1788,107 @@ export default function Clans() {
                       )}
                     </TabsContent>
 
-                    <TabsContent value="historique-solde" className="mt-4 space-y-4">
+
+                    <TabsContent value="bank" className="mt-4 space-y-4">
                       <Card className={panelClassName}>
                         <CardContent className="space-y-3 p-4">
                           <SectionTitle
-                            title="Historique des participations"
-                            description="Chaque dÃ©pÃ´t effectuÃ© par un membre dans la banque du clan."
+                            title="Banque de clan"
+                            description="Les membres peuvent déposer. Seul le chef peut dépenser cet argent pour les améliorations du clan."
+                            action={
+                              <>
+                                <Button type="button" variant="outline" size="sm" onClick={() => setBankHistoryOpen(true)}>
+                                  Historique
+                                </Button>
+                                <Badge variant="secondary">Niveau {selectedClan.level}</Badge>
+                              </>
+                            }
                           />
-                          {selectedClan.bankContributionHistory.length > 0 ? (
+                          <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <CurrencyIcon type="money" className="h-4 w-4" />
+                              Solde actuel
+                            </div>
+                            <div className="mt-2 text-2xl font-semibold tabular-nums">
+                              {formatMoney(selectedClan.clanBankMoney)}
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 text-sm text-muted-foreground">
+                            L&apos;historique des dépôts est disponible via le bouton <span className="font-medium text-foreground">Historique</span>.
+                          </div>
+                          <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
+                            <div className="text-sm font-medium">Inventaire du clan</div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {selectedClan.ownedItems.length > 0
+                                ? `${selectedClan.ownedItems.length} objet${selectedClan.ownedItems.length > 1 ? 's' : ''} différent${selectedClan.ownedItems.length > 1 ? 's' : ''} en stock`
+                                : 'Aucun objet de clan en stock.'}
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-end gap-2">
+                            <div className="w-full max-w-[180px] space-y-1">
+                              <label className="text-xs text-muted-foreground">Montant à déposer</label>
+                              <Input
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={bankDepositAmount}
+                                onChange={(event) => setBankDepositAmount(event.target.value)}
+                                disabled={depositingBank}
+                              />
+                            </div>
+                            <Button type="button" onClick={handleDepositToBank} disabled={depositingBank}>
+                              {depositingBank ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CurrencyIcon type="money" className="mr-2 h-4 w-4" />}
+                              Déposer
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="inventory" className="mt-4 space-y-4">
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-3 p-4">
+                          <SectionTitle
+                            title="Objets de clan"
+                            description="Achetés avec la banque du clan. Le chef peut les activer."
+                          />
+                          {selectedClan.ownedItems.length > 0 ? (
                             <div className="space-y-2">
-                              {selectedClan.bankContributionHistory.map((entry) => (
-                                <BankContributionRow key={entry.id} entry={entry} />
+                              {selectedClan.ownedItems.map((clanItem) => (
+                                <div key={clanItem.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 text-sm font-medium">
+                                      <span>{clanItem.item.name} ×{clanItem.quantity}</span>
+                                      {['CLAN_BANNER', 'CLAN_PROFILE_PICTURE'].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? '') ? (
+                                        <Badge variant="secondary">Upload image</Badge>
+                                      ) : null}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">{clanItem.item.description}</div>
+                                  </div>
+                                  {selectedClan.viewer.isLeader ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => handleUseClanItem(clanItem)}
+                                      disabled={usingClanItemId === clanItem.id}
+                                    >
+                                      {usingClanItemId === clanItem.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                      {['CLAN_BANNER', 'CLAN_PROFILE_PICTURE'].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? '') ? 'Choisir l&apos;image' : 'Activer'}
+                                    </Button>
+                                  ) : (
+                                    <Badge variant="outline">Chef requis</Badge>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           ) : (
                             <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
-                              Aucun dÃ©pÃ´t enregistrÃ© pour le moment.
+                              Aucun objet de clan en stock. Les achats apparaîtront ici.
                             </div>
                           )}
                         </CardContent>
                       </Card>
                     </TabsContent>
-
                     {/* â”€â”€ Chat tab (members only) â”€â”€ */}
                     <TabsContent value="chat" className="mt-4">
                       <Card className={panelClassName}>
@@ -2499,6 +2505,28 @@ export default function Clans() {
                       </Card>
                     </TabsContent>
                   </Tabs>
+
+                  <Dialog open={bankHistoryOpen} onOpenChange={setBankHistoryOpen}>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Historique de la banque</DialogTitle>
+                        <DialogDescription>
+                          Chaque dépôt effectué par un membre dans la banque du clan.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+                        {selectedClan.bankContributionHistory.length > 0 ? (
+                          selectedClan.bankContributionHistory.map((entry) => (
+                            <BankContributionRow key={entry.id} entry={entry} />
+                          ))
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
+                            Aucun dépôt enregistré pour le moment.
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </>
               )}
             </div>

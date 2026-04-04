@@ -7,6 +7,7 @@ import { isAllowedImageUrl } from '../utils/uploads.js';
 const router = Router();
 
 const SUPPORT_CONVERSATION_ID = 'support';
+const ADMIN_SUPPORT_CONVERSATION_PREFIX = 'admin-support:';
 const MAX_MESSAGE_LENGTH = 1000;
 const MAX_REPORT_REASON_LENGTH = 280;
 const REPORT_SNAPSHOT_LIMIT = 8;
@@ -143,7 +144,7 @@ async function notifyAdminsOfSupportMessage(messageBody: string, actingUserId: s
           title: 'Nouveau message de support',
           body: `${username} : "${messageBody.slice(0, 80)}${messageBody.length > 80 ? '...' : ''}"`,
           data: { userId: actingUserId, username },
-          link: '/admin?tab=support',
+          link: `/messages?conversation=${ADMIN_SUPPORT_CONVERSATION_PREFIX}${actingUserId}`,
           icon: 'message-circle',
         }).catch(() => {})
       )
@@ -157,7 +158,7 @@ async function notifyUserOfSupportReply(userId: string, body: string) {
     title: 'Reponse du support',
     body: `Support : "${body.slice(0, 80)}${body.length > 80 ? '...' : ''}"`,
     data: { fromAdmin: true },
-    link: '/support',
+    link: `/messages?conversation=${SUPPORT_CONVERSATION_ID}`,
     icon: 'message-circle',
   }).catch(() => {});
 }
@@ -824,7 +825,7 @@ router.post('/conversations/:conversationId/report', authMiddleware, async (req:
           title: 'Conversation signalee',
           body: `${user.username} a signale une conversation.`,
           data: { reportId: report.id, conversationId },
-          link: '/admin?tab=support',
+          link: '/messages',
           icon: 'shield-alert',
         }).catch(() => {})
       )

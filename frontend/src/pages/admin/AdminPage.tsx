@@ -1113,7 +1113,7 @@ export default function Admin() {
   const [supportReplyImages, setSupportReplyImages] = useState<string[]>([]);
   const [supportUploadingImage, setSupportUploadingImage] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
-  const [supportUnread, setSupportUnread] = useState(0);
+  const [, setSupportUnread] = useState(0);
   const [supportReports, setSupportReports] = useState<MessagingReport[]>([]);
   const [supportReportsLoading, setSupportReportsLoading] = useState(false);
   const [reviewingSupportReportId, setReviewingSupportReportId] = useState<string | null>(null);
@@ -4284,14 +4284,6 @@ export default function Admin() {
             Badges
             {customBadgeRequests.length > 0 && (
               <span className="ml-1 bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{customBadgeRequests.length}</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="support" onClick={fetchSupportThreads}>
-            Support
-            {supportUnread > 0 && (
-              <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
-                {supportUnread}
-              </span>
             )}
           </TabsTrigger>
         </TabsList>

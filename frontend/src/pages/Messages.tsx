@@ -54,6 +54,7 @@ import {
   MessagingConversationDetail,
   MessagingConversationSummary,
   SocialUser,
+  SupportThread,
   supportApi,
   uploadUserImage,
   usersApi,
@@ -87,6 +88,35 @@ const sortConversationsByRecent = (items: MessagingConversationSummary[]) =>
     return a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
   });
 
+const ADMIN_SUPPORT_CONVERSATION_PREFIX = 'admin-support:';
+
+const getAdminSupportConversationId = (userId: string) => `${ADMIN_SUPPORT_CONVERSATION_PREFIX}${userId}`;
+
+const getAdminSupportUserId = (conversationId: string) =>
+  conversationId.startsWith(ADMIN_SUPPORT_CONVERSATION_PREFIX)
+    ? conversationId.slice(ADMIN_SUPPORT_CONVERSATION_PREFIX.length)
+    : null;
+
+const buildAdminSupportConversationSummary = (thread: SupportThread): MessagingConversationSummary => ({
+  id: getAdminSupportConversationId(thread.userId),
+  type: 'SUPPORT',
+  title: 'Support',
+  icon: null,
+  imageUrl: null,
+  isFavorite: false,
+  displayName: thread.user?.username ?? 'Support',
+  isPinned: true,
+  unreadCount: thread.unreadCount,
+  lastMessage: {
+    body: thread.lastBody || 'Commence la discussion.',
+    createdAt: thread.lastCreatedAt,
+    senderId: thread.lastFromAdmin ? 'support' : thread.userId,
+  },
+  participants: thread.user
+    ? [{ user: thread.user, role: 'USER', lastReadAt: null }]
+    : [],
+});
+
 function ConversationAvatar({ conversation, size = 'md' }: { conversation: MessagingConversationSummary; size?: 'sm' | 'md' | 'lg' }) {
   const cls = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-10 w-10' : 'h-9 w-9';
   const fallbackCls = size === 'sm' ? 'text-[10px]' : 'text-xs';
@@ -103,7 +133,7 @@ function ConversationAvatar({ conversation, size = 'md' }: { conversation: Messa
           <AvatarImage src={resolveImageUrl(avatarUser.profilePicture)} alt={conversation.displayName} />
         ) : null}
         <AvatarFallback className={cn(fallbackCls, hasIcon && 'text-base')}>
-          {hasIcon ? conversation.icon : conversation.type === 'SUPPORT' ? 'SP' : getInitials(conversation.displayName)}
+          {hasIcon ? conversation.icon : getInitials(avatarUser?.username ?? conversation.displayName)}
         </AvatarFallback>
       </Avatar>
       {conversation.type === 'SUPPORT' && (
@@ -127,6 +157,7 @@ export default function MessagesPage() {
   const location = useLocation();
 
   const [conversations, setConversations] = useState<MessagingConversationSummary[]>([]);
+  const [adminSupportThreads, setAdminSupportThreads] = useState<SupportThread[]>([]);
   const [players, setPlayers] = useState<SocialUser[]>([]);
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -162,19 +193,74 @@ export default function MessagesPage() {
   const groupImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const deferredSearch = useDeferredValue(search);
+  const isAdminViewer = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const selectedConversation = detail?.conversation ?? conversations.find((c) => c.id === selectedId) ?? null;
   const selectedIdSafe = selectedConversation?.id ?? null;
+  const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
+  const supportReactionsEnabled = selectedConversation?.type !== 'SUPPORT';
 
   // ── Data Loading ─────────────────────────────────────────────────────────
   const refreshConversations = async () => {
-    const r = await supportApi.getConversations();
-    setConversations(sortConversationsByRecent(r.data.conversations));
-    return r.data.conversations;
+    const [conversationsRes, supportThreadsRes] = await Promise.all([
+      supportApi.getConversations(),
+      isAdminViewer ? supportApi.getThreads() : Promise.resolve({ data: { threads: [] as SupportThread[] } }),
+    ]);
+    const mergedConversations = [
+      ...conversationsRes.data.conversations,
+      ...supportThreadsRes.data.threads.map(buildAdminSupportConversationSummary),
+    ];
+    setAdminSupportThreads(supportThreadsRes.data.threads);
+    setConversations(sortConversationsByRecent(mergedConversations));
+    return mergedConversations;
   };
 
   const loadConversation = async (id: string, markRead = true) => {
     setConvLoading(true);
     try {
+      const adminSupportUserId = getAdminSupportUserId(id);
+      if (adminSupportUserId) {
+        const [threadRes, supportThreadsRes] = await Promise.all([
+          supportApi.getThread(adminSupportUserId),
+          isAdminViewer ? supportApi.getThreads() : Promise.resolve({ data: { threads: [] as SupportThread[] } }),
+        ]);
+        const latestMessage = threadRes.data.messages[threadRes.data.messages.length - 1];
+        const matchingThread =
+          supportThreadsRes.data.threads.find((thread) => thread.userId === adminSupportUserId) ??
+          adminSupportThreads.find((thread) => thread.userId === adminSupportUserId) ?? {
+            userId: adminSupportUserId,
+            user: threadRes.data.user,
+            lastBody: latestMessage?.body ?? '',
+            lastFromAdmin: latestMessage?.fromAdmin ?? false,
+            lastCreatedAt: latestMessage?.createdAt ?? new Date(0).toISOString(),
+            unreadCount: 0,
+          };
+
+        setAdminSupportThreads(supportThreadsRes.data.threads);
+        setDetail({
+          conversation: buildAdminSupportConversationSummary(matchingThread),
+          messages: threadRes.data.messages.map((message) => ({
+            ...message,
+            conversationId: id,
+            senderId: message.fromAdmin ? 'support' : adminSupportUserId,
+            type: 'TEXT',
+            sender: message.fromAdmin
+              ? { id: 'support', username: 'Support', profilePicture: null, usernameColor: null }
+              : {
+                  id: adminSupportUserId,
+                  username: threadRes.data.user?.username ?? 'Utilisateur',
+                  profilePicture: threadRes.data.user?.profilePicture ?? null,
+                  usernameColor: threadRes.data.user?.usernameColor ?? null,
+                },
+            reactions: [],
+          })),
+        });
+        if (markRead) {
+          await supportApi.markThreadRead(adminSupportUserId);
+          setConversations((prev) => sortConversationsByRecent(prev.map((c) => c.id === id ? { ...c, unreadCount: 0 } : c)));
+        }
+        return;
+      }
+
       const r = await supportApi.getConversation(id);
       setDetail(r.data);
       if (markRead) {
@@ -190,13 +276,18 @@ export default function MessagesPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [convRes, playersRes, blockedRes] = await Promise.all([
+        const [convRes, supportThreadsRes, playersRes, blockedRes] = await Promise.all([
           supportApi.getConversations(),
+          isAdminViewer ? supportApi.getThreads() : Promise.resolve({ data: { threads: [] as SupportThread[] } }),
           usersApi.getAll(),
           supportApi.getBlockedUsers(),
         ]);
         if (cancelled) return;
-        const sortedConversations = sortConversationsByRecent(convRes.data.conversations);
+        const sortedConversations = sortConversationsByRecent([
+          ...convRes.data.conversations,
+          ...supportThreadsRes.data.threads.map(buildAdminSupportConversationSummary),
+        ]);
+        setAdminSupportThreads(supportThreadsRes.data.threads);
         setConversations(sortedConversations);
         setPlayers(playersRes.data.users ?? []);
         setBlockedIds(new Set(blockedRes.data.blockedUsers.map((b) => b.id)));
@@ -208,7 +299,7 @@ export default function MessagesPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [isAdminViewer]);
 
   useEffect(() => {
     if (!selectedId) { setDetail(null); return; }
@@ -295,7 +386,11 @@ export default function MessagesPage() {
     setDraft('');
     if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
     try {
-      await supportApi.sendConversationMessage(selectedIdSafe, body);
+      if (selectedAdminSupportUserId) {
+        await supportApi.reply(selectedAdminSupportUserId, body);
+      } else {
+        await supportApi.sendConversationMessage(selectedIdSafe, body);
+      }
       await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false)]);
     } catch {
       toast({ title: 'Envoi impossible', variant: 'destructive' });
@@ -337,6 +432,8 @@ export default function MessagesPage() {
 
   const handleToggleFavorite = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    const conversation = conversations.find((entry) => entry.id === id);
+    if (!conversation || conversation.type === 'SUPPORT') return;
     try {
       const r = await supportApi.toggleFavorite(id);
       setConversations((prev) => sortConversationsByRecent(prev.map((c) => c.id === id ? { ...c, isFavorite: r.data.isFavorite } : c)));
@@ -402,7 +499,7 @@ export default function MessagesPage() {
   };
 
   const handleReact = async (messageId: string, emoji: string) => {
-    if (!selectedIdSafe) return;
+    if (!selectedIdSafe || !supportReactionsEnabled) return;
     try {
       await supportApi.reactToMessage(selectedIdSafe, messageId, emoji);
       await loadConversation(selectedIdSafe, false);
@@ -703,7 +800,7 @@ export default function MessagesPage() {
 
       {/* ── Main layout ── */}
       <div className="relative min-h-[calc(100vh-9rem)] overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
-        <div className="grid min-h-[calc(100vh-9rem)] lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="grid min-h-[calc(100vh-9rem)] lg:grid-cols-[260px_minmax(0,1fr)]">
 
           {/* ── Sidebar ── */}
           <aside className={cn('flex flex-col border-r border-border/60', selectedIdSafe ? 'hidden lg:flex' : 'flex')}>
@@ -759,10 +856,12 @@ export default function MessagesPage() {
                     </div>
                   </button>
                   <div className="flex shrink-0 items-center gap-0.5">
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg"
-                      onClick={() => handleToggleFavorite(selectedConversation.id)}>
-                      <Star className={cn('h-4 w-4', selectedConversation.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
-                    </Button>
+                    {selectedConversation.type !== 'SUPPORT' && (
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg"
+                        onClick={() => handleToggleFavorite(selectedConversation.id)}>
+                        <Star className={cn('h-4 w-4', selectedConversation.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
+                      </Button>
+                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
@@ -803,7 +902,7 @@ export default function MessagesPage() {
                 {/* Messages */}
                 <div className="relative flex-1 overflow-hidden bg-muted/15">
                   <ScrollArea className="h-full px-4 py-4 sm:px-6">
-                    <div className="mx-auto flex max-w-2xl flex-col gap-0.5">
+                    <div className="flex w-full flex-col gap-0.5">
                       {convLoading ? (
                         <p className="py-8 text-center text-xs text-muted-foreground">Chargement...</p>
                       ) : currentMessages.length === 0 ? (
@@ -849,40 +948,59 @@ export default function MessagesPage() {
                                   {msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système')}
                                 </p>
                               )}
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <div className={cn(
-                                    'group cursor-pointer select-text px-3 py-1.5 text-sm leading-5',
-                                    // WhatsApp-style rounded corners: full radius except the "tail" corner
-                                    isOwn
-                                      ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
-                                      : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
-                                    isBlocked && !isOwn && 'opacity-50'
-                                  )}>
-                                    {supportImages.length > 0 && (
-                                      <div className="mb-1.5 flex flex-wrap gap-1">
-                                        {supportImages.map((img, i) => <img key={i} src={resolveImageUrl(img)} alt="" className="h-16 w-16 rounded-lg object-cover" />)}
-                                      </div>
-                                    )}
-                                    <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                                    <p className={cn('mt-0.5 text-right text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
-                                      {formatTime(msg.createdAt)}
-                                    </p>
-                                  </div>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-1.5" side={isOwn ? 'left' : 'right'} align="center">
-                                  <div className="flex items-center gap-0.5">
-                                    {REACTION_OPTIONS.map((emoji) => (
-                                      <button key={emoji} type="button"
-                                        onClick={() => handleReact(msg.id, emoji)}
-                                        className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors hover:bg-muted/60', reactions.find((r) => r.emoji === emoji)?.myReaction && 'bg-primary/15')}>
-                                        {emoji}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </PopoverContent>
-                              </Popover>
-                              {reactions.length > 0 && (
+                              {supportReactionsEnabled ? (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <div className={cn(
+                                      'group cursor-pointer select-text px-3 py-1.5 text-sm leading-5',
+                                      isOwn
+                                        ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
+                                        : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
+                                      isBlocked && !isOwn && 'opacity-50'
+                                    )}>
+                                      {supportImages.length > 0 && (
+                                        <div className="mb-1.5 flex flex-wrap gap-1">
+                                          {supportImages.map((img, i) => <img key={i} src={resolveImageUrl(img)} alt="" className="h-16 w-16 rounded-lg object-cover" />)}
+                                        </div>
+                                      )}
+                                      <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                                      <p className={cn('mt-0.5 text-right text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                        {formatTime(msg.createdAt)}
+                                      </p>
+                                    </div>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-1.5" side={isOwn ? 'left' : 'right'} align="center">
+                                    <div className="flex items-center gap-0.5">
+                                      {REACTION_OPTIONS.map((emoji) => (
+                                        <button key={emoji} type="button"
+                                          onClick={() => handleReact(msg.id, emoji)}
+                                          className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors hover:bg-muted/60', reactions.find((r) => r.emoji === emoji)?.myReaction && 'bg-primary/15')}>
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              ) : (
+                                <div className={cn(
+                                  'group select-text px-3 py-1.5 text-sm leading-5',
+                                  isOwn
+                                    ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
+                                    : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
+                                  isBlocked && !isOwn && 'opacity-50'
+                                )}>
+                                  {supportImages.length > 0 && (
+                                    <div className="mb-1.5 flex flex-wrap gap-1">
+                                      {supportImages.map((img, i) => <img key={i} src={resolveImageUrl(img)} alt="" className="h-16 w-16 rounded-lg object-cover" />)}
+                                    </div>
+                                  )}
+                                  <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                                  <p className={cn('mt-0.5 text-right text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                    {formatTime(msg.createdAt)}
+                                  </p>
+                                </div>
+                              )}
+                              {supportReactionsEnabled && reactions.length > 0 && (
                                 <div className={cn('mt-0.5 flex flex-wrap gap-1 px-1', isOwn ? 'justify-end' : 'justify-start')}>
                                   {reactions.map((r) => (
                                     <button key={r.emoji} type="button"
@@ -906,7 +1024,7 @@ export default function MessagesPage() {
 
                 {/* Input bar */}
                 <div className="border-t border-border/60 bg-card px-3 py-2.5 sm:px-4">
-                  <div className="mx-auto flex max-w-2xl items-end gap-2">
+                  <div className="flex w-full items-end gap-2">
                     <div className="flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 focus-within:border-primary/40 focus-within:bg-background transition-colors">
                       <textarea ref={textareaRef} value={draft} rows={1}
                         onChange={(e) => { setDraft(e.target.value); e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 112) + 'px'; }}
@@ -961,7 +1079,14 @@ function ConvRow({
       <ConversationAvatar conversation={conversation} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-1">
-          <p className={cn('truncate text-xs font-semibold', isActive && 'text-primary')}>{conversation.displayName}</p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className={cn('truncate text-xs font-semibold', isActive && 'text-primary')}>{conversation.displayName}</p>
+            {conversation.type === 'SUPPORT' && (
+              <span className="shrink-0 rounded-full bg-sky-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sky-600">
+                Support
+              </span>
+            )}
+          </div>
           <span className="shrink-0 text-[10px] text-muted-foreground">{conversation.lastMessage?.createdAt ? formatTime(conversation.lastMessage.createdAt) : ''}</span>
         </div>
         <div className="flex items-center justify-between gap-1">
@@ -973,12 +1098,14 @@ function ConvRow({
           )}
         </div>
       </div>
-      <button type="button"
-        onClick={onToggleFavorite}
-        className={cn('ml-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity', conversation.isFavorite && 'opacity-100')}
-        tabIndex={-1}>
-        <Star className={cn('h-3.5 w-3.5', conversation.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
-      </button>
+      {conversation.type !== 'SUPPORT' && (
+        <button type="button"
+          onClick={onToggleFavorite}
+          className={cn('ml-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity', conversation.isFavorite && 'opacity-100')}
+          tabIndex={-1}>
+          <Star className={cn('h-3.5 w-3.5', conversation.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
+        </button>
+      )}
     </button>
   );
 }
