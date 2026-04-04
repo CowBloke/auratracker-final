@@ -2842,6 +2842,7 @@ export interface MessagingConversationSummary {
   id: string;
   type: 'SUPPORT' | 'DM' | 'GROUP' | string;
   title: string | null;
+  icon: string | null;
   displayName: string;
   isPinned: boolean;
   unreadCount: number;
@@ -2897,6 +2898,8 @@ export const supportApi = {
     api.post<{ success: boolean }>(`/support/conversations/${conversationId}/read`),
   reportConversation: (conversationId: string, reason?: string) =>
     api.post<{ report: MessagingReport }>(`/support/conversations/${conversationId}/report`, { reason }),
+  updateConversation: (conversationId: string, data: { title?: string; icon?: string }) =>
+    api.patch<{ conversation: { id: string; title: string | null; icon: string | null } }>(`/support/conversations/${conversationId}`, data),
   // Admin
   getThreads: () => api.get<{ threads: SupportThread[] }>('/support/admin/threads'),
   getThread: (userId: string) => api.get<{ messages: SupportMessage[]; user: SupportThread['user'] }>(`/support/admin/threads/${userId}`),

@@ -240,6 +240,7 @@ async function buildConversationSummaryForUser(conversationId: string, currentUs
     id: participant.conversation.id,
     type: participant.conversation.type,
     title: participant.conversation.title,
+    icon: participant.conversation.icon ?? null,
     displayName: buildConversationName(participant.conversation.type, participant.conversation.title, participants, currentUserId),
     isPinned: false,
     unreadCount,
@@ -299,6 +300,7 @@ async function listMessagingConversationsForUser(userId: string) {
         id: membership.conversation.id,
         type: membership.conversation.type,
         title: membership.conversation.title,
+        icon: membership.conversation.icon ?? null,
         displayName: buildConversationName(membership.conversation.type, membership.conversation.title, participants, userId),
         isPinned: false,
         unreadCount,
@@ -825,6 +827,44 @@ router.post('/conversations/:conversationId/report', authMiddleware, async (req:
   } catch (error) {
     console.error('Report conversation error:', error);
     res.status(500).json({ error: 'Failed to report conversation' });
+  }
+});
+
+router.patch('/conversations/:conversationId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+
+    const { conversationId } = req.params;
+
+    const membership = await prisma.messageConversationParticipant.findFirst({
+      where: { conversationId, userId: user.id },
+      include: { conversation: true },
+    });
+    if (!membership) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    if (membership.conversation.type !== 'GROUP') {
+      return res.status(400).json({ error: 'Only group conversations can be updated' });
+    }
+
+    const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 80) : undefined;
+    const icon = typeof req.body?.icon === 'string' ? req.body.icon.trim().slice(0, 8) : undefined;
+
+    const updated = await prisma.messageConversation.update({
+      where: { id: conversationId },
+      data: {
+        ...(title !== undefined ? { title: title || null } : {}),
+        ...(icon !== undefined ? { icon: icon || null } : {}),
+      },
+    });
+
+    await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
+
+    res.json({ conversation: { id: updated.id, title: updated.title, icon: updated.icon } });
+  } catch (error) {
+    console.error('Update conversation error:', error);
+    res.status(500).json({ error: 'Failed to update conversation' });
   }
 });
 

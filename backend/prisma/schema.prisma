@@ -2064,6 +2064,7 @@ model MessageConversation {
   id             String   @id @default(uuid())
   type           String   // DM | GROUP
   title          String?
+  icon           String?  // emoji for group icon
   createdById    String?
   createdAt      DateTime @default(now())
   lastMessageAt  DateTime @default(now())
