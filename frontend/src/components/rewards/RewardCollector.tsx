@@ -32,12 +32,6 @@ const rarityIconColor: Record<string, string> = {
   legendary: 'text-amber-400',
 };
 
-const typeIconColor: Record<string, string> = {
-  money: 'text-yellow-400',
-  aura: 'text-purple-400',
-  item: 'text-blue-400',
-};
-
 function RewardIcon({ item }: { item: RewardItem }) {
   const color = item.rarity && item.rarity !== 'common' ? rarityIconColor[item.rarity] : '';
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
-import { X, Zap, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird, Rocket } from 'lucide-react';
+import { X, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird, Rocket } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import { toClanTagData } from '@/components/clans/ClanTag';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserBadges, BadgeData } from '@/components/badges/UserBadges';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
+
+type CategoryIcon = React.ComponentType<{ className?: string }>;
 
 interface Ranking {
   rank: number;
@@ -47,7 +49,7 @@ const PERIOD_OPTIONS: { id: Period; label: string }[] = [
   { id: 'daily', label: "Aujourd'hui" },
 ];
 
-const categories: { id: Category; name: string; valueLabel: string; icon: typeof Zap }[] = [
+const categories: { id: Category; name: string; valueLabel: string; icon: CategoryIcon }[] = [
   { id: 'overall', name: 'Classement global', valueLabel: 'score', icon: Trophy },
   { id: 'aura', name: 'Aura', valueLabel: 'aura', icon: () => <CurrencyIcon type="aura" className="h-4 w-4" /> },
   { id: 'money', name: 'Argent', valueLabel: '$', icon: () => <CurrencyIcon type="money" className="h-4 w-4" /> },

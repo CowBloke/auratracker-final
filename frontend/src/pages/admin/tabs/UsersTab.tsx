@@ -30,7 +30,6 @@ import {
   Shield,
   ShieldOff,
   Trash2,
-  TrendingUp,
   X,
 } from 'lucide-react';
 import type { AdminUser } from '../../../services/api';

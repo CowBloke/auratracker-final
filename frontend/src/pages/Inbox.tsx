@@ -52,7 +52,6 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
   CLAN_WAR_COMPLETED: ({ className }) => <Shield className={className} />,
   CLAN_WAR_WON: ({ className }) => <Trophy className={className} />,
   CLAN_WAR_LOST: ({ className }) => <ShieldX className={className} />,
-  QUEST_COMPLETED: ({ className }) => <Zap className={className} />,
   POLYMARKET_WIN: ({ className }) => <TrendingUp className={className} />,
   POLYMARKET_LOSS: ({ className }) => <TrendingDown className={className} />,
   PARTY_INVITE: ({ className }) => <Sword className={className} />,
@@ -109,7 +108,7 @@ const SYS_TYPES = ['ADMIN', 'SYSTEM'];
 const CATEGORIES = [
   { id: 'all', label: 'Tout', Icon: Inbox, types: null },
   { id: 'unread', label: 'Non lus', Icon: Eye, types: null },
-  { id: 'aura', label: 'Aura', Icon: ({ className }) => <CurrencyIcon type="aura" className={className} />, types: ['AURA_RECEIVED'] },
+  { id: 'aura', label: 'Aura', Icon: ({ className }: { className?: string }) => <CurrencyIcon type="aura" className={className} />, types: ['AURA_RECEIVED'] },
   { id: 'clans', label: 'Clans', Icon: Users, types: CLAN_TYPES },
   { id: 'social', label: 'Social', Icon: MessageSquare, types: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION', 'DIRECT_MESSAGE'] },
   { id: 'quetes', label: 'Quetes', Icon: Zap, types: ['QUEST_COMPLETED'] },
