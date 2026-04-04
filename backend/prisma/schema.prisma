@@ -143,6 +143,9 @@ model User {
   messagingMessages           MessageConversationMessage[]      @relation("MessageConversationSender")
   sentMessageReports          MessageConversationReport[]       @relation("MessageReportReporter")
   reviewedMessageReports      MessageConversationReport[]       @relation("MessageReportReviewer")
+  messageReactions            MessageConversationReaction[]
+  blocksGiven                 UserBlock[]                       @relation("UserBlocker")
+  blocksReceived              UserBlock[]                       @relation("UserBlocked")
 
   // Badge System
   equippedBadge1Id    String?
@@ -2065,6 +2068,7 @@ model MessageConversation {
   type           String   // DM | GROUP
   title          String?
   icon           String?  // emoji for group icon
+  imageUrl       String?  // custom group photo
   createdById    String?
   createdAt      DateTime @default(now())
   lastMessageAt  DateTime @default(now())
@@ -2074,6 +2078,7 @@ model MessageConversation {
   participants MessageConversationParticipant[]
   messages     MessageConversationMessage[]
   reports      MessageConversationReport[]
+  reactions    MessageConversationReaction[]
 
   @@index([type, lastMessageAt])
   @@index([createdById])
@@ -2084,6 +2089,7 @@ model MessageConversationParticipant {
   conversationId String
   userId         String
   role           String   @default("MEMBER") // MEMBER | OWNER
+  isFavorite     Boolean  @default(false)
   joinedAt       DateTime @default(now())
   lastReadAt     DateTime?
 
@@ -2103,11 +2109,43 @@ model MessageConversationMessage {
   type           String   @default("TEXT") // TEXT | SYSTEM | REPORT_NOTICE
   createdAt      DateTime @default(now())
 
-  conversation MessageConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User?               @relation("MessageConversationSender", fields: [senderId], references: [id], onDelete: SetNull)
+  conversation MessageConversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?                       @relation("MessageConversationSender", fields: [senderId], references: [id], onDelete: SetNull)
+  reactions    MessageConversationReaction[]
 
   @@index([conversationId, createdAt])
   @@index([senderId, createdAt])
+}
+
+model MessageConversationReaction {
+  id             String   @id @default(uuid())
+  messageId      String
+  conversationId String
+  userId         String
+  emoji          String
+  createdAt      DateTime @default(now())
+
+  message      MessageConversationMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  conversation MessageConversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model UserBlock {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("UserBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("UserBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
 }
 
 model MessageConversationReport {

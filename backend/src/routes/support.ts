@@ -241,6 +241,8 @@ async function buildConversationSummaryForUser(conversationId: string, currentUs
     type: participant.conversation.type,
     title: participant.conversation.title,
     icon: participant.conversation.icon ?? null,
+    imageUrl: participant.conversation.imageUrl ?? null,
+    isFavorite: participant.isFavorite,
     displayName: buildConversationName(participant.conversation.type, participant.conversation.title, participants, currentUserId),
     isPinned: false,
     unreadCount,
@@ -301,6 +303,8 @@ async function listMessagingConversationsForUser(userId: string) {
         type: membership.conversation.type,
         title: membership.conversation.title,
         icon: membership.conversation.icon ?? null,
+        imageUrl: membership.conversation.imageUrl ?? null,
+        isFavorite: membership.isFavorite,
         displayName: buildConversationName(membership.conversation.type, membership.conversation.title, participants, userId),
         isPinned: false,
         unreadCount,
@@ -459,7 +463,12 @@ router.get('/conversations/:conversationId', authMiddleware, async (req: AuthReq
         conversation: {
           include: {
             messages: {
-              include: { sender: { select: USER_PREVIEW_SELECT } },
+              include: {
+                sender: { select: USER_PREVIEW_SELECT },
+                reactions: {
+                  include: { user: { select: { id: true, username: true } } },
+                },
+              },
               orderBy: { createdAt: 'asc' },
             },
           },
@@ -475,8 +484,8 @@ router.get('/conversations/:conversationId', authMiddleware, async (req: AuthReq
 
     res.json({
       conversation,
-      messages: membership.conversation.messages.map((message) =>
-        serializeConversationMessage({
+      messages: membership.conversation.messages.map((message) => ({
+        ...serializeConversationMessage({
           id: message.id,
           conversationId: message.conversationId,
           senderId: message.senderId,
@@ -484,8 +493,18 @@ router.get('/conversations/:conversationId', authMiddleware, async (req: AuthReq
           type: message.type,
           createdAt: message.createdAt,
           sender: message.sender,
-        })
-      ),
+        }),
+        reactions: (() => {
+          const grouped: Record<string, { emoji: string; count: number; users: string[]; myReaction: boolean }> = {};
+          for (const r of message.reactions) {
+            if (!grouped[r.emoji]) grouped[r.emoji] = { emoji: r.emoji, count: 0, users: [], myReaction: false };
+            grouped[r.emoji].count++;
+            grouped[r.emoji].users.push(r.user.username);
+            if (r.userId === user.id) grouped[r.emoji].myReaction = true;
+          }
+          return Object.values(grouped);
+        })(),
+      })),
     });
   } catch (error) {
     console.error('Get conversation error:', error);
@@ -850,21 +869,202 @@ router.patch('/conversations/:conversationId', authMiddleware, async (req: AuthR
 
     const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 80) : undefined;
     const icon = typeof req.body?.icon === 'string' ? req.body.icon.trim().slice(0, 8) : undefined;
+    const imageUrl = typeof req.body?.imageUrl === 'string' ? req.body.imageUrl.trim() || null : undefined;
 
     const updated = await prisma.messageConversation.update({
       where: { id: conversationId },
       data: {
         ...(title !== undefined ? { title: title || null } : {}),
         ...(icon !== undefined ? { icon: icon || null } : {}),
+        ...(imageUrl !== undefined ? { imageUrl } : {}),
       },
     });
 
     await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
 
-    res.json({ conversation: { id: updated.id, title: updated.title, icon: updated.icon } });
+    res.json({ conversation: { id: updated.id, title: updated.title, icon: updated.icon, imageUrl: updated.imageUrl } });
   } catch (error) {
     console.error('Update conversation error:', error);
     res.status(500).json({ error: 'Failed to update conversation' });
+  }
+});
+
+// Toggle favorite for a conversation
+router.patch('/conversations/:conversationId/favorite', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const { conversationId } = req.params;
+    const membership = await prisma.messageConversationParticipant.findFirst({
+      where: { conversationId, userId: user.id },
+    });
+    if (!membership) return res.status(404).json({ error: 'Conversation not found' });
+    const updated = await prisma.messageConversationParticipant.update({
+      where: { id: membership.id },
+      data: { isFavorite: !membership.isFavorite },
+    });
+    res.json({ isFavorite: updated.isFavorite });
+  } catch (error) {
+    console.error('Toggle favorite error:', error);
+    res.status(500).json({ error: 'Failed to toggle favorite' });
+  }
+});
+
+// Add member to group conversation
+router.post('/conversations/:conversationId/members', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const { conversationId } = req.params;
+    const targetUserId = typeof req.body?.userId === 'string' ? req.body.userId : '';
+    if (!targetUserId) return res.status(400).json({ error: 'userId required' });
+
+    const membership = await prisma.messageConversationParticipant.findFirst({
+      where: { conversationId, userId: user.id },
+      include: { conversation: true },
+    });
+    if (!membership) return res.status(404).json({ error: 'Conversation not found' });
+    if (membership.conversation.type !== 'GROUP') return res.status(400).json({ error: 'Not a group' });
+
+    const existing = await prisma.messageConversationParticipant.findFirst({
+      where: { conversationId, userId: targetUserId },
+    });
+    if (existing) return res.status(400).json({ error: 'User already in group' });
+
+    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId }, select: USER_PREVIEW_SELECT });
+    if (!targetUser) return res.status(404).json({ error: 'User not found' });
+
+    await prisma.messageConversationParticipant.create({
+      data: { conversationId, userId: targetUserId, role: 'MEMBER' },
+    });
+    await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
+    io.to(`user:${targetUserId}`).emit('messaging:conversation', { conversationId });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Add member error:', error);
+    res.status(500).json({ error: 'Failed to add member' });
+  }
+});
+
+// Remove (kick) member from group conversation
+router.delete('/conversations/:conversationId/members/:memberId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const { conversationId, memberId } = req.params;
+
+    const [actorMembership, targetMembership] = await Promise.all([
+      prisma.messageConversationParticipant.findFirst({
+        where: { conversationId, userId: user.id },
+        include: { conversation: true },
+      }),
+      prisma.messageConversationParticipant.findFirst({
+        where: { conversationId, userId: memberId },
+      }),
+    ]);
+
+    if (!actorMembership) return res.status(404).json({ error: 'Conversation not found' });
+    if (actorMembership.conversation.type !== 'GROUP') return res.status(400).json({ error: 'Not a group' });
+    if (!targetMembership) return res.status(404).json({ error: 'Member not found' });
+    // Only OWNER can kick, or user can leave themselves
+    if (memberId !== user.id && actorMembership.role !== 'OWNER') {
+      return res.status(403).json({ error: 'Only group owner can kick members' });
+    }
+
+    await prisma.messageConversationParticipant.delete({ where: { id: targetMembership.id } });
+    await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Remove member error:', error);
+    res.status(500).json({ error: 'Failed to remove member' });
+  }
+});
+
+// Toggle reaction on a message
+router.post('/conversations/:conversationId/messages/:messageId/react', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const { conversationId, messageId } = req.params;
+    const emoji = typeof req.body?.emoji === 'string' ? req.body.emoji.trim().slice(0, 8) : '';
+    if (!emoji) return res.status(400).json({ error: 'emoji required' });
+
+    const membership = await prisma.messageConversationParticipant.findFirst({
+      where: { conversationId, userId: user.id },
+    });
+    if (!membership) return res.status(404).json({ error: 'Conversation not found' });
+
+    const existing = await prisma.messageConversationReaction.findFirst({
+      where: { messageId, userId: user.id, emoji },
+    });
+
+    let added: boolean;
+    if (existing) {
+      await prisma.messageConversationReaction.delete({ where: { id: existing.id } });
+      added = false;
+    } else {
+      await prisma.messageConversationReaction.create({
+        data: { messageId, conversationId, userId: user.id, emoji },
+      });
+      added = true;
+    }
+
+    await emitConversationToParticipants(conversationId, 'messaging:message', { conversationId, messageId });
+    res.json({ added });
+  } catch (error) {
+    console.error('React to message error:', error);
+    res.status(500).json({ error: 'Failed to react' });
+  }
+});
+
+// Block a user
+router.post('/block/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const { userId } = req.params;
+    if (userId === user.id) return res.status(400).json({ error: 'Cannot block yourself' });
+    await prisma.userBlock.upsert({
+      where: { blockerId_blockedId: { blockerId: user.id, blockedId: userId } },
+      create: { blockerId: user.id, blockedId: userId },
+      update: {},
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Block user error:', error);
+    res.status(500).json({ error: 'Failed to block user' });
+  }
+});
+
+// Unblock a user
+router.delete('/block/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const { userId } = req.params;
+    await prisma.userBlock.deleteMany({
+      where: { blockerId: user.id, blockedId: userId },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Unblock user error:', error);
+    res.status(500).json({ error: 'Failed to unblock user' });
+  }
+});
+
+// Get blocked users
+router.get('/blocked', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const blocks = await prisma.userBlock.findMany({
+      where: { blockerId: user.id },
+      include: { blocked: { select: USER_PREVIEW_SELECT } },
+    });
+    res.json({ blockedUsers: blocks.map((b) => serializeBasicUser(b.blocked)) });
+  } catch (error) {
+    console.error('Get blocked users error:', error);
+    res.status(500).json({ error: 'Failed to get blocked users' });
   }
 });
 
