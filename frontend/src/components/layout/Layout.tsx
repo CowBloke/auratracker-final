@@ -200,4 +200,3 @@ export default function Layout() {
     </ChatSidebarProvider>
   );
 }
-  const isMessagesPage = location.pathname === '/messages';
