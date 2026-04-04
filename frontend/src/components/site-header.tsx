@@ -25,6 +25,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { usersApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { getPageMetaForPath } from '@/lib/page-meta';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -45,8 +46,6 @@ import {
   Eye,
   Monitor,
   Crosshair,
-  Coins,
-  Zap,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -854,11 +853,11 @@ export function SiteHeader() {
 
           <div className="flex shrink-0 items-center gap-2">
             <div className="hidden items-center gap-1.5 rounded-lg bg-muted/30 px-2.5 py-1 sm:flex">
-              <Zap className="h-3 w-3 text-yellow-400" />
+              <CurrencyIcon type="aura" className="h-3 w-3" />
               <span className="text-xs font-semibold tabular-nums">{user?.aura?.toLocaleString() ?? '0'}</span>
             </div>
             <div ref={setMoneyIndicatorElement} className="hidden items-center gap-1.5 rounded-lg bg-muted/30 px-2.5 py-1 sm:flex">
-              <Coins className="h-3 w-3 text-emerald-400" />
+              <CurrencyIcon type="money" className="h-3 w-3" />
               <span className="text-xs font-semibold tabular-nums">{user?.money?.toLocaleString() ?? '0'} {'\u20AC'}</span>
             </div>
             <UserAccountMenu showLabel={false} />

@@ -10,13 +10,12 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import {
   AlertCircle,
-  Gem,
   Gift,
   Loader2,
   Package,
-  Wallet,
 } from 'lucide-react';
 import { useRewardQueue, type RewardItem } from '@/contexts/RewardQueueContext';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 
 const rarityStyles: Record<
   PassRewardEntry['rarity'],
@@ -92,8 +91,8 @@ function getDailyCycleProgress(targetIso: string | null): number {
 }
 
 function getRewardIcon(type: PassRewardEntry['type']) {
-  if (type === 'money') return Wallet;
-  if (type === 'aura') return Gem;
+  if (type === 'money') return () => <CurrencyIcon type="money" className="h-full w-full" />;
+  if (type === 'aura') return () => <CurrencyIcon type="aura" className="h-full w-full" />;
   return Package;
 }
 
@@ -203,7 +202,7 @@ export default function Pass() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
                 <div className="mb-1 flex items-center gap-2 text-muted-foreground">
-                  <Wallet className="h-4 w-4 text-emerald-400" />
+                  <CurrencyIcon type="money" className="h-4 w-4" />
                   <span className="text-xs">$</span>
                 </div>
                 <div className="text-sm font-semibold">
@@ -213,7 +212,7 @@ export default function Pass() {
 
               <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
                 <div className="mb-1 flex items-center gap-2 text-muted-foreground">
-                  <Gem className="h-4 w-4 text-sky-400" />
+                  <CurrencyIcon type="aura" className="h-4 w-4" />
                   <span className="text-xs">Aura</span>
                 </div>
                 <div className="text-sm font-semibold">
@@ -279,8 +278,14 @@ export default function Pass() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex gap-2">
-                  <Badge variant="outline" className="rounded-full border-border/60">{lastClaim.newBalance.money.toLocaleString('fr-FR')}$</Badge>
-                  <Badge variant="outline" className="rounded-full border-border/60">{lastClaim.newBalance.aura.toLocaleString('fr-FR')} aura</Badge>
+                  <Badge variant="outline" className="rounded-full border-border/60 gap-1.5">
+                    <CurrencyIcon type="money" className="h-3 w-3" />
+                    <span>{lastClaim.newBalance.money.toLocaleString('fr-FR')}$</span>
+                  </Badge>
+                  <Badge variant="outline" className="rounded-full border-border/60 gap-1.5">
+                    <CurrencyIcon type="aura" className="h-3 w-3" />
+                    <span>{lastClaim.newBalance.aura.toLocaleString('fr-FR')} aura</span>
+                  </Badge>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-2">

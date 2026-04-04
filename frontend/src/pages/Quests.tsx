@@ -6,7 +6,8 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
 import { toast } from '@/hooks/use-toast';
 import { useRewardQueue, type RewardItem } from '../contexts/RewardQueueContext';
-import { CheckCircle2, Circle, Coins, Sparkles, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList, Search } from 'lucide-react';
+import { CheckCircle2, Circle, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList, Search } from 'lucide-react';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -352,11 +353,11 @@ export default function Quests() {
                     <div className="flex items-center justify-between pt-2 border-t">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1 text-muted-foreground">
-                          <Coins className="w-4 h-4" />
+                          <CurrencyIcon type="money" className="w-4 h-4" />
                           <span className="font-semibold">{userQuest.quest.moneyReward}</span>
                         </div>
                         <div className="flex items-center gap-1 text-muted-foreground">
-                          <Sparkles className="w-4 h-4" />
+                          <CurrencyIcon type="aura" className="w-4 h-4" />
                           <span className="font-semibold">{userQuest.quest.auraReward}</span>
                         </div>
                       </div>
@@ -412,11 +413,11 @@ export default function Quests() {
                     <div className="flex items-center justify-between pt-2 border-t">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1 text-muted-foreground">
-                          <Coins className="w-4 h-4" />
+                          <CurrencyIcon type="money" className="w-4 h-4" />
                           <span className="font-semibold">{quest.moneyReward}</span>
                         </div>
                         <div className="flex items-center gap-1 text-muted-foreground">
-                          <Sparkles className="w-4 h-4" />
+                          <CurrencyIcon type="aura" className="w-4 h-4" />
                           <span className="font-semibold">{quest.auraReward}</span>
                         </div>
                       </div>

@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Coins, Map, Shield, Sparkles, Sword, Target, Trash2, Trophy } from 'lucide-react';
+import { AlertTriangle, Map, Shield, Sparkles, Sword, Target, Trash2, Trophy } from 'lucide-react';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { clashApi, type ClashBattleEntry, type ClashBuilding, type ClashLeaderboardEntry, type ClashStateResponse, type ClashTarget } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
@@ -505,7 +506,7 @@ export default function ClashVillage() {
         <InfoStat
           label="Stockage"
           value={`${formatMoney(village.moneyInStorage)} / ${formatMoney(village.storageCapacity)}`}
-          icon={<Coins className="h-4 w-4" />}
+          icon={<CurrencyIcon type="money" className="h-4 w-4" />}
           detail="Réserve attaquable du village"
         />
         <InfoStat
@@ -837,7 +838,7 @@ export default function ClashVillage() {
           <div className="grid gap-6 xl:grid-cols-3">
             {[
               { key: 'trophies', title: 'Top trophées', icon: <Trophy className="h-4 w-4" />, rows: leaderboard.trophies },
-              { key: 'loot', title: 'Top pillage', icon: <Coins className="h-4 w-4" />, rows: leaderboard.loot },
+              { key: 'loot', title: 'Top pillage', icon: <CurrencyIcon type="money" className="h-4 w-4" />, rows: leaderboard.loot },
               { key: 'defense', title: 'Top défense', icon: <Target className="h-4 w-4" />, rows: leaderboard.defense },
             ].map((column) => (
               <Card key={column.key} className="rounded-3xl border-border/50 shadow-none">

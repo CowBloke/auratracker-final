@@ -6,9 +6,7 @@ import {
   BadgeX,
   Bell,
   CheckCheck,
-  Coins,
   Crown,
-  DollarSign,
   Eye,
   Gamepad2,
   Inbox,
@@ -20,7 +18,6 @@ import {
   ShieldCheck,
   ShieldX,
   ShoppingBag,
-  Star,
   Sword,
   ThumbsDown,
   ThumbsUp,
@@ -34,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -42,9 +40,10 @@ import { cn } from '@/lib/utils';
 import { type Notification } from '@/services/api';
 
 const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
-  AURA_RECEIVED: ({ className }) => <Star className={className} />,
-  MONEY_RECEIVED: ({ className }) => <DollarSign className={className} />,
+  AURA_RECEIVED: ({ className }) => <CurrencyIcon type="aura" className={className} />,
+  MONEY_RECEIVED: ({ className }) => <CurrencyIcon type="money" className={className} />,
   ITEM_RECEIVED: ({ className }) => <Package className={className} />,
+  QUEST_COMPLETED: ({ className }) => <Zap className={className} />,
   CLAN_MESSAGE: ({ className }) => <MessageSquare className={className} />,
   CLAN_JOIN_REQUEST: ({ className }) => <Users className={className} />,
   CLAN_JOIN_ACCEPTED: ({ className }) => <Users className={className} />,
@@ -65,14 +64,13 @@ const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
 };
 
 const ICON_NAME_MAP: Record<string, React.FC<{ className?: string }>> = {
-  star: ({ className }) => <Star className={className} />,
   package: ({ className }) => <Package className={className} />,
   users: ({ className }) => <Users className={className} />,
   check: ({ className }) => <Zap className={className} />,
   megaphone: ({ className }) => <Megaphone className={className} />,
-  'dollar-sign': ({ className }) => <DollarSign className={className} />,
+  'dollar-sign': ({ className }) => <CurrencyIcon type="money" className={className} />,
   'shopping-bag': ({ className }) => <ShoppingBag className={className} />,
-  coins: ({ className }) => <Coins className={className} />,
+  coins: ({ className }) => <CurrencyIcon type="money" className={className} />,
   'gamepad-2': ({ className }) => <Gamepad2 className={className} />,
   crown: ({ className }) => <Crown className={className} />,
   'message-square': ({ className }) => <MessageSquare className={className} />,
@@ -111,7 +109,7 @@ const SYS_TYPES = ['ADMIN', 'SYSTEM'];
 const CATEGORIES = [
   { id: 'all', label: 'Tout', Icon: Inbox, types: null },
   { id: 'unread', label: 'Non lus', Icon: Eye, types: null },
-  { id: 'aura', label: 'Aura', Icon: Star, types: ['AURA_RECEIVED'] },
+  { id: 'aura', label: 'Aura', Icon: ({ className }) => <CurrencyIcon type="aura" className={className} />, types: ['AURA_RECEIVED'] },
   { id: 'clans', label: 'Clans', Icon: Users, types: CLAN_TYPES },
   { id: 'social', label: 'Social', Icon: MessageSquare, types: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION', 'DIRECT_MESSAGE'] },
   { id: 'quetes', label: 'Quetes', Icon: Zap, types: ['QUEST_COMPLETED'] },

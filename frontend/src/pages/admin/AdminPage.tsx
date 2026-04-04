@@ -16,6 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Check, Ban as BanIcon, ChevronLeft, ChevronRight, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark } from 'lucide-react';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
 import {
@@ -5921,16 +5922,16 @@ export default function Admin() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-green-400 flex items-center gap-1"><Coins className="h-3 w-3" />Argent</label>
+                <label className="text-xs font-medium text-green-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />Argent</label>
                 <div className="relative">
-                  <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-green-400/60 pointer-events-none" />
+                  <CurrencyIcon type="money" className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" />
                   <Input type="number" value={editValues.money} onChange={(e) => setEditValues(prev => ({ ...prev, money: parseInt(e.target.value) || 0 }))} className="h-9 bg-transparent border-green-500/30 focus-visible:ring-green-500/30 pl-8" />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-yellow-400 flex items-center gap-1"><Coins className="h-3 w-3" />AuraCoin</label>
+                <label className="text-xs font-medium text-yellow-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />AuraCoin</label>
                 <div className="relative">
-                  <Coins className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-yellow-400/60 pointer-events-none" />
+                  <CurrencyIcon type="money" className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" />
                   <Input type="number" step="0.01" value={editValues.auraCoinBalance} onChange={(e) => setEditValues(prev => ({ ...prev, auraCoinBalance: parseFloat(e.target.value) || 0 }))} className="h-9 bg-transparent border-yellow-500/30 focus-visible:ring-yellow-500/30 pl-8" />
                 </div>
               </div>
@@ -6543,7 +6544,7 @@ export default function Admin() {
               <Card className="border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-yellow-400" />
+                    <CurrencyIcon type="aura" className="h-3.5 w-3.5" />
                     <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Aura totale</p>
                   </div>
                   <p className="text-2xl font-bold tabular-nums text-yellow-400">
@@ -6555,7 +6556,7 @@ export default function Admin() {
               <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-orange-600/5">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <Coins className="h-3.5 w-3.5 text-orange-400" />
+                    <CurrencyIcon type="money" className="h-3.5 w-3.5" />
                     <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Argent total</p>
                   </div>
                   <p className="text-2xl font-bold tabular-nums text-orange-400">

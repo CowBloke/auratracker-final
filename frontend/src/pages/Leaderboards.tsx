@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
-import { X, Zap, DollarSign, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird, Rocket } from 'lucide-react';
+import { X, Zap, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird, Rocket } from 'lucide-react';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY } from '@/lib/design-system';
@@ -48,9 +49,9 @@ const PERIOD_OPTIONS: { id: Period; label: string }[] = [
 
 const categories: { id: Category; name: string; valueLabel: string; icon: typeof Zap }[] = [
   { id: 'overall', name: 'Classement global', valueLabel: 'score', icon: Trophy },
-  { id: 'aura', name: 'Aura', valueLabel: 'aura', icon: Zap },
-  { id: 'money', name: 'Argent', valueLabel: '$', icon: DollarSign },
-  { id: 'total_money', name: 'Argent total', valueLabel: '$', icon: TrendingUp },
+  { id: 'aura', name: 'Aura', valueLabel: 'aura', icon: () => <CurrencyIcon type="aura" className="h-4 w-4" /> },
+  { id: 'money', name: 'Argent', valueLabel: '$', icon: () => <CurrencyIcon type="money" className="h-4 w-4" /> },
+  { id: 'total_money', name: 'Argent total', valueLabel: '$', icon: () => <CurrencyIcon type="money" className="h-4 w-4" /> },
   { id: 'auracoin', name: 'Aura Coin', valueLabel: 'AuraCoin', icon: Gem },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score', icon: ArrowUp },
   { id: 'doodle_jump_mort_subite', name: 'Doodle Jump - Mort subite', valueLabel: 'score', icon: Skull },

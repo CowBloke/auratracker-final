@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocketBase } from '../../contexts/SocketContext';
-import { Sparkles, Coins, User, LogOut, Wifi, WifiOff, Search } from 'lucide-react';
+import { User, LogOut, Wifi, WifiOff, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,6 +19,7 @@ import { usersApi } from '@/services/api';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { resolveImageUrl } from '@/lib/images';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 
 interface SearchUser {
   id: string;
@@ -175,7 +176,7 @@ export default function Header() {
 
           {/* Aura */}
           <Badge variant="outline" className="gap-2 px-4 py-2">
-            <Sparkles className="w-4 h-4 text-muted-foreground" />
+            <CurrencyIcon type="aura" className="w-4 h-4" />
             <span className="text-lg font-semibold">
               {user?.aura.toLocaleString()}
             </span>
@@ -183,7 +184,7 @@ export default function Header() {
 
           {/* Money */}
           <Badge variant="outline" className="gap-2 px-4 py-2">
-            <Coins className="w-4 h-4 text-muted-foreground" />
+            <CurrencyIcon type="money" className="w-4 h-4" />
             <span className="text-lg font-semibold">
               ${user?.money.toLocaleString()}
             </span>

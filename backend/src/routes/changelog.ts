@@ -24,7 +24,7 @@ const SEED_ENTRIES = [
     id: '2026-04-04-xp-system-skills',
     date: '2026-04-04',
     title: 'Système XP automatique & score Illégalité',
-    summary: 'Les compétences You gagnent maintenant de l\'XP automatiquement via vos actions. L\'agence immobilière vend des biens, un score Illégalité est introduit, la page Salle de marché est allégée, Polymarket sépare désormais les événements résolus dans un historique dédié, les switchers liste/grille sont harmonisés, l\'avatar utilisateur de la top bar revient en affichage rond sans card, et les badges non lus de sidebar restent visibles même en mode réduit.',
+    summary: 'Les compétences You gagnent maintenant de l\'XP automatiquement via vos actions. L\'agence immobilière vend des biens, un score Illégalité est introduit, la page Salle de marché est allégée, Polymarket sépare désormais les événements résolus dans un historique dédié, les switchers liste/grille sont harmonisés, l\'avatar utilisateur de la top bar revient en affichage rond sans card, les badges non lus de sidebar restent visibles même en mode réduit, et les icônes de monnaie sont maintenant unifiées avec la topbar partout sur le site.',
     items: [
       { category: 'BIG_FEATURE', text: '**XP automatique** — Les compétences progressent via vos actions : Affaires (collecte NPC), Finance (dépôt en banque), Intelligence (achat de formations), Charisme (aura reçue), Social (achat immobilier via agence).', order: 0 },
       { category: 'BIG_FEATURE', text: '**Agence immobilière** — Achetez des biens immobiliers (Studio, T3, Maison, Villa) depuis une agence pour gagner du XP Social.', order: 1 },
@@ -43,6 +43,7 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Badge Messages en sidebar réduite** — La pastille de non lus de la page Messagerie reste maintenant visible aussi quand la sidebar est en mode `collapsed` (icône).', order: 13 },
       { category: 'SMALL_FEATURE', text: '**Badge Changelog en sidebar réduite** — La pastille rouge du Changelog reste maintenant visible aussi quand la sidebar est en mode `collapsed` (icône).', order: 14 },
       { category: 'BUG_FIX', text: '**Ordre des conversations Messages auto-mis à jour** — Sur la page Messages, la liste des conversations se réordonne maintenant automatiquement selon le dernier message reçu/envoyé, pour toujours remonter les discussions les plus récentes.', order: 15 },
+      { category: 'SMALL_FEATURE', text: '**Icônes de monnaie harmonisées** — L\'aura et l\'argent utilisent désormais partout les mêmes pictos que la topbar : éclair jaune pour l\'aura et pièce verte pour l\'argent, y compris dans Pass, Quêtes, Inbox, classements, clans et les écrans d\'admin.', order: 16 },
     ],
   },
   {

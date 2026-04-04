@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { TabsContent } from '@/components/ui/tabs';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +21,6 @@ import {
   AlertTriangle,
   Award,
   Ban as BanIcon,
-  Coins,
   Crown,
   Download,
   Edit2,
@@ -228,11 +228,11 @@ export function UsersTab(props: UsersTabProps) {
 
                       <div className="hidden xl:flex items-center gap-1.5 shrink-0">
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/15 text-purple-400 text-xs tabular-nums font-medium">
-                          <TrendingUp className="h-3 w-3" />
+                          <CurrencyIcon type="aura" className="h-3 w-3" />
                           {u.aura.toLocaleString()}
                         </span>
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-500/15 text-green-400 text-xs tabular-nums font-medium">
-                          <Coins className="h-3 w-3" />
+                          <CurrencyIcon type="money" className="h-3 w-3" />
                           {u.money.toLocaleString()}
                         </span>
                       </div>

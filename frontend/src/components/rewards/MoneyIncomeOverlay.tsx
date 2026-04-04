@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Coins } from 'lucide-react';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { getMoneyIndicatorRect, subscribeToMoneyIncome } from '@/lib/money-income-effects';
 
 type CoinParticle = {
@@ -116,7 +116,7 @@ export default function MoneyIncomeOverlay() {
               animation: 'money-income-label 720ms cubic-bezier(0.2, 0.9, 0.25, 1) forwards',
             }}
           >
-            <Coins className="h-3.5 w-3.5 text-amber-300" />
+            <CurrencyIcon type="money" className="h-3.5 w-3.5" />
             <span>+{burst.amount.toLocaleString('fr-FR')}</span>
           </div>
 

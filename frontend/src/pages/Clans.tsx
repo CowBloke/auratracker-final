@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Axe, Check, Coins, Crown, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
+import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ClanActiveEffect,
@@ -1459,7 +1460,7 @@ export default function Clans() {
                           />
                           <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Coins className="h-4 w-4" />
+                              <CurrencyIcon type="money" className="h-4 w-4" />
                               Solde actuel
                             </div>
                             <div className="mt-2 text-2xl font-semibold tabular-nums">
@@ -1480,7 +1481,7 @@ export default function Clans() {
                                 />
                               </div>
                               <Button type="button" onClick={handleDepositToBank} disabled={depositingBank}>
-                                {depositingBank ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Coins className="mr-2 h-4 w-4" />}
+                                {depositingBank ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CurrencyIcon type="money" className="mr-2 h-4 w-4" />}
                                 Déposer
                               </Button>
                             </div>

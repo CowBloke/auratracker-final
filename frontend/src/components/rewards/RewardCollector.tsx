@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Coins, Gift, Sparkles, X } from 'lucide-react';
+import { Gift, X } from 'lucide-react';
+import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { type RewardItem } from '../../contexts/RewardQueueContext';
 
 interface Props {
@@ -38,12 +39,11 @@ const typeIconColor: Record<string, string> = {
 };
 
 function RewardIcon({ item }: { item: RewardItem }) {
-  const color =
-    item.rarity && item.rarity !== 'common'
-      ? rarityIconColor[item.rarity]
-      : typeIconColor[item.type];
-  const Icon = item.type === 'money' ? Coins : item.type === 'aura' ? Sparkles : Gift;
-  return <Icon className={`h-14 w-14 ${color}`} strokeWidth={1.5} />;
+  const color = item.rarity && item.rarity !== 'common' ? rarityIconColor[item.rarity] : '';
+
+  if (item.type === 'money') return <CurrencyIcon type="money" className={`h-14 w-14 ${color}`} />;
+  if (item.type === 'aura') return <CurrencyIcon type="aura" className={`h-14 w-14 ${color}`} />;
+  return <Gift className={`h-14 w-14 ${color}`} strokeWidth={1.5} />;
 }
 
 export default function RewardCollector({ items, currentIndex, phase, onAdvance, onClose }: Props) {
@@ -96,14 +96,14 @@ export default function RewardCollector({ items, currentIndex, phase, onAdvance,
           <div className="space-y-2">
             {totals.money > 0 && (
               <div className="flex items-center gap-3 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3">
-                <Coins className="h-5 w-5 text-yellow-400" />
+                <CurrencyIcon type="money" className="h-5 w-5" />
                 <span className="text-lg font-bold">+{totals.money.toLocaleString()}</span>
                 <span className="text-sm text-muted-foreground">coins</span>
               </div>
             )}
             {totals.aura > 0 && (
               <div className="flex items-center gap-3 rounded-xl border border-purple-500/20 bg-purple-500/10 px-4 py-3">
-                <Sparkles className="h-5 w-5 text-purple-400" />
+                <CurrencyIcon type="aura" className="h-5 w-5" />
                 <span className="text-lg font-bold">+{totals.aura.toLocaleString()}</span>
                 <span className="text-sm text-muted-foreground">aura</span>
               </div>
