@@ -528,7 +528,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             {/* Other nav items */}
             {navItems.filter((item) => !isDisabled(item.to)).map((item) => {
               const isActive = location.pathname === item.to ||
-                (item.to !== '/' && location.pathname.startsWith(item.to));
+                (item.to !== '/' && location.pathname.startsWith(`${item.to}/`));
               const ItemIcon = item.icon;
 
               return (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
@@ -6,8 +6,21 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
 import { toast } from '@/hooks/use-toast';
 import { useRewardQueue, type RewardItem } from '../contexts/RewardQueueContext';
-import { CheckCircle2, Circle, Coins, Sparkles, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList } from 'lucide-react';
+import { CheckCircle2, Circle, Coins, Sparkles, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList, Search, List, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+type QuestSortMode = 'recommended' | 'reward-desc' | 'target-asc' | 'title-asc';
+type QuestViewMode = 'list' | 'grid';
+
+const QUEST_SORT_OPTIONS: Array<{ value: QuestSortMode; label: string }> = [
+  { value: 'recommended', label: 'Recommandé' },
+  { value: 'reward-desc', label: 'Récompenses max' },
+  { value: 'target-asc', label: 'Objectif le plus simple' },
+  { value: 'title-asc', label: 'Nom (A-Z)' },
+];
 
 export default function Quests() {
   const [dailyQuests, setDailyQuests] = useState<DailyQuest[]>([]);
@@ -16,6 +29,9 @@ export default function Quests() {
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<QuestSortMode>('recommended');
+  const [viewMode, setViewMode] = useState<QuestViewMode>('grid');
   const { enqueue } = useRewardQueue();
 
   const fetchQuests = async () => {
@@ -117,6 +133,74 @@ export default function Quests() {
     }
   };
 
+  const hasSelectedQuests = myQuests.length > 0;
+  const completedQuests = myQuests.filter((q) => q.isCompleted && !q.isClaimed);
+  const canSelectNewQuests = !hasSelectedQuests && dailyQuests.length > 0;
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  const displayedMyQuests = useMemo(() => {
+    return [...myQuests]
+      .filter((userQuest) => {
+        if (!normalizedSearch) return true;
+        return [userQuest.quest.title, userQuest.quest.description, userQuest.quest.questType]
+          .join(' ')
+          .toLowerCase()
+          .includes(normalizedSearch);
+      })
+      .sort((a, b) => {
+        switch (sortMode) {
+          case 'reward-desc':
+            return (b.quest.moneyReward + b.quest.auraReward) - (a.quest.moneyReward + a.quest.auraReward);
+          case 'target-asc':
+            return a.quest.targetValue - b.quest.targetValue;
+          case 'title-asc':
+            return a.quest.title.localeCompare(b.quest.title, 'fr', { sensitivity: 'base' });
+          case 'recommended':
+          default: {
+            const aPriority = a.isCompleted && !a.isClaimed ? 0 : a.isClaimed ? 2 : 1;
+            const bPriority = b.isCompleted && !b.isClaimed ? 0 : b.isClaimed ? 2 : 1;
+            if (aPriority !== bPriority) return aPriority - bPriority;
+
+            const aProgress = (a.progress?.currentValue || 0) / Math.max(a.quest.targetValue, 1);
+            const bProgress = (b.progress?.currentValue || 0) / Math.max(b.quest.targetValue, 1);
+            return bProgress - aProgress;
+          }
+        }
+      });
+  }, [myQuests, normalizedSearch, sortMode]);
+
+  const displayedDailyQuests = useMemo(() => {
+    return [...dailyQuests]
+      .filter((quest) => {
+        if (!normalizedSearch) return true;
+        return [quest.title, quest.description, quest.questType]
+          .join(' ')
+          .toLowerCase()
+          .includes(normalizedSearch);
+      })
+      .sort((a, b) => {
+        switch (sortMode) {
+          case 'reward-desc':
+            return (b.moneyReward + b.auraReward) - (a.moneyReward + a.auraReward);
+          case 'target-asc':
+            return a.targetValue - b.targetValue;
+          case 'title-asc':
+            return a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' });
+          case 'recommended':
+          default: {
+            const aSelected = selectedQuestIds.includes(a.id) ? 0 : 1;
+            const bSelected = selectedQuestIds.includes(b.id) ? 0 : 1;
+            if (aSelected !== bSelected) return aSelected - bSelected;
+            return (b.moneyReward + b.auraReward) - (a.moneyReward + a.auraReward);
+          }
+        }
+      });
+  }, [dailyQuests, normalizedSearch, selectedQuestIds, sortMode]);
+
+  const layoutClassName = viewMode === 'grid'
+    ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'
+    : 'space-y-4';
+
   if (loading) {
     return (
       <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -131,10 +215,6 @@ export default function Quests() {
       </div>
     );
   }
-
-  const hasSelectedQuests = myQuests.length > 0;
-  const completedQuests = myQuests.filter((q) => q.isCompleted && !q.isClaimed);
-  const canSelectNewQuests = !hasSelectedQuests && dailyQuests.length > 0;
 
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
@@ -176,11 +256,58 @@ export default function Quests() {
         </Card>
       )}
 
+      {(hasSelectedQuests || canSelectNewQuests) && (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full lg:max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Rechercher une quête..."
+              className="pl-9"
+            />
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Select value={sortMode} onValueChange={(value) => setSortMode(value as QuestSortMode)}>
+              <SelectTrigger className="w-full sm:w-56">
+                <SelectValue placeholder="Trier" />
+              </SelectTrigger>
+              <SelectContent>
+                {QUEST_SORT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as QuestViewMode)}>
+              <TabsList className="h-9">
+                <TabsTrigger value="list" className="px-3" aria-label="Vue liste">
+                  <List className="h-4 w-4" />
+                </TabsTrigger>
+                <TabsTrigger value="grid" className="px-3" aria-label="Vue grille 3 colonnes">
+                  <LayoutGrid className="h-4 w-4" />
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+      )}
+
       {hasSelectedQuests && (
         <div className={SPACING.CARD_SPACING}>
           <h2 className={TYPOGRAPHY.H3}>Mes Quêtes</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {myQuests.map((userQuest) => {
+          {displayedMyQuests.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className={TYPOGRAPHY.MUTED}>Aucune quête ne correspond à votre recherche.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className={layoutClassName}>
+            {displayedMyQuests.map((userQuest) => {
               const progress = userQuest.progress?.currentValue || 0;
               const target = userQuest.quest.targetValue;
               const progressPercent = Math.min((progress / target) * 100, 100);
@@ -247,15 +374,22 @@ export default function Quests() {
                 </Card>
               );
             })}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
       {canSelectNewQuests && (
         <div className={SPACING.CARD_SPACING}>
-          <h2 className={TYPOGRAPHY.H3}>Sélectionnez 3 Quêtes</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dailyQuests.map((quest) => {
+          {displayedDailyQuests.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className={TYPOGRAPHY.MUTED}>Aucune quête ne correspond à votre recherche.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className={layoutClassName}>
+            {displayedDailyQuests.map((quest) => {
               const isSelected = selectedQuestIds.includes(quest.id);
               const QuestIcon = getQuestIcon(quest.questType);
 
@@ -300,7 +434,8 @@ export default function Quests() {
                 </Card>
               );
             })}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

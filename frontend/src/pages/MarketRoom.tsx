@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CandlestickChart, ShieldCheck, Sparkles, Zap } from 'lucide-react';
+import { ArrowRight, CandlestickChart, ShieldCheck, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { TYPOGRAPHY } from '@/lib/design-system';
 import { auraCoinApi, marketRoomApi } from '../services/api';
 
 type CoinCardData = {
@@ -89,46 +88,8 @@ export default function MarketRoom() {
     load();
   }, []);
 
-  const highlight = useMemo(() => {
-    if (!coins.length) return null;
-    return [...coins].sort((a, b) => Math.abs(b.change) - Math.abs(a.change))[0];
-  }, [coins]);
-
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-border/50 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.22),transparent_28%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.18),transparent_26%),linear-gradient(135deg,#0f172a_0%,#111827_45%,#1f2937_100%)] p-6 text-white shadow-[0_24px_80px_rgba(15,23,42,0.35)] sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-white/80">
-              <Sparkles className="h-3.5 w-3.5" />
-              Salle de marche
-            </div>
-            <div className="space-y-3">
-              <h1 className={cn(TYPOGRAPHY.H1, 'text-white')}>Trois cryptos, trois temperaments, un seul hub.</h1>
-              <p className="max-w-2xl text-sm text-white/70 sm:text-base">
-                Aura Coin reste le marche de reference. Aura Stable vise la regularite. Chaos Coin pousse les fluctuations et le levier
-                dans une direction beaucoup plus agressive.
-              </p>
-            </div>
-          </div>
-          {highlight && (
-            <div className="min-w-[260px] rounded-[24px] border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">Coin a surveiller</p>
-              <p className="mt-2 text-xl font-semibold">{highlight.name}</p>
-              <div className="mt-4 flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs text-white/60">Prix actuel</p>
-                  <p className="text-2xl font-semibold">${highlight.price.toFixed(2)}</p>
-                </div>
-                <div className={cn('rounded-full px-3 py-1 text-sm font-semibold', highlight.change >= 0 ? 'bg-emerald-400/15 text-emerald-200' : 'bg-rose-400/15 text-rose-200')}>
-                  {highlight.change >= 0 ? '+' : ''}{highlight.change.toFixed(2)}%
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
       <section className="grid gap-4 lg:grid-cols-3">
         {loading
           ? Array.from({ length: 3 }).map((_, index) => (

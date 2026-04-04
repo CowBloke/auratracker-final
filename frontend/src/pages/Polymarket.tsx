@@ -838,7 +838,7 @@ export default function Polymarket() {
                 </CardContent>
               </Card>
             ) : (
-              <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : 'space-y-4')}>
+              <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-3' : 'space-y-4')}>
                 {sortedOpenEvents.map((event) => {
                   const userBet = bets.find((b) => b.eventId === event.id);
                   const canBet = !userBet && event.status === 'OPEN' && new Date(event.eventDate) > new Date();
@@ -1378,7 +1378,7 @@ export default function Polymarket() {
                       <CardContent className="py-8 text-center text-muted-foreground">Aucune suggestion en attente</CardContent>
                     </Card>
                   ) : (
-                <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : 'space-y-4')}>
+                <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-3' : 'space-y-4')}>
                       {pendingSuggestions.map((suggestion) => {
                         return (
                           <Card key={suggestion.id}>
@@ -1468,7 +1468,7 @@ export default function Polymarket() {
                       <CardContent className="py-8 text-center text-muted-foreground">Aucun événement disponible</CardContent>
                     </Card>
                   ) : (
-                <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-2' : 'space-y-3')}>
+                <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-3' : 'space-y-3')}>
                       {events.map((event) => {
                         const options = getEventOptions(event);
                         return (

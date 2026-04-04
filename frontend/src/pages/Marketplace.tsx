@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, BadgeDollarSign, BellRing, CheckCircle2, Loader2, Package, Search, Store, Tag, Wallet } from 'lucide-react';
+import { BellRing, CheckCircle2, Loader2, Package, Search, Tag } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi, type MarketplaceListing, type MarketplaceListingItem } from '../services/api';
-import { PageShell, PageHeader } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -340,17 +339,6 @@ export default function Marketplace() {
       });
   }, [activeListings, search, sortMode, typeFilter]);
 
-  const stats = useMemo(() => {
-    const listedValue = activeListings.reduce((total, listing) => total + listing.totalPrice, 0);
-    const inventoryValue = inventory.reduce((total, entry) => total + entry.item.price * entry.quantity, 0);
-
-    return [
-      { label: 'Annonces actives', value: String(activeListings.length), icon: Store },
-      { label: 'Objets en stock', value: String(inventory.length), icon: Package },
-      { label: 'Valeur visible', value: formatMoney(listedValue + inventoryValue), icon: Wallet },
-    ];
-  }, [activeListings, inventory]);
-
   const handleCreateListing = async () => {
     if (!user || !selectedInventoryItem || submittingListing) {
       return;
@@ -432,59 +420,6 @@ export default function Marketplace() {
   return (
     <PageShell>
       <div className="space-y-6">
-        <Card className="overflow-hidden border-border/60 bg-[linear-gradient(135deg,rgba(249,115,22,0.14),rgba(16,185,129,0.10),rgba(245,158,11,0.16))] shadow-none">
-          <CardContent className="relative p-6 md:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.15),transparent_35%)]" />
-            <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)] lg:items-end">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
-                  <BadgeDollarSign className="h-3.5 w-3.5 text-amber-600" />
-                  Marché communautaire
-                </div>
-                <div className="space-y-2">
-                  <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Vends tes objets à d’autres joueurs</h1>
-                  <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-                    Mets en vente les objets de ton inventaire, fixe ton prix et récupère du money dès qu’un autre joueur achète ton annonce.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild>
-                    <Link to="/inventory">
-                      Ouvrir l’inventaire
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link to="/market">
-                      Boutique officielle
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                {stats.map((stat) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div key={stat.label} className="rounded-2xl border border-border/60 bg-background/75 p-4 backdrop-blur-sm">
-                      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-muted/40 text-foreground">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="text-xl font-semibold tracking-tight">{stat.value}</div>
-                      <div className="text-xs text-muted-foreground">{stat.label}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <PageHeader
-          title="Marché"
-          description="Choisis un objet à vendre, explore les annonces en cours et gère tes propres listings dans le même espace."
-        />
-
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as MarketplaceTab)} className="space-y-6">
           <TabsList className="h-auto flex-wrap border-border/60 bg-muted/20">
             <TabsTrigger value="market" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
@@ -505,45 +440,43 @@ export default function Marketplace() {
           ) : (
             <>
               <TabsContent value="market" className="space-y-6">
-                <Card className="border-border/60 bg-card/80 shadow-none">
-                  <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="relative w-full lg:max-w-md">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Rechercher un objet ou un vendeur..."
-                        className="pl-9"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as ItemTypeFilter)}>
-                        <SelectTrigger className="w-full sm:w-44">
-                          <SelectValue placeholder="Catégorie" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select value={sortMode} onValueChange={(value) => setSortMode(value as MarketplaceSortMode)}>
-                        <SelectTrigger className="w-full sm:w-44">
-                          <SelectValue placeholder="Trier" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SORT_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="relative w-full lg:max-w-md">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Rechercher un objet ou un vendeur..."
+                      className="pl-9"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as ItemTypeFilter)}>
+                      <SelectTrigger className="w-full sm:w-44">
+                        <SelectValue placeholder="Catégorie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(TYPE_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={sortMode} onValueChange={(value) => setSortMode(value as MarketplaceSortMode)}>
+                      <SelectTrigger className="w-full sm:w-44">
+                        <SelectValue placeholder="Trier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SORT_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
                 {filteredMarketListings.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 p-10 text-center">

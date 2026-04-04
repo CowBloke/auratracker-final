@@ -31,6 +31,7 @@ import {
   auraCoinApi,
   clansApi,
   economyApi,
+  marketRoomApi,
   usersApi,
 } from '../services/api';
 import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, Swords, Loader2, Ticket, Copy } from 'lucide-react';
@@ -94,6 +95,8 @@ type DashboardWidgetId =
   | 'aura-history'
   | 'live'
   | 'auracoin'
+  | 'stablecoin'
+  | 'chaoscoin'
   | 'clan-wars'
   | 'referral';
 
@@ -169,6 +172,8 @@ const defaultDashboardLayout: DashboardWidgetId[] = [
   'live',
   'clan-wars',
   'auracoin',
+  'stablecoin',
+  'chaoscoin',
 ];
 const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; description: string }> = {
   shortcuts: { title: 'Raccourcis jeux', description: 'Accès rapide à tes jeux favoris.' },
@@ -177,11 +182,13 @@ const dashboardWidgetLabels: Record<DashboardWidgetId, { title: string; descript
   'aura-history': { title: 'Historique aura', description: 'Tous les envois et retraits d aura du site.' },
   'clan-wars': { title: 'Guerres de clan', description: 'Suivi rapide des affrontements en cours.' },
   auracoin: { title: 'Aura Coin', description: 'Prix et variation du marché.' },
+  stablecoin: { title: 'Aura Stable', description: 'Prix et variation du marché stable.' },
+  chaoscoin: { title: 'Chaos Coin', description: 'Prix et variation du marché volatil.' },
   live: { title: 'Activité des parties', description: 'Parties ouvertes en direct.' },
 };
 
 const isDashboardWidgetId = (value: string): value is DashboardWidgetId =>
-  ['shortcuts', 'referral', 'aura-flow', 'aura-history', 'live', 'auracoin', 'clan-wars'].includes(value);
+  ['shortcuts', 'referral', 'aura-flow', 'aura-history', 'live', 'auracoin', 'stablecoin', 'chaoscoin', 'clan-wars'].includes(value);
 
 const dashboardWidgetCardClass = "flex h-full flex-col overflow-hidden rounded-2xl border border-border/50 bg-background shadow-none";
 const dashboardWidgetHeaderClass = "px-4 pb-3 pt-4 sm:px-5";
@@ -372,6 +379,12 @@ export default function Dashboard() {
   const [auraCoinPrice, setAuraCoinPrice] = useState<number | null>(null);
   const [auraCoinPreviousPrice, setAuraCoinPreviousPrice] = useState<number | null>(null);
   const [auraCoinHistory, setAuraCoinHistory] = useState<{ price: number; time: string }[]>([]);
+  const [stableCoinPrice, setStableCoinPrice] = useState<number | null>(null);
+  const [stableCoinPreviousPrice, setStableCoinPreviousPrice] = useState<number | null>(null);
+  const [stableCoinHistory, setStableCoinHistory] = useState<{ price: number; time: string }[]>([]);
+  const [chaosCoinPrice, setChaosCoinPrice] = useState<number | null>(null);
+  const [chaosCoinPreviousPrice, setChaosCoinPreviousPrice] = useState<number | null>(null);
+  const [chaosCoinHistory, setChaosCoinHistory] = useState<{ price: number; time: string }[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
   const [viewerClanId, setViewerClanId] = useState<string | null>(null);
   const [clanPumpUpMessage, setClanPumpUpMessage] = useState<ClanPumpUpMessage | null>(null);
@@ -568,8 +581,10 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [auraCoinRes, clansRes, auraWidgetRes] = await Promise.allSettled([
+        const [auraCoinRes, stableCoinRes, chaosCoinRes, clansRes, auraWidgetRes] = await Promise.allSettled([
           auraCoinApi.getPrice(4),
+          marketRoomApi.getCoin('stable-coin').getPrice(4),
+          marketRoomApi.getCoin('chaos-coin').getPrice(4),
           clansApi.list(),
           fetchAuraWidgetData(),
         ]);
@@ -579,6 +594,30 @@ export default function Dashboard() {
           setAuraCoinPrice(currentPrice);
           setAuraCoinPreviousPrice(history[1]?.price ?? history[0]?.price ?? currentPrice);
           setAuraCoinHistory(
+            history.map((h) => ({
+              price: h.price,
+              time: new Date(h.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            }))
+          );
+        }
+
+        if (stableCoinRes.status === 'fulfilled') {
+          const { currentPrice, history } = stableCoinRes.value.data;
+          setStableCoinPrice(currentPrice);
+          setStableCoinPreviousPrice(history[1]?.price ?? history[0]?.price ?? currentPrice);
+          setStableCoinHistory(
+            history.map((h) => ({
+              price: h.price,
+              time: new Date(h.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            }))
+          );
+        }
+
+        if (chaosCoinRes.status === 'fulfilled') {
+          const { currentPrice, history } = chaosCoinRes.value.data;
+          setChaosCoinPrice(currentPrice);
+          setChaosCoinPreviousPrice(history[1]?.price ?? history[0]?.price ?? currentPrice);
+          setChaosCoinHistory(
             history.map((h) => ({
               price: h.price,
               time: new Date(h.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
@@ -628,11 +667,25 @@ export default function Dashboard() {
       setAuraCoinPrice(data.price);
     };
 
+    const handleStableCoinPriceUpdate = (data: { price: number }) => {
+      setStableCoinPreviousPrice((prev) => stableCoinPrice ?? prev);
+      setStableCoinPrice(data.price);
+    };
+
+    const handleChaosCoinPriceUpdate = (data: { price: number }) => {
+      setChaosCoinPreviousPrice((prev) => chaosCoinPrice ?? prev);
+      setChaosCoinPrice(data.price);
+    };
+
     socket.on('auracoin:price-update', handleAuraCoinPriceUpdate);
+    socket.on('market-room:stable-coin:price-update', handleStableCoinPriceUpdate);
+    socket.on('market-room:chaos-coin:price-update', handleChaosCoinPriceUpdate);
     return () => {
       socket.off('auracoin:price-update', handleAuraCoinPriceUpdate);
+      socket.off('market-room:stable-coin:price-update', handleStableCoinPriceUpdate);
+      socket.off('market-room:chaos-coin:price-update', handleChaosCoinPriceUpdate);
     };
-  }, [socket, auraCoinPrice]);
+  }, [socket, auraCoinPrice, stableCoinPrice, chaosCoinPrice]);
 
   useEffect(() => {
     if (!dailyAuraState?.nextResetAt) {
@@ -792,6 +845,112 @@ export default function Dashboard() {
     if (auraCoinPrice === null || auraCoinPreviousPrice === null || auraCoinPreviousPrice === 0) return null;
     return ((auraCoinPrice - auraCoinPreviousPrice) / auraCoinPreviousPrice) * 100;
   }, [auraCoinPrice, auraCoinPreviousPrice]);
+
+  const stableCoinDelta = useMemo(() => {
+    if (stableCoinPrice === null || stableCoinPreviousPrice === null || stableCoinPreviousPrice === 0) return null;
+    return ((stableCoinPrice - stableCoinPreviousPrice) / stableCoinPreviousPrice) * 100;
+  }, [stableCoinPrice, stableCoinPreviousPrice]);
+
+  const chaosCoinDelta = useMemo(() => {
+    if (chaosCoinPrice === null || chaosCoinPreviousPrice === null || chaosCoinPreviousPrice === 0) return null;
+    return ((chaosCoinPrice - chaosCoinPreviousPrice) / chaosCoinPreviousPrice) * 100;
+  }, [chaosCoinPrice, chaosCoinPreviousPrice]);
+
+  const renderCoinWidget = ({
+    title,
+    price,
+    delta,
+    history,
+    gradientId,
+    route,
+    buttonLabel,
+  }: {
+    title: string;
+    price: number | null;
+    delta: number | null;
+    history: { price: number; time: string }[];
+    gradientId: string;
+    route: string;
+    buttonLabel: string;
+  }) => {
+    const isUp = (delta ?? 0) >= 0;
+    const chartConfig = {
+      price: {
+        label: 'Prix',
+        color: isUp ? '#10b981' : '#ef4444',
+      },
+    } satisfies ChartConfig;
+
+    return (
+      <Card className={dashboardWidgetCardClass}>
+        <CardHeader className={cn(dashboardWidgetHeaderClass, "pb-2")}>
+          <div className="flex items-center justify-between gap-2">
+            <DashboardWidgetTitle
+              title={title}
+              icon={Star}
+              iconClassName="text-primary"
+              iconWrapperClassName="bg-primary/15"
+            />
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              {delta !== null && (
+                isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />
+              )}
+              <span className="tabular-nums">
+                {delta === null ? 'N/A' : `${isUp ? '+' : ''}${delta.toFixed(2)}%`}
+              </span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+            <p className="text-4xl font-semibold tracking-tight tabular-nums md:text-[2.75rem]">
+              {price === null ? '--' : `$${price.toFixed(2)}`}
+            </p>
+
+            {history.length >= 2 ? (
+              <ChartContainer config={chartConfig} className="!aspect-auto h-20 w-full sm:h-24">
+                <AreaChart data={history} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                  <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-price)" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="var(--color-price)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="time" hide />
+                  <YAxis domain={['auto', 'auto']} hide />
+                  <ChartTooltip
+                    cursor={{ stroke: 'var(--color-price)', strokeWidth: 1, strokeDasharray: '4 2' }}
+                    content={
+                      <ChartTooltipContent
+                        formatter={(v) => [`$${Number(v).toFixed(2)}`, 'Prix']}
+                        labelFormatter={(l) => l}
+                      />
+                    }
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="price"
+                    stroke="var(--color-price)"
+                    fill={`url(#${gradientId})`}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4, fill: 'var(--color-price)', strokeWidth: 0 }}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-20 sm:h-24" />
+            )}
+          </div>
+
+          <Button asChild variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)}>
+            <Link to={route}>{buttonLabel}</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const handleReferralCopy = async () => {
     if (!referralSummary?.referralCode) return;
@@ -1436,84 +1595,35 @@ export default function Dashboard() {
                     </Card>
                   )}
 
-                  {widgetId === 'auracoin' && (() => {
-                    const isUp = (auraCoinDelta ?? 0) >= 0;
-                    const auraCoinChartConfig = {
-                      price: {
-                        label: 'Prix',
-                        color: isUp ? '#10b981' : '#ef4444',
-                      },
-                    } satisfies ChartConfig;
-                    return (
-                      <Card className={dashboardWidgetCardClass}>
-                        <CardHeader className={cn(dashboardWidgetHeaderClass, "pb-2")}>
-                          <div className="flex items-center justify-between gap-2">
-                            <DashboardWidgetTitle
-                              title="Aura Coin"
-                              icon={Star}
-                              iconClassName="text-primary"
-                              iconWrapperClassName="bg-primary/15"
-                            />
-                            <div className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                              {auraCoinDelta !== null && (
-                                isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />
-                              )}
-                              <span className="tabular-nums">
-                                {auraCoinDelta === null ? 'N/A' : `${isUp ? '+' : ''}${auraCoinDelta.toFixed(2)}%`}
-                              </span>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className={cn(dashboardWidgetContentClass, "flex flex-col")}>
-                          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-                            <p className="text-4xl font-semibold tracking-tight tabular-nums md:text-[2.75rem]">
-                              {auraCoinPrice === null ? '--' : `$${auraCoinPrice.toFixed(2)}`}
-                            </p>
+                  {widgetId === 'auracoin' && renderCoinWidget({
+                    title: 'Aura Coin',
+                    price: auraCoinPrice,
+                    delta: auraCoinDelta,
+                    history: auraCoinHistory,
+                    gradientId: 'auraCoinGrad',
+                    route: '/games/aura-coin',
+                    buttonLabel: 'Ouvrir Aura Coin',
+                  })}
 
-                            {auraCoinHistory.length >= 2 ? (
-                              <ChartContainer config={auraCoinChartConfig} className="!aspect-auto h-20 w-full sm:h-24">
-                                <AreaChart data={auraCoinHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                                  <defs>
-                                    <linearGradient id="acGrad" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="5%" stopColor="var(--color-price)" stopOpacity={0.25} />
-                                      <stop offset="95%" stopColor="var(--color-price)" stopOpacity={0} />
-                                    </linearGradient>
-                                  </defs>
-                                  <XAxis dataKey="time" hide />
-                                  <YAxis domain={['auto', 'auto']} hide />
-                                  <ChartTooltip
-                                    cursor={{ stroke: 'var(--color-price)', strokeWidth: 1, strokeDasharray: '4 2' }}
-                                    content={
-                                      <ChartTooltipContent
-                                        formatter={(v) => [`$${Number(v).toFixed(2)}`, 'Prix']}
-                                        labelFormatter={(l) => l}
-                                      />
-                                    }
-                                  />
-                                  <Area
-                                    type="monotone"
-                                    dataKey="price"
-                                    stroke="var(--color-price)"
-                                    fill="url(#acGrad)"
-                                    strokeWidth={2}
-                                    dot={false}
-                                    activeDot={{ r: 4, fill: 'var(--color-price)', strokeWidth: 0 }}
-                                    isAnimationActive={false}
-                                  />
-                                </AreaChart>
-                              </ChartContainer>
-                            ) : (
-                              <div className="h-20 sm:h-24" />
-                            )}
-                          </div>
+                  {widgetId === 'stablecoin' && renderCoinWidget({
+                    title: 'Aura Stable',
+                    price: stableCoinPrice,
+                    delta: stableCoinDelta,
+                    history: stableCoinHistory,
+                    gradientId: 'stableCoinGrad',
+                    route: '/games/stable-coin',
+                    buttonLabel: 'Ouvrir Aura Stable',
+                  })}
 
-                          <Button asChild variant="outline" className={cn("mt-3 w-full", dashboardGhostButtonClass)}>
-                            <Link to="/games/aura-coin">Ouvrir Aura Coin</Link>
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    );
-                  })()}
+                  {widgetId === 'chaoscoin' && renderCoinWidget({
+                    title: 'Chaos Coin',
+                    price: chaosCoinPrice,
+                    delta: chaosCoinDelta,
+                    history: chaosCoinHistory,
+                    gradientId: 'chaosCoinGrad',
+                    route: '/games/chaos-coin',
+                    buttonLabel: 'Ouvrir Chaos Coin',
+                  })}
 
                 </SortableDashboardWidget>
               ))}

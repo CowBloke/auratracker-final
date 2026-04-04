@@ -516,7 +516,7 @@ export default function Suggestions() {
     }
 
     return (
-      <div className={cn(SPACING.CARD_SPACING, viewMode === 'grid' && 'grid grid-cols-1 gap-4 xl:grid-cols-2')}>
+      <div className={cn(SPACING.CARD_SPACING, viewMode === 'grid' && 'grid grid-cols-1 gap-4 xl:grid-cols-3')}>
         {items.map((suggestion) => {
           const ratingValue = ratingInputs[suggestion.id] ?? suggestion.userRating ?? 5;
 
