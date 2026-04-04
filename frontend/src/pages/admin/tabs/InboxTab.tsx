@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils';
 import {
   Archive,
   AlertTriangle,
+  Award,
   Bug,
   Check,
   Gavel,
@@ -29,7 +31,8 @@ import {
   UserX,
   X,
 } from 'lucide-react';
-import type { BanAppeal, BugReport, NameChangeRequest, PendingUser } from '../../../services/api';
+import { BadgeIcon } from '@/components/badges/BadgeIcon';
+import type { BanAppeal, BugReport, CustomBadgeRequest, NameChangeRequest, PendingUser } from '../../../services/api';
 
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
@@ -42,8 +45,9 @@ type InboxTabProps = {
   bugReports: BugReport[];
   banAppeals: BanAppeal[];
   nameChangeRequests: NameChangeRequest[];
+  customBadgeRequests: CustomBadgeRequest[];
   archivedRegistrations: ArchivedRegistration[];
-  inboxFilter: 'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'archived';
+  inboxFilter: 'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'archived';
   selectedInboxItem: string | null;
   legacyArchivedRegistrationsCount: number;
   importingArchivedRegistrations: boolean;
@@ -51,22 +55,27 @@ type InboxTabProps = {
   loadingBugs: boolean;
   loadingAppeals: boolean;
   loadingNameChanges: boolean;
+  loadingCustomBadgeRequests: boolean;
   approvingUser: string | null;
   rejectingUser: string | null;
   updatingBug: string | null;
   reviewingAppeal: string | null;
   reviewingNameChange: string | null;
   bugReply: Record<string, string>;
+  rejectNotes: Record<string, string>;
   importArchivedRegistrations: () => void;
-  setInboxFilter: (value: 'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'archived') => void;
+  setInboxFilter: (value: 'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'archived') => void;
   setSelectedInboxItem: (value: string | null) => void;
   approveUser: (userId: string) => void;
   rejectUser: (userId: string) => void;
   setBugReply: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setRejectNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   sendBugReply: (bug: BugReport) => void;
   toggleBugStatus: (bug: BugReport) => void;
   reviewBanAppeal: (appealId: string, action: 'approve' | 'reject') => void;
   reviewNameChangeRequest: (requestId: string, action: 'approve' | 'reject') => void;
+  approveCustomBadgeRequest: (requestId: string) => void;
+  rejectCustomBadgeRequest: (requestId: string) => void;
 };
 
 export function InboxTab(props: InboxTabProps) {
@@ -75,6 +84,7 @@ export function InboxTab(props: InboxTabProps) {
     bugReports,
     banAppeals,
     nameChangeRequests,
+    customBadgeRequests,
     archivedRegistrations,
     inboxFilter,
     selectedInboxItem,
@@ -84,22 +94,27 @@ export function InboxTab(props: InboxTabProps) {
     loadingBugs,
     loadingAppeals,
     loadingNameChanges,
+    loadingCustomBadgeRequests,
     approvingUser,
     rejectingUser,
     updatingBug,
     reviewingAppeal,
     reviewingNameChange,
     bugReply,
+    rejectNotes,
     importArchivedRegistrations,
     setInboxFilter,
     setSelectedInboxItem,
     approveUser,
     rejectUser,
     setBugReply,
+    setRejectNotes,
     sendBugReply,
     toggleBugStatus,
     reviewBanAppeal,
     reviewNameChangeRequest,
+    approveCustomBadgeRequest,
+    rejectCustomBadgeRequest,
   } = props;
 
   return (
@@ -117,6 +132,9 @@ export function InboxTab(props: InboxTabProps) {
         const allNameChangeItems = nameChangeRequests.map(n => ({
           id: `nc-${n.id}`, type: 'namechange' as const, date: new Date(n.createdAt), data: n,
         }));
+        const pendingBadgeItems = customBadgeRequests.map(req => ({
+          id: `badge-${req.id}`, type: 'badge' as const, date: new Date(req.createdAt), data: req,
+        }));
 
         const pendingBugItems = allBugItems.filter(i => (i.data as BugReport).status === 'PENDING');
         const pendingAppealItems = allAppealItems.filter(i => (i.data as BanAppeal).status === 'PENDING');
@@ -133,17 +151,18 @@ export function InboxTab(props: InboxTabProps) {
           ...allNameChangeItems.filter(i => (i.data as NameChangeRequest).status !== 'PENDING'),
         ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
-        const allPending = pendingUsers.length + pendingBugItems.length + pendingAppealItems.length + pendingNameChangeItems.length;
+        const allPending = pendingUsers.length + pendingBugItems.length + pendingAppealItems.length + pendingNameChangeItems.length + pendingBadgeItems.length;
 
         const activeItems = inboxFilter === 'registrations' ? registrationItems
           : inboxFilter === 'bugs' ? pendingBugItems
           : inboxFilter === 'appeals' ? pendingAppealItems
           : inboxFilter === 'namechanges' ? pendingNameChangeItems
+          : inboxFilter === 'badges' ? pendingBadgeItems
           : inboxFilter === 'archived' ? archivedItems
-          : [...registrationItems, ...pendingBugItems, ...pendingAppealItems, ...pendingNameChangeItems]
+          : [...registrationItems, ...pendingBugItems, ...pendingAppealItems, ...pendingNameChangeItems, ...pendingBadgeItems]
               .sort((a, b) => b.date.getTime() - a.date.getTime());
 
-        const allItemsPool = [...registrationItems, ...archivedRegistrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems];
+        const allItemsPool = [...registrationItems, ...archivedRegistrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems, ...pendingBadgeItems];
         const selectedItem = selectedInboxItem ? allItemsPool.find(i => i.id === selectedInboxItem) ?? null : null;
 
         const ADMIN_CATS = [
@@ -151,7 +170,8 @@ export function InboxTab(props: InboxTabProps) {
           { key: 'registrations' as const, label: 'Inscriptions', Icon: UserPlus, count: pendingUsers.length },
           { key: 'bugs' as const, label: 'Bugs', Icon: Bug, count: pendingBugItems.length },
           { key: 'appeals' as const, label: 'Appels de ban', Icon: Gavel, count: pendingAppealItems.length },
-          { key: 'namechanges' as const, label: 'Pseudos', Icon: UserCog, count: pendingNameChangeItems.length },
+            { key: 'namechanges' as const, label: 'Pseudos', Icon: UserCog, count: pendingNameChangeItems.length },
+            { key: 'badges' as const, label: 'Badges', Icon: Award, count: pendingBadgeItems.length },
           { key: 'archived' as const, label: 'Archivé', Icon: Archive, count: archivedItems.length },
         ];
 
@@ -205,7 +225,7 @@ export function InboxTab(props: InboxTabProps) {
               </div>
 
               <div className="w-72 shrink-0 border-r border-border/40 overflow-y-auto custom-scroll">
-                {(loadingPending || loadingBugs || loadingAppeals || loadingNameChanges) ? (
+                {(loadingPending || loadingBugs || loadingAppeals || loadingNameChanges || loadingCustomBadgeRequests) ? (
                   <div className="flex justify-center py-12">
                     <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                   </div>
@@ -251,13 +271,20 @@ export function InboxTab(props: InboxTabProps) {
                         badgeLabel = a.status === 'PENDING' ? 'Appel' : a.status === 'APPROVED' ? 'Accepté' : 'Rejeté';
                         badgeColor = a.status === 'PENDING' ? 'bg-red-500/20 text-red-400' : a.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400';
                         borderAccent = 'border-l-red-500';
-                      } else {
+                      } else if (item.type === 'namechange') {
                         const n = item.data as NameChangeRequest;
                         title = n.requestedUsername;
                         subtitle = `de ${n.currentUsername}`;
-                        badgeLabel = n.status === 'PENDING' ? 'Pseudo' : n.status === 'APPROVED' ? 'Accepté' : 'Rejeté';
+                        badgeLabel = n.status === 'PENDING' ? 'Pseudo' : n.status === 'APPROVED' ? 'Accept??' : 'Rejet??';
                         badgeColor = n.status === 'PENDING' ? 'bg-purple-500/20 text-purple-400' : n.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400';
                         borderAccent = 'border-l-purple-500';
+                      } else {
+                        const req = item.data as CustomBadgeRequest;
+                        title = req.name;
+                        subtitle = req.user?.username ? `par ${req.user.username}` : 'Demande de badge';
+                        badgeLabel = 'Badge';
+                        badgeColor = 'bg-yellow-500/20 text-yellow-400';
+                        borderAccent = 'border-l-yellow-500';
                       }
 
                       return (
@@ -476,6 +503,70 @@ export function InboxTab(props: InboxTabProps) {
                       </div>
                     );
                   })()
+                ) : selectedItem.type === 'badge' ? (
+                  (() => {
+                    const req = selectedItem.data as CustomBadgeRequest;
+                    return (
+                      <div className="p-6 space-y-5">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400">Badge personnalise</span>
+                            <span className="text-xs text-muted-foreground/60">
+                              {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-semibold">{req.name}</h3>
+                          <p className="text-sm text-muted-foreground">{req.user?.username ? `Demande par ${req.user.username}` : 'Auteur inconnu'}</p>
+                        </div>
+                        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4">
+                          <p className="text-xs font-medium text-muted-foreground/70 mb-3">Apercu</p>
+                          <div className="flex items-start gap-4">
+                            <BadgeIcon
+                              badge={{
+                                id: req.id,
+                                name: req.name,
+                                description: req.description,
+                                icon: req.icon,
+                                iconColor: '#ffffff',
+                                backgroundColor: req.backgroundColor,
+                                backgroundType: 'solid',
+                                borderColor: req.borderColor,
+                                rarity: req.rarity,
+                                category: 'custom',
+                              }}
+                              size="md"
+                            />
+                            <div className="flex-1 min-w-0 space-y-1">
+                              <p className="text-sm font-medium">{req.name}</p>
+                              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{req.description}</p>
+                              <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded-full border border-yellow-500/30 text-yellow-400">
+                                {req.rarity}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground/70">Note admin optionnelle</p>
+                          <Input
+                            className="max-w-sm"
+                            placeholder="Raison ou note interne"
+                            value={rejectNotes[req.id] ?? ''}
+                            onChange={(e) => setRejectNotes((prev) => ({ ...prev, [req.id]: e.target.value }))}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" onClick={() => approveCustomBadgeRequest(req.id)} className="h-8">
+                            <Check className="h-4 w-4 mr-1" />
+                            Approuver
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => rejectCustomBadgeRequest(req.id)} className="h-8">
+                            <X className="h-4 w-4 mr-1" />
+                            Refuser
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })()
                 ) : (
                   (() => {
                     const req = selectedItem.data as NameChangeRequest;
@@ -539,3 +630,4 @@ export function InboxTab(props: InboxTabProps) {
     </TabsContent>
   );
 }
+

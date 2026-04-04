@@ -992,6 +992,7 @@ export async function createBusiness(userId: string, input: { name: string; type
 
   const creationCost = callerIsAdmin ? 0 : type.creationFee;
   const startingCapital = type.key === 'bank' ? 0 : input.capital;
+  let unlockedBusinessLevel = 0;
 
   if (!callerIsAdmin) {
     const [skills, ownedBusinessCount, viewer] = await Promise.all([
@@ -1012,9 +1013,9 @@ export async function createBusiness(userId: string, input: { name: string; type
       throw new Error('BUSINESS_SLOT_LIMIT_REACHED');
     }
 
-    const unlockedLevel = viewer?.unlockedBusinessLevel ?? 0;
+    unlockedBusinessLevel = viewer?.unlockedBusinessLevel ?? 0;
     const requiredUnlock = type.level - 1; // to create level N, must have unlocked N-1
-    if (type.level > 1 && unlockedLevel < requiredUnlock) {
+    if (type.level > 1 && unlockedBusinessLevel < requiredUnlock) {
       throw new Error('BUSINESS_LEVEL_LOCKED');
     }
   }
@@ -1072,7 +1073,7 @@ export async function createBusiness(userId: string, input: { name: string; type
   await emitSharedBalanceUpdates(prisma, userId);
 
   // Update unlocked level (only goes up, never down)
-  if (type.level > unlockedLevel) {
+  if (type.level > unlockedBusinessLevel) {
     await prisma.user.update({
       where: { id: userId },
       data: { unlockedBusinessLevel: type.level },

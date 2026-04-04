@@ -296,16 +296,27 @@ router.patch('/plaintes/:id/accept', authMiddleware, async (req: AuthRequest, re
         courtRole: 'DEFENDANT',
       };
 
-      const allParticipants = [...adminParticipants, plaintiffParticipant, defendantParticipant];
-      await tx.messageConversationParticipant.createMany({ data: allParticipants, skipDuplicates: true });
+      const allParticipants = Array.from(
+        new Map(
+          [...adminParticipants, plaintiffParticipant, defendantParticipant].map((participant) => [
+            `${participant.conversationId}:${participant.userId}`,
+            participant,
+          ])
+        ).values()
+      );
+      await tx.messageConversationParticipant.createMany({ data: allParticipants });
 
       // Add court parties
-      const courtParties = [
-        ...admins.map((admin) => ({ caseId: courtCase.id, userId: admin.id, courtRole: 'JUDGE' })),
-        { caseId: courtCase.id, userId: plainte.plaintifId, courtRole: 'PLAINTIFF' },
-        { caseId: courtCase.id, userId: plainte.defendantId!, courtRole: 'DEFENDANT' },
-      ];
-      await tx.courtParty.createMany({ data: courtParties, skipDuplicates: true });
+      const courtParties = Array.from(
+        new Map(
+          [
+            ...admins.map((admin) => ({ caseId: courtCase.id, userId: admin.id, courtRole: 'JUDGE' })),
+            { caseId: courtCase.id, userId: plainte.plaintifId, courtRole: 'PLAINTIFF' },
+            { caseId: courtCase.id, userId: plainte.defendantId!, courtRole: 'DEFENDANT' },
+          ].map((party) => [`${party.caseId}:${party.userId}`, party])
+        ).values()
+      );
+      await tx.courtParty.createMany({ data: courtParties });
 
       // System message
       await tx.messageConversationMessage.create({

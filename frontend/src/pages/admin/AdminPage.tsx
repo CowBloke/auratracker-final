@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Check, Ban as BanIcon, ChevronLeft, ChevronRight, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark } from 'lucide-react';
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
@@ -1454,7 +1454,7 @@ export default function Admin() {
   const [updatingBug, setUpdatingBug] = useState<string | null>(null);
   const [bugReply, setBugReply] = useState<Record<string, string>>({});
   const [selectedInboxItem, setSelectedInboxItem] = useState<string | null>(null);
-  const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'archived'>('all');
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'archived'>('all');
 
   // Pending users state
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -4235,11 +4235,11 @@ export default function Admin() {
           className={SPACING.SECTION_SPACING}
         >
           <TabsList className="flex flex-wrap h-auto p-1">
-          <TabsTrigger value="inbox">
+          <TabsTrigger value="inbox" onClick={() => { fetchCustomBadgeRequests(); }}>
             Boîte de réception
-            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length) > 0 && (
+            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length) > 0 && (
               <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
-                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length}
+                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length}
               </span>
             )}
           </TabsTrigger>
@@ -4280,11 +4280,8 @@ export default function Admin() {
               <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="badges" onClick={() => { fetchBadges(); fetchCustomBadgeRequests(); }}>
+          <TabsTrigger value="badges" onClick={() => { fetchBadges(); }}>
             Badges
-            {customBadgeRequests.length > 0 && (
-              <span className="ml-1 bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{customBadgeRequests.length}</span>
-            )}
           </TabsTrigger>
         </TabsList>
 
@@ -4293,6 +4290,7 @@ export default function Admin() {
           bugReports={bugReports}
           banAppeals={banAppeals}
           nameChangeRequests={nameChangeRequests}
+          customBadgeRequests={customBadgeRequests}
           archivedRegistrations={archivedRegistrations}
           inboxFilter={inboxFilter}
           selectedInboxItem={selectedInboxItem}
@@ -4302,22 +4300,27 @@ export default function Admin() {
           loadingBugs={loadingBugs}
           loadingAppeals={loadingAppeals}
           loadingNameChanges={loadingNameChanges}
+          loadingCustomBadgeRequests={customBadgeRequestsLoading}
           approvingUser={approvingUser}
           rejectingUser={rejectingUser}
           updatingBug={updatingBug}
           reviewingAppeal={reviewingAppeal}
           reviewingNameChange={reviewingNameChange}
           bugReply={bugReply}
+          rejectNotes={rejectNotes}
           importArchivedRegistrations={importArchivedRegistrations}
           setInboxFilter={setInboxFilter}
           setSelectedInboxItem={setSelectedInboxItem}
           approveUser={approveUser}
           rejectUser={rejectUser}
           setBugReply={setBugReply}
+          setRejectNotes={setRejectNotes}
           sendBugReply={sendBugReply}
           toggleBugStatus={toggleBugStatus}
           reviewBanAppeal={reviewBanAppeal}
           reviewNameChangeRequest={reviewNameChangeRequest}
+          approveCustomBadgeRequest={handleApproveCustomBadge}
+          rejectCustomBadgeRequest={handleRejectCustomBadge}
         />
 
         <UsersTab
@@ -7935,75 +7938,6 @@ export default function Admin() {
         <TabsContent value="badges" className={SPACING.SECTION_SPACING}>
           <div className="space-y-6">
 
-            {/* Custom badge requests */}
-            <Card>
-              <CardHeader>
-                <CardDescription className="flex items-center gap-2">
-                  Demandes de badges personnalisés
-                  {customBadgeRequests.length > 0 && (
-                    <span className="bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{customBadgeRequests.length}</span>
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className={SPACING.CARD_SPACING}>
-                {customBadgeRequestsLoading ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : customBadgeRequests.length === 0 ? (
-                  <p className={TYPOGRAPHY.MUTED}>Aucune demande en attente.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {customBadgeRequests.map((req) => (
-                      <div key={req.id} className="flex items-start gap-3 p-3 rounded-md border border-yellow-500/20 bg-yellow-500/5">
-                        <BadgeIcon
-                          badge={{
-                            id: req.id, name: req.name, description: req.description,
-                            icon: req.icon, iconColor: '#ffffff',
-                            backgroundColor: req.backgroundColor, backgroundType: 'solid',
-                            borderColor: req.borderColor, rarity: req.rarity,
-                            category: 'custom',
-                          }}
-                          size="md"
-                        />
-                        <div className="flex-1 min-w-0 space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium">{req.name}</span>
-                            <span className="text-xs text-muted-foreground">par {req.user?.username}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
-                              req.rarity === 'legendary' ? 'border-yellow-500/40 text-yellow-400' :
-                              req.rarity === 'epic' ? 'border-purple-500/40 text-purple-400' :
-                              req.rarity === 'rare' ? 'border-blue-500/40 text-blue-400' :
-                              req.rarity === 'uncommon' ? 'border-green-500/40 text-green-400' :
-                              'border-border/40 text-muted-foreground'
-                            }`}>{req.rarity}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{req.description}</p>
-                          <div className="flex items-center gap-2 pt-1 flex-wrap">
-                            <Input
-                              className="h-7 text-xs max-w-[200px]"
-                              placeholder="Note (optionnel)"
-                              value={rejectNotes[req.id] ?? ''}
-                              onChange={(e) => setRejectNotes((prev) => ({ ...prev, [req.id]: e.target.value }))}
-                            />
-                            <Button size="sm" className="h-7 text-xs" onClick={() => handleApproveCustomBadge(req.id)}>
-                              <Check className="w-3 h-3 mr-1" />
-                              Approuver
-                            </Button>
-                            <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleRejectCustomBadge(req.id)}>
-                              <X className="w-3 h-3 mr-1" />
-                              Refuser
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Header actions */}
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <h2 className={TYPOGRAPHY.H3}>Gestion des Badges</h2>
               <div className="flex items-center gap-2">
@@ -8711,4 +8645,7 @@ export default function Admin() {
     </>
   );
 }
+
+
+
 
