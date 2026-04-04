@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeftRight,
   Building2,
@@ -679,11 +679,33 @@ export function ExploreTab({
   const [purchaseBusinessId, setPurchaseBusinessId] = useState<string | null>(null);
   const [applyBusinessId, setApplyBusinessId] = useState<string | null>(null);
   const [ratingBusinessId, setRatingBusinessId] = useState<string | null>(null);
+  const formationRatingTimeoutRef = useRef<number | null>(null);
+  const FORMATION_RATING_DELAY_MS = 15000;
 
   const handleServiceSuccess = (businessId: string) => async () => {
     await onReload(true);
     setTimeout(() => setRatingBusinessId(businessId), 1000);
   };
+
+  const handleFormationPurchaseSuccess = async () => {
+    await onReload(true);
+  };
+
+  const handleFormationAccess = (businessId: string) => {
+    if (formationRatingTimeoutRef.current !== null) {
+      window.clearTimeout(formationRatingTimeoutRef.current);
+    }
+    formationRatingTimeoutRef.current = window.setTimeout(() => {
+      setRatingBusinessId(businessId);
+      formationRatingTimeoutRef.current = null;
+    }, FORMATION_RATING_DELAY_MS);
+  };
+
+  useEffect(() => () => {
+    if (formationRatingTimeoutRef.current !== null) {
+      window.clearTimeout(formationRatingTimeoutRef.current);
+    }
+  }, []);
 
   const allBusinesses = useMemo(
     () => [...data.ownedBusinesses, ...data.exploreBusinesses],
@@ -972,7 +994,13 @@ export function ExploreTab({
       <ShareholderProposalModal open={Boolean(shareholderBusiness)} onClose={() => setShareholderBusinessId(null)} business={shareholderBusiness} onSubmitted={() => onReload(true)} />
       <BuyoutOfferModal open={Boolean(buyoutBusiness)} onClose={() => setBuyoutBusinessId(null)} business={buyoutBusiness} onSubmitted={() => onReload(true)} />
       <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} currentUserId={userId} onSubmitted={transferBusiness ? handleServiceSuccess(transferBusiness.id) : () => onReload(true)} />
-      <FormationCatalogModal open={Boolean(formationBusiness)} onClose={() => setFormationBusinessId(null)} business={formationBusiness} onSubmitted={formationBusiness ? handleServiceSuccess(formationBusiness.id) : () => onReload(true)} />
+      <FormationCatalogModal
+        open={Boolean(formationBusiness)}
+        onClose={() => setFormationBusinessId(null)}
+        business={formationBusiness}
+        onSubmitted={handleFormationPurchaseSuccess}
+        onAccessed={formationBusiness ? () => handleFormationAccess(formationBusiness.id) : undefined}
+      />
       <PurchaseItemModal open={Boolean(purchaseBusiness)} onClose={() => setPurchaseBusinessId(null)} business={purchaseBusiness} onSubmitted={purchaseBusiness ? () => { void handleServiceSuccess(purchaseBusiness.id)(); } : () => onReload(true)} />
       <ApplyBusinessModal open={Boolean(applyBusiness)} onClose={() => setApplyBusinessId(null)} business={applyBusiness} onSubmitted={applyBusiness ? handleServiceSuccess(applyBusiness.id) : () => onReload(true)} />
       <RatingModal open={Boolean(ratingBusinessId)} onClose={() => setRatingBusinessId(null)} businessId={ratingBusinessId} businesses={allBusinesses} onSubmitted={() => onReload()} />

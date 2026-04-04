@@ -2066,11 +2066,13 @@ export function FormationCatalogModal({
   onClose,
   business,
   onSubmitted,
+  onAccessed,
 }: {
   open: boolean;
   onClose: () => void;
   business: YouBusiness | null;
   onSubmitted: () => Promise<void>;
+  onAccessed?: () => void;
 }) {
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [purchasedUrl, setPurchasedUrl] = useState<{ title: string; url: string } | null>(null);
@@ -2099,6 +2101,10 @@ export function FormationCatalogModal({
 
   if (!business) return null;
 
+  const handleAccess = () => {
+    onAccessed?.();
+  };
+
   return (
     <ModalWrap
       open={open}
@@ -2113,7 +2119,7 @@ export function FormationCatalogModal({
             <p className="mt-3 text-sm font-semibold">{purchasedUrl.title}</p>
             <p className="mt-1 text-xs text-muted-foreground">Clique pour accéder au contenu.</p>
           </div>
-          <a href={purchasedUrl.url} target="_blank" rel="noopener noreferrer" className="block">
+          <a href={purchasedUrl.url} target="_blank" rel="noopener noreferrer" className="block" onClick={handleAccess}>
             <Button className="w-full"><Download className="mr-2 h-4 w-4" />Accéder à la formation</Button>
           </a>
           {products.length > 1 ? (
