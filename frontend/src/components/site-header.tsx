@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getPageMeta } from '@/components/chat/presence';
 import { resolveImageUrl } from '@/lib/images';
-import { usersApi } from '@/services/api';
+import { usersApi, supportApi, changelogApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { getPageMetaForPath } from '@/lib/page-meta';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
@@ -46,6 +46,9 @@ import {
   Eye,
   Monitor,
   Crosshair,
+  Search,
+  SendHorizonal,
+  Megaphone,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -54,6 +57,19 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { YouHeaderBar } from '@/components/you/YouHeaderBar';
 import { UserAccountMenu } from '@/components/user-account-menu';
 import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { computeNewChangelogCount, markChangelogSeen } from '@/lib/changelog';
+
+interface SearchUser {
+  id: string;
+  username: string;
+  firstName?: string | null;
+  usernameColor?: string | null;
+  profilePicture?: string | null;
+  bio?: string | null;
+}
 
 export function SiteHeader() {
   const { user, refreshUser } = useAuth();
@@ -72,6 +88,14 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [now, setNow] = useState(Date.now());
   const canViewConnectedStatus = Boolean(user?.isAdmin || user?.isSuperAdmin);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchUsers, setSearchUsers] = useState<SearchUser[]>([]);
+  const [isLoadingSearchUsers, setIsLoadingSearchUsers] = useState(false);
+  const [searchLoadError, setSearchLoadError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [hasFetchedSearchUsers, setHasFetchedSearchUsers] = useState(false);
+  const [messagesUnread, setMessagesUnread] = useState(0);
+  const [updatesUnread, setUpdatesUnread] = useState(0);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -154,6 +178,68 @@ export function SiteHeader() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!isSearchOpen || hasFetchedSearchUsers) return;
+    const fetchUsers = async () => {
+      try {
+        setIsLoadingSearchUsers(true);
+        setSearchLoadError(null);
+        const response = await usersApi.getAll();
+        setSearchUsers(response.data.users || []);
+        setHasFetchedSearchUsers(true);
+      } catch {
+        setSearchLoadError('Impossible de charger les joueurs.');
+      } finally {
+        setIsLoadingSearchUsers(false);
+      }
+    };
+    fetchUsers();
+  }, [isSearchOpen, hasFetchedSearchUsers]);
+
+  useEffect(() => {
+    if (!user) return;
+    supportApi.getUnreadCount().then(({ data }) => setMessagesUnread(data.count)).catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (data: { message: { fromAdmin: boolean; userId?: string } }) => {
+      if (location.pathname !== '/messages' && data.message.fromAdmin) {
+        setMessagesUnread((c) => c + 1);
+      }
+    };
+    socket.on('support:message', handler);
+    return () => { socket.off('support:message', handler); };
+  }, [socket, location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname === '/messages') setMessagesUnread(0);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const syncUnread = () => {
+      changelogApi.getIds()
+        .then(({ data }) => setUpdatesUnread(computeNewChangelogCount(data.ids)))
+        .catch(() => {});
+    };
+    if (location.pathname === '/changelog') {
+      changelogApi.getIds()
+        .then(({ data }) => {
+          if (data.ids[0]) markChangelogSeen(data.ids[0]);
+          setUpdatesUnread(0);
+        })
+        .catch(() => {});
+    } else {
+      syncUnread();
+    }
+    window.addEventListener('focus', syncUnread);
+    window.addEventListener('storage', syncUnread);
+    return () => {
+      window.removeEventListener('focus', syncUnread);
+      window.removeEventListener('storage', syncUnread);
+    };
+  }, [location.pathname]);
+
   const getPageName = (pathname: string): string => getPageMetaForPath(pathname).title;
 
   const breadcrumbItems = useMemo(() => {
@@ -205,6 +291,118 @@ export function SiteHeader() {
     if (minutes > 0) return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
     return `${seconds}s`;
   };
+
+  const filteredSearchUsers = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return searchUsers;
+    return searchUsers.filter((u) => u.username.toLowerCase().includes(term));
+  }, [searchTerm, searchUsers]);
+
+  const getBioPreview = (bio?: string | null, maxLength = 80) => {
+    const trimmed = bio?.trim();
+    if (!trimmed) return 'Aucune description.';
+    if (trimmed.length <= maxLength) return trimmed;
+    return `${trimmed.slice(0, maxLength)}...`;
+  };
+
+  const handleSearchUserSelect = (userId: string) => {
+    setIsSearchOpen(false);
+    setSearchTerm('');
+    navigate(`/profile/${userId}`);
+  };
+
+  const searchSheet = (
+    <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Rechercher un joueur">
+          <Search className="h-4 w-4" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Rechercher un joueur</SheetTitle>
+        </SheetHeader>
+        <div className="flex min-h-0 flex-1 flex-col gap-4 pt-6">
+          <Input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Pseudo, identifiant..."
+            autoFocus
+            className="h-12 shrink-0 border-border/50"
+          />
+          <ScrollArea className="flex-1">
+            <div className="space-y-0 pr-4">
+              {isLoadingSearchUsers ? (
+                <p className="text-sm text-muted-foreground py-4">Chargement des joueurs...</p>
+              ) : searchLoadError ? (
+                <p className="text-sm text-muted-foreground py-4">{searchLoadError}</p>
+              ) : filteredSearchUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4">Aucun joueur trouvé.</p>
+              ) : (
+                filteredSearchUsers.map((u) => (
+                  <Button
+                    key={u.id}
+                    type="button"
+                    onClick={() => handleSearchUserSelect(u.id)}
+                    variant="ghost"
+                    className="h-auto w-full justify-start gap-3 rounded-none border-b border-border/30 px-3 py-4 text-left last:border-0"
+                  >
+                    <Avatar className="h-9 w-9">
+                      {u.profilePicture ? (
+                        <AvatarImage src={resolveImageUrl(u.profilePicture)} alt={u.username} />
+                      ) : null}
+                      <AvatarFallback className="bg-muted text-foreground">
+                        {u.username.slice(0, 1)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <UsernameDisplay
+                        username={u.username}
+                        firstName={u.firstName}
+                        usernameColor={u.usernameColor}
+                        className="block"
+                        usernameClassName="text-sm font-medium"
+                      />
+                      <span className="block text-xs text-muted-foreground">
+                        {getBioPreview(u.bio)}
+                      </span>
+                    </div>
+                  </Button>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+
+  const messagesButton = (
+    <Button asChild variant="ghost" size="sm" className="relative h-8 w-8 p-0" title="Messagerie">
+      <Link to="/messages">
+        <SendHorizonal className="h-4 w-4" />
+        {messagesUnread > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-0.5 text-white text-[9px] font-semibold">
+            {messagesUnread > 99 ? '99+' : messagesUnread}
+          </span>
+        )}
+      </Link>
+    </Button>
+  );
+
+  const changelogButton = (
+    <Button asChild variant="ghost" size="sm" className="relative h-8 w-8 p-0" title="Changelog">
+      <Link to="/changelog">
+        <Megaphone className="h-4 w-4" />
+        {updatesUnread > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-0.5 text-white text-[9px] font-semibold">
+            {updatesUnread > 99 ? '99+' : updatesUnread}
+          </span>
+        )}
+      </Link>
+    </Button>
+  );
 
   const onlineUsersControl = (
     <div className="flex items-center gap-3">
@@ -372,7 +570,7 @@ export function SiteHeader() {
         <div className="flex w-full min-w-0 items-center gap-3">
           <SidebarTrigger className="flex-shrink-0 text-muted-foreground hover:text-foreground" />
           <div className="min-w-0 flex-1">
-            <YouHeaderBar rightSlot={<div className="flex items-center gap-2">{onlineUsersControl}<InboxDropdown /></div>} />
+            <YouHeaderBar rightSlot={<div className="flex items-center gap-2">{onlineUsersControl}{searchSheet}{messagesButton}{changelogButton}<InboxDropdown /></div>} />
           </div>
         </div>
       </header>
@@ -828,6 +1026,9 @@ export function SiteHeader() {
             </div>
           </div>
 
+          {searchSheet}
+          {messagesButton}
+          {changelogButton}
           <InboxDropdown />
 
           {clanEffects.length > 0 && (

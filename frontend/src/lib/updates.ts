@@ -46,6 +46,22 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-04-sidebar-cleanup',
+    date: '2026-04-04',
+    title: 'Barre latérale allégée',
+    summary: 'La barre latérale ne contient plus que les liens de navigation essentiels. Recherche, messagerie, changelog et signalement de bug ont été déplacés vers la barre du haut.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-04-04-sidebar-cleanup-1', text: '**Navigation · Barre latérale** — La barre de navigation est maintenant plus compacte : recherche, messagerie, changelog et "Reporter un bug" ne s\'y trouvent plus.' },
+          { id: '2026-04-04-sidebar-cleanup-2', text: '**Barre du haut · Raccourcis** — Recherche (loupe), messagerie (avec badge de messages non lus) et changelog (avec badge de mises à jour) sont désormais accessibles directement depuis la barre supérieure.' },
+          { id: '2026-04-04-sidebar-cleanup-3', text: '**Menu compte · Outils** — "Reporter un bug" et le lien d\'administration (admins) sont maintenant dans le menu de compte (icône avatar en haut à droite).' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-03-you-ux',
     date: '2026-04-03',
     title: 'Explorer — Notes, filtres et tutoriel',
