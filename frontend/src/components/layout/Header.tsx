@@ -193,16 +193,17 @@ export default function Header() {
           <div className="flex items-center gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2">
+                <button
+                  type="button"
+                  aria-label="Ouvrir le menu utilisateur"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border-0 bg-transparent p-0 focus-visible:outline-none"
+                >
                   <Avatar className="w-8 h-8">
                     <AvatarFallback className="bg-primary">
                       <User className="w-5 h-5 text-white" />
                     </AvatarFallback>
                   </Avatar>
-                  {user?.username ? (
-                    <UsernameDisplay username={user.username} className="font-medium" />
-                  ) : null}
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>

@@ -17,7 +17,6 @@
 - crossy road fix nouvelle version highscore et gain revoir mecanique casino
 - tutoriel
 - inbox objet bannière clan redirige mal
-- top bar image rond
 - UI blockblast
     - probleme vidée
     - en ruge lauvais placement

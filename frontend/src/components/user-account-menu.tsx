@@ -40,7 +40,12 @@ export function UserAccountMenu({ className, showLabel = true }: UserAccountMenu
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className={cn('h-9 gap-2 rounded-full border border-border/50 bg-background/70 px-2 hover:bg-muted/70', className)}
+          className={cn(
+            showLabel
+              ? 'h-9 gap-2 rounded-full border border-border/50 bg-background/70 px-2 hover:bg-muted/70'
+              : 'h-8 w-8 rounded-full border-0 bg-transparent p-0 hover:bg-transparent',
+            className
+          )}
         >
           <Avatar className="h-7 w-7 rounded-full">
             {user.profilePicture ? (
