@@ -14,6 +14,20 @@
 - XP
 - interface pour les prets et historuque achat
 - UI
+- crossy road fix nouvelle version highscore et gain revoir mecanique casino
+- tutoriel
+- inbox objet bannière clan redirige mal
+- zoomer images
+- top bar image rond
+- UI blockblast
+    - probleme vidée
+    - en ruge lauvais placement
+- dans résumé mettretout historique
+- au hover infos gain jeux
+- carte monde entrpeirse
+- immobilier : acheter rues
+- allainces`- chosir entre deux images
+- trois petits points
 
 Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 

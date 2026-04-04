@@ -954,7 +954,7 @@ export default function Games() {
       key={game.id}
       className="group block"
     >
-      <Card className="relative isolate min-h-[430px] overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
+      <Card className="relative isolate aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
         <Link to={getGameLink(game.id)} className="absolute inset-0 z-10" aria-label={`Ouvrir ${game.name}`} />
         {renderAdminControls(game)}
         {game.emoji && (
@@ -966,29 +966,29 @@ export default function Games() {
           <img
             src={resolveThemeImageUrl(game.image, theme)}
             alt={game.name}
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full scale-105 object-cover transition-transform duration-300 group-hover:scale-110"
             loading="lazy"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-        <CardContent className="relative flex h-full flex-col justify-end p-5 text-white">
+        <CardContent className="relative flex h-full flex-col justify-end p-4 text-white">
           <p className="text-xs font-medium   text-white/70">{game.type}</p>
           <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
-          <p className="mt-1 text-xs text-white/85">{game.description}</p>
-          <p className="mt-3 text-[11px] font-medium text-white/70">
+          <p className="mt-1 text-[11px] leading-4 text-white/85">{game.description}</p>
+          <p className="mt-2 text-[11px] font-medium text-white/70">
             {game.hasRewards ? 'Avec récompenses' : 'Sans récompenses'}
           </p>
           {gameRewardTiers[game.id]?.length ? (
-            <div className="mt-3 rounded-xl border border-white/15 bg-black/30 p-3 backdrop-blur-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+            <div className="mt-2 max-h-0 overflow-hidden rounded-lg border border-white/15 bg-black/45 p-0 opacity-0 transition-all duration-200 group-hover:max-h-56 group-hover:p-2 group-hover:opacity-100 group-focus-within:max-h-56 group-focus-within:p-2 group-focus-within:opacity-100">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
                 Paliers de gains
               </p>
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-1.5 space-y-1">
                 {gameRewardTiers[game.id]?.map((tier) => (
-                  <div key={`${game.id}-${tier.label}`} className="flex items-start justify-between gap-3 text-[11px] leading-4">
-                    <span className="font-medium text-white/75">{tier.label}</span>
-                    <span className="text-right text-white/95">{tier.reward}</span>
+                  <div key={`${game.id}-${tier.label}`} className="flex items-start justify-between gap-2 text-[10px] leading-4">
+                    <span className="font-medium text-white/80">{tier.label}</span>
+                    <span className="text-right text-white">{tier.reward}</span>
                   </div>
                 ))}
               </div>
