@@ -205,6 +205,7 @@ export default function MessagesPage() {
   const [blockConfirmId, setBlockConfirmId] = useState<string | null>(null);
 
   const initializedRef = useRef(false);
+  const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const groupImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -215,6 +216,11 @@ export default function MessagesPage() {
   const selectedIdSafe = selectedConversation?.id ?? null;
   const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
   const supportReactionsEnabled = selectedConversation?.type !== 'SUPPORT';
+  const scrollMessagesToBottom = () => {
+    const viewport = messagesScrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+    if (!viewport) return;
+    viewport.scrollTop = viewport.scrollHeight;
+  };
 
   // ── Data Loading ─────────────────────────────────────────────────────────
   const refreshConversations = async () => {
@@ -231,8 +237,8 @@ export default function MessagesPage() {
     return mergedConversations;
   };
 
-  const loadConversation = async (id: string, markRead = true) => {
-    setConvLoading(true);
+  const loadConversation = async (id: string, markRead = true, showLoader = true) => {
+    if (showLoader) setConvLoading(true);
     try {
       const adminSupportUserId = getAdminSupportUserId(id);
       if (adminSupportUserId) {
@@ -285,7 +291,7 @@ export default function MessagesPage() {
         setConversations((prev) => sortConversationsByRecent(prev.map((c) => c.id === id ? { ...c, unreadCount: 0 } : c)));
       }
     } finally {
-      setConvLoading(false);
+      if (showLoader) setConvLoading(false);
     }
   };
 
@@ -320,7 +326,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!selectedId) { setDetail(null); return; }
-    loadConversation(selectedId, true).catch(() => {
+    loadConversation(selectedId, true, true).catch(() => {
       toast({ title: 'Conversation indisponible', variant: 'destructive' });
     });
   }, [selectedId]);
@@ -341,7 +347,7 @@ export default function MessagesPage() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       refreshConversations().catch(() => {});
-      if (selectedIdSafe) loadConversation(selectedIdSafe, false).catch(() => {});
+      if (selectedIdSafe) loadConversation(selectedIdSafe, false, false).catch(() => {});
     }, POLL_INTERVAL_MS);
     return () => window.clearInterval(interval);
   }, [selectedIdSafe]);
@@ -350,7 +356,7 @@ export default function MessagesPage() {
     if (!socket) return;
     const refresh = () => {
       refreshConversations().catch(() => {});
-      if (selectedIdSafe) loadConversation(selectedIdSafe, false).catch(() => {});
+      if (selectedIdSafe) loadConversation(selectedIdSafe, false, false).catch(() => {});
     };
     socket.on('messaging:message', refresh);
     socket.on('messaging:conversation', refresh);
@@ -363,8 +369,12 @@ export default function MessagesPage() {
   }, [socket, selectedIdSafe]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [detail?.messages.length, selectedIdSafe]);
+    const frame = window.requestAnimationFrame(() => {
+      scrollMessagesToBottom();
+      window.setTimeout(scrollMessagesToBottom, 0);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [detail?.messages.length, selectedIdSafe, convLoading]);
 
   // ── Filtered lists ────────────────────────────────────────────────────────
   const { favorites, regular } = useMemo(() => {
@@ -408,7 +418,7 @@ export default function MessagesPage() {
       } else {
         await supportApi.sendConversationMessage(selectedIdSafe, body);
       }
-      await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false)]);
+      await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
     } catch {
       toast({ title: 'Envoi impossible', variant: 'destructive' });
       setDraft(body);
@@ -519,7 +529,7 @@ export default function MessagesPage() {
     if (!selectedIdSafe || !supportReactionsEnabled) return;
     try {
       await supportApi.reactToMessage(selectedIdSafe, messageId, emoji);
-      await loadConversation(selectedIdSafe, false);
+      await loadConversation(selectedIdSafe, false, false);
     } catch {
       toast({ title: 'Erreur', variant: 'destructive' });
     }
@@ -933,7 +943,7 @@ export default function MessagesPage() {
 
                 {/* Messages */}
                 <div className="relative min-h-0 flex-1 overflow-hidden bg-muted/15">
-                  <ScrollArea className="h-full px-4 py-4 sm:px-6">
+                  <ScrollArea ref={messagesScrollAreaRef} className="h-full px-4 py-4 sm:px-6">
                     <div className="flex w-full flex-col gap-0.5">
                       {convLoading ? (
                         <p className="py-8 text-center text-xs text-muted-foreground">Chargement...</p>
