@@ -11,6 +11,9 @@
 - Possibilité de pouvoir rembourser un pourcentage du pret (genre 50%) ou la totalité de ce que la personne posséde si elle a pas assez pour rembourser
 - bug role associé
 - fo,ndateur business au dessus 50%
+- XP
+- interface pour les prets et historuque achat
+- UI
 
 Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 
