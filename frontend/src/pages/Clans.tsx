@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Axe, Check, Crown, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
+import { AlertTriangle, Axe, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -85,6 +85,15 @@ const formatCountdown = (value: string | null | undefined) => {
 
 const formatEffectCooldown = (effect: ClanActiveEffect) => {
   return `Actif encore ${formatCountdown(effect.activeUntil)}`;
+};
+
+
+const getClanEffectIcon = (effect: ClanActiveEffect) => {
+  if (effect.type === 'CLAN_GAME_MONEY_BOOST') {
+    return <CurrencyIcon type="money" className="h-4 w-4" />;
+  }
+
+  return <Sparkles className="h-4 w-4" />;
 };
 
 const getStatusLabel = (status: ClanWarState['status']) => {
@@ -202,6 +211,15 @@ const SectionTitle = ({
       {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
     </div>
     {action ? <div className="flex items-center gap-2">{action}</div> : null}
+  </div>
+);
+
+const ClanEffectBadge = ({ effect }: { effect: ClanActiveEffect }) => (
+  <div
+    className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-700 shadow-sm"
+    title={`${effect.name} â€¢ +${effect.value}%${effect.activeUntil ? ` â€¢ ${formatEffectCooldown(effect)}` : ""}`}
+  >
+    {getClanEffectIcon(effect)}
   </div>
 );
 
@@ -1331,80 +1349,90 @@ export default function Clans() {
                         </div>
                       </div>
 
-                      <div className="mt-3 space-y-1.5">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <h1 className="text-xl font-semibold tracking-tight">{selectedClan.name}</h1>
-                          {selectedClan.viewer.isLeader ? <Crown className="h-4 w-4 text-amber-500" /> : null}
-                        </div>
+                      <div className="mt-3 flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <h1 className="text-xl font-semibold tracking-tight">{selectedClan.name}</h1>
+                            {selectedClan.viewer.isLeader ? <Crown className="h-4 w-4 text-amber-500" /> : null}
+                          </div>
 
-                        {descriptionEditOpen ? (
-                          <div className="space-y-2">
-                            <Textarea
-                              value={editDescription}
-                              onChange={(event) => setEditDescription(event.target.value)}
-                              maxLength={300}
-                              rows={3}
-                              placeholder="DÃ©cris l'identitÃ©, le style de jeu et l'objectif du clan."
-                              disabled={savingDescription}
-                            />
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button type="button" size="sm" onClick={handleSaveDescription} disabled={savingDescription}>
-                                {savingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                Enregistrer
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setEditDescription(selectedClan.description ?? '');
-                                  setDescriptionEditOpen(false);
-                                }}
+                          {descriptionEditOpen ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={editDescription}
+                                onChange={(event) => setEditDescription(event.target.value)}
+                                maxLength={300}
+                                rows={3}
+                                placeholder="DÃ©cris l'identitÃ©, le style de jeu et l'objectif du clan."
                                 disabled={savingDescription}
-                              >
-                                Annuler
-                              </Button>
-                              <span className="text-xs text-muted-foreground">{editDescription.length}/300</span>
+                              />
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button type="button" size="sm" onClick={handleSaveDescription} disabled={savingDescription}>
+                                  {savingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                  Enregistrer
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditDescription(selectedClan.description ?? '');
+                                    setDescriptionEditOpen(false);
+                                  }}
+                                  disabled={savingDescription}
+                                >
+                                  Annuler
+                                </Button>
+                                <span className="text-xs text-muted-foreground">{editDescription.length}/300</span>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap items-start gap-2">
-                            <p className="text-sm text-muted-foreground">
-                              {selectedClan.description || 'Aucune description pour le moment.'}
-                            </p>
-                            {selectedClan.viewer.isLeader ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 px-2"
-                                onClick={() => setDescriptionEditOpen(true)}
-                              >
-                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                                Modifier
-                              </Button>
-                            ) : null}
-                          </div>
-                        )}
+                          ) : (
+                            <div className="flex flex-wrap items-start gap-2">
+                              <p className="text-sm text-muted-foreground">
+                                {selectedClan.description || 'Aucune description pour le moment.'}
+                              </p>
+                              {selectedClan.viewer.isLeader ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2"
+                                  onClick={() => setDescriptionEditOpen(true)}
+                                >
+                                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                                  Modifier
+                                </Button>
+                              ) : null}
+                            </div>
+                          )}
 
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                          <span>
-                            <span className="font-medium text-foreground">{selectedClan.memberCount}</span>
-                            /{selectedClan.maxMembers} membres
-                          </span>
-                          <span>{formatAura(selectedClan.totalAura)} aura</span>
-                          <span>
-                            <span className="font-medium text-foreground">{formatMoney(selectedClan.warTrophies)}</span>
-                            {' '}trophÃ©es
-                          </span>
-                          <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Niv. {selectedClan.level}</Badge>
-                          {!selectedClan.isPublic ? <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Prive</Badge> : null}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                            <span>
+                              <span className="font-medium text-foreground">{selectedClan.memberCount}</span>
+                              /{selectedClan.maxMembers} membres
+                            </span>
+                            <span>{formatAura(selectedClan.totalAura)} aura</span>
+                            <span>
+                              <span className="font-medium text-foreground">{formatMoney(selectedClan.warTrophies)}</span>
+                              {' '}trophÃ©es
+                            </span>
+                            <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Niv. {selectedClan.level}</Badge>
+                            {!selectedClan.isPublic ? <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Prive</Badge> : null}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span>Chef :</span>
+                            <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span>Chef :</span>
-                          <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
-                        </div>
+                        {selectedClan.activeEffects.length > 0 ? (
+                          <div className="flex shrink-0 flex-wrap justify-end gap-2 pt-0.5">
+                            {selectedClan.activeEffects.map((effect) => (
+                              <ClanEffectBadge key={effect.id} effect={effect} />
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     </CardContent>
                   </Card>
@@ -1458,36 +1486,6 @@ export default function Clans() {
                     {/* â”€â”€ Info tab â”€â”€ */}
                     <TabsContent value="info" className="mt-4 space-y-4">
 
-                      <Card className={panelClassName}>
-                        <CardContent className="space-y-3 p-4">
-                          <SectionTitle
-                            title="Effets du clan"
-                            description="Les effets actifs et leurs cooldowns apparaissent aussi dans la top bar."
-                          />
-                          {selectedClan.activeEffects.length > 0 ? (
-                            <div className="space-y-2">
-                              {selectedClan.activeEffects.map((effect) => (
-                                <div key={effect.id} className="rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div>
-                                      <div className="text-sm font-medium">{effect.name}</div>
-                                      <div className="text-xs text-muted-foreground">+{effect.value}% sur l&apos;argent gagnÃ© en jeu</div>
-                                    </div>
-                                    <Badge variant={effect.isActive ? 'secondary' : 'outline'}>
-                                      Actif
-                                    </Badge>
-                                  </div>
-                                  <div className="mt-2 text-xs text-muted-foreground">{formatEffectCooldown(effect)}</div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
-                              Aucun effet actif pour le moment.
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
 
 
                       {/* Roster */}
@@ -1794,52 +1792,60 @@ export default function Clans() {
                         <CardContent className="space-y-3 p-4">
                           <SectionTitle
                             title="Banque de clan"
-                            description="Les membres peuvent déposer. Seul le chef peut dépenser cet argent pour les améliorations du clan."
+                            description={"Les membres peuvent dÃ©poser. Seul le chef peut dÃ©penser cet argent pour les amÃ©liorations du clan."}
                             action={
                               <>
-                                <Button type="button" variant="outline" size="sm" onClick={() => setBankHistoryOpen(true)}>
-                                  Historique
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => setBankHistoryOpen(true)}
+                                  title="Historique"
+                                  aria-label="Historique"
+                                >
+                                  <History className="h-4 w-4" />
                                 </Button>
                                 <Badge variant="secondary">Niveau {selectedClan.level}</Badge>
                               </>
                             }
                           />
                           <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <CurrencyIcon type="money" className="h-4 w-4" />
-                              Solde actuel
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <CurrencyIcon type="money" className="h-4 w-4" />
+                                  Solde actuel
+                                </div>
+                                <div className="mt-2 text-2xl font-semibold tabular-nums">
+                                  {formatMoney(selectedClan.clanBankMoney)}
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap items-end gap-2">
+                                <div className="w-full max-w-[180px] space-y-1">
+                                  <label className="text-xs text-muted-foreground">{"Montant Ã  dÃ©poser"}</label>
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    step={1}
+                                    value={bankDepositAmount}
+                                    onChange={(event) => setBankDepositAmount(event.target.value)}
+                                    disabled={depositingBank}
+                                  />
+                                </div>
+                                <Button type="button" onClick={handleDepositToBank} disabled={depositingBank}>
+                                  {depositingBank ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CurrencyIcon type="money" className="mr-2 h-4 w-4" />}
+                                  {"DÃ©poser"}
+                                </Button>
+                              </div>
                             </div>
-                            <div className="mt-2 text-2xl font-semibold tabular-nums">
-                              {formatMoney(selectedClan.clanBankMoney)}
-                            </div>
-                          </div>
-                          <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 text-sm text-muted-foreground">
-                            L&apos;historique des dépôts est disponible via le bouton <span className="font-medium text-foreground">Historique</span>.
                           </div>
                           <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
                             <div className="text-sm font-medium">Inventaire du clan</div>
                             <div className="mt-1 text-xs text-muted-foreground">
                               {selectedClan.ownedItems.length > 0
-                                ? `${selectedClan.ownedItems.length} objet${selectedClan.ownedItems.length > 1 ? 's' : ''} différent${selectedClan.ownedItems.length > 1 ? 's' : ''} en stock`
+                                ? `${selectedClan.ownedItems.length} objet${selectedClan.ownedItems.length > 1 ? "s" : ""} diffÃ©rent${selectedClan.ownedItems.length > 1 ? "s" : ""} en stock`
                                 : 'Aucun objet de clan en stock.'}
                             </div>
-                          </div>
-                          <div className="flex flex-wrap items-end gap-2">
-                            <div className="w-full max-w-[180px] space-y-1">
-                              <label className="text-xs text-muted-foreground">Montant à déposer</label>
-                              <Input
-                                type="number"
-                                min={1}
-                                step={1}
-                                value={bankDepositAmount}
-                                onChange={(event) => setBankDepositAmount(event.target.value)}
-                                disabled={depositingBank}
-                              />
-                            </div>
-                            <Button type="button" onClick={handleDepositToBank} disabled={depositingBank}>
-                              {depositingBank ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CurrencyIcon type="money" className="mr-2 h-4 w-4" />}
-                              Déposer
-                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -1850,7 +1856,7 @@ export default function Clans() {
                         <CardContent className="space-y-3 p-4">
                           <SectionTitle
                             title="Objets de clan"
-                            description="Achetés avec la banque du clan. Le chef peut les activer."
+                            description={"AchetÃ©s avec la banque du clan. Le chef peut les activer."}
                           />
                           {selectedClan.ownedItems.length > 0 ? (
                             <div className="space-y-2">
@@ -1858,8 +1864,8 @@ export default function Clans() {
                                 <div key={clanItem.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2 text-sm font-medium">
-                                      <span>{clanItem.item.name} ×{clanItem.quantity}</span>
-                                      {['CLAN_BANNER', 'CLAN_PROFILE_PICTURE'].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? '') ? (
+                                      <span>{clanItem.item.name} {"Ã—"}{clanItem.quantity}</span>
+                                      {["CLAN_BANNER", "CLAN_PROFILE_PICTURE"].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? "") ? (
                                         <Badge variant="secondary">Upload image</Badge>
                                       ) : null}
                                     </div>
@@ -1873,7 +1879,7 @@ export default function Clans() {
                                       disabled={usingClanItemId === clanItem.id}
                                     >
                                       {usingClanItemId === clanItem.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                      {['CLAN_BANNER', 'CLAN_PROFILE_PICTURE'].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? '') ? 'Choisir l&apos;image' : 'Activer'}
+                                      {["CLAN_BANNER", "CLAN_PROFILE_PICTURE"].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? "") ? "Choisir l&apos;image" : "Activer"}
                                     </Button>
                                   ) : (
                                     <Badge variant="outline">Chef requis</Badge>
@@ -1883,13 +1889,12 @@ export default function Clans() {
                             </div>
                           ) : (
                             <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
-                              Aucun objet de clan en stock. Les achats apparaîtront ici.
+                              {"Aucun objet de clan en stock. Les achats apparaÃ®tront ici."}
                             </div>
                           )}
                         </CardContent>
                       </Card>
                     </TabsContent>
-                    {/* â”€â”€ Chat tab (members only) â”€â”€ */}
                     <TabsContent value="chat" className="mt-4">
                       <Card className={panelClassName}>
                         <CardContent className="space-y-3 p-4">
@@ -2505,13 +2510,12 @@ export default function Clans() {
                       </Card>
                     </TabsContent>
                   </Tabs>
-
                   <Dialog open={bankHistoryOpen} onOpenChange={setBankHistoryOpen}>
                     <DialogContent className="max-w-2xl">
                       <DialogHeader>
                         <DialogTitle>Historique de la banque</DialogTitle>
                         <DialogDescription>
-                          Chaque dépôt effectué par un membre dans la banque du clan.
+                          {"Chaque dÃ©pÃ´t effectuÃ© par un membre dans la banque du clan."}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
@@ -2521,7 +2525,7 @@ export default function Clans() {
                           ))
                         ) : (
                           <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
-                            Aucun dépôt enregistré pour le moment.
+                            {"Aucun dÃ©pÃ´t enregistrÃ© pour le moment."}
                           </div>
                         )}
                       </div>

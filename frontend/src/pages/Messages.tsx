@@ -73,6 +73,23 @@ const formatTime = (value: string) => {
   return format(date, 'dd MMM', { locale: fr });
 };
 
+const formatDayLabel = (value: string) => {
+  const date = new Date(value);
+  if (isToday(date)) return 'Aujourd’hui';
+  if (isYesterday(date)) return 'Hier';
+  return format(date, 'EEEE d MMMM', { locale: fr });
+};
+
+const isSameCalendarDay = (left: string, right: string) => {
+  const leftDate = new Date(left);
+  const rightDate = new Date(right);
+  return (
+    leftDate.getFullYear() === rightDate.getFullYear() &&
+    leftDate.getMonth() === rightDate.getMonth() &&
+    leftDate.getDate() === rightDate.getDate()
+  );
+};
+
 const getInitials = (name?: string | null) => ((name ?? '?').trim().slice(0, 2) || '?').toUpperCase();
 const getPreview = (c: MessagingConversationSummary) => c.lastMessage?.body || 'Commence la discussion.';
 const getConversationActivityAt = (conversation: MessagingConversationSummary) => {
@@ -547,18 +564,33 @@ export default function MessagesPage() {
     : null;
 
   const currentMessages = detail?.messages ?? [];
+  const viewerLastReadAt =
+    selectedConversation?.type === 'SUPPORT'
+      ? null
+      : selectedConversation?.participants.find((entry) => entry.user.id === user?.id)?.lastReadAt ?? null;
+  const firstUnreadMessageId =
+    currentMessages.find((message) => {
+      const isOwnSupportMessage = selectedConversation?.type === 'SUPPORT'
+        ? Boolean(selectedAdminSupportUserId ? message.fromAdmin : !message.fromAdmin)
+        : (message.senderId ?? message.userId) === user?.id;
+
+      if (isOwnSupportMessage) return false;
+      if (selectedConversation?.type === 'SUPPORT') return message.isRead === false;
+      if (!viewerLastReadAt) return true;
+      return Date.parse(message.createdAt) > Date.parse(viewerLastReadAt);
+    })?.id ?? null;
 
   if (loading) {
     return (
-      <PageShell size="full" className="space-y-0 px-4 pb-8 lg:px-6">
-        <div className="min-h-[calc(100vh-9rem)] rounded-2xl border border-border/60 bg-card" />
+      <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
+        <div className="h-full rounded-2xl border border-border/60 bg-card" />
       </PageShell>
     );
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <PageShell size="full" className="space-y-0 px-4 pb-8 lg:px-6">
+    <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
 
       {/* ── Respect modal ── */}
       <Dialog open={respectOpen} onOpenChange={setRespectOpen}>
@@ -799,11 +831,11 @@ export default function MessagesPage() {
       </Dialog>
 
       {/* ── Main layout ── */}
-      <div className="relative min-h-[calc(100vh-9rem)] overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
-        <div className="grid min-h-[calc(100vh-9rem)] lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="relative h-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+        <div className="grid h-full min-h-0 lg:grid-cols-[260px_minmax(0,1fr)]">
 
           {/* ── Sidebar ── */}
-          <aside className={cn('flex flex-col border-r border-border/60', selectedIdSafe ? 'hidden lg:flex' : 'flex')}>
+          <aside className={cn('min-h-0 flex-col border-r border-border/60', selectedIdSafe ? 'hidden lg:flex' : 'flex')}>
             <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
               <h1 className="flex-1 text-sm font-semibold">Messages</h1>
               <Button type="button" size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => setCreateOpen(true)}>
@@ -817,7 +849,7 @@ export default function MessagesPage() {
                   className="w-full rounded-lg border border-border/50 bg-muted/30 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-primary/40 focus:bg-background transition-colors" />
               </div>
             </div>
-            <ScrollArea className="flex-1">
+            <ScrollArea className="min-h-0 flex-1">
               <div className="py-1">
                 {favorites.length > 0 && (
                   <>
@@ -835,7 +867,7 @@ export default function MessagesPage() {
           </aside>
 
           {/* ── Chat area ── */}
-          <section className={cn('flex min-h-[calc(100vh-9rem)] min-w-0 flex-col', selectedIdSafe ? 'flex' : 'hidden lg:flex')}>
+          <section className={cn('min-h-0 min-w-0 flex-col overflow-hidden', selectedIdSafe ? 'flex' : 'hidden lg:flex')}>
             {selectedConversation ? (
               <>
                 {/* Chat header */}
@@ -900,7 +932,7 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Messages */}
-                <div className="relative flex-1 overflow-hidden bg-muted/15">
+                <div className="relative min-h-0 flex-1 overflow-hidden bg-muted/15">
                   <ScrollArea className="h-full px-4 py-4 sm:px-6">
                     <div className="flex w-full flex-col gap-0.5">
                       {convLoading ? (
@@ -914,23 +946,53 @@ export default function MessagesPage() {
                           <p className="mt-1 text-xs text-muted-foreground">Envoie un premier message.</p>
                         </div>
                       ) : currentMessages.map((msg, index) => {
-                        const isOwn = (msg.sender?.id ?? msg.userId) === user?.id && !msg.fromAdmin;
+                        const isOwn = selectedConversation.type === 'SUPPORT'
+                          ? Boolean(selectedAdminSupportUserId ? msg.fromAdmin : !msg.fromAdmin)
+                          : (msg.sender?.id ?? msg.senderId ?? msg.userId) === user?.id && !msg.fromAdmin;
                         const prevMsg = currentMessages[index - 1];
                         const nextMsg = currentMessages[index + 1];
-                        const prevIsOwn = prevMsg ? (prevMsg.sender?.id ?? prevMsg.userId) === user?.id && !prevMsg.fromAdmin : false;
-                        const nextIsOwn = nextMsg ? (nextMsg.sender?.id ?? nextMsg.userId) === user?.id && !nextMsg.fromAdmin : false;
+                        const prevIsOwn = prevMsg
+                          ? selectedConversation.type === 'SUPPORT'
+                            ? Boolean(selectedAdminSupportUserId ? prevMsg.fromAdmin : !prevMsg.fromAdmin)
+                            : (prevMsg.sender?.id ?? prevMsg.senderId ?? prevMsg.userId) === user?.id && !prevMsg.fromAdmin
+                          : false;
+                        const nextIsOwn = nextMsg
+                          ? selectedConversation.type === 'SUPPORT'
+                            ? Boolean(selectedAdminSupportUserId ? nextMsg.fromAdmin : !nextMsg.fromAdmin)
+                            : (nextMsg.sender?.id ?? nextMsg.senderId ?? nextMsg.userId) === user?.id && !nextMsg.fromAdmin
+                          : false;
                         const sameSenderAsPrev = prevMsg && prevMsg.sender?.id === msg.sender?.id && prevIsOwn === isOwn;
                         const sameSenderAsNext = nextMsg && nextMsg.sender?.id === msg.sender?.id && nextIsOwn === isOwn;
                         const isFirst = !sameSenderAsPrev;
                         const isLast = !sameSenderAsNext;
+                        const showDaySeparator = !prevMsg || !isSameCalendarDay(prevMsg.createdAt, msg.createdAt);
+                        const showUnreadSeparator = firstUnreadMessageId === msg.id;
                         const showAvatar = !isOwn && selectedConversation.type === 'GROUP' && isLast;
                         const showSender = !isOwn && isFirst && selectedConversation.type === 'GROUP';
                         const reactions = msg.reactions ?? [];
                         const supportImages = msg.images ? JSON.parse(msg.images) as string[] : [];
                         const isBlocked = dmOtherUser && blockedIds.has(dmOtherUser.id);
                         return (
-                          <div key={msg.id}
-                            className={cn('flex items-end gap-1.5', isOwn ? 'flex-row-reverse' : 'flex-row', isLast ? 'mb-1' : 'mb-0')}>
+                          <div key={msg.id} className="flex flex-col gap-2">
+                            {showDaySeparator && (
+                              <div className="flex justify-center py-2">
+                                <span className="rounded-full border border-border/50 bg-background/95 px-3 py-1 text-[11px] font-medium capitalize text-muted-foreground shadow-sm">
+                                  {formatDayLabel(msg.createdAt)}
+                                </span>
+                              </div>
+                            )}
+                            {showUnreadSeparator && (
+                              <div className="flex items-center gap-3 py-1">
+                                <div className="h-px flex-1 bg-emerald-500/30" />
+                                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600">
+                                  Messages non lus
+                                </span>
+                                <div className="h-px flex-1 bg-emerald-500/30" />
+                              </div>
+                            )}
+                            <div
+                              className={cn('flex items-end gap-1.5', isOwn ? 'flex-row-reverse' : 'flex-row', isLast ? 'mb-1' : 'mb-0')}
+                            >
                             {/* Avatar placeholder for alignment in group */}
                             {selectedConversation.type === 'GROUP' && !isOwn && (
                               <div className="w-6 shrink-0">
@@ -1014,6 +1076,7 @@ export default function MessagesPage() {
                                 </div>
                               )}
                             </div>
+                          </div>
                           </div>
                         );
                       })}
