@@ -42,6 +42,7 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Page Pass ultra-minimaliste** — L\'UI de la page Pass a été simplifiée au maximum: suppression des textes non essentiels, retrait du titre `Pass`, suppression des dégradés, retour du compte à rebours et barre de progression en noir.', order: 12 },
       { category: 'SMALL_FEATURE', text: '**Badge Messages en sidebar réduite** — La pastille de non lus de la page Messagerie reste maintenant visible aussi quand la sidebar est en mode `collapsed` (icône).', order: 13 },
       { category: 'SMALL_FEATURE', text: '**Badge Changelog en sidebar réduite** — La pastille rouge du Changelog reste maintenant visible aussi quand la sidebar est en mode `collapsed` (icône).', order: 14 },
+      { category: 'BUG_FIX', text: '**Ordre des conversations Messages auto-mis à jour** — Sur la page Messages, la liste des conversations se réordonne maintenant automatiquement selon le dernier message reçu/envoyé, pour toujours remonter les discussions les plus récentes.', order: 15 },
     ],
   },
   {

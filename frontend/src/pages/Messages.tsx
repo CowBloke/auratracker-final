@@ -74,6 +74,18 @@ const formatTime = (value: string) => {
 
 const getInitials = (name?: string | null) => ((name ?? '?').trim().slice(0, 2) || '?').toUpperCase();
 const getPreview = (c: MessagingConversationSummary) => c.lastMessage?.body || 'Commence la discussion.';
+const getConversationActivityAt = (conversation: MessagingConversationSummary) => {
+  const timestamp = conversation.lastMessage?.createdAt;
+  const parsed = timestamp ? Date.parse(timestamp) : Number.NaN;
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const sortConversationsByRecent = (items: MessagingConversationSummary[]) =>
+  [...items].sort((a, b) => {
+    const timeDiff = getConversationActivityAt(b) - getConversationActivityAt(a);
+    if (timeDiff !== 0) return timeDiff;
+    return a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
+  });
 
 function ConversationAvatar({ conversation, size = 'md' }: { conversation: MessagingConversationSummary; size?: 'sm' | 'md' | 'lg' }) {
   const cls = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-10 w-10' : 'h-9 w-9';
@@ -156,7 +168,7 @@ export default function MessagesPage() {
   // ── Data Loading ─────────────────────────────────────────────────────────
   const refreshConversations = async () => {
     const r = await supportApi.getConversations();
-    setConversations(r.data.conversations);
+    setConversations(sortConversationsByRecent(r.data.conversations));
     return r.data.conversations;
   };
 
@@ -167,7 +179,7 @@ export default function MessagesPage() {
       setDetail(r.data);
       if (markRead) {
         await supportApi.markConversationRead(id);
-        setConversations((prev) => prev.map((c) => c.id === id ? { ...c, unreadCount: 0 } : c));
+        setConversations((prev) => sortConversationsByRecent(prev.map((c) => c.id === id ? { ...c, unreadCount: 0 } : c)));
       }
     } finally {
       setConvLoading(false);
@@ -184,10 +196,11 @@ export default function MessagesPage() {
           supportApi.getBlockedUsers(),
         ]);
         if (cancelled) return;
-        setConversations(convRes.data.conversations);
+        const sortedConversations = sortConversationsByRecent(convRes.data.conversations);
+        setConversations(sortedConversations);
         setPlayers(playersRes.data.users ?? []);
         setBlockedIds(new Set(blockedRes.data.blockedUsers.map((b) => b.id)));
-        setSelectedId((cur) => cur ?? convRes.data.conversations[0]?.id ?? null);
+        setSelectedId((cur) => cur ?? sortedConversations[0]?.id ?? null);
       } catch {
         toast({ title: 'Messagerie indisponible', variant: 'destructive' });
       } finally {
@@ -326,7 +339,7 @@ export default function MessagesPage() {
     e?.stopPropagation();
     try {
       const r = await supportApi.toggleFavorite(id);
-      setConversations((prev) => prev.map((c) => c.id === id ? { ...c, isFavorite: r.data.isFavorite } : c));
+      setConversations((prev) => sortConversationsByRecent(prev.map((c) => c.id === id ? { ...c, isFavorite: r.data.isFavorite } : c)));
       if (detail?.conversation.id === id) {
         setDetail((prev) => prev ? { ...prev, conversation: { ...prev.conversation, isFavorite: r.data.isFavorite } } : prev);
       }
