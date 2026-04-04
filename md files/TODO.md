@@ -14,6 +14,10 @@
 - immobilier : acheter rues
 - allainces`- chosir entre deux images
 - trois petits points
+- reset widgets
+ -apr defaut grille reset
+ - supprimer effet hover marketplace
+ - parts entreprise et fodateur rachat de parts
 
 Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 
