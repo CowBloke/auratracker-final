@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronsUpDown, LogOut, Moon, Settings, Sun, User } from 'lucide-react';
+import { Bug, ChevronsUpDown, LogOut, Moon, Settings, Shield, Sun, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import BugReportPanel from '@/components/layout/BugReportPanel';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,6 +27,7 @@ type UserAccountMenuProps = {
 export function UserAccountMenu({ className, showLabel = true }: UserAccountMenuProps) {
   const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [isBugReportOpen, setIsBugReportOpen] = useState(false);
 
   if (!user) return null;
 
@@ -36,6 +39,7 @@ export function UserAccountMenu({ className, showLabel = true }: UserAccountMenu
     .toUpperCase();
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -111,11 +115,32 @@ export function UserAccountMenu({ className, showLabel = true }: UserAccountMenu
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem onSelect={() => setIsBugReportOpen(true)}>
+            <Bug />
+            Reporter un bug
+          </DropdownMenuItem>
+          {(user.isAdmin || user.isSuperAdmin) && (
+            <DropdownMenuItem asChild>
+              <Link to="/admin">
+                <Shield className="text-amber-500" />
+                <span className="text-amber-500">Administration</span>
+              </Link>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>
           <LogOut />
           Deconnexion
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <BugReportPanel
+      open={isBugReportOpen}
+      onOpenChange={setIsBugReportOpen}
+      trigger={<button type="button" className="sr-only" tabIndex={-1} />}
+    />
+    </>
   );
 }
