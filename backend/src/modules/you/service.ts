@@ -2264,6 +2264,8 @@ export async function respondToBusinessShareProposal(userId: string, proposalId:
     .filter((shareholder) => shareholder.userId !== proposal.investorId)
     .reduce((sum, shareholder) => sum + shareholder.sharePercent, 0);
   const currentInvestorShare = existingShareholder?.sharePercent ?? 0;
+  const nextInvestorShare = currentInvestorShare + proposal.sharePercent;
+  const shouldTransferFounderRole = proposal.business.ownerId !== proposal.investorId && nextInvestorShare > 50;
 
   if (soldSharePercentExcludingInvestor + currentInvestorShare + proposal.sharePercent > 100) {
     throw new Error('BUSINESS_SHARE_CAP_EXCEEDED');
@@ -2301,16 +2303,47 @@ export async function respondToBusinessShareProposal(userId: string, proposalId:
         averagePrice: proposal.amount / proposal.sharePercent,
       },
     });
+
+    if (shouldTransferFounderRole) {
+      await tx.business.update({
+        where: { id: proposal.businessId },
+        data: { ownerId: proposal.investorId },
+      });
+
+      await tx.businessShareProposal.updateMany({
+        where: {
+          businessId: proposal.businessId,
+          ownerId: proposal.ownerId,
+          status: 'PENDING',
+        },
+        data: {
+          ownerId: proposal.investorId,
+        },
+      });
+
+      await tx.businessBuyoutOffer.updateMany({
+        where: {
+          businessId: proposal.businessId,
+          ownerId: proposal.ownerId,
+          status: 'PENDING',
+        },
+        data: {
+          ownerId: proposal.investorId,
+        },
+      });
+    }
   });
 
-  await emitSharedBalanceUpdatesForUserIds(prisma, [proposal.ownerId]);
+  await emitSharedBalanceUpdatesForUserIds(prisma, [proposal.ownerId, proposal.investorId]);
 
   await Promise.allSettled([
     createNotification({
       userId: proposal.investorId,
       type: 'SYSTEM',
-      title: 'Tu deviens actionnaire',
-      body: `${proposal.owner.username} a accepte. Tu possedes maintenant une part de ${proposal.business.name}.`,
+      title: shouldTransferFounderRole ? 'Tu deviens fondateur' : 'Tu deviens actionnaire',
+      body: shouldTransferFounderRole
+        ? `${proposal.owner.username} a accepte. Avec ${nextInvestorShare.toLocaleString('fr-FR')} % de parts, tu deviens le fondateur de ${proposal.business.name}.`
+        : `${proposal.owner.username} a accepte. Tu possedes maintenant une part de ${proposal.business.name}.`,
       link: '/you?tab=travail',
       icon: 'briefcase-business',
     }),
@@ -2322,6 +2355,18 @@ export async function respondToBusinessShareProposal(userId: string, proposalId:
       link: '/you?tab=travail',
       icon: 'briefcase-business',
     }),
+    ...(shouldTransferFounderRole
+      ? [
+          createNotification({
+            userId: proposal.ownerId,
+            type: 'SYSTEM',
+            title: 'Fondateur transfere',
+            body: `${proposal.investor.username} detient maintenant ${nextInvestorShare.toLocaleString('fr-FR')} % de ${proposal.business.name} et devient fondateur.`,
+            link: '/you?tab=travail',
+            icon: 'briefcase-business',
+          }),
+        ]
+      : []),
   ]);
 
   logYouAdmin('business_share_proposal_review', userId, proposal.owner.username, proposal.business.id, proposal.business.name, {
@@ -2331,6 +2376,8 @@ export async function respondToBusinessShareProposal(userId: string, proposalId:
     amount: proposal.amount,
     investorId: proposal.investorId,
     investorName: proposal.investor.username,
+    founderChanged: shouldTransferFounderRole,
+    nextInvestorShare,
   });
 
   return { id: proposal.id, status: 'ACCEPTED', decidedAt: decidedAt.toISOString() };
@@ -2459,6 +2506,122 @@ export async function executeBusinessAction(userId: string, businessId: string, 
   return handler(userId, business, input);
 }
 
+export async function createBusinessShareBuybackOffer(
+  userId: string,
+  businessId: string,
+  input: { shareholderId: string; amount: number; message?: string },
+) {
+  const targetShareholderId = String(input.shareholderId ?? '');
+  if (!targetShareholderId || targetShareholderId === userId) {
+    throw new Error('SHARE_BUYBACK_TARGET_INVALID');
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      owner: { select: USER_PREVIEW_SELECT },
+      shareholders: {
+        include: {
+          user: { select: USER_PREVIEW_SELECT },
+        },
+      },
+    },
+  });
+
+  if (!business) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
+
+  if (business.ownerId !== userId) {
+    throw new Error('SHARE_BUYBACK_FORBIDDEN');
+  }
+
+  const targetShareholder = business.shareholders.find((shareholder) => shareholder.userId === targetShareholderId);
+  if (!targetShareholder) {
+    throw new Error('SHARE_BUYBACK_TARGET_NOT_FOUND');
+  }
+
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('INVALID_BUYOUT_AMOUNT');
+  }
+
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, amount);
+  if (!hasSharedMoney) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  const existingPendingOffer = await prisma.businessBuyoutOffer.findFirst({
+    where: {
+      businessId,
+      bidderId: userId,
+      ownerId: targetShareholderId,
+      status: 'PENDING',
+    },
+    select: { id: true },
+  });
+
+  if (existingPendingOffer) {
+    throw new Error('SHARE_BUYBACK_ALREADY_PENDING');
+  }
+
+  const offer = await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, amount);
+    return tx.businessBuyoutOffer.create({
+      data: {
+        businessId,
+        bidderId: userId,
+        ownerId: targetShareholderId,
+        amount,
+        message: input.message?.trim() || null,
+      },
+      include: {
+        bidder: { select: USER_PREVIEW_SELECT },
+        owner: { select: USER_PREVIEW_SELECT },
+        business: {
+          select: {
+            id: true,
+            name: true,
+            typeKey: true,
+          },
+        },
+      },
+    });
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  io.to(`user:${userId}`).emit('you:business-buyout-updated', { businessId, offerId: offer.id, status: offer.status });
+  io.to(`user:${targetShareholderId}`).emit('you:business-buyout-updated', { businessId, offerId: offer.id, status: offer.status });
+
+  await createNotification({
+    userId: targetShareholderId,
+    type: 'SYSTEM',
+    title: 'Demande de rachat de parts',
+    body: `${business.owner.username} propose ${amount.toLocaleString('fr-FR')} money pour racheter tes ${targetShareholder.sharePercent.toLocaleString('fr-FR')} % de parts dans ${business.name}.`,
+    data: {
+      offerId: offer.id,
+      businessId,
+      amount,
+      actionType: 'BUSINESS_SHARE_BUYBACK_OFFER',
+    },
+    link: '/you?tab=travail',
+    icon: 'briefcase-business',
+  });
+
+  logYouAdmin('business_buyout_offer_create', userId, business.owner.username, business.id, business.name, {
+    amount,
+    targetShareholderId,
+    targetShareholderName: targetShareholder.user.username,
+    targetSharePercent: targetShareholder.sharePercent,
+  });
+
+  return {
+    ...serializeBuyoutOffer(offer, userId),
+    business: offer.business,
+  };
+}
+
 export async function createBusinessBuyoutOffer(userId: string, businessId: string, input: { amount: number; message?: string }) {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
@@ -2567,6 +2730,11 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
       business: {
         include: {
           owner: { select: USER_PREVIEW_SELECT },
+          shareholders: {
+            include: {
+              user: { select: USER_PREVIEW_SELECT },
+            },
+          },
         },
       },
     },
@@ -2576,15 +2744,20 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
     throw new Error('BUYOUT_OFFER_NOT_FOUND');
   }
 
-  if (offer.ownerId !== userId || offer.business.ownerId !== userId) {
-    throw new Error('BUYOUT_OFFER_REVIEW_FORBIDDEN');
-  }
-
   if (offer.status !== 'PENDING') {
     throw new Error('BUYOUT_OFFER_ALREADY_RESOLVED');
   }
 
   const decidedAt = new Date();
+  const isBusinessOwnerSellOffer = offer.ownerId === offer.business.ownerId;
+
+  if (isBusinessOwnerSellOffer && (offer.ownerId !== userId || offer.business.ownerId !== userId)) {
+    throw new Error('BUYOUT_OFFER_REVIEW_FORBIDDEN');
+  }
+
+  if (!isBusinessOwnerSellOffer && offer.ownerId !== userId) {
+    throw new Error('BUYOUT_OFFER_REVIEW_FORBIDDEN');
+  }
 
   if (decision === 'reject') {
     const rejected = await prisma.$transaction(async (tx) => {
@@ -2628,6 +2801,80 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
       id: rejected.id,
       status: rejected.status,
       decidedAt: rejected.decidedAt?.toISOString() ?? null,
+    };
+  }
+
+  if (!isBusinessOwnerSellOffer) {
+    if (offer.bidderId !== offer.business.ownerId) {
+      throw new Error('BUYOUT_OFFER_REVIEW_FORBIDDEN');
+    }
+
+    const shareholder = offer.business.shareholders.find((entry) => entry.userId === offer.ownerId);
+    if (!shareholder) {
+      throw new Error('SHARE_BUYBACK_TARGET_NOT_FOUND');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.businessBuyoutOffer.update({
+        where: { id: offer.id },
+        data: {
+          status: 'ACCEPTED',
+          decidedAt,
+        },
+      });
+
+      await tx.businessShareholder.delete({
+        where: {
+          businessId_userId: {
+            businessId: offer.businessId,
+            userId: offer.ownerId,
+          },
+        },
+      });
+
+      await tx.user.update({
+        where: { id: offer.ownerId },
+        data: { money: { increment: offer.amount } },
+      });
+    });
+
+    await emitSharedBalanceUpdatesForUserIds(prisma, [offer.ownerId, offer.bidderId]);
+
+    io.to(`user:${offer.bidderId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: 'ACCEPTED' });
+    io.to(`user:${offer.ownerId}`).emit('you:business-buyout-updated', { businessId: offer.businessId, offerId: offer.id, status: 'ACCEPTED' });
+
+    await Promise.allSettled([
+      createNotification({
+        userId: offer.bidderId,
+        type: 'SYSTEM',
+        title: 'Rachat de parts accepte',
+        body: `${offer.owner.username} a accepte. Tu recuperes ${shareholder.sharePercent.toLocaleString('fr-FR')} % de parts de ${offer.business.name}.`,
+        link: '/you?tab=travail',
+        icon: 'briefcase-business',
+      }),
+      createNotification({
+        userId: offer.ownerId,
+        type: 'MONEY_RECEIVED',
+        title: 'Vente de parts acceptee',
+        body: `Tu as vendu tes ${shareholder.sharePercent.toLocaleString('fr-FR')} % de parts de ${offer.business.name} pour ${offer.amount.toLocaleString('fr-FR')} money.`,
+        link: '/you?tab=travail',
+        icon: 'briefcase-business',
+      }),
+    ]);
+
+    logYouAdmin('business_buyout_offer_respond', userId, offer.owner.username, offer.business.id, offer.business.name, {
+      offerId,
+      bidderId: offer.bidderId,
+      bidderName: offer.bidder.username,
+      amount: offer.amount,
+      decision,
+      soldSharePercent: shareholder.sharePercent,
+    });
+
+    return {
+      id: offer.id,
+      status: 'ACCEPTED',
+      decidedAt: decidedAt.toISOString(),
     };
   }
 

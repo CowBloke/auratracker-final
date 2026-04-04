@@ -39,6 +39,7 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Polymarket, historique résolus dédié** — Les événements résolus ne s’affichent plus dans l’onglet `Événements` et passent dans un onglet dédié. La vue met en avant des métriques globales du site (nombre de paris et volume total misé) au lieu des choix individuels.', order: 9 },
       { category: 'SMALL_FEATURE', text: '**Switch liste/grille unifié** — Les pages avec bascule de vue (`Inventaire`, `Suggestions`, `Polymarket`, `Quêtes`) utilisent désormais exactement le même composant et le même style, avec le switch aligné à droite de la ligne de filtres.', order: 10 },
       { category: 'BUG_FIX', text: '**Avatar top bar sans card** — Le menu utilisateur dans la barre du haut n\'utilise plus de conteneur ovale: seul l\'avatar (photo/icone) rond reste visible.', order: 11 },
+      { category: 'SMALL_FEATURE', text: '**Page Pass ultra-minimaliste** — L\'UI de la page Pass a été simplifiée au maximum: suppression des textes non essentiels, retrait du titre `Pass`, suppression des dégradés, retour du compte à rebours et barre de progression en noir.', order: 12 },
     ],
   },
   {
@@ -168,13 +169,14 @@ const SEED_ENTRIES = [
       { category: 'BUG_FIX', text: '**Suppression du thème burgandy** — Le thème burgandy a été retiré de la liste des thèmes disponibles pour éviter un rendu de texte illisible.', order: 0 },
       { category: 'BUG_FIX', text: "**Stats admin temps de jeu** — Les widgets `temps passé par jeu` et `classement temps de jeu` s'appuient maintenant sur le temps réellement passé sur les pages de jeux via les snapshots de présence, au lieu de mélanger temps connecté global et durées de logs incomplètes. Plus de jeux remontent et les totaux sont désormais cohérents avec l'activité réelle.", order: 2 },
       { category: 'BUG_FIX', text: "**Protection avant creation** — Les joueurs sans village ne sont plus exposes au matchmaking ni aux actions Clash. Avant la creation du premier village, personne ne peut donc les attaquer.", order: 4 },
+      { category: 'BUG_FIX', text: "**Inbox achats clan redirigée** — Les notifications d'achat d'améliorations/objets de clan ouvrent maintenant la page `Clans` (inventaire de clan) au lieu de l'inventaire joueur.", order: 5 },
     ],
   },
   {
     id: '2026-04-04-you-loan-collateral-motivation',
     date: '2026-04-04',
     title: 'YOU, actionnariat, dashboard et administration',
-    summary: "Les demandes de prêt peuvent maintenant inclure une hypothèque en aura et une lettre de motivation, les entreprises YOU peuvent ouvrir leur capital via des propositions d actionnariat, le parrainage arrive sur le dashboard avec un nouveau contrôle côté admin, les widgets dashboard couvrent désormais les trois marchés crypto, les formations YOU affichent maintenant des avis commentés et les services de transfert perso sont utilisables depuis son propre business.",
+    summary: "Les demandes de prêt peuvent maintenant inclure une hypothèque en aura et une lettre de motivation, les entreprises YOU peuvent ouvrir leur capital via des propositions d actionnariat, un actionnaire devient automatiquement fondateur au-delà de 50% de parts, le fondateur peut lancer des rachats ciblés de parts, le parrainage arrive sur le dashboard avec un nouveau contrôle côté admin, les widgets dashboard couvrent désormais les trois marchés crypto, les formations YOU affichent maintenant des avis commentés et les services de transfert perso sont utilisables depuis son propre business.",
     items: [
       { category: 'BIG_FEATURE', text: "**Hypothèque en aura** — Les demandes de prêt peuvent maintenant inclure un montant d'aura mis en garantie. Si le prêt est accepté, cette aura est bloquée jusqu'au remboursement.", order: 0 },
       { category: 'BIG_FEATURE', text: "**Saisie en cas de défaut** — Si l'emprunteur ne peut pas rembourser et que l'échéance est dépassée, le propriétaire de la banque peut récupérer automatiquement l'aura bloquée en hypothèque.", order: 1 },
@@ -192,6 +194,8 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: "**Transfert via sa propre plateforme** — Un joueur qui possède son propre service de transfert peut maintenant envoyer de l'argent directement depuis l'onglet Travail, sans être obligé de passer par le service d'un concurrent.", order: 10 },
       { category: 'SMALL_FEATURE', text: "**UI actionnaires complète** — L'onglet Explorer propose maintenant une modal 'Devenir actionnaire' avec suggestion auto-calculée, et l'onglet Travail affiche les participations, les propositions envoyées, les demandes à valider et la répartition du capital.", order: 11 },
       { category: 'SMALL_FEATURE', text: "**Widgets crypto dashboard** — Le dashboard affiche maintenant aussi `Aura Stable` et `Chaos Coin` avec prix, variation en direct et mini-graphe, en plus d'`Aura Coin`.", order: 12 },
+      { category: 'BIG_FEATURE', text: "**Fondateur auto au-dessus de 50%** — Lorsqu'une proposition d'actionnariat est acceptée et qu'un investisseur dépasse 50% des parts d'un business YOU, il devient automatiquement le nouveau fondateur de l'entreprise.", order: 13 },
+      { category: 'SMALL_FEATURE', text: "**Rachat ciblé des parts par le fondateur** — Le fondateur peut désormais envoyer une offre de rachat de parts à un actionnaire précis, qui peut accepter ou refuser séparément.", order: 14 },
     ],
   },
   {

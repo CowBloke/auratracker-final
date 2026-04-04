@@ -48,6 +48,7 @@ import {
   repayLoanByBorrower,
   rateBusiness,
   createBusinessShareProposal,
+  createBusinessShareBuybackOffer,
   respondToBusinessShareProposal,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
@@ -171,6 +172,10 @@ const ERROR_STATUS: Record<string, number> = {
   SHARE_PROPOSAL_REVIEW_FORBIDDEN: 403,
   SHARE_PROPOSAL_ALREADY_RESOLVED: 400,
   BUSINESS_SHARE_CAP_EXCEEDED: 400,
+  SHARE_BUYBACK_FORBIDDEN: 403,
+  SHARE_BUYBACK_TARGET_INVALID: 400,
+  SHARE_BUYBACK_TARGET_NOT_FOUND: 404,
+  SHARE_BUYBACK_ALREADY_PENDING: 400,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -272,6 +277,10 @@ const ERROR_MESSAGE: Record<string, string> = {
   SHARE_PROPOSAL_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette proposition d actionnariat.',
   SHARE_PROPOSAL_ALREADY_RESOLVED: 'Cette proposition d actionnariat a deja ete traitee.',
   BUSINESS_SHARE_CAP_EXCEEDED: 'La repartition du capital depasse 100%.',
+  SHARE_BUYBACK_FORBIDDEN: 'Seul le fondateur peut demander le rachat des parts.',
+  SHARE_BUYBACK_TARGET_INVALID: 'Actionnaire cible invalide.',
+  SHARE_BUYBACK_TARGET_NOT_FOUND: 'Cet utilisateur ne detient pas de parts sur ce business.',
+  SHARE_BUYBACK_ALREADY_PENDING: 'Une demande de rachat est deja en attente pour cet actionnaire.',
 };
 
 async function requireYouAccess(req: AuthRequest, res: Response, next: () => void) {
@@ -406,6 +415,19 @@ router.post('/businesses/:businessId/shareholder-proposals', authMiddleware, req
     res.status(201).json({ proposal });
   } catch (error) {
     handleRouteError(error, res, 'Create shareholder proposal error');
+  }
+});
+
+router.post('/businesses/:businessId/share-buyback-offers', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const offer = await createBusinessShareBuybackOffer(req.user!.id, req.params.businessId, {
+      shareholderId: String(req.body?.shareholderId ?? ''),
+      amount: Number(req.body?.amount ?? 0),
+      message: typeof req.body?.message === 'string' ? req.body.message : undefined,
+    });
+    res.status(201).json({ offer });
+  } catch (error) {
+    handleRouteError(error, res, 'Create share buyback offer error');
   }
 });
 

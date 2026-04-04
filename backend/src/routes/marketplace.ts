@@ -430,6 +430,10 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       totalPrice,
     });
 
+    const purchaseNotificationLink = (isClanTagUnlock || isClanSlotUpgrade || isClanGameMoneyBoost || isClanBanner || isClanProfilePicture)
+      ? '/clans'
+      : '/inventory';
+
     createNotification({
       userId: req.user.id,
       type: 'SYSTEM',
@@ -442,7 +446,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
         totalPrice,
         silent: true,
       },
-      link: '/inventory',
+      link: purchaseNotificationLink,
       icon: 'shopping-bag',
     }).catch(() => {});
 
