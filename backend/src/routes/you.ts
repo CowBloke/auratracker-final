@@ -45,6 +45,7 @@ import {
   updateMemberSalary,
   sackMember,
   repayLoan,
+  repayLoanByBorrower,
   rateBusiness,
   createBusinessShareProposal,
   respondToBusinessShareProposal,
@@ -126,6 +127,7 @@ const ERROR_STATUS: Record<string, number> = {
   TRANSFER_FEE_FORBIDDEN: 403,
   BUYOUT_SELF_FORBIDDEN: 400,
   INVALID_BUYOUT_AMOUNT: 400,
+  BUYOUT_ALREADY_OWNS_BUSINESS: 400,
   BUYOUT_OFFER_ALREADY_PENDING: 400,
   BUYOUT_OFFER_NOT_FOUND: 404,
   BUYOUT_OFFER_REVIEW_FORBIDDEN: 403,
@@ -242,6 +244,7 @@ const ERROR_MESSAGE: Record<string, string> = {
   TRANSFER_FEE_FORBIDDEN: 'Seul le proprietaire peut modifier les frais de transfert.',
   BUYOUT_SELF_FORBIDDEN: 'Tu ne peux pas faire une offre sur ton propre business.',
   INVALID_BUYOUT_AMOUNT: 'Montant d offre invalide.',
+  BUYOUT_ALREADY_OWNS_BUSINESS: 'Tu posssedes deja une entreprise, tu ne peux pas en racheter une autre.',
   BUYOUT_OFFER_ALREADY_PENDING: 'Tu as deja une offre en attente sur ce business.',
   BUYOUT_OFFER_NOT_FOUND: 'Offre de rachat introuvable.',
   BUYOUT_OFFER_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette offre.',
@@ -752,13 +755,23 @@ router.delete('/businesses/:businessId/members/:memberId', authMiddleware, requi
   }
 });
 
-// Loan repayment
+// Loan repayment — bank owner claims collateral after default
 router.post('/loans/:loanId/repay', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const result = await repayLoan(req.user!.id, req.params.loanId);
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Loan repay error');
+  }
+});
+
+// Borrower repays their own loan voluntarily (at any time)
+router.post('/loans/:loanId/borrower-repay', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await repayLoanByBorrower(req.user!.id, req.params.loanId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Borrower loan repay error');
   }
 });
 

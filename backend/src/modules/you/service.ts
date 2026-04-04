@@ -973,13 +973,14 @@ export async function createBusiness(userId: string, input: { name: string; type
     throw new Error('BUSINESS_LEVEL_LOCKED');
   }
 
-  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, creationCost);
+  const totalCost = creationCost + startingCapital;
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, totalCost);
   if (!hasSharedMoney) {
     throw new Error('INSUFFICIENT_MONEY');
   }
 
   const business = await prisma.$transaction(async (tx) => {
-    await debitSharedMoney(tx, userId, creationCost);
+    await debitSharedMoney(tx, userId, totalCost);
     const createdBusiness = await tx.business.create({
       data: {
         ownerId: userId,
@@ -1569,8 +1570,7 @@ async function handleStartResearchAction(userId: string, business: any, input: {
 
   const nextLevel = product.deployedLevel + 1;
   const researchCost = getStartupResearchCost(nextLevel);
-  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, researchCost);
-  if (!hasSharedMoney) {
+  if (business.treasuryMoney < researchCost) {
     throw new Error('INSUFFICIENT_MONEY');
   }
 
@@ -1578,7 +1578,10 @@ async function handleStartResearchAction(userId: string, business: any, input: {
   const endsAt = new Date(startedAt.getTime() + getStartupResearchDurationMinutes(nextLevel) * 60 * 1000);
 
   await prisma.$transaction(async (tx) => {
-    await debitSharedMoney(tx, userId, researchCost);
+    await tx.business.update({
+      where: { id: business.id },
+      data: { treasuryMoney: { decrement: researchCost } },
+    });
     await tx.businessStartupProduct.update({
       where: { id: product.id },
       data: {
@@ -1589,8 +1592,6 @@ async function handleStartResearchAction(userId: string, business: any, input: {
       },
     });
   });
-
-  await emitSharedBalanceUpdates(prisma, userId);
 
   logYouAdmin('business_research_start', userId, undefined, business.id, business.name, {
     slotIndex,
@@ -2439,6 +2440,13 @@ export async function createBusinessBuyoutOffer(userId: string, businessId: stri
     throw new Error('INSUFFICIENT_MONEY');
   }
 
+  const alreadyOwns = await prisma.business.findFirst({
+    where: { ownerId: userId },
+  });
+  if (alreadyOwns) {
+    throw new Error('BUYOUT_ALREADY_OWNS_BUSINESS');
+  }
+
   const existingPendingOffer = await prisma.businessBuyoutOffer.findFirst({
     where: {
       businessId,
@@ -2576,6 +2584,13 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
       status: rejected.status,
       decidedAt: rejected.decidedAt?.toISOString() ?? null,
     };
+  }
+
+  const bidderAlreadyOwns = await prisma.business.findFirst({
+    where: { ownerId: offer.bidderId },
+  });
+  if (bidderAlreadyOwns) {
+    throw new Error('BUYOUT_ALREADY_OWNS_BUSINESS');
   }
 
   await prisma.$transaction(async (tx) => {
@@ -3541,6 +3556,84 @@ export async function getBusinessTransactions(userId: string, businessId: string
 
 // --- Loan Repayment ---
 
+// Called by the borrower: voluntary full repayment at any time
+export async function repayLoanByBorrower(userId: string, loanId: string) {
+  const loan = await prisma.businessLoan.findUnique({
+    where: { id: loanId },
+    include: {
+      borrower: { select: USER_PREVIEW_SELECT },
+      business: { select: { id: true, name: true, ownerId: true, treasuryMoney: true } },
+    },
+  });
+
+  if (!loan) throw new Error('BUSINESS_LOAN_NOT_FOUND');
+  if (loan.borrowerId !== userId) throw new Error('BUSINESS_LOAN_REVIEW_FORBIDDEN');
+  if (loan.status !== 'ACTIVE') throw new Error('LOAN_NOT_ACTIVE');
+
+  const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
+  const remaining = totalOwed - (loan.repaidAmount ?? 0);
+  const collateralAuraHeld = loan.collateralAuraHeld ?? 0;
+
+  if (remaining <= 0) throw new Error('LOAN_ALREADY_REPAID');
+
+  const borrowerHasMoney = await ensureSharedMoneyAvailable(prisma, userId, remaining);
+  if (!borrowerHasMoney) throw new Error('BORROWER_INSUFFICIENT_MONEY');
+
+  await prisma.$transaction(async (tx) => {
+    await debitSharedMoney(tx, userId, remaining);
+    await tx.business.update({
+      where: { id: loan.businessId },
+      data: { treasuryMoney: { increment: remaining } },
+    });
+    await tx.businessLoan.update({
+      where: { id: loanId },
+      data: { status: 'REPAID', repaidAmount: totalOwed, collateralAuraHeld: 0 },
+    });
+    if (collateralAuraHeld > 0) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { aura: { increment: collateralAuraHeld } },
+      });
+    }
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+  await logBusinessTransaction(loan.businessId, 'LOAN_REPAY', remaining, `Remboursement de ${loan.borrower.username}`, userId);
+
+  await Promise.allSettled([
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Pret rembourse',
+      body: `Tu as rembourse le pret de ${loan.business.name}${collateralAuraHeld > 0 ? ` et tes ${collateralAuraHeld.toLocaleString('fr-FR')} aura te sont rendues` : ''}.`,
+      link: '/you?tab=explore',
+      icon: 'credit-card',
+    }),
+    createNotification({
+      userId: loan.business.ownerId,
+      type: 'SYSTEM',
+      title: 'Pret rembourse',
+      body: `${loan.borrower.username} a rembourse le pret de ${loan.business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'credit-card',
+    }),
+  ]);
+
+  logYouAdmin('business_loan_repay', userId, undefined, loan.business.id, loan.business.name, {
+    loanId,
+    borrowerId: userId,
+    borrowerName: loan.borrower.username,
+    repaid: remaining,
+    totalOwed,
+    collateralAuraReturned: collateralAuraHeld,
+    status: 'REPAID',
+    initiatedBy: 'borrower',
+  });
+
+  return { repaid: remaining, totalOwed, collateralClaimed: 0, status: 'REPAID' };
+}
+
+// Called by the bank owner: claim collateral after the borrower defaults (past due date)
 export async function repayLoan(userId: string, loanId: string) {
   const loan = await prisma.businessLoan.findUnique({
     where: { id: loanId },
@@ -3560,61 +3653,6 @@ export async function repayLoan(userId: string, loanId: string) {
   const dueDate = getLoanDueDateFromEntry(loan);
 
   if (remaining <= 0) throw new Error('LOAN_ALREADY_REPAID');
-
-  const borrowerHasMoney = await ensureSharedMoneyAvailable(prisma, loan.borrowerId, remaining);
-  if (borrowerHasMoney) {
-    await prisma.$transaction(async (tx) => {
-      await debitSharedMoney(tx, loan.borrowerId, remaining);
-      await tx.business.update({
-        where: { id: loan.businessId },
-        data: { treasuryMoney: { increment: remaining } },
-      });
-      await tx.businessLoan.update({
-        where: { id: loanId },
-        data: { status: 'REPAID', repaidAmount: totalOwed, collateralAuraHeld: 0 },
-      });
-      if (collateralAuraHeld > 0) {
-        await tx.user.update({
-          where: { id: loan.borrowerId },
-          data: { aura: { increment: collateralAuraHeld } },
-        });
-      }
-    });
-
-    await emitSharedBalanceUpdates(prisma, loan.borrowerId);
-    await logBusinessTransaction(loan.businessId, 'LOAN_REPAY', remaining, `Remboursement de ${loan.borrower.username}`, loan.borrowerId);
-
-    await Promise.allSettled([
-      createNotification({
-        userId: loan.borrowerId,
-        type: 'SYSTEM',
-        title: 'Pret rembourse',
-        body: `Le pret de ${loan.business.name} a ete rembourse${collateralAuraHeld > 0 ? ` et tes ${collateralAuraHeld.toLocaleString('fr-FR')} aura te sont rendues` : ''}.`,
-        link: '/you?tab=explore',
-        icon: 'credit-card',
-      }),
-      createNotification({
-        userId,
-        type: 'SYSTEM',
-        title: 'Pret rembourse',
-        body: `${loan.borrower.username} a rembourse le pret de ${loan.business.name}.`,
-        link: '/you?tab=travail',
-        icon: 'credit-card',
-      }),
-    ]);
-
-    logYouAdmin('business_loan_repay', userId, undefined, loan.business.id, loan.business.name, {
-      loanId,
-      borrowerId: loan.borrowerId,
-      borrowerName: loan.borrower.username,
-      repaid: remaining,
-      totalOwed,
-      collateralAuraReturned: collateralAuraHeld,
-      status: 'REPAID',
-    });
-
-    return { repaid: remaining, totalOwed, collateralClaimed: 0, status: 'REPAID' };
-  }
 
   if (new Date() < dueDate) throw new Error('LOAN_COLLATERAL_NOT_CLAIMABLE_YET');
   if (collateralAuraHeld <= 0) throw new Error('BORROWER_INSUFFICIENT_MONEY');

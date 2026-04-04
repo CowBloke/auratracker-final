@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
 import { notificationsApi, type Notification } from '@/services/api';
+import { playNotification } from '@/lib/sound-engine';
 
 interface NotificationContextValue {
   notifications: Notification[];
@@ -163,7 +164,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           if (alreadyTracked) return current;
           return n.isRead || n.isArchived ? current : current + 1;
         });
-        if (!n.data?.silent) toast(n.title, { description: n.body, duration: 5000 });
+        if (!n.data?.silent) {
+          toast(n.title, { description: n.body, duration: 5000 });
+          playNotification();
+        }
       });
 
       socket.on('notification:updated', (n: Notification) => {

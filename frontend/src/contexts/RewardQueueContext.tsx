@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useState } from 'react';
 import RewardCollector from '../components/rewards/RewardCollector';
+import { playReward } from '@/lib/sound-engine';
 
 export interface RewardItem {
   id: string;
@@ -33,6 +34,7 @@ export function RewardQueueProvider({ children }: { children: React.ReactNode })
   const enqueue = useCallback((items: RewardItem[]) => {
     if (!items.length) return;
     setState({ items, currentIndex: 0, phase: 'collecting' });
+    playReward();
   }, []);
 
   const advance = useCallback(() => {

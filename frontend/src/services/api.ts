@@ -575,6 +575,8 @@ export const youApi = {
     api.delete<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/members/${memberId}`),
   repayLoan: (loanId: string) =>
     api.post<{ result: { repaid: number; totalOwed: number; collateralClaimed: number; status: string } }>(`/you/loans/${loanId}/repay`, {}),
+  borrowerRepayLoan: (loanId: string) =>
+    api.post<{ result: { repaid: number; totalOwed: number; collateralClaimed: number; status: string } }>(`/you/loans/${loanId}/borrower-repay`, {}),
   purchaseItem: (businessId: string, itemKey: string) =>
     api.post<{ result: { item: string; price: number } }>(`/you/businesses/${businessId}/actions/purchase_item`, { itemKey }),
   collectNpc: (businessId: string) =>

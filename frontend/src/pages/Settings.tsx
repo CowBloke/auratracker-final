@@ -16,6 +16,7 @@ import {
   Lock,
   Eye,
   EyeOff,
+  Volume2,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,6 +50,13 @@ import {
   useHideGameLeaderboards,
   useHideGameLeftInfo,
 } from '@/lib/game-preferences';
+import {
+  useSoundEnabled,
+  useSoundVolume,
+  setSoundEnabled,
+  setSoundVolume,
+} from '@/lib/sound-preferences';
+import { playNotification, playReward, playClick } from '@/lib/sound-engine';
 import {
   DEFAULT_KEYBOARD_SHORTCUTS,
   formatShortcutCombo,
@@ -88,10 +96,11 @@ function parseRootVars(css: string): Record<string, string> {
   return vars;
 }
 
-type SectionId = 'personnalisation' | 'compte' | 'parrainage' | 'raccourcis';
+type SectionId = 'personnalisation' | 'sons' | 'compte' | 'parrainage' | 'raccourcis';
 
 const SECTIONS: { id: SectionId; label: string; iconBg: string; icon: React.ElementType }[] = [
   { id: 'personnalisation', label: 'Personnalisation', iconBg: 'bg-blue-500', icon: Paintbrush },
+  { id: 'sons', label: 'Sons', iconBg: 'bg-emerald-500', icon: Volume2 },
   { id: 'compte', label: 'Compte', iconBg: 'bg-zinc-500', icon: User },
   { id: 'parrainage', label: 'Parrainage', iconBg: 'bg-purple-500', icon: Ticket },
   { id: 'raccourcis', label: 'Raccourcis', iconBg: 'bg-indigo-500', icon: Keyboard },
@@ -998,6 +1007,81 @@ function RaccourcisSection({
   );
 }
 
+/* ─── Sons ────────────────────────────────────────────────────────────────── */
+
+function SonsSection() {
+  const soundEnabled = useSoundEnabled();
+  const soundVolume = useSoundVolume();
+
+  const PREVIEWS: { label: string; fn: () => void }[] = [
+    { label: 'Notification', fn: playNotification },
+    { label: 'Récompense', fn: playReward },
+    { label: 'Clic', fn: playClick },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <SettingsGroupLabel>Général</SettingsGroupLabel>
+        <SettingsCard>
+          <SettingsRow
+            label="Sons activés"
+            description="Active ou désactive tous les effets sonores du site."
+          >
+            <Switch
+              checked={soundEnabled}
+              onCheckedChange={(v) => setSoundEnabled(v)}
+            />
+          </SettingsRow>
+          <SettingsRow
+            label="Volume"
+            description="Ajuste le volume des effets sonores."
+            last
+          >
+            <div className="flex w-36 items-center gap-2">
+              <Slider
+                min={0}
+                max={100}
+                step={1}
+                value={[Math.round(soundVolume * 100)]}
+                onValueChange={([v]) => setSoundVolume(v / 100)}
+                disabled={!soundEnabled}
+                className="flex-1"
+              />
+              <span className="w-8 text-right font-mono text-xs text-muted-foreground">
+                {Math.round(soundVolume * 100)}%
+              </span>
+            </div>
+          </SettingsRow>
+        </SettingsCard>
+      </div>
+
+      <div>
+        <SettingsGroupLabel>Aperçu</SettingsGroupLabel>
+        <SettingsCard>
+          {PREVIEWS.map(({ label, fn }, i) => (
+            <SettingsRow
+              key={label}
+              label={label}
+              description="Cliquer pour écouter."
+              last={i === PREVIEWS.length - 1}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!soundEnabled}
+                onClick={fn}
+              >
+                Écouter
+              </Button>
+            </SettingsRow>
+          ))}
+        </SettingsCard>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main ────────────────────────────────────────────────────────────────── */
 
 export default function Settings() {
@@ -1224,6 +1308,8 @@ export default function Settings() {
               hideGameLeftInfo={hideGameLeftInfo}
             />
           )}
+
+          {activeSection === 'sons' && <SonsSection />}
 
           {activeSection === 'compte' && (
             <CompteSection

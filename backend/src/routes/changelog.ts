@@ -21,6 +21,34 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-04-business-capital-debit',
+    date: '2026-04-04',
+    title: 'Création d\'entreprise : capital de départ débité',
+    summary: 'Le capital de départ saisi lors de la création d\'une entreprise est maintenant correctement prélevé sur le compte du joueur en plus des frais de création.',
+    items: [
+      { category: 'BUG_FIX', text: '**Capital de départ débité à la création** — Auparavant, le capital initial était placé dans la trésorerie de l\'entreprise sans être déduit du solde du joueur. Il est maintenant correctement prélevé.', order: 0 },
+    ],
+  },
+  {
+    id: '2026-04-04-startup-treasury',
+    date: '2026-04-04',
+    title: 'Startups : dépenses sur la trésorerie',
+    summary: 'Les coûts de recherche des produits startup sont désormais prélevés sur la trésorerie de l\'entreprise, et non plus sur le compte personnel du joueur.',
+    items: [
+      { category: 'BUG_FIX', text: '**Financement startup via trésorerie** — Lancer une recherche de produit débite maintenant la trésorerie de la startup. Assurez-vous d\'y déposer des fonds avant de lancer une recherche.', order: 0 },
+    ],
+  },
+  {
+    id: '2026-04-04-sound-effects',
+    date: '2026-04-04',
+    title: 'Effets sonores',
+    summary: 'Le site dispose maintenant d\'effets sonores pour les notifications, les récompenses et les interactions clés, avec une option d\'activation et de volume dans les paramètres.',
+    items: [
+      { category: 'BIG_FEATURE', text: '**Effets sonores** — Des sons synthétiques (aucun fichier audio requis) jouent automatiquement lors des notifications, récompenses et interactions. Tout est généré via l\'API Web Audio.', order: 0 },
+      { category: 'SMALL_FEATURE', text: '**Paramètres Sons** — Une nouvelle section "Sons" dans les Paramètres permet d\'activer/désactiver les sons et de régler le volume. Un bouton d\'aperçu permet de tester chaque type de son.', order: 1 },
+    ],
+  },
+  {
     id: '2026-04-04-clan-events-system',
     date: '2026-04-04',
     title: 'Événements de clan hebdomadaires',
