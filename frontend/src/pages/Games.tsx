@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ChevronDown, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
@@ -8,6 +9,19 @@ import { PageShell } from '@/components/layout/page-shell';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -679,6 +693,7 @@ export default function Games() {
   const [managedBetaGameIds, setManagedBetaGameIds] = useState<string[]>([]);
   const [managedNewGameIds, setManagedNewGameIds] = useState<string[]>([]);
   const [savingCatalogTag, setSavingCatalogTag] = useState<string | null>(null);
+  const [rewardDetailsGameId, setRewardDetailsGameId] = useState<string | null>(null);
   const { maintenanceStatus, refreshFeatures } = useFeatures();
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -884,7 +899,7 @@ export default function Games() {
     }
 
     return (
-      <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+      <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
         {isNew && (
           <span className="rounded-full border border-emerald-300/70 bg-emerald-500/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm">
             Nouveau
@@ -908,7 +923,7 @@ export default function Games() {
     const isNew = newGameSet.has(game.id);
 
     return (
-      <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+      <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
         <div className="flex flex-wrap justify-end gap-2">
           <Button
             type="button"
@@ -957,6 +972,22 @@ export default function Games() {
       <Card className="relative isolate aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
         <Link to={getGameLink(game.id)} className="absolute inset-0 z-10" aria-label={`Ouvrir ${game.name}`} />
         {renderAdminControls(game)}
+        {gameRewardTiers[game.id]?.length ? (
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="absolute bottom-3 right-3 z-20 h-8 w-8 rounded-full border border-white/25 bg-black/45 text-white opacity-0 shadow-sm transition-all duration-200 hover:bg-black/65 hover:text-white group-hover:opacity-100 group-focus-within:opacity-100"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setRewardDetailsGameId(game.id);
+            }}
+            aria-label={`Voir les récompenses de ${game.name}`}
+          >
+            <Info className="h-4 w-4" />
+          </Button>
+        ) : null}
         {game.emoji && (
           <div className="absolute inset-0 flex items-center justify-center bg-green-950/40 text-8xl">
             {game.emoji}
@@ -979,25 +1010,14 @@ export default function Games() {
           <p className="mt-2 text-[11px] font-medium text-white/70">
             {game.hasRewards ? 'Avec récompenses' : 'Sans récompenses'}
           </p>
-          {gameRewardTiers[game.id]?.length ? (
-            <div className="mt-2 max-h-0 overflow-hidden rounded-lg border border-white/15 bg-black/45 p-0 opacity-0 transition-all duration-200 group-hover:max-h-56 group-hover:p-2 group-hover:opacity-100 group-focus-within:max-h-56 group-focus-within:p-2 group-focus-within:opacity-100">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
-                Paliers de gains
-              </p>
-              <div className="mt-1.5 space-y-1">
-                {gameRewardTiers[game.id]?.map((tier) => (
-                  <div key={`${game.id}-${tier.label}`} className="flex items-start justify-between gap-2 text-[10px] leading-4">
-                    <span className="font-medium text-white/80">{tier.label}</span>
-                    <span className="text-right text-white">{tier.reward}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </CardContent>
       </Card>
     </div>
   );
+
+  const activeRewardDetailsGame = rewardDetailsGameId
+    ? games.find((game) => game.id === rewardDetailsGameId) ?? null
+    : null;
 
   return (
     <PageShell>
@@ -1019,7 +1039,46 @@ export default function Games() {
               className="sm:w-[240px]"
             />
 
-            <div className="sm:w-[220px]">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="justify-between sm:w-[240px]">
+                  Trier et filtrer
+                  <ChevronDown className="h-4 w-4 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuLabel>Tri</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+                  <DropdownMenuRadioItem value="default">Ordre par défaut</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="popular">Populaire</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="newest">Nouveaux</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="most-played">Plus joués</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Récompenses</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-60">
+                    <DropdownMenuRadioGroup value={rewardFilter} onValueChange={(value) => setRewardFilter(value as RewardFilter)}>
+                      <DropdownMenuRadioItem value="all">Toutes les récompenses</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="with-rewards">Avec récompenses</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="without-rewards">Sans récompenses</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>Statut bêta</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-52">
+                    <DropdownMenuRadioGroup value={betaFilter} onValueChange={(value) => setBetaFilter(value as BetaFilter)}>
+                      <DropdownMenuRadioItem value="all">Tous les statuts</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="beta">Bêta</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="stable">Hors bêta</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="hidden sm:w-[220px]">
               <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Trier les jeux" />
@@ -1033,7 +1092,7 @@ export default function Games() {
               </Select>
             </div>
 
-            <div className="sm:w-[220px]">
+            <div className="hidden sm:w-[220px]">
               <Select value={rewardFilter} onValueChange={(value) => setRewardFilter(value as RewardFilter)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Récompenses" />
@@ -1046,7 +1105,7 @@ export default function Games() {
               </Select>
             </div>
 
-            <div className="sm:w-[180px]">
+            <div className="hidden sm:w-[180px]">
               <Select value={betaFilter} onValueChange={(value) => setBetaFilter(value as BetaFilter)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Statut bêta" />
@@ -1116,6 +1175,38 @@ export default function Games() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={Boolean(activeRewardDetailsGame)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRewardDetailsGameId(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Récompenses: {activeRewardDetailsGame?.name ?? 'Jeu'}</DialogTitle>
+            <DialogDescription>
+              Détail des paliers et gains actuellement affichés pour ce jeu.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-xl border border-border/70 bg-muted/25 p-4">
+            <div className="space-y-2">
+              {(activeRewardDetailsGame ? gameRewardTiers[activeRewardDetailsGame.id] : [])?.map((tier) => (
+                <div
+                  key={`${activeRewardDetailsGame?.id ?? 'game'}-${tier.label}`}
+                  className="flex items-start justify-between gap-4 rounded-lg border border-border/60 bg-background/80 px-3 py-2 text-sm"
+                >
+                  <span className="font-medium text-foreground">{tier.label}</span>
+                  <span className="max-w-[60%] text-right text-muted-foreground">{tier.reward}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageShell>
   );
 }

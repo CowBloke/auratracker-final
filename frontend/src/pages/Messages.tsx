@@ -592,7 +592,7 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
+      <PageShell size="full" className="min-h-0 h-[calc(100svh-var(--header-height)-1.5rem)] overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:h-[calc(100svh-var(--header-height)-2rem)] lg:!px-6">
         <div className="h-full rounded-2xl border border-border/60 bg-card" />
       </PageShell>
     );
@@ -600,7 +600,7 @@ export default function MessagesPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
+    <PageShell size="full" className="min-h-0 h-[calc(100svh-var(--header-height)-1.5rem)] overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:h-[calc(100svh-var(--header-height)-2rem)] lg:!px-6">
 
       {/* ── Respect modal ── */}
       <Dialog open={respectOpen} onOpenChange={setRespectOpen}>
