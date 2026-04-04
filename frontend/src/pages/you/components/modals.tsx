@@ -931,8 +931,8 @@ export function ManageBusinessModal({
   const repayLoanNow = async (loanId: string) => {
     setRepayingLoanId(loanId);
     try {
-      await withRouteError(() => youApi.repayLoan(loanId), 'Impossible d encaisser ce pret.');
-      toast.success('Pret encaisse');
+      await withRouteError(() => youApi.repayLoan(loanId), 'Impossible de saisir l hypotheque.');
+      toast.success('Hypotheque saisie');
       await onSubmitted(true);
     } finally {
       setRepayingLoanId(null);
@@ -1239,6 +1239,8 @@ export function ManageBusinessModal({
                     const remaining = Math.max(0, totalOwed - repaid);
                     const pct = totalOwed > 0 ? Math.round((repaid / totalOwed) * 100) : 0;
                     const dueDate = getLoanDueDate(loan);
+                    const isPastDue = new Date() >= dueDate;
+                    const canClaimCollateral = isPastDue && loan.collateralAuraHeld > 0;
                     return (
                       <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-2">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -1252,11 +1254,11 @@ export function ManageBusinessModal({
                               </div>
                               <div className="rounded-lg bg-background/50 px-3 py-2">
                                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Echeance</p>
-                                <p className="mt-1 text-sm font-semibold text-foreground">{formatLoanDate(dueDate)}</p>
+                                <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-rose-400' : 'text-foreground'}`}>{formatLoanDate(dueDate)}</p>
                               </div>
                               <div className="rounded-lg bg-background/50 px-3 py-2">
                                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Temps restant</p>
-                                <p className="mt-1 text-sm font-semibold text-foreground">{getLoanTimeLeftLabel(loan)}</p>
+                                <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-rose-400' : 'text-foreground'}`}>{getLoanTimeLeftLabel(loan)}</p>
                               </div>
                               <div className="rounded-lg bg-background/50 px-3 py-2">
                                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Accorde le</p>
@@ -1264,7 +1266,7 @@ export function ManageBusinessModal({
                               </div>
                             </div>
                             {loan.collateralAuraHeld > 0 ? (
-                              <p className="mt-2 text-xs text-amber-400">{loan.collateralAuraHeld.toLocaleString('fr-FR')} aura actuellement bloquees en hypothèque</p>
+                              <p className="mt-2 text-xs text-amber-400">{loan.collateralAuraHeld.toLocaleString('fr-FR')} aura bloquees en hypothèque</p>
                             ) : null}
                             {loan.motivationMessage ? <p className="mt-2 text-xs text-muted-foreground">Motivation: "{loan.motivationMessage}"</p> : null}
                             <p className="mt-2 text-xs text-muted-foreground">{repaid.toLocaleString('fr-FR')} / {totalOwed.toLocaleString('fr-FR')} € rembourses</p>
@@ -1272,15 +1274,19 @@ export function ManageBusinessModal({
                               <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} />
                             </div>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="shrink-0 text-xs"
-                            onClick={() => void repayLoanNow(loan.id)}
-                            disabled={repayingLoanId !== null}
-                          >
-                            Encaisser le solde
-                          </Button>
+                          {canClaimCollateral ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="shrink-0 text-xs border-rose-400/40 text-rose-400 hover:bg-rose-400/10"
+                              onClick={() => void repayLoanNow(loan.id)}
+                              disabled={repayingLoanId !== null}
+                            >
+                              Saisir l'hypothèque
+                            </Button>
+                          ) : isPastDue ? (
+                            <p className="shrink-0 text-xs text-rose-400/70">En defaut · pas d'hypothèque</p>
+                          ) : null}
                         </div>
                       </div>
                     );

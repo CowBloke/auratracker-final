@@ -935,6 +935,16 @@ function RouletteGame({
       return;
     }
 
+    // Deduct the bet immediately before the animation so the balance is always correct
+    setError(null);
+    try {
+      await gamesApi.startCasino(totalBet);
+      await refreshUser();
+    } catch {
+      setError('Fonds insuffisants ou erreur lors de la mise.');
+      return;
+    }
+
     const targetIndex = Math.floor(Math.random() * WHEEL_NUMBERS.length);
     const winningNumber = WHEEL_NUMBERS[targetIndex];
     const pocketCenter = targetIndex * SLICE_ANGLE + SLICE_ANGLE / 2;
@@ -977,7 +987,7 @@ function RouletteGame({
           score: payout,
           won: payout > 0,
           bet: totalBet,
-          netGain: net,
+          preDeducted: true,
         });
 
         setRewards({
@@ -987,7 +997,9 @@ function RouletteGame({
 
         await refreshUser();
       } catch (err) {
-        console.error('Failed to submit spin:', err);
+        console.error('Failed to submit spin result:', err);
+        setError('Erreur lors du crédit des gains. Votre solde a été resynchronisé.');
+        try { await refreshUser(); } catch {}
       } finally {
         setSpinning(false);
       }
@@ -997,6 +1009,7 @@ function RouletteGame({
     spinning,
     totalBet,
     wheelRotation,
+    ballRotation,
     calculatePayout,
     onCelebrate,
     refreshUser,
@@ -1510,11 +1523,13 @@ function BlackjackGame({
     hasPendingSubmissionRef.current = true;
     activeRoundBetRef.current = 0;
 
+    // Bet was already deducted by /casino/start — record the loss without touching money again
     const payload = {
       score: 0,
       won: false,
       bet: betAmount,
       netGain: -betAmount,
+      preDeducted: true,
     };
 
     if (useKeepalive) {
@@ -1577,6 +1592,7 @@ function BlackjackGame({
           won: net > 0,
           bet: totalRoundBet,
           netGain: net,
+          preDeducted: true,
         });
 
         setRewards({
@@ -1665,15 +1681,20 @@ function BlackjackGame({
     [dealerHand, drawCard, finishRound, resolveRound]
   );
 
-  const deal = useCallback(() => {
+  const deal = useCallback(async () => {
     if (!user) return;
     if (status === 'player' || status === 'dealer') return;
-    if (user.money < bet) {
+
+    setError(null);
+
+    try {
+      await gamesApi.startCasino(bet);
+    } catch {
       setError('Fonds insuffisants pour cette mise');
       return;
     }
 
-    setError(null);
+    void refreshUser();
     setRewards(null);
     setNetGain(0);
     setHands([]);
@@ -1708,7 +1729,7 @@ function BlackjackGame({
     } else {
       setStatus('player');
     }
-  }, [bet, drawCard, resolveRound, status, user]);
+  }, [bet, drawCard, refreshUser, resolveRound, status, user]);
 
   const hit = useCallback(() => {
     if (status !== 'player' || !activeHand) return;
@@ -1763,15 +1784,19 @@ function BlackjackGame({
     }
   }, [activeHand, activeHandIndex, hands, playDealer, status]);
 
-  const doubleDown = useCallback(() => {
+  const doubleDown = useCallback(async () => {
     if (status !== 'player' || !activeHand) return;
     const additionalBet = activeHand.bet;
-    if (user && user.money < totalBet + additionalBet) {
+
+    setError(null);
+
+    try {
+      await gamesApi.startCasino(additionalBet);
+    } catch {
       setError('Fonds insuffisants pour doubler');
       return;
     }
 
-    setError(null);
     const nextCards = [...activeHand.cards, drawCard()];
     const total = getHandTotal(nextCards);
     const nextState: BlackjackHand['state'] = total > 21 ? 'bust' : 'stood';
@@ -1801,19 +1826,22 @@ function BlackjackGame({
     } else {
       playDealer(updatedHands);
     }
-  }, [activeHand, activeHandIndex, drawCard, hands, playDealer, status, totalBet, user]);
+  }, [activeHand, activeHandIndex, drawCard, hands, playDealer, status]);
 
-  const splitHand = useCallback(() => {
+  const splitHand = useCallback(async () => {
     if (status !== 'player' || !activeHand) return;
     if (hands.length !== 1) return;
     if (activeHand.cards.length !== 2) return;
     if (activeHand.cards[0].rank !== activeHand.cards[1].rank) return;
-    if (user && user.money < totalBet + activeHand.bet) {
+
+    setError(null);
+
+    try {
+      await gamesApi.startCasino(activeHand.bet);
+    } catch {
       setError('Fonds insuffisants pour splitter');
       return;
     }
-
-    setError(null);
 
     const handOneCards = [activeHand.cards[0], drawCard()];
     const handTwoCards = [activeHand.cards[1], drawCard()];
@@ -1845,7 +1873,7 @@ function BlackjackGame({
     } else {
       playDealer(updatedHands);
     }
-  }, [activeHand, drawCard, hands.length, playDealer, status, totalBet, user]);
+  }, [activeHand, drawCard, hands.length, playDealer, status]);
 
   const selectBet = useCallback((value: number) => {
     if (status === 'player' || status === 'dealer') return;
@@ -2193,6 +2221,7 @@ function SlotMachineGame({
   const [lastResult, setLastResult] = useState<SlotResult | null>(null);
   const [_rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
+  const [spinError, setSpinError] = useState<string | null>(null);
 
   useEffect(() => {
     onBetChange?.(bet);
@@ -2245,6 +2274,17 @@ function SlotMachineGame({
   const spin = useCallback(async () => {
     if (spinning || !user || user.money < bet) return;
 
+    setSpinError(null);
+
+    // Deduct the bet immediately before the animation
+    try {
+      await gamesApi.startCasino(bet);
+      await refreshUser();
+    } catch {
+      setSpinError('Fonds insuffisants ou erreur lors de la mise.');
+      return;
+    }
+
     setSpinning(true);
     setIsSpinning(true);
     setWinAmount(0);
@@ -2257,23 +2297,22 @@ function SlotMachineGame({
 
     setTimeout(async () => {
       clearInterval(spinInterval);
-      
+
       const finalReels = generateReels();
       const result = calculateWin(finalReels);
-      const netGain = result.winAmount - bet;
-      
+
       setReels(finalReels);
       setWinAmount(result.winAmount);
       setLastResult({ reels: finalReels, ...result });
       setIsSpinning(false);
-      onCelebrate?.('slots', netGain, result.winAmount, bet);
+      onCelebrate?.('slots', result.winAmount - bet, result.winAmount, bet);
 
       try {
         const response = await gamesApi.complete('casino', {
           score: result.winAmount,
           won: result.winAmount > 0,
           bet,
-          netGain,
+          preDeducted: true,
         });
 
         setRewards({
@@ -2283,7 +2322,9 @@ function SlotMachineGame({
 
         await refreshUser();
       } catch (error) {
-        console.error('Failed to submit spin:', error);
+        console.error('Failed to submit spin result:', error);
+        setSpinError('Erreur lors du crédit des gains. Votre solde a été resynchronisé.');
+        try { await refreshUser(); } catch {}
       }
 
       setSpinning(false);
@@ -2350,6 +2391,10 @@ function SlotMachineGame({
           )}>
             {winAmount > 0 ? `+$${winAmount.toLocaleString()}` : `-$${bet.toLocaleString()}`}
           </p>
+        )}
+
+        {spinError && (
+          <p className="text-center text-xs text-destructive mb-3">{spinError}</p>
         )}
 
         <Button variant="ghost"

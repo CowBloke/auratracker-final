@@ -220,6 +220,12 @@ export function OverviewTab({ data, userId, onReload }: { data: YouState; userId
     await onReload();
   };
 
+  const repayLoan = async (loanId: string, percentage: number) => {
+    await withRouteError(() => youApi.borrowerRepayLoan(loanId, percentage), 'Impossible de rembourser ce pret. Verifie que tu as assez de money.');
+    toast.success(percentage === 100 ? 'Remboursement effectue' : `${percentage} % rembourse`);
+    await onReload();
+  };
+
   return (
     <div className="space-y-5">
       {/* Tutorial — always visible at the top */}
@@ -244,6 +250,7 @@ export function OverviewTab({ data, userId, onReload }: { data: YouState; userId
                 onRespondJobOffer={respondToJobOffer}
                 onRespondMarriage={respondToMarriage}
                 onRespondDivorce={respondToDivorce}
+                onRepayLoan={repayLoan}
               />
             ))}
           </div>

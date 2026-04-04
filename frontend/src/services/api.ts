@@ -165,14 +165,15 @@ export interface YouBusinessType {
 }
 
 export interface YouSkill {
-  key: 'affaires' | 'social' | 'intelligence' | 'charisme' | 'finance' | string;
+  key: 'affaires' | 'social' | 'intelligence' | 'charisme' | 'finance' | 'illegalite' | string;
   label: string;
-  color: 'emerald' | 'purple' | 'sky' | 'pink' | 'amber';
+  color: 'emerald' | 'purple' | 'sky' | 'pink' | 'amber' | 'rose';
   description: string;
   level: number;
   xp: number;
   maxXp: number;
   trainingCost: number;
+  trainable: boolean;
   canTrain: boolean;
   unlocks: string[];
 }
@@ -575,8 +576,8 @@ export const youApi = {
     api.delete<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/members/${memberId}`),
   repayLoan: (loanId: string) =>
     api.post<{ result: { repaid: number; totalOwed: number; collateralClaimed: number; status: string } }>(`/you/loans/${loanId}/repay`, {}),
-  borrowerRepayLoan: (loanId: string) =>
-    api.post<{ result: { repaid: number; totalOwed: number; collateralClaimed: number; status: string } }>(`/you/loans/${loanId}/borrower-repay`, {}),
+  borrowerRepayLoan: (loanId: string, percentage: number = 100) =>
+    api.post<{ result: { repaid: number; totalOwed: number; collateralClaimed: number; status: string } }>(`/you/loans/${loanId}/borrower-repay`, { percentage }),
   purchaseItem: (businessId: string, itemKey: string) =>
     api.post<{ result: { item: string; price: number } }>(`/you/businesses/${businessId}/actions/purchase_item`, { itemKey }),
   collectNpc: (businessId: string) =>
@@ -746,7 +747,9 @@ export const gamesApi = {
     api.get(`/games/${gameType}/stats/${userId}`),
   getCatalogStats: () =>
     api.get<{ global: Record<string, number>; personal: Record<string, number> }>('/games/catalog/stats'),
-  complete: (gameType: string, data: { score: number; won: boolean; duration?: number; bet?: number; netGain?: number; maxTile?: number; difficulty?: string }) =>
+  startCasino: (bet: number) =>
+    api.post<{ success: true; money: number }>('/games/casino/start', { bet }),
+  complete: (gameType: string, data: { score: number; won: boolean; duration?: number; bet?: number; netGain?: number; maxTile?: number; difficulty?: string; preDeducted?: boolean }) =>
     api.post(`/games/${gameType}/complete`, data),
   getLeaderboard: (gameType: string, limit?: number) =>
     api.get(`/games/${gameType}/leaderboard`, { params: { limit } }),

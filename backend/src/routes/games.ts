@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import { validate, gameCompleteSchema } from '../middleware/validation.js';
+import { validate, gameCompleteSchema, casinoStartSchema } from '../middleware/validation.js';
 import { logGame, logAdmin } from '../utils/logger.js';
 import { checkQuestProgress } from './quests.js';
 import { recheckBadgeForCondition, awardBadgeByKey } from '../utils/badgeAwards.js';
@@ -1052,6 +1052,33 @@ router.get('/catalog/stats', authMiddleware, async (req: AuthRequest, res: Respo
   }
 });
 
+// Start a blackjack round — immediately deducts the bet so a page reload can't recover funds
+router.post('/casino/start', authMiddleware, validate(casinoStartSchema), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { bet } = req.body as { bet: number };
+
+    const currentUser = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!currentUser) return res.status(404).json({ error: 'User not found' });
+    if (currentUser.money < bet) return res.status(400).json({ error: 'Insufficient funds' });
+
+    const updated = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { money: { decrement: bet } },
+    });
+
+    await emitSharedBalanceUpdates(prisma, req.user.id);
+
+    logGame('casino_start', req.user.id, currentUser.username, { bet });
+
+    return res.json({ success: true, money: updated.money });
+  } catch (error) {
+    console.error('Casino start error:', error);
+    return res.status(500).json({ error: 'Failed to start casino round' });
+  }
+});
+
 // Complete a game
 router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema), async (req: AuthRequest, res: Response) => {
   try {
@@ -1060,19 +1087,19 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     }
     
     const { gameType } = req.params;
-    const { score, won, duration, bet, netGain, maxTile, difficulty } = req.body;
-    
+    const { score, won, duration, bet, netGain, maxTile, difficulty, preDeducted } = req.body;
+
     // Get current user balance and stats
     const currentUser = await prisma.user.findUnique({
       where: { id: req.user.id },
     });
-    
+
     if (!currentUser) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    // For casino, check if user has enough money for bet
-    if (gameType === 'casino' && bet) {
+
+    // For casino, check if user has enough money for bet (skip if bet was pre-deducted via /casino/start)
+    if (gameType === 'casino' && bet && !preDeducted) {
       if (currentUser.money < bet) {
         return res.status(400).json({ error: 'Insufficient funds' });
       }
@@ -1182,10 +1209,14 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
-      // Casino: score is the win amount, bet is deducted, netGain = score - bet
-      // Deduct bet first, then add winnings
-      moneyReward = netGain || (score - bet); // netGain can be negative
-      
+      if (preDeducted) {
+        // Bet was already deducted by /casino/start — only add back the payout (0 on loss)
+        moneyReward = score;
+      } else {
+        // Legacy path for roulette/slots: net = payout - bet
+        moneyReward = netGain ?? (score - bet);
+      }
+
       // Aura rewards for big wins
       const config = GAME_REWARDS.casino;
       if (won && score >= bet * config.hugeWinMultiplier) {

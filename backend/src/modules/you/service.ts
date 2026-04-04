@@ -22,6 +22,7 @@ import {
   emitSharedBalanceUpdates,
   emitSharedBalanceUpdatesForUserIds,
   ensureSharedMoneyAvailable,
+  getSharedBalance,
 } from '../../utils/sharedBalance.js';
 import { logAdmin } from '../../utils/logger.js';
 
@@ -170,6 +171,37 @@ function getLoanDueDateFromEntry(loan: { decidedAt: Date | null; createdAt: Date
   return dueDate;
 }
 
+export async function grantSkillXp(userId: string, skillKey: YouSkillKey, xpAmount: number) {
+  if (xpAmount <= 0) return;
+  try {
+    await ensureUserSkills(userId);
+    const skill = await prisma.userSkill.findUnique({
+      where: { userId_key: { userId, key: skillKey } },
+    });
+    if (!skill || skill.level >= YOU_SKILL_MAX_LEVEL) return;
+
+    let nextLevel = skill.level;
+    let nextXp = skill.xp + xpAmount;
+
+    while (nextLevel < YOU_SKILL_MAX_LEVEL && nextXp >= YOU_SKILL_XP_PER_LEVEL) {
+      nextXp -= YOU_SKILL_XP_PER_LEVEL;
+      nextLevel += 1;
+    }
+
+    if (nextLevel >= YOU_SKILL_MAX_LEVEL) {
+      nextLevel = YOU_SKILL_MAX_LEVEL;
+      nextXp = YOU_SKILL_XP_PER_LEVEL;
+    }
+
+    await prisma.userSkill.update({
+      where: { id: skill.id },
+      data: { level: nextLevel, xp: nextXp },
+    });
+  } catch {
+    // Silent failure — XP grants must never break the main action flow
+  }
+}
+
 async function ensureUserSkills(userId: string) {
   await Promise.all(
     USER_SKILL_DEFAULTS.map((skill) =>
@@ -213,7 +245,8 @@ function serializeSkill(skill: { key: string; level: number; xp: number }) {
     xp,
     maxXp: YOU_SKILL_XP_PER_LEVEL,
     trainingCost,
-    canTrain: level < YOU_SKILL_MAX_LEVEL,
+    trainable: definition.trainable,
+    canTrain: definition.trainable && level < YOU_SKILL_MAX_LEVEL,
     unlocks: definition.unlocks,
   };
 }
@@ -876,6 +909,10 @@ export async function trainUserSkill(userId: string, skillKey: string) {
 
   if (!existingSkill) {
     throw new Error('INVALID_SKILL_KEY');
+  }
+
+  if (!definition.trainable) {
+    throw new Error('SKILL_NOT_TRAINABLE');
   }
 
   if (existingSkill.level >= YOU_SKILL_MAX_LEVEL) {
@@ -2333,6 +2370,9 @@ async function handleCollectNpcAction(userId: string, business: any, _input: unk
     amount,
   });
 
+  // Affaires XP: +5 par collecte NPC (récompense la gestion active de l'entreprise)
+  void grantSkillXp(userId, 'affaires', 5);
+
   return { amount };
 }
 
@@ -2374,6 +2414,11 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
     itemLabel: item.label,
     price: item.price,
   });
+
+  // Social XP: achat immobilier via agence (+1 XP par tranche de 500 EUR, min 5)
+  if (business.typeKey === 'agency') {
+    void grantSkillXp(userId, 'social', Math.max(5, Math.floor(item.price / 500)));
+  }
 
   return { item: item.label, price: item.price };
 }
@@ -3556,8 +3601,8 @@ export async function getBusinessTransactions(userId: string, businessId: string
 
 // --- Loan Repayment ---
 
-// Called by the borrower: voluntary full repayment at any time
-export async function repayLoanByBorrower(userId: string, loanId: string) {
+// Called by the borrower: voluntary repayment (full or partial) at any time
+export async function repayLoanByBorrower(userId: string, loanId: string, percentage: number = 100) {
   const loan = await prisma.businessLoan.findUnique({
     where: { id: loanId },
     include: {
@@ -3576,20 +3621,30 @@ export async function repayLoanByBorrower(userId: string, loanId: string) {
 
   if (remaining <= 0) throw new Error('LOAN_ALREADY_REPAID');
 
-  const borrowerHasMoney = await ensureSharedMoneyAvailable(prisma, userId, remaining);
-  if (!borrowerHasMoney) throw new Error('BORROWER_INSUFFICIENT_MONEY');
+  const requestedAmount = Math.min(Math.round(remaining * percentage / 100), remaining);
+  const balance = await getSharedBalance(prisma, userId);
+  const actualAmount = Math.min(requestedAmount, balance.money);
+
+  if (actualAmount <= 0) throw new Error('BORROWER_INSUFFICIENT_MONEY');
+
+  const newRepaidTotal = (loan.repaidAmount ?? 0) + actualAmount;
+  const isFullyRepaid = newRepaidTotal >= totalOwed;
 
   await prisma.$transaction(async (tx) => {
-    await debitSharedMoney(tx, userId, remaining);
+    await debitSharedMoney(tx, userId, actualAmount);
     await tx.business.update({
       where: { id: loan.businessId },
-      data: { treasuryMoney: { increment: remaining } },
+      data: { treasuryMoney: { increment: actualAmount } },
     });
     await tx.businessLoan.update({
       where: { id: loanId },
-      data: { status: 'REPAID', repaidAmount: totalOwed, collateralAuraHeld: 0 },
+      data: {
+        status: isFullyRepaid ? 'REPAID' : 'ACTIVE',
+        repaidAmount: newRepaidTotal,
+        ...(isFullyRepaid ? { collateralAuraHeld: 0 } : {}),
+      },
     });
-    if (collateralAuraHeld > 0) {
+    if (isFullyRepaid && collateralAuraHeld > 0) {
       await tx.user.update({
         where: { id: userId },
         data: { aura: { increment: collateralAuraHeld } },
@@ -3598,22 +3653,26 @@ export async function repayLoanByBorrower(userId: string, loanId: string) {
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
-  await logBusinessTransaction(loan.businessId, 'LOAN_REPAY', remaining, `Remboursement de ${loan.borrower.username}`, userId);
+  await logBusinessTransaction(loan.businessId, 'LOAN_REPAY', actualAmount, `Remboursement${!isFullyRepaid ? ' partiel' : ''} de ${loan.borrower.username}`, userId);
 
   await Promise.allSettled([
     createNotification({
       userId,
       type: 'SYSTEM',
-      title: 'Pret rembourse',
-      body: `Tu as rembourse le pret de ${loan.business.name}${collateralAuraHeld > 0 ? ` et tes ${collateralAuraHeld.toLocaleString('fr-FR')} aura te sont rendues` : ''}.`,
+      title: isFullyRepaid ? 'Pret rembourse' : 'Remboursement partiel',
+      body: isFullyRepaid
+        ? `Tu as rembourse le pret de ${loan.business.name}${collateralAuraHeld > 0 ? ` et tes ${collateralAuraHeld.toLocaleString('fr-FR')} aura te sont rendues` : ''}.`
+        : `Tu as rembourse ${actualAmount.toLocaleString('fr-FR')} sur ${remaining.toLocaleString('fr-FR')} dus a ${loan.business.name}.`,
       link: '/you?tab=explore',
       icon: 'credit-card',
     }),
     createNotification({
       userId: loan.business.ownerId,
       type: 'SYSTEM',
-      title: 'Pret rembourse',
-      body: `${loan.borrower.username} a rembourse le pret de ${loan.business.name}.`,
+      title: isFullyRepaid ? 'Pret rembourse' : 'Remboursement partiel recu',
+      body: isFullyRepaid
+        ? `${loan.borrower.username} a rembourse le pret de ${loan.business.name}.`
+        : `${loan.borrower.username} a rembourse ${actualAmount.toLocaleString('fr-FR')} sur ${remaining.toLocaleString('fr-FR')} dus.`,
       link: '/you?tab=travail',
       icon: 'credit-card',
     }),
@@ -3623,14 +3682,14 @@ export async function repayLoanByBorrower(userId: string, loanId: string) {
     loanId,
     borrowerId: userId,
     borrowerName: loan.borrower.username,
-    repaid: remaining,
+    repaid: actualAmount,
     totalOwed,
-    collateralAuraReturned: collateralAuraHeld,
-    status: 'REPAID',
+    collateralAuraReturned: isFullyRepaid ? collateralAuraHeld : 0,
+    status: isFullyRepaid ? 'REPAID' : 'ACTIVE',
     initiatedBy: 'borrower',
   });
 
-  return { repaid: remaining, totalOwed, collateralClaimed: 0, status: 'REPAID' };
+  return { repaid: actualAmount, totalOwed, collateralClaimed: 0, status: isFullyRepaid ? 'REPAID' : 'ACTIVE' };
 }
 
 // Called by the bank owner: claim collateral after the borrower defaults (past due date)
@@ -3784,6 +3843,9 @@ export async function bankAccountDeposit(userId: string, accountId: string, amou
     newBalance: account.balance + amount,
   });
 
+  // Finance XP: +1 par tranche de 500 EUR deposee (max 20 par depot)
+  void grantSkillXp(userId, 'finance', Math.min(20, Math.max(1, Math.floor(amount / 500))));
+
   return { newBalance: account.balance + amount };
 }
 
@@ -3866,6 +3928,9 @@ export async function buyFormation(userId: string, businessId: string) {
     price,
     formationUrl: business.formationUrl,
   });
+
+  // Intelligence XP: +1 par tranche de 100 EUR de formation (min 3)
+  void grantSkillXp(userId, 'intelligence', Math.max(3, Math.floor(price / 100)));
 
   return { formationUrl: business.formationUrl, price };
 }
@@ -4044,6 +4109,9 @@ export async function buyFormationProduct(userId: string, businessId: string, pr
     price: product.price,
     url: product.url,
   });
+
+  // Intelligence XP: +1 par tranche de 100 EUR de formation (min 3)
+  void grantSkillXp(userId, 'intelligence', Math.max(3, Math.floor(product.price / 100)));
 
   return { url: product.url, title: product.title, price: product.price };
 }

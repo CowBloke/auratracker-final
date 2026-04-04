@@ -6,6 +6,7 @@ import { logEconomy } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
 import { syncUserDailyAuraState } from '../utils/dailyAura.js';
 import { emitSharedBalanceUpdates, getSharedBalance } from '../utils/sharedBalance.js';
+import { grantSkillXp } from '../modules/you/service.js';
 
 const router = Router();
 
@@ -164,6 +165,11 @@ router.post('/transfer', authMiddleware, validate(transferSchema), async (req: A
       link: `/profile/${sender.id}`,
       icon: 'star',
     }).catch(() => {});
+
+    // Charisme XP: +1 par tranche de 5 aura reçue (min 1, max 20 par transfert)
+    if (auraAmount > 0) {
+      void grantSkillXp(receiverId, 'charisme', Math.min(20, Math.max(1, Math.floor(auraAmount / 5))));
+    }
 
     logEconomy('transfer', req.user.id, sender.username, receiverId, receiver.username, {
       auraAmount,

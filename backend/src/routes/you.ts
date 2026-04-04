@@ -63,6 +63,7 @@ const ERROR_STATUS: Record<string, number> = {
   INSUFFICIENT_SHARED_MONEY: 400,
   INVALID_SKILL_KEY: 400,
   SKILL_ALREADY_MAXED: 400,
+  SKILL_NOT_TRAINABLE: 400,
   USER_NOT_FOUND: 404,
   BUSINESS_NOT_FOUND: 404,
   BUSINESS_SLOT_LIMIT_REACHED: 400,
@@ -768,7 +769,12 @@ router.post('/loans/:loanId/repay', authMiddleware, requireYouAccess, async (req
 // Borrower repays their own loan voluntarily (at any time)
 router.post('/loans/:loanId/borrower-repay', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
-    const result = await repayLoanByBorrower(req.user!.id, req.params.loanId);
+    const percentage = Number(req.body?.percentage ?? 100);
+    if (!Number.isFinite(percentage) || percentage < 1 || percentage > 100) {
+      res.status(400).json({ error: 'INVALID_PERCENTAGE' });
+      return;
+    }
+    const result = await repayLoanByBorrower(req.user!.id, req.params.loanId, percentage);
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Borrower loan repay error');

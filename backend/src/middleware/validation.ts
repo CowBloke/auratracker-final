@@ -109,4 +109,9 @@ export const gameCompleteSchema = z.object({
   duration: z.number().int().min(0).optional(),
   bet: z.number().int().min(0).optional(),
   netGain: z.number().int().optional(),
+  preDeducted: z.boolean().optional(),
+});
+
+export const casinoStartSchema = z.object({
+  bet: z.number().int().min(1),
 });

@@ -297,6 +297,15 @@ function BusinessInteractionModal({
                   primary
                   onClick={() => onAction('purchase')}
                 />
+              ) : business.typeKey === 'agency' ? (
+                <ActionButton
+                  icon={Building2}
+                  label="Acheter un bien immobilier"
+                  sub="Studio, appartement, maison, villa — gagne du XP Social."
+                  tone="bg-violet-400/15 text-violet-400"
+                  primary
+                  onClick={() => onAction('purchase')}
+                />
               ) : business.typeKey === 'coffee_shop' ? (
                 <ActionButton
                   icon={Coffee}
@@ -459,7 +468,7 @@ function BusinessInteractionModal({
 
 // --- Purchase Item Modal for lemonade/epicerie ---
 
-const ITEMS_CONFIG: Record<string, Array<{ key: string; label: string; price: number; emoji?: string }>> = {
+const ITEMS_CONFIG: Record<string, Array<{ key: string; label: string; price: number; emoji?: string; xpHint?: string }>> = {
   lemonade: [
     { key: 'citronnade', label: 'Citronnade', price: 10, emoji: '🍋' },
     { key: 'limonade_fraise', label: 'Limonade fraise', price: 15, emoji: '🍓' },
@@ -470,6 +479,12 @@ const ITEMS_CONFIG: Record<string, Array<{ key: string; label: string; price: nu
     { key: 'fromage', label: 'Fromage', price: 20, emoji: '🧀' },
     { key: 'vin', label: 'Vin', price: 35, emoji: '🍷' },
     { key: 'confiture', label: 'Confiture', price: 12, emoji: '🫙' },
+  ],
+  agency: [
+    { key: 'studio', label: 'Studio 20m²', price: 800, emoji: '🏠', xpHint: '+5 XP Social' },
+    { key: 'appartement', label: 'Appartement T3', price: 3000, emoji: '🏢', xpHint: '+6 XP Social' },
+    { key: 'maison', label: 'Maison avec jardin', price: 8000, emoji: '🏡', xpHint: '+16 XP Social' },
+    { key: 'villa', label: 'Villa de luxe', price: 25000, emoji: '🏰', xpHint: '+50 XP Social' },
   ],
 };
 
@@ -491,8 +506,10 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
     }
   };
 
+  const isAgency = business.typeKey === 'agency';
+
   return (
-    <ModalWrap open={open} onClose={onClose} title={business.name} desc="Parcourir les articles disponibles.">
+    <ModalWrap open={open} onClose={onClose} title={business.name} desc={isAgency ? 'Acheter un bien immobilier. Gagne du XP Social.' : 'Parcourir les articles disponibles.'}>
       <div className="space-y-2">
         {items.map((item) => (
           <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
@@ -503,10 +520,11 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
               <div>
                 <p className="text-sm font-medium">{item.label}</p>
                 <p className="text-xs text-muted-foreground">{item.price.toLocaleString('fr-FR')} money</p>
+                {item.xpHint ? <p className="text-[10px] text-purple-400/80">{item.xpHint}</p> : null}
               </div>
             </div>
             <Button size="sm" onClick={() => void buy(item.key)} disabled={buying !== null}>
-              Acheter
+              {isAgency ? 'Acheter' : 'Acheter'}
             </Button>
           </div>
         ))}

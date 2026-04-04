@@ -148,11 +148,13 @@ export function FeedCard({
   onRespondJobOffer,
   onRespondMarriage,
   onRespondDivorce,
+  onRepayLoan,
 }: {
   item: FeedItem;
   onRespondJobOffer: (offer: YouJobOffer, decision: 'accept' | 'reject') => Promise<void>;
   onRespondMarriage: (proposalId: string, decision: 'accept' | 'reject') => Promise<void>;
   onRespondDivorce: (proposalId: string, decision: 'accept' | 'reject') => Promise<void>;
+  onRepayLoan?: (loanId: string, percentage: number) => Promise<void>;
 }) {
   const [confirmMarriage, setConfirmMarriage] = useState(false);
   const dateStr = new Date(item.date).toLocaleString('fr-FR');
@@ -275,23 +277,33 @@ export function FeedCard({
   }
 
   if (item.kind === 'active_loan') {
-    const dailyRepayment = Math.round((item.loan.amount * (1 + item.loan.interestRate / 100)) / Math.max(1, item.loan.termDays));
+    const totalOwed = Math.round(item.loan.amount * (1 + item.loan.interestRate / 100));
+    const remaining = Math.max(0, totalOwed - (item.loan.repaidAmount ?? 0));
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-amber-400/20 bg-amber-400/5 px-4 py-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/15">
-          <Landmark className="h-4 w-4 text-amber-300" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold">{item.businessName}</p>
-            <Pill label="Remboursement" color="bg-amber-400/15 text-amber-300" />
+      <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/15">
+            <Landmark className="h-4 w-4 text-amber-300" />
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{formatMoney(item.loan.amount)} money · {item.loan.termDays} jours</p>
-          <p className="mt-1.5 text-[11px] text-muted-foreground/60">{dateStr}</p>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-sm font-bold tabular-nums text-amber-300">{formatMoney(dailyRepayment)}</p>
-          <p className="text-[10px] text-muted-foreground">par jour</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold">{item.businessName}</p>
+              <Pill label="Pret actif" color="bg-amber-400/15 text-amber-300" />
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">{formatMoney(item.loan.amount)} principal · {item.loan.interestRate} % · {item.loan.termDays} jours</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Reste a rembourser : <span className="font-semibold text-amber-300">{formatMoney(remaining)}</span></p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{dateStr}</p>
+            {onRepayLoan ? (
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRepayLoan(item.loan.id, 50)}>
+                  50 %
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRepayLoan(item.loan.id, 100)}>
+                  Tout ce que j'ai
+                </Button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     );

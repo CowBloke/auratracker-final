@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Brain, Building2, Coins, Star, TrendingUp, Users, Zap } from 'lucide-react';
+import { Brain, Building2, Coins, ShieldAlert, Star, TrendingUp, Users, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -14,18 +14,19 @@ type HeaderSkill = {
   level: number;
   xp: number;
   maxXp: number;
-  color: 'emerald' | 'purple' | 'sky' | 'pink' | 'amber';
+  color: 'emerald' | 'purple' | 'sky' | 'pink' | 'amber' | 'rose';
   desc: string;
   unlocks: string[];
 };
 
-const SKILL_ICON_MAP = {
+const SKILL_ICON_MAP: Record<string, typeof Brain> = {
   affaires: Building2,
   social: Users,
   intelligence: Brain,
   charisme: Star,
   finance: TrendingUp,
-} satisfies Record<string, typeof Brain>;
+  illegalite: ShieldAlert,
+};
 
 const SKILL_THEME = {
   emerald: { ring: 'ring-emerald-400/40', bg: 'bg-emerald-400/15', icon: 'text-emerald-400', text: 'text-emerald-400', bar: 'bg-emerald-400' },
@@ -33,6 +34,7 @@ const SKILL_THEME = {
   sky: { ring: 'ring-sky-400/40', bg: 'bg-sky-400/15', icon: 'text-sky-400', text: 'text-sky-400', bar: 'bg-sky-400' },
   pink: { ring: 'ring-pink-400/40', bg: 'bg-pink-400/15', icon: 'text-pink-400', text: 'text-pink-400', bar: 'bg-pink-400' },
   amber: { ring: 'ring-amber-400/40', bg: 'bg-amber-400/15', icon: 'text-amber-400', text: 'text-amber-400', bar: 'bg-amber-400' },
+  rose: { ring: 'ring-rose-400/40', bg: 'bg-rose-400/15', icon: 'text-rose-400', text: 'text-rose-400', bar: 'bg-rose-400' },
 } satisfies Record<HeaderSkill['color'], { ring: string; bg: string; icon: string; text: string; bar: string }>;
 
 function SkillBadge({ icon: Icon, label, level, xp, maxXp, color, desc, unlocks }: HeaderSkill) {

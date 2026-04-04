@@ -1,5 +1,5 @@
 export type BusinessActionKey = 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item';
-export type YouSkillKey = 'affaires' | 'social' | 'intelligence' | 'charisme' | 'finance';
+export type YouSkillKey = 'affaires' | 'social' | 'intelligence' | 'charisme' | 'finance' | 'illegalite';
 
 export interface BusinessTypeDefinition {
   key: string;
@@ -33,7 +33,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyExpenses: 50,
     satisfaction: 75,
     level: 1,
-    actions: ['deposit', 'withdraw', 'collect_npc'],
+    actions: ['deposit', 'withdraw', 'collect_npc', 'purchase_item'],
   },
   {
     key: 'epicerie',
@@ -46,7 +46,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyExpenses: 200,
     satisfaction: 78,
     level: 1,
-    actions: ['deposit', 'withdraw', 'collect_npc'],
+    actions: ['deposit', 'withdraw', 'collect_npc', 'purchase_item'],
   },
   // --- Level 2 ---
   {
@@ -86,7 +86,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyExpenses: 3900,
     satisfaction: 82,
     level: 2,
-    actions: ['invite', 'deposit', 'withdraw'],
+    actions: ['invite', 'deposit', 'withdraw', 'purchase_item'],
   },
   {
     key: 'formation',
@@ -164,10 +164,11 @@ export type InvestmentRiskLevel = keyof typeof INVESTMENT_RISK_RANGES;
 export interface YouSkillDefinition {
   key: YouSkillKey;
   label: string;
-  color: 'emerald' | 'purple' | 'sky' | 'pink' | 'amber';
+  color: 'emerald' | 'purple' | 'sky' | 'pink' | 'amber' | 'rose';
   description: string;
   trainingCost: number;
   xpPerTraining: number;
+  trainable: boolean;
   unlocks: string[];
 }
 
@@ -176,46 +177,61 @@ export const YOU_SKILLS: YouSkillDefinition[] = [
     key: 'affaires',
     label: 'Affaires',
     color: 'emerald',
-    description: "Gestion d'entreprise et commerce.",
+    description: "Gestion d'entreprise et commerce. XP gagne en faisant tourner son entreprise.",
     trainingCost: 2500,
     xpPerTraining: 25,
+    trainable: true,
     unlocks: ['1 slot business par niveau', 'Ouverture de secteurs plus rares plus tard', 'Gestion d equipes plus large a haut niveau'],
   },
   {
     key: 'social',
     label: 'Social',
     color: 'purple',
-    description: 'Relations et influence sociale.',
+    description: "Relations et influence sociale. XP gagne en achetant des biens immobiliers via une agence.",
     trainingCost: 1800,
     xpPerTraining: 25,
+    trainable: true,
     unlocks: ['Reseau social plus solide', 'Interactions sociales plus riches plus tard', 'Synergies relationnelles a haut niveau'],
   },
   {
     key: 'intelligence',
     label: 'Intelligence',
     color: 'sky',
-    description: 'Apprentissage et adaptabilite.',
+    description: 'Apprentissage et adaptabilite. XP gagne en achetant des formations.',
     trainingCost: 2200,
     xpPerTraining: 25,
+    trainable: true,
     unlocks: ['Lecture plus rapide des opportunites', 'Progression specialisee future', 'Acces aux postes plus pointus a haut niveau'],
   },
   {
     key: 'charisme',
     label: 'Charisme',
     color: 'pink',
-    description: 'Persuasion et presence sociale.',
+    description: 'Persuasion et presence sociale. XP gagne en recevant de l\'aura.',
     trainingCost: 2000,
     xpPerTraining: 25,
+    trainable: true,
     unlocks: ['Negociation plus forte plus tard', 'Meilleure image publique', 'Partenariats plus simples a haut niveau'],
   },
   {
     key: 'finance',
     label: 'Finance',
     color: 'amber',
-    description: 'Investissements et gestion de capital.',
+    description: 'Investissements et gestion de capital. XP gagne en depositant de l\'argent en banque.',
     trainingCost: 3000,
     xpPerTraining: 25,
+    trainable: true,
     unlocks: ['Optimisation financiere future', 'Conditions de financement plus souples plus tard', 'Meilleur rendement a haut niveau'],
+  },
+  {
+    key: 'illegalite',
+    label: 'Illegalite',
+    color: 'rose',
+    description: 'Activites au marche noir et manoeuvres douteuses. XP gagne via des activites illegales.',
+    trainingCost: 0,
+    xpPerTraining: 0,
+    trainable: false,
+    unlocks: ['Acces au marche noir', 'Arnaques et manoeuvres illegales', 'Reputation dans le milieu a haut niveau'],
   },
 ];
 

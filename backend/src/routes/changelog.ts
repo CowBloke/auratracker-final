@@ -21,6 +21,27 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-04-xp-system-skills',
+    date: '2026-04-04',
+    title: 'Système XP automatique & score Illégalité',
+    summary: 'Les compétences You gagnent maintenant de l\'XP automatiquement via vos actions. L\'agence immobilière vend des biens, et un score Illégalité est introduit.',
+    items: [
+      { category: 'BIG_FEATURE', text: '**XP automatique** — Les compétences progressent via vos actions : Affaires (collecte NPC), Finance (dépôt en banque), Intelligence (achat de formations), Charisme (aura reçue), Social (achat immobilier via agence).', order: 0 },
+      { category: 'BIG_FEATURE', text: '**Agence immobilière** — Achetez des biens immobiliers (Studio, T3, Maison, Villa) depuis une agence pour gagner du XP Social.', order: 1 },
+      { category: 'SMALL_FEATURE', text: '**Score Illégalité** — Un nouveau score lié aux activités du marché noir est introduit (XP obtenu via activités illégales à venir).', order: 2 },
+      { category: 'BUG_FIX', text: '**Achat en limonade/épicerie corrigé** — Les boutons "Acheter" des stands de limonade et épiceries fonctionnent maintenant correctement.', order: 3 },
+    ],
+  },
+  {
+    id: '2026-04-04-buyout-limit-one',
+    date: '2026-04-04',
+    title: 'Rachat d\'entreprise : limite d\'une par joueur',
+    summary: 'Un joueur ne peut désormais racheter qu\'une seule entreprise au maximum.',
+    items: [
+      { category: 'SMALL_FEATURE', text: '**Limite de rachat** — Il est maintenant impossible de faire une offre de rachat si vous possédez déjà une entreprise. La limite est d\'une entreprise rachetée par joueur.', order: 0 },
+    ],
+  },
+  {
     id: '2026-04-04-business-capital-debit',
     date: '2026-04-04',
     title: 'Création d\'entreprise : capital de départ débité',

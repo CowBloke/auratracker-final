@@ -41,6 +41,12 @@ export const BALANCING = {
       creationCost: 5000,
       monthlyRevenue: 6800,
       level: 2,
+      items: [
+        { key: 'studio', label: 'Studio 20m²', price: 800 },
+        { key: 'appartement', label: 'Appartement T3', price: 3000 },
+        { key: 'maison', label: 'Maison avec jardin', price: 8000 },
+        { key: 'villa', label: 'Villa de luxe', price: 25000 },
+      ],
     },
     formation: {
       key: 'formation',
