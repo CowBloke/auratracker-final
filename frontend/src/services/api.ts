@@ -2846,6 +2846,8 @@ export interface MessagingConversationSummary {
   type: 'SUPPORT' | 'DM' | 'GROUP' | string;
   title: string | null;
   icon: string | null;
+  imageUrl: string | null;
+  isFavorite: boolean;
   displayName: string;
   isPinned: boolean;
   unreadCount: number;
@@ -2857,6 +2859,13 @@ export interface MessagingConversationSummary {
   participants: MessagingParticipant[];
 }
 
+export interface MessagingReaction {
+  emoji: string;
+  count: number;
+  users: string[];
+  myReaction: boolean;
+}
+
 export interface MessagingConversationDetail {
   conversation: MessagingConversationSummary;
   messages: Array<
@@ -2865,6 +2874,7 @@ export interface MessagingConversationDetail {
       fromAdmin?: boolean;
       isRead?: boolean;
       images?: string | null;
+      reactions?: MessagingReaction[];
     }
   >;
 }
@@ -2901,8 +2911,22 @@ export const supportApi = {
     api.post<{ success: boolean }>(`/support/conversations/${conversationId}/read`),
   reportConversation: (conversationId: string, reason?: string) =>
     api.post<{ report: MessagingReport }>(`/support/conversations/${conversationId}/report`, { reason }),
-  updateConversation: (conversationId: string, data: { title?: string; icon?: string }) =>
-    api.patch<{ conversation: { id: string; title: string | null; icon: string | null } }>(`/support/conversations/${conversationId}`, data),
+  updateConversation: (conversationId: string, data: { title?: string; icon?: string; imageUrl?: string }) =>
+    api.patch<{ conversation: { id: string; title: string | null; icon: string | null; imageUrl: string | null } }>(`/support/conversations/${conversationId}`, data),
+  toggleFavorite: (conversationId: string) =>
+    api.patch<{ isFavorite: boolean }>(`/support/conversations/${conversationId}/favorite`, {}),
+  addMember: (conversationId: string, userId: string) =>
+    api.post<{ success: boolean }>(`/support/conversations/${conversationId}/members`, { userId }),
+  removeMember: (conversationId: string, memberId: string) =>
+    api.delete<{ success: boolean }>(`/support/conversations/${conversationId}/members/${memberId}`),
+  reactToMessage: (conversationId: string, messageId: string, emoji: string) =>
+    api.post<{ added: boolean }>(`/support/conversations/${conversationId}/messages/${messageId}/react`, { emoji }),
+  blockUser: (userId: string) =>
+    api.post<{ success: boolean }>(`/support/block/${userId}`, {}),
+  unblockUser: (userId: string) =>
+    api.delete<{ success: boolean }>(`/support/block/${userId}`),
+  getBlockedUsers: () =>
+    api.get<{ blockedUsers: Array<{ id: string; username: string; profilePicture: string | null; usernameColor: string | null }> }>('/support/blocked'),
   // Admin
   getThreads: () => api.get<{ threads: SupportThread[] }>('/support/admin/threads'),
   getThread: (userId: string) => api.get<{ messages: SupportMessage[]; user: SupportThread['user'] }>(`/support/admin/threads/${userId}`),
