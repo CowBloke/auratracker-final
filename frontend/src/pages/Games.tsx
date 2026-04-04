@@ -893,13 +893,16 @@ export default function Games() {
   const renderTopRightBadges = (game: Game) => {
     const isBeta = betaGameSet.has(game.id);
     const isNew = newGameSet.has(game.id);
+    const visibilityClass = isBeta || isNew
+      ? 'opacity-100'
+      : 'opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100';
 
     if (!isBeta && !isNew) {
       return null;
     }
 
     return (
-      <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+      <div className={cn('absolute right-3 top-3 z-20 flex flex-col items-end gap-2', visibilityClass)}>
         {isNew && (
           <span className="rounded-full border border-emerald-300/70 bg-emerald-500/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm">
             Nouveau
@@ -921,9 +924,12 @@ export default function Games() {
 
     const isBeta = betaGameSet.has(game.id);
     const isNew = newGameSet.has(game.id);
+    const visibilityClass = isBeta || isNew
+      ? 'opacity-100'
+      : 'opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100';
 
     return (
-      <div className="absolute right-3 top-3 z-20 flex flex-col items-end gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+      <div className={cn('absolute right-3 top-3 z-20 flex flex-col items-end gap-2', visibilityClass)}>
         <div className="flex flex-wrap justify-end gap-2">
           <Button
             type="button"
