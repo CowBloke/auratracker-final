@@ -6,11 +6,11 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
 import { toast } from '@/hooks/use-toast';
 import { useRewardQueue, type RewardItem } from '../contexts/RewardQueueContext';
-import { CheckCircle2, Circle, Coins, Sparkles, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList, Search, List, LayoutGrid } from 'lucide-react';
+import { CheckCircle2, Circle, Coins, Sparkles, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
 
 type QuestSortMode = 'recommended' | 'reward-desc' | 'target-asc' | 'title-asc';
 type QuestViewMode = 'list' | 'grid';
@@ -268,7 +268,7 @@ export default function Quests() {
             />
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:w-full lg:w-auto">
             <Select value={sortMode} onValueChange={(value) => setSortMode(value as QuestSortMode)}>
               <SelectTrigger className="w-full sm:w-56">
                 <SelectValue placeholder="Trier" />
@@ -282,16 +282,7 @@ export default function Quests() {
               </SelectContent>
             </Select>
 
-            <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as QuestViewMode)}>
-              <TabsList className="h-9">
-                <TabsTrigger value="list" className="px-3" aria-label="Vue liste">
-                  <List className="h-4 w-4" />
-                </TabsTrigger>
-                <TabsTrigger value="grid" className="px-3" aria-label="Vue grille 3 colonnes">
-                  <LayoutGrid className="h-4 w-4" />
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <ViewModeSwitcher value={viewMode} onChange={(value) => setViewMode(value as QuestViewMode)} />
           </div>
         </div>
       )}

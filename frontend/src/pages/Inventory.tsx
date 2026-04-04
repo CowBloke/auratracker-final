@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { Loader2, Palette, Camera, Package, Tag, Award, LayoutGrid, List } from 'lucide-react';
+import { Loader2, Palette, Camera, Package, Tag, Award } from 'lucide-react';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { PageShell } from '@/components/layout/page-shell';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
 
 interface UserItem {
   id: string;
@@ -575,28 +576,7 @@ export default function Inventory() {
               </SelectContent>
             </Select>
 
-            <div className="inline-flex rounded-md border border-border/60 p-0.5">
-              <Button
-                type="button"
-                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                size="icon"
-                onClick={() => setViewMode('list')}
-                className="h-8 w-8"
-                aria-label="Vue liste"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                size="icon"
-                onClick={() => setViewMode('grid')}
-                className="h-8 w-8"
-                aria-label="Vue grille"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-            </div>
+            <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
           </div>
         </div>
 

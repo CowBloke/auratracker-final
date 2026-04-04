@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestionsApi, Suggestion, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { ChevronUp, ChevronDown, LayoutGrid, List, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ChevronUp, ChevronDown, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -21,6 +21,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { PageShell } from '@/components/layout/page-shell';
+import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
 
 type PendingSortOption = 'trending' | 'newest' | 'top' | 'discussed';
 type DoneSortOption = 'recently-done' | 'best-rated' | 'most-rated' | 'discussed';
@@ -975,28 +976,7 @@ export default function Suggestions() {
                   )}
                 </div>
 
-                <div className="inline-flex shrink-0 rounded-md border border-border/60 p-0.5">
-                  <Button
-                    type="button"
-                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    onClick={() => setViewMode('list')}
-                    className="h-8 w-8"
-                    aria-label="Vue liste"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    onClick={() => setViewMode('grid')}
-                    className="h-8 w-8"
-                    aria-label="Vue grille"
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                </div>
+                <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
 
                 <Button onClick={() => setDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />

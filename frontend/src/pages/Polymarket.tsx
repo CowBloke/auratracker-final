@@ -19,7 +19,7 @@ import { ImagePicker } from '@/components/ui/image-picker';
 import {
   Loader2, Plus, Calendar,
   CheckCircle2, XCircle, Pencil, Trash2, Eye,
-  Check, X, LayoutGrid, List,
+  Check, X,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from '@/hooks/use-toast';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
 
 // ─── Option helpers ───────────────────────────────────────────────────────────
 
@@ -793,28 +794,7 @@ export default function Polymarket() {
                 </Select>
               )}
               {(activeTab === 'events' || activeTab === 'admin') && (
-                <div className="inline-flex rounded-md border border-border/60 p-0.5">
-                  <Button
-                    type="button"
-                    variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    onClick={() => setViewMode('list')}
-                    className="h-8 w-8"
-                    aria-label="Vue liste"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    onClick={() => setViewMode('grid')}
-                    className="h-8 w-8"
-                    aria-label="Vue grille"
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                </div>
+                <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
               )}
               <Button className="h-11 px-5" onClick={() => setSuggestionDialogOpen(true)}>
                 <Plus className="h-5 w-5 mr-2" />
