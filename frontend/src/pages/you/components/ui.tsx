@@ -67,7 +67,7 @@ export function ModalWrap({
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className={wide ? 'max-w-5xl' : 'max-w-md'}>
+      <DialogContent className={wide ? 'max-w-5xl' : 'max-w-md'} aria-describedby={desc ? undefined : undefined}>
         <DialogHeader className={centerTitle ? 'text-center' : undefined}>
           <DialogTitle className={centerTitle ? 'text-xl sm:text-2xl' : undefined}>{title}</DialogTitle>
           {desc ? <DialogDescription>{desc}</DialogDescription> : null}

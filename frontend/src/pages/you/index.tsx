@@ -6,6 +6,7 @@ import { useFeatures } from '@/contexts/FeaturesContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { type YouState, youApi } from '@/services/api';
 import { ExploreTab } from './tabs/ExploreTab';
+import { FinanceTab } from './tabs/FinanceTab';
 import { OverviewTab } from './tabs/OverviewTab';
 import { SocialTab } from './tabs/SocialTab';
 import { TravailTab } from './tabs/TravailTab';
@@ -35,7 +36,7 @@ export default function You() {
   }, [loadState]);
 
   const tab = params.get('tab');
-  const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' ? tab : 'overview';
+  const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' ? tab : 'overview';
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
 
   if (maintenanceStatus.youLogoAdminOnly && !canBypassMaintenance) {
@@ -61,6 +62,7 @@ export default function You() {
       {currentTab === 'travail' ? <TravailTab data={data} players={data.players} currentUserId={user.id} onReload={loadState} /> : null}
       {currentTab === 'social' ? <SocialTab data={data} onReload={() => loadState()} /> : null}
       {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
+      {currentTab === 'finance' ? <FinanceTab data={data} userId={user.id} onReload={loadState} /> : null}
     </div>
   );
 }

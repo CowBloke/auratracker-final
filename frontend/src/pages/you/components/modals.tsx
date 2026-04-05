@@ -205,6 +205,8 @@ export function CreateBusinessModal({
       toast.success('Business cree');
       await onCreated();
       onClose();
+    } catch {
+      // withRouteError already displayed the backend message
     } finally {
       setSubmitting(false);
     }

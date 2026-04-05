@@ -660,8 +660,11 @@ export default function MessagesPage() {
         await supportApi.sendConversationMessage(selectedIdSafe, body, roleToSend);
       }
       await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
-    } catch {
-      toast({ title: 'Envoi impossible', variant: 'destructive' });
+    } catch (error: any) {
+      toast({
+        title: error?.response?.data?.error || 'Envoi impossible',
+        variant: 'destructive',
+      });
       setDraft(body);
     } finally {
       setSending(false);

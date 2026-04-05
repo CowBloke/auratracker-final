@@ -17,6 +17,7 @@ import {
   BarChart3,
   Target,
   Briefcase,
+  Landmark,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -94,6 +95,7 @@ const youNavItems = [
   { tab: 'travail',  label: 'Travail',         icon: Briefcase      },
   { tab: 'social',   label: 'Social',          icon: Users          },
   { tab: 'explore',  label: 'Explore',         icon: BarChart3      },
+  { tab: 'finance',  label: 'Finance',          icon: Landmark       },
 ];
 
 function GameSidebarIcon({ src, alt }: { src: string; alt: string }) {
