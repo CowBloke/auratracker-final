@@ -672,6 +672,8 @@ export const youApi = {
     api.patch<{ result: { memberId: string; specialty: string | null; isPrimaryLawyer: boolean; displayOrder: number; user: Omit<YouPlayer, 'alreadyInRelationship'> } }>(`/you/businesses/${businessId}/members/${memberId}/lawyer-profile`, data),
   updateMemberSalary: (businessId: string, memberId: string, salary: number) =>
     api.patch<{ result: { salary: number } }>(`/you/businesses/${businessId}/members/${memberId}/salary`, { salary }),
+  updateMemberProfile: (businessId: string, memberId: string, title: string | null) =>
+    api.patch<{ result: { memberId: string; title: string | null } }>(`/you/businesses/${businessId}/members/${memberId}/profile`, { title }),
   sackMember: (businessId: string, memberId: string) =>
     api.delete<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/members/${memberId}`),
   repayLoan: (loanId: string) =>

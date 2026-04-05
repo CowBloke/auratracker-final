@@ -26,6 +26,7 @@ import {
   Store,
   Trash2,
   TrendingUp,
+  Users,
   Wallet,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -42,6 +43,7 @@ import {
   LoanModal,
   ManageBusinessModal,
   ShareholderProposalModal,
+  TeamRosterModal,
   TransferBusinessModal,
 } from '../components/modals';
 import { Input, ModalWrap, Pill, SectionTitle } from '../components/ui';
@@ -274,6 +276,7 @@ function BusinessInteractionModal({
   onManage,
   onShowReviews,
   onRate,
+  onShowTeam,
   onOpenSupport,
   onReviewed,
   onAdminDeleteRequest,
@@ -286,6 +289,7 @@ function BusinessInteractionModal({
   onManage: () => void;
   onShowReviews: () => void;
   onRate: () => void;
+  onShowTeam: () => void;
   onOpenSupport: () => void;
   onReviewed: () => Promise<void>;
   onAdminDeleteRequest: () => void;
@@ -524,26 +528,13 @@ function BusinessInteractionModal({
                     <p className="text-sm font-semibold text-purple-300">Cabinet d'avocats</p>
                     <p className="mt-1 text-xs text-muted-foreground">Ce cabinet peut vous représenter lors d'une procédure judiciaire en cours.</p>
                   </div>
-                  <div className="space-y-2">
-                    {[{
-                      user: business.owner,
-                      specialty: 'Associé gérant',
-                      isPrimaryLawyer: true,
-                      displayOrder: -1,
-                    }, ...business.members]
-                      .sort((a, b) => Number(Boolean((b as any).isPrimaryLawyer)) - Number(Boolean((a as any).isPrimaryLawyer)) || ((a as any).displayOrder ?? 0) - ((b as any).displayOrder ?? 0) || a.user.username.localeCompare(b.user.username))
-                      .map((lawyer, index) => (
-                        <div key={`${lawyer.user.id}-${index}`} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold">{lawyer.user.username}</p>
-                              <p className="text-xs text-muted-foreground">{(lawyer as any).specialty || 'Avocat généraliste'} · {business.name}</p>
-                            </div>
-                            {(lawyer as any).isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
+                  <ActionButton
+                    icon={Users}
+                    label="Voir l'équipe"
+                    sub={`${business.members.filter((m) => m.status === 'ACTIVE').length + 1} membre(s) · Avocats et spécialités`}
+                    tone="bg-purple-400/15 text-purple-300"
+                    onClick={onShowTeam}
+                  />
                 </div>
               ) : business.typeKey === 'bank' ? (
                 <ActionButton
@@ -715,6 +706,15 @@ function BusinessInteractionModal({
               {!business.isStateOwned ? (
                 <div className="space-y-2 pt-1">
                   <SectionTitle>Autres actions</SectionTitle>
+                  {!isOwned && business.typeKey !== 'law_firm' && business.members.filter((m) => m.status === 'ACTIVE').length > 0 ? (
+                    <ActionButton
+                      icon={Users}
+                      label="Voir l'équipe"
+                      sub={`${business.members.filter((m) => m.status === 'ACTIVE').length + 1} membre(s)`}
+                      tone="bg-violet-400/15 text-violet-300"
+                      onClick={onShowTeam}
+                    />
+                  ) : null}
                   {business.typeKey === 'bank' ? (
                     <ActionButton
                       icon={Landmark}
@@ -1421,6 +1421,7 @@ export function ExploreTab({
   const [manageBusinessId, setManageBusinessId] = useState<string | null>(null);
   const [reviewsBusinessId, setReviewsBusinessId] = useState<string | null>(null);
   const [ratingBusinessId, setRatingBusinessId] = useState<string | null>(null);
+  const [teamRosterBusinessId, setTeamRosterBusinessId] = useState<string | null>(null);
   const [formationReviewsTarget, setFormationReviewsTarget] = useState<{ businessId: string; productId: string } | null>(null);
   const [formationRatingTarget, setFormationRatingTarget] = useState<{ businessId: string; productId: string } | null>(null);
   const [adminDeleteBusinessId, setAdminDeleteBusinessId] = useState<string | null>(null);
@@ -1531,6 +1532,7 @@ export function ExploreTab({
   const applyBusiness = applyBusinessId ? allBusinesses.find((b) => b.id === applyBusinessId) ?? null : null;
   const manageBusiness = manageBusinessId ? allBusinesses.find((b) => b.id === manageBusinessId) ?? null : null;
   const reviewsBusiness = reviewsBusinessId ? allBusinesses.find((b) => b.id === reviewsBusinessId) ?? null : null;
+  const teamRosterBusiness = teamRosterBusinessId ? allBusinesses.find((b) => b.id === teamRosterBusinessId) ?? null : null;
   const formationReviewsBusiness = formationReviewsTarget ? allBusinesses.find((b) => b.id === formationReviewsTarget.businessId) ?? null : null;
   const formationReviewsProduct = formationReviewsTarget && formationReviewsBusiness
     ? formationReviewsBusiness.formationProducts?.find((product) => product.id === formationReviewsTarget.productId) ?? null
@@ -1817,6 +1819,7 @@ export function ExploreTab({
           }}
           onShowReviews={() => setReviewsBusinessId(detailBusiness.id)}
           onRate={() => setRatingBusinessId(detailBusiness.id)}
+          onShowTeam={() => setTeamRosterBusinessId(detailBusiness.id)}
           onOpenSupport={() => {
             void youApi.openBusinessSupportConversation(detailBusiness.id).then((res) => {
               setDetailBusinessId(null);
@@ -1882,6 +1885,7 @@ export function ExploreTab({
         onSubmitted={onReload}
       />
       <ReviewsModal open={Boolean(reviewsBusiness)} onClose={() => setReviewsBusinessId(null)} business={reviewsBusiness} />
+      <TeamRosterModal open={Boolean(teamRosterBusiness)} onClose={() => setTeamRosterBusinessId(null)} business={teamRosterBusiness} />
       <RatingModal open={Boolean(ratingBusinessId)} onClose={() => setRatingBusinessId(null)} businessId={ratingBusinessId} businesses={allBusinesses} onSubmitted={() => onReload()} />
       <FormationProductReviewsModal
         open={Boolean(formationReviewsProduct)}

@@ -52,6 +52,7 @@ import {
   reviewFormationProduct,
   setBusinessSupportAgent,
   updateLawFirmMemberMetadata,
+  updateMemberProfile,
   updateMemberSalary,
   sackMember,
   repayLoan,
@@ -956,6 +957,17 @@ router.patch('/businesses/:businessId/members/:memberId/salary', authMiddleware,
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Update member salary error');
+  }
+});
+
+router.patch('/businesses/:businessId/members/:memberId/profile', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await updateMemberProfile(req.user!.id, req.params.businessId, req.params.memberId, {
+      title: typeof req.body?.title === 'string' ? req.body.title : null,
+    });
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Update member profile error');
   }
 });
 

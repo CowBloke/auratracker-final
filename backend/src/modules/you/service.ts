@@ -5143,6 +5143,22 @@ export async function rateLawyerForCase(
 
 // --- Team Management ---
 
+export async function updateMemberProfile(ownerId: string, businessId: string, memberId: string, data: { title?: string | null }) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== ownerId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  const member = await prisma.businessMember.findUnique({ where: { id: memberId } });
+  if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
+
+  const title = typeof data.title === 'string' ? data.title.trim() || null : null;
+  await prisma.businessMember.update({ where: { id: memberId }, data: { specialty: title } });
+  return { memberId, title };
+}
+
 export async function updateMemberSalary(ownerId: string, businessId: string, memberId: string, salary: number) {
   if (!Number.isInteger(salary) || salary < 0) throw new Error('INVALID_SALARY');
 

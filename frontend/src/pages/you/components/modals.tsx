@@ -1509,49 +1509,13 @@ export function ManageTeamModal({
   onInviteRequested: () => void;
   onSubmitted: (refreshBalance?: boolean) => Promise<void>;
 }) {
-  const [updatingSalaryId, setUpdatingSalaryId] = useState<string | null>(null);
   const [sackingId, setSackingId] = useState<string | null>(null);
   const [reviewingInvitationId, setReviewingInvitationId] = useState<string | null>(null);
-  const [salaryInputs, setSalaryInputs] = useState<Record<string, string>>({});
-  const [specialtyInputs, setSpecialtyInputs] = useState<Record<string, string>>({});
-  const [displayOrderInputs, setDisplayOrderInputs] = useState<Record<string, string>>({});
-  const [primaryLawyerInputs, setPrimaryLawyerInputs] = useState<Record<string, boolean>>({});
-  const [updatingLawyerId, setUpdatingLawyerId] = useState<string | null>(null);
-  const [configuringId, setConfiguringId] = useState<string | null>(null);
+  const [editingMember, setEditingMember] = useState<typeof business.members[number] | null>(null);
 
   useEffect(() => {
-    if (open) {
-      const inputs: Record<string, string> = {};
-      const specialties: Record<string, string> = {};
-      const displayOrders: Record<string, string> = {};
-      const primaryLawyers: Record<string, boolean> = {};
-      business.members.forEach((m) => { inputs[m.id] = String(m.salary ?? 0); });
-      business.members.forEach((m) => {
-        specialties[m.id] = m.specialty ?? '';
-        displayOrders[m.id] = String(m.displayOrder ?? 0);
-        primaryLawyers[m.id] = Boolean(m.isPrimaryLawyer);
-      });
-      setSalaryInputs(inputs);
-      setSpecialtyInputs(specialties);
-      setDisplayOrderInputs(displayOrders);
-      setPrimaryLawyerInputs(primaryLawyers);
-      setConfiguringId(null);
-    }
-  }, [open, business.members]);
-
-  const saveSalary = async (memberId: string) => {
-    setUpdatingSalaryId(memberId);
-    try {
-      await withRouteError(
-        () => youApi.updateMemberSalary(business.id, memberId, Number(salaryInputs[memberId] ?? 0)),
-        'Impossible de modifier le salaire.',
-      );
-      toast.success('Salaire mis à jour');
-      await onSubmitted();
-    } finally {
-      setUpdatingSalaryId(null);
-    }
-  };
+    if (!open) setEditingMember(null);
+  }, [open]);
 
   const sack = async (memberId: string) => {
     if (!window.confirm('Renvoyer cet employé ? Il perdra l\'accès à l\'entreprise.')) return;
@@ -1565,204 +1529,330 @@ export function ManageTeamModal({
     }
   };
 
-  const activeMembers = business.members.filter((m) => m.status === 'ACTIVE');
-  const pendingInvitations = business.pendingInvitations;
-  const isLawFirm = business.typeKey === 'law_firm';
-
-  const saveLawyerProfile = async (memberId: string) => {
-    setUpdatingLawyerId(memberId);
-    try {
-      await withRouteError(
-        () => youApi.updateLawFirmMemberMetadata(business.id, memberId, {
-          specialty: specialtyInputs[memberId] ?? '',
-          isPrimaryLawyer: Boolean(primaryLawyerInputs[memberId]),
-          displayOrder: Number(displayOrderInputs[memberId] ?? 0),
-        }),
-        'Impossible de modifier le profil avocat.',
-      );
-      toast.success('Profil avocat mis à jour');
-      await onSubmitted();
-    } finally {
-      setUpdatingLawyerId(null);
-    }
-  };
-
   const reviewInvitation = async (invitationId: string, decision: 'accept' | 'reject') => {
     setReviewingInvitationId(invitationId);
     try {
       await withRouteError(() => youApi.respondToBusinessInvitation(invitationId, decision), 'Impossible de traiter ce contrat.');
-      toast.success(decision === 'accept' ? 'Contrat mis a jour' : 'Contrat refuse');
+      toast.success(decision === 'accept' ? 'Contrat mis à jour' : 'Contrat refusé');
       await onSubmitted();
     } finally {
       setReviewingInvitationId(null);
     }
   };
 
+  const activeMembers = business.members.filter((m) => m.status === 'ACTIVE');
+  const pendingInvitations = business.pendingInvitations;
+  const isLawFirm = business.typeKey === 'law_firm';
+
   return (
-    <ModalWrap open={open} onClose={onClose} title="Gérer l'équipe" desc="Salaires quotidiens, invitations et départs.">
-      <Button size="sm" variant="outline" className="w-full justify-start" onClick={onInviteRequested}>
-        <UserPlus className="mr-2 h-4 w-4" />Inviter des joueurs
-      </Button>
-      {pendingInvitations.length > 0 ? (
-        <div className="space-y-2">
-          <SectionTitle>Contrats en attente ({pendingInvitations.length})</SectionTitle>
-          <div className="max-h-60 space-y-2 overflow-y-auto">
-            {pendingInvitations.map((invitation) => (
-              <div key={invitation.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium">{invitation.employee.username}</p>
-                      <Pill label={invitation.initiatedByRole === 'EMPLOYER' ? 'Offre envoyee' : 'Candidature'} color="bg-violet-400/15 text-violet-300" />
-                      <Pill label={`${invitation.salary.toLocaleString('fr-FR')} / jour`} color="bg-emerald-400/15 text-emerald-300" />
+    <>
+      <ModalWrap open={open} onClose={onClose} title="Gérer l'équipe" desc={`${activeMembers.length} membre(s) actif(s)`}>
+        <Button size="sm" variant="outline" className="w-full justify-start" onClick={onInviteRequested}>
+          <UserPlus className="mr-2 h-4 w-4" />Inviter des joueurs
+        </Button>
+
+        {pendingInvitations.length > 0 ? (
+          <div className="space-y-2">
+            <SectionTitle>Contrats en attente ({pendingInvitations.length})</SectionTitle>
+            <div className="max-h-52 space-y-2 overflow-y-auto">
+              {pendingInvitations.map((invitation) => (
+                <div key={invitation.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium">{invitation.employee.username}</p>
+                        <Pill label={invitation.initiatedByRole === 'EMPLOYER' ? 'Offre envoyée' : 'Candidature'} color="bg-violet-400/15 text-violet-300" />
+                        <Pill label={`${invitation.salary.toLocaleString('fr-FR')} €/j`} color="bg-emerald-400/15 text-emerald-300" />
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">Rôle : {{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[invitation.role] ?? invitation.role}</p>
+                      {invitation.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{invitation.message}"</p> : null}
+                      {!invitation.needsViewerAcceptance ? (
+                        <p className="mt-1 text-xs text-muted-foreground/70">En attente de validation par {invitation.waitingOn === 'EMPLOYEE' ? "l'employé" : invitation.waitingOn === 'EMPLOYER' ? "l'employeur" : "les deux parties"}.</p>
+                      ) : null}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">Rôle : {{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[invitation.role] ?? invitation.role}</p>
-                    {invitation.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{invitation.message}"</p> : null}
-                    {!invitation.needsViewerAcceptance ? (
-                      <p className="mt-1 text-xs text-muted-foreground/70">En attente de validation par {invitation.waitingOn === 'EMPLOYEE' ? "l'employe" : invitation.waitingOn === 'EMPLOYER' ? "l'employeur" : "les deux parties"}.</p>
+                    {invitation.needsViewerAcceptance ? (
+                      <div className="flex gap-2">
+                        <Button size="sm" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'accept')} disabled={reviewingInvitationId !== null}>Accepter</Button>
+                        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'reject')} disabled={reviewingInvitationId !== null}>Refuser</Button>
+                      </div>
                     ) : null}
                   </div>
-                  {invitation.needsViewerAcceptance ? (
-                    <div className="flex gap-2">
-                      <Button size="sm" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'accept')} disabled={reviewingInvitationId !== null}>Accepter</Button>
-                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'reject')} disabled={reviewingInvitationId !== null}>Refuser</Button>
-                    </div>
-                  ) : null}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ) : null}
-      {activeMembers.length === 0 ? (
-        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
-          Aucun membre dans cette équipe.
-        </div>
-      ) : (
-        <div className="max-h-[32rem] space-y-2 overflow-y-auto">
-          {activeMembers.map((member) => {
-            const isConfiguring = configuringId === member.id;
-            return (
-              <div key={member.id} className="rounded-xl border border-border/40 bg-muted/10">
-                {/* Summary row */}
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <UserAvatar player={member.user} className="h-9 w-9 shrink-0" />
+        ) : null}
+
+        {activeMembers.length === 0 ? (
+          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
+            Aucun membre dans cette équipe.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <SectionTitle>Membres actifs</SectionTitle>
+            <div className="max-h-80 space-y-1.5 overflow-y-auto">
+              {activeMembers.map((member) => (
+                <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
+                  <UserAvatar player={member.user} className="h-8 w-8 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1.5">
                       <p className="text-sm font-medium">{member.user.username}</p>
                       <Pill label={{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[member.role] ?? member.role} color="bg-violet-400/15 text-violet-400" />
                       {isLawFirm && member.isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{(member.salary ?? 0).toLocaleString('fr-FR')} €/jour{isLawFirm && member.specialty ? ` · ${member.specialty}` : ''}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      {(member.salary ?? 0).toLocaleString('fr-FR')} €/jour
+                      {member.specialty ? ` · ${member.specialty}` : ''}
+                    </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant={isConfiguring ? 'default' : 'outline'}
-                      className="h-8 text-xs"
-                      onClick={() => setConfiguringId(isConfiguring ? null : member.id)}
-                    >
-                      {isConfiguring ? <ChevronRight className="h-3.5 w-3.5 rotate-90" /> : <Edit2 className="h-3.5 w-3.5" />}
+                  <div className="flex shrink-0 gap-1.5">
+                    <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => setEditingMember(member)}>
+                      <Edit2 className="h-3.5 w-3.5" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 border-red-400/30 text-red-300 hover:bg-red-500/10"
-                      onClick={() => void sack(member.id)}
-                      disabled={sackingId !== null}
-                    >
+                    <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={() => void sack(member.id)} disabled={sackingId !== null}>
                       <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </ModalWrap>
 
-                {/* Expand: configure panel */}
-                {isConfiguring ? (
-                  <div className="space-y-4 border-t border-border/40 px-4 py-4">
-                    {/* Salary */}
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">Salaire</p>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min={0}
-                          value={salaryInputs[member.id] ?? '0'}
-                          onChange={(e) => setSalaryInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
-                          className="h-8 w-28 text-xs"
-                          placeholder="0"
-                        />
-                        <span className="text-xs text-muted-foreground">€/jour</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 text-xs"
-                          onClick={() => void saveSalary(member.id)}
-                          disabled={updatingSalaryId !== null}
-                        >
-                          {updatingSalaryId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                        </Button>
-                      </div>
-                    </div>
+      <MemberEditModal
+        open={editingMember !== null}
+        onClose={() => setEditingMember(null)}
+        business={business}
+        member={editingMember}
+        onSubmitted={async () => { await onSubmitted(); }}
+      />
+    </>
+  );
+}
 
-                    {/* Law firm profile */}
-                    {isLawFirm ? (
-                      <div className="space-y-3 rounded-xl border border-indigo-400/20 bg-indigo-400/5 px-3 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <Scale className="h-3.5 w-3.5 text-indigo-300" />
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-indigo-300">Profil avocat</span>
-                        </div>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          <div className="space-y-1">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Spécialité</p>
-                            <Input
-                              value={specialtyInputs[member.id] ?? ''}
-                              onChange={(e) => setSpecialtyInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
-                              className="h-8 text-xs"
-                              placeholder="ex: Droit pénal"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Ordre d'affichage</p>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={displayOrderInputs[member.id] ?? '0'}
-                              onChange={(e) => setDisplayOrderInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
-                              className="h-8 text-xs"
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
-                        <label className="flex cursor-pointer select-none items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            checked={primaryLawyerInputs[member.id] ?? false}
-                            onChange={(e) => setPrimaryLawyerInputs((prev) => ({ ...prev, [member.id]: e.target.checked }))}
-                            className="rounded"
-                          />
-                          <Star className="h-3.5 w-3.5 text-amber-400" />
-                          <span className="font-medium text-amber-300">Avocat principal</span>
-                          <span className="text-muted-foreground/50">— mis en avant sur le cabinet</span>
-                        </label>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 w-full text-xs border-indigo-400/30 text-indigo-300 hover:bg-indigo-500/10"
-                          onClick={() => void saveLawyerProfile(member.id)}
-                          disabled={updatingLawyerId !== null}
-                        >
-                          {updatingLawyerId === member.id
-                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <><Check className="mr-1 h-3 w-3" />Sauvegarder</>
-                          }
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
+// --- MemberEditModal ---
+
+export function MemberEditModal({
+  open,
+  onClose,
+  business,
+  member,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness;
+  member: YouBusiness['members'][number] | null;
+  onSubmitted: () => Promise<void>;
+}) {
+  const [salary, setSalary] = useState('0');
+  const [title, setTitle] = useState('');
+  const [specialty, setSpecialty] = useState('');
+  const [displayOrder, setDisplayOrder] = useState('0');
+  const [isPrimary, setIsPrimary] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const isLawFirm = business.typeKey === 'law_firm';
+
+  useEffect(() => {
+    if (member) {
+      setSalary(String(member.salary ?? 0));
+      setTitle(isLawFirm ? '' : (member.specialty ?? ''));
+      setSpecialty(isLawFirm ? (member.specialty ?? '') : '');
+      setDisplayOrder(String(member.displayOrder ?? 0));
+      setIsPrimary(Boolean(member.isPrimaryLawyer));
+    }
+  }, [member, isLawFirm]);
+
+  const save = async () => {
+    if (!member) return;
+    setSaving(true);
+    try {
+      const salaryVal = Math.max(0, Math.floor(Number(salary) || 0));
+      await withRouteError(
+        () => youApi.updateMemberSalary(business.id, member.id, salaryVal),
+        'Impossible de modifier le salaire.',
+      );
+      if (isLawFirm) {
+        await withRouteError(
+          () => youApi.updateLawFirmMemberMetadata(business.id, member.id, {
+            specialty: specialty.trim() || null,
+            isPrimaryLawyer: isPrimary,
+            displayOrder: Math.max(0, Math.floor(Number(displayOrder) || 0)),
+          }),
+          'Impossible de modifier le profil avocat.',
+        );
+      } else {
+        await withRouteError(
+          () => youApi.updateMemberProfile(business.id, member.id, title.trim() || null),
+          'Impossible de modifier le titre.',
+        );
+      }
+      toast.success('Profil mis à jour');
+      await onSubmitted();
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!member) return null;
+
+  const roleLabel = ({ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' } as Record<string, string>)[member.role] ?? member.role;
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title={member.user.username} desc={`${roleLabel} · ${business.name}`}>
+      <div className="flex items-center gap-4 rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
+        <UserAvatar player={member.user} className="h-12 w-12 shrink-0" />
+        <div>
+          <p className="font-semibold">{member.user.username}</p>
+          <p className="text-xs text-muted-foreground">{roleLabel}</p>
+          {member.specialty ? <p className="text-xs text-muted-foreground">{member.specialty}</p> : null}
+        </div>
+      </div>
+
+      {/* Salary */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Salaire quotidien</p>
+        <div className="flex items-center gap-3">
+          <Input
+            type="number"
+            min={0}
+            value={salary}
+            onChange={(e) => setSalary(e.target.value)}
+            className="h-10 w-36 text-sm"
+            placeholder="0"
+          />
+          <span className="text-sm text-muted-foreground">€ / jour</span>
+        </div>
+        <p className="text-[11px] text-muted-foreground/60">Débité quotidiennement depuis la trésorerie.</p>
+      </div>
+
+      {/* Title (non-law-firm) */}
+      {!isLawFirm ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Titre / Poste</p>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="h-10 text-sm"
+            placeholder="ex: Caissier principal, Responsable logistique…"
+            maxLength={60}
+          />
+          <p className="text-[11px] text-muted-foreground/60">Affiché sur la fiche publique de l'entreprise.</p>
+        </div>
+      ) : null}
+
+      {/* Law firm profile */}
+      {isLawFirm ? (
+        <div className="space-y-4 rounded-xl border border-indigo-400/20 bg-indigo-400/5 px-4 py-4">
+          <div className="flex items-center gap-2">
+            <Scale className="h-4 w-4 text-indigo-300" />
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-300">Profil avocat</p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Spécialité</p>
+            <Input
+              value={specialty}
+              onChange={(e) => setSpecialty(e.target.value)}
+              className="h-10 text-sm"
+              placeholder="ex: Droit pénal, Droit des affaires…"
+              maxLength={60}
+            />
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Ordre d'affichage</p>
+            <Input
+              type="number"
+              min={0}
+              value={displayOrder}
+              onChange={(e) => setDisplayOrder(e.target.value)}
+              className="h-10 w-28 text-sm"
+              placeholder="0"
+            />
+            <p className="text-[11px] text-muted-foreground/60">Les avocats sont triés par ordre croissant, puis alphabétiquement.</p>
+          </div>
+          <label className="flex cursor-pointer select-none items-center gap-3 rounded-xl border border-border/40 bg-background/40 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={isPrimary}
+              onChange={(e) => setIsPrimary(e.target.checked)}
+              className="h-4 w-4 rounded"
+            />
+            <div>
+              <p className="text-sm font-medium text-amber-300">Avocat principal</p>
+              <p className="text-[11px] text-muted-foreground/70">Mis en avant sur la fiche publique du cabinet.</p>
+            </div>
+          </label>
+        </div>
+      ) : null}
+
+      <div className="flex gap-3 pt-2">
+        <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}>Annuler</Button>
+        <Button className="flex-1" onClick={() => void save()} disabled={saving}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+          Sauvegarder
+        </Button>
+      </div>
+    </ModalWrap>
+  );
+}
+
+// --- TeamRosterModal (public read-only team view) ---
+
+export function TeamRosterModal({
+  open,
+  onClose,
+  business,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness | null;
+}) {
+  if (!business) return null;
+  const isLawFirm = business.typeKey === 'law_firm';
+  const members = [
+    {
+      user: business.owner,
+      role: 'OWNER',
+      specialty: isLawFirm ? 'Associé gérant' : null,
+      isPrimaryLawyer: false,
+      displayOrder: -1,
+      salary: null as number | null,
+    },
+    ...business.members
+      .filter((m) => m.status === 'ACTIVE')
+      .map((m) => ({ ...m, salary: m.salary ?? null })),
+  ].sort((a, b) =>
+    Number(Boolean((b as any).isPrimaryLawyer)) - Number(Boolean((a as any).isPrimaryLawyer)) ||
+    ((a as any).displayOrder ?? 0) - ((b as any).displayOrder ?? 0) ||
+    a.user.username.localeCompare(b.user.username),
+  );
+
+  const roleLabel = (role: string) => ({ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[role] ?? role);
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title={`Équipe · ${business.name}`} desc={`${members.length} membre(s)`}>
+      {members.length === 0 ? (
+        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+          Aucun membre pour le moment.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {members.map((m, i) => (
+            <div key={`${m.user.id}-${i}`} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              <UserAvatar player={m.user} className="h-10 w-10 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <p className="text-sm font-semibold">{m.user.username}</p>
+                  <Pill label={roleLabel(m.role)} color="bg-violet-400/15 text-violet-400" />
+                  {isLawFirm && (m as any).isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
+                </div>
+                {m.specialty ? <p className="mt-0.5 text-xs text-muted-foreground">{m.specialty}</p> : null}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
     </ModalWrap>
