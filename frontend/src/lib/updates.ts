@@ -52,7 +52,7 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
     summary: 'Plusieurs améliorations visuelles dans l\'explorateur de businesses, le catalogue de formations et le panel de gestion des équipes (cabinets d\'avocats).',
     sections: [
       {
-        category: 'IMPROVEMENT',
+        category: 'SMALL_FEATURE',
         items: [
           { id: '2026-04-05-explore-ux-1', text: '**Explorateur · Note** — Le bouton "Donner un avis" disparaît du bas de la fiche. À la place, un **+** s\'affiche directement à côté de la pastille de note. Si tu n\'as pas encore interagi avec le business, survole le + pour voir quand la note se débloque.' },
           { id: '2026-04-05-explore-ux-2', text: '**Explorateur · Formations** — Le bouton "Catalogue" a été remplacé par un bloc action cohérent avec les autres actions disponibles sur la fiche.' },
