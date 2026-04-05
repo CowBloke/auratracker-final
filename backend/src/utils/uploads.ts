@@ -10,9 +10,35 @@ export const SUPPORTED_UPLOAD_IMAGE_MIME_TYPES = [
   'image/avif',
 ] as const;
 
+export const SUPPORTED_UPLOAD_FILE_MIME_TYPES = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+  'text/plain',
+  'text/csv',
+  'application/json',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+] as const;
+
 const UPLOAD_IMAGE_MIME_TYPE_ALIASES: Record<string, (typeof SUPPORTED_UPLOAD_IMAGE_MIME_TYPES)[number]> = {
   'image/jpg': 'image/jpeg',
   'image/pjpeg': 'image/jpeg',
+};
+
+const UPLOAD_FILE_MIME_TYPE_ALIASES: Record<string, (typeof SUPPORTED_UPLOAD_FILE_MIME_TYPES)[number]> = {
+  'image/jpg': 'image/jpeg',
+  'image/pjpeg': 'image/jpeg',
+  'application/x-pdf': 'application/pdf',
 };
 
 const BASE64_PAYLOAD_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
@@ -31,6 +57,19 @@ type WrittenUploadImageResult = {
   fileName: string;
   sizeBytes: number;
   mimeType: (typeof SUPPORTED_UPLOAD_IMAGE_MIME_TYPES)[number];
+};
+
+type DecodedUploadFileResult = {
+  buffer: Buffer;
+  extension: string;
+  mimeType: (typeof SUPPORTED_UPLOAD_FILE_MIME_TYPES)[number];
+};
+
+type WrittenUploadFileResult = {
+  fileName: string;
+  sizeBytes: number;
+  mimeType: (typeof SUPPORTED_UPLOAD_FILE_MIME_TYPES)[number];
+  originalName: string;
 };
 
 export const normalizeUploadImageMimeType = (mimeType?: string | null) => {
@@ -59,6 +98,66 @@ export const inferUploadImageExtension = (mimeType?: string | null) => {
     default:
       return null;
   }
+};
+
+export const normalizeUploadFileMimeType = (mimeType?: string | null) => {
+  if (typeof mimeType !== 'string') return null;
+  const normalized = mimeType.trim().toLowerCase();
+  if (!normalized) return null;
+  if ((SUPPORTED_UPLOAD_FILE_MIME_TYPES as readonly string[]).includes(normalized)) {
+    return normalized as (typeof SUPPORTED_UPLOAD_FILE_MIME_TYPES)[number];
+  }
+  return UPLOAD_FILE_MIME_TYPE_ALIASES[normalized] ?? null;
+};
+
+export const inferUploadFileExtension = (mimeType?: string | null) => {
+  const normalizedMimeType = normalizeUploadFileMimeType(mimeType);
+  switch (normalizedMimeType) {
+    case 'application/pdf':
+      return 'pdf';
+    case 'image/png':
+      return 'png';
+    case 'image/jpeg':
+      return 'jpg';
+    case 'image/webp':
+      return 'webp';
+    case 'image/gif':
+      return 'gif';
+    case 'image/avif':
+      return 'avif';
+    case 'text/plain':
+      return 'txt';
+    case 'text/csv':
+      return 'csv';
+    case 'application/json':
+      return 'json';
+    case 'application/zip':
+    case 'application/x-zip-compressed':
+      return 'zip';
+    case 'application/msword':
+      return 'doc';
+    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+      return 'docx';
+    case 'application/vnd.ms-excel':
+      return 'xls';
+    case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+      return 'xlsx';
+    case 'application/vnd.ms-powerpoint':
+      return 'ppt';
+    case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+      return 'pptx';
+    default:
+      return null;
+  }
+};
+
+const sanitizeUploadFileName = (fileName?: string | null, fallbackExtension = 'bin') => {
+  const rawName = typeof fileName === 'string' ? fileName.trim() : '';
+  const cleaned = rawName.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_').slice(0, 180);
+  if (!cleaned) {
+    return `document.${fallbackExtension}`;
+  }
+  return cleaned;
 };
 
 const normalizeBase64Payload = (value: string) =>
@@ -133,6 +232,78 @@ export const writeBase64UploadImage = async ({
     fileName,
     sizeBytes: decoded.buffer.byteLength,
     mimeType: decoded.mimeType,
+  };
+};
+
+export const decodeBase64UploadFile = (
+  base64Data?: string | null,
+  mimeType?: string | null,
+): DecodedUploadFileResult | UploadImageErrorResult => {
+  const normalizedMimeType = normalizeUploadFileMimeType(mimeType);
+  if (!normalizedMimeType) {
+    return {
+      error: `Unsupported file type. Allowed: ${SUPPORTED_UPLOAD_FILE_MIME_TYPES.join(', ')}`,
+    };
+  }
+
+  if (typeof base64Data !== 'string' || base64Data.trim() === '') {
+    return { error: 'Invalid file payload' };
+  }
+
+  const normalizedPayload = normalizeBase64Payload(base64Data);
+  if (!normalizedPayload || !BASE64_PAYLOAD_PATTERN.test(normalizedPayload)) {
+    return { error: 'Invalid file payload' };
+  }
+
+  const buffer = Buffer.from(normalizedPayload, 'base64');
+  if (buffer.byteLength === 0) {
+    return { error: 'Invalid file payload' };
+  }
+
+  const extension = inferUploadFileExtension(normalizedMimeType);
+  if (!extension) {
+    return { error: 'Invalid file payload' };
+  }
+
+  return {
+    buffer,
+    extension,
+    mimeType: normalizedMimeType,
+  };
+};
+
+export const writeBase64UploadFile = async ({
+  base64Data,
+  mimeType,
+  fileName,
+  uploadDir,
+  maxBytes,
+}: {
+  base64Data?: string | null;
+  mimeType?: string | null;
+  fileName?: string | null;
+  uploadDir: string;
+  maxBytes: number;
+}): Promise<WrittenUploadFileResult | UploadImageErrorResult> => {
+  const decoded = decodeBase64UploadFile(base64Data, mimeType);
+  if ('error' in decoded) {
+    return decoded;
+  }
+
+  if (decoded.buffer.byteLength > maxBytes) {
+    return { error: `File too large (max ${Math.floor(maxBytes / (1024 * 1024))}MB)` };
+  }
+
+  await fs.mkdir(uploadDir, { recursive: true });
+  const storedFileName = `${Date.now()}-${randomUUID()}.${decoded.extension}`;
+  const absolutePath = path.join(uploadDir, storedFileName);
+  await fs.writeFile(absolutePath, decoded.buffer);
+
+  return {
+    fileName: storedFileName,
+    sizeBytes: decoded.buffer.byteLength,
+    mimeType: decoded.mimeType,
+    originalName: sanitizeUploadFileName(fileName, decoded.extension),
   };
 };
 

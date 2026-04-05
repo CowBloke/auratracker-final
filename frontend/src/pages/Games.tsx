@@ -927,6 +927,11 @@ export default function Games() {
     const visibilityClass = isBeta || isNew
       ? 'opacity-100'
       : 'opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100';
+    const betaButtonVisibilityClass = isBeta
+      ? 'opacity-100'
+      : isNew
+        ? 'opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100'
+        : '';
 
     return (
       <div className={cn('absolute right-3 top-3 z-20 flex flex-col items-end gap-2', visibilityClass)}>
@@ -954,7 +959,8 @@ export default function Games() {
             variant={isBeta ? 'default' : 'secondary'}
             className={cn(
               'h-7 rounded-full px-3 text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm',
-              isBeta ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-black/45 text-white hover:bg-black/60'
+              isBeta ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-black/45 text-white hover:bg-black/60',
+              betaButtonVisibilityClass
             )}
             disabled={savingCatalogTag === `games_beta_ids:${game.id}`}
             onClick={(event) => {

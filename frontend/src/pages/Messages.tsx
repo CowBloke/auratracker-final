@@ -6,10 +6,13 @@ import {
   AlertTriangle,
   ArrowLeft,
   Ban,
+  Briefcase,
+  Building2,
   Camera,
   ChevronDown,
   FileText,
   Gavel,
+  Loader2,
   MessageCircleMore,
   MessagesSquare,
   MoreVertical,
@@ -57,12 +60,14 @@ import { cn } from '@/lib/utils';
 import {
   CourtArgument,
   CourtCase,
+  LawFirmPreview,
   MessagingConversationDetail,
   MessagingConversationSummary,
   SocialUser,
   SupportThread,
   justiceApi,
   supportApi,
+  youApi,
   uploadUserImage,
   usersApi,
 } from '@/services/api';
@@ -252,6 +257,17 @@ export default function MessagesPage() {
   const [sentencingDraft, setSentencingDraft] = useState('');
   const [verdictSaving, setVerdictSaving] = useState(false);
   const [statusChanging, setStatusChanging] = useState(false);
+  const [lawFirms, setLawFirms] = useState<LawFirmPreview[]>([]);
+  const [lawFirmsLoading, setLawFirmsLoading] = useState(false);
+  const [showRepresentationDialog, setShowRepresentationDialog] = useState(false);
+  const [representationType, setRepresentationType] = useState<'PRIVATE_LAWYER' | 'PUBLIC_DEFENDER'>('PRIVATE_LAWYER');
+  const [selectedLawFirmId, setSelectedLawFirmId] = useState<string | null>(null);
+  const [selectedLawyerUserId, setSelectedLawyerUserId] = useState<string | null>(null);
+  const [representationSubmitting, setRepresentationSubmitting] = useState(false);
+  const [showLawyerRatingDialog, setShowLawyerRatingDialog] = useState(false);
+  const [lawyerRating, setLawyerRating] = useState(0);
+  const [lawyerRatingComment, setLawyerRatingComment] = useState('');
+  const [lawyerRatingSubmitting, setLawyerRatingSubmitting] = useState(false);
 
   const initializedRef = useRef(false);
   const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -265,6 +281,18 @@ export default function MessagesPage() {
   const isCourtConversation = Boolean(selectedConversation?.courtCaseId);
   const myCourtParty = courtCase?.parties?.find((p) => p.userId === user?.id);
   const myCourtRole = myCourtParty?.courtRole ?? null;
+  const myCourtSide = myCourtRole === 'PLAINTIFF' ? 'PLAINTIFF' : myCourtRole === 'DEFENDANT' ? 'DEFENDANT' : null;
+  const isEligibleCourtClient = Boolean(myCourtSide && !isAdminViewer);
+  const assignedLawFirm = myCourtSide === 'PLAINTIFF'
+    ? courtCase?.plaintiffLawFirm ?? null
+    : myCourtSide === 'DEFENDANT'
+      ? courtCase?.defendantLawFirm ?? null
+      : null;
+  const assignedLawyer = myCourtSide === 'PLAINTIFF'
+    ? courtCase?.plaintiffLawyer ?? null
+    : myCourtSide === 'DEFENDANT'
+      ? courtCase?.defendantLawyer ?? null
+      : null;
   const selectedIdSafe = selectedConversation?.id ?? null;
   const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
   const supportReactionsEnabled = selectedConversation?.type !== 'SUPPORT';
@@ -437,6 +465,8 @@ export default function MessagesPage() {
       setCourtCase(null);
       setSelectedCourtRole(null);
       setCourtArguments([]);
+      setShowRepresentationDialog(false);
+      setShowLawyerRatingDialog(false);
       return;
     }
     let cancelled = false;
@@ -446,6 +476,26 @@ export default function MessagesPage() {
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [selectedConversation?.courtCaseId]);
+
+  useEffect(() => {
+    if (!isCourtConversation || !courtCase) return;
+    if (lawFirms.length > 0 || lawFirmsLoading) return;
+    if (!isEligibleCourtClient && !assignedLawFirm && !assignedLawyer) return;
+    let cancelled = false;
+    setLawFirmsLoading(true);
+    justiceApi.getLawFirms().then((response) => {
+      if (!cancelled) {
+        setLawFirms(response.data.lawFirms);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        toast({ title: 'Cabinets indisponibles', variant: 'destructive' });
+      }
+    }).finally(() => {
+      if (!cancelled) setLawFirmsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [assignedLawFirm, assignedLawyer, courtCase, isCourtConversation, isEligibleCourtClient, lawFirms.length, lawFirmsLoading]);
 
   const loadArguments = async () => {
     if (!courtCase) return;
@@ -481,6 +531,62 @@ export default function MessagesPage() {
     const term = addMemberSearch.trim().toLowerCase();
     return players.filter((p) => !memberIds.has(p.id) && p.id !== user?.id && (!term || p.username.toLowerCase().includes(term)));
   }, [players, selectedConversation, user?.id, addMemberSearch]);
+
+  const sortedLawFirms = useMemo(
+    () => [...lawFirms].sort((a, b) => {
+      const primaryA = a.lawyers?.find((entry) => entry.isPrimaryLawyer) ?? a.lawyers?.[0] ?? null;
+      const primaryB = b.lawyers?.find((entry) => entry.isPrimaryLawyer) ?? b.lawyers?.[0] ?? null;
+      const ratingDiff = (b.avgRating ?? 0) - (a.avgRating ?? 0);
+      if (Math.abs(ratingDiff) > 0.05) return ratingDiff;
+      if ((primaryA?.displayOrder ?? 0) !== (primaryB?.displayOrder ?? 0)) return (primaryA?.displayOrder ?? 0) - (primaryB?.displayOrder ?? 0);
+      return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+    }),
+    [lawFirms],
+  );
+  const selectedLawFirm = useMemo(
+    () => sortedLawFirms.find((entry) => entry.id === selectedLawFirmId) ?? null,
+    [selectedLawFirmId, sortedLawFirms],
+  );
+  const selectedLawFirmLawyers = useMemo(
+    () => selectedLawFirm?.lawyers ?? [],
+    [selectedLawFirm],
+  );
+  const assignedLawyerProfile = useMemo(() => {
+    if (!assignedLawyer) return null;
+    for (const firm of sortedLawFirms) {
+      const lawyer = firm.lawyers?.find((entry) => entry.userId === assignedLawyer.id);
+      if (lawyer) {
+        return lawyer;
+      }
+    }
+    return null;
+  }, [assignedLawyer, sortedLawFirms]);
+  const canChooseRepresentation = Boolean(courtCase && isEligibleCourtClient && courtCase.status === 'OPEN');
+  const canRateAssignedLawyer = Boolean(
+    courtCase &&
+    isEligibleCourtClient &&
+    courtCase.status === 'CLOSED' &&
+    assignedLawFirm &&
+    assignedLawyer,
+  );
+
+  useEffect(() => {
+    if (representationType !== 'PRIVATE_LAWYER') return;
+    const lawyers = selectedLawFirmLawyers;
+    if (lawyers.length === 0) {
+      setSelectedLawyerUserId(null);
+      return;
+    }
+    if (!selectedLawyerUserId || !lawyers.some((entry) => entry.userId === selectedLawyerUserId)) {
+      setSelectedLawyerUserId((lawyers.find((entry) => entry.isPrimaryLawyer) ?? lawyers[0] ?? null)?.userId ?? null);
+    }
+  }, [representationType, selectedLawFirmLawyers, selectedLawyerUserId]);
+
+  useEffect(() => {
+    if (showLawyerRatingDialog) return;
+    setLawyerRating(0);
+    setLawyerRatingComment('');
+  }, [showLawyerRatingDialog]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleSend = async () => {
@@ -674,6 +780,65 @@ export default function MessagesPage() {
       toast({ title: 'Erreur', variant: 'destructive' });
     } finally {
       setVerdictSaving(false);
+    }
+  };
+
+  const openRepresentationDialog = async () => {
+    if (!courtCase || !canChooseRepresentation) return;
+    if (lawFirms.length === 0 && !lawFirmsLoading) {
+      setLawFirmsLoading(true);
+      try {
+        const response = await justiceApi.getLawFirms();
+        setLawFirms(response.data.lawFirms);
+      } catch {
+        toast({ title: 'Cabinets indisponibles', variant: 'destructive' });
+        setLawFirmsLoading(false);
+        return;
+      } finally {
+        setLawFirmsLoading(false);
+      }
+    }
+
+    const existingLawFirmId = assignedLawFirm?.id ?? null;
+    const existingLawyerId = assignedLawyer?.id ?? null;
+    setRepresentationType(existingLawFirmId ? 'PRIVATE_LAWYER' : 'PUBLIC_DEFENDER');
+    setSelectedLawFirmId(existingLawFirmId);
+    setSelectedLawyerUserId(existingLawyerId);
+    setShowRepresentationDialog(true);
+  };
+
+  const handleSubmitRepresentation = async () => {
+    if (!courtCase) return;
+    if (representationType === 'PRIVATE_LAWYER' && (!selectedLawFirmId || !selectedLawyerUserId)) return;
+    setRepresentationSubmitting(true);
+    try {
+      const response = await justiceApi.chooseRepresentation(courtCase.id, representationType === 'PRIVATE_LAWYER'
+        ? { type: 'PRIVATE_LAWYER', lawFirmId: selectedLawFirmId!, lawyerUserId: selectedLawyerUserId! }
+        : { type: 'PUBLIC_DEFENDER' });
+      setCourtCase(response.data.courtCase);
+      setShowRepresentationDialog(false);
+      await Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false, false) : Promise.resolve()]);
+      toast({ title: representationType === 'PRIVATE_LAWYER' ? 'Representation mise a jour' : 'Defenseur public demande' });
+    } catch {
+      toast({ title: 'Representation impossible', variant: 'destructive' });
+    } finally {
+      setRepresentationSubmitting(false);
+    }
+  };
+
+  const handleSubmitLawyerRating = async () => {
+    if (!courtCase || !assignedLawyer || !canRateAssignedLawyer || lawyerRating === 0) return;
+    setLawyerRatingSubmitting(true);
+    try {
+      await youApi.rateLawyerForCase(courtCase.id, assignedLawyer.id, lawyerRating, lawyerRatingComment.trim());
+      setShowLawyerRatingDialog(false);
+      setLawyerRating(0);
+      setLawyerRatingComment('');
+      toast({ title: 'Avis avocat enregistre' });
+    } catch {
+      toast({ title: "Impossible d'enregistrer l'avis", variant: 'destructive' });
+    } finally {
+      setLawyerRatingSubmitting(false);
     }
   };
 
@@ -1070,6 +1235,187 @@ export default function MessagesPage() {
       </Dialog>
 
       {/* ── Main layout ── */}
+      <Dialog open={showRepresentationDialog} onOpenChange={setShowRepresentationDialog}>
+        <DialogContent className="max-w-2xl gap-0 overflow-hidden p-0">
+          <div className="border-b border-border/60 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">Choisir une representation</DialogTitle>
+            <DialogDescription className="mt-1 text-xs">
+              Selectionne un cabinet prive ou demande un defenseur public pour ce dossier.
+            </DialogDescription>
+          </div>
+          <div className="space-y-4 p-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setRepresentationType('PRIVATE_LAWYER')}
+                className={cn(
+                  'rounded-xl border px-4 py-3 text-left transition-colors',
+                  representationType === 'PRIVATE_LAWYER' ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/40 bg-muted/10',
+                )}
+              >
+                <p className="text-sm font-semibold">Cabinet prive</p>
+                <p className="mt-1 text-xs text-muted-foreground">Choisis un avocat et sa specialite.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRepresentationType('PUBLIC_DEFENDER')}
+                className={cn(
+                  'rounded-xl border px-4 py-3 text-left transition-colors',
+                  representationType === 'PUBLIC_DEFENDER' ? 'border-sky-500/40 bg-sky-500/10' : 'border-border/40 bg-muted/10',
+                )}
+              >
+                <p className="text-sm font-semibold">Defenseur public</p>
+                <p className="mt-1 text-xs text-muted-foreground">Representation par l'institution judiciaire.</p>
+              </button>
+            </div>
+
+            {representationType === 'PRIVATE_LAWYER' ? (
+              lawFirmsLoading ? (
+                <div className="flex items-center justify-center rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-sm text-muted-foreground">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />Chargement des cabinets...
+                </div>
+              ) : sortedLawFirms.length === 0 ? (
+                <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+                  Aucun cabinet disponible pour le moment.
+                </div>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)]">
+                  <div className="max-h-[45vh] space-y-2 overflow-y-auto pr-1">
+                    {sortedLawFirms.map((firm) => {
+                      const primaryLawyer = firm.lawyers?.find((entry) => entry.isPrimaryLawyer) ?? firm.lawyers?.[0] ?? null;
+                      return (
+                        <button
+                          key={firm.id}
+                          type="button"
+                          onClick={() => setSelectedLawFirmId(firm.id)}
+                          className={cn(
+                            'w-full rounded-xl border px-4 py-3 text-left transition-colors',
+                            selectedLawFirmId === firm.id ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+                          )}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/20">
+                              {firm.logoUrl ? (
+                                <Avatar className="h-9 w-9">
+                                  <AvatarImage src={resolveImageUrl(firm.logoUrl)} alt={firm.name} />
+                                  <AvatarFallback className="text-[10px]">{firm.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                </Avatar>
+                              ) : (
+                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">{firm.name}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {primaryLawyer?.user.username ?? firm.owner?.username ?? 'Cabinet'} · {primaryLawyer?.specialty ?? 'Avocat generaliste'}
+                              </p>
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                {firm.avgRating ? `${firm.avgRating.toFixed(1)}/5` : 'Sans note'} · {firm.ratingCount ?? 0} avis
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="rounded-xl border border-border/40 bg-muted/10 p-4">
+                    {selectedLawFirm ? (
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-sm font-semibold">{selectedLawFirm.name}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{selectedLawFirm.description || 'Cabinet disponible pour cette affaire.'}</p>
+                        </div>
+                        <div className="space-y-2">
+                          {selectedLawFirmLawyers.map((lawyer) => (
+                            <button
+                              key={lawyer.userId}
+                              type="button"
+                              onClick={() => setSelectedLawyerUserId(lawyer.userId)}
+                              className={cn(
+                                'w-full rounded-xl border px-3 py-3 text-left transition-colors',
+                                selectedLawyerUserId === lawyer.userId ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-border/40 bg-background/70 hover:bg-muted/20',
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium">{lawyer.user.username}</p>
+                                  <p className="text-xs text-muted-foreground">{lawyer.specialty || 'Avocat generaliste'} · {lawyer.lawFirmName}</p>
+                                </div>
+                                {lawyer.isPrimaryLawyer ? <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">Principal</span> : null}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                        Selectionne un cabinet puis un avocat.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            ) : (
+              <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 px-4 py-4 text-sm text-muted-foreground">
+                Les administrateurs et juges disponibles pourront intervenir comme defenseurs publics sur ce dossier.
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-3">
+            <Button variant="ghost" size="sm" onClick={() => setShowRepresentationDialog(false)} disabled={representationSubmitting}>
+              Annuler
+            </Button>
+            <Button size="sm" onClick={() => void handleSubmitRepresentation()} disabled={representationSubmitting || (representationType === 'PRIVATE_LAWYER' && (!selectedLawFirmId || !selectedLawyerUserId))}>
+              {representationSubmitting ? 'Envoi...' : 'Confirmer'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showLawyerRatingDialog} onOpenChange={setShowLawyerRatingDialog}>
+        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+          <div className="border-b border-border/60 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">Noter l'avocat</DialogTitle>
+            <DialogDescription className="mt-1 text-xs">
+              Cet avis concerne la representation de ton dossier cloture.
+            </DialogDescription>
+          </div>
+          <div className="space-y-4 p-4">
+            {assignedLawyer ? (
+              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                <p className="text-sm font-semibold">{assignedLawyer.username}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{assignedLawyerProfile?.specialty ?? 'Avocat generaliste'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet prive'}</p>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((value) => (
+                <button key={value} type="button" onClick={() => setLawyerRating(value)} className="transition-transform hover:scale-110">
+                  <Star className={cn('h-8 w-8', lawyerRating >= value ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-muted-foreground/30')} />
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={lawyerRatingComment}
+              onChange={(e) => setLawyerRatingComment(e.target.value)}
+              rows={4}
+              maxLength={500}
+              placeholder="Decris ton experience avec cet avocat..."
+              className="w-full resize-none rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-amber-400/40"
+            />
+            <p className="text-[11px] text-muted-foreground/60">{lawyerRatingComment.trim().length}/500</p>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-3">
+            <Button variant="ghost" size="sm" onClick={() => setShowLawyerRatingDialog(false)} disabled={lawyerRatingSubmitting}>
+              Fermer
+            </Button>
+            <Button size="sm" onClick={() => void handleSubmitLawyerRating()} disabled={lawyerRatingSubmitting || lawyerRating === 0 || !canRateAssignedLawyer}>
+              {lawyerRatingSubmitting ? 'Envoi...' : 'Envoyer'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="relative h-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
         <div className="grid h-full min-h-0 lg:grid-cols-[260px_minmax(0,1fr)]">
 
@@ -1186,7 +1532,26 @@ export default function MessagesPage() {
                     {courtCase.defendant && (
                       <span className="text-[10px] text-red-500 font-medium">{courtCase.defendant.username} (défendeur)</span>
                     )}
+                    {assignedLawyer ? (
+                      <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1">
+                        <Briefcase className="h-3 w-3 shrink-0 text-emerald-500" />
+                        <span className="text-[10px] font-medium text-foreground">{assignedLawyer.username}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {(assignedLawyerProfile?.specialty ?? 'Avocat generaliste')} · {(assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet prive')}
+                        </span>
+                      </div>
+                    ) : null}
                     <div className="ml-auto flex items-center gap-1">
+                      {canChooseRepresentation ? (
+                        <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => void openRepresentationDialog()}>
+                          <Briefcase className="h-3 w-3" />{assignedLawyer ? 'Changer avocat' : 'Choisir avocat'}
+                        </Button>
+                      ) : null}
+                      {canRateAssignedLawyer ? (
+                        <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10" onClick={() => setShowLawyerRatingDialog(true)}>
+                          <Star className="h-3 w-3" />Noter l'avocat
+                        </Button>
+                      ) : null}
                       {(isAdminViewer || myCourtRole === 'PLAINTIFF' || myCourtRole === 'DEFENDANT' || myCourtRole?.startsWith('LAWYER') || myCourtRole?.startsWith('PUBLIC')) && (
                         <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1"
                           onClick={() => { setArgumentDraft(''); void loadArguments().then(() => setShowArgumentsPanel(true)); }}>
@@ -1496,6 +1861,11 @@ function ConvRow({
             {conversation.courtCaseId && (
               <span className="shrink-0 rounded-full bg-amber-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-600 flex items-center gap-0.5">
                 <Scale className="h-2.5 w-2.5" />Tribunal
+              </span>
+            )}
+            {conversation.tagType === 'Professionnel' && (
+              <span className="shrink-0 rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-600">
+                {conversation.tagLabel ?? 'Professionnel'}
               </span>
             )}
           </div>

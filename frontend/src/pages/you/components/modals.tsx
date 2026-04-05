@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowDownCircle, ArrowUpCircle, Building2, Check, ChevronRight,
-  CreditCard, Download, Edit2, ExternalLink, GraduationCap, Landmark, Percent,
+  ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
+  CreditCard, Download, Edit2, ExternalLink, GraduationCap, Landmark, Loader2, Percent,
   Plus, Sparkles, Trash2, TrendingUp, UserPlus, Users, Wallet, X,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -17,6 +17,61 @@ import {
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';
 import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, SectionTitle, SelectBox, UserAvatar } from './ui';
+
+async function fileToBase64(file: File) {
+  const buffer = await file.arrayBuffer();
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let index = 0; index < bytes.byteLength; index += 1) {
+    binary += String.fromCharCode(bytes[index]!);
+  }
+  return window.btoa(binary);
+}
+
+async function openFormationAccess(
+  businessId: string,
+  productId: string,
+  mode: 'file' | 'external' | 'auto' = 'auto',
+) {
+  const access = await withRouteError(
+    () => youApi.accessFormationProduct(businessId, productId),
+    'Impossible d acceder a cette formation.',
+  );
+  const result = access.data.result;
+
+  if ((mode === 'external' || mode === 'auto') && result.url && (mode === 'external' || !result.hasAttachment)) {
+    window.open(result.url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+
+  if (mode === 'external' && !result.url) {
+    throw new Error('FORMATION_EXTERNAL_URL_UNAVAILABLE');
+  }
+
+  if (!result.hasAttachment) {
+    if (result.url) {
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    throw new Error('FORMATION_ATTACHMENT_UNAVAILABLE');
+  }
+
+  const blobResponse = await withRouteError(
+    () => youApi.downloadFormationProductFile(businessId, productId),
+    'Impossible de telecharger ce fichier.',
+  );
+  const blob = new Blob([blobResponse.data], { type: result.attachmentMimeType ?? 'application/octet-stream' });
+  const objectUrl = window.URL.createObjectURL(blob);
+  if (result.attachmentMimeType === 'application/pdf') {
+    window.open(objectUrl, '_blank', 'noopener,noreferrer');
+  } else {
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = result.attachmentOriginalName ?? `${result.title}.bin`;
+    link.click();
+  }
+  window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
+}
 
 function getLoanStartDate(loan: YouBusinessLoan) {
   return new Date(loan.decidedAt ?? loan.createdAt);
@@ -1458,12 +1513,27 @@ export function ManageTeamModal({
   const [sackingId, setSackingId] = useState<string | null>(null);
   const [reviewingInvitationId, setReviewingInvitationId] = useState<string | null>(null);
   const [salaryInputs, setSalaryInputs] = useState<Record<string, string>>({});
+  const [specialtyInputs, setSpecialtyInputs] = useState<Record<string, string>>({});
+  const [displayOrderInputs, setDisplayOrderInputs] = useState<Record<string, string>>({});
+  const [primaryLawyerInputs, setPrimaryLawyerInputs] = useState<Record<string, boolean>>({});
+  const [updatingLawyerId, setUpdatingLawyerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       const inputs: Record<string, string> = {};
+      const specialties: Record<string, string> = {};
+      const displayOrders: Record<string, string> = {};
+      const primaryLawyers: Record<string, boolean> = {};
       business.members.forEach((m) => { inputs[m.id] = String(m.salary ?? 0); });
+      business.members.forEach((m) => {
+        specialties[m.id] = m.specialty ?? '';
+        displayOrders[m.id] = String(m.displayOrder ?? 0);
+        primaryLawyers[m.id] = Boolean(m.isPrimaryLawyer);
+      });
       setSalaryInputs(inputs);
+      setSpecialtyInputs(specialties);
+      setDisplayOrderInputs(displayOrders);
+      setPrimaryLawyerInputs(primaryLawyers);
     }
   }, [open, business.members]);
 
@@ -1495,6 +1565,25 @@ export function ManageTeamModal({
 
   const activeMembers = business.members.filter((m) => m.status === 'ACTIVE');
   const pendingInvitations = business.pendingInvitations;
+  const isLawFirm = business.typeKey === 'law_firm';
+
+  const saveLawyerProfile = async (memberId: string) => {
+    setUpdatingLawyerId(memberId);
+    try {
+      await withRouteError(
+        () => youApi.updateLawFirmMemberMetadata(business.id, memberId, {
+          specialty: specialtyInputs[memberId] ?? '',
+          isPrimaryLawyer: Boolean(primaryLawyerInputs[memberId]),
+          displayOrder: Number(displayOrderInputs[memberId] ?? 0),
+        }),
+        'Impossible de modifier le profil avocat.',
+      );
+      toast.success('Profil avocat mis Ã  jour');
+      await onSubmitted();
+    } finally {
+      setUpdatingLawyerId(null);
+    }
+  };
 
   const reviewInvitation = async (invitationId: string, decision: 'accept' | 'reject') => {
     setReviewingInvitationId(invitationId);
@@ -1556,6 +1645,7 @@ export function ManageTeamModal({
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium">{member.user.username}</p>
                   <Pill label={member.role} color="bg-violet-400/15 text-violet-400" />
+                  {isLawFirm && member.isPrimaryLawyer ? <Pill label="Avocat principal" color="bg-amber-400/15 text-amber-300" /> : null}
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <Input
@@ -1577,6 +1667,39 @@ export function ManageTeamModal({
                     OK
                   </Button>
                 </div>
+                {isLawFirm ? (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_110px_auto]">
+                    <Input
+                      value={specialtyInputs[member.id] ?? ''}
+                      onChange={(e) => setSpecialtyInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
+                      className="h-8 text-xs"
+                      placeholder="SpÃ©cialitÃ©"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={displayOrderInputs[member.id] ?? '0'}
+                      onChange={(e) => setDisplayOrderInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
+                      className="h-8 text-xs"
+                      placeholder="Ordre"
+                    />
+                    <label className="flex items-center gap-2 rounded-md border border-border/40 px-3 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={primaryLawyerInputs[member.id] ?? false}
+                        onChange={(e) => setPrimaryLawyerInputs((prev) => ({ ...prev, [member.id]: e.target.checked }))}
+                      />
+                      Principal
+                    </label>
+                  </div>
+                ) : null}
+                {isLawFirm ? (
+                  <div className="mt-2">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void saveLawyerProfile(member.id)} disabled={updatingLawyerId !== null}>
+                      {updatingLawyerId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Sauver profil avocat'}
+                    </Button>
+                  </div>
+                ) : null}
               </div>
               <Button
                 size="sm"
@@ -1828,9 +1951,17 @@ export function FormationPurchaseModal({
 
 // --- ManageFormationsModal (owner: add/edit/delete formation products) ---
 
-type FormationDraft = { title: string; description: string; price: string; url: string; imageUrl: string };
+type FormationDraft = {
+  title: string;
+  description: string;
+  price: string;
+  url: string;
+  imageUrl: string;
+  attachmentFile: File | null;
+  removeAttachment: boolean;
+};
 
-const EMPTY_DRAFT: FormationDraft = { title: '', description: '', price: '500', url: '', imageUrl: '' };
+const EMPTY_DRAFT: FormationDraft = { title: '', description: '', price: '500', url: '', imageUrl: '', attachmentFile: null, removeAttachment: false };
 
 export function ManageFormationsModal({
   open,
@@ -1856,7 +1987,15 @@ export function ManageFormationsModal({
   }, [open]);
 
   const startEdit = (p: YouFormationProduct) => {
-    setDraft({ title: p.title, description: p.description ?? '', price: String(p.price), url: p.url, imageUrl: p.imageUrl ?? '' });
+    setDraft({
+      title: p.title,
+      description: p.description ?? '',
+      price: String(p.price),
+      url: p.url ?? '',
+      imageUrl: p.imageUrl ?? '',
+      attachmentFile: null,
+      removeAttachment: false,
+    });
     setEditingId(p.id);
     setFormOpen(true);
   };
@@ -1870,14 +2009,25 @@ export function ManageFormationsModal({
   const cancelForm = () => { setFormOpen(false); setEditingId(null); setDraft(EMPTY_DRAFT); };
 
   const save = async () => {
-    if (!draft.title.trim() || !draft.url.trim()) return;
+    const currentProduct = editingId ? products.find((entry) => entry.id === editingId) ?? null : null;
+    const hasExistingAccess = Boolean(currentProduct?.url || currentProduct?.attachmentPath) && !draft.removeAttachment;
+    if (!draft.title.trim() || (!draft.url.trim() && !draft.attachmentFile && !hasExistingAccess)) return;
     setSaving(true);
     try {
+      const attachment = draft.attachmentFile
+        ? {
+            base64Data: await fileToBase64(draft.attachmentFile),
+            mimeType: draft.attachmentFile.type,
+            fileName: draft.attachmentFile.name,
+          }
+        : undefined;
       if (editingId) {
         await withRouteError(
           () => youApi.updateFormationProduct(business.id, editingId, {
             title: draft.title, description: draft.description || null,
-            price: Number(draft.price), url: draft.url, imageUrl: draft.imageUrl || null,
+            price: Number(draft.price), url: draft.url || null, imageUrl: draft.imageUrl || null,
+            ...(attachment ? { attachment } : {}),
+            ...(draft.removeAttachment ? { removeAttachment: true } : {}),
           }),
           'Impossible de modifier la formation.',
         );
@@ -1886,7 +2036,8 @@ export function ManageFormationsModal({
         await withRouteError(
           () => youApi.addFormationProduct(business.id, {
             title: draft.title, description: draft.description || undefined,
-            price: Number(draft.price), url: draft.url, imageUrl: draft.imageUrl || undefined,
+            price: Number(draft.price), url: draft.url || null, imageUrl: draft.imageUrl || undefined,
+            ...(attachment ? { attachment } : {}),
           }),
           'Impossible d\'ajouter la formation.',
         );
@@ -1969,12 +2120,38 @@ export function ManageFormationsModal({
           <FieldRow label="Lien (PDF, vidéo, site...)">
             <Input value={draft.url} onChange={(e) => setDraft((d) => ({ ...d, url: e.target.value }))} placeholder="https://drive.google.com/..." />
           </FieldRow>
+          <FieldRow label="Fichier joint (optionnel)">
+            <Input type="file" onChange={(e) => setDraft((d) => ({ ...d, attachmentFile: e.target.files?.[0] ?? null, removeAttachment: false }))} />
+          </FieldRow>
           <FieldRow label="Miniature (URL image, optionnel)">
             <Input value={draft.imageUrl} onChange={(e) => setDraft((d) => ({ ...d, imageUrl: e.target.value }))} placeholder="https://..." />
           </FieldRow>
+          {editingId ? (() => {
+            const currentProduct = products.find((entry) => entry.id === editingId) ?? null;
+            if (!currentProduct) return null;
+            return (
+              <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs space-y-2">
+                <p className={cn('font-medium', currentProduct.status === 'APPROVED' ? 'text-emerald-400' : currentProduct.status === 'REJECTED' ? 'text-rose-400' : 'text-amber-400')}>
+                  Statut: {currentProduct.status === 'APPROVED' ? 'ApprouvÃ©e' : currentProduct.status === 'REJECTED' ? 'RefusÃ©e' : 'En attente'}
+                </p>
+                <p className="text-muted-foreground">Fichier actuel: {draft.attachmentFile?.name ?? currentProduct.attachmentOriginalName ?? 'Aucun'}</p>
+                {currentProduct.reviewerNote ? <p className="text-muted-foreground whitespace-pre-wrap break-words">Note reviewer: {currentProduct.reviewerNote}</p> : null}
+                {(currentProduct.hasAttachment || draft.attachmentFile) ? (
+                  <label className="flex items-center gap-2 text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={draft.removeAttachment}
+                      onChange={(e) => setDraft((d) => ({ ...d, removeAttachment: e.target.checked, attachmentFile: e.target.checked ? null : d.attachmentFile }))}
+                    />
+                    Supprimer le fichier joint
+                  </label>
+                ) : null}
+              </div>
+            );
+          })() : null}
           <div className="flex justify-end gap-2">
             <Button size="sm" variant="ghost" onClick={cancelForm} disabled={saving}>Annuler</Button>
-            <Button size="sm" onClick={() => void save()} disabled={saving || !draft.title.trim() || !draft.url.trim()}>
+            <Button size="sm" onClick={() => void save()} disabled={saving || !draft.title.trim() || (!draft.url.trim() && !draft.attachmentFile && !(editingId && !draft.removeAttachment))}>
               {editingId ? 'Enregistrer' : 'Ajouter'}
             </Button>
           </div>
@@ -2045,7 +2222,7 @@ export function BusinessProfileModal({
       <FieldRow label="Logo (URL d'image, optionnel)">
         <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
       </FieldRow>
-      {logoUrl.trim() ? (
+      {logoUrl ? (
         <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
           <img src={logoUrl} alt="apercu" className="h-10 w-10 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           <p className="text-xs text-muted-foreground">Apercu du logo</p>
@@ -2067,21 +2244,46 @@ export function FormationCatalogModal({
   business,
   onSubmitted,
   onAccessed,
+  onShowProductReviews,
+  onRateProduct,
 }: {
   open: boolean;
   onClose: () => void;
   business: YouBusiness | null;
   onSubmitted: () => Promise<void>;
   onAccessed?: () => void;
+  onShowProductReviews?: (productId: string) => void;
+  onRateProduct?: (productId: string) => void;
 }) {
   const [buyingId, setBuyingId] = useState<string | null>(null);
-  const [purchasedUrl, setPurchasedUrl] = useState<{ title: string; url: string } | null>(null);
+  const [purchasedAccess, setPurchasedAccess] = useState<{ title: string; productId: string } | null>(null);
+  const [accessingTarget, setAccessingTarget] = useState<{ productId: string; mode: 'file' | 'external' } | null>(null);
 
   useEffect(() => {
-    if (!open) { setPurchasedUrl(null); setBuyingId(null); }
+    if (!open) {
+      setPurchasedAccess(null);
+      setBuyingId(null);
+      setAccessingTarget(null);
+    }
   }, [open]);
 
   const products: YouFormationProduct[] = business?.formationProducts ?? [];
+  const getHasPurchased = (product: YouFormationProduct) => Boolean(product.viewerHasPurchased ?? product.hasPurchased);
+  const visibleProducts = useMemo(() => {
+    if (!business) return [] as YouFormationProduct[];
+    const items = business.ownerKind === 'you'
+      ? products
+      : products.filter((product) => product.status === 'APPROVED' || getHasPurchased(product));
+
+    return [...items].sort((a, b) => {
+      const statusRank = (value: string) => (value === 'APPROVED' ? 0 : value === 'PENDING' ? 1 : 2);
+      const rankDiff = statusRank(a.status) - statusRank(b.status);
+      if (rankDiff !== 0) return rankDiff;
+      const purchasedDiff = Number(getHasPurchased(b)) - Number(getHasPurchased(a));
+      if (purchasedDiff !== 0) return purchasedDiff;
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    });
+  }, [business, products]);
 
   const buy = async (product: YouFormationProduct) => {
     if (!business) return;
@@ -2089,10 +2291,10 @@ export function FormationCatalogModal({
     try {
       const res = await withRouteError(
         () => youApi.buyFormationProduct(business.id, product.id),
-        'Impossible d\'acheter cette formation.',
+        "Impossible d'acheter cette formation.",
       );
-      toast.success(`Formation "${product.title}" achetée !`);
-      setPurchasedUrl({ title: res.data.result.title, url: res.data.result.url });
+      toast.success(`Formation "${product.title}" achetee !`);
+      setPurchasedAccess({ title: res.data.result.title, productId: product.id });
       await onSubmitted();
     } finally {
       setBuyingId(null);
@@ -2101,73 +2303,171 @@ export function FormationCatalogModal({
 
   if (!business) return null;
 
-  const handleAccess = () => {
-    onAccessed?.();
+  const isOwnerPreview = business.ownerKind === 'you';
+  const catalogDescription = purchasedAccess
+    ? 'Accede a ta formation ci-dessous.'
+    : isOwnerPreview
+      ? `${visibleProducts.length} formation(s) visibles cote client`
+      : `${visibleProducts.length} formation(s) disponible(s)`;
+
+  const handleAccess = async (productId: string, mode: 'file' | 'external') => {
+    setAccessingTarget({ productId, mode });
+    try {
+      await openFormationAccess(business.id, productId, mode);
+      onAccessed?.();
+    } finally {
+      setAccessingTarget(null);
+    }
   };
+
+  const getFileActionLabel = (product: YouFormationProduct) =>
+    product.attachmentMimeType === 'application/pdf'
+      ? 'Ouvrir le PDF'
+      : 'Telecharger le fichier';
 
   return (
     <ModalWrap
       open={open}
       onClose={onClose}
       title={business.name}
-      desc={purchasedUrl ? 'Accède à ta formation ci-dessous.' : `${products.length} formation(s) disponible(s)`}
+      desc={catalogDescription}
+      wide
     >
-      {purchasedUrl ? (
+      {purchasedAccess ? (
         <div className="space-y-4 text-center">
           <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-6">
             <GraduationCap className="mx-auto h-10 w-10 text-emerald-400" />
-            <p className="mt-3 text-sm font-semibold">{purchasedUrl.title}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Clique pour accéder au contenu.</p>
+            <p className="mt-3 text-sm font-semibold">{purchasedAccess.title}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Clique pour reouvrir ton acces securise.</p>
           </div>
-          <a href={purchasedUrl.url} target="_blank" rel="noopener noreferrer" className="block" onClick={handleAccess}>
-            <Button className="w-full"><Download className="mr-2 h-4 w-4" />Accéder à la formation</Button>
-          </a>
-          {products.length > 1 ? (
-            <Button variant="ghost" className="w-full text-xs" onClick={() => setPurchasedUrl(null)}>
+          <Button className="w-full" onClick={() => void openFormationAccess(business.id, purchasedAccess.productId).then(onAccessed)}>
+            <Download className="mr-2 h-4 w-4" />Acceder a la formation
+          </Button>
+          {visibleProducts.length > 1 ? (
+            <Button variant="ghost" className="w-full text-xs" onClick={() => setPurchasedAccess(null)}>
               Voir les autres formations
             </Button>
           ) : null}
         </div>
-      ) : products.length === 0 ? (
+      ) : visibleProducts.length === 0 ? (
         <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
-          Aucune formation disponible pour le moment.
+          {isOwnerPreview ? 'Aucune formation creee pour le moment.' : 'Aucune formation disponible pour le moment.'}
         </div>
       ) : (
-        <div className="space-y-3">
-          {products.map((product) => (
-            <div key={product.id} className="overflow-hidden rounded-xl border border-border/40 bg-muted/10">
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt={product.title}
-                  className="h-32 w-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
-              ) : null}
-              <div className="px-4 py-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/15">
-                    <GraduationCap className="h-4 w-4 text-amber-400" />
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {visibleProducts.map((product) => {
+            const hasPurchased = getHasPurchased(product);
+            const canAccess = isOwnerPreview || hasPurchased;
+            const ratingCount = product.ratingCount ?? product.ratings?.length ?? 0;
+            const isAccessingFile = accessingTarget?.productId === product.id && accessingTarget.mode === 'file';
+            const isAccessingExternal = accessingTarget?.productId === product.id && accessingTarget.mode === 'external';
+
+            return (
+              <div key={product.id} className="overflow-hidden rounded-xl border border-border/40 bg-muted/10">
+                {product.imageUrl ? (
+                  <img
+                    src={product.imageUrl}
+                    alt={product.title}
+                    className="h-32 w-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : null}
+                <div className="space-y-3 px-4 py-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400/15">
+                      <GraduationCap className="h-4 w-4 text-amber-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="text-sm font-semibold">{product.title}</p>
+                        {hasPurchased ? <Pill label="Achetee" color="bg-emerald-400/15 text-emerald-300" /> : null}
+                        {product.status === 'PENDING' ? <Pill label="En attente" color="bg-amber-400/15 text-amber-300" /> : null}
+                        {product.status === 'REJECTED' ? <Pill label="Refusee" color="bg-rose-400/15 text-rose-300" /> : null}
+                      </div>
+                      {product.description ? <p className="mt-0.5 text-xs text-muted-foreground">{product.description}</p> : null}
+                      <p className="mt-1.5 text-sm font-bold text-amber-300">{product.price.toLocaleString('fr-FR')} EUR</p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">{product.title}</p>
-                    {product.description ? (
-                      <p className="mt-0.5 text-xs text-muted-foreground">{product.description}</p>
+
+                  <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      <span>Publie le {new Date(product.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                    {product.hasAttachment ? (
+                      <p>
+                        Fichier protege: {product.attachmentOriginalName ?? 'piece jointe'}
+                        {product.attachmentMimeType ? ` (${product.attachmentMimeType})` : ''}
+                      </p>
                     ) : null}
-                    <p className="mt-1.5 text-sm font-bold text-amber-300">{product.price.toLocaleString('fr-FR')} €</p>
+                    {product.url ? <p>Lien externe disponible</p> : null}
+                    {hasPurchased && product.viewerPurchasedAt ? (
+                      <p>Achetee le {new Date(product.viewerPurchasedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    ) : null}
+                    {hasPurchased && product.viewerLastAccessedAt ? (
+                      <p>Dernier acces le {new Date(product.viewerLastAccessedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    ) : null}
                   </div>
+
+                  {isOwnerPreview && product.status === 'REJECTED' && product.reviewerNote ? (
+                    <div className="rounded-xl border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">
+                      Note moderation: {product.reviewerNote}
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-xl border border-border/40 bg-background/60 px-3 py-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold">Avis produit</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {product.avgRating !== null && product.avgRating !== undefined
+                            ? `${product.avgRating.toFixed(1)}/5 - ${ratingCount} avis`
+                            : 'Aucun avis pour le moment'}
+                        </p>
+                      </div>
+                      <span className="text-xs font-semibold text-amber-400">{product.avgRating?.toFixed(1) ?? '--'}</span>
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => onShowProductReviews?.(product.id)} disabled={!onShowProductReviews}>
+                        Avis
+                      </Button>
+                      {!isOwnerPreview ? (
+                        <Button size="sm" className="flex-1" onClick={() => onRateProduct?.(product.id)} disabled={!product.canReview || !onRateProduct}>
+                          Donner un avis
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {canAccess ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {product.hasAttachment ? (
+                        <Button size="sm" className="w-full" onClick={() => void handleAccess(product.id, 'file')} disabled={Boolean(accessingTarget)}>
+                          {isAccessingFile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                          {getFileActionLabel(product)}
+                        </Button>
+                      ) : null}
+                      {product.url ? (
+                        <Button size="sm" variant={product.hasAttachment ? 'outline' : 'default'} className="w-full" onClick={() => void handleAccess(product.id, 'external')} disabled={Boolean(accessingTarget)}>
+                          {isAccessingExternal ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
+                          Ouvrir le lien
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <Button size="sm" className="w-full" onClick={() => void buy(product)} disabled={buyingId !== null || isOwnerPreview || product.status !== 'APPROVED' || hasPurchased}>
+                      {buyingId === product.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Acheter - {product.price.toLocaleString('fr-FR')} EUR
+                    </Button>
+                  )}
+
+                  {!isOwnerPreview && !product.canReview && hasPurchased ? (
+                    <p className="text-xs text-muted-foreground">Ton avis sera disponible apres consultation de la formation.</p>
+                  ) : null}
                 </div>
-                <Button
-                  size="sm"
-                  className="mt-3 w-full"
-                  onClick={() => void buy(product)}
-                  disabled={buyingId !== null}
-                >
-                  Acheter · {product.price.toLocaleString('fr-FR')} €
-                </Button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </ModalWrap>

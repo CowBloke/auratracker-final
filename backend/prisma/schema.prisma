@@ -59,6 +59,7 @@ model User {
   followers                    UserFollow[]                  @relation("UserFollowers")
   ownedBusinesses              Business[]                    @relation("BusinessOwner")
   businessMemberships          BusinessMember[]
+  businessSupportAssignments   Business[]                    @relation("BusinessSupportAgent")
   buyoutOffersPlaced           BusinessBuyoutOffer[]         @relation("BuyoutBidder")
   buyoutOffersReceived         BusinessBuyoutOffer[]         @relation("BusinessBuyoutOwner")
   businessShareholdings        BusinessShareholder[]
@@ -152,6 +153,8 @@ model User {
   plaintePlaigne              Plainte[]                         @relation("DefendantPlaintes")
   caseAsPlaintif              CourtCase[]                       @relation("CasePlaintif")
   caseAsDefendant             CourtCase[]                       @relation("CaseDefendant")
+  caseAsPlaintiffLawyer       CourtCase[]                       @relation("CourtCasePlaintiffLawyer")
+  caseAsDefendantLawyer       CourtCase[]                       @relation("CourtCaseDefendantLawyer")
   courtParties                CourtParty[]
   courtArguments              CourtArgument[]
 
@@ -177,6 +180,12 @@ model User {
 
   // Business ratings
   businessRatings BusinessRating[]
+  formationProductPurchases FormationProductPurchase[]
+  formationProductRatings   FormationProductRating[]
+  lawyerRatingsGiven        LawyerRating[]                  @relation("LawyerRatingAuthor")
+  lawyerRatingsReceived     LawyerRating[]                  @relation("LawyerRatingLawyer")
+  reviewEligibilities       ReviewEligibility[]            @relation("ReviewEligibilityUser")
+  lawyerReviewEligibilities ReviewEligibility[]            @relation("ReviewEligibilityLawyer")
 
   @@index([aura])
   @@index([money])
@@ -489,6 +498,7 @@ model DirectMessage {
 model Business {
   id                    String    @id @default(uuid())
   ownerId               String
+  supportAgentId        String?
   name                  String
   typeKey               String
   description           String?
@@ -513,6 +523,7 @@ model Business {
   updatedAt             DateTime  @updatedAt
 
   owner                User                          @relation("BusinessOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  supportAgent         User?                         @relation("BusinessSupportAgent", fields: [supportAgentId], references: [id], onDelete: SetNull)
   members              BusinessMember[]
   invitations          BusinessInvitation[]
   loans                BusinessLoan[]
@@ -525,28 +536,48 @@ model Business {
   bankAccounts         BankAccount[]
   transactions         BusinessTransaction[]
   ratings              BusinessRating[]
+  formationPurchases   FormationProductPurchase[]
+  formationRatings     FormationProductRating[]
   formationProducts    FormationProduct[]
+  lawyerRatings        LawyerRating[]
+  reviewEligibilities  ReviewEligibility[]
   plaintes             Plainte[]
+  supportConversations MessageConversation[]
+  plaintiffCourtCases  CourtCase[]                     @relation("CourtCasePlaintiffLawFirm")
+  defendantCourtCases  CourtCase[]                     @relation("CourtCaseDefendantLawFirm")
 
   @@index([ownerId])
+  @@index([supportAgentId])
   @@index([typeKey, createdAt])
   @@index([hiring])
   @@index([isStateOwned])
 }
 
 model FormationProduct {
-  id          String   @id @default(uuid())
-  businessId  String
-  title       String
-  description String?
-  price       Int      @default(500)
-  url         String
-  imageUrl    String?
-  createdAt   DateTime @default(now())
+  id                   String   @id @default(uuid())
+  businessId           String
+  title                String
+  description          String?
+  price                Int      @default(500)
+  url                  String?
+  imageUrl             String?
+  attachmentOriginalName String?
+  attachmentMimeType   String?
+  attachmentPath       String?
+  attachmentSizeBytes  Int?
+  status               String   @default("APPROVED") // PENDING | APPROVED | REJECTED
+  reviewedAt           DateTime?
+  reviewedBy           String?
+  reviewerNote         String?
+  createdAt            DateTime @default(now())
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business            Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchases           FormationProductPurchase[]
+  ratings             FormationProductRating[]
+  reviewEligibilities ReviewEligibility[]
 
   @@index([businessId])
+  @@index([businessId, status])
 }
 
 model BusinessRating {
@@ -570,6 +601,9 @@ model BusinessMember {
   businessId String
   userId     String
   role       String
+  specialty  String?
+  isPrimaryLawyer Boolean @default(false)
+  displayOrder Int    @default(0)
   status     String   @default("ACTIVE")
   salary     Int      @default(0)
   lastSalaryPaymentDate String?
@@ -581,6 +615,97 @@ model BusinessMember {
 
   @@unique([businessId, userId])
   @@index([userId, status])
+  @@index([businessId, isPrimaryLawyer, displayOrder])
+}
+
+model FormationProductPurchase {
+  id              String   @id @default(uuid())
+  userId          String
+  businessId      String
+  productId       String
+  pricePaid       Int
+  purchasedAt     DateTime @default(now())
+  lastAccessedAt  DateTime?
+  reviewPromptAt  DateTime?
+  reviewPromptedAt DateTime?
+  reviewedAt      DateTime?
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  FormationProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([businessId, purchasedAt])
+  @@index([productId, purchasedAt])
+  @@index([userId, reviewPromptAt])
+}
+
+model FormationProductRating {
+  id         String   @id @default(uuid())
+  productId  String
+  businessId String
+  userId     String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product  FormationProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  business Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([businessId, createdAt])
+  @@index([productId, createdAt])
+}
+
+model LawyerRating {
+  id              String   @id @default(uuid())
+  lawFirmBusinessId String
+  lawyerUserId    String
+  authorUserId    String
+  courtCaseId     String
+  rating          Int
+  comment         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  lawFirm   Business  @relation(fields: [lawFirmBusinessId], references: [id], onDelete: Cascade)
+  lawyer    User      @relation("LawyerRatingLawyer", fields: [lawyerUserId], references: [id], onDelete: Cascade)
+  author    User      @relation("LawyerRatingAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  courtCase CourtCase @relation(fields: [courtCaseId], references: [id], onDelete: Cascade)
+
+  @@unique([courtCaseId, authorUserId])
+  @@index([lawFirmBusinessId, createdAt])
+  @@index([lawyerUserId, createdAt])
+}
+
+model ReviewEligibility {
+  id                 String   @id @default(uuid())
+  userId             String
+  businessId         String?
+  formationProductId String?
+  lawyerUserId       String?
+  courtCaseId        String?
+  targetType         String
+  sourceType         String
+  promptAt           DateTime?
+  promptedAt         DateTime?
+  reviewedAt         DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user             User              @relation("ReviewEligibilityUser", fields: [userId], references: [id], onDelete: Cascade)
+  business         Business?         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  formationProduct FormationProduct? @relation(fields: [formationProductId], references: [id], onDelete: Cascade)
+  lawyer           User?             @relation("ReviewEligibilityLawyer", fields: [lawyerUserId], references: [id], onDelete: Cascade)
+  courtCase        CourtCase?        @relation(fields: [courtCaseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, targetType, promptAt])
+  @@index([businessId, userId])
+  @@index([formationProductId, userId])
+  @@index([lawyerUserId, userId])
+  @@index([courtCaseId])
 }
 
 model BusinessInvitation {
@@ -2081,12 +2206,16 @@ model MessageConversation {
   icon           String?  // emoji for group icon
   imageUrl       String?  // custom group photo
   createdById    String?
+  businessId     String?
   courtCaseId    String?  @unique // if set, this is a court case conversation
+  tagType        String?
+  tagLabel       String?
   createdAt      DateTime @default(now())
   lastMessageAt  DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   createdBy    User?                            @relation("MessageConversationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  business     Business?                        @relation(fields: [businessId], references: [id], onDelete: SetNull)
   participants MessageConversationParticipant[]
   messages     MessageConversationMessage[]
   reports      MessageConversationReport[]
@@ -2095,6 +2224,7 @@ model MessageConversation {
 
   @@index([type, lastMessageAt])
   @@index([createdById])
+  @@index([businessId])
 }
 
 model MessageConversationParticipant {
@@ -2299,6 +2429,10 @@ model CourtCase {
   conversationId String    @unique
   plaintifId     String
   defendantId    String
+  plaintiffLawFirmId String?
+  plaintiffLawyerId  String?
+  defendantLawFirmId String?
+  defendantLawyerId  String?
   status         String    @default("OPEN") // OPEN | DELIBERATION | VERDICT_GIVEN | CLOSED
   verdict        String?   // free text verdict
   verdictAt      DateTime?
@@ -2310,12 +2444,20 @@ model CourtCase {
   conversation MessageConversation @relation(fields: [conversationId], references: [id])
   plaintif     User                @relation("CasePlaintif", fields: [plaintifId], references: [id])
   defendant    User                @relation("CaseDefendant", fields: [defendantId], references: [id])
+  plaintiffLawFirm Business?       @relation("CourtCasePlaintiffLawFirm", fields: [plaintiffLawFirmId], references: [id], onDelete: SetNull)
+  plaintiffLawyer  User?           @relation("CourtCasePlaintiffLawyer", fields: [plaintiffLawyerId], references: [id], onDelete: SetNull)
+  defendantLawFirm Business?       @relation("CourtCaseDefendantLawFirm", fields: [defendantLawFirmId], references: [id], onDelete: SetNull)
+  defendantLawyer  User?           @relation("CourtCaseDefendantLawyer", fields: [defendantLawyerId], references: [id], onDelete: SetNull)
   parties      CourtParty[]
   arguments    CourtArgument[]
+  lawyerRatings LawyerRating[]
+  reviewEligibilities ReviewEligibility[]
 
   @@index([status])
   @@index([plaintifId])
   @@index([defendantId])
+  @@index([plaintiffLawyerId])
+  @@index([defendantLawyerId])
 }
 
 // Participants with specific court roles

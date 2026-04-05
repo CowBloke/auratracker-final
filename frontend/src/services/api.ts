@@ -185,6 +185,9 @@ export interface YouBusinessMember {
   role: string;
   status: string;
   salary: number;
+  specialty?: string | null;
+  isPrimaryLawyer?: boolean;
+  displayOrder?: number;
   user: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
@@ -333,9 +336,39 @@ export interface YouFormationProduct {
   title: string;
   description: string | null;
   price: number;
-  url: string;
+  url: string | null;
   imageUrl: string | null;
   createdAt: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewerNote: string | null;
+  attachmentOriginalName?: string | null;
+  attachmentMimeType?: string | null;
+  attachmentPath?: string | null;
+  attachmentSizeBytes?: number | null;
+  hasAttachment?: boolean;
+  accessMode?: 'EXTERNAL_URL' | 'FILE' | 'HYBRID' | 'UNAVAILABLE' | string;
+  avgRating?: number | null;
+  ratingCount?: number;
+  ratings?: YouBusinessRating[];
+  canReview?: boolean;
+  viewerHasPurchased?: boolean;
+  viewerPurchasedAt?: string | null;
+  viewerLastAccessedAt?: string | null;
+  hasPurchased?: boolean;
+  hasAccess?: boolean;
+  reviewPromptAt?: string | null;
+  reviewPromptedAt?: string | null;
+  purchasedAt?: string | null;
+  lastAccessedAt?: string | null;
+}
+
+export interface BusinessSupportAgentSummary {
+  id: string;
+  username: string;
+  profilePicture?: string | null;
+  usernameColor?: string | null;
 }
 
 export interface YouBusinessRating {
@@ -394,7 +427,51 @@ export interface YouBusiness {
   avgRating: number | null;
   ratingCount: number;
   ratings: YouBusinessRating[];
+  canRate: boolean;
   isStateOwned: boolean;
+  reviewPromptAt?: string | null;
+  reviewPromptedAt?: string | null;
+  supportAgent?: BusinessSupportAgentSummary | null;
+  supportEnabled?: boolean;
+}
+
+export interface PendingFormationReviewItem {
+  id: string;
+  businessId: string;
+  title: string;
+  description: string | null;
+  price: number;
+  url: string | null;
+  imageUrl: string | null;
+  createdAt: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | string;
+  reviewerNote: string | null;
+  attachmentOriginalName: string | null;
+  attachmentMimeType: string | null;
+  attachmentPath: string | null;
+  attachmentSizeBytes: number | null;
+  business: {
+    id: string;
+    name: string;
+    ownerId: string;
+    owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  };
+}
+
+export interface FormationAttachmentInput {
+  base64Data?: string | null;
+  mimeType?: string | null;
+  fileName?: string | null;
+}
+
+export interface FormationProductAccessResult {
+  productId: string;
+  title: string;
+  url: string | null;
+  attachmentOriginalName: string | null;
+  attachmentMimeType: string | null;
+  attachmentPath: string | null;
+  hasAttachment: boolean;
 }
 
 export interface YouMarriageProposal {
@@ -565,14 +642,34 @@ export const youApi = {
     api.post<{ result: { formationUrl: string; price: number } }>(`/you/businesses/${businessId}/buy-formation`, {}),
   listFormationProducts: (businessId: string) =>
     api.get<{ result: { products: YouFormationProduct[] } }>(`/you/businesses/${businessId}/formations`),
-  addFormationProduct: (businessId: string, data: { title: string; description?: string; price: number; url: string; imageUrl?: string }) =>
+  addFormationProduct: (businessId: string, data: { title: string; description?: string; price: number; url?: string | null; imageUrl?: string; attachment?: FormationAttachmentInput | null }) =>
     api.post<{ result: { product: YouFormationProduct } }>(`/you/businesses/${businessId}/formations`, data),
-  updateFormationProduct: (businessId: string, productId: string, data: Partial<{ title: string; description: string | null; price: number; url: string; imageUrl: string | null }>) =>
+  updateFormationProduct: (businessId: string, productId: string, data: Partial<{ title: string; description: string | null; price: number; url: string | null; imageUrl: string | null; attachment: FormationAttachmentInput | null; removeAttachment: boolean }>) =>
     api.patch<{ result: { product: YouFormationProduct } }>(`/you/businesses/${businessId}/formations/${productId}`, data),
   deleteFormationProduct: (businessId: string, productId: string) =>
     api.delete<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/formations/${productId}`),
+  listPendingFormationProductsForAdmin: () =>
+    api.get<{ products: PendingFormationReviewItem[] }>('/you/admin/formations/pending'),
+  reviewFormationProduct: (businessId: string, productId: string, decision: 'approve' | 'reject', reviewerNote?: string) =>
+    api.post<{ result: YouFormationProduct }>(`/you/businesses/${businessId}/formations/${productId}/review`, { decision, reviewerNote }),
   buyFormationProduct: (businessId: string, productId: string) =>
-    api.post<{ result: { url: string; title: string; price: number } }>(`/you/businesses/${businessId}/formations/${productId}/buy`, {}),
+    api.post<{ result: { url: string | null; title: string; price: number; hasAttachment?: boolean; attachmentOriginalName?: string | null; attachmentMimeType?: string | null } }>(`/you/businesses/${businessId}/formations/${productId}/buy`, {}),
+  accessFormationProduct: (businessId: string, productId: string) =>
+    api.post<{ result: FormationProductAccessResult }>(`/you/businesses/${businessId}/formations/${productId}/access`, {}),
+  getFormationDownloadUrl: (businessId: string, productId: string) =>
+    `${API_BASE}/you/businesses/${businessId}/formations/${productId}/download`,
+  downloadFormationProductFile: (businessId: string, productId: string) =>
+    api.get<Blob>(`/you/businesses/${businessId}/formations/${productId}/download`, { responseType: 'blob' }),
+  rateFormationProduct: (businessId: string, productId: string, rating: number, comment?: string) =>
+    api.post<{ ok: boolean }>(`/you/businesses/${businessId}/formations/${productId}/rate`, { rating, comment }),
+  markReviewPromptShown: (data: { businessId?: string; productId?: string }) =>
+    api.post<{ result: { ok: boolean } }>('/you/review-prompts/seen', data),
+  setBusinessSupportAgent: (businessId: string, supportAgentId: string | null) =>
+    api.patch<{ result: { supportAgent: BusinessSupportAgentSummary | null; supportEnabled: boolean } }>(`/you/businesses/${businessId}/support-agent`, { supportAgentId }),
+  openBusinessSupportConversation: (businessId: string) =>
+    api.post<{ result: { conversationId: string } }>(`/you/businesses/${businessId}/support/conversation`, {}),
+  updateLawFirmMemberMetadata: (businessId: string, memberId: string, data: { specialty?: string | null; isPrimaryLawyer?: boolean; displayOrder?: number }) =>
+    api.patch<{ result: { memberId: string; specialty: string | null; isPrimaryLawyer: boolean; displayOrder: number; user: Omit<YouPlayer, 'alreadyInRelationship'> } }>(`/you/businesses/${businessId}/members/${memberId}/lawyer-profile`, data),
   updateMemberSalary: (businessId: string, memberId: string, salary: number) =>
     api.patch<{ result: { salary: number } }>(`/you/businesses/${businessId}/members/${memberId}/salary`, { salary }),
   sackMember: (businessId: string, memberId: string) =>
@@ -587,6 +684,8 @@ export const youApi = {
     api.post<{ result: { amount: number } }>(`/you/businesses/${businessId}/actions/collect_npc`, {}),
   rateBusiness: (businessId: string, rating: number, comment?: string) =>
     api.post<{ ok: boolean }>(`/you/businesses/${businessId}/rate`, { rating, comment }),
+  rateLawyerForCase: (caseId: string, lawyerUserId: string, rating: number, comment?: string) =>
+    api.post<{ ok: boolean }>(`/you/court-cases/${caseId}/lawyers/${lawyerUserId}/rate`, { rating, comment }),
 };
 
 // Economy API
@@ -2853,6 +2952,8 @@ export interface MessagingConversationSummary {
   icon: string | null;
   imageUrl: string | null;
   courtCaseId: string | null;
+  tagType?: string | null;
+  tagLabel?: string | null;
   isFavorite: boolean;
   displayName: string;
   isPinned: boolean;
@@ -3111,6 +3212,10 @@ export interface CourtCase {
   sentencing: string | null;
   plaintif: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
   defendant: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  plaintiffLawFirm?: { id: string; name: string; logoUrl: string | null } | null;
+  plaintiffLawyer?: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  defendantLawFirm?: { id: string; name: string; logoUrl: string | null } | null;
+  defendantLawyer?: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
   parties: CourtPartyInfo[];
   plainte: { id: string; title: string } | null;
   createdAt: string;
@@ -3138,6 +3243,16 @@ export interface LawFirmPreview {
   owner: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
   memberCount: number;
   satisfaction: number;
+  avgRating?: number | null;
+  ratingCount?: number;
+  lawyers?: Array<{
+    userId: string;
+    user: { id: string; username: string; profilePicture: string | null; usernameColor: string | null };
+    specialty: string | null;
+    isPrimaryLawyer: boolean;
+    displayOrder: number;
+    lawFirmName: string;
+  }>;
 }
 
 export const justiceApi = {
@@ -3153,7 +3268,7 @@ export const justiceApi = {
     api.get<{ cases: CourtCase[] }>('/justice/cases'),
   getCase: (id: string) =>
     api.get<{ courtCase: CourtCase }>(`/justice/cases/${id}`),
-  chooseRepresentation: (caseId: string, data: { type: 'PRIVATE_LAWYER' | 'PUBLIC_DEFENDER'; lawFirmId?: string }) =>
+  chooseRepresentation: (caseId: string, data: { type: 'PRIVATE_LAWYER' | 'PUBLIC_DEFENDER'; lawFirmId?: string; lawyerUserId?: string }) =>
     api.post<{ courtCase: CourtCase }>(`/justice/cases/${caseId}/representation`, data),
   submitArgument: (caseId: string, content: string) =>
     api.put<{ argument: CourtArgument }>(`/justice/cases/${caseId}/argument`, { content }),

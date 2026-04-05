@@ -12,6 +12,28 @@ const USER_PREVIEW_SELECT = {
   usernameColor: true,
 } as const;
 
+const LAW_FIRM_INCLUDE: any = {
+  owner: { select: USER_PREVIEW_SELECT },
+  members: {
+    include: {
+      user: { select: USER_PREVIEW_SELECT },
+    },
+    orderBy: [{ isPrimaryLawyer: 'desc' }, { displayOrder: 'asc' }, { joinedAt: 'asc' }],
+  },
+  lawyerRatings: true,
+};
+
+const COURT_CASE_INCLUDE = {
+  plaintif: { select: USER_PREVIEW_SELECT },
+  defendant: { select: USER_PREVIEW_SELECT },
+  plaintiffLawFirm: { select: { id: true, name: true, logoUrl: true } },
+  plaintiffLawyer: { select: USER_PREVIEW_SELECT },
+  defendantLawFirm: { select: { id: true, name: true, logoUrl: true } },
+  defendantLawyer: { select: USER_PREVIEW_SELECT },
+  parties: { include: { user: { select: USER_PREVIEW_SELECT } } },
+  plainte: true,
+} as const;
+
 function requireUser(req: AuthRequest, res: Response) {
   if (!req.user) {
     res.status(401).json({ error: 'Not authenticated' });
@@ -76,6 +98,10 @@ function serializeCourtCase(c: any) {
     sentencing: c.sentencing ?? null,
     plaintif: c.plaintif ? { id: c.plaintif.id, username: c.plaintif.username, profilePicture: c.plaintif.profilePicture, usernameColor: c.plaintif.usernameColor } : null,
     defendant: c.defendant ? { id: c.defendant.id, username: c.defendant.username, profilePicture: c.defendant.profilePicture, usernameColor: c.defendant.usernameColor } : null,
+    plaintiffLawFirm: c.plaintiffLawFirm ? { id: c.plaintiffLawFirm.id, name: c.plaintiffLawFirm.name, logoUrl: c.plaintiffLawFirm.logoUrl ?? null } : null,
+    plaintiffLawyer: c.plaintiffLawyer ? { id: c.plaintiffLawyer.id, username: c.plaintiffLawyer.username, profilePicture: c.plaintiffLawyer.profilePicture, usernameColor: c.plaintiffLawyer.usernameColor } : null,
+    defendantLawFirm: c.defendantLawFirm ? { id: c.defendantLawFirm.id, name: c.defendantLawFirm.name, logoUrl: c.defendantLawFirm.logoUrl ?? null } : null,
+    defendantLawyer: c.defendantLawyer ? { id: c.defendantLawyer.id, username: c.defendantLawyer.username, profilePicture: c.defendantLawyer.profilePicture, usernameColor: c.defendantLawyer.usernameColor } : null,
     parties: c.parties?.map((party: any) => ({
       id: party.id,
       userId: party.userId,
@@ -338,12 +364,7 @@ router.patch('/plaintes/:id/accept', authMiddleware, async (req: AuthRequest, re
 
     const fullCase = await prisma.courtCase.findUnique({
       where: { id: courtCase.id },
-      include: {
-        plaintif: { select: USER_PREVIEW_SELECT },
-        defendant: { select: USER_PREVIEW_SELECT },
-        parties: { include: { user: { select: USER_PREVIEW_SELECT } } },
-        plainte: true,
-      },
+      include: COURT_CASE_INCLUDE,
     });
 
     // Notify participants
@@ -430,12 +451,7 @@ router.get('/cases', authMiddleware, async (req: AuthRequest, res: Response) => 
               { parties: { some: { userId: user.id } } },
             ],
           },
-      include: {
-        plaintif: { select: USER_PREVIEW_SELECT },
-        defendant: { select: USER_PREVIEW_SELECT },
-        parties: { include: { user: { select: USER_PREVIEW_SELECT } } },
-        plainte: true,
-      },
+      include: COURT_CASE_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
 
@@ -454,12 +470,7 @@ router.get('/cases/:id', authMiddleware, async (req: AuthRequest, res: Response)
 
     const courtCase = await prisma.courtCase.findUnique({
       where: { id: req.params.id },
-      include: {
-        plaintif: { select: USER_PREVIEW_SELECT },
-        defendant: { select: USER_PREVIEW_SELECT },
-        parties: { include: { user: { select: USER_PREVIEW_SELECT } } },
-        plainte: true,
-      },
+      include: COURT_CASE_INCLUDE,
     });
 
     if (!courtCase) return res.status(404).json({ error: 'Affaire introuvable.' });
@@ -501,12 +512,16 @@ router.post('/cases/:id/representation', authMiddleware, async (req: AuthRequest
 
     const representationType = typeof req.body?.type === 'string' ? req.body.type : '';
     const lawFirmId = typeof req.body?.lawFirmId === 'string' ? req.body.lawFirmId : null;
+    const lawyerUserIdInput = typeof req.body?.lawyerUserId === 'string' ? req.body.lawyerUserId : null;
 
     if (representationType === 'PRIVATE_LAWYER') {
       if (!lawFirmId) return res.status(400).json({ error: 'lawFirmId requis pour un avocat privé.' });
 
       // Verify law firm exists
-      const lawFirm = await prisma.business.findUnique({ where: { id: lawFirmId } });
+      const lawFirm = await prisma.business.findUnique({
+        where: { id: lawFirmId },
+        include: LAW_FIRM_INCLUDE,
+      });
       if (!lawFirm || lawFirm.typeKey !== 'law_firm') {
         return res.status(404).json({ error: 'Cabinet d\'avocats introuvable.' });
       }
@@ -514,26 +529,54 @@ router.post('/cases/:id/representation', authMiddleware, async (req: AuthRequest
       const isPlaintiff = myParty.courtRole === 'PLAINTIFF';
       const lawyerRole = isPlaintiff ? 'LAWYER_PLAINTIFF' : 'LAWYER_DEFENDANT';
 
-      // Add law firm owner as lawyer
-      const lawyerUserId = lawFirm.ownerId;
+      const availableLawyers = [
+        {
+          userId: lawFirm.ownerId,
+          user: lawFirm.owner,
+          specialty: null,
+          isPrimaryLawyer: true,
+          displayOrder: -1,
+        },
+        ...((lawFirm.members ?? []) as any[]).map((member) => ({
+          userId: member.userId,
+          user: member.user,
+          specialty: member.specialty ?? null,
+          isPrimaryLawyer: member.isPrimaryLawyer,
+          displayOrder: member.displayOrder,
+        })),
+      ];
+      const selectedLawyer =
+        (lawyerUserIdInput
+          ? availableLawyers.find((entry) => entry.userId === lawyerUserIdInput) ?? null
+          : availableLawyers.find((entry) => entry.isPrimaryLawyer) ?? availableLawyers[0] ?? null);
+
+      if (!selectedLawyer) {
+        return res.status(400).json({ error: 'Aucun avocat disponible dans ce cabinet.' });
+      }
+      const lawyerUserId = selectedLawyer.userId;
 
       // Check if already has a lawyer
       const existingLawyer = courtCase.parties.find((p) => p.courtRole === lawyerRole);
-      if (existingLawyer) {
-        // Remove existing lawyer from conversation
-        await prisma.messageConversationParticipant.deleteMany({
-          where: { conversationId: courtCase.conversationId, userId: existingLawyer.userId },
-        });
-        await prisma.courtParty.delete({ where: { id: existingLawyer.id } });
-      }
 
       await prisma.$transaction(async (tx) => {
+        if (existingLawyer) {
+          await tx.messageConversationParticipant.deleteMany({
+            where: { conversationId: courtCase.conversationId, userId: existingLawyer.userId },
+          });
+          await tx.courtParty.delete({ where: { id: existingLawyer.id } });
+        }
+        await tx.courtCase.update({
+          where: { id: courtCase.id },
+          data: isPlaintiff
+            ? { plaintiffLawFirmId: lawFirm.id, plaintiffLawyerId: selectedLawyer.userId }
+            : { defendantLawFirmId: lawFirm.id, defendantLawyerId: selectedLawyer.userId },
+        });
         await tx.courtParty.create({
-          data: { caseId: courtCase.id, userId: lawyerUserId, courtRole: lawyerRole },
+          data: { caseId: courtCase.id, userId: selectedLawyer.userId, courtRole: lawyerRole },
         });
         await tx.messageConversationParticipant.upsert({
-          where: { conversationId_userId: { conversationId: courtCase.conversationId, userId: lawyerUserId } },
-          create: { conversationId: courtCase.conversationId, userId: lawyerUserId, role: 'MEMBER', courtRole: lawyerRole },
+          where: { conversationId_userId: { conversationId: courtCase.conversationId, userId: selectedLawyer.userId } },
+          create: { conversationId: courtCase.conversationId, userId: selectedLawyer.userId, role: 'MEMBER', courtRole: lawyerRole },
           update: { courtRole: lawyerRole },
         });
         // System message
@@ -569,6 +612,12 @@ router.post('/cases/:id/representation', authMiddleware, async (req: AuthRequest
       });
 
       await prisma.$transaction(async (tx) => {
+        await tx.courtCase.update({
+          where: { id: courtCase.id },
+          data: isPlaintiff
+            ? { plaintiffLawFirmId: null, plaintiffLawyerId: null }
+            : { defendantLawFirmId: null, defendantLawyerId: null },
+        });
         for (const admin of admins) {
           // Update existing judge party or create public defender role (admins can have multiple roles via conversation)
           await tx.messageConversationParticipant.upsert({
@@ -594,12 +643,7 @@ router.post('/cases/:id/representation', authMiddleware, async (req: AuthRequest
 
     const updated = await prisma.courtCase.findUnique({
       where: { id: courtCase.id },
-      include: {
-        plaintif: { select: USER_PREVIEW_SELECT },
-        defendant: { select: USER_PREVIEW_SELECT },
-        parties: { include: { user: { select: USER_PREVIEW_SELECT } } },
-        plainte: true,
-      },
+      include: COURT_CASE_INCLUDE,
     });
 
     await emitConversationToParticipants(courtCase.conversationId, 'messaging:conversation', { conversationId: courtCase.conversationId });
@@ -759,13 +803,54 @@ router.patch('/cases/:id/status', authMiddleware, async (req: AuthRequest, res: 
       const c = await tx.courtCase.update({
         where: { id: courtCase.id },
         data: { status },
-        include: {
-          plaintif: { select: USER_PREVIEW_SELECT },
-          defendant: { select: USER_PREVIEW_SELECT },
-          parties: { include: { user: { select: USER_PREVIEW_SELECT } } },
-          plainte: true,
-        },
+        include: COURT_CASE_INCLUDE,
       });
+
+      if (status === 'CLOSED') {
+        const eligibilityEntries = [
+          c.plaintiffLawyerId && c.plaintifId && c.plaintiffLawFirmId
+            ? { userId: c.plaintifId, lawyerUserId: c.plaintiffLawyerId, businessId: c.plaintiffLawFirmId }
+            : null,
+          c.defendantLawyerId && c.defendantId && c.defendantLawFirmId
+            ? { userId: c.defendantId, lawyerUserId: c.defendantLawyerId, businessId: c.defendantLawFirmId }
+            : null,
+        ].filter(Boolean) as Array<{ userId: string; lawyerUserId: string; businessId: string }>;
+
+        for (const entry of eligibilityEntries) {
+          const existing = await tx.reviewEligibility.findFirst({
+            where: {
+              userId: entry.userId,
+              courtCaseId: c.id,
+              lawyerUserId: entry.lawyerUserId,
+              targetType: 'LAWYER',
+            },
+          });
+          if (existing) {
+            await tx.reviewEligibility.update({
+              where: { id: existing.id },
+              data: {
+                businessId: entry.businessId,
+                sourceType: 'COURT_CASE_CLOSED',
+                promptAt: new Date(),
+                promptedAt: null,
+                reviewedAt: null,
+              },
+            });
+          } else {
+            await tx.reviewEligibility.create({
+              data: {
+                userId: entry.userId,
+                businessId: entry.businessId,
+                courtCaseId: c.id,
+                lawyerUserId: entry.lawyerUserId,
+                targetType: 'LAWYER',
+                sourceType: 'COURT_CASE_CLOSED',
+                promptAt: new Date(),
+              },
+            });
+          }
+        }
+      }
 
       const statusLabels: Record<string, string> = {
         OPEN: '🟢 L\'affaire est rouverte.',
@@ -831,12 +916,7 @@ router.post('/cases/:id/verdict', authMiddleware, async (req: AuthRequest, res: 
           verdictAt: new Date(),
           status: 'VERDICT_GIVEN',
         },
-        include: {
-          plaintif: { select: USER_PREVIEW_SELECT },
-          defendant: { select: USER_PREVIEW_SELECT },
-          parties: { include: { user: { select: USER_PREVIEW_SELECT } } },
-          plainte: true,
-        },
+        include: COURT_CASE_INCLUDE,
       });
 
       const verdictMessage = `⚖️ **VERDICT RENDU**\n\n${verdict}${sentencing ? `\n\n**Sanction :** ${sentencing}` : ''}`;
@@ -887,10 +967,7 @@ router.get('/law-firms', authMiddleware, async (req: AuthRequest, res: Response)
 
     const lawFirms = await prisma.business.findMany({
       where: { typeKey: 'law_firm' },
-      include: {
-        owner: { select: USER_PREVIEW_SELECT },
-        members: { include: { user: { select: USER_PREVIEW_SELECT } } },
-      },
+      include: LAW_FIRM_INCLUDE,
       orderBy: { createdAt: 'asc' },
     });
 
@@ -904,6 +981,32 @@ router.get('/law-firms', authMiddleware, async (req: AuthRequest, res: Response)
         owner: f.owner,
         memberCount: f.members.length,
         satisfaction: f.satisfaction,
+        avgRating: ((f.lawyerRatings ?? []) as any[]).length
+          ? ((f.lawyerRatings ?? []) as any[]).reduce((sum, rating) => sum + rating.rating, 0) / ((f.lawyerRatings ?? []) as any[]).length
+          : null,
+        ratingCount: ((f.lawyerRatings ?? []) as any[]).length,
+        lawyers: [
+          {
+            userId: f.ownerId,
+            user: f.owner,
+            specialty: null,
+            isPrimaryLawyer: true,
+            displayOrder: -1,
+            lawFirmName: f.name,
+          },
+          ...((f.members ?? []) as any[]).map((member) => ({
+            userId: member.userId,
+            user: member.user,
+            specialty: member.specialty ?? null,
+            isPrimaryLawyer: member.isPrimaryLawyer,
+            displayOrder: member.displayOrder,
+            lawFirmName: f.name,
+          })),
+        ].sort((a, b) => {
+          if (Number(b.isPrimaryLawyer) !== Number(a.isPrimaryLawyer)) return Number(b.isPrimaryLawyer) - Number(a.isPrimaryLawyer);
+          if (a.displayOrder !== b.displayOrder) return a.displayOrder - b.displayOrder;
+          return a.user.username.localeCompare(b.user.username);
+        }),
       })),
     });
   } catch (error) {

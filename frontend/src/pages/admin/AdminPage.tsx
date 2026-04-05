@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, type PendingFormationReviewItem } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -1088,6 +1088,9 @@ export default function Admin() {
   const [badgesLoading, setBadgesLoading] = useState(false);
   const [customBadgeRequests, setCustomBadgeRequests] = useState<CustomBadgeRequest[]>([]);
   const [customBadgeRequestsLoading, setCustomBadgeRequestsLoading] = useState(false);
+  const [pendingFormationReviews, setPendingFormationReviews] = useState<PendingFormationReviewItem[]>([]);
+  const [pendingFormationReviewsLoading, setPendingFormationReviewsLoading] = useState(false);
+  const [reviewingFormationProductId, setReviewingFormationProductId] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [badgeFormOpen, setBadgeFormOpen] = useState(false);
   const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
@@ -1265,6 +1268,19 @@ export default function Admin() {
     finally { setCustomBadgeRequestsLoading(false); }
   };
 
+  const fetchPendingFormationReviews = async () => {
+    setPendingFormationReviewsLoading(true);
+    try {
+      const res = await youApi.listPendingFormationProductsForAdmin();
+      setPendingFormationReviews(res.data.products);
+    } catch (error) {
+      console.error('Failed to fetch pending formation reviews:', error);
+      showMessage('error', 'Erreur lors du chargement des formations en attente');
+    } finally {
+      setPendingFormationReviewsLoading(false);
+    }
+  };
+
   const handleApproveCustomBadge = async (id: string) => {
     try {
       await customBadgesApi.approve(id);
@@ -1283,6 +1299,31 @@ export default function Admin() {
       setRejectNotes((prev) => { const n = { ...prev }; delete n[id]; return n; });
     } catch {
       showMessage('error', 'Erreur lors du refus');
+    }
+  };
+
+  const handleReviewFormationProduct = async (businessId: string, productId: string, decision: 'approve' | 'reject') => {
+    setReviewingFormationProductId(productId);
+    try {
+      await youApi.reviewFormationProduct(
+        businessId,
+        productId,
+        decision,
+        (rejectNotes[productId] ?? '').trim() || undefined,
+      );
+      showMessage('success', decision === 'approve' ? 'Formation approuvÃ©e' : 'Formation refusÃ©e');
+      await fetchPendingFormationReviews();
+      setRejectNotes((prev) => {
+        if (!(productId in prev)) return prev;
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+    } catch (error) {
+      console.error('Failed to review formation product:', error);
+      showMessage('error', 'Erreur lors de la revue de la formation');
+    } finally {
+      setReviewingFormationProductId(null);
     }
   };
 
@@ -1454,7 +1495,7 @@ export default function Admin() {
   const [updatingBug, setUpdatingBug] = useState<string | null>(null);
   const [bugReply, setBugReply] = useState<Record<string, string>>({});
   const [selectedInboxItem, setSelectedInboxItem] = useState<string | null>(null);
-  const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'archived'>('all');
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'formations' | 'archived'>('all');
 
   // Pending users state
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -1810,6 +1851,7 @@ export default function Admin() {
     fetchNameChangeRequests();
     fetchBadges();
     fetchCustomBadgeRequests();
+    fetchPendingFormationReviews();
     fetchLogs();
     fetchLogStats();
     fetchSettings();
@@ -4235,11 +4277,11 @@ export default function Admin() {
           className={SPACING.SECTION_SPACING}
         >
           <TabsList className="flex flex-wrap h-auto p-1">
-          <TabsTrigger value="inbox" onClick={() => { fetchCustomBadgeRequests(); }}>
+          <TabsTrigger value="inbox" onClick={() => { fetchCustomBadgeRequests(); fetchPendingFormationReviews(); }}>
             Boîte de réception
-            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length) > 0 && (
+            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length) > 0 && (
               <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
-                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length}
+                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length}
               </span>
             )}
           </TabsTrigger>
@@ -4291,6 +4333,7 @@ export default function Admin() {
           banAppeals={banAppeals}
           nameChangeRequests={nameChangeRequests}
           customBadgeRequests={customBadgeRequests}
+          pendingFormationReviews={pendingFormationReviews}
           archivedRegistrations={archivedRegistrations}
           inboxFilter={inboxFilter}
           selectedInboxItem={selectedInboxItem}
@@ -4301,11 +4344,13 @@ export default function Admin() {
           loadingAppeals={loadingAppeals}
           loadingNameChanges={loadingNameChanges}
           loadingCustomBadgeRequests={customBadgeRequestsLoading}
+          loadingPendingFormationReviews={pendingFormationReviewsLoading}
           approvingUser={approvingUser}
           rejectingUser={rejectingUser}
           updatingBug={updatingBug}
           reviewingAppeal={reviewingAppeal}
           reviewingNameChange={reviewingNameChange}
+          reviewingFormationProductId={reviewingFormationProductId}
           bugReply={bugReply}
           rejectNotes={rejectNotes}
           importArchivedRegistrations={importArchivedRegistrations}
@@ -4321,6 +4366,7 @@ export default function Admin() {
           reviewNameChangeRequest={reviewNameChangeRequest}
           approveCustomBadgeRequest={handleApproveCustomBadge}
           rejectCustomBadgeRequest={handleRejectCustomBadge}
+          reviewFormationProduct={handleReviewFormationProduct}
         />
 
         <UsersTab

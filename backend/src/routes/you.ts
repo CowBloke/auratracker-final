@@ -1,7 +1,9 @@
+import path from 'path';
 import { Router, type Response } from 'express';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { prisma } from '../server.js';
 import {
+  accessFormationProduct,
   buyLivretEpargneUpgrade,
   cancelBusinessBuyoutOffer,
   setLoanRate,
@@ -42,6 +44,14 @@ import {
   updateFormationProduct,
   deleteFormationProduct,
   buyFormationProduct,
+  listPendingFormationProductsForAdmin,
+  markReviewPromptShown,
+  openBusinessSupportConversation,
+  rateFormationProduct,
+  rateLawyerForCase,
+  reviewFormationProduct,
+  setBusinessSupportAgent,
+  updateLawFirmMemberMetadata,
   updateMemberSalary,
   sackMember,
   repayLoan,
@@ -69,6 +79,7 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_NOT_FOUND: 404,
   BUSINESS_SLOT_LIMIT_REACHED: 400,
   BUSINESS_TYPE_ADMIN_ONLY: 403,
+  BUSINESS_RATING_NOT_ALLOWED: 403,
   BUSINESS_LIQUIDATION_FORBIDDEN: 403,
   BUSINESS_ACTION_UNAVAILABLE: 400,
   BUSINESS_INVITE_FORBIDDEN: 403,
@@ -78,6 +89,7 @@ const ERROR_STATUS: Record<string, number> = {
   INVALID_LOAN_AMOUNT: 400,
   INVALID_LOAN_DURATION: 400,
   INVALID_LOAN_COLLATERAL: 400,
+  FORMATION_PRODUCT_NOT_APPROVED: 403,
   LOAN_MOTIVATION_TOO_LONG: 400,
   LOAN_COLLATERAL_AURA_TOO_LOW: 400,
   BUSINESS_DEPOSIT_FORBIDDEN: 403,
@@ -145,11 +157,16 @@ const ERROR_STATUS: Record<string, number> = {
   FORMATION_EDIT_FORBIDDEN: 403,
   BUSINESS_EDIT_FORBIDDEN: 403,
   FORMATION_SELF_BUY_FORBIDDEN: 403,
+  FORMATION_ACCESS_FORBIDDEN: 403,
   FORMATION_URL_NOT_SET: 400,
   INVALID_FORMATION_PRICE: 400,
   INVALID_FORMATION_TITLE: 400,
   INVALID_FORMATION_URL: 400,
+  INVALID_FORMATION_FILE: 400,
+  INVALID_FORMATION_FILE_TYPE: 400,
+  INVALID_FORMATION_FILE_SIZE: 400,
   FORMATION_PRODUCT_NOT_FOUND: 404,
+  INVALID_BUSINESS_RATING: 400,
   INVALID_SALARY: 400,
   MEMBER_NOT_FOUND: 404,
   CHEATING_ACCUSATION_ALREADY_PENDING: 400,
@@ -258,6 +275,20 @@ const ERROR_MESSAGE: Record<string, string> = {
   BUYOUT_OFFER_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette offre.',
   BUYOUT_OFFER_CANCEL_FORBIDDEN: 'Tu ne peux pas annuler cette offre.',
   BUYOUT_OFFER_ALREADY_RESOLVED: 'Cette offre de rachat a deja ete traitee.',
+  FORMATION_PRODUCT_NOT_APPROVED: 'Cette formation n est pas encore disponible.',
+  FORMATION_EDIT_FORBIDDEN: 'Seul le proprietaire peut modifier cette formation.',
+  BUSINESS_EDIT_FORBIDDEN: 'Seul le proprietaire peut modifier ce business.',
+  FORMATION_SELF_BUY_FORBIDDEN: 'Tu ne peux pas acheter ta propre formation.',
+  FORMATION_ACCESS_FORBIDDEN: 'Tu n as pas acces a cette formation.',
+  FORMATION_URL_NOT_SET: 'Aucune URL de formation n est configuree.',
+  INVALID_FORMATION_PRICE: 'Le prix de la formation est invalide.',
+  INVALID_FORMATION_TITLE: 'Le titre de la formation est invalide.',
+  INVALID_FORMATION_URL: 'Ajoute un lien externe ou un fichier pour cette formation.',
+  INVALID_FORMATION_FILE: 'Le fichier de formation est invalide.',
+  INVALID_FORMATION_FILE_TYPE: 'Le type de fichier de formation n est pas autorise.',
+  INVALID_FORMATION_FILE_SIZE: 'Le fichier de formation depasse la taille autorisee.',
+  FORMATION_PRODUCT_NOT_FOUND: 'Formation introuvable.',
+  INVALID_BUSINESS_RATING: 'La note doit etre comprise entre 1 et 5.',
   CHEATING_ACCUSATION_ALREADY_PENDING: 'Une suspicion est deja en attente.',
   CHEATING_ACCUSATION_NOT_FOUND: 'Accusation introuvable.',
   CHEATING_ACCUSATION_FORBIDDEN: 'Tu ne peux pas repondre a cette accusation.',
@@ -720,8 +751,21 @@ router.get('/businesses/:businessId/formations', authMiddleware, requireYouAcces
 
 router.post('/businesses/:businessId/formations', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, price, url, imageUrl } = req.body;
-    const product = await addFormationProduct(req.user!.id, req.params.businessId, { title, description, price: Number(price), url, imageUrl });
+    const { title, description, price, url, imageUrl, attachment } = req.body;
+    const product = await addFormationProduct(req.user!.id, req.params.businessId, {
+      title,
+      description,
+      price: Number(price),
+      url,
+      imageUrl,
+      attachment: attachment && typeof attachment === 'object'
+        ? {
+            base64Data: typeof attachment.base64Data === 'string' ? attachment.base64Data : null,
+            mimeType: typeof attachment.mimeType === 'string' ? attachment.mimeType : null,
+            fileName: typeof attachment.fileName === 'string' ? attachment.fileName : null,
+          }
+        : null,
+    });
     res.json({ result: { product } });
   } catch (error) {
     handleRouteError(error, res, 'Add formation product error');
@@ -730,13 +774,23 @@ router.post('/businesses/:businessId/formations', authMiddleware, requireYouAcce
 
 router.patch('/businesses/:businessId/formations/:productId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, price, url, imageUrl } = req.body;
+    const { title, description, price, url, imageUrl, attachment, removeAttachment } = req.body;
     const product = await updateFormationProduct(req.user!.id, req.params.businessId, req.params.productId, {
       ...(title !== undefined ? { title } : {}),
       ...(description !== undefined ? { description } : {}),
       ...(price !== undefined ? { price: Number(price) } : {}),
       ...(url !== undefined ? { url } : {}),
       ...(imageUrl !== undefined ? { imageUrl } : {}),
+      ...(attachment && typeof attachment === 'object'
+        ? {
+            attachment: {
+              base64Data: typeof attachment.base64Data === 'string' ? attachment.base64Data : null,
+              mimeType: typeof attachment.mimeType === 'string' ? attachment.mimeType : null,
+              fileName: typeof attachment.fileName === 'string' ? attachment.fileName : null,
+            },
+          }
+        : {}),
+      ...(removeAttachment !== undefined ? { removeAttachment: Boolean(removeAttachment) } : {}),
     });
     res.json({ result: { product } });
   } catch (error) {
@@ -753,12 +807,145 @@ router.delete('/businesses/:businessId/formations/:productId', authMiddleware, r
   }
 });
 
+router.post('/businesses/:businessId/formations/:productId/review', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.isAdmin && !req.user?.isSuperAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    const decision = req.body?.decision === 'approve' ? 'approve' : 'reject';
+    const reviewerNote = typeof req.body?.reviewerNote === 'string' ? req.body.reviewerNote : undefined;
+    const result = await reviewFormationProduct(req.user.id, req.params.businessId, req.params.productId, decision, reviewerNote);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Review formation product error');
+  }
+});
+
 router.post('/businesses/:businessId/formations/:productId/buy', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const result = await buyFormationProduct(req.user!.id, req.params.businessId, req.params.productId);
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Buy formation product error');
+  }
+});
+
+router.post('/businesses/:businessId/formations/:productId/access', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await accessFormationProduct(req.user!.id, req.params.businessId, req.params.productId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Access formation product error');
+  }
+});
+
+router.get('/businesses/:businessId/formations/:productId/download', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await accessFormationProduct(req.user!.id, req.params.businessId, req.params.productId);
+
+    if (result.url && !result.hasAttachment) {
+      return res.redirect(result.url);
+    }
+
+    if (!result.attachmentPath) {
+      return res.status(404).json({ error: ERROR_MESSAGE.FORMATION_PRODUCT_NOT_FOUND, code: 'FORMATION_PRODUCT_NOT_FOUND' });
+    }
+
+    const uploadsRoot = path.resolve('uploads');
+    const absolutePath = path.resolve(result.attachmentPath);
+    if (!absolutePath.startsWith(uploadsRoot)) {
+      return res.status(404).json({ error: ERROR_MESSAGE.FORMATION_PRODUCT_NOT_FOUND, code: 'FORMATION_PRODUCT_NOT_FOUND' });
+    }
+
+    const mimeType = result.attachmentMimeType || 'application/octet-stream';
+    const fileName = result.attachmentOriginalName || `${result.title}.bin`;
+    const disposition = mimeType === 'application/pdf' ? 'inline' : 'attachment';
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(fileName)}"`);
+    return res.sendFile(absolutePath);
+  } catch (error) {
+    handleRouteError(error, res, 'Download formation product error');
+  }
+});
+
+router.post('/businesses/:businessId/formations/:productId/rate', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const rating = Number(req.body?.rating);
+    const comment = typeof req.body?.comment === 'string' ? req.body.comment : null;
+    await rateFormationProduct(req.user!.id, req.params.businessId, req.params.productId, rating, comment);
+    res.json({ ok: true });
+  } catch (error) {
+    handleRouteError(error, res, 'Rate formation product error');
+  }
+});
+
+router.get('/admin/formations/pending', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.isAdmin && !req.user?.isSuperAdmin) {
+      return res.status(403).json({ error: ERROR_MESSAGE.YOU_ADMIN_ONLY, code: 'YOU_ADMIN_ONLY' });
+    }
+    const products = await listPendingFormationProductsForAdmin();
+    res.json({ products });
+  } catch (error) {
+    handleRouteError(error, res, 'List pending formation products error');
+  }
+});
+
+router.post('/review-prompts/seen', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await markReviewPromptShown(req.user!.id, {
+      businessId: typeof req.body?.businessId === 'string' ? req.body.businessId : undefined,
+      productId: typeof req.body?.productId === 'string' ? req.body.productId : undefined,
+    });
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Mark review prompt shown error');
+  }
+});
+
+router.patch('/businesses/:businessId/support-agent', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await setBusinessSupportAgent(
+      req.user!.id,
+      req.params.businessId,
+      typeof req.body?.supportAgentId === 'string' ? req.body.supportAgentId : null,
+    );
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Set business support agent error');
+  }
+});
+
+router.post('/businesses/:businessId/support/conversation', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await openBusinessSupportConversation(req.user!.id, req.params.businessId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Open business support conversation error');
+  }
+});
+
+router.patch('/businesses/:businessId/members/:memberId/lawyer-profile', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await updateLawFirmMemberMetadata(req.user!.id, req.params.businessId, req.params.memberId, {
+      specialty: typeof req.body?.specialty === 'string' ? req.body.specialty : null,
+      ...(req.body?.isPrimaryLawyer !== undefined ? { isPrimaryLawyer: Boolean(req.body.isPrimaryLawyer) } : {}),
+      ...(req.body?.displayOrder !== undefined ? { displayOrder: Number(req.body.displayOrder) } : {}),
+    });
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Update law firm member metadata error');
+  }
+});
+
+router.post('/court-cases/:caseId/lawyers/:lawyerUserId/rate', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const rating = Number(req.body?.rating);
+    const comment = typeof req.body?.comment === 'string' ? req.body.comment : null;
+    await rateLawyerForCase(req.user!.id, req.params.caseId, req.params.lawyerUserId, rating, comment);
+    res.json({ ok: true });
+  } catch (error) {
+    handleRouteError(error, res, 'Rate lawyer for case error');
   }
 });
 

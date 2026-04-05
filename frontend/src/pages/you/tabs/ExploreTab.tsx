@@ -1,21 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeftRight,
   Briefcase,
   Building2,
+  CalendarDays,
   ChevronDown,
   ChevronRight,
   Coffee,
   Crown,
-  FileText,
   GraduationCap,
   HandCoins,
   Landmark,
+  MessageSquare,
   PiggyBank,
   Scale,
   Search,
   ShieldAlert,
+  SlidersHorizontal,
   ShoppingBasket,
   ShoppingCart,
   Sparkles,
@@ -30,13 +32,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { type JusticePlainte, type YouBusiness, type YouPlayer, type YouState, youApi, justiceApi } from '@/services/api';
+import { type JusticePlainte, type YouBusiness, type YouFormationProduct, type YouPlayer, type YouState, youApi, justiceApi } from '@/services/api';
 import {
   BankAccountModal,
   BuyoutOfferModal,
   FormationCatalogModal,
   InvestModal,
   LoanModal,
+  ManageBusinessModal,
   ShareholderProposalModal,
   TransferBusinessModal,
 } from '../components/modals';
@@ -77,6 +80,39 @@ function getBusinessRevenue(business: YouBusiness) {
   return business.monthlyRevenue;
 }
 
+function formatPostedDate(date: string) {
+  return new Date(date).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function getBusinessListStats(business: YouBusiness) {
+  if (business.typeKey === 'bank') {
+    return [
+      { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
+      { label: "Taux d'emprunt", value: `${business.loanInterestRate ?? 4} %`, color: 'text-amber-400' },
+    ];
+  }
+  if (business.typeKey === 'transfer') {
+    return [
+      { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
+      { label: 'Frais', value: `${business.transferFeeRate ?? 2} %`, color: 'text-cyan-400' },
+    ];
+  }
+  if (business.typeKey === 'formation') {
+    return [
+      { label: 'Formations', value: `${business.formationProducts?.length ?? 0}`, color: 'text-amber-400' },
+      { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
+    ];
+  }
+  return [
+    { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
+    { label: 'Satisfaction', value: `${business.satisfaction}/100`, color: 'text-sky-400' },
+  ];
+}
+
 function BusinessHeader({ business, userId }: { business: YouBusiness; userId: string }) {
   const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
   const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
@@ -102,9 +138,9 @@ function BusinessHeader({ business, userId }: { business: YouBusiness; userId: s
 
 function StatTile({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{label}</p>
-      <p className={cn('mt-1 text-base font-bold tabular-nums', color ?? 'text-foreground')}>{value}</p>
+      <p className={cn('text-sm font-bold tabular-nums text-right', color ?? 'text-foreground')}>{value}</p>
     </div>
   );
 }
@@ -188,6 +224,11 @@ function BusinessInteractionModal({
   isAdmin,
   onClose,
   onAction,
+  onManage,
+  onShowReviews,
+  onRate,
+  onOpenSupport,
+  onReviewed,
   onAdminDeleteRequest,
 }: {
   business: YouBusiness | null;
@@ -195,6 +236,11 @@ function BusinessInteractionModal({
   isAdmin: boolean;
   onClose: () => void;
   onAction: (action: 'bank' | 'loan' | 'invest' | 'buyout' | 'shareholder' | 'transfer' | 'formation' | 'purchase' | 'apply' | 'plainte') => void;
+  onManage: () => void;
+  onShowReviews: () => void;
+  onRate: () => void;
+  onOpenSupport: () => void;
+  onReviewed: () => Promise<void>;
   onAdminDeleteRequest: () => void;
 }) {
   const navigate = useNavigate();
@@ -203,6 +249,7 @@ function BusinessInteractionModal({
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [plaintesProcessing, setPlaintesProcessing] = useState<Set<string>>(new Set());
+  const [reviewingFormationId, setReviewingFormationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!business || business.typeKey !== 'supreme_court' || !isAdmin) return;
@@ -249,8 +296,30 @@ function BusinessInteractionModal({
   const canApply = !isOwned && !isEmployee && !hasPendingApplication && business.hiring;
   const profit = business.monthlyRevenue - business.monthlyExpenses;
   const formationComments = business.typeKey === 'formation'
-    ? business.ratings.filter((entry) => entry.comment && entry.comment.trim().length > 0)
+    ? (business.formationProducts ?? [])
+      .flatMap((product) => (product.ratings ?? [])
+        .filter((entry) => entry.comment && entry.comment.trim().length > 0)
+        .map((entry) => ({ ...entry, productTitle: product.title })))
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     : [];
+  const pendingFormationProducts = business.typeKey === 'formation'
+    ? (business.formationProducts ?? []).filter((product) => product.status === 'PENDING')
+    : [];
+
+  const reviewFormation = async (productId: string, decision: 'approve' | 'reject') => {
+    if (!business) return;
+    setReviewingFormationId(productId);
+    try {
+      await withRouteError(
+        () => youApi.reviewFormationProduct(business.id, productId, decision),
+        decision === 'approve' ? 'Impossible d approuver cette formation.' : 'Impossible de refuser cette formation.',
+      );
+      toast.success(decision === 'approve' ? 'Formation approuvee' : 'Formation refusee');
+      await onReviewed();
+    } finally {
+      setReviewingFormationId(null);
+    }
+  };
 
   const stats = (() => {
     if (business.typeKey === 'bank') return [
@@ -262,12 +331,12 @@ function BusinessInteractionModal({
       { label: 'Frais', value: `${business.transferFeeRate ?? 2} %`, color: 'text-cyan-400' },
     ];
     if (business.typeKey === 'formation') return [
-      { label: 'Revenue mensuel', value: formatMoney(business.monthlyRevenue), color: 'text-emerald-400' },
       { label: 'Formations', value: `${business.formationProducts?.length ?? 0} disponible(s)`, color: 'text-amber-400' },
+      { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
     ];
     if (business.typeKey === 'lemonade' || business.typeKey === 'epicerie') return [
-      { label: 'Revenue mensuel', value: formatMoney(business.monthlyRevenue), color: 'text-emerald-400' },
-      { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-muted-foreground' },
+      { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
+      { label: 'Satisfaction', value: `${business.satisfaction}/100`, color: 'text-sky-400' },
     ];
     return [
       { label: 'Profit mensuel', value: formatMoney(profit), color: profit >= 0 ? 'text-emerald-400' : 'text-red-400' },
@@ -302,14 +371,13 @@ function BusinessInteractionModal({
             <p className="text-xs text-muted-foreground">{business.description}</p>
           ) : null}
 
-          {/* Owned business */}
-          {isOwned ? (
-            <div className="rounded-xl border border-border/40 bg-muted/10 px-5 py-6 text-center">
-              <p className="text-sm font-medium text-muted-foreground">C'est ton entreprise.</p>
-              <p className="mt-1 text-xs text-muted-foreground/60">Gere-la depuis l'onglet Travail.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
+          <div className="space-y-3">
+              {isOwned ? (
+                <div className="flex gap-2">
+                  <Button className="flex-1" onClick={onManage}>Gerer</Button>
+                  <Button variant="outline" className="flex-1" onClick={onShowReviews}>Avis</Button>
+                </div>
+              ) : null}
               {/* Primary action */}
               {business.typeKey === 'supreme_court' ? (
                 <div className="space-y-3">
@@ -410,15 +478,26 @@ function BusinessInteractionModal({
                     <p className="text-sm font-semibold text-purple-300">Cabinet d'avocats</p>
                     <p className="mt-1 text-xs text-muted-foreground">Ce cabinet peut vous représenter lors d'une procédure judiciaire en cours.</p>
                   </div>
-                  <ActionButton
-                    icon={FileText}
-                    label="Engager ce cabinet"
-                    sub="Disponible dans votre affaire judiciaire, depuis la messagerie."
-                    tone="bg-purple-400/15 text-purple-400"
-                    primary
-                    onClick={() => {}}
-                    disabled
-                  />
+                  <div className="space-y-2">
+                    {[{
+                      user: business.owner,
+                      specialty: 'AssociÃ© gÃ©rant',
+                      isPrimaryLawyer: true,
+                      displayOrder: -1,
+                    }, ...business.members]
+                      .sort((a, b) => Number(Boolean((b as any).isPrimaryLawyer)) - Number(Boolean((a as any).isPrimaryLawyer)) || ((a as any).displayOrder ?? 0) - ((b as any).displayOrder ?? 0) || a.user.username.localeCompare(b.user.username))
+                      .map((lawyer, index) => (
+                        <div key={`${lawyer.user.id}-${index}`} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold">{lawyer.user.username}</p>
+                              <p className="text-xs text-muted-foreground">{(lawyer as any).specialty || 'Avocat gÃ©nÃ©raliste'} · {business.name}</p>
+                            </div>
+                            {(lawyer as any).isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               ) : business.typeKey === 'bank' ? (
                 <ActionButton
@@ -441,29 +520,32 @@ function BusinessInteractionModal({
               ) : business.typeKey === 'lemonade' ? (
                 <ActionButton
                   icon={Store}
-                  label="Acheter"
-                  sub="Parcourir les articles disponibles"
+                  label={isOwned ? 'Achat indisponible' : 'Acheter'}
+                  sub={isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Parcourir les articles disponibles'}
                   tone="bg-yellow-400/15 text-yellow-400"
                   primary
                   onClick={() => onAction('purchase')}
+                  disabled={isOwned}
                 />
               ) : business.typeKey === 'epicerie' ? (
                 <ActionButton
                   icon={ShoppingBasket}
-                  label="Acheter"
-                  sub="Parcourir les articles disponibles"
+                  label={isOwned ? 'Achat indisponible' : 'Acheter'}
+                  sub={isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Parcourir les articles disponibles'}
                   tone="bg-lime-400/15 text-lime-400"
                   primary
                   onClick={() => onAction('purchase')}
+                  disabled={isOwned}
                 />
               ) : business.typeKey === 'agency' ? (
                 <ActionButton
                   icon={Building2}
-                  label="Acheter un bien immobilier"
+                  label={isOwned ? 'Achat indisponible' : 'Acheter un bien immobilier'}
                   sub="Studio, appartement, maison, villa — gagne du XP Social."
                   tone="bg-violet-400/15 text-violet-400"
                   primary
                   onClick={() => onAction('purchase')}
+                  disabled={isOwned}
                 />
               ) : business.typeKey === 'coffee_shop' ? (
                 <ActionButton
@@ -477,10 +559,12 @@ function BusinessInteractionModal({
               ) : business.typeKey === 'formation' ? (
                 <ActionButton
                   icon={GraduationCap}
-                  label={(business.formationProducts?.length ?? 0) > 0 ? 'Acceder aux formations' : 'Formations non disponibles'}
-                  sub={(business.formationProducts?.length ?? 0) > 0
-                    ? `${business.formationProducts!.length} formation(s) disponible(s)`
-                    : "Le proprietaire n'a pas encore mis de formations en ligne."}
+                  label={isOwned ? 'Apercu client des formations' : (business.formationProducts?.length ?? 0) > 0 ? 'Acceder aux formations' : 'Formations non disponibles'}
+                  sub={isOwned
+                    ? `${business.formationProducts?.length ?? 0} formation(s) visibles cote client`
+                    : (business.formationProducts?.length ?? 0) > 0
+                      ? `${business.formationProducts!.length} formation(s) disponible(s)`
+                      : "Le proprietaire n'a pas encore mis de formations en ligne."}
                   tone="bg-amber-400/15 text-amber-400"
                   primary
                   disabled={(business.formationProducts?.length ?? 0) === 0}
@@ -509,16 +593,55 @@ function BusinessInteractionModal({
                 />
               )}
 
+              {!isOwned && business.supportEnabled ? (
+                <ActionButton
+                  icon={MessageSquare}
+                  label="Contacter le support"
+                  sub={business.supportAgent ? `Conversation professionnelle avec ${business.supportAgent.username}` : 'Ouvrir la conversation professionnelle'}
+                  tone="bg-emerald-400/15 text-emerald-400"
+                  onClick={onOpenSupport}
+                />
+              ) : null}
+
+              {isAdmin && pendingFormationProducts.length > 0 ? (
+                <div className="space-y-2 rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-4">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-300">Moderation des formations</p>
+                    <p className="text-xs text-muted-foreground">Ces formations restent invisibles dans la boutique tant qu elles ne sont pas approuvees.</p>
+                  </div>
+                  {pendingFormationProducts.map((product) => (
+                    <div key={product.id} className="rounded-xl border border-border/40 bg-background/60 px-3 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold">{product.title}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Publie le {formatPostedDate(product.createdAt)}</p>
+                        </div>
+                        <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">En attente</span>
+                      </div>
+                      {product.description ? <p className="mt-2 text-sm text-muted-foreground">{product.description}</p> : null}
+                      <div className="mt-3 flex gap-2">
+                        <Button size="sm" className="flex-1" disabled={reviewingFormationId !== null} onClick={() => void reviewFormation(product.id, 'approve')}>
+                          Approuver
+                        </Button>
+                        <Button size="sm" variant="outline" className="flex-1" disabled={reviewingFormationId !== null} onClick={() => void reviewFormation(product.id, 'reject')}>
+                          Refuser
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               {/* Stats */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
                 {stats.map((s) => <StatTile key={s.label} label={s.label} value={s.value} color={s.color} />)}
               </div>
 
-              {business.typeKey === 'formation' ? (
+              {!business.isStateOwned ? (
                 <div className="space-y-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold">Avis clients</p>
+                      <p className="text-sm font-semibold">{business.typeKey === 'formation' ? 'Avis des formations' : 'Avis clients'}</p>
                       <p className="text-xs text-muted-foreground">
                         {business.avgRating !== null
                           ? `${business.avgRating.toFixed(1)}/5 · ${business.ratingCount} avis`
@@ -530,6 +653,32 @@ function BusinessInteractionModal({
                       <span className="text-sm font-semibold">{business.avgRating?.toFixed(1) ?? '--'}</span>
                     </div>
                   </div>
+                  <div className="flex gap-2">
+                    {business.typeKey === 'formation' ? (
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => onAction('formation')}>
+                        <GraduationCap className="mr-2 h-4 w-4" />Catalogue
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="sm" className="flex-1" onClick={onShowReviews}>
+                        <MessageSquare className="mr-2 h-4 w-4" />Avis
+                      </Button>
+                    )}
+                    {!isOwned && business.typeKey !== 'formation' ? (
+                      <Button size="sm" className="flex-1" onClick={onRate} disabled={!business.canRate}>
+                        Donner un avis
+                      </Button>
+                    ) : null}
+                  </div>
+                  {!isOwned && business.typeKey !== 'formation' && !business.canRate ? (
+                    <p className="text-xs text-muted-foreground">
+                      La note se debloque apres une interaction avec cet etablissement.
+                    </p>
+                  ) : null}
+                  {business.typeKey === 'formation' ? (
+                    <p className="text-xs text-muted-foreground">
+                      Chaque produit de formation possede sa propre note et sa propre liste d'avis.
+                    </p>
+                  ) : null}
 
                   {formationComments.length > 0 ? (
                     <div className="space-y-2">
@@ -549,12 +698,17 @@ function BusinessInteractionModal({
                               year: 'numeric',
                             })}
                           </p>
+                          {'productTitle' in entry ? <p className="mt-1 text-[11px] text-amber-300">{entry.productTitle}</p> : null}
                           <p className="mt-2 text-sm text-foreground/90">{entry.comment}</p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Pas encore de commentaire visible pour cette formation.</p>
+                    <p className="text-sm text-muted-foreground">
+                      {business.typeKey === 'formation'
+                        ? 'Pas encore de commentaire visible pour ces produits.'
+                        : 'Pas encore de commentaire visible pour cet etablissement.'}
+                    </p>
                   )}
                 </div>
               ) : null}
@@ -589,13 +743,15 @@ function BusinessInteractionModal({
                       onClick={() => onAction('loan')}
                     />
                   ) : null}
-                  <ActionButton
-                    icon={HandCoins}
-                    label={business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}
-                    sub="Proposer un pourcentage et une somme au proprietaire."
-                    tone="bg-amber-400/15 text-amber-400"
-                    onClick={() => onAction('shareholder')}
-                  />
+                  {!isOwned ? (
+                    <ActionButton
+                      icon={HandCoins}
+                      label={business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}
+                      sub="Proposer un pourcentage et une somme au proprietaire."
+                      tone="bg-amber-400/15 text-amber-400"
+                      onClick={() => onAction('shareholder')}
+                    />
+                  ) : null}
                   {canApply ? (
                     <ActionButton
                       icon={HandCoins}
@@ -609,17 +765,19 @@ function BusinessInteractionModal({
                       Une candidature ou proposition de contrat est deja en attente pour toi.
                     </div>
                   ) : null}
-                  <ActionButton
-                    icon={HandCoins}
-                    label="Faire une offre de rachat"
-                    sub="Le montant est bloque jusqu'a la decision du proprietaire."
-                    tone="bg-rose-400/15 text-rose-400"
-                    onClick={() => onAction('buyout')}
-                  />
+                  {!isOwned ? (
+                    <ActionButton
+                      icon={HandCoins}
+                      label="Faire une offre de rachat"
+                      sub="Le montant est bloque jusqu'a la decision du proprietaire."
+                      tone="bg-rose-400/15 text-rose-400"
+                      onClick={() => onAction('buyout')}
+                    />
+                  ) : null}
                 </div>
               ) : null}
             </div>
-          )}
+          
         </div>
       </DialogContent>
     </Dialog>
@@ -754,7 +912,7 @@ function RatingModal({
   };
 
   const submit = async () => {
-    if (!businessId || rating === 0) return;
+    if (!businessId || rating === 0 || !business?.canRate) return;
     setSubmitting(true);
     try {
       await youApi.rateBusiness(businessId, rating, comment.trim());
@@ -777,6 +935,11 @@ function RatingModal({
           <p className="text-sm text-muted-foreground">
             Note le service de <span className="font-semibold text-foreground">{business.name}</span>
           </p>
+          {!business.canRate ? (
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
+              Cet avis sera disponible apres une interaction avec cet etablissement.
+            </div>
+          ) : null}
           <StarRatingInput value={rating} onChange={setRating} />
           {rating > 0 ? (
             <p className="text-sm font-medium text-amber-400">{LABELS[rating]}</p>
@@ -795,10 +958,292 @@ function RatingModal({
             <Button variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
               Passer
             </Button>
-            <Button className="flex-1" onClick={() => void submit()} disabled={rating === 0 || submitting}>
+            <Button className="flex-1" onClick={() => void submit()} disabled={rating === 0 || submitting || !business.canRate}>
               Envoyer
             </Button>
           </div>
+        </div>
+      ) : null}
+    </ModalWrap>
+  );
+}
+
+function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () => void; business: YouBusiness | null }) {
+  const [ratingFilter, setRatingFilter] = useState<'all' | '5' | '4' | '3' | '2' | '1'>('all');
+  const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'best'>('recent');
+
+  useEffect(() => {
+    if (!open) {
+      setRatingFilter('all');
+      setSortOrder('recent');
+    }
+  }, [open]);
+
+  const filteredRatings = useMemo(() => {
+    if (!business) return [];
+    const minimumRating = ratingFilter === 'all' ? null : Number(ratingFilter);
+    const items = business.ratings.filter((entry) => minimumRating === null || entry.rating === minimumRating);
+    return [...items].sort((a, b) => {
+      if (sortOrder === 'best') {
+        if (b.rating !== a.rating) return b.rating - a.rating;
+      }
+      if (sortOrder === 'oldest') {
+        return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+      }
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [business, ratingFilter, sortOrder]);
+
+  return (
+    <ModalWrap
+      open={open}
+      onClose={onClose}
+      title={business ? `Avis - ${business.name}` : 'Avis'}
+      desc={business && business.avgRating !== null ? `${business.avgRating.toFixed(1)}/5 - ${business.ratingCount} avis` : 'Aucun avis pour le moment.'}
+      wide
+    >
+      {business ? (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-1 items-center gap-2 rounded-xl border border-border/40 bg-muted/10 px-3 py-2">
+              <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+              <select value={ratingFilter} onChange={(e) => setRatingFilter(e.target.value as typeof ratingFilter)} className="w-full bg-transparent text-sm outline-none">
+                <option value="all">Toutes les notes</option>
+                <option value="5">5 etoiles</option>
+                <option value="4">4 etoiles</option>
+                <option value="3">3 etoiles</option>
+                <option value="2">2 etoiles</option>
+                <option value="1">1 etoile</option>
+              </select>
+            </div>
+            <div className="flex flex-1 items-center gap-2 rounded-xl border border-border/40 bg-muted/10 px-3 py-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)} className="w-full bg-transparent text-sm outline-none">
+                <option value="recent">Plus recents</option>
+                <option value="oldest">Plus anciens</option>
+                <option value="best">Meilleures notes</option>
+              </select>
+            </div>
+          </div>
+
+          {filteredRatings.length === 0 ? (
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+              Aucun avis ne correspond aux filtres.
+            </div>
+          ) : (
+            <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">
+              {filteredRatings.map((entry) => (
+                <div key={entry.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">{entry.user.username}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{formatPostedDate(entry.updatedAt)}</p>
+                    </div>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-amber-400">
+                      <Star className="h-3.5 w-3.5 fill-amber-400" />
+                      {entry.rating}/5
+                    </span>
+                  </div>
+                  {entry.comment ? (
+                    <p className="mt-2 text-sm text-foreground/90">{entry.comment}</p>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">Cet avis ne contient pas de commentaire.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </ModalWrap>
+  );
+}
+
+function FormationProductRatingModal({
+  open,
+  onClose,
+  business,
+  product,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness | null;
+  product: YouFormationProduct | null;
+  onSubmitted: () => void;
+}) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setRating(0);
+      setComment('');
+    }
+  }, [open]);
+
+  const LABELS: Record<number, string> = {
+    1: 'Tres mauvais',
+    2: 'Mauvais',
+    3: 'Correct',
+    4: 'Bien',
+    5: 'Excellent !',
+  };
+
+  const submit = async () => {
+    if (!business || !product || rating === 0 || !product.canReview) return;
+    setSubmitting(true);
+    try {
+      await youApi.rateFormationProduct(business.id, product.id, rating, comment.trim());
+      toast.success('Avis enregistre, merci !');
+      onSubmitted();
+      onClose();
+    } catch {
+      toast.error("Impossible d'enregistrer l'avis.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Donner un avis" centerTitle>
+      {business && product ? (
+        <div className="space-y-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Note <span className="font-semibold text-foreground">{product.title}</span>
+            <span className="text-muted-foreground"> chez </span>
+            <span className="font-semibold text-foreground">{business.name}</span>
+          </p>
+          {!product.canReview ? (
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
+              Cet avis sera disponible apres consultation de cette formation.
+            </div>
+          ) : null}
+          <StarRatingInput value={rating} onChange={setRating} />
+          {rating > 0 ? (
+            <p className="text-sm font-medium text-amber-400">{LABELS[rating]}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground/60">Clique sur une etoile</p>
+          )}
+          <textarea
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            maxLength={500}
+            placeholder="Ajoute un commentaire..."
+            className="min-h-24 w-full rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-amber-400/40"
+          />
+          <p className="text-[11px] text-muted-foreground/60">{comment.trim().length}/500</p>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={onClose} disabled={submitting}>
+              Passer
+            </Button>
+            <Button className="flex-1" onClick={() => void submit()} disabled={rating === 0 || submitting || !product.canReview}>
+              Envoyer
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </ModalWrap>
+  );
+}
+
+function FormationProductReviewsModal({
+  open,
+  onClose,
+  business,
+  product,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness | null;
+  product: YouFormationProduct | null;
+}) {
+  const [ratingFilter, setRatingFilter] = useState<'all' | '5' | '4' | '3' | '2' | '1'>('all');
+  const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'best'>('recent');
+
+  useEffect(() => {
+    if (!open) {
+      setRatingFilter('all');
+      setSortOrder('recent');
+    }
+  }, [open]);
+
+  const filteredRatings = useMemo(() => {
+    if (!product?.ratings) return [];
+    const exactRating = ratingFilter === 'all' ? null : Number(ratingFilter);
+    const items = product.ratings.filter((entry) => exactRating === null || entry.rating === exactRating);
+    return [...items].sort((a, b) => {
+      if (sortOrder === 'best' && b.rating !== a.rating) return b.rating - a.rating;
+      if (sortOrder === 'oldest') return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  }, [product?.ratings, ratingFilter, sortOrder]);
+
+  return (
+    <ModalWrap
+      open={open}
+      onClose={onClose}
+      title={product ? `Avis - ${product.title}` : 'Avis'}
+      desc={product && product.avgRating !== null && product.avgRating !== undefined ? `${product.avgRating.toFixed(1)}/5 - ${product.ratingCount ?? product.ratings?.length ?? 0} avis` : 'Aucun avis pour le moment.'}
+      wide
+    >
+      {business && product ? (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+            <p className="text-sm font-semibold">{product.title}</p>
+            <p className="text-xs text-muted-foreground">{business.name}</p>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-1 items-center gap-2 rounded-xl border border-border/40 bg-muted/10 px-3 py-2">
+              <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+              <select value={ratingFilter} onChange={(e) => setRatingFilter(e.target.value as typeof ratingFilter)} className="w-full bg-transparent text-sm outline-none">
+                <option value="all">Toutes les notes</option>
+                <option value="5">5 etoiles</option>
+                <option value="4">4 etoiles</option>
+                <option value="3">3 etoiles</option>
+                <option value="2">2 etoiles</option>
+                <option value="1">1 etoile</option>
+              </select>
+            </div>
+            <div className="flex flex-1 items-center gap-2 rounded-xl border border-border/40 bg-muted/10 px-3 py-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)} className="w-full bg-transparent text-sm outline-none">
+                <option value="recent">Plus recents</option>
+                <option value="oldest">Plus anciens</option>
+                <option value="best">Meilleures notes</option>
+              </select>
+            </div>
+          </div>
+
+          {filteredRatings.length === 0 ? (
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+              Aucun avis ne correspond aux filtres.
+            </div>
+          ) : (
+            <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1">
+              {filteredRatings.map((entry) => (
+                <div key={entry.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">{entry.user.username}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{formatPostedDate(entry.updatedAt)}</p>
+                    </div>
+                    <span className="flex items-center gap-1 text-xs font-semibold text-amber-400">
+                      <Star className="h-3.5 w-3.5 fill-amber-400" />
+                      {entry.rating}/5
+                    </span>
+                  </div>
+                  {entry.comment ? (
+                    <p className="mt-2 text-sm text-foreground/90">{entry.comment}</p>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">Cet avis ne contient pas de commentaire.</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
     </ModalWrap>
@@ -973,6 +1418,7 @@ export function ExploreTab({
   isAdmin: boolean;
   onReload: (refreshBalance?: boolean) => Promise<void>;
 }) {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'you' | 'player'>('all');
@@ -991,41 +1437,68 @@ export function ExploreTab({
   const [formationBusinessId, setFormationBusinessId] = useState<string | null>(null);
   const [purchaseBusinessId, setPurchaseBusinessId] = useState<string | null>(null);
   const [applyBusinessId, setApplyBusinessId] = useState<string | null>(null);
+  const [manageBusinessId, setManageBusinessId] = useState<string | null>(null);
+  const [reviewsBusinessId, setReviewsBusinessId] = useState<string | null>(null);
   const [ratingBusinessId, setRatingBusinessId] = useState<string | null>(null);
+  const [formationReviewsTarget, setFormationReviewsTarget] = useState<{ businessId: string; productId: string } | null>(null);
+  const [formationRatingTarget, setFormationRatingTarget] = useState<{ businessId: string; productId: string } | null>(null);
   const [adminDeleteBusinessId, setAdminDeleteBusinessId] = useState<string | null>(null);
   const [plainteBusinessId, setPlainteBusinessId] = useState<string | null>(null);
-  const formationRatingTimeoutRef = useRef<number | null>(null);
-  const FORMATION_RATING_DELAY_MS = 15000;
-
-  const handleServiceSuccess = (businessId: string) => async () => {
+  const handleServiceSuccess = async () => {
     await onReload(true);
-    setTimeout(() => setRatingBusinessId(businessId), 1000);
   };
 
   const handleFormationPurchaseSuccess = async () => {
     await onReload(true);
   };
 
-  const handleFormationAccess = (businessId: string) => {
-    if (formationRatingTimeoutRef.current !== null) {
-      window.clearTimeout(formationRatingTimeoutRef.current);
-    }
-    formationRatingTimeoutRef.current = window.setTimeout(() => {
-      setRatingBusinessId(businessId);
-      formationRatingTimeoutRef.current = null;
-    }, FORMATION_RATING_DELAY_MS);
+  const handleFormationAccess = async () => {
+    await onReload(true);
   };
-
-  useEffect(() => () => {
-    if (formationRatingTimeoutRef.current !== null) {
-      window.clearTimeout(formationRatingTimeoutRef.current);
-    }
-  }, []);
 
   const allBusinesses = useMemo(
     () => [...data.ownedBusinesses, ...data.exploreBusinesses],
     [data.exploreBusinesses, data.ownedBusinesses],
   );
+
+  useEffect(() => {
+    const now = Date.now();
+    const dueBusiness = allBusinesses.find((business) =>
+      business.ownerId !== userId &&
+      business.canRate &&
+      business.reviewPromptAt &&
+      !business.reviewPromptedAt &&
+      Date.parse(business.reviewPromptAt) <= now,
+    );
+    if (dueBusiness && ratingBusinessId !== dueBusiness.id) {
+      void youApi.markReviewPromptShown({ businessId: dueBusiness.id }).catch(() => {});
+      setRatingBusinessId(dueBusiness.id);
+      return;
+    }
+
+    const dueFormation = allBusinesses.find((business) =>
+      business.typeKey === 'formation' &&
+      business.ownerId !== userId &&
+      (business.formationProducts ?? []).some((product) =>
+        product.canReview &&
+        product.reviewPromptAt &&
+        !product.reviewPromptedAt &&
+        Date.parse(product.reviewPromptAt) <= now,
+      ),
+    );
+    if (dueFormation) {
+      const product = (dueFormation.formationProducts ?? []).find((entry) =>
+        entry.canReview &&
+        entry.reviewPromptAt &&
+        !entry.reviewPromptedAt &&
+        Date.parse(entry.reviewPromptAt) <= now,
+      );
+      if (product && (!formationRatingTarget || formationRatingTarget.productId !== product.id)) {
+        void youApi.markReviewPromptShown({ productId: product.id }).catch(() => {});
+        setFormationRatingTarget({ businessId: dueFormation.id, productId: product.id });
+      }
+    }
+  }, [allBusinesses, formationRatingTarget, ratingBusinessId, userId]);
 
   const availableTypeKeys = useMemo(
     () => BUSINESS_TYPE_ORDER.filter((typeKey) => allBusinesses.some((business) => business.typeKey === typeKey)),
@@ -1075,6 +1548,16 @@ export function ExploreTab({
   const formationBusiness = formationBusinessId ? allBusinesses.find((b) => b.id === formationBusinessId) ?? null : null;
   const purchaseBusiness = purchaseBusinessId ? allBusinesses.find((b) => b.id === purchaseBusinessId) ?? null : null;
   const applyBusiness = applyBusinessId ? allBusinesses.find((b) => b.id === applyBusinessId) ?? null : null;
+  const manageBusiness = manageBusinessId ? allBusinesses.find((b) => b.id === manageBusinessId) ?? null : null;
+  const reviewsBusiness = reviewsBusinessId ? allBusinesses.find((b) => b.id === reviewsBusinessId) ?? null : null;
+  const formationReviewsBusiness = formationReviewsTarget ? allBusinesses.find((b) => b.id === formationReviewsTarget.businessId) ?? null : null;
+  const formationReviewsProduct = formationReviewsTarget && formationReviewsBusiness
+    ? formationReviewsBusiness.formationProducts?.find((product) => product.id === formationReviewsTarget.productId) ?? null
+    : null;
+  const formationRatingBusiness = formationRatingTarget ? allBusinesses.find((b) => b.id === formationRatingTarget.businessId) ?? null : null;
+  const formationRatingProduct = formationRatingTarget && formationRatingBusiness
+    ? formationRatingBusiness.formationProducts?.find((product) => product.id === formationRatingTarget.productId) ?? null
+    : null;
   const adminDeleteBusiness = adminDeleteBusinessId ? allBusinesses.find((b) => b.id === adminDeleteBusinessId) ?? null : null;
   const plainteBusiness = plainteBusinessId ? allBusinesses.find((b) => b.id === plainteBusinessId) ?? null : null;
 
@@ -1282,7 +1765,7 @@ export function ExploreTab({
                           {section.businesses.map((business) => {
                             const BusinessIcon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
                             const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
-                            const profit = business.monthlyRevenue - business.monthlyExpenses;
+                            const cardStats = getBusinessListStats(business);
                             return (
                               <button
                                 key={business.id}
@@ -1313,12 +1796,11 @@ export function ExploreTab({
                                     </div>
                                   </div>
                                   <div className="shrink-0 text-right">
-                                    <p className="text-sm font-bold tabular-nums text-emerald-400">{business.monthlyRevenue.toLocaleString('fr-FR')} EUR</p>
-                                    <p className="text-[10px] text-muted-foreground">
-                                      {business.typeKey === 'bank'
-                                        ? `${business.loanInterestRate ?? 4} % emprunt`
-                                        : `${profit >= 0 ? '+' : ''}${profit.toLocaleString('fr-FR')} EUR`}
-                                    </p>
+                                    {cardStats.map((stat) => (
+                                      <p key={stat.label} className={cn('text-[11px] tabular-nums', stat.color ?? 'text-foreground')}>
+                                        <span className="text-muted-foreground">{stat.label}:</span> {stat.value}
+                                      </p>
+                                    ))}
                                   </div>
                                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30" />
                                 </div>
@@ -1348,6 +1830,21 @@ export function ExploreTab({
           isAdmin={isAdmin}
           onClose={() => setDetailBusinessId(null)}
           onAction={(action) => openAction(detailBusiness.id, action)}
+          onManage={() => {
+            setDetailBusinessId(null);
+            setTimeout(() => setManageBusinessId(detailBusiness.id), 150);
+          }}
+          onShowReviews={() => setReviewsBusinessId(detailBusiness.id)}
+          onRate={() => setRatingBusinessId(detailBusiness.id)}
+          onOpenSupport={() => {
+            void youApi.openBusinessSupportConversation(detailBusiness.id).then((res) => {
+              setDetailBusinessId(null);
+              navigate(`/messages?conversation=${res.data.result.conversationId}`);
+            }).catch(() => {
+              toast.error('Impossible d ouvrir la conversation support.');
+            });
+          }}
+          onReviewed={() => onReload()}
           onAdminDeleteRequest={() => setAdminDeleteBusinessId(detailBusiness.id)}
         />
       ) : null}
@@ -1377,22 +1874,47 @@ export function ExploreTab({
       </ModalWrap>
 
       {/* Action modals */}
-      <BankAccountModal open={Boolean(bankBusiness)} onClose={() => setBankBusinessId(null)} business={bankBusiness} onSubmitted={bankBusiness ? handleServiceSuccess(bankBusiness.id) : () => onReload(true)} />
-      <LoanModal open={Boolean(loanBusiness)} onClose={() => setLoanBusinessId(null)} business={loanBusiness} onSubmitted={loanBusiness ? handleServiceSuccess(loanBusiness.id) : () => onReload(true)} />
-      <InvestModal open={Boolean(investBusiness)} onClose={() => setInvestBusinessId(null)} business={investBusiness} onSubmitted={investBusiness ? handleServiceSuccess(investBusiness.id) : () => onReload(true)} />
+      <BankAccountModal open={Boolean(bankBusiness)} onClose={() => setBankBusinessId(null)} business={bankBusiness} onSubmitted={bankBusiness ? handleServiceSuccess : () => onReload(true)} />
+      <LoanModal open={Boolean(loanBusiness)} onClose={() => setLoanBusinessId(null)} business={loanBusiness} onSubmitted={loanBusiness ? handleServiceSuccess : () => onReload(true)} />
+      <InvestModal open={Boolean(investBusiness)} onClose={() => setInvestBusinessId(null)} business={investBusiness} onSubmitted={investBusiness ? handleServiceSuccess : () => onReload(true)} />
       <ShareholderProposalModal open={Boolean(shareholderBusiness)} onClose={() => setShareholderBusinessId(null)} business={shareholderBusiness} onSubmitted={() => onReload(true)} />
       <BuyoutOfferModal open={Boolean(buyoutBusiness)} onClose={() => setBuyoutBusinessId(null)} business={buyoutBusiness} onSubmitted={() => onReload(true)} />
-      <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} currentUserId={userId} onSubmitted={transferBusiness ? handleServiceSuccess(transferBusiness.id) : () => onReload(true)} />
+      <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} currentUserId={userId} onSubmitted={transferBusiness ? handleServiceSuccess : () => onReload(true)} />
       <FormationCatalogModal
         open={Boolean(formationBusiness)}
         onClose={() => setFormationBusinessId(null)}
         business={formationBusiness}
         onSubmitted={handleFormationPurchaseSuccess}
-        onAccessed={formationBusiness ? () => handleFormationAccess(formationBusiness.id) : undefined}
+        onAccessed={formationBusiness ? () => { void handleFormationAccess(); } : undefined}
+        onShowProductReviews={formationBusiness ? (productId) => setFormationReviewsTarget({ businessId: formationBusiness.id, productId }) : undefined}
+        onRateProduct={formationBusiness ? (productId) => setFormationRatingTarget({ businessId: formationBusiness.id, productId }) : undefined}
       />
-      <PurchaseItemModal open={Boolean(purchaseBusiness)} onClose={() => setPurchaseBusinessId(null)} business={purchaseBusiness} onSubmitted={purchaseBusiness ? () => { void handleServiceSuccess(purchaseBusiness.id)(); } : () => onReload(true)} />
-      <ApplyBusinessModal open={Boolean(applyBusiness)} onClose={() => setApplyBusinessId(null)} business={applyBusiness} onSubmitted={applyBusiness ? handleServiceSuccess(applyBusiness.id) : () => onReload(true)} />
+      <PurchaseItemModal open={Boolean(purchaseBusiness)} onClose={() => setPurchaseBusinessId(null)} business={purchaseBusiness} onSubmitted={purchaseBusiness ? handleServiceSuccess : () => onReload(true)} />
+      <ApplyBusinessModal open={Boolean(applyBusiness)} onClose={() => setApplyBusinessId(null)} business={applyBusiness} onSubmitted={applyBusiness ? handleServiceSuccess : () => onReload(true)} />
+      <ManageBusinessModal
+        open={Boolean(manageBusiness)}
+        onClose={() => setManageBusinessId(null)}
+        business={manageBusiness}
+        players={players}
+        currentUserId={userId}
+        onInviteRequested={() => {}}
+        onSubmitted={onReload}
+      />
+      <ReviewsModal open={Boolean(reviewsBusiness)} onClose={() => setReviewsBusinessId(null)} business={reviewsBusiness} />
       <RatingModal open={Boolean(ratingBusinessId)} onClose={() => setRatingBusinessId(null)} businessId={ratingBusinessId} businesses={allBusinesses} onSubmitted={() => onReload()} />
+      <FormationProductReviewsModal
+        open={Boolean(formationReviewsProduct)}
+        onClose={() => setFormationReviewsTarget(null)}
+        business={formationReviewsBusiness}
+        product={formationReviewsProduct}
+      />
+      <FormationProductRatingModal
+        open={Boolean(formationRatingProduct)}
+        onClose={() => setFormationRatingTarget(null)}
+        business={formationRatingBusiness}
+        product={formationRatingProduct}
+        onSubmitted={() => void onReload(true)}
+      />
       <FilePlainteModal
         open={Boolean(plainteBusiness)}
         onClose={() => setPlainteBusinessId(null)}

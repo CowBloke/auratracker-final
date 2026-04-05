@@ -25,6 +25,10 @@ import {
   getSharedBalance,
 } from '../../utils/sharedBalance.js';
 import { logAdmin } from '../../utils/logger.js';
+import { writeBase64UploadFile } from '../../utils/uploads.js';
+
+const FORMATION_FILE_UPLOAD_DIR = 'uploads/formation-files';
+const MAX_FORMATION_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 
 const USER_PREVIEW_SELECT = {
   id: true,
@@ -38,6 +42,7 @@ const USER_PREVIEW_SELECT = {
 
 const BUSINESS_BASE_INCLUDE = {
   owner: { select: USER_PREVIEW_SELECT },
+  supportAgent: { select: USER_PREVIEW_SELECT },
   members: {
     orderBy: { createdAt: 'asc' as const },
     include: {
@@ -107,6 +112,10 @@ const BUSINESS_BASE_INCLUDE = {
       },
     },
   },
+  transactions: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 30,
+  },
   buyoutOffers: {
     orderBy: { createdAt: 'desc' as const },
     include: {
@@ -123,6 +132,22 @@ const BUSINESS_BASE_INCLUDE = {
   },
   formationProducts: {
     orderBy: { createdAt: 'asc' as const },
+    include: {
+      purchases: {
+        orderBy: { purchasedAt: 'desc' as const },
+      },
+      ratings: {
+        orderBy: { updatedAt: 'desc' as const },
+        include: {
+          user: {
+            select: USER_PREVIEW_SELECT,
+          },
+        },
+      },
+      reviewEligibilities: {
+        orderBy: { updatedAt: 'desc' as const },
+      },
+    },
   },
   ratings: {
     orderBy: { updatedAt: 'desc' as const },
@@ -131,6 +156,12 @@ const BUSINESS_BASE_INCLUDE = {
         select: USER_PREVIEW_SELECT,
       },
     },
+  },
+  reviewEligibilities: {
+    orderBy: { updatedAt: 'desc' as const },
+  },
+  lawyerRatings: {
+    orderBy: { updatedAt: 'desc' as const },
   },
 } as const;
 
@@ -424,8 +455,80 @@ function serializeEmploymentInvitation(invitation: any, viewerId: string) {
   };
 }
 
-function serializeBusiness(business: any, viewerId: string) {
+const REVIEW_PROMPT_DELAY_MS = 15_000;
+
+function getReviewPromptAt(date = new Date()) {
+  return new Date(date.getTime() + REVIEW_PROMPT_DELAY_MS);
+}
+
+function getBusinessReviewEligibilityEntry(business: any, viewerId: string) {
+  return (business.reviewEligibilities ?? []).find((entry: any) => entry.userId === viewerId && entry.targetType === 'BUSINESS') ?? null;
+}
+
+function getFormationReviewEligibilityEntry(product: any, viewerId: string) {
+  return (product.reviewEligibilities ?? []).find((entry: any) => entry.userId === viewerId && entry.targetType === 'FORMATION_PRODUCT') ?? null;
+}
+
+function getBusinessReviewStatus(business: any, viewerId: string) {
+  const entry = getBusinessReviewEligibilityEntry(business, viewerId);
+  return {
+    canRate: Boolean(entry && !entry.reviewedAt && business.ownerId !== viewerId),
+    reviewPromptAt: entry?.promptAt ? new Date(entry.promptAt).toISOString() : null,
+    reviewPromptedAt: entry?.promptedAt ? new Date(entry.promptedAt).toISOString() : null,
+  };
+}
+
+function serializeFormationProduct(product: any, viewerId: string, options?: { viewerIsAdmin?: boolean; viewerOwnsBusiness?: boolean }) {
+  const viewerPurchase = (product.purchases ?? []).find((purchase: any) => purchase.userId === viewerId) ?? null;
+  const reviewEligibility = getFormationReviewEligibilityEntry(product, viewerId);
+  const ratings = (product.ratings ?? []).map((entry: any) => ({
+    id: entry.id,
+    rating: entry.rating,
+    comment: entry.comment ?? null,
+    createdAt: entry.createdAt.toISOString(),
+    updatedAt: entry.updatedAt.toISOString(),
+    user: entry.user,
+  }));
+  const avgRating = ratings.length > 0
+    ? Math.round((ratings.reduce((sum: number, entry: any) => sum + entry.rating, 0) / ratings.length) * 10) / 10
+    : null;
+  const viewerIsAdmin = Boolean(options?.viewerIsAdmin);
+  const viewerOwnsBusiness = Boolean(options?.viewerOwnsBusiness);
+
+  return {
+    id: product.id,
+    title: product.title,
+    description: product.description ?? null,
+    price: product.price,
+    url: product.url ?? null,
+    imageUrl: product.imageUrl ?? null,
+    createdAt: product.createdAt.toISOString(),
+    status: product.status ?? 'APPROVED',
+    reviewedAt: product.reviewedAt ? product.reviewedAt.toISOString() : null,
+    reviewedBy: product.reviewedBy ?? null,
+    reviewerNote: product.reviewerNote ?? null,
+    attachmentOriginalName: product.attachmentOriginalName ?? null,
+    attachmentMimeType: product.attachmentMimeType ?? null,
+    attachmentPath: product.attachmentPath ?? null,
+    attachmentSizeBytes: product.attachmentSizeBytes ?? null,
+    hasAttachment: Boolean(product.attachmentPath),
+    accessMode: product.attachmentPath ? 'FILE' : 'EXTERNAL_URL',
+    avgRating,
+    ratingCount: ratings.length,
+    ratings,
+    viewerHasPurchased: Boolean(viewerPurchase),
+    viewerPurchasedAt: viewerPurchase?.purchasedAt ? new Date(viewerPurchase.purchasedAt).toISOString() : null,
+    viewerLastAccessedAt: viewerPurchase?.lastAccessedAt ? new Date(viewerPurchase.lastAccessedAt).toISOString() : null,
+    canReview: Boolean(reviewEligibility && !reviewEligibility.reviewedAt && !viewerOwnsBusiness),
+    reviewPromptAt: reviewEligibility?.promptAt ? new Date(reviewEligibility.promptAt).toISOString() : null,
+    reviewPromptedAt: reviewEligibility?.promptedAt ? new Date(reviewEligibility.promptedAt).toISOString() : null,
+    canModerate: viewerIsAdmin,
+  };
+}
+
+function serializeBusiness(business: any, viewerId: string, options?: { viewerIsAdmin?: boolean }) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
+  const viewerIsAdmin = Boolean(options?.viewerIsAdmin);
   const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
   const treasuryMoney = business.treasuryMoney;
   const startupProducts = business.typeKey === 'startup'
@@ -445,6 +548,13 @@ function serializeBusiness(business: any, viewerId: string) {
   const soldSharePercent = shareholders.reduce((sum: number, shareholder: any) => sum + shareholder.sharePercent, 0);
   const ownerSharePercent = Math.max(0, Math.round((100 - soldSharePercent) * 100) / 100);
   const viewerShareholding = shareholders.find((shareholder: any) => shareholder.user.id === viewerId) ?? null;
+  const formationProducts = business.typeKey === 'formation'
+    ? (business.formationProducts ?? [])
+      .filter((p: any) => viewerIsAdmin || business.ownerId === viewerId || p.status === 'APPROVED')
+      .map((p: any) => serializeFormationProduct(p, viewerId, { viewerIsAdmin, viewerOwnsBusiness: business.ownerId === viewerId }))
+    : [];
+  const allFormationRatings = formationProducts.flatMap((product: any) => product.ratings ?? []);
+  const businessReviewStatus = getBusinessReviewStatus(business, viewerId);
   const suggestedShareAmount = computeBusinessSuggestedShareAmount({
     startingCapital: business.startingCapital,
     treasuryMoney,
@@ -477,6 +587,9 @@ function serializeBusiness(business: any, viewerId: string) {
     members: business.members.map((member: any) => ({
       id: member.id,
       role: member.role,
+      specialty: member.specialty ?? null,
+      isPrimaryLawyer: Boolean(member.isPrimaryLawyer),
+      displayOrder: member.displayOrder ?? 0,
       status: member.status,
       salary: member.salary ?? 0,
       user: member.user,
@@ -527,23 +640,19 @@ function serializeBusiness(business: any, viewerId: string) {
     transferFeeRate: business.typeKey === 'transfer' ? (business.transferFeeRate ?? 2) : undefined,
     formationUrl: business.typeKey === 'formation' ? (business.formationUrl ?? null) : undefined,
     formationPrice: business.typeKey === 'formation' ? (business.formationPrice ?? 500) : undefined,
-    formationProducts: business.typeKey === 'formation' ? (business.formationProducts ?? []).map((p: any) => ({
-      id: p.id,
-      title: p.title,
-      description: p.description ?? null,
-      price: p.price,
-      url: p.url,
-      imageUrl: p.imageUrl ?? null,
-      createdAt: p.createdAt.toISOString(),
-    })) : undefined,
+    formationProducts: business.typeKey === 'formation' ? formationProducts : undefined,
     npcLastCollectedAt: (business.typeKey === 'lemonade' || business.typeKey === 'epicerie')
       ? (business.npcLastCollectedAt ? new Date(business.npcLastCollectedAt).toISOString() : null)
       : undefined,
     level: type?.level ?? 1,
-    avgRating: business.ratings && business.ratings.length > 0
-      ? Math.round((business.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / business.ratings.length) * 10) / 10
-      : null,
-    ratingCount: business.ratings?.length ?? 0,
+    avgRating: business.typeKey === 'formation'
+      ? (allFormationRatings.length > 0
+        ? Math.round((allFormationRatings.reduce((sum: number, r: any) => sum + r.rating, 0) / allFormationRatings.length) * 10) / 10
+        : null)
+      : business.ratings && business.ratings.length > 0
+        ? Math.round((business.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / business.ratings.length) * 10) / 10
+        : null,
+    ratingCount: business.typeKey === 'formation' ? allFormationRatings.length : business.ratings?.length ?? 0,
     ratings: (business.ratings ?? []).map((entry: any) => ({
       id: entry.id,
       rating: entry.rating,
@@ -552,32 +661,113 @@ function serializeBusiness(business: any, viewerId: string) {
       updatedAt: entry.updatedAt.toISOString(),
       user: entry.user,
     })),
+    canRate: business.typeKey === 'formation' ? false : businessReviewStatus.canRate,
+    reviewPromptAt: business.typeKey === 'formation' ? null : businessReviewStatus.reviewPromptAt,
+    reviewPromptedAt: business.typeKey === 'formation' ? null : businessReviewStatus.reviewPromptedAt,
+    supportAgent: business.supportAgent ?? null,
+    supportEnabled: Boolean(business.supportAgentId),
     isStateOwned: business.isStateOwned ?? false,
   };
 }
 
 async function rateBusiness(userId: string, businessId: string, rating: number, comment?: string | null) {
   if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
-    throw new Error('Rating must be an integer between 1 and 5');
+    throw new Error('INVALID_BUSINESS_RATING');
   }
   const normalizedComment = typeof comment === 'string'
     ? comment.trim().slice(0, 500)
     : null;
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, name: true },
+    include: { reviewEligibilities: true },
   });
   if (!business) {
     throw new Error('BUSINESS_NOT_FOUND');
   }
-  await prisma.businessRating.upsert({
-    where: { businessId_userId: { businessId, userId } },
-    update: { rating, comment: normalizedComment || null },
-    create: { businessId, userId, rating, comment: normalizedComment || null },
+  if (business.typeKey === 'formation') {
+    throw new Error('BUSINESS_RATING_NOT_ALLOWED');
+  }
+  const eligibility = getBusinessReviewEligibilityEntry(business, userId);
+  if (!eligibility || business.ownerId === userId) {
+    throw new Error('BUSINESS_RATING_NOT_ALLOWED');
+  }
+  await prisma.$transaction(async (tx) => {
+    await tx.businessRating.upsert({
+      where: { businessId_userId: { businessId, userId } },
+      update: { rating, comment: normalizedComment || null },
+      create: { businessId, userId, rating, comment: normalizedComment || null },
+    });
+    await tx.reviewEligibility.update({
+      where: { id: eligibility.id },
+      data: {
+        reviewedAt: new Date(),
+        promptedAt: eligibility.promptedAt ?? new Date(),
+      },
+    });
   });
   logYouAdmin('business_rate', userId, undefined, business.id, business.name, {
     rating,
     comment: normalizedComment || null,
+  });
+}
+
+export async function rateFormationProduct(userId: string, businessId: string, productId: string, rating: number, comment?: string | null) {
+  if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+    throw new Error('INVALID_BUSINESS_RATING');
+  }
+  const normalizedComment = typeof comment === 'string'
+    ? comment.trim().slice(0, 500)
+    : null;
+  const product = await prisma.formationProduct.findUnique({
+    where: { id: productId },
+    include: {
+      business: {
+        select: { id: true, ownerId: true, typeKey: true, name: true },
+      },
+      reviewEligibilities: true,
+    },
+  });
+  if (!product || product.businessId !== businessId || product.business.typeKey !== 'formation') {
+    throw new Error('FORMATION_PRODUCT_NOT_FOUND');
+  }
+  const eligibility = getFormationReviewEligibilityEntry(product, userId);
+  if (!eligibility || product.business.ownerId === userId) {
+    throw new Error('BUSINESS_RATING_NOT_ALLOWED');
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.formationProductRating.upsert({
+      where: { productId_userId: { productId: product.id, userId } },
+      update: { rating, comment: normalizedComment || null },
+      create: {
+        productId: product.id,
+        businessId,
+        userId,
+        rating,
+        comment: normalizedComment || null,
+      },
+    });
+    await tx.formationProductPurchase.updateMany({
+      where: { userId, productId: product.id },
+      data: {
+        reviewedAt: new Date(),
+        reviewPromptedAt: new Date(),
+      },
+    });
+    await tx.reviewEligibility.update({
+      where: { id: eligibility.id },
+      data: {
+        reviewedAt: new Date(),
+        promptedAt: eligibility.promptedAt ?? new Date(),
+      },
+    });
+  });
+
+  logYouAdmin('business_rate', userId, undefined, businessId, product.title, {
+    rating,
+    comment: normalizedComment || null,
+    productId: product.id,
+    targetType: 'FORMATION_PRODUCT',
   });
 }
 
@@ -673,7 +863,7 @@ export async function getYouState(userId: string) {
     }
   });
 
-  const [players, ownedBusinesses, exploreBusinesses, memberBusinesses, shareholderBusinesses, pendingInvitations, pendingBuyoutOffers, sentBuyoutOffers, sentShareholderProposals, skills] = await Promise.all([
+  const [players, ownedBusinesses, exploreBusinesses, memberBusinesses, shareholderBusinesses, pendingInvitations, pendingBuyoutOffers, sentBuyoutOffers, sentShareholderProposals, skills, viewerUser] = await Promise.all([
     prisma.user.findMany({
       where: {
         isApproved: true,
@@ -789,6 +979,10 @@ export async function getYouState(userId: string) {
       where: { userId },
       orderBy: { createdAt: 'asc' },
     }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { unlockedBusinessLevel: true, isAdmin: true, isSuperAdmin: true },
+    }),
   ]);
 
   const startupBusinessIds = [...ownedBusinesses, ...exploreBusinesses, ...memberBusinesses, ...shareholderBusinesses]
@@ -829,11 +1023,8 @@ export async function getYouState(userId: string) {
     .filter((skill): skill is NonNullable<typeof skill> => Boolean(skill));
   const businessSlots = getBusinessSlots(skills);
 
-  const viewerUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { unlockedBusinessLevel: true },
-  });
   const unlockedBusinessLevel = viewerUser?.unlockedBusinessLevel ?? 0;
+  const viewerIsAdmin = Boolean(viewerUser?.isAdmin || viewerUser?.isSuperAdmin);
 
   return {
     businessTypes: BUSINESS_TYPES,
@@ -872,10 +1063,10 @@ export async function getYouState(userId: string) {
       accuser: c.accuser,
       createdAt: c.createdAt.toISOString(),
     })),
-    ownedBusinesses: ownedBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
-    exploreBusinesses: exploreBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
-    memberBusinesses: memberBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
-    shareholderBusinesses: shareholderBusinessesWithProducts.map((business) => serializeBusiness(business, userId)),
+    ownedBusinesses: ownedBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
+    exploreBusinesses: exploreBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
+    memberBusinesses: memberBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
+    shareholderBusinesses: shareholderBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
   };
 }
 
@@ -1005,11 +1196,12 @@ export async function createBusiness(userId: string, input: { name: string; type
       }),
       prisma.user.findUnique({
         where: { id: userId },
-        select: { unlockedBusinessLevel: true },
+        select: { unlockedBusinessLevel: true, isAdmin: true, isSuperAdmin: true },
       }),
     ]);
+    const bypassBusinessSlotLimit = Boolean(viewer?.isAdmin || viewer?.isSuperAdmin);
     const businessSlots = getBusinessSlots(skills);
-    if (ownedBusinessCount >= businessSlots) {
+    if (!bypassBusinessSlotLimit && ownedBusinessCount >= businessSlots) {
       throw new Error('BUSINESS_SLOT_LIMIT_REACHED');
     }
 
@@ -2466,6 +2658,34 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
       where: { id: business.id },
       data: { treasuryMoney: { increment: item.price } },
     });
+    const existingEligibility = await tx.reviewEligibility.findFirst({
+      where: {
+        userId,
+        businessId: business.id,
+        targetType: 'BUSINESS',
+      },
+    });
+    if (existingEligibility) {
+      await tx.reviewEligibility.update({
+        where: { id: existingEligibility.id },
+        data: {
+          sourceType: 'ITEM_PURCHASE',
+          promptAt: getReviewPromptAt(),
+          promptedAt: null,
+          reviewedAt: null,
+        },
+      });
+    } else {
+      await tx.reviewEligibility.create({
+        data: {
+          userId,
+          businessId: business.id,
+          targetType: 'BUSINESS',
+          sourceType: 'ITEM_PURCHASE',
+          promptAt: getReviewPromptAt(),
+        },
+      });
+    }
   });
 
   await emitSharedBalanceUpdates(prisma, userId);
@@ -4236,9 +4456,89 @@ export async function updateBusinessProfile(
 
 // --- Formation Product System (multi-formation) ---
 
+async function ensureFormationBusinessOwner(userId: string, businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true, name: true },
+  });
+  if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+  return business;
+}
+
+async function writeFormationAttachment(attachment?: {
+  base64Data?: string | null;
+  mimeType?: string | null;
+  fileName?: string | null;
+} | null) {
+  if (!attachment?.base64Data || !attachment?.mimeType) return null;
+  const uploaded = await writeBase64UploadFile({
+    base64Data: attachment.base64Data,
+    mimeType: attachment.mimeType,
+    fileName: attachment.fileName,
+    uploadDir: FORMATION_FILE_UPLOAD_DIR,
+    maxBytes: MAX_FORMATION_FILE_SIZE_BYTES,
+  });
+  if ('error' in uploaded) {
+    if (uploaded.error.startsWith('Unsupported file type')) throw new Error('INVALID_FORMATION_FILE_TYPE');
+    if (uploaded.error.startsWith('File too large')) throw new Error('INVALID_FORMATION_FILE_SIZE');
+    throw new Error('INVALID_FORMATION_FILE');
+  }
+  return {
+    attachmentOriginalName: uploaded.originalName,
+    attachmentMimeType: uploaded.mimeType,
+    attachmentPath: `${FORMATION_FILE_UPLOAD_DIR}/${uploaded.fileName}`,
+    attachmentSizeBytes: uploaded.sizeBytes,
+  };
+}
+
+async function upsertReviewEligibility(input: {
+  userId: string;
+  targetType: 'BUSINESS' | 'FORMATION_PRODUCT' | 'LAWYER';
+  sourceType: string;
+  businessId?: string | null;
+  formationProductId?: string | null;
+  lawyerUserId?: string | null;
+  courtCaseId?: string | null;
+}) {
+  const existing = await prisma.reviewEligibility.findFirst({
+    where: {
+      userId: input.userId,
+      targetType: input.targetType,
+      businessId: input.businessId ?? null,
+      formationProductId: input.formationProductId ?? null,
+      lawyerUserId: input.lawyerUserId ?? null,
+      courtCaseId: input.courtCaseId ?? null,
+    },
+  });
+
+  const payload = {
+    userId: input.userId,
+    businessId: input.businessId ?? null,
+    formationProductId: input.formationProductId ?? null,
+    lawyerUserId: input.lawyerUserId ?? null,
+    courtCaseId: input.courtCaseId ?? null,
+    targetType: input.targetType,
+    sourceType: input.sourceType,
+    promptAt: getReviewPromptAt(),
+    promptedAt: null,
+    reviewedAt: null,
+  };
+
+  if (existing) {
+    return prisma.reviewEligibility.update({
+      where: { id: existing.id },
+      data: payload,
+    });
+  }
+
+  return prisma.reviewEligibility.create({ data: payload });
+}
+
 export async function listFormationProducts(businessId: string) {
   const products = await prisma.formationProduct.findMany({
     where: { businessId },
+    include: BUSINESS_BASE_INCLUDE.formationProducts.include,
     orderBy: { createdAt: 'asc' },
   });
   return products;
@@ -4247,18 +4547,21 @@ export async function listFormationProducts(businessId: string) {
 export async function addFormationProduct(
   userId: string,
   businessId: string,
-  data: { title: string; description?: string; price: number; url: string; imageUrl?: string },
+  data: {
+    title: string;
+    description?: string;
+    price: number;
+    url?: string | null;
+    imageUrl?: string;
+    attachment?: { base64Data?: string | null; mimeType?: string | null; fileName?: string | null } | null;
+  },
 ) {
   if (!data.title?.trim()) throw new Error('INVALID_FORMATION_TITLE');
   if (!Number.isFinite(data.price) || data.price < 0) throw new Error('INVALID_FORMATION_PRICE');
-  if (!data.url?.trim()) throw new Error('INVALID_FORMATION_URL');
-
-  const business = await prisma.business.findUnique({
-    where: { id: businessId },
-    select: { id: true, ownerId: true, typeKey: true },
-  });
-  if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+  const business = await ensureFormationBusinessOwner(userId, businessId);
+  const attachment = await writeFormationAttachment(data.attachment);
+  const normalizedUrl = typeof data.url === 'string' ? data.url.trim() || null : null;
+  if (!normalizedUrl && !attachment) throw new Error('INVALID_FORMATION_URL');
 
   const product = await prisma.formationProduct.create({
     data: {
@@ -4266,8 +4569,13 @@ export async function addFormationProduct(
       title: data.title.trim(),
       description: data.description?.trim() || null,
       price: data.price,
-      url: data.url.trim(),
+      url: normalizedUrl,
       imageUrl: data.imageUrl?.trim() || null,
+      ...attachment,
+      status: 'PENDING',
+      reviewedAt: null,
+      reviewedBy: null,
+      reviewerNote: null,
     },
   });
 
@@ -4275,6 +4583,7 @@ export async function addFormationProduct(
     productId: product.id,
     price: product.price,
     url: product.url,
+    attachmentPath: product.attachmentPath,
   });
 
   return product;
@@ -4284,21 +4593,33 @@ export async function updateFormationProduct(
   userId: string,
   businessId: string,
   productId: string,
-  data: { title?: string; description?: string | null; price?: number; url?: string; imageUrl?: string | null },
+  data: {
+    title?: string;
+    description?: string | null;
+    price?: number;
+    url?: string | null;
+    imageUrl?: string | null;
+    attachment?: { base64Data?: string | null; mimeType?: string | null; fileName?: string | null } | null;
+    removeAttachment?: boolean;
+  },
 ) {
-  const business = await prisma.business.findUnique({
-    where: { id: businessId },
-    select: { id: true, ownerId: true, typeKey: true },
-  });
-  if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+  await ensureFormationBusinessOwner(userId, businessId);
 
   const product = await prisma.formationProduct.findUnique({ where: { id: productId } });
   if (!product || product.businessId !== businessId) throw new Error('FORMATION_PRODUCT_NOT_FOUND');
 
   if (data.price !== undefined && (!Number.isFinite(data.price) || data.price < 0)) throw new Error('INVALID_FORMATION_PRICE');
   if (data.title !== undefined && !data.title.trim()) throw new Error('INVALID_FORMATION_TITLE');
-  if (data.url !== undefined && !data.url.trim()) throw new Error('INVALID_FORMATION_URL');
+  const nextAttachment = data.attachment ? await writeFormationAttachment(data.attachment) : null;
+  const nextUrl = data.url !== undefined ? (data.url?.trim() || null) : product.url;
+  const removingAttachment = Boolean(data.removeAttachment);
+  const willHaveAttachment = nextAttachment ?? (!removingAttachment && product.attachmentPath ? {
+    attachmentOriginalName: product.attachmentOriginalName,
+    attachmentMimeType: product.attachmentMimeType,
+    attachmentPath: product.attachmentPath,
+    attachmentSizeBytes: product.attachmentSizeBytes,
+  } : null);
+  if (!nextUrl && !willHaveAttachment) throw new Error('INVALID_FORMATION_URL');
 
   const updated = await prisma.formationProduct.update({
     where: { id: productId },
@@ -4306,8 +4627,19 @@ export async function updateFormationProduct(
       ...(data.title !== undefined ? { title: data.title.trim() } : {}),
       ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
       ...(data.price !== undefined ? { price: data.price } : {}),
-      ...(data.url !== undefined ? { url: data.url.trim() } : {}),
+      ...(data.url !== undefined ? { url: nextUrl } : {}),
       ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl?.trim() || null } : {}),
+      ...(nextAttachment ?? {}),
+      ...(removingAttachment ? {
+        attachmentOriginalName: null,
+        attachmentMimeType: null,
+        attachmentPath: null,
+        attachmentSizeBytes: null,
+      } : {}),
+      status: 'PENDING',
+      reviewedAt: null,
+      reviewedBy: null,
+      reviewerNote: null,
     },
   });
 
@@ -4316,9 +4648,11 @@ export async function updateFormationProduct(
     previousTitle: product.title,
     previousPrice: product.price,
     previousUrl: product.url,
+    previousAttachmentPath: product.attachmentPath,
     title: updated.title,
     price: updated.price,
     url: updated.url,
+    attachmentPath: updated.attachmentPath,
   });
 
   return updated;
@@ -4352,16 +4686,84 @@ export async function buyFormationProduct(userId: string, businessId: string, pr
   if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
   if (business.ownerId === userId) throw new Error('FORMATION_SELF_BUY_FORBIDDEN');
 
-  const product = await prisma.formationProduct.findUnique({ where: { id: productId } });
+  const product = await prisma.formationProduct.findUnique({
+    where: { id: productId },
+    include: {
+      purchases: {
+        where: { userId },
+        take: 1,
+      },
+    },
+  });
   if (!product || product.businessId !== businessId) throw new Error('FORMATION_PRODUCT_NOT_FOUND');
+  if (product.status !== 'APPROVED') throw new Error('FORMATION_PRODUCT_NOT_APPROVED');
+  if (!product.url && !product.attachmentPath) throw new Error('INVALID_FORMATION_URL');
+
+  const existingPurchase = product.purchases[0] ?? null;
+  if (existingPurchase) {
+    await upsertReviewEligibility({
+      userId,
+      businessId,
+      formationProductId: product.id,
+      targetType: 'FORMATION_PRODUCT',
+      sourceType: 'FORMATION_ACCESS',
+    });
+    return {
+      url: product.url,
+      title: product.title,
+      price: existingPurchase.pricePaid,
+      hasAttachment: Boolean(product.attachmentPath),
+      attachmentOriginalName: product.attachmentOriginalName,
+      attachmentMimeType: product.attachmentMimeType,
+    };
+  }
 
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { money: true, username: true } });
   if (!user || user.money < product.price) throw new Error('INSUFFICIENT_MONEY');
 
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: userId }, data: { money: { decrement: product.price } } }),
-    prisma.business.update({ where: { id: businessId }, data: { treasuryMoney: { increment: product.price } } }),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: userId }, data: { money: { decrement: product.price } } });
+    await tx.business.update({ where: { id: businessId }, data: { treasuryMoney: { increment: product.price } } });
+    await tx.formationProductPurchase.create({
+      data: {
+        userId,
+        businessId,
+        productId: product.id,
+        pricePaid: product.price,
+        reviewPromptAt: getReviewPromptAt(),
+      },
+    });
+    const existingEligibility = await tx.reviewEligibility.findFirst({
+      where: {
+        userId,
+        businessId,
+        formationProductId: product.id,
+        targetType: 'FORMATION_PRODUCT',
+      },
+    });
+    if (existingEligibility) {
+      await tx.reviewEligibility.update({
+        where: { id: existingEligibility.id },
+        data: {
+          sourceType: 'FORMATION_PURCHASE',
+          promptAt: getReviewPromptAt(),
+          promptedAt: null,
+          reviewedAt: null,
+        },
+      });
+    } else {
+      await tx.reviewEligibility.create({
+        data: {
+          userId,
+          businessId,
+          formationProductId: product.id,
+          targetType: 'FORMATION_PRODUCT',
+          sourceType: 'FORMATION_PURCHASE',
+          promptAt: getReviewPromptAt(),
+        },
+      });
+    }
+  });
 
   await logBusinessTransaction(businessId, 'FORMATION_SALE', product.price, `Achat "${product.title}" par ${user.username}`, userId);
 
@@ -4376,6 +4778,367 @@ export async function buyFormationProduct(userId: string, businessId: string, pr
   void grantSkillXp(userId, 'intelligence', Math.max(3, Math.floor(product.price / 100)));
 
   return { url: product.url, title: product.title, price: product.price };
+}
+
+export async function accessFormationProduct(userId: string, businessId: string, productId: string) {
+  const product = await prisma.formationProduct.findUnique({
+    where: { id: productId },
+    include: {
+      business: {
+        select: { id: true, ownerId: true, typeKey: true },
+      },
+      purchases: {
+        where: { userId },
+        take: 1,
+      },
+    },
+  });
+  if (!product || product.businessId !== businessId || product.business.typeKey !== 'formation') {
+    throw new Error('FORMATION_PRODUCT_NOT_FOUND');
+  }
+
+  const canAccess = product.business.ownerId === userId || Boolean(product.purchases[0]);
+  if (!canAccess) throw new Error('FORMATION_ACCESS_FORBIDDEN');
+
+  if (product.purchases[0]) {
+    await prisma.formationProductPurchase.update({
+      where: { id: product.purchases[0].id },
+      data: { lastAccessedAt: new Date() },
+    });
+    await upsertReviewEligibility({
+      userId,
+      businessId,
+      formationProductId: product.id,
+      targetType: 'FORMATION_PRODUCT',
+      sourceType: 'FORMATION_ACCESS',
+    });
+  }
+
+  return {
+    productId: product.id,
+    title: product.title,
+    url: product.url,
+    attachmentOriginalName: product.attachmentOriginalName,
+    attachmentMimeType: product.attachmentMimeType,
+    attachmentPath: product.attachmentPath,
+    hasAttachment: Boolean(product.attachmentPath),
+  };
+}
+
+export async function listPendingFormationProductsForAdmin() {
+  const products = await prisma.formationProduct.findMany({
+    where: {
+      status: 'PENDING',
+      business: {
+        typeKey: 'formation',
+      },
+    },
+    include: {
+      business: {
+        select: {
+          id: true,
+          name: true,
+          ownerId: true,
+          owner: {
+            select: USER_PREVIEW_SELECT,
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  return products.map((product) => ({
+    id: product.id,
+    businessId: product.businessId,
+    title: product.title,
+    description: product.description ?? null,
+    price: product.price,
+    url: product.url ?? null,
+    imageUrl: product.imageUrl ?? null,
+    createdAt: product.createdAt.toISOString(),
+    status: product.status,
+    reviewerNote: product.reviewerNote ?? null,
+    attachmentOriginalName: product.attachmentOriginalName ?? null,
+    attachmentMimeType: product.attachmentMimeType ?? null,
+    attachmentPath: product.attachmentPath ?? null,
+    attachmentSizeBytes: product.attachmentSizeBytes ?? null,
+    business: {
+      id: product.business.id,
+      name: product.business.name,
+      ownerId: product.business.ownerId,
+      owner: product.business.owner,
+    },
+  }));
+}
+
+export async function reviewFormationProduct(
+  reviewerId: string,
+  businessId: string,
+  productId: string,
+  decision: 'approve' | 'reject',
+  reviewerNote?: string | null,
+) {
+  const product = await prisma.formationProduct.findUnique({
+    where: { id: productId },
+    include: {
+      business: {
+        select: { id: true, name: true, typeKey: true, ownerId: true },
+      },
+    },
+  });
+  if (!product || product.businessId !== businessId || product.business.typeKey !== 'formation') {
+    throw new Error('FORMATION_PRODUCT_NOT_FOUND');
+  }
+
+  const reviewed = await prisma.formationProduct.update({
+    where: { id: product.id },
+    data: {
+      status: decision === 'approve' ? 'APPROVED' : 'REJECTED',
+      reviewedAt: new Date(),
+      reviewedBy: reviewerId,
+      reviewerNote: reviewerNote?.trim() || null,
+    },
+  });
+
+  logYouAdmin('formation_product_review', reviewerId, undefined, businessId, reviewed.title, {
+    productId: reviewed.id,
+    ownerId: product.business.ownerId,
+    decision,
+    reviewerNote: reviewerNote?.trim() || null,
+  });
+
+  return reviewed;
+}
+
+export async function markReviewPromptShown(
+  userId: string,
+  input: { businessId?: string; productId?: string },
+) {
+  const eligibility = await prisma.reviewEligibility.findFirst({
+    where: {
+      userId,
+      ...(input.businessId ? { businessId: input.businessId, targetType: 'BUSINESS' } : {}),
+      ...(input.productId ? { formationProductId: input.productId, targetType: 'FORMATION_PRODUCT' } : {}),
+    },
+    orderBy: { updatedAt: 'desc' },
+  });
+  if (!eligibility) return { ok: true };
+  await prisma.reviewEligibility.update({
+    where: { id: eligibility.id },
+    data: { promptedAt: new Date() },
+  });
+  return { ok: true };
+}
+
+export async function setBusinessSupportAgent(userId: string, businessId: string, supportAgentId: string | null) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, name: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  if (supportAgentId) {
+    const agent = await prisma.user.findUnique({
+      where: { id: supportAgentId },
+      select: { id: true, isApproved: true },
+    });
+    if (!agent?.isApproved) throw new Error('TARGET_NOT_FOUND');
+  }
+
+  const updated = await prisma.business.update({
+    where: { id: businessId },
+    data: { supportAgentId: supportAgentId || null },
+    include: { supportAgent: { select: USER_PREVIEW_SELECT } },
+  });
+
+  return {
+    supportAgent: updated.supportAgent ?? null,
+    supportEnabled: Boolean(updated.supportAgentId),
+  };
+}
+
+export async function updateLawFirmMemberMetadata(
+  ownerId: string,
+  businessId: string,
+  memberId: string,
+  data: { specialty?: string | null; isPrimaryLawyer?: boolean; displayOrder?: number },
+) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true },
+  });
+  if (!business || business.typeKey !== 'law_firm') throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== ownerId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  const member = await prisma.businessMember.findUnique({
+    where: { id: memberId },
+    include: { user: { select: USER_PREVIEW_SELECT } },
+  });
+  if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
+
+  const displayOrder = data.displayOrder === undefined ? undefined : Math.max(0, Math.floor(data.displayOrder));
+
+  await prisma.$transaction(async (tx) => {
+    if (data.isPrimaryLawyer) {
+      await tx.businessMember.updateMany({
+        where: { businessId, isPrimaryLawyer: true },
+        data: { isPrimaryLawyer: false },
+      });
+    }
+    await tx.businessMember.update({
+      where: { id: memberId },
+      data: {
+        ...(data.specialty !== undefined ? { specialty: data.specialty?.trim() || null } : {}),
+        ...(data.isPrimaryLawyer !== undefined ? { isPrimaryLawyer: data.isPrimaryLawyer } : {}),
+        ...(displayOrder !== undefined ? { displayOrder } : {}),
+      },
+    });
+  });
+
+  return {
+    memberId,
+    specialty: data.specialty?.trim() || null,
+    isPrimaryLawyer: Boolean(data.isPrimaryLawyer),
+    displayOrder: displayOrder ?? member.displayOrder ?? 0,
+    user: member.user,
+  };
+}
+
+export async function openBusinessSupportConversation(userId: string, businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      id: true,
+      name: true,
+      ownerId: true,
+      supportAgentId: true,
+    },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (!business.supportAgentId) throw new Error('TARGET_NOT_FOUND');
+
+  const participantIds = Array.from(new Set([userId, business.ownerId, business.supportAgentId]));
+  const title = `[${business.name}] Support`;
+  const existing = await prisma.messageConversation.findFirst({
+    where: {
+      businessId,
+      title,
+      participants: { some: { userId } },
+    },
+    include: {
+      participants: {
+        select: { userId: true },
+      },
+    },
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  if (existing) {
+    const existingIds = existing.participants.map((participant) => participant.userId).sort();
+    const expectedIds = [...participantIds].sort();
+    if (existingIds.length === expectedIds.length && existingIds.every((id, index) => id === expectedIds[index])) {
+      return { conversationId: existing.id };
+    }
+  }
+
+  const now = new Date();
+  const conversation = await prisma.messageConversation.create({
+    data: {
+      type: 'GROUP',
+      title,
+      businessId,
+      tagType: 'Professionnel',
+      tagLabel: 'Professionnel',
+      createdById: userId,
+      lastMessageAt: now,
+      participants: {
+        create: participantIds.map((participantId) => ({
+          userId: participantId,
+          role: participantId === business.ownerId ? 'OWNER' : 'MEMBER',
+          lastReadAt: participantId === userId ? now : null,
+        })),
+      },
+      messages: {
+        create: {
+          senderId: null,
+          body: `Support ${business.name} ouvert.`,
+          type: 'SYSTEM',
+        },
+      },
+    },
+    select: { id: true },
+  });
+
+  return { conversationId: conversation.id };
+}
+
+export async function rateLawyerForCase(
+  userId: string,
+  caseId: string,
+  lawyerUserId: string,
+  rating: number,
+  comment?: string | null,
+) {
+  if (rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+    throw new Error('INVALID_BUSINESS_RATING');
+  }
+
+  const courtCase = await prisma.courtCase.findUnique({
+    where: { id: caseId },
+    include: {
+      plaintif: { select: USER_PREVIEW_SELECT },
+      defendant: { select: USER_PREVIEW_SELECT },
+      reviewEligibilities: true,
+    },
+  });
+  if (!courtCase) throw new Error('BUSINESS_NOT_FOUND');
+  if (courtCase.status !== 'CLOSED') throw new Error('BUSINESS_RATING_NOT_ALLOWED');
+
+  const isPlaintiffClient = courtCase.plaintifId === userId && courtCase.plaintiffLawyerId === lawyerUserId && courtCase.plaintiffLawFirmId;
+  const isDefendantClient = courtCase.defendantId === userId && courtCase.defendantLawyerId === lawyerUserId && courtCase.defendantLawFirmId;
+  if (!isPlaintiffClient && !isDefendantClient) throw new Error('BUSINESS_RATING_NOT_ALLOWED');
+
+  const lawFirmBusinessId = (isPlaintiffClient ? courtCase.plaintiffLawFirmId : courtCase.defendantLawFirmId)!;
+  const eligibility = (courtCase.reviewEligibilities ?? []).find((entry: any) => entry.userId === userId && entry.lawyerUserId === lawyerUserId && entry.targetType === 'LAWYER') ?? null;
+  if (!eligibility) throw new Error('BUSINESS_RATING_NOT_ALLOWED');
+
+  const normalizedComment = typeof comment === 'string' ? comment.trim().slice(0, 500) : null;
+
+  await prisma.$transaction(async (tx) => {
+    await tx.lawyerRating.upsert({
+      where: {
+        courtCaseId_authorUserId: {
+          courtCaseId: caseId,
+          authorUserId: userId,
+        },
+      },
+      update: {
+        lawyerUserId,
+        lawFirmBusinessId,
+        rating,
+        comment: normalizedComment || null,
+      },
+      create: {
+        courtCaseId: caseId,
+        authorUserId: userId,
+        lawyerUserId,
+        lawFirmBusinessId,
+        rating,
+        comment: normalizedComment || null,
+      },
+    });
+    await tx.reviewEligibility.update({
+      where: { id: eligibility.id },
+      data: {
+        reviewedAt: new Date(),
+        promptedAt: eligibility.promptedAt ?? new Date(),
+      },
+    });
+  });
+
+  return { ok: true };
 }
 
 // --- Team Management ---

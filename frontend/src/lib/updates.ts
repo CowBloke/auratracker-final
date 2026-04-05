@@ -46,6 +46,21 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-05-clans-war-sidebar',
+    date: '2026-04-05',
+    title: 'Clans — Statut de guerre redessiné',
+    summary: 'Le panneau latéral des clans affiche maintenant clairement le statut de guerre de ton clan et le nombre de guerres actives en cours sur le serveur.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-04-05-clans-war-sidebar-1', text: '**Clans · Mon clan** — Le panneau gauche indique maintenant si tu es sans clan, pas en guerre, ou en guerre active. Si tu es en guerre, tu vois ton adversaire et le score, et tu peux cliquer pour lancer tes parties restantes.' },
+          { id: '2026-04-05-clans-war-sidebar-2', text: '**Clans · Autres guerres** — Un second élément indique le nombre de guerres actives sur le serveur (hors la tienne). Clique dessus pour voir la liste complète et accéder directement à un clan en guerre.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-04-sidebar-cleanup',
     date: '2026-04-04',
     title: 'Barre latérale allégée',
