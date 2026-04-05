@@ -39,6 +39,18 @@ function mergeNotifications(list: Notification[], incoming: Notification[]) {
   return incoming.reduce((current, notification) => upsertNotification(current, notification), list);
 }
 
+async function handleToastNotificationClick(notification: Notification) {
+  if (!notification.link) return;
+  if (!notification.isRead) {
+    try {
+      await notificationsApi.markRead(notification.id);
+    } catch {
+      // Ignore read-state failures here; navigation is the primary action.
+    }
+  }
+  window.location.assign(notification.link);
+}
+
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -165,7 +177,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           return n.isRead || n.isArchived ? current : current + 1;
         });
         if (!n.data?.silent) {
-          toast(n.title, { description: n.body, duration: 5000 });
+          toast(n.title, {
+            description: n.body,
+            duration: 5000,
+            ...(n.link
+              ? {
+                  className: 'cursor-pointer',
+                  onClick: () => {
+                    void handleToastNotificationClick(n);
+                  },
+                }
+              : {}),
+          });
           playNotification();
         }
       });
@@ -257,7 +280,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       socketRef.current?.off('notification:broadcast');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [applyNotificationUpdate, refreshCount, removeNotificationById, user?.id]);
 
   const markRead = useCallback(async (id: string) => {
     try {

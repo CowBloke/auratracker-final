@@ -688,6 +688,52 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
+    const courtConversation = await prisma.messageConversation.findUnique({
+      where: { id: conversationId },
+      select: {
+        courtCaseId: true,
+        participants: {
+          select: {
+            userId: true,
+            courtRole: true,
+          },
+        },
+      },
+    });
+
+    if (courtConversation?.courtCaseId && !req.user?.isAdmin) {
+      const linkedCase = await prisma.courtCase.findUnique({
+        where: { id: courtConversation.courtCaseId },
+        select: {
+          plaintifId: true,
+          defendantId: true,
+          plaintiffLawyerId: true,
+          defendantLawyerId: true,
+        },
+      });
+
+      if (linkedCase) {
+        const needsPlaintiffRepresentation = linkedCase.plaintifId === user.id;
+        const needsDefendantRepresentation = linkedCase.defendantId === user.id;
+
+        if (needsPlaintiffRepresentation || needsDefendantRepresentation) {
+          const hasRepresentation = needsPlaintiffRepresentation
+            ? Boolean(
+              linkedCase.plaintiffLawyerId ||
+              courtConversation.participants.some((entry) => entry.courtRole === 'PUBLIC_DEFENDER_PLAINTIFF'),
+            )
+            : Boolean(
+              linkedCase.defendantLawyerId ||
+              courtConversation.participants.some((entry) => entry.courtRole === 'PUBLIC_DEFENDER_DEFENDANT'),
+            );
+
+          if (!hasRepresentation) {
+            return res.status(403).json({ error: 'Choisis d abord un avocat avant de parler dans cette affaire.' });
+          }
+        }
+      }
+    }
+
     const now = new Date();
     const message = await prisma.$transaction(async (tx) => {
       const createdMessage = await tx.messageConversationMessage.create({

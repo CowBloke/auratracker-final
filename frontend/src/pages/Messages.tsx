@@ -105,6 +105,30 @@ const COURT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
   CLOSED: { label: 'Clôturé', color: 'text-muted-foreground' },
 };
 
+COURT_ROLE_LABELS.DEFENDANT = 'Coupable';
+COURT_ROLE_LABELS.LAWYER_PLAINTIFF = 'Avocat du plaignant';
+COURT_ROLE_LABELS.LAWYER_DEFENDANT = 'Avocat du coupable';
+COURT_ROLE_LABELS.PUBLIC_DEFENDER_PLAINTIFF = 'Defenseur public du plaignant';
+COURT_ROLE_LABELS.PUBLIC_DEFENDER_DEFENDANT = 'Defenseur public du coupable';
+COURT_STATUS_LABELS.DELIBERATION = { label: 'Deliberation', color: 'text-slate-500' };
+
+const getCourtAnonymousSenderLabel = (role: string | null) => {
+  if (!role) return null;
+  return COURT_ROLE_LABELS[role] ?? role;
+};
+
+const getCourtRoleInitials = (role: string | null) => {
+  const label = getCourtAnonymousSenderLabel(role);
+  if (!label) return '?';
+  return label
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((chunk) => chunk[0])
+    .join('')
+    .toUpperCase();
+};
+
 const formatTime = (value: string) => {
   const date = new Date(value);
   if (isToday(date)) return format(date, 'HH:mm');
@@ -293,6 +317,16 @@ export default function MessagesPage() {
     : myCourtSide === 'DEFENDANT'
       ? courtCase?.defendantLawyer ?? null
       : null;
+  const assignedPublicDefenderRole = myCourtSide === 'PLAINTIFF'
+    ? 'PUBLIC_DEFENDER_PLAINTIFF'
+    : myCourtSide === 'DEFENDANT'
+      ? 'PUBLIC_DEFENDER_DEFENDANT'
+      : null;
+  const hasAssignedPublicDefender = Boolean(
+    assignedPublicDefenderRole && selectedConversation?.participants.some((entry) => entry.courtRole === assignedPublicDefenderRole),
+  );
+  const hasCourtRepresentation = !isEligibleCourtClient || Boolean(assignedLawyer || hasAssignedPublicDefender);
+  const mustChooseRepresentationFirst = Boolean(isCourtConversation && isEligibleCourtClient && courtCase?.status === 'OPEN' && !hasCourtRepresentation);
   const selectedIdSafe = selectedConversation?.id ?? null;
   const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
   const supportReactionsEnabled = selectedConversation?.type !== 'SUPPORT';
@@ -588,9 +622,14 @@ export default function MessagesPage() {
     setLawyerRatingComment('');
   }, [showLawyerRatingDialog]);
 
+  useEffect(() => {
+    if (!mustChooseRepresentationFirst || showRepresentationDialog || representationSubmitting) return;
+    void openRepresentationDialog();
+  }, [mustChooseRepresentationFirst, showRepresentationDialog, representationSubmitting]);
+
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleSend = async () => {
-    if (!selectedIdSafe || !draft.trim() || sending) return;
+    if (!selectedIdSafe || !draft.trim() || sending || mustChooseRepresentationFirst) return;
     const body = draft.trim();
     setSending(true);
     setDraft('');
@@ -1161,7 +1200,7 @@ export default function MessagesPage() {
                   <div key={arg.id} className={cn('rounded-xl border p-3 space-y-1', arg.side === 'PLAINTIFF' ? 'border-sky-500/30 bg-sky-500/5' : 'border-red-500/30 bg-red-500/5')}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className={cn('text-[10px] font-semibold uppercase tracking-wide', arg.side === 'PLAINTIFF' ? 'text-sky-500' : 'text-red-500')}>
-                        {arg.side === 'PLAINTIFF' ? 'Plaignant' : 'Défendeur'}
+                        {arg.side === 'PLAINTIFF' ? 'Plaignant' : 'Coupable'}
                       </span>
                       <span className="text-[10px] text-muted-foreground ml-auto">{format(new Date(arg.createdAt), 'dd MMM HH:mm', { locale: fr })}</span>
                     </div>
@@ -1518,70 +1557,35 @@ export default function MessagesPage() {
 
                 {/* Court banner */}
                 {isCourtConversation && courtCase && (
-                  <div className="border-b border-amber-500/20 bg-amber-500/5 px-3 py-2 flex items-center gap-3 flex-wrap">
+                  <div className="border-b border-slate-300/40 bg-slate-500/5 px-3 py-2 flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-1.5">
-                      <Scale className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                      <span className="text-[11px] font-mono font-semibold text-amber-500">#{courtCase.caseNumber}</span>
+                      <Scale className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                      <span className="text-[11px] font-mono font-semibold text-foreground">#{courtCase.caseNumber}</span>
                     </div>
                     <span className={cn('text-[10px] font-semibold uppercase tracking-wide', COURT_STATUS_LABELS[courtCase.status]?.color ?? 'text-muted-foreground')}>
                       {COURT_STATUS_LABELS[courtCase.status]?.label ?? courtCase.status}
                     </span>
                     {courtCase.plaintif && (
-                      <span className="text-[10px] text-sky-500 font-medium">{courtCase.plaintif.username} (plaignant)</span>
+                      <span className="text-[10px] text-sky-500 font-medium">Plaignant</span>
                     )}
                     {courtCase.defendant && (
-                      <span className="text-[10px] text-red-500 font-medium">{courtCase.defendant.username} (défendeur)</span>
+                      <span className="text-[10px] text-red-500 font-medium">Coupable</span>
                     )}
                     {assignedLawyer ? (
                       <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1">
                         <Briefcase className="h-3 w-3 shrink-0 text-emerald-500" />
-                        <span className="text-[10px] font-medium text-foreground">{assignedLawyer.username}</span>
+                        <span className="text-[10px] font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Avocat du plaignant' : 'Avocat du coupable'}</span>
                         <span className="text-[10px] text-muted-foreground">
                           {(assignedLawyerProfile?.specialty ?? 'Avocat generaliste')} · {(assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet prive')}
                         </span>
                       </div>
                     ) : null}
-                    <div className="ml-auto flex items-center gap-1">
-                      {canChooseRepresentation ? (
-                        <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => void openRepresentationDialog()}>
-                          <Briefcase className="h-3 w-3" />{assignedLawyer ? 'Changer avocat' : 'Choisir avocat'}
-                        </Button>
-                      ) : null}
-                      {canRateAssignedLawyer ? (
-                        <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10" onClick={() => setShowLawyerRatingDialog(true)}>
-                          <Star className="h-3 w-3" />Noter l'avocat
-                        </Button>
-                      ) : null}
-                      {(isAdminViewer || myCourtRole === 'PLAINTIFF' || myCourtRole === 'DEFENDANT' || myCourtRole?.startsWith('LAWYER') || myCourtRole?.startsWith('PUBLIC')) && (
-                        <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1"
-                          onClick={() => { setArgumentDraft(''); void loadArguments().then(() => setShowArgumentsPanel(true)); }}>
-                          <FileText className="h-3 w-3" />Plaidoiries
-                        </Button>
-                      )}
-                      {isAdminViewer && (
-                        <>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1" disabled={statusChanging}>
-                                Statut <ChevronDown className="h-2.5 w-2.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {Object.entries(COURT_STATUS_LABELS).map(([s, meta]) => (
-                                <DropdownMenuItem key={s} onClick={() => void handleChangeStatus(s)}
-                                  className={cn(courtCase.status === s && 'bg-muted/60 font-medium')}>
-                                  <span className={meta.color}>{meta.label}</span>
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <Button type="button" variant="outline" size="sm" className="h-6 text-[10px] px-2 gap-1 border-amber-500/40 text-amber-500 hover:bg-amber-500/10"
-                            onClick={() => { setVerdictDraft(courtCase.verdict ?? ''); setSentencingDraft(courtCase.sentencing ?? ''); setShowVerdictPanel(true); }}>
-                            <Gavel className="h-3 w-3" />Verdict
-                          </Button>
-                        </>
-                      )}
-                    </div>
+                    {hasAssignedPublicDefender && !assignedLawyer ? (
+                      <div className="ml-auto flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/10 px-2.5 py-1">
+                        <Shield className="h-3 w-3 shrink-0 text-teal-500" />
+                        <span className="text-[10px] font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Defenseur public du plaignant' : 'Defenseur public du coupable'}</span>
+                      </div>
+                    ) : null}
                   </div>
                 )}
                 {isCourtConversation && courtCase?.verdict && (
@@ -1611,7 +1615,7 @@ export default function MessagesPage() {
                         if (msg.type === 'COURT_SYSTEM') {
                           return (
                             <div key={msg.id} className="flex justify-center py-2">
-                              <span className="flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/8 px-3 py-1 text-[11px] font-medium text-amber-600 shadow-sm">
+                              <span className="flex items-center gap-1.5 rounded-full border border-slate-300/40 bg-background px-3 py-1 text-[11px] font-medium text-foreground shadow-sm">
                                 <Scale className="h-3 w-3 shrink-0" />
                                 {msg.body}
                               </span>
@@ -1641,6 +1645,7 @@ export default function MessagesPage() {
                         const isLast = !sameSenderAsNext;
                         const showDaySeparator = !prevMsg || !isSameCalendarDay(prevMsg.createdAt, msg.createdAt);
                         const showUnreadSeparator = firstUnreadMessageId === msg.id && !isMessagesAtBottom;
+                        const isAnonymousCourtMessage = Boolean(isCourtConversation && msgCourtRole);
                         const showAvatar = !isOwn && selectedConversation.type === 'GROUP' && isLast;
                         const showSender = !isOwn && isFirst && selectedConversation.type === 'GROUP';
                         const reactions = msg.reactions ?? [];
@@ -1672,8 +1677,8 @@ export default function MessagesPage() {
                               <div className="w-6 shrink-0">
                                 {showAvatar && (
                                   <Avatar className="h-6 w-6">
-                                    {msg.sender?.profilePicture ? <AvatarImage src={resolveImageUrl(msg.sender.profilePicture)} /> : null}
-                                    <AvatarFallback className="text-[9px]">{getInitials(msg.sender?.username)}</AvatarFallback>
+                                    {!isAnonymousCourtMessage && msg.sender?.profilePicture ? <AvatarImage src={resolveImageUrl(msg.sender.profilePicture)} /> : null}
+                                    <AvatarFallback className="text-[9px]">{isAnonymousCourtMessage ? getCourtRoleInitials(msgCourtRole) : getInitials(msg.sender?.username)}</AvatarFallback>
                                   </Avatar>
                                 )}
                               </div>
@@ -1682,7 +1687,7 @@ export default function MessagesPage() {
                               {showSender && (
                                 <div className="mb-0.5 px-1 flex items-center gap-1.5">
                                   <p className={cn('text-[11px] font-semibold', courtColors ? courtColors.sender : undefined)} style={!courtColors && msg.sender?.usernameColor ? { color: msg.sender.usernameColor } : undefined}>
-                                    {msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système')}
+                                    {isAnonymousCourtMessage ? getCourtAnonymousSenderLabel(msgCourtRole) : (msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système'))}
                                   </p>
                                   {msgCourtRole && courtColors && (
                                     <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', courtColors.badge)}>
@@ -1772,6 +1777,53 @@ export default function MessagesPage() {
 
                 {/* Input bar */}
                 <div className="border-t border-border/60 bg-card px-3 py-2.5 sm:px-4">
+                  {isCourtConversation && (
+                    <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+                      {canChooseRepresentation ? (
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" onClick={() => void openRepresentationDialog()}>
+                          <Briefcase className="h-3 w-3" />
+                          {hasCourtRepresentation ? 'Changer avocat' : 'Choisir avocat'}
+                        </Button>
+                      ) : null}
+                      {canRateAssignedLawyer ? (
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10" onClick={() => setShowLawyerRatingDialog(true)}>
+                          <Star className="h-3 w-3" />
+                          Noter l'avocat
+                        </Button>
+                      ) : null}
+                      {(isAdminViewer || myCourtRole === 'PLAINTIFF' || myCourtRole === 'DEFENDANT' || myCourtRole?.startsWith('LAWYER') || myCourtRole?.startsWith('PUBLIC')) && (
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1"
+                          onClick={() => { setArgumentDraft(''); void loadArguments().then(() => setShowArgumentsPanel(true)); }}>
+                          <FileText className="h-3 w-3" />
+                          Plaidoiries
+                        </Button>
+                      )}
+                      {isAdminViewer && (
+                        <>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" disabled={statusChanging}>
+                                Statut <ChevronDown className="h-2.5 w-2.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              {Object.entries(COURT_STATUS_LABELS).map(([s, meta]) => (
+                                <DropdownMenuItem key={s} onClick={() => void handleChangeStatus(s)}
+                                  className={cn(courtCase?.status === s && 'bg-muted/60 font-medium')}>
+                                  <span className={meta.color}>{meta.label}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-slate-400/40 text-foreground hover:bg-muted/60"
+                            onClick={() => { setVerdictDraft(courtCase?.verdict ?? ''); setSentencingDraft(courtCase?.sentencing ?? ''); setShowVerdictPanel(true); }}>
+                            <Gavel className="h-3 w-3" />
+                            Verdict
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
                   {/* Admin court role selector */}
                   {isCourtConversation && isAdminViewer && (
                     <div className="mb-2 flex items-center gap-2 flex-wrap">
@@ -1796,17 +1848,22 @@ export default function MessagesPage() {
                       </span>
                     </div>
                   )}
+                  {mustChooseRepresentationFirst && (
+                    <div className="mb-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+                      Choisis d'abord un avocat avant de parler dans cette affaire.
+                    </div>
+                  )}
                   <div className="flex w-full items-end gap-2">
                     <div className="flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 focus-within:border-primary/40 focus-within:bg-background transition-colors">
                       <textarea ref={textareaRef} value={draft} rows={1}
                         onChange={(e) => { setDraft(e.target.value); e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 112) + 'px'; }}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-                        placeholder={`Message ${selectedConversation.displayName}`}
+                        placeholder={mustChooseRepresentationFirst ? 'Choisis un avocat avant d envoyer un message' : `Message ${selectedConversation.displayName}`}
                         className="w-full resize-none bg-transparent text-sm leading-5 outline-none placeholder:text-muted-foreground/50"
-                        maxLength={1000} style={{ minHeight: '20px' }} />
+                        maxLength={1000} style={{ minHeight: '20px' }} disabled={mustChooseRepresentationFirst} />
                     </div>
                     <Button type="button" size="icon" className="h-9 w-9 shrink-0 rounded-xl"
-                      disabled={sending || !draft.trim()} onClick={() => void handleSend()}>
+                      disabled={sending || !draft.trim() || mustChooseRepresentationFirst} onClick={() => void handleSend()}>
                       <SendHorizonal className="h-4 w-4" />
                     </Button>
                   </div>

@@ -3,6 +3,7 @@ import { Building2, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 import { type YouBusiness, type YouPlayer, type YouState, youApi } from '@/services/api';
 import { BUSINESS_ICON_MAP } from '../constants';
 import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '../components/modals';
@@ -35,12 +36,15 @@ function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b:
 }
 
 export function TravailTab({ data, players, currentUserId, onReload }: { data: YouState; players: YouPlayer[]; currentUserId: string; onReload: (refreshBalance?: boolean) => Promise<void> }) {
+  const { user } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteBusinessId, setInviteBusinessId] = useState<string | null>(null);
   const [managedBusinessId, setManagedBusinessId] = useState<string | null>(null);
   const [cancellingOfferId, setCancellingOfferId] = useState<string | null>(null);
-  const canCreateBusiness = data.ownedBusinesses.length < data.businessSlots;
+  const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
+  const canCreateBusiness = isAdmin || data.ownedBusinesses.length < data.businessSlots;
   const unlockedLevel = data.unlockedBusinessLevel ?? 0;
+  const slotLabel = isAdmin ? 'Illimite' : `${data.ownedBusinesses.length}/${data.businessSlots} slot(s)`;
   const allBusinesses = [...data.ownedBusinesses, ...data.memberBusinesses, ...data.shareholderBusinesses];
   const inviteBusiness = inviteBusinessId ? allBusinesses.find((business) => business.id === inviteBusinessId) ?? null : null;
   const managedBusiness = managedBusinessId ? allBusinesses.find((business) => business.id === managedBusinessId) ?? null : null;
@@ -70,12 +74,12 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
         <div className="space-y-4">
           <SectionTitle>Actions</SectionTitle>
           <ActionCard>
-            <ActionRow icon={Building2} label="Creer une entreprise" sub={`${data.ownedBusinesses.length}/${data.businessSlots} slot(s) · Niveau debloque : ${unlockedLevel}`} iconBg="bg-emerald-400/15" iconColor="text-emerald-400" onClick={() => { if (canCreateBusiness) setCreateOpen(true); else toast.error('Monte Affaires pour debloquer un nouveau slot business.'); }} />
+            <ActionRow icon={Building2} label="Creer une entreprise" sub={`${slotLabel} · Niveau debloque : ${unlockedLevel}`} iconBg="bg-emerald-400/15" iconColor="text-emerald-400" onClick={() => { if (canCreateBusiness) setCreateOpen(true); else toast.error('Monte Affaires pour debloquer un nouveau slot business.'); }} />
           </ActionCard>
         </div>
         <div className="space-y-6">
           <div className="space-y-4">
-            <SectionTitle>Mes entreprises ({data.ownedBusinesses.length}/{data.businessSlots})</SectionTitle>
+            <SectionTitle>Mes entreprises ({isAdmin ? `${data.ownedBusinesses.length}/Illimite` : `${data.ownedBusinesses.length}/${data.businessSlots}`})</SectionTitle>
             {data.ownedBusinesses.length === 0
               ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise creee. Ouvre-en une depuis cette page pour utiliser ton argent reel du site.</CardContent></Card>
               : data.ownedBusinesses.map((business) => <BusinessCard key={business.id} business={business} onOpen={(entry) => setManagedBusinessId(entry.id)} />)

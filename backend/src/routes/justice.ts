@@ -149,7 +149,7 @@ router.post('/plaintes', authMiddleware, async (req: AuthRequest, res: Response)
       }
       const defendant = await prisma.user.findUnique({ where: { id: defendantId }, select: { id: true } });
       if (!defendant) {
-        return res.status(404).json({ error: 'Joueur défendeur introuvable.' });
+        return res.status(404).json({ error: 'Joueur coupable introuvable.' });
       }
     }
 
@@ -212,6 +212,13 @@ router.get('/plaintes', authMiddleware, async (req: AuthRequest, res: Response) 
         }
       }
       whereClause.courtId = courtId;
+      const courtTypeCheck = await prisma.business.findUnique({
+        where: { id: courtId },
+        select: { typeKey: true },
+      });
+      if (!courtTypeCheck || courtTypeCheck.typeKey !== 'supreme_court') {
+        return res.status(404).json({ error: 'Cour suprême introuvable.' });
+      }
     } else if (isAdmin) {
       // Admins can see all
     } else {
@@ -252,7 +259,7 @@ router.patch('/plaintes/:id/accept', authMiddleware, async (req: AuthRequest, re
     });
     if (!plainte) return res.status(404).json({ error: 'Plainte introuvable.' });
     if (plainte.status !== 'PENDING') return res.status(400).json({ error: 'Cette plainte a déjà été traitée.' });
-    if (!plainte.defendantId) return res.status(400).json({ error: 'Une plainte doit avoir un défendeur pour être acceptée.' });
+    if (!plainte.defendantId) return res.status(400).json({ error: 'Une plainte doit avoir un coupable pour être acceptée.' });
 
     // Get all admins to add as judges
     const admins = await prisma.user.findMany({
@@ -349,7 +356,7 @@ router.patch('/plaintes/:id/accept', authMiddleware, async (req: AuthRequest, re
         data: {
           conversationId: conversation.id,
           senderId: null,
-          body: `⚖️ L'affaire ${caseNumber} est ouverte. Plainte déposée par ${plainte.plaintif?.username ?? 'Plaignant'} contre ${plainte.defendant?.username ?? 'Défendeur'}. Les deux parties peuvent exposer leurs arguments. Des avocats peuvent être désignés.`,
+          body: `⚖️ L'affaire ${caseNumber} est ouverte. Le plaignant et le coupable doivent choisir leur representation avant de prendre la parole.`,
           type: 'COURT_SYSTEM',
         },
       });
@@ -584,7 +591,7 @@ router.post('/cases/:id/representation', authMiddleware, async (req: AuthRequest
           data: {
             conversationId: courtCase.conversationId,
             senderId: null,
-            body: `⚖️ ${user.username} a désigné ${isPlaintiff ? 'un avocat (plaignant)' : 'un avocat (défense)'} : le cabinet "${lawFirm.name}".`,
+            body: `⚖️ ${isPlaintiff ? 'Le plaignant' : 'Le coupable'} a désigné ${isPlaintiff ? "l'avocat du plaignant" : "l'avocat du coupable"} via le cabinet "${lawFirm.name}".`,
             type: 'COURT_SYSTEM',
           },
         });
@@ -631,7 +638,7 @@ router.post('/cases/:id/representation', authMiddleware, async (req: AuthRequest
           data: {
             conversationId: courtCase.conversationId,
             senderId: null,
-            body: `⚖️ ${user.username} a demandé un défenseur public ${isPlaintiff ? '(plaignant)' : '(défense)'}. Les juges peuvent intervenir dans ce rôle.`,
+            body: `⚖️ ${isPlaintiff ? 'Le plaignant' : 'Le coupable'} a demandé un défenseur public. Les juges peuvent intervenir dans ce rôle.`,
             type: 'COURT_SYSTEM',
           },
         });

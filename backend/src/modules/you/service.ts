@@ -1021,10 +1021,12 @@ export async function getYouState(userId: string) {
   const serializedSkills = skills
     .map((skill) => serializeSkill(skill))
     .filter((skill): skill is NonNullable<typeof skill> => Boolean(skill));
-  const businessSlots = getBusinessSlots(skills);
-
-  const unlockedBusinessLevel = viewerUser?.unlockedBusinessLevel ?? 0;
   const viewerIsAdmin = Boolean(viewerUser?.isAdmin || viewerUser?.isSuperAdmin);
+  const baseBusinessSlots = getBusinessSlots(skills);
+  const businessSlots = viewerIsAdmin
+    ? Math.max(baseBusinessSlots, ownedBusinessesWithProducts.length + 1)
+    : baseBusinessSlots;
+  const unlockedBusinessLevel = viewerUser?.unlockedBusinessLevel ?? 0;
 
   return {
     businessTypes: BUSINESS_TYPES,

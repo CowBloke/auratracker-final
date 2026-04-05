@@ -461,7 +461,7 @@ function BusinessInteractionModal({
                               <p className="text-sm font-semibold truncate">{plainte.title}</p>
                               <p className="text-[11px] text-muted-foreground">
                                 Par <span className="text-sky-400">{plainte.plaintif?.username ?? '?'}</span>
-                                {plainte.defendant && <> contre <span className="text-red-400">{plainte.defendant.username}</span></>}
+                                {plainte.defendant && <> contre <span className="text-red-400">{plainte.defendant.username}</span> <span>(coupable)</span></>}
                               </p>
                             </div>
                             <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-500">
@@ -1322,7 +1322,7 @@ function FilePlainteModal({
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Défendeur (optionnel)</p>
+            <p className="text-xs font-medium text-muted-foreground">Coupable (optionnel)</p>
             {selectedPlayer ? (
               <div className="flex items-center gap-2 rounded-xl border border-border/40 bg-muted/10 px-3 py-2">
                 <span className="flex-1 text-sm font-medium">{selectedPlayer.username}</span>
