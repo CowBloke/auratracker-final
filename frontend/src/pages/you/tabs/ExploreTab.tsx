@@ -113,7 +113,15 @@ function getBusinessListStats(business: YouBusiness) {
   ];
 }
 
-function BusinessHeader({ business, userId }: { business: YouBusiness; userId: string }) {
+function BusinessHeader({
+  business,
+  userId,
+  onOpenReviews,
+}: {
+  business: YouBusiness;
+  userId: string;
+  onOpenReviews?: () => void;
+}) {
   const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
   const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
   return (
@@ -124,6 +132,17 @@ function BusinessHeader({ business, userId }: { business: YouBusiness; userId: s
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-semibold">{business.name}</p>
+          {onOpenReviews ? (
+            <button
+              type="button"
+              onClick={onOpenReviews}
+              className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-2 py-0.5 text-[11px] font-medium text-amber-400 transition-colors hover:bg-muted/20"
+            >
+              <Star className="h-3 w-3 fill-amber-400" />
+              <span>{business.avgRating?.toFixed(1) ?? '--'}</span>
+              <span className="text-muted-foreground/70">({business.ratingCount})</span>
+            </button>
+          ) : null}
           {business.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}
           {isNewBusiness(business) ? <Pill label="New" color="bg-rose-400/15 text-rose-300" /> : null}
           {business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}
@@ -295,13 +314,6 @@ function BusinessInteractionModal({
   const hasPendingApplication = business.pendingInvitations.some((invitation) => invitation.employee.id === userId);
   const canApply = !isOwned && !isEmployee && !hasPendingApplication && business.hiring;
   const profit = business.monthlyRevenue - business.monthlyExpenses;
-  const formationComments = business.typeKey === 'formation'
-    ? (business.formationProducts ?? [])
-      .flatMap((product) => (product.ratings ?? [])
-        .filter((entry) => entry.comment && entry.comment.trim().length > 0)
-        .map((entry) => ({ ...entry, productTitle: product.title })))
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    : [];
   const pendingFormationProducts = business.typeKey === 'formation'
     ? (business.formationProducts ?? []).filter((product) => product.status === 'PENDING')
     : [];
@@ -352,7 +364,11 @@ function BusinessInteractionModal({
           {/* Header */}
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
-              <BusinessHeader business={business} userId={userId} />
+              <BusinessHeader
+                business={business}
+                userId={userId}
+                onOpenReviews={!business.isStateOwned && business.typeKey !== 'formation' ? onShowReviews : undefined}
+              />
             </div>
             {isAdmin ? (
               <Button
@@ -637,79 +653,32 @@ function BusinessInteractionModal({
                 {stats.map((s) => <StatTile key={s.label} label={s.label} value={s.value} color={s.color} />)}
               </div>
 
-              {!business.isStateOwned ? (
-                <div className="space-y-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold">{business.typeKey === 'formation' ? 'Avis des formations' : 'Avis clients'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {business.avgRating !== null
-                          ? `${business.avgRating.toFixed(1)}/5 · ${business.ratingCount} avis`
-                          : 'Aucun avis pour le moment'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 text-amber-400">
-                      <Star className="h-4 w-4 fill-amber-400" />
-                      <span className="text-sm font-semibold">{business.avgRating?.toFixed(1) ?? '--'}</span>
-                    </div>
-                  </div>
+              {!business.isStateOwned && !isOwned && business.typeKey !== 'formation' ? (
+                <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
                   <div className="flex gap-2">
-                    {business.typeKey === 'formation' ? (
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => onAction('formation')}>
-                        <GraduationCap className="mr-2 h-4 w-4" />Catalogue
-                      </Button>
-                    ) : (
-                      <Button variant="outline" size="sm" className="flex-1" onClick={onShowReviews}>
-                        <MessageSquare className="mr-2 h-4 w-4" />Avis
-                      </Button>
-                    )}
-                    {!isOwned && business.typeKey !== 'formation' ? (
-                      <Button size="sm" className="flex-1" onClick={onRate} disabled={!business.canRate}>
-                        Donner un avis
-                      </Button>
-                    ) : null}
+                    <Button variant="outline" size="sm" className="flex-1" onClick={onShowReviews}>
+                      <MessageSquare className="mr-2 h-4 w-4" />Avis
+                    </Button>
+                    <Button size="sm" className="flex-1" onClick={onRate} disabled={!business.canRate}>
+                      Donner un avis
+                    </Button>
                   </div>
-                  {!isOwned && business.typeKey !== 'formation' && !business.canRate ? (
-                    <p className="text-xs text-muted-foreground">
+                  {!business.canRate ? (
+                    <p className="mt-3 text-xs text-muted-foreground">
                       La note se debloque apres une interaction avec cet etablissement.
                     </p>
                   ) : null}
-                  {business.typeKey === 'formation' ? (
-                    <p className="text-xs text-muted-foreground">
-                      Chaque produit de formation possede sa propre note et sa propre liste d'avis.
-                    </p>
-                  ) : null}
+                </div>
+              ) : null}
 
-                  {formationComments.length > 0 ? (
-                    <div className="space-y-2">
-                      {formationComments.slice(0, 5).map((entry) => (
-                        <div key={entry.id} className="rounded-xl border border-border/40 bg-background/60 px-3 py-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-medium">{entry.user.username}</p>
-                            <span className="flex items-center gap-1 text-xs font-semibold text-amber-400">
-                              <Star className="h-3.5 w-3.5 fill-amber-400" />
-                              {entry.rating}/5
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {new Date(entry.updatedAt).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </p>
-                          {'productTitle' in entry ? <p className="mt-1 text-[11px] text-amber-300">{entry.productTitle}</p> : null}
-                          <p className="mt-2 text-sm text-foreground/90">{entry.comment}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {business.typeKey === 'formation'
-                        ? 'Pas encore de commentaire visible pour ces produits.'
-                        : 'Pas encore de commentaire visible pour cet etablissement.'}
-                    </p>
-                  )}
+              {!business.isStateOwned && business.typeKey === 'formation' ? (
+                <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => onAction('formation')}>
+                    <GraduationCap className="mr-2 h-4 w-4" />Catalogue
+                  </Button>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Chaque produit de formation possede sa propre note et sa propre liste d'avis dans le catalogue.
+                  </p>
                 </div>
               ) : null}
 
