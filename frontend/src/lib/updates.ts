@@ -46,6 +46,23 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-05-explore-ux',
+    date: '2026-04-05',
+    title: 'Explorateur & Formations — UX améliorée',
+    summary: 'Plusieurs améliorations visuelles dans l\'explorateur de businesses, le catalogue de formations et le panel de gestion des équipes (cabinets d\'avocats).',
+    sections: [
+      {
+        category: 'IMPROVEMENT',
+        items: [
+          { id: '2026-04-05-explore-ux-1', text: '**Explorateur · Note** — Le bouton "Donner un avis" disparaît du bas de la fiche. À la place, un **+** s\'affiche directement à côté de la pastille de note. Si tu n\'as pas encore interagi avec le business, survole le + pour voir quand la note se débloque.' },
+          { id: '2026-04-05-explore-ux-2', text: '**Explorateur · Formations** — Le bouton "Catalogue" a été remplacé par un bloc action cohérent avec les autres actions disponibles sur la fiche.' },
+          { id: '2026-04-05-explore-ux-3', text: '**Catalogue formations · Avis** — Les avis produit s\'affichent désormais comme une pastille étoile compacte (identique à la fiche principale), avec un + pour noter directement.' },
+          { id: '2026-04-05-explore-ux-4', text: '**Gérer l\'équipe · Cabinets d\'avocats** — La section "Profil avocat" est maintenant clairement délimitée avec une icône, des champs étiquetés et la case "Avocat principal" plus lisible. Les rôles s\'affichent en français.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-05-clans-war-sidebar',
     date: '2026-04-05',
     title: 'Clans — Statut de guerre redessiné',

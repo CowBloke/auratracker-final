@@ -14,6 +14,7 @@ import {
   Landmark,
   MessageSquare,
   PiggyBank,
+  Plus,
   Scale,
   Search,
   ShieldAlert,
@@ -47,6 +48,7 @@ import { Input, ModalWrap, Pill, SectionTitle } from '../components/ui';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { withRouteError } from '../utils';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 function formatMoney(n: number) {
   return `${n.toLocaleString('fr-FR')} EUR`;
@@ -117,10 +119,14 @@ function BusinessHeader({
   business,
   userId,
   onOpenReviews,
+  onRate,
+  canRate,
 }: {
   business: YouBusiness;
   userId: string;
   onOpenReviews?: () => void;
+  onRate?: () => void;
+  canRate?: boolean;
 }) {
   const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
   const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
@@ -142,6 +148,28 @@ function BusinessHeader({
               <span>{business.avgRating?.toFixed(1) ?? '--'}</span>
               <span className="text-muted-foreground/70">({business.ratingCount})</span>
             </button>
+          ) : null}
+          {onRate ? (
+            canRate ? (
+              <button
+                type="button"
+                onClick={onRate}
+                className="inline-flex items-center justify-center rounded-full border border-border/40 bg-muted/10 px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted/20 hover:text-foreground"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex cursor-default items-center justify-center rounded-full border border-border/30 bg-muted/5 px-1.5 py-0.5 text-muted-foreground/40">
+                    <Plus className="h-3 w-3" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[200px] text-center text-xs">
+                  La note se débloque après une interaction avec cet établissement
+                </TooltipContent>
+              </Tooltip>
+            )
           ) : null}
           {business.verified ? <Pill label="Verifie" color="bg-emerald-400/15 text-emerald-400" /> : null}
           {isNewBusiness(business) ? <Pill label="New" color="bg-rose-400/15 text-rose-300" /> : null}
@@ -368,6 +396,8 @@ function BusinessInteractionModal({
                 business={business}
                 userId={userId}
                 onOpenReviews={!business.isStateOwned && business.typeKey !== 'formation' ? onShowReviews : undefined}
+                onRate={!business.isStateOwned && !isOwned && business.typeKey !== 'formation' ? onRate : undefined}
+                canRate={business.canRate}
               />
             </div>
             {isAdmin ? (
@@ -654,32 +684,20 @@ function BusinessInteractionModal({
               </div>
 
               {!business.isStateOwned && !isOwned && business.typeKey !== 'formation' ? (
-                <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1" onClick={onShowReviews}>
-                      <MessageSquare className="mr-2 h-4 w-4" />Avis
-                    </Button>
-                    <Button size="sm" className="flex-1" onClick={onRate} disabled={!business.canRate}>
-                      Donner un avis
-                    </Button>
-                  </div>
-                  {!business.canRate ? (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      La note se debloque apres une interaction avec cet etablissement.
-                    </p>
-                  ) : null}
-                </div>
+                <Button variant="outline" size="sm" className="w-full" onClick={onShowReviews}>
+                  <MessageSquare className="mr-2 h-4 w-4" />Voir les avis
+                </Button>
               ) : null}
 
               {!business.isStateOwned && business.typeKey === 'formation' ? (
-                <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
-                  <Button variant="outline" size="sm" className="w-full" onClick={() => onAction('formation')}>
-                    <GraduationCap className="mr-2 h-4 w-4" />Catalogue
-                  </Button>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Chaque produit de formation possede sa propre note et sa propre liste d'avis dans le catalogue.
-                  </p>
-                </div>
+                <ActionButton
+                  icon={GraduationCap}
+                  label="Catalogue des formations"
+                  sub="Chaque produit possède sa propre note et liste d'avis."
+                  tone="bg-amber-400/15 text-amber-400"
+                  primary
+                  onClick={() => onAction('formation')}
+                />
               ) : null}
 
               {business.isShared ? (

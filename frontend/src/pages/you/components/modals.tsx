@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
   CreditCard, Download, Edit2, ExternalLink, GraduationCap, Landmark, Loader2, Percent,
-  Plus, Sparkles, Trash2, TrendingUp, UserPlus, Users, Wallet, X,
+  Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -1578,7 +1578,7 @@ export function ManageTeamModal({
         }),
         'Impossible de modifier le profil avocat.',
       );
-      toast.success('Profil avocat mis Ã  jour');
+      toast.success('Profil avocat mis à jour');
       await onSubmitted();
     } finally {
       setUpdatingLawyerId(null);
@@ -1614,7 +1614,7 @@ export function ManageTeamModal({
                       <Pill label={invitation.initiatedByRole === 'EMPLOYER' ? 'Offre envoyee' : 'Candidature'} color="bg-violet-400/15 text-violet-300" />
                       <Pill label={`${invitation.salary.toLocaleString('fr-FR')} / jour`} color="bg-emerald-400/15 text-emerald-300" />
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">Role: {invitation.role}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Rôle : {{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[invitation.role] ?? invitation.role}</p>
                     {invitation.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{invitation.message}"</p> : null}
                     {!invitation.needsViewerAcceptance ? (
                       <p className="mt-1 text-xs text-muted-foreground/70">En attente de validation par {invitation.waitingOn === 'EMPLOYEE' ? "l'employe" : invitation.waitingOn === 'EMPLOYER' ? "l'employeur" : "les deux parties"}.</p>
@@ -1644,7 +1644,7 @@ export function ManageTeamModal({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium">{member.user.username}</p>
-                  <Pill label={member.role} color="bg-violet-400/15 text-violet-400" />
+                  <Pill label={{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[member.role] ?? member.role} color="bg-violet-400/15 text-violet-400" />
                   {isLawFirm && member.isPrimaryLawyer ? <Pill label="Avocat principal" color="bg-amber-400/15 text-amber-300" /> : null}
                 </div>
                 <div className="mt-2 flex items-center gap-2">
@@ -1668,35 +1668,55 @@ export function ManageTeamModal({
                   </Button>
                 </div>
                 {isLawFirm ? (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_110px_auto]">
-                    <Input
-                      value={specialtyInputs[member.id] ?? ''}
-                      onChange={(e) => setSpecialtyInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
-                      className="h-8 text-xs"
-                      placeholder="SpÃ©cialitÃ©"
-                    />
-                    <Input
-                      type="number"
-                      min={0}
-                      value={displayOrderInputs[member.id] ?? '0'}
-                      onChange={(e) => setDisplayOrderInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
-                      className="h-8 text-xs"
-                      placeholder="Ordre"
-                    />
-                    <label className="flex items-center gap-2 rounded-md border border-border/40 px-3 text-xs">
+                  <div className="mt-3 rounded-xl border border-indigo-400/20 bg-indigo-400/5 px-3 py-3 space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <Scale className="h-3.5 w-3.5 text-indigo-300" />
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-indigo-300">Profil avocat</span>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Spécialité</p>
+                        <Input
+                          value={specialtyInputs[member.id] ?? ''}
+                          onChange={(e) => setSpecialtyInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
+                          className="h-8 text-xs"
+                          placeholder="ex: Droit pénal"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Ordre d'affichage</p>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={displayOrderInputs[member.id] ?? '0'}
+                          onChange={(e) => setDisplayOrderInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
+                          className="h-8 text-xs"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <label className="flex cursor-pointer select-none items-center gap-2 text-xs">
                       <input
                         type="checkbox"
                         checked={primaryLawyerInputs[member.id] ?? false}
                         onChange={(e) => setPrimaryLawyerInputs((prev) => ({ ...prev, [member.id]: e.target.checked }))}
+                        className="rounded"
                       />
-                      Principal
+                      <Star className="h-3.5 w-3.5 text-amber-400" />
+                      <span className="font-medium text-amber-300">Avocat principal</span>
+                      <span className="text-muted-foreground/50">— mis en avant sur le cabinet</span>
                     </label>
-                  </div>
-                ) : null}
-                {isLawFirm ? (
-                  <div className="mt-2">
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void saveLawyerProfile(member.id)} disabled={updatingLawyerId !== null}>
-                      {updatingLawyerId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Sauver profil avocat'}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-full text-xs border-indigo-400/30 text-indigo-300 hover:bg-indigo-500/10"
+                      onClick={() => void saveLawyerProfile(member.id)}
+                      disabled={updatingLawyerId !== null}
+                    >
+                      {updatingLawyerId === member.id
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <><Check className="mr-1 h-3 w-3" />Sauvegarder</>
+                      }
                     </Button>
                   </div>
                 ) : null}
@@ -2415,28 +2435,31 @@ export function FormationCatalogModal({
                     </div>
                   ) : null}
 
-                  <div className="rounded-xl border border-border/40 bg-background/60 px-3 py-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold">Avis produit</p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {product.avgRating !== null && product.avgRating !== undefined
-                            ? `${product.avgRating.toFixed(1)}/5 - ${ratingCount} avis`
-                            : 'Aucun avis pour le moment'}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold text-amber-400">{product.avgRating?.toFixed(1) ?? '--'}</span>
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => onShowProductReviews?.(product.id)} disabled={!onShowProductReviews}>
-                        Avis
-                      </Button>
-                      {!isOwnerPreview ? (
-                        <Button size="sm" className="flex-1" onClick={() => onRateProduct?.(product.id)} disabled={!product.canReview || !onRateProduct}>
-                          Donner un avis
-                        </Button>
-                      ) : null}
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onShowProductReviews?.(product.id)}
+                      disabled={!onShowProductReviews}
+                      className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-2 py-0.5 text-[11px] font-medium text-amber-400 transition-colors hover:bg-muted/20 disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      <Star className="h-3 w-3 fill-amber-400" />
+                      <span>{product.avgRating?.toFixed(1) ?? '--'}</span>
+                      <span className="text-muted-foreground/70">({ratingCount})</span>
+                    </button>
+                    {!isOwnerPreview ? (
+                      product.canReview ? (
+                        <button
+                          type="button"
+                          onClick={() => onRateProduct?.(product.id)}
+                          disabled={!onRateProduct}
+                          className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/20 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      ) : hasPurchased ? (
+                        <span className="text-[10px] text-muted-foreground/60">Note dispo après consultation</span>
+                      ) : null
+                    ) : null}
                   </div>
 
                   {canAccess ? (
@@ -2461,9 +2484,6 @@ export function FormationCatalogModal({
                     </Button>
                   )}
 
-                  {!isOwnerPreview && !product.canReview && hasPurchased ? (
-                    <p className="text-xs text-muted-foreground">Ton avis sera disponible apres consultation de la formation.</p>
-                  ) : null}
                 </div>
               </div>
             );
