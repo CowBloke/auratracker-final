@@ -527,7 +527,7 @@ function BusinessInteractionModal({
                   <div className="space-y-2">
                     {[{
                       user: business.owner,
-                      specialty: 'AssociÃ© gÃ©rant',
+                      specialty: 'Associé gérant',
                       isPrimaryLawyer: true,
                       displayOrder: -1,
                     }, ...business.members]
@@ -537,7 +537,7 @@ function BusinessInteractionModal({
                           <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-sm font-semibold">{lawyer.user.username}</p>
-                              <p className="text-xs text-muted-foreground">{(lawyer as any).specialty || 'Avocat gÃ©nÃ©raliste'} · {business.name}</p>
+                              <p className="text-xs text-muted-foreground">{(lawyer as any).specialty || 'Avocat généraliste'} · {business.name}</p>
                             </div>
                             {(lawyer as any).isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
                           </div>
@@ -682,12 +682,6 @@ function BusinessInteractionModal({
               <div className="space-y-2">
                 {stats.map((s) => <StatTile key={s.label} label={s.label} value={s.value} color={s.color} />)}
               </div>
-
-              {!business.isStateOwned && !isOwned && business.typeKey !== 'formation' ? (
-                <Button variant="outline" size="sm" className="w-full" onClick={onShowReviews}>
-                  <MessageSquare className="mr-2 h-4 w-4" />Voir les avis
-                </Button>
-              ) : null}
 
               {!business.isStateOwned && business.typeKey === 'formation' ? (
                 <ActionButton

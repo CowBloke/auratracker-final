@@ -1517,6 +1517,7 @@ export function ManageTeamModal({
   const [displayOrderInputs, setDisplayOrderInputs] = useState<Record<string, string>>({});
   const [primaryLawyerInputs, setPrimaryLawyerInputs] = useState<Record<string, boolean>>({});
   const [updatingLawyerId, setUpdatingLawyerId] = useState<string | null>(null);
+  const [configuringId, setConfiguringId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -1534,6 +1535,7 @@ export function ManageTeamModal({
       setSpecialtyInputs(specialties);
       setDisplayOrderInputs(displayOrders);
       setPrimaryLawyerInputs(primaryLawyers);
+      setConfiguringId(null);
     }
   }, [open, business.members]);
 
@@ -1637,101 +1639,130 @@ export function ManageTeamModal({
           Aucun membre dans cette équipe.
         </div>
       ) : (
-        <div className="max-h-96 space-y-2 overflow-y-auto">
-          {activeMembers.map((member) => (
-            <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
-              <UserAvatar player={member.user} className="h-9 w-9 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-medium">{member.user.username}</p>
-                  <Pill label={{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[member.role] ?? member.role} color="bg-violet-400/15 text-violet-400" />
-                  {isLawFirm && member.isPrimaryLawyer ? <Pill label="Avocat principal" color="bg-amber-400/15 text-amber-300" /> : null}
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={salaryInputs[member.id] ?? '0'}
-                    onChange={(e) => setSalaryInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
-                    className="h-7 w-24 text-xs"
-                    placeholder="Salaire €/j"
-                  />
-                  <span className="text-xs text-muted-foreground">€/jour</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs"
-                    onClick={() => void saveSalary(member.id)}
-                    disabled={updatingSalaryId !== null}
-                  >
-                    OK
-                  </Button>
-                </div>
-                {isLawFirm ? (
-                  <div className="mt-3 rounded-xl border border-indigo-400/20 bg-indigo-400/5 px-3 py-3 space-y-3">
-                    <div className="flex items-center gap-1.5">
-                      <Scale className="h-3.5 w-3.5 text-indigo-300" />
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-indigo-300">Profil avocat</span>
+        <div className="max-h-[32rem] space-y-2 overflow-y-auto">
+          {activeMembers.map((member) => {
+            const isConfiguring = configuringId === member.id;
+            return (
+              <div key={member.id} className="rounded-xl border border-border/40 bg-muted/10">
+                {/* Summary row */}
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <UserAvatar player={member.user} className="h-9 w-9 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="text-sm font-medium">{member.user.username}</p>
+                      <Pill label={{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[member.role] ?? member.role} color="bg-violet-400/15 text-violet-400" />
+                      {isLawFirm && member.isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Spécialité</p>
-                        <Input
-                          value={specialtyInputs[member.id] ?? ''}
-                          onChange={(e) => setSpecialtyInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
-                          className="h-8 text-xs"
-                          placeholder="ex: Droit pénal"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Ordre d'affichage</p>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={displayOrderInputs[member.id] ?? '0'}
-                          onChange={(e) => setDisplayOrderInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
-                          className="h-8 text-xs"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                    <label className="flex cursor-pointer select-none items-center gap-2 text-xs">
-                      <input
-                        type="checkbox"
-                        checked={primaryLawyerInputs[member.id] ?? false}
-                        onChange={(e) => setPrimaryLawyerInputs((prev) => ({ ...prev, [member.id]: e.target.checked }))}
-                        className="rounded"
-                      />
-                      <Star className="h-3.5 w-3.5 text-amber-400" />
-                      <span className="font-medium text-amber-300">Avocat principal</span>
-                      <span className="text-muted-foreground/50">— mis en avant sur le cabinet</span>
-                    </label>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{(member.salary ?? 0).toLocaleString('fr-FR')} €/jour{isLawFirm && member.specialty ? ` · ${member.specialty}` : ''}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant={isConfiguring ? 'default' : 'outline'}
+                      className="h-8 text-xs"
+                      onClick={() => setConfiguringId(isConfiguring ? null : member.id)}
+                    >
+                      {isConfiguring ? <ChevronRight className="h-3.5 w-3.5 rotate-90" /> : <Edit2 className="h-3.5 w-3.5" />}
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-7 w-full text-xs border-indigo-400/30 text-indigo-300 hover:bg-indigo-500/10"
-                      onClick={() => void saveLawyerProfile(member.id)}
-                      disabled={updatingLawyerId !== null}
+                      className="h-8 border-red-400/30 text-red-300 hover:bg-red-500/10"
+                      onClick={() => void sack(member.id)}
+                      disabled={sackingId !== null}
                     >
-                      {updatingLawyerId === member.id
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : <><Check className="mr-1 h-3 w-3" />Sauvegarder</>
-                      }
+                      <X className="h-3.5 w-3.5" />
                     </Button>
+                  </div>
+                </div>
+
+                {/* Expand: configure panel */}
+                {isConfiguring ? (
+                  <div className="space-y-4 border-t border-border/40 px-4 py-4">
+                    {/* Salary */}
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">Salaire</p>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          value={salaryInputs[member.id] ?? '0'}
+                          onChange={(e) => setSalaryInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
+                          className="h-8 w-28 text-xs"
+                          placeholder="0"
+                        />
+                        <span className="text-xs text-muted-foreground">€/jour</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs"
+                          onClick={() => void saveSalary(member.id)}
+                          disabled={updatingSalaryId !== null}
+                        >
+                          {updatingSalaryId === member.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Law firm profile */}
+                    {isLawFirm ? (
+                      <div className="space-y-3 rounded-xl border border-indigo-400/20 bg-indigo-400/5 px-3 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <Scale className="h-3.5 w-3.5 text-indigo-300" />
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-indigo-300">Profil avocat</span>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Spécialité</p>
+                            <Input
+                              value={specialtyInputs[member.id] ?? ''}
+                              onChange={(e) => setSpecialtyInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
+                              className="h-8 text-xs"
+                              placeholder="ex: Droit pénal"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Ordre d'affichage</p>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={displayOrderInputs[member.id] ?? '0'}
+                              onChange={(e) => setDisplayOrderInputs((prev) => ({ ...prev, [member.id]: e.target.value }))}
+                              className="h-8 text-xs"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                        <label className="flex cursor-pointer select-none items-center gap-2 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={primaryLawyerInputs[member.id] ?? false}
+                            onChange={(e) => setPrimaryLawyerInputs((prev) => ({ ...prev, [member.id]: e.target.checked }))}
+                            className="rounded"
+                          />
+                          <Star className="h-3.5 w-3.5 text-amber-400" />
+                          <span className="font-medium text-amber-300">Avocat principal</span>
+                          <span className="text-muted-foreground/50">— mis en avant sur le cabinet</span>
+                        </label>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 w-full text-xs border-indigo-400/30 text-indigo-300 hover:bg-indigo-500/10"
+                          onClick={() => void saveLawyerProfile(member.id)}
+                          disabled={updatingLawyerId !== null}
+                        >
+                          {updatingLawyerId === member.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <><Check className="mr-1 h-3 w-3" />Sauvegarder</>
+                          }
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 shrink-0 border-red-400/30 text-red-300 hover:bg-red-500/10"
-                onClick={() => void sack(member.id)}
-                disabled={sackingId !== null}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </ModalWrap>
