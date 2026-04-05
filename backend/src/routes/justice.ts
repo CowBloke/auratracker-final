@@ -20,7 +20,6 @@ const LAW_FIRM_INCLUDE: any = {
     },
     orderBy: [{ isPrimaryLawyer: 'desc' }, { displayOrder: 'asc' }, { joinedAt: 'asc' }],
   },
-  lawyerRatings: true,
 };
 
 const COURT_CASE_INCLUDE = {
@@ -978,6 +977,27 @@ router.get('/law-firms', authMiddleware, async (req: AuthRequest, res: Response)
       orderBy: { createdAt: 'asc' },
     });
 
+    const lawFirmRatings = await prisma.lawyerRating.groupBy({
+      by: ['lawFirmBusinessId'],
+      _avg: { rating: true },
+      _count: { _all: true },
+      where: {
+        lawFirmBusinessId: {
+          in: lawFirms.map((firm) => firm.id),
+        },
+      },
+    });
+
+    const ratingsByLawFirmId = new Map(
+      lawFirmRatings.map((entry) => [
+        entry.lawFirmBusinessId,
+        {
+          avgRating: entry._avg.rating ?? null,
+          ratingCount: entry._count._all ?? 0,
+        },
+      ]),
+    );
+
     res.json({
       lawFirms: lawFirms.map((f) => ({
         id: f.id,
@@ -988,10 +1008,8 @@ router.get('/law-firms', authMiddleware, async (req: AuthRequest, res: Response)
         owner: f.owner,
         memberCount: f.members.length,
         satisfaction: f.satisfaction,
-        avgRating: ((f.lawyerRatings ?? []) as any[]).length
-          ? ((f.lawyerRatings ?? []) as any[]).reduce((sum, rating) => sum + rating.rating, 0) / ((f.lawyerRatings ?? []) as any[]).length
-          : null,
-        ratingCount: ((f.lawyerRatings ?? []) as any[]).length,
+        avgRating: ratingsByLawFirmId.get(f.id)?.avgRating ?? null,
+        ratingCount: ratingsByLawFirmId.get(f.id)?.ratingCount ?? 0,
         lawyers: [
           {
             userId: f.ownerId,
