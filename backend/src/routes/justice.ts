@@ -18,7 +18,7 @@ const LAW_FIRM_INCLUDE: any = {
     include: {
       user: { select: USER_PREVIEW_SELECT },
     },
-    orderBy: [{ isPrimaryLawyer: 'desc' }, { displayOrder: 'asc' }, { joinedAt: 'asc' }],
+    orderBy: [{ isPrimaryLawyer: 'desc' }, { displayOrder: 'asc' }, { createdAt: 'asc' }],
   },
 };
 

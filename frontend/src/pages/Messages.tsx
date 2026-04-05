@@ -129,6 +129,9 @@ const getCourtRoleInitials = (role: string | null) => {
     .toUpperCase();
 };
 
+const isAnonymousCourtRole = (role: string | null) =>
+  role === 'JUDGE' || role === 'PUBLIC_DEFENDER_PLAINTIFF' || role === 'PUBLIC_DEFENDER_DEFENDANT';
+
 const formatTime = (value: string) => {
   const date = new Date(value);
   if (isToday(date)) return format(date, 'HH:mm');
@@ -326,10 +329,23 @@ export default function MessagesPage() {
     assignedPublicDefenderRole && selectedConversation?.participants.some((entry) => entry.courtRole === assignedPublicDefenderRole),
   );
   const hasCourtRepresentation = !isEligibleCourtClient || Boolean(assignedLawyer || hasAssignedPublicDefender);
-  const mustChooseRepresentationFirst = Boolean(isCourtConversation && isEligibleCourtClient && courtCase?.status === 'OPEN' && !hasCourtRepresentation);
   const selectedIdSafe = selectedConversation?.id ?? null;
   const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
   const supportReactionsEnabled = selectedConversation?.type !== 'SUPPORT';
+  const currentMessages = detail?.messages ?? [];
+  const hasRequestedPublicDefender = Boolean(
+    isCourtConversation && myCourtSide && currentMessages.some((message) =>
+      message.type === 'COURT_SYSTEM' &&
+      message.body.includes(myCourtSide === 'PLAINTIFF' ? 'Le plaignant a demandé un défenseur public' : 'Le coupable a demandé un défenseur public'),
+    ),
+  );
+  const mustChooseRepresentationFirst = Boolean(
+    isCourtConversation &&
+    isEligibleCourtClient &&
+    courtCase?.status === 'OPEN' &&
+    !hasCourtRepresentation &&
+    !hasRequestedPublicDefender,
+  );
   const scrollMessagesToBottom = () => {
     const viewport = messagesScrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
     if (!viewport) return;
@@ -902,7 +918,6 @@ export default function MessagesPage() {
     ? selectedConversation.participants.find((e) => e.user.id !== user?.id)?.user
     : null;
 
-  const currentMessages = detail?.messages ?? [];
   const viewerLastReadAt =
     selectedConversation?.type === 'SUPPORT'
       ? null
@@ -1645,7 +1660,7 @@ export default function MessagesPage() {
                         const isLast = !sameSenderAsNext;
                         const showDaySeparator = !prevMsg || !isSameCalendarDay(prevMsg.createdAt, msg.createdAt);
                         const showUnreadSeparator = firstUnreadMessageId === msg.id && !isMessagesAtBottom;
-                        const isAnonymousCourtMessage = Boolean(isCourtConversation && msgCourtRole);
+                        const isAnonymousCourtMessage = Boolean(isCourtConversation && isAnonymousCourtRole(msgCourtRole));
                         const showAvatar = !isOwn && selectedConversation.type === 'GROUP' && isLast;
                         const showSender = !isOwn && isFirst && selectedConversation.type === 'GROUP';
                         const reactions = msg.reactions ?? [];
@@ -1689,7 +1704,7 @@ export default function MessagesPage() {
                                   <p className={cn('text-[11px] font-semibold', courtColors ? courtColors.sender : undefined)} style={!courtColors && msg.sender?.usernameColor ? { color: msg.sender.usernameColor } : undefined}>
                                     {isAnonymousCourtMessage ? getCourtAnonymousSenderLabel(msgCourtRole) : (msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système'))}
                                   </p>
-                                  {msgCourtRole && courtColors && (
+                                  {msgCourtRole && courtColors && !isAnonymousCourtMessage && (
                                     <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', courtColors.badge)}>
                                       {COURT_ROLE_LABELS[msgCourtRole] ?? msgCourtRole}
                                     </span>
