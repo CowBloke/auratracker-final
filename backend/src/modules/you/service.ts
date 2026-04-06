@@ -202,6 +202,22 @@ function getLoanDueDateFromEntry(loan: { decidedAt: Date | null; createdAt: Date
   return dueDate;
 }
 
+export function isBusinessManagerSync(business: any, userId: string) {
+  if (business.ownerId === userId) return true;
+  if (!business.members) return false;
+  return business.members.some((m: any) => 
+    m.userId === userId && ['associé', 'associée', 'associe', 'associee', 'partner'].includes((m.role || '').toLowerCase())
+  );
+}
+
+export async function isBusinessManager(businessId: string, userId: string, businessOwnerId?: string): Promise<boolean> {
+  if (businessOwnerId && businessOwnerId === userId) return true;
+  const members = await prisma.businessMember.findMany({
+    where: { businessId, userId }
+  });
+  return members.some(m => ['associé', 'associée', 'associe', 'associee', 'partner'].includes((m.role || '').toLowerCase()));
+}
+
 export async function grantSkillXp(userId: string, skillKey: YouSkillKey, xpAmount: number) {
   if (xpAmount <= 0) return;
   try {
@@ -529,7 +545,7 @@ function serializeFormationProduct(product: any, viewerId: string, options?: { v
 function serializeBusiness(business: any, viewerId: string, options?: { viewerIsAdmin?: boolean }) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
   const viewerIsAdmin = Boolean(options?.viewerIsAdmin);
-  const ownerKind = business.ownerId === viewerId ? 'you' : 'player';
+  const ownerKind = isBusinessManagerSync(business, viewerId) ? 'you' : 'player';
   const treasuryMoney = business.treasuryMoney;
   const startupProducts = business.typeKey === 'startup'
     ? business.startupProducts.map((product: any) => serializeStartupProduct(product))
@@ -1926,7 +1942,7 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
     throw new Error('BUSINESS_LOAN_NOT_FOUND');
   }
 
-  if (loan.business.ownerId !== userId) {
+  if (!(await isBusinessManager(loan.businessId, userId, loan.business.ownerId))) {
     throw new Error('BUSINESS_LOAN_REVIEW_FORBIDDEN');
   }
 
@@ -2594,7 +2610,7 @@ export async function respondToBusinessShareProposal(userId: string, proposalId:
 }
 
 async function handleCollectNpcAction(userId: string, business: any, _input: unknown) {
-  if (business.ownerId !== userId) {
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) {
     throw new Error('BUSINESS_COLLECT_FORBIDDEN');
   }
 
@@ -2777,7 +2793,7 @@ export async function createBusinessShareBuybackOffer(
     throw new Error('BUSINESS_NOT_FOUND');
   }
 
-  if (business.ownerId !== userId) {
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) {
     throw new Error('SHARE_BUYBACK_FORBIDDEN');
   }
 
@@ -2996,7 +3012,7 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
   const decidedAt = new Date();
   const isBusinessOwnerSellOffer = offer.ownerId === offer.business.ownerId;
 
-  if (isBusinessOwnerSellOffer && (offer.ownerId !== userId || offer.business.ownerId !== userId)) {
+  if (isBusinessOwnerSellOffer && (offer.ownerId !== userId || !(await isBusinessManager(offer.businessId, userId, offer.business.ownerId)))) {
     throw new Error('BUYOUT_OFFER_REVIEW_FORBIDDEN');
   }
 
@@ -3806,7 +3822,11 @@ export async function suspectCheating(userId: string, relationshipId: string) {
   if (existingAccusation) throw new Error('CHEATING_ACCUSATION_ALREADY_PENDING');
 
   const mistressRelationship = await prisma.relationship.findFirst({
-    where: { status: 'MISTRESS', OR: [{ userAId: accusedId }, { userBId: accusedId }] },
+    where: { 
+      id: { not: relationshipId },
+      status: { in: ['MISTRESS', 'DATING', 'MARRIED'] },
+      OR: [{ userAId: accusedId }, { userBId: accusedId }] 
+    },
   });
 
   if (mistressRelationship) {
@@ -3931,6 +3951,7 @@ export async function deleteBusiness(requestUserId: string, businessId: string) 
     where: { id: businessId },
     include: {
       owner: { select: USER_PREVIEW_SELECT },
+      bankAccounts: true,
     },
   });
 
@@ -3942,16 +3963,35 @@ export async function deleteBusiness(requestUserId: string, businessId: string) 
     where: { id: requestUserId },
     select: { isAdmin: true },
   });
-  const isOwner = business.ownerId === requestUserId;
+  const isOwner = await isBusinessManager(businessId, requestUserId, business.ownerId);
   const isAdmin = Boolean(requester?.isAdmin);
 
   if (!isOwner && !isAdmin) {
     throw new Error('BUSINESS_LIQUIDATION_FORBIDDEN');
   }
 
-  await prisma.business.delete({
-    where: { id: businessId },
+  await prisma.$transaction(async (tx) => {
+    // Refund users their bank deposits when a bank is liquidated
+    if (business.bankAccounts && business.bankAccounts.length > 0) {
+      for (const account of business.bankAccounts) {
+        if (account.balance > 0) {
+          await tx.user.update({
+            where: { id: account.userId },
+            data: { money: { increment: account.balance } },
+          });
+        }
+      }
+    }
+
+    await tx.business.delete({
+      where: { id: businessId },
+    });
   });
+
+  const refundedUserIds = business.bankAccounts?.filter(a => a.balance > 0).map(a => a.userId) ?? [];
+  if (refundedUserIds.length > 0) {
+    await emitSharedBalanceUpdatesForUserIds(prisma, refundedUserIds);
+  }
 
   if (isAdmin && !isOwner) {
     await createNotification({
@@ -3982,7 +4022,7 @@ export async function buyLivretEpargneUpgrade(userId: string, businessId: string
   });
 
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('BUSINESS_UPGRADE_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_UPGRADE_FORBIDDEN');
   if (business.typeKey !== 'bank') throw new Error('BUSINESS_UPGRADE_UNAVAILABLE');
   if (business.livretEpargneUnlocked) throw new Error('UPGRADE_ALREADY_OWNED');
   if (business.treasuryMoney < LIVRET_EPARGNE_COST) throw new Error('UPGRADE_INSUFFICIENT_FUNDS');
@@ -4013,7 +4053,7 @@ export async function setLoanRate(userId: string, businessId: string, rate: numb
   });
 
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('BANK_RATE_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BANK_RATE_FORBIDDEN');
   if (business.typeKey !== 'bank') throw new Error('BUSINESS_NOT_FOUND');
 
   await prisma.business.update({
@@ -4045,7 +4085,7 @@ export async function updateBusinessMenu(userId: string, businessId: string, men
   });
 
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('UPDATE_MENU_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('UPDATE_MENU_FORBIDDEN');
   if (business.typeKey !== 'restaurant' && business.typeKey !== 'lemonade' && business.typeKey !== 'epicerie') {
     throw new Error('BUSINESS_CANNOT_HAVE_MENU');
   }
@@ -4069,7 +4109,7 @@ export async function setTransferFeeRate(userId: string, businessId: string, rat
   });
 
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('TRANSFER_FEE_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('TRANSFER_FEE_FORBIDDEN');
   if (business.typeKey !== 'transfer') throw new Error('BUSINESS_NOT_FOUND');
 
   await prisma.business.update({
@@ -4104,7 +4144,7 @@ export async function getBusinessTransactions(userId: string, businessId: string
     select: { id: true, ownerId: true },
   });
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('BUSINESS_NOT_FOUND');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_NOT_FOUND');
 
   const transactions = await prisma.businessTransaction.findMany({
     where: { businessId },
@@ -4225,7 +4265,7 @@ export async function repayLoan(userId: string, loanId: string) {
   });
 
   if (!loan) throw new Error('BUSINESS_LOAN_NOT_FOUND');
-  if (loan.business.ownerId !== userId) throw new Error('BUSINESS_LOAN_REVIEW_FORBIDDEN');
+  if (!(await isBusinessManager(loan.businessId, userId, loan.business.ownerId))) throw new Error('BUSINESS_LOAN_REVIEW_FORBIDDEN');
   if (loan.status !== 'ACTIVE') throw new Error('LOAN_NOT_ACTIVE');
 
   const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
@@ -4411,7 +4451,7 @@ export async function setFormationDetails(userId: string, businessId: string, fo
     select: { id: true, name: true, ownerId: true, typeKey: true },
   });
   if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('FORMATION_EDIT_FORBIDDEN');
 
   await prisma.business.update({
     where: { id: businessId },
@@ -4432,7 +4472,7 @@ export async function buyFormation(userId: string, businessId: string) {
     select: { id: true, name: true, ownerId: true, typeKey: true, formationPrice: true, formationUrl: true },
   });
   if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId === userId) throw new Error('FORMATION_SELF_BUY_FORBIDDEN');
+  if (await isBusinessManager(businessId, userId, business.ownerId)) throw new Error('FORMATION_SELF_BUY_FORBIDDEN');
   if (!business.formationUrl) throw new Error('FORMATION_URL_NOT_SET');
 
   const price = business.formationPrice ?? 500;
@@ -4471,7 +4511,7 @@ export async function updateBusinessProfile(
     select: { id: true, ownerId: true, name: true, description: true, logoUrl: true },
   });
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
 
   const updated = await prisma.business.update({
     where: { id: businessId },
@@ -4502,7 +4542,7 @@ async function ensureFormationBusinessOwner(userId: string, businessId: string) 
     select: { id: true, ownerId: true, typeKey: true, name: true },
   });
   if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('FORMATION_EDIT_FORBIDDEN');
   return business;
 }
 
@@ -4552,6 +4592,10 @@ async function upsertReviewEligibility(input: {
     },
   });
 
+  if (existing) {
+    return existing;
+  }
+
   const payload = {
     userId: input.userId,
     businessId: input.businessId ?? null,
@@ -4564,13 +4608,6 @@ async function upsertReviewEligibility(input: {
     promptedAt: null,
     reviewedAt: null,
   };
-
-  if (existing) {
-    return prisma.reviewEligibility.update({
-      where: { id: existing.id },
-      data: payload,
-    });
-  }
 
   return prisma.reviewEligibility.create({ data: payload });
 }
@@ -4704,7 +4741,7 @@ export async function deleteFormationProduct(userId: string, businessId: string,
     select: { id: true, ownerId: true, typeKey: true },
   });
   if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('FORMATION_EDIT_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('FORMATION_EDIT_FORBIDDEN');
 
   const product = await prisma.formationProduct.findUnique({ where: { id: productId } });
   if (!product || product.businessId !== businessId) throw new Error('FORMATION_PRODUCT_NOT_FOUND');
@@ -4724,7 +4761,7 @@ export async function buyFormationProduct(userId: string, businessId: string, pr
     select: { id: true, ownerId: true, typeKey: true },
   });
   if (!business || business.typeKey !== 'formation') throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId === userId) throw new Error('FORMATION_SELF_BUY_FORBIDDEN');
+  if (await isBusinessManager(businessId, userId, business.ownerId)) throw new Error('FORMATION_SELF_BUY_FORBIDDEN');
 
   const product = await prisma.formationProduct.findUnique({
     where: { id: productId },
@@ -4837,7 +4874,8 @@ export async function accessFormationProduct(userId: string, businessId: string,
     throw new Error('FORMATION_PRODUCT_NOT_FOUND');
   }
 
-  const canAccess = product.business.ownerId === userId || Boolean(product.purchases[0]);
+  const isManager = await isBusinessManager(businessId, userId, product.business.ownerId);
+  const canAccess = isManager || Boolean(product.purchases[0]);
   if (!canAccess) throw new Error('FORMATION_ACCESS_FORBIDDEN');
 
   if (product.purchases[0]) {
@@ -4977,7 +5015,7 @@ export async function setBusinessSupportAgent(userId: string, businessId: string
     select: { id: true, ownerId: true, name: true },
   });
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== userId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
 
   if (supportAgentId) {
     const agent = await prisma.user.findUnique({
@@ -5010,7 +5048,7 @@ export async function updateLawFirmMemberMetadata(
     select: { id: true, ownerId: true, typeKey: true },
   });
   if (!business || business.typeKey !== 'law_firm') throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== ownerId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, ownerId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
 
   const member = await prisma.businessMember.findUnique({
     where: { id: memberId },
@@ -5189,7 +5227,7 @@ export async function updateMemberProfile(ownerId: string, businessId: string, m
     select: { id: true, ownerId: true },
   });
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== ownerId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, ownerId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
 
   const member = await prisma.businessMember.findUnique({ where: { id: memberId } });
   if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
@@ -5207,7 +5245,7 @@ export async function updateMemberSalary(ownerId: string, businessId: string, me
     select: { id: true, ownerId: true },
   });
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== ownerId) throw new Error('BUSINESS_INVITE_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, ownerId, business.ownerId))) throw new Error('BUSINESS_INVITE_FORBIDDEN');
 
   const member = await prisma.businessMember.findUnique({
     where: { id: memberId },
@@ -5239,7 +5277,7 @@ export async function sackMember(ownerId: string, businessId: string, memberId: 
     select: { id: true, ownerId: true },
   });
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
-  if (business.ownerId !== ownerId) throw new Error('BUSINESS_INVITE_FORBIDDEN');
+  if (!(await isBusinessManager(business.id, ownerId, business.ownerId))) throw new Error('BUSINESS_INVITE_FORBIDDEN');
 
   const member = await prisma.businessMember.findUnique({
     where: { id: memberId },
@@ -5387,3 +5425,5 @@ export async function adminResetBusinessUnlockLevels() {
   await prisma.user.updateMany({ data: { unlockedBusinessLevel: 0 } });
   return { ok: true };
 }
+
+
