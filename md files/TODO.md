@@ -43,6 +43,9 @@
 - niveau xp
 - carte
 - expliciter chnagement de business
+- niveau de clan
+- effet au hover marketplace
+- lockblast placement fix
 
 Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 
