@@ -587,6 +587,8 @@ export const youApi = {
     api.post<{ result: { recipientId: string; amount: number; fee: number; debited: number } }>(`/you/businesses/${businessId}/actions/transfer`, data),
   createBuyoutOffer: (businessId: string, data: { amount: number; message?: string }) =>
     api.post<{ offer: YouBusinessBuyoutOffer }>(`/you/businesses/${businessId}/buyout-offers`, data),
+  createShareBuybackOffer: (businessId: string, data: { shareholderId: string; amount: number; message?: string }) =>
+    api.post<{ offer: YouBusinessBuyoutOffer }>(`/you/businesses/${businessId}/share-buyback-offers`, data),
   createShareholderProposal: (businessId: string, data: { sharePercent: number; amount: number; message?: string }) =>
     api.post<{ proposal: YouBusinessShareProposal }>(`/you/businesses/${businessId}/shareholder-proposals`, data),
   respondToBuyoutOffer: (offerId: string, decision: 'accept' | 'reject') =>
