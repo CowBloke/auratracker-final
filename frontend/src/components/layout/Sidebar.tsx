@@ -5,6 +5,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   Gamepad2,
+  Map,
   Trophy,
   Users,
   Flag,
@@ -95,6 +96,7 @@ const youNavItems = [
   { tab: 'travail',  label: 'Travail',         icon: Briefcase      },
   { tab: 'social',   label: 'Social',          icon: Users          },
   { tab: 'explore',  label: 'Explore',         icon: BarChart3      },
+  { tab: 'carte',    label: 'Carte',            icon: Map            },
   { tab: 'finance',  label: 'Finance',          icon: Landmark       },
 ];
 

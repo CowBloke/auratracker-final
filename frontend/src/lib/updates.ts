@@ -46,6 +46,22 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-06-carte-ville',
+    date: '2026-04-06',
+    title: 'Carte de la ville',
+    summary: "Un onglet Carte permet de voir tous les businesses de la ville sur une carte interactive organisée par quartier.",
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-04-06-carte-1', text: "**Carte · Nouvel onglet** — Visualise tous les businesses de tous les joueurs sur une carte de la ville, organisée par quartier thématique." },
+          { id: '2026-04-06-carte-2', text: "**Carte · 5 quartiers** — Quartier commercial (food/retail), District financier (banque/transfert), Silicon Quarter (startup/agence), Zone des services (formation), Palais de Justice (avocats/cour)." },
+          { id: '2026-04-06-carte-3', text: "**Carte · Ton empire** — Tes propres businesses sont mis en valeur avec un anneau lumineux doré. Clique sur n'importe quel marqueur pour voir les infos du business." },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-05-explore-ux',
     date: '2026-04-05',
     title: 'Explorateur & Formations — UX améliorée',
