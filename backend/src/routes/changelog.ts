@@ -21,6 +21,15 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-06-prisma-studio',
+    date: '2026-04-06',
+    title: 'Accès sécurisé à Prisma Studio',
+    summary: 'Les administrateurs peuvent désormais lancer et accéder à Prisma Studio directement depuis le panel.',
+    items: [
+      { category: 'BIG_FEATURE', text: '**Prisma Studio** — Ajout d\'un bouton dans l\'administration permettant aux super admins de lancer et d\'ouvrir une instance sécurisée de Prisma Studio (proxy avec support webSockets).', order: 0 },
+    ],
+  },
+  {
     id: '2026-04-06-restaurant-business',
     date: '2026-04-06',
     title: 'Améliorations des Business & Nouveau type Restaurant',

@@ -4266,10 +4266,36 @@ export default function Admin() {
   const allSelected = selectableUsers.length > 0 && selectableUsers.every((entry) => selectedUserIds.includes(entry.id));
 
 
+  const openPrismaStudio = async () => {
+    try {
+      setOpeningPrisma(true);
+      await fetch('/api/admin/prisma-studio-api/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      window.open('/api/admin/prisma-studio', '_blank');
+    } catch (e) {
+      toast({ title: 'Erreur', description: 'Impossible de lancer Prisma Studio', variant: 'destructive' });
+    } finally {
+      setOpeningPrisma(false);
+    }
+  };
+
   return (
     <>
     <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">Administration</h1>
+          {user?.isSuperAdmin && (
+            <Button onClick={openPrismaStudio} disabled={openingPrisma} variant="outline" size="sm">
+              {openingPrisma ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Terminal className="w-4 h-4 mr-2" />}
+              Ouvrir Prisma Studio
+            </Button>
+          )}
+        </div>
         {/* Tabs */}
         <Tabs
           value={activeTab}
