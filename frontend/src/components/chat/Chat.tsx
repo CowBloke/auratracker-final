@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChatSocket } from '../../contexts/ChatSocketContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,7 +6,6 @@ import { useFeatures } from '../../contexts/FeaturesContext';
 import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -50,6 +49,9 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const lastMessageIdRef = useRef<string | null>(null);
   const unreadMessageRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
   const canViewConnectedStatus = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const chatBlockedForUser = Boolean(
     maintenanceStatus.chatBlocked &&
@@ -77,17 +79,36 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     );
   }, [messages]);
 
+  const markAllAsRead = useCallback(() => {
+    setUnreadCount(0);
+    if (sortedMessages.length > 0) {
+      const lastId = sortedMessages[sortedMessages.length - 1].id;
+      setLastReadMessageId(lastId);
+      lastMessageIdRef.current = lastId;
+    }
+  }, [sortedMessages]);
+
+  // Scroll to bottom and mark as read when chat opens
   useEffect(() => {
     if (isOpen) {
-      setUnreadCount(0);
-      if (messages.length > 0) {
-        const lastMsg = messages[messages.length - 1].id;
-        setLastReadMessageId(lastMsg);
-        lastMessageIdRef.current = lastMsg;
-      }
+      markAllAsRead();
+      isAtBottomRef.current = true;
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+      }, 50);
     }
-  }, [isOpen, messages]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-scroll when new messages arrive (only if already at bottom)
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isAtBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      markAllAsRead();
+    }
+  }, [sortedMessages.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Count unread when chat is closed
   useEffect(() => {
     if (!isOpen && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
@@ -97,6 +118,17 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
       }
     }
   }, [messages, isOpen, user?.id]);
+
+  const handleScrollMessages = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < 100;
+    isAtBottomRef.current = atBottom;
+    if (atBottom) {
+      markAllAsRead();
+    }
+  }, [markAllAsRead]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +169,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   };
 
   const scrollToUnread = () => {
-    unreadMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    unreadMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
@@ -193,13 +225,17 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                 </div>
               </div>
             )}
-            <ScrollArea className="flex-1 px-6">
+            <div
+              ref={scrollContainerRef}
+              onScroll={handleScrollMessages}
+              className="flex-1 overflow-y-auto px-6"
+            >
               <div className="space-y-3 py-3">
-                {[...sortedMessages].reverse().map((msg, index) => {
+                {sortedMessages.map((msg, index) => {
                   const isLastRead = msg.id === lastReadMessageId;
-                  const nextMsg = [...sortedMessages].reverse()[index + 1];
+                  const nextMsg = sortedMessages[index + 1];
                   const showSeparator = isLastRead && nextMsg;
-                  
+
                   return (
                     <div key={msg.id}>
                       <div
@@ -343,8 +379,9 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                     </div>
                   );
                 })}
+                <div ref={messagesEndRef} />
               </div>
-            </ScrollArea>
+            </div>
 
             {typingUsers.length > 0 && (
               <div className="px-6 py-2 text-xs text-muted-foreground">
@@ -352,7 +389,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
               </div>
             )}
 
-            {lastReadMessageId && lastReadMessageId !== messages[messages.length - 1]?.id && (
+            {lastReadMessageId && lastReadMessageId !== sortedMessages[sortedMessages.length - 1]?.id && (
               <div className="px-6 py-2 border-t border-border/40">
                 <Button
                   type="button"
