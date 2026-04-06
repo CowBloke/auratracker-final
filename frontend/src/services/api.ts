@@ -2941,6 +2941,7 @@ export interface MessagingConversationMessage {
   senderId: string | null;
   body: string;
   type: string;
+  imageUrl?: string | null;
   courtRole: string | null;
   createdAt: string;
   sender: {
@@ -3018,8 +3019,8 @@ export const supportApi = {
   getConversation: (conversationId: string) => api.get<MessagingConversationDetail>(`/support/conversations/${conversationId}`),
   createConversation: (data: { type: 'DM' | 'GROUP'; title?: string; participantIds: string[]; body?: string }) =>
     api.post<{ conversation: MessagingConversationSummary; alreadyExisted: boolean }>('/support/conversations', data),
-  sendConversationMessage: (conversationId: string, body: string, courtRole?: string | null) =>
-    api.post<{ message: MessagingConversationDetail['messages'][number] }>(`/support/conversations/${conversationId}/messages`, { body, courtRole }),
+  sendConversationMessage: (conversationId: string, body: string, courtRole?: string | null, imageUrl?: string | null) =>
+    api.post<{ message: MessagingConversationDetail['messages'][number] }>(`/support/conversations/${conversationId}/messages`, { body, courtRole, imageUrl }),
   markConversationRead: (conversationId: string) =>
     api.post<{ success: boolean }>(`/support/conversations/${conversationId}/read`),
   reportConversation: (conversationId: string, reason?: string) =>

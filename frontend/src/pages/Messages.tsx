@@ -15,6 +15,7 @@ import {
   Loader2,
   MessageCircleMore,
   MessagesSquare,
+  ImagePlus,
   MoreVertical,
   Plus,
   Scale,
@@ -248,10 +249,14 @@ export default function MessagesPage() {
   const [detail, setDetail] = useState<MessagingConversationDetail | null>(null);
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
+  const [imageUrlToSend, setImageUrlToSend] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [loading, setLoading] = useState(true);
   const [convLoading, setConvLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [isMessagesAtBottom, setIsMessagesAtBottom] = useState(true);
+
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
@@ -645,33 +650,51 @@ export default function MessagesPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleSend = async () => {
-    if (!selectedIdSafe || !draft.trim() || sending || mustChooseRepresentationFirst) return;
-    const body = draft.trim();
-    setSending(true);
-    setDraft('');
-    if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
-    try {
-      if (selectedAdminSupportUserId) {
-        await supportApi.reply(selectedAdminSupportUserId, body);
-      } else {
-        const roleToSend = isCourtConversation
-          ? (isAdminViewer ? selectedCourtRole : myCourtRole)
-          : null;
-        await supportApi.sendConversationMessage(selectedIdSafe, body, roleToSend);
+      if (!selectedIdSafe || (!draft.trim() && !imageUrlToSend) || sending || isUploadingImage || mustChooseRepresentationFirst) return;
+      const body = draft.trim();
+      const currentImageUrl = imageUrlToSend;
+      setSending(true);
+      setDraft('');
+      setImageUrlToSend('');
+      if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
+      try {
+        if (selectedAdminSupportUserId) {
+          // Support messages don't have images yet
+          await supportApi.reply(selectedAdminSupportUserId, body);
+        } else {
+          const roleToSend = isCourtConversation
+            ? (isAdminViewer ? selectedCourtRole : myCourtRole)
+            : null;
+          await supportApi.sendConversationMessage(selectedIdSafe, body, roleToSend, currentImageUrl || null);
+        }
+        await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
+      } catch (error: any) {
+        toast({
+          title: error?.response?.data?.error || 'Envoi impossible',
+          variant: 'destructive',
+        });
+        setDraft(body);
+        setImageUrlToSend(currentImageUrl);
+      } finally {
+        setSending(false);
       }
-      await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
-    } catch (error: any) {
-      toast({
-        title: error?.response?.data?.error || 'Envoi impossible',
-        variant: 'destructive',
-      });
-      setDraft(body);
-    } finally {
-      setSending(false);
-    }
-  };
+    };
 
-  const handleCreateConversation = async () => {
+    const handleImageSelection = async (file: File | null) => {
+      if (!file || isUploadingImage) return;
+      if (!file.type.startsWith('image/')) return;
+
+      try {
+        setIsUploadingImage(true);
+        const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+        const response = await uploadUserImage({ base64Data, mimeType });
+        setImageUrlToSend(response.data.imageUrl);
+      } finally {
+        setIsUploadingImage(false);
+      }
+    };
+
+    const handleCreateConversation = async () => {
     if (!createParticipantIds.length) return;
     if (createMode === 'DM' && createParticipantIds.length !== 1) return;
     if (createMode === 'GROUP' && createParticipantIds.length < 2) return;
@@ -1668,6 +1691,7 @@ export default function MessagesPage() {
                         const showSender = !isOwn && isFirst && selectedConversation.type === 'GROUP';
                         const reactions = msg.reactions ?? [];
                         const supportImages = msg.images ? JSON.parse(msg.images) as string[] : [];
+                        if (msg.imageUrl) supportImages.push(msg.imageUrl);
                         const isBlocked = dmOtherUser && blockedIds.has(dmOtherUser.id);
                         return (
                           <div key={msg.id} className="flex flex-col gap-2">
@@ -1871,8 +1895,46 @@ export default function MessagesPage() {
                       Choisis d'abord un avocat avant de parler dans cette affaire.
                     </div>
                   )}
-                  <div className="flex w-full items-end gap-2">
-                    <div className="flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 focus-within:border-primary/40 focus-within:bg-background transition-colors">
+                  <div className="flex w-full items-end gap-2 flex-wrap">
+                      {imageUrlToSend && (
+                        <div className="relative inline-block w-full mb-2 border border-border rounded-xl px-2 py-2 w-max max-w-sm">
+                          <img src={resolveImageUrl(imageUrlToSend)} alt="Upload preview" className="h-40 rounded-lg object-cover" />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border shadow-md"
+                            onClick={() => setImageUrlToSend('')}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                      
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 rounded-xl bg-background border shadow-sm"
+                        disabled={isUploadingImage || mustChooseRepresentationFirst}
+                        onClick={() => imageInputRef.current?.click()}
+                      >
+                        {isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <ImagePlus className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
+                      
+                      <input
+                        type="file"
+                        ref={imageInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            void handleImageSelection(file);
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                      <div className="flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 focus-within:border-primary/40 focus-within:bg-background transition-colors">
                       <textarea ref={textareaRef} value={draft} rows={1}
                         onChange={(e) => { setDraft(e.target.value); e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 112) + 'px'; }}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
@@ -1881,7 +1943,7 @@ export default function MessagesPage() {
                         maxLength={1000} style={{ minHeight: '20px' }} disabled={mustChooseRepresentationFirst} />
                     </div>
                     <Button type="button" size="icon" className="h-9 w-9 shrink-0 rounded-xl"
-                      disabled={sending || !draft.trim() || mustChooseRepresentationFirst} onClick={() => void handleSend()}>
+                        disabled={sending || (!draft.trim() && !imageUrlToSend) || mustChooseRepresentationFirst} onClick={() => void handleSend()}>
                       <SendHorizonal className="h-4 w-4" />
                     </Button>
                   </div>
