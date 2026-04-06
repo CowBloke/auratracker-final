@@ -423,6 +423,7 @@ export interface YouBusiness {
   formationUrl?: string | null;
   formationPrice?: number;
   formationProducts?: YouFormationProduct[];
+  customData?: Array<{ key: string; label: string; price: number; emoji?: string; xpHint?: string }>;
   npcLastCollectedAt?: string | null;
   avgRating: number | null;
   ratingCount: number;
@@ -626,6 +627,8 @@ export const youApi = {
     api.post<{ result: { loanInterestRate: number } }>(`/you/businesses/${businessId}/set-loan-rate`, { rate }),
   setTransferFeeRate: (businessId: string, rate: number) =>
     api.post<{ result: { transferFeeRate: number } }>(`/you/businesses/${businessId}/set-transfer-fee-rate`, { rate }),
+  updateBusinessMenu: (businessId: string, menu: Array<{ key: string; label: string; price: number; emoji?: string }>) =>
+    api.post<{ result: { success: boolean } }>(`/you/businesses/${businessId}/update-menu`, { menu }),
   getBusinessTransactions: (businessId: string) =>
     api.get<{ transactions: YouBusinessTransaction[] }>(`/you/businesses/${businessId}/transactions`),
   getBankAccounts: (businessId: string) =>

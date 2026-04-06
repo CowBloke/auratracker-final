@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
   CreditCard, Download, Edit2, ExternalLink, GraduationCap, Landmark, Loader2, Percent,
-  Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X,
+  Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X, Utensils,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -804,6 +804,7 @@ export function ManageBusinessModal({
   const [loadingTx, setLoadingTx] = useState(false);
   const [manageTeamOpen, setManageTeamOpen] = useState(false);
   const [manageFormationsOpen, setManageFormationsOpen] = useState(false);
+  const [manageMenuOpen, setManageMenuOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
 
@@ -1082,6 +1083,11 @@ export function ManageBusinessModal({
               {/* Gérer l'équipe */}
               {business.ownerKind === 'you' ? (
                 <ActionRow icon={Users} label="Gérer l'équipe" sub="Salaires, invitations et départs" iconBg="bg-violet-400/15" iconColor="text-violet-400" onClick={() => setManageTeamOpen(true)} />
+              ) : null}
+
+              {/* Gérer le menu */}
+              {business.ownerKind === 'you' && (business.typeKey === 'restaurant' || business.typeKey === 'lemonade' || business.typeKey === 'epicerie') ? (
+                <ActionRow icon={Utensils} label="Gérer le menu" sub="Modifier les articles et prix" iconBg="bg-orange-400/15" iconColor="text-orange-400" onClick={() => setManageMenuOpen(true)} />
               ) : null}
 
               {/* Modifier le profil */}
@@ -1463,6 +1469,14 @@ export function ManageBusinessModal({
         onClose={() => setManageTeamOpen(false)}
         business={business}
         onInviteRequested={() => { setManageTeamOpen(false); onClose(); onInviteRequested(business); }}
+        onSubmitted={onSubmitted}
+      />
+    ) : null}
+    {business ? (
+      <ManageMenuModal
+        open={manageMenuOpen}
+        onClose={() => setManageMenuOpen(false)}
+        business={business}
         onSubmitted={onSubmitted}
       />
     ) : null}
@@ -2613,6 +2627,148 @@ export function FormationCatalogModal({
           })}
         </div>
       )}
+    </ModalWrap>
+  );
+}
+
+export function ManageMenuModal({
+  open,
+  onClose,
+  business,
+  onSubmitted,
+}: {
+  open: boolean;
+  onClose: () => void;
+  business: YouBusiness;
+  onSubmitted: (refreshBalance?: boolean) => Promise<void>;
+}) {
+  const getDefaults = (typeKey: string) => {
+    switch(typeKey) {
+      case 'lemonade': return [
+        { key: 'citronnade', label: 'Citronnade', price: 10, emoji: '🍋' },
+        { key: 'limonade_fraise', label: 'Limonade fraise', price: 15, emoji: '🍓' },
+        { key: 'eau_petillante', label: 'Eau pétillante', price: 8, emoji: '💧' },
+      ];
+      case 'epicerie': return [
+        { key: 'baguette', label: 'Baguette', price: 5, emoji: '🥖' },
+        { key: 'fromage', label: 'Fromage', price: 20, emoji: '🧀' },
+        { key: 'vin', label: 'Vin', price: 35, emoji: '🍷' },
+        { key: 'confiture', label: 'Confiture', price: 12, emoji: '🫙' },
+      ];
+      case 'restaurant': return [
+        { key: 'burger', label: 'Burger', price: 15, emoji: '🍔' },
+        { key: 'pizza', label: 'Pizza', price: 18, emoji: '🍕' },
+        { key: 'fried_chicken', label: 'Poulet Frit', price: 12, emoji: '🍗' },
+        { key: 'soda', label: 'Soda', price: 5, emoji: '🥤' },
+      ];
+      default: return [];
+    }
+  };
+
+  const sourceItems = business.customData ?? getDefaults(business.typeKey);
+
+  const [menu, setMenu] = useState<{ key: string; label: string; price: number; emoji: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setMenu(sourceItems.map((item: any) => ({
+        key: item.key || Math.random().toString(36).substring(7),
+        label: item.label ?? '',
+        price: item.price ?? 5,
+        emoji: item.emoji ?? '',
+      })));
+    }
+  }, [open, business]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const payload = menu.filter((m) => m.label.trim().length > 0).map((m) => ({
+        key: m.key,
+        label: m.label.trim().substring(0, 50),
+        price: Math.max(1, Math.min(100000, Number(m.price))),
+        emoji: m.emoji.trim().substring(0, 10),
+      }));
+
+      await withRouteError(() => youApi.updateBusinessMenu(business.id, payload), 'Impossible de mettre à jour le menu.');
+      toast.success('Menu à jour');
+      await onSubmitted();
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title={`Menu : ${business.name}`} desc="Modifie au maximum 20 articles à vendre.">
+      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+        {menu.map((item, idx) => (
+          <div key={item.key} className="flex gap-2 items-center rounded-xl border border-border/40 p-2">
+            <Input
+              placeholder="Emoji"
+              value={item.emoji}
+              onChange={(e) => {
+                const newMenu = [...menu];
+                newMenu[idx].emoji = e.target.value;
+                setMenu(newMenu);
+              }}
+              className="w-[80px]"
+            />
+            <Input
+              placeholder="Nom"
+              value={item.label}
+              onChange={(e) => {
+                const newMenu = [...menu];
+                newMenu[idx].label = e.target.value;
+                setMenu(newMenu);
+              }}
+              className="flex-1"
+            />
+            <Input
+              type="number"
+              placeholder="Prix"
+              value={item.price}
+              onChange={(e) => {
+                const newMenu = [...menu];
+                newMenu[idx].price = Number(e.target.value);
+                setMenu(newMenu);
+              }}
+              className="w-24"
+              min={1}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-red-400"
+              onClick={() => {
+                const newMenu = [...menu];
+                newMenu.splice(idx, 1);
+                setMenu(newMenu);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        {menu.length < 20 && (
+          <Button
+            variant="outline"
+            className="w-full mt-2"
+            onClick={() => setMenu([...menu, { key: Math.random().toString(36).substring(7), label: '', price: 10, emoji: '🍔' }])}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Ajouter un article
+          </Button>
+        )}
+      </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <Button variant="ghost" onClick={onClose} disabled={saving}>Annuler</Button>
+        <Button onClick={() => void save()} disabled={saving || menu.length === 0 || menu.some(m => !m.label.trim() || Number(m.price) < 1)}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Enregistrer
+        </Button>
+      </div>
     </ModalWrap>
   );
 }

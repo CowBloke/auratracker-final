@@ -8,6 +8,7 @@ import {
   cancelBusinessBuyoutOffer,
   setLoanRate,
   setTransferFeeRate,
+  updateBusinessMenu,
   createBusiness,
   createBusinessBuyoutOffer,
   createRelationship,
@@ -631,6 +632,16 @@ router.post('/businesses/:businessId/set-loan-rate', authMiddleware, requireYouA
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Set loan rate error');
+  }
+});
+
+router.post('/businesses/:businessId/update-menu', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const menu = req.body?.menu;
+    const result = await updateBusinessMenu(req.user!.id, req.params.businessId, menu);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Update business menu error');
   }
 });
 

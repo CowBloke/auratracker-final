@@ -517,6 +517,7 @@ model Business {
   lastBankRevenueDate   String?
   formationUrl          String?
   formationPrice        Int       @default(500)
+  customData            String?   // JSON string of custom business data (menu, settings, etc.)
   npcLastCollectedAt    DateTime? // For lemonade/epicerie NPC collect cooldown
   isStateOwned          Boolean   @default(false) // True for state-owned institutions (supreme court, etc.)
   createdAt             DateTime  @default(now())

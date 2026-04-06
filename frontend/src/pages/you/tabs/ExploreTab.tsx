@@ -809,13 +809,13 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
   const [buying, setBuying] = useState<string | null>(null);
   if (!business) return null;
 
-  const items = ITEMS_CONFIG[business.typeKey] ?? [];
+  const items = business.customData ?? ITEMS_CONFIG[business.typeKey] ?? [];
 
   const buy = async (itemKey: string) => {
     setBuying(itemKey);
     try {
       await withRouteError(() => youApi.purchaseItem(business.id, itemKey), 'Impossible d\'acheter cet article.');
-      const item = items.find((i) => i.key === itemKey);
+      const item = items.find((i: any) => i.key === itemKey);
       toast.success(`${item?.label ?? 'Article'} acheté !`);
       onSubmitted();
     } finally {

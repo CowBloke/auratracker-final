@@ -24,9 +24,11 @@ const SEED_ENTRIES = [
     id: '2026-04-06-restaurant-business',
     date: '2026-04-06',
     title: 'Nouveau type de business: Restaurant',
-    summary: 'Les joueurs peuvent désormais créer et gérer des restaurants, et y acheter divers plats (burgers, pizzas, etc.).',
+    summary: 'Les joueurs peuvent désormais créer et gérer des restaurants, et personnaliser entièrement leur menu (produits et prix). L\'architecture interne a été rendue plus modulaire.',
     items: [
       { category: 'BIG_FEATURE', text: '**Restaurant** — Nouvelle catégorie de business niveau 1. Permet de vendre et d\'acheter des burgers, pizzas, poulet frit et sodas pour vos besoins quotidiens.', order: 0 },
+      { category: 'BIG_FEATURE', text: '**Menu personnalisable** — Les propriétaires de restaurants peuvent maintenant modifier entièrement leur menu (noms des plats, prix, emojis) depuis l\'onglet Gérer.', order: 1 },
+      { category: 'SMALL_FEATURE', text: '**Données modulaires** — Refonte technique : passage à un champ générique de données personnalisées pour préparer le terrain aux futurs types d\'entreprises configurables.', order: 2 },
     ],
   },
   {

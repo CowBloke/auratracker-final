@@ -640,6 +640,7 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     transferFeeRate: business.typeKey === 'transfer' ? (business.transferFeeRate ?? 2) : undefined,
     formationUrl: business.typeKey === 'formation' ? (business.formationUrl ?? null) : undefined,
     formationPrice: business.typeKey === 'formation' ? (business.formationPrice ?? 500) : undefined,
+    customData: business.customData ? JSON.parse(business.customData) : undefined,
     formationProducts: business.typeKey === 'formation' ? formationProducts : undefined,
     npcLastCollectedAt: (business.typeKey === 'lemonade' || business.typeKey === 'epicerie' || business.typeKey === 'restaurant')
       ? (business.npcLastCollectedAt ? new Date(business.npcLastCollectedAt).toISOString() : null)
@@ -2643,7 +2644,14 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
     throw new Error('BUSINESS_ACTION_UNAVAILABLE');
   }
 
-  const items = balancing.items as unknown as Array<{ key: string; label: string; price: number }>;
+  let items = balancing.items as unknown as Array<{ key: string; label: string; price: number }>;
+  if (business.customData) {
+    try {
+      items = JSON.parse(business.customData);
+    } catch (e) {
+      // Fallback
+    }
+  }
   const item = items.find((i) => i.key === input.itemKey);
   if (!item) {
     throw new Error('ITEM_NOT_FOUND');
@@ -4018,6 +4026,36 @@ export async function setLoanRate(userId: string, businessId: string, rate: numb
   });
 
   return { loanInterestRate: rate };
+}
+
+export async function updateBusinessMenu(userId: string, businessId: string, menu: Array<{ key: string; label: string; price: number; emoji?: string }>) {
+  if (!Array.isArray(menu)) throw new Error('INVALID_MENU_FORMAT');
+  if (menu.length > 20) throw new Error('MAX_MENU_ITEMS_EXCEEDED');
+  
+  for (const item of menu) {
+    if (typeof item.key !== 'string' || !item.key || item.key.length > 30) throw new Error('INVALID_ITEM_KEY');
+    if (typeof item.label !== 'string' || !item.label || item.label.length > 50) throw new Error('INVALID_ITEM_LABEL');
+    if (typeof item.price !== 'number' || item.price <= 0 || item.price > 100000) throw new Error('INVALID_ITEM_PRICE');
+    if (item.emoji && (typeof item.emoji !== 'string' || item.emoji.length > 10)) throw new Error('INVALID_ITEM_EMOJI');
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, typeKey: true },
+  });
+
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId !== userId) throw new Error('UPDATE_MENU_FORBIDDEN');
+  if (business.typeKey !== 'restaurant' && business.typeKey !== 'lemonade' && business.typeKey !== 'epicerie') {
+    throw new Error('BUSINESS_CANNOT_HAVE_MENU');
+  }
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { customData: JSON.stringify(menu) },
+  });
+
+  return { success: true };
 }
 
 export async function setTransferFeeRate(userId: string, businessId: string, rate: number) {
