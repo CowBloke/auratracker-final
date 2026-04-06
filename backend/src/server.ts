@@ -21,6 +21,8 @@ import gamesRoutes from './routes/games.js';
 import leaderboardsRoutes from './routes/leaderboards.js';
 import usersRoutes from './routes/users.js';
 import adminRoutes from './routes/admin.js';
+import { prismaStudioRouter, createPrismaStudioProxy } from './routes/prismaStudio.js';
+import { authMiddleware, adminMiddleware } from './middleware/auth.js';
 import auraCoinRoutes, { startPriceEngine as startAuraCoinEngine, stopPriceEngine as stopAuraCoinEngine } from './routes/auracoin.js';
 import marketRoomRoutes, { startMarketRoomEngines, stopMarketRoomEngines } from './routes/marketRoom.js';
 import suggestionsRoutes from './routes/suggestions.js';
@@ -123,6 +125,11 @@ app.use('/api/games', gamesRoutes);
 app.use('/api/leaderboards', leaderboardsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
+
+// Prisma Studio Proxy (Admin Only)
+app.use('/api/admin/prisma-studio-api', authMiddleware, adminMiddleware, prismaStudioRouter);
+app.use('/api/admin/prisma-studio', authMiddleware, adminMiddleware, createPrismaStudioProxy());
+
 app.use('/api/auracoin', auraCoinRoutes);
 app.use('/api/market-room', marketRoomRoutes);
 app.use('/api/suggestions', suggestionsRoutes);
