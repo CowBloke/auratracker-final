@@ -127,7 +127,6 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const isOnGames = location.pathname.startsWith('/games');
   const isOnYou = location.pathname.startsWith('/you');
-  const isOnDashboard = location.pathname === '/' || location.pathname === '/dashboard';
   const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
 
   const handleLogoClick = () => {

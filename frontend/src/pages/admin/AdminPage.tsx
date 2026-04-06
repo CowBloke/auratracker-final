@@ -1077,6 +1077,7 @@ export default function Admin() {
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
   const [exportingChat, setExportingChat] = useState(false);
+  const [openingPrisma, setOpeningPrisma] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>('inbox');
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [loginCommOpen, setLoginCommOpen] = useState(false);
