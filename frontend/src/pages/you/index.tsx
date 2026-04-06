@@ -10,6 +10,7 @@ import { FinanceTab } from './tabs/FinanceTab';
 import { OverviewTab } from './tabs/OverviewTab';
 import { SocialTab } from './tabs/SocialTab';
 import { TravailTab } from './tabs/TravailTab';
+import { CarteTab } from './tabs/CarteTab';
 
 export default function You() {
   const [params] = useSearchParams();
@@ -36,7 +37,7 @@ export default function You() {
   }, [loadState]);
 
   const tab = params.get('tab');
-  const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' ? tab : 'overview';
+  const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' ? tab : 'overview';
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
 
   if (maintenanceStatus.youLogoAdminOnly && !canBypassMaintenance) {
@@ -63,6 +64,7 @@ export default function You() {
       {currentTab === 'social' ? <SocialTab data={data} onReload={() => loadState()} /> : null}
       {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
       {currentTab === 'finance' ? <FinanceTab data={data} userId={user.id} onReload={loadState} /> : null}
+      {currentTab === 'carte' ? <CarteTab data={data} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
     </div>
   );
 }

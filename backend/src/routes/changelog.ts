@@ -27,7 +27,7 @@ const SEED_ENTRIES = [
     summary: 'Ajout de restaurants modulables. Rôles des associés étendus (pouvoirs complets), remboursements automatiques en cas de liquidation bancaire, corrections sur les formations et les mariages polygames.',
     items: [
       { category: 'BIG_FEATURE', text: '**Restaurant** — Nouvelle catégorie de business niveau 1. Permet de vendre et d\'acheter des burgers, pizzas, poulet frit et sodas pour vos besoins quotidiens.', order: 0 },
-      { category: 'BIG_FEATURE', text: '**Menu personnalisable** — Les propriétaires de restaurants peuvent maintenant modifier entièrement leur menu (noms des plats, prix, emojis) depuis l\'onglet Gérer.', order: 1 },
+      { category: 'BIG_FEATURE', text: '**Menu personnalisable** — Les propriétaires de restaurants peuvent maintenant modifier entièrement leur menu (noms des plats, prix, emojis, **sections ordonnées et glisser-déposer**) depuis l\'onglet Gérer.', order: 1 },
       { category: 'SMALL_FEATURE', text: '**Données modulaires** — Refonte technique : passage à un champ générique de données personnalisées pour préparer le terrain aux futurs types d\'entreprises configurables.', order: 2 },
       { category: 'BIG_FEATURE', text: '**Rôle Associé dans les Business** — Un employé embauché comme "associé", "associée", ou "partner" bénéficie désormais **exactement des mêmes droits** que le créateur du business (gestion, retraits, actions).', order: 3 },
       { category: 'SMALL_FEATURE', text: '**Faillites Bancaires** — En cas de liquidation ou suppression d\'une banque, l\'argent déposé par l\'ensemble des clients (comptes courants) est **automatiquement restitué** au lieu d\'être perdu.', order: 4 },

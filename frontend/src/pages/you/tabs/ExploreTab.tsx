@@ -825,24 +825,38 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
 
   const isAgency = business.typeKey === 'agency';
 
+  const groupedItems = items.reduce((acc: any, item: any) => {
+    const section = item.section || 'Général';
+    if (!acc[section]) acc[section] = [];
+    acc[section].push(item);
+    return acc;
+  }, {});
+
   return (
     <ModalWrap open={open} onClose={onClose} title={business.name} desc={isAgency ? 'Acheter un bien immobilier. Gagne du XP Social.' : 'Parcourir les articles disponibles.'}>
-      <div className="space-y-2">
-        {items.map((item) => (
-          <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-400/15 text-lg">
-                {item.emoji ?? <ShoppingCart className="h-4 w-4 text-yellow-400" />}
+      <div className="space-y-4">
+        {Object.entries(groupedItems).map(([section, sectionItems]: [string, any]) => (
+          <div key={section} className="space-y-2">
+            {section !== 'Général' || Object.keys(groupedItems).length > 1 ? (
+              <h3 className="text-sm font-semibold text-muted-foreground px-1">{section}</h3>
+            ) : null}
+            {(sectionItems as any[]).map((item) => (
+              <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-400/15 text-lg">
+                    {item.emoji ?? <ShoppingCart className="h-4 w-4 text-yellow-400" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.price.toLocaleString('fr-FR')} money</p>
+                    {item.xpHint ? <p className="text-[10px] text-purple-400/80">{item.xpHint}</p> : null}
+                  </div>
+                </div>
+                <Button size="sm" onClick={() => void buy(item.key)} disabled={buying !== null}>
+                  {isAgency ? 'Acheter' : 'Acheter'}
+                </Button>
               </div>
-              <div>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{item.price.toLocaleString('fr-FR')} money</p>
-                {item.xpHint ? <p className="text-[10px] text-purple-400/80">{item.xpHint}</p> : null}
-              </div>
-            </div>
-            <Button size="sm" onClick={() => void buy(item.key)} disabled={buying !== null}>
-              {isAgency ? 'Acheter' : 'Acheter'}
-            </Button>
+            ))}
           </div>
         ))}
       </div>

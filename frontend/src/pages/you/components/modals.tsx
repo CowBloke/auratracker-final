@@ -2667,8 +2667,9 @@ export function ManageMenuModal({
 
   const sourceItems = business.customData ?? getDefaults(business.typeKey);
 
-  const [menu, setMenu] = useState<{ key: string; label: string; price: number; emoji: string }[]>([]);
+  const [menu, setMenu] = useState<{ key: string; label: string; price: number; emoji: string; section?: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [draggedItemIdx, setDraggedItemIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -2677,6 +2678,7 @@ export function ManageMenuModal({
         label: item.label ?? '',
         price: item.price ?? 5,
         emoji: item.emoji ?? '',
+        section: item.section ?? '',
       })));
     }
   }, [open, business]);
@@ -2689,6 +2691,7 @@ export function ManageMenuModal({
         label: m.label.trim().substring(0, 50),
         price: Math.max(1, Math.min(100000, Number(m.price))),
         emoji: m.emoji.trim().substring(0, 10),
+        section: m.section?.trim().substring(0, 50) || '',
       }));
 
       await withRouteError(() => youApi.updateBusinessMenu(business.id, payload), 'Impossible de mettre à jour le menu.');
@@ -2704,51 +2707,90 @@ export function ManageMenuModal({
     <ModalWrap open={open} onClose={onClose} title={`Menu : ${business.name}`} desc="Modifie au maximum 20 articles à vendre.">
       <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
         {menu.map((item, idx) => (
-          <div key={item.key} className="flex gap-2 items-center rounded-xl border border-border/40 p-2">
-            <Input
-              placeholder="Emoji"
-              value={item.emoji}
-              onChange={(e) => {
-                const newMenu = [...menu];
-                newMenu[idx].emoji = e.target.value;
-                setMenu(newMenu);
-              }}
-              className="w-[80px]"
-            />
-            <Input
-              placeholder="Nom"
-              value={item.label}
-              onChange={(e) => {
-                const newMenu = [...menu];
-                newMenu[idx].label = e.target.value;
-                setMenu(newMenu);
-              }}
-              className="flex-1"
-            />
-            <Input
-              type="number"
-              placeholder="Prix"
-              value={item.price}
-              onChange={(e) => {
-                const newMenu = [...menu];
-                newMenu[idx].price = Number(e.target.value);
-                setMenu(newMenu);
-              }}
-              className="w-24"
-              min={1}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-red-400"
-              onClick={() => {
-                const newMenu = [...menu];
-                newMenu.splice(idx, 1);
-                setMenu(newMenu);
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+          <div
+            key={item.key}
+            draggable
+            onDragStart={(e) => {
+              setDraggedItemIdx(idx);
+              e.currentTarget.style.opacity = '0.5';
+            }}
+            onDragEnd={(e) => {
+              setDraggedItemIdx(null);
+              e.currentTarget.style.opacity = '1';
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+            }}
+            onDrop={(e) => {
+              if (draggedItemIdx === null || draggedItemIdx === idx) return;
+              e.preventDefault();
+              const newMenu = [...menu];
+              const [draggedItem] = newMenu.splice(draggedItemIdx, 1);
+              newMenu.splice(idx, 0, draggedItem);
+              setMenu(newMenu);
+              setDraggedItemIdx(null);
+            }}
+            className="flex flex-col gap-2 rounded-xl border border-border/40 p-2 cursor-grab active:cursor-grabbing hover:bg-muted/10 transition-colors"
+          >
+            <div className="flex gap-2 items-center w-full">
+              <div title="Maintient pour glisser" className="select-none text-muted-foreground mr-1">
+                ⋮⋮
+              </div>
+              <Input
+                placeholder="Section (ex: Entrées)"
+                value={item.section || ''}
+                onChange={(e) => {
+                  const newMenu = [...menu];
+                  newMenu[idx].section = e.target.value;
+                  setMenu(newMenu);
+                }}
+                className="w-[140px] text-xs h-9"
+              />
+              <Input
+                placeholder="Emoji"
+                value={item.emoji}
+                onChange={(e) => {
+                  const newMenu = [...menu];
+                  newMenu[idx].emoji = e.target.value;
+                  setMenu(newMenu);
+                }}
+                className="w-[70px] h-9"
+              />
+              <Input
+                placeholder="Nom"
+                value={item.label}
+                onChange={(e) => {
+                  const newMenu = [...menu];
+                  newMenu[idx].label = e.target.value;
+                  setMenu(newMenu);
+                }}
+                className="flex-1 h-9"
+              />
+              <Input
+                type="number"
+                placeholder="Prix"
+                value={item.price}
+                onChange={(e) => {
+                  const newMenu = [...menu];
+                  newMenu[idx].price = Number(e.target.value);
+                  setMenu(newMenu);
+                }}
+                className="w-20 h-9"
+                min={1}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                onClick={() => {
+                  const newMenu = [...menu];
+                  newMenu.splice(idx, 1);
+                  setMenu(newMenu);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         ))}
         {menu.length < 20 && (
