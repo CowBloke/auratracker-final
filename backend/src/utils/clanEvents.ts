@@ -83,7 +83,6 @@ const minimalClanSelect = {
   name: true,
   imageUrl: true,
   warTrophies: true,
-  level: true,
   members: {
     select: {
       id: true,
@@ -137,7 +136,6 @@ const serializeClanScoreEntry = (entry: {
     name: entry.clan.name,
     imageUrl: entry.clan.imageUrl,
     warTrophies: entry.clan.warTrophies ?? 0,
-    level: entry.clan.level ?? 1,
     memberCount: entry.clan.members?.length ?? 0,
   },
 });
@@ -877,7 +875,6 @@ export async function getFeaturedClanEvent(selectedClanId: string | null, viewer
       name: entry.clan.name,
       imageUrl: entry.clan.imageUrl,
       warTrophies: entry.clan.warTrophies,
-      level: entry.clan.level,
       memberCount: entry.clan.members.length,
     },
   }));

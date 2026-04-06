@@ -201,7 +201,7 @@ export function FeatureHint({ id, label, side = 'top', children, className }: Fe
   );
 
   return (
-    <div ref={anchorRef} className={cn('relative inline-flex', className)}>
+    <div ref={anchorRef} className={cn('relative flex', className)}>
       {children}
       {visible && typeof document !== 'undefined' && position ? createPortal(bubble, document.body) : null}
     </div>

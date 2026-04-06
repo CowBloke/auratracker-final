@@ -417,7 +417,6 @@ const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   warLosses: clan.warLosses,
   warDraws: clan.warDraws,
   clanBankMoney: clan.clanBankMoney,
-  level: clan.level,
 });
 
 const mapClanOwnedItem = (entry: {
@@ -1104,18 +1103,18 @@ const getClanMembership = (clanId: string, userId: string) =>
 router.get('/me/status', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    if (!userId) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, maxMembers: 0, clanBankMoney: 0, level: 1 });
+    if (!userId) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, maxMembers: 0, clanBankMoney: 0 });
 
     const membership = await prisma.clanMember.findUnique({
       where: { userId },
       select: { clanId: true, isLeader: true },
     });
 
-    if (!membership) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, maxMembers: 0, clanBankMoney: 0, level: 1 });
+    if (!membership) return res.json({ inClan: false, tagUnlocked: false, slotUpgraded: false, maxMembers: 0, clanBankMoney: 0 });
 
     const clan = await prisma.clan.findUnique({
       where: { id: membership.clanId },
-      select: { tagUnlocked: true, slotUpgraded: true, maxMembers: true, clanBankMoney: true, level: true },
+      select: { tagUnlocked: true, slotUpgraded: true, maxMembers: true, clanBankMoney: true },
     });
 
     res.json({
@@ -1125,7 +1124,6 @@ router.get('/me/status', authMiddleware, async (req: AuthRequest, res: Response)
       slotUpgraded: clan ? hasClanSlotUpgrade(clan) : false,
       maxMembers: clan?.maxMembers ?? 0,
       clanBankMoney: clan?.clanBankMoney ?? 0,
-      level: clan?.level ?? 1,
     });
   } catch (error) {
     console.error('Get clan status error:', error);

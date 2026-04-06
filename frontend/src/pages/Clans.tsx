@@ -1349,7 +1349,7 @@ export default function Clans() {
                   ) : (
                     clans.map((clan) => {
                       const hasTag = clan.tagUnlocked && clan.tagText;
-                      const clanTagStyle = hasTag ? parseClanTagStyle(clan.tagStyle) : null;
+                      const clanTagStyle = hasTag && clan.tagStyle ? parseClanTagStyle(clan.tagStyle) : null;
                       return (
                         <button
                           key={clan.id}
@@ -1383,12 +1383,6 @@ export default function Clans() {
                                 style={clanTagStyle ? { color: clanTagStyle.textColor, opacity: 0.75 } : undefined}
                               >
                                 {clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura
-                              </div>
-                              <div
-                                className={cn('text-[11px]', !clanTagStyle && 'text-muted-foreground')}
-                                style={clanTagStyle ? { color: clanTagStyle.textColor, opacity: 0.75 } : undefined}
-                              >
-                                Niveau {clan.level}
                               </div>
                             </div>
                             {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
@@ -1533,7 +1527,6 @@ export default function Clans() {
                               <span className="font-medium text-foreground">{formatMoney(selectedClan.warTrophies)}</span>
                               {' '}trophées
                             </span>
-                            <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Niv. {selectedClan.level}</Badge>
                             {!selectedClan.isPublic ? <Badge variant="outline" className="h-5 rounded-full px-2 text-xs">Prive</Badge> : null}
                           </div>
 
@@ -1850,7 +1843,7 @@ export default function Clans() {
                                       <div key={entry.clan.id} className="flex items-center justify-between rounded-xl border border-border/50 px-3 py-2.5">
                                         <div className="min-w-0">
                                           <div className="text-sm font-medium">#{entry.rank} {entry.clan.name}</div>
-                                          <div className="text-xs text-muted-foreground">{entry.clan.memberCount} membres • niv. {entry.clan.level}</div>
+                                          <div className="text-xs text-muted-foreground">{entry.clan.memberCount} membres</div>
                                         </div>
                                         <div className="text-sm font-semibold">{entry.totalPoints.toLocaleString('fr-FR')} pts</div>
                                       </div>
@@ -1922,7 +1915,6 @@ export default function Clans() {
                                 >
                                   <History className="h-4 w-4" />
                                 </Button>
-                                <Badge variant="secondary">Niveau {selectedClan.level}</Badge>
                               </>
                             }
                           />

@@ -499,7 +499,7 @@ export default function Shop() {
           : Promise.resolve({ data: { items: [] as AdminInventoryItem[] } });
         const clanStatusRequest = user?.id
           ? clansApi.myStatus()
-          : Promise.resolve({ data: { inClan: false, tagUnlocked: false, slotUpgraded: false, maxMembers: 0, clanBankMoney: 0, level: 1 } });
+          : Promise.resolve({ data: { inClan: false, tagUnlocked: false, slotUpgraded: false, maxMembers: 0, clanBankMoney: 0 } });
         const [itemsRes, categoriesRes, inventoryRes, clanStatusRes] = await Promise.all([
           marketplaceApi.getItems({ limit: 100 }),
           marketplaceApi.getCategories(),

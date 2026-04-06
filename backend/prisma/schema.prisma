@@ -983,7 +983,6 @@ model Clan {
   warLosses     Int      @default(0)
   warDraws      Int      @default(0)
   clanBankMoney Int      @default(0)
-  level         Int      @default(1)
   ownerId       String
   tagUnlocked   Boolean  @default(false)
   tagText       String?

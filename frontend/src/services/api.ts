@@ -1377,7 +1377,6 @@ export interface ClanSummary {
   warLosses: number;
   warDraws: number;
   clanBankMoney: number;
-  level: number;
 }
 
 export interface ClanMember {
@@ -1785,7 +1784,7 @@ export interface ClanEventView {
 
 export const clansApi = {
   list: () => api.get<ClansListResponse>('/clans'),
-  myStatus: () => api.get<{ inClan: boolean; isLeader?: boolean; tagUnlocked: boolean; slotUpgraded: boolean; maxMembers: number; clanBankMoney: number; level: number }>('/clans/me/status'),
+  myStatus: () => api.get<{ inClan: boolean; isLeader?: boolean; tagUnlocked: boolean; slotUpgraded: boolean; maxMembers: number; clanBankMoney: number }>('/clans/me/status'),
   getById: (id: string) => api.get<{ clan: ClanDetail }>(`/clans/${id}`),
   getGlobalWarHistory: () => api.get<{ wars: ClanWarState[] }>('/clans/wars/history'),
   getChat: (id: string, limit = 50) => api.get<{ messages: ClanChatMessage[] }>(`/clans/${id}/chat`, { params: { limit } }),
