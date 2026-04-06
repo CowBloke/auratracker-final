@@ -31,6 +31,6 @@ export const ACTION_META: Record<BusinessAction, { label: string; help: string; 
   invite: { label: 'Inviter des joueurs', help: 'Envoyer des invitations de recrutement.', icon: UserPlus, tone: 'bg-purple-400/15 text-purple-400' },
   loan: { label: 'Demander un pret', help: 'Envoyer une demande de pret au proprietaire du business.', icon: CreditCard, tone: 'bg-amber-400/15 text-amber-400' },
   invest: { label: 'Investir', help: 'Transferer du money vers la tresorerie d un autre joueur.', icon: TrendingUp, tone: 'bg-sky-400/15 text-sky-400' },
-  deposit: { label: 'Deposer', help: 'Envoyer ton money partage dans la tresorerie du business.', icon: ArrowDownCircle, tone: 'bg-emerald-400/15 text-emerald-400' },
-  withdraw: { label: 'Retirer', help: 'Sortir du money de la tresorerie vers ton solde partage.', icon: ArrowUpCircle, tone: 'bg-red-400/15 text-red-400' },
+  deposit: { label: 'Deposer', help: 'Envoyer ton argent personnel dans la tresorerie du business.', icon: ArrowDownCircle, tone: 'bg-emerald-400/15 text-emerald-400' },
+  withdraw: { label: 'Retirer', help: 'Sortir du money de la tresorerie vers ton argent personnel.', icon: ArrowUpCircle, tone: 'bg-red-400/15 text-red-400' },
 };

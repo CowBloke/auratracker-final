@@ -5,8 +5,8 @@ type DbClient = PrismaClient | Prisma.TransactionClient;
 
 const uniqueUserIds = (userIds: string[]) => Array.from(new Set(userIds));
 
-async function getMarriagePartnerId(db: DbClient, userId: string) {
-  const relationship = await db.relationship.findFirst({
+async function getMarriageRelationship(db: DbClient, userId: string) {
+  return db.relationship.findFirst({
     where: {
       status: 'MARRIED',
       OR: [{ userAId: userId }, { userBId: userId }],
@@ -14,8 +14,13 @@ async function getMarriagePartnerId(db: DbClient, userId: string) {
     select: {
       userAId: true,
       userBId: true,
+      coupleBalance: true,
     },
   });
+}
+
+async function getMarriagePartnerId(db: DbClient, userId: string) {
+  const relationship = await getMarriageRelationship(db, userId);
 
   if (!relationship) {
     return null;
@@ -30,16 +35,34 @@ export async function getSharedUserIds(db: DbClient, userId: string) {
 }
 
 export async function getSharedBalance(db: DbClient, userId: string) {
-  const userIds = await getSharedUserIds(db, userId);
-  const users = await db.user.findMany({
+  const [user, relationship] = await Promise.all([
+    db.user.findUnique({
+      where: { id: userId },
+      select: { id: true, money: true, aura: true },
+    }),
+    getMarriageRelationship(db, userId),
+  ]);
+
+  if (!user) {
+    return {
+      userIds: [userId],
+      money: 0,
+      aura: BigInt(0),
+    };
+  }
+
+  const userIds = relationship
+    ? uniqueUserIds([userId, relationship.userAId, relationship.userBId])
+    : [userId];
+  const auraUsers = await db.user.findMany({
     where: { id: { in: userIds } },
-    select: { id: true, money: true, aura: true },
+    select: { aura: true },
   });
 
   return {
     userIds,
-    money: users.reduce((sum, user) => sum + user.money, 0),
-    aura: users.reduce((sum, user) => sum + BigInt(user.aura), BigInt(0)),
+    money: user.money,
+    aura: auraUsers.reduce((sum, auraUser) => sum + BigInt(auraUser.aura), BigInt(0)),
   };
 }
 
@@ -63,50 +86,24 @@ export async function ensureSharedMoneyAvailable(db: DbClient, userId: string, a
 
 export async function debitSharedMoney(db: DbClient, userId: string, amount: number) {
   if (amount <= 0) {
-    return getSharedUserIds(db, userId);
+    return [userId];
   }
 
-  const userIds = await getSharedUserIds(db, userId);
-  const users = await db.user.findMany({
-    where: { id: { in: userIds } },
-    select: { id: true, money: true },
+  const result = await db.user.updateMany({
+    where: {
+      id: userId,
+      money: { gte: amount },
+    },
+    data: {
+      money: { decrement: amount },
+    },
   });
 
-  const currentUser = users.find((user) => user.id === userId);
-  const partner = users.find((user) => user.id !== userId);
-  const orderedUsers = [currentUser, partner].filter(Boolean) as Array<{ id: string; money: number }>;
-
-  const totalMoney = orderedUsers.reduce((sum, user) => sum + user.money, 0);
-  if (totalMoney < amount) {
-    throw new Error('INSUFFICIENT_SHARED_MONEY');
+  if (result.count !== 1) {
+    throw new Error('INSUFFICIENT_MONEY');
   }
 
-  let remaining = amount;
-  for (const user of orderedUsers) {
-    if (remaining <= 0) break;
-    const debit = Math.min(user.money, remaining);
-    if (debit > 0) {
-      const result = await db.user.updateMany({
-        where: {
-          id: user.id,
-          money: { gte: debit },
-        },
-        data: {
-          money: { decrement: debit },
-        },
-      });
-      if (result.count !== 1) {
-        throw new Error('INSUFFICIENT_SHARED_MONEY');
-      }
-      remaining -= debit;
-    }
-  }
-
-  if (remaining > 0) {
-    throw new Error('INSUFFICIENT_SHARED_MONEY');
-  }
-
-  return userIds;
+  return [userId];
 }
 
 export async function emitSharedBalanceUpdatesForUserIds(db: DbClient, userIds: string[]) {
@@ -115,31 +112,15 @@ export async function emitSharedBalanceUpdatesForUserIds(db: DbClient, userIds: 
     return new Map<string, { money: number; aura: bigint }>();
   }
 
-  const households = await Promise.all(
-    uniqueIds.map(async (id) => {
-      const sharedUserIds = await getSharedUserIds(db, id);
-      const balance = await getSharedBalanceByUserIds(db, sharedUserIds);
-      return {
-        sharedUserIds,
-        balance,
-      };
-    })
-  );
-
   const emittedBalances = new Map<string, { money: number; aura: bigint }>();
+  const balances = await Promise.all(uniqueIds.map(async (id) => ({ id, balance: await getSharedBalance(db, id) })));
 
-  households.forEach(({ sharedUserIds, balance }) => {
-    sharedUserIds.forEach((id) => {
-      if (emittedBalances.has(id)) {
-        return;
-      }
-
-      emittedBalances.set(id, balance);
-      io.to(`user:${id}`).emit('economy:balance-update', {
-        userId: id,
-        aura: Number(balance.aura),
-        money: balance.money,
-      });
+  balances.forEach(({ id, balance }) => {
+    emittedBalances.set(id, { money: balance.money, aura: balance.aura });
+    io.to(`user:${id}`).emit('economy:balance-update', {
+      userId: id,
+      aura: Number(balance.aura),
+      money: balance.money,
     });
   });
 
@@ -147,8 +128,6 @@ export async function emitSharedBalanceUpdatesForUserIds(db: DbClient, userIds: 
 }
 
 export async function emitSharedBalanceUpdates(db: DbClient, userId: string) {
-  const userIds = await getSharedUserIds(db, userId);
-  const emittedBalances = await emitSharedBalanceUpdatesForUserIds(db, userIds);
-
-  return emittedBalances.get(userId) ?? getSharedBalanceByUserIds(db, userIds);
+  const emittedBalances = await emitSharedBalanceUpdatesForUserIds(db, [userId]);
+  return emittedBalances.get(userId) ?? getSharedBalance(db, userId);
 }

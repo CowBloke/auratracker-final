@@ -444,9 +444,9 @@ export function FinanceTab({
       {/* ── Summary ── */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Solde partagé"
+          label="Argent sur toi"
           value={`${(user?.money ?? 0).toLocaleString('fr-FR')} €`}
-          sub={marriedRel ? `+ compte couple ${formatMoney(marriedRel.coupleBalance)} €` : undefined}
+          sub={marriedRel ? `Compte commun : ${formatMoney(marriedRel.coupleBalance)} €` : undefined}
           icon={Wallet}
           color="bg-emerald-400/15 text-emerald-400"
         />
