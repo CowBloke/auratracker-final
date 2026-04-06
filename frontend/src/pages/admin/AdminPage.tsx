@@ -4290,7 +4290,7 @@ export default function Admin() {
       <div className={SPACING.PAGE_CONTENT}>
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Administration</h1>
-          {user?.isSuperAdmin && (
+          {isAdminOrSuperAdmin && (
             <Button onClick={openPrismaStudio} disabled={openingPrisma} variant="outline" size="sm">
               {openingPrisma ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Terminal className="w-4 h-4 mr-2" />}
               Ouvrir Prisma Studio
