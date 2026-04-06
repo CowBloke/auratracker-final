@@ -1009,19 +1009,14 @@ export default function Games() {
           <img
             src={resolveThemeImageUrl(game.image, theme)}
             alt={game.name}
-            className="absolute inset-0 h-full w-full scale-105 object-cover transition-transform duration-300 group-hover:scale-110"
+            className="absolute inset-0 h-full w-full scale-125 object-cover"
             loading="lazy"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
         <CardContent className="relative flex h-full flex-col justify-end p-4 text-white">
-          <p className="text-xs font-medium   text-white/70">{game.type}</p>
           <h3 className={TYPOGRAPHY.H4}>{game.name}</h3>
-          <p className="mt-1 text-[11px] leading-4 text-white/85">{game.description}</p>
-          <p className="mt-2 text-[11px] font-medium text-white/70">
-            {game.hasRewards ? 'Avec récompenses' : 'Sans récompenses'}
-          </p>
         </CardContent>
       </Card>
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { PageShell } from '@/components/layout/page-shell';
 import { passApi, type PassClaimResponse, type PassRewardEntry, type PassStatus } from '@/services/api';
@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import {
   AlertCircle,
+  Clock3,
+  Flame,
   Gift,
   Loader2,
   Package,
@@ -108,6 +110,87 @@ function formatRewardValue(reward: PassRewardEntry) {
   return reward.label;
 }
 
+function PassMetricCard({
+  icon,
+  label,
+  value,
+  valueClassName,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/50 bg-muted/20 p-4">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-border/50 bg-background/80 text-muted-foreground">
+        {icon}
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+        <p className={cn('text-base font-semibold tracking-tight', valueClassName)}>{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function PassRewardPreview({ reward }: { reward: PassRewardEntry }) {
+  const Icon = getRewardIcon(reward.type);
+  const style = rarityStyles[reward.rarity];
+
+  return (
+    <div className={cn('rounded-2xl border p-3', style.card)}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <Badge variant="outline" className={cn('rounded-full capitalize text-[10px]', style.badge)}>
+          {reward.rarity}
+        </Badge>
+        <div className={cn('flex h-7 w-7 items-center justify-center rounded-xl', style.iconWrap)}>
+          <Icon className={cn('h-3.5 w-3.5', style.icon)} />
+        </div>
+      </div>
+
+      {reward.item ? (
+        <div className="space-y-2">
+          {reward.item.imageUrl ? (
+            <img
+              src={resolveImageUrl(reward.item.imageUrl)}
+              alt={reward.item.name}
+              className="h-24 w-full rounded-xl object-cover"
+            />
+          ) : (
+            <div className="flex h-24 w-full items-center justify-center rounded-xl bg-background/70">
+              <Package className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
+          <div className="truncate text-sm font-semibold">{reward.item.name}</div>
+        </div>
+      ) : (
+        <div className="text-lg font-semibold tracking-tight">{formatRewardValue(reward)}</div>
+      )}
+    </div>
+  );
+}
+
+function PassLoadingState() {
+  return (
+    <PageShell>
+      <div className="space-y-8 animate-pulse">
+        <div className="space-y-3">
+          <div className="h-8 w-52 rounded bg-muted" />
+          <div className="h-4 w-full max-w-xl rounded bg-muted" />
+        </div>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)]">
+          <div className="h-[420px] rounded-3xl bg-muted" />
+          <div className="space-y-6">
+            <div className="h-64 rounded-3xl bg-muted" />
+            <div className="h-72 rounded-3xl bg-muted" />
+          </div>
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
 export default function Pass() {
   const [status, setStatus] = useState<PassStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -165,164 +248,161 @@ export default function Pass() {
   }, [lastClaim]);
 
   const heroStatusLabel = status?.status === 'claimed' ? 'Déjà ouvert' : 'Disponible';
+  const heroActionLabel = status?.status === 'claimed' ? 'Déjà ouvert aujourd’hui' : 'Ouvrir la boîte du jour';
+  const featuredItems = status?.featuredItems?.slice(0, 9) ?? [];
+
+  if (loading && !status) {
+    return <PassLoadingState />;
+  }
 
   return (
-    <PageShell>
-      <div className="mx-auto grid w-full max-w-5xl gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <Card className="overflow-hidden rounded-3xl border-border/60 bg-background shadow-none">
-          <CardContent className="space-y-5 p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <Badge variant="secondary" className="rounded-full border border-border/40 bg-muted/40">
-                {heroStatusLabel}
-              </Badge>
-              <Badge variant="outline" className="rounded-full border-border/60 bg-background/80 tabular-nums">
-                {countdown}
-              </Badge>
-              <Badge variant="outline" className="rounded-full border-border/60 bg-background/80">
-                Streak {status?.streak ?? 0}
-              </Badge>
-            </div>
-
-            <Button
-              size="lg"
-              onClick={handleClaim}
-              disabled={loading || claiming || status?.status === 'claimed'}
-              className="h-14 w-full rounded-2xl bg-foreground text-background hover:bg-foreground/90"
-            >
-              {loading || claiming ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Gift className="mr-2 h-5 w-5" />
-              )}
-              {status?.status === 'claimed' ? 'Déjà ouvert' : 'Ouvrir'}
-            </Button>
-
-            <Progress value={cycleProgress} className="h-2 bg-muted/40 [&>div]:bg-black" />
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
-                <div className="mb-1 flex items-center gap-2 text-muted-foreground">
-                  <CurrencyIcon type="money" className="h-4 w-4" />
-                  <span className="text-xs">$</span>
-                </div>
-                <div className="text-sm font-semibold">
-                  {status ? `${status.moneyRange.min.toLocaleString('fr-FR')} - ${status.moneyRange.max.toLocaleString('fr-FR')}` : '--'}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
-                <div className="mb-1 flex items-center gap-2 text-muted-foreground">
-                  <CurrencyIcon type="aura" className="h-4 w-4" />
-                  <span className="text-xs">Aura</span>
-                </div>
-                <div className="text-sm font-semibold">
-                  {status ? `${status.auraRange.min.toLocaleString('fr-FR')} - ${status.auraRange.max.toLocaleString('fr-FR')}` : '--'}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
-                <div className="mb-1 flex items-center gap-2 text-muted-foreground">
-                  <Gift className="h-4 w-4 text-amber-400" />
-                  <span className="text-xs">Item</span>
-                </div>
-                <div className="text-sm font-semibold">{status ? `${status.itemDropChance}%` : '--'}</div>
-              </div>
-            </div>
-
-            {status?.resetNotice ? (
-              <div className="flex items-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-                <AlertCircle className="h-4 w-4" />
-                Streak remise a 0
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card className="rounded-3xl border-border/60 shadow-none">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Objets</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-2">
-                {status?.featuredItems?.slice(0, 9).map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-border/50 bg-muted/20 p-2">
-                    {item.imageUrl ? (
-                      <img
-                        src={resolveImageUrl(item.imageUrl)}
-                        alt={item.name}
-                        className="mb-2 h-20 w-full rounded-xl object-cover"
-                      />
-                    ) : (
-                      <div className="mb-2 flex h-20 w-full items-center justify-center rounded-xl bg-background">
-                        <Package className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="truncate text-xs font-medium">{item.name}</div>
+    <PageShell className="xl:h-[calc(100vh-5.5rem)] xl:overflow-hidden">
+      <div className="grid gap-6 xl:h-full xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)] xl:items-stretch">
+        <div className="space-y-6 xl:flex xl:min-h-0 xl:flex-col">
+          <Card className="overflow-hidden rounded-3xl border-border/60 bg-card shadow-none xl:flex-[0_0_auto]">
+            <CardContent className="p-0">
+              <div className="relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent_70%)]" />
+                <div className="relative space-y-6 p-6 sm:p-8">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="rounded-full border border-border/50 bg-background/70">
+                      {heroStatusLabel}
+                    </Badge>
+                    <Badge variant="outline" className="rounded-full border-border/60 bg-background/80 tabular-nums">
+                      <Clock3 className="mr-1.5 h-3.5 w-3.5" />
+                      {countdown}
+                    </Badge>
+                    <Badge variant="secondary" className="rounded-full border border-border/50 bg-muted/30">
+                      <Flame className="mr-1.5 h-3.5 w-3.5 text-amber-400" />
+                      Streak {status?.streak ?? 0}
+                    </Badge>
                   </div>
-                ))}
-                {!status?.featuredItems?.length && !loading ? (
-                  <div className="col-span-3 rounded-2xl border border-border/50 bg-muted/20 p-3 text-center text-sm text-muted-foreground">
-                    --
+
+                  <div className="max-w-2xl">
+                    <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                      Boîte du jour
+                    </h2>
                   </div>
-                ) : null}
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <PassMetricCard
+                      icon={<CurrencyIcon type="money" className="h-4 w-4" />}
+                      label="Argent possible"
+                      value={status ? `${status.moneyRange.min.toLocaleString('fr-FR')} - ${status.moneyRange.max.toLocaleString('fr-FR')}$` : '--'}
+                    />
+                    <PassMetricCard
+                      icon={<CurrencyIcon type="aura" className="h-4 w-4" />}
+                      label="Aura possible"
+                      value={status ? `${status.auraRange.min.toLocaleString('fr-FR')} - ${status.auraRange.max.toLocaleString('fr-FR')} aura` : '--'}
+                    />
+                    <PassMetricCard
+                      icon={<Gift className="h-4 w-4 text-amber-400" />}
+                      label="Chance d’objet"
+                      value={status ? `${status.itemDropChance}%` : '--'}
+                      valueClassName="text-amber-300"
+                    />
+                  </div>
+
+                  <div className="space-y-3 rounded-2xl border border-border/50 bg-background/60 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="text-sm font-medium tabular-nums">{countdown}</div>
+                      <Button
+                        size="lg"
+                        onClick={handleClaim}
+                        disabled={loading || claiming || status?.status === 'claimed'}
+                        className="h-12 rounded-2xl px-5"
+                      >
+                        {loading || claiming ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Gift className="mr-2 h-4 w-4" />
+                        )}
+                        {heroActionLabel}
+                      </Button>
+                    </div>
+                    <Progress value={cycleProgress} className="h-2 bg-muted/40 [&>div]:bg-foreground" />
+                  </div>
+
+                  {status?.resetNotice ? (
+                    <div className="flex items-start gap-3 rounded-2xl border border-rose-500/25 bg-rose-500/10 p-4 text-sm text-rose-200">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="font-medium">Streak réinitialisé</div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {lastClaim ? (
-            <Card className="rounded-3xl border-border/60 shadow-none">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Dernier drop</CardTitle>
-                <div className="text-sm text-muted-foreground">{rewardSummary}</div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex gap-2">
-                  <Badge variant="outline" className="rounded-full border-border/60 gap-1.5">
-                    <CurrencyIcon type="money" className="h-3 w-3" />
-                    <span>{lastClaim.newBalance.money.toLocaleString('fr-FR')}$</span>
-                  </Badge>
-                  <Badge variant="outline" className="rounded-full border-border/60 gap-1.5">
-                    <CurrencyIcon type="aura" className="h-3 w-3" />
-                    <span>{lastClaim.newBalance.aura.toLocaleString('fr-FR')} aura</span>
-                  </Badge>
+            <Card className="rounded-3xl border-border/60 shadow-none xl:min-h-0 xl:flex-1">
+              <CardHeader className="pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-xl">Dernier drop</CardTitle>
+                    <CardDescription>{rewardSummary}</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="gap-1.5 rounded-full border-border/60">
+                      <CurrencyIcon type="money" className="h-3 w-3" />
+                      <span>{lastClaim.newBalance.money.toLocaleString('fr-FR')}$</span>
+                    </Badge>
+                    <Badge variant="outline" className="gap-1.5 rounded-full border-border/60">
+                      <CurrencyIcon type="aura" className="h-3 w-3" />
+                      <span>{lastClaim.newBalance.aura.toLocaleString('fr-FR')} aura</span>
+                    </Badge>
+                  </div>
                 </div>
-
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {lastClaim.rewards.map((reward, index) => {
-                    const Icon = getRewardIcon(reward.type);
-                    const style = rarityStyles[reward.rarity];
-
-                    return (
-                      <div key={`${reward.type}-${index}`} className={cn('rounded-2xl border p-3', style.card)}>
-                        <div className="mb-2 flex items-center justify-between">
-                          <Badge variant="outline" className={cn('rounded-full capitalize text-[10px]', style.badge)}>{reward.rarity}</Badge>
-                          <div className={cn('flex h-7 w-7 items-center justify-center rounded-xl', style.iconWrap)}>
-                            <Icon className={cn('h-3.5 w-3.5', style.icon)} />
-                          </div>
-                        </div>
-
-                        {reward.item ? (
-                          <div className="space-y-2">
-                            {reward.item.imageUrl ? (
-                              <img
-                                src={resolveImageUrl(reward.item.imageUrl)}
-                                alt={reward.item.name}
-                                className="h-24 w-full rounded-xl object-cover"
-                              />
-                            ) : null}
-                            <div className="truncate text-sm font-semibold">{reward.item.name}</div>
-                          </div>
-                        ) : (
-                          <div className="text-lg font-semibold tracking-tight">{formatRewardValue(reward)}</div>
-                        )}
-                      </div>
-                    );
-                  })}
+              </CardHeader>
+              <CardContent className="xl:min-h-0 xl:overflow-y-auto">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {lastClaim.rewards.map((reward, index) => (
+                    <PassRewardPreview key={`${reward.type}-${index}`} reward={reward} />
+                  ))}
                 </div>
               </CardContent>
             </Card>
           ) : null}
+        </div>
+
+        <div className="space-y-6 xl:min-h-0">
+          <Card className="rounded-3xl border-border/60 shadow-none xl:flex xl:h-full xl:flex-col">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">Rotation d’objets</CardTitle>
+            </CardHeader>
+            <CardContent className="xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+              {featuredItems.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-2">
+                  {featuredItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="group rounded-2xl border border-border/50 bg-muted/20 p-2.5 transition-colors hover:bg-muted/30"
+                    >
+                      {item.imageUrl ? (
+                        <img
+                          src={resolveImageUrl(item.imageUrl)}
+                          alt={item.name}
+                          className="mb-3 h-24 w-full rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="mb-3 flex h-24 w-full items-center justify-center rounded-xl bg-background">
+                          <Package className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <div className="truncate text-sm font-medium">{item.name}</div>
+                        <div className="text-xs text-muted-foreground">{item.type.toLowerCase()}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-6 text-sm text-muted-foreground">
+                  Aucun objet
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </PageShell>

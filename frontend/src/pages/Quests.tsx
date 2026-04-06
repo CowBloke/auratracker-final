@@ -6,7 +6,7 @@ import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
 import { toast } from '@/hooks/use-toast';
 import { useRewardQueue, type RewardItem } from '../contexts/RewardQueueContext';
-import { CheckCircle2, Circle, Users, Gamepad2, Bomb, ScrollText, Ship, Trophy, Target, ClipboardList, Search } from 'lucide-react';
+import { CheckCircle2, Circle, Search } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,31 +109,6 @@ export default function Quests() {
     }
   };
 
-  const getQuestIcon = (questType: string) => {
-    switch (questType) {
-      case 'JOIN_PARTIES':
-        return Users;
-      case 'DOODLE_JUMP_SCORE':
-      case 'GAME_2048_SCORE':
-      case 'FLAPPY_BIRD_SCORE':
-        return Gamepad2;
-      case 'BOMB_PARTY_PLAYS':
-        return Bomb;
-      case 'POKER_PLAYS':
-        return Gamepad2;
-      case 'PETIT_BAC_PLAYS':
-        return ScrollText;
-      case 'BATTLESHIP_PLAYS':
-        return Ship;
-      case 'WIN_GAMES':
-        return Trophy;
-      case 'PLAY_GAMES':
-        return Target;
-      default:
-        return ClipboardList;
-    }
-  };
-
   const hasSelectedQuests = myQuests.length > 0;
   const completedQuests = myQuests.filter((q) => q.isCompleted && !q.isClaimed);
   const canSelectNewQuests = !hasSelectedQuests && dailyQuests.length > 0;
@@ -189,14 +164,11 @@ export default function Quests() {
             return a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' });
           case 'recommended':
           default: {
-            const aSelected = selectedQuestIds.includes(a.id) ? 0 : 1;
-            const bSelected = selectedQuestIds.includes(b.id) ? 0 : 1;
-            if (aSelected !== bSelected) return aSelected - bSelected;
             return (b.moneyReward + b.auraReward) - (a.moneyReward + a.auraReward);
           }
         }
       });
-  }, [dailyQuests, normalizedSearch, selectedQuestIds, sortMode]);
+  }, [dailyQuests, normalizedSearch, sortMode]);
 
   const layoutClassName = viewMode === 'grid'
     ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'
@@ -305,14 +277,12 @@ export default function Quests() {
               const progressPercent = Math.min((progress / target) * 100, 100);
               const isCompleted = userQuest.isCompleted;
               const isClaimed = userQuest.isClaimed;
-              const QuestIcon = getQuestIcon(userQuest.quest.questType);
 
               return (
                 <Card key={userQuest.id} className={isCompleted && !isClaimed ? 'border-green-500' : ''}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <QuestIcon className="h-5 w-5 text-muted-foreground" />
+                      <div>
                         <CardTitle className={TYPOGRAPHY.H5}>{userQuest.quest.title}</CardTitle>
                       </div>
                       {isCompleted && !isClaimed && (
@@ -350,7 +320,7 @@ export default function Quests() {
                       <Progress value={progressPercent} className="h-2" />
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <CurrencyIcon type="money" className="w-4 h-4" />
@@ -383,7 +353,6 @@ export default function Quests() {
             <div className={layoutClassName}>
             {displayedDailyQuests.map((quest) => {
               const isSelected = selectedQuestIds.includes(quest.id);
-              const QuestIcon = getQuestIcon(quest.questType);
 
               return (
                 <Card
@@ -397,8 +366,7 @@ export default function Quests() {
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2">
-                        <QuestIcon className="h-5 w-5 text-muted-foreground" />
+                      <div>
                         <CardTitle className={TYPOGRAPHY.H5}>{quest.title}</CardTitle>
                       </div>
                       {isSelected ? (
@@ -410,7 +378,7 @@ export default function Quests() {
                     <CardDescription>{quest.description}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <CurrencyIcon type="money" className="w-4 h-4" />

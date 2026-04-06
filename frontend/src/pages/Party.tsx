@@ -475,16 +475,8 @@ export default function Party() {
                       key={game.id}
                       className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
                     >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-3">
-                          <p className={TYPOGRAPHY.SMALL}>{game.name}</p>
-                          <span className={cn(TYPOGRAPHY.XS, "  text-muted-foreground")}>
-                            {game.type}
-                          </span>
-                        </div>
-                        <p className={TYPOGRAPHY.SMALL}>
-                          {game.description}
-                        </p>
+                      <div>
+                        <p className={TYPOGRAPHY.SMALL}>{game.name}</p>
                       </div>
                       <button
                         onClick={() =>

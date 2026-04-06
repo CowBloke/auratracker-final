@@ -851,49 +851,58 @@ export default function Polymarket() {
                         </div>
 
                         {/* ── Right side: title + content ── */}
-                        <div className="flex flex-1 flex-col gap-3 p-4 min-w-0">
+                        <div className={cn('flex flex-1 flex-col gap-3 p-4 min-w-0', viewMode === 'grid' && 'h-full')}>
                           {/* Title row */}
-                          <div className="flex items-start gap-2">
+                          <div className={cn('flex items-start gap-2', viewMode === 'grid' && 'min-h-[4rem]')}>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <CardTitle className="text-base font-bold leading-snug">{event.title}</CardTitle>
+                                <CardTitle className={cn('text-base font-bold leading-snug', viewMode === 'grid' && 'line-clamp-2 min-h-[3rem]')}>
+                                  {event.title}
+                                </CardTitle>
                                 <Badge variant={event.status === 'OPEN' ? 'default' : 'secondary'} className="text-xs shrink-0">
                                   {event.status === 'OPEN' ? 'Ouvert' : event.status}
                                 </Badge>
                               </div>
                             </div>
-                            {user?.isAdmin && (
-                              <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditEventDialog(event)} title="Modifier">
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                {event.status === 'OPEN' && (
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedEventForResolve(event); setResolution(options[0]?.key || 'YES'); setResolveDialogOpen(true); }} title="Résoudre">
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                            <div className="flex items-center gap-0.5 shrink-0 -mt-0.5">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDetailDialog(event)} title="Voir plus">
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                              {user?.isAdmin && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditEventDialog(event)} title="Modifier">
+                                    <Pencil className="h-3.5 w-3.5" />
                                   </Button>
-                                )}
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => { setSelectedEventForDelete(event); setDeleteDialogOpen(true); }} title="Supprimer">
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            )}
+                                  {event.status === 'OPEN' && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelectedEventForResolve(event); setResolution(options[0]?.key || 'YES'); setResolveDialogOpen(true); }} title="Résoudre">
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => { setSelectedEventForDelete(event); setDeleteDialogOpen(true); }} title="Supprimer">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
 
                           {/* Content: description 30% · options 70% */}
                           <div className={cn('flex flex-1 min-h-0 gap-3', viewMode === 'grid' && 'flex-col')}>
                             {/* Description column */}
                             <div
-                              className="flex min-w-0 flex-col justify-between gap-2"
+                              className={cn('flex min-w-0 flex-col justify-between gap-2', viewMode === 'grid' && 'min-h-[8.75rem]')}
                               style={viewMode === 'grid' ? undefined : { flex: '0 0 28%' }}
                             >
                               <div>
-                                <CardDescription className="line-clamp-3 text-xs leading-relaxed">{event.description}</CardDescription>
+                                <CardDescription className={cn('text-xs leading-relaxed', viewMode === 'grid' ? 'line-clamp-3 min-h-[3.75rem]' : 'line-clamp-3')}>
+                                  {event.description}
+                                </CardDescription>
                                 <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
                                   <Calendar className="h-3 w-3 shrink-0" />
                                   <span className="truncate">{new Date(event.eventDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                                 </div>
                               </div>
-                              <div className="flex flex-col gap-1.5">
+                              <div className={cn('flex flex-col gap-1.5', viewMode === 'grid' && 'min-h-[1rem]')}>
                                 {userBet && (() => {
                                   const betOpt = getOptionByKey(event, userBet.prediction);
                                   return (
@@ -903,20 +912,11 @@ export default function Polymarket() {
                                     </span>
                                   );
                                 })()}
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 text-xs gap-1 w-full"
-                                  onClick={() => openDetailDialog(event)}
-                                >
-                                  <Eye className="h-3 w-3" />
-                                  Voir plus
-                                </Button>
                               </div>
                             </div>
 
                             {/* Option boxes column */}
-                            <div className="flex flex-1 gap-2 min-w-0">
+                            <div className="flex flex-1 items-stretch gap-2 min-w-0">
                               {options.map((opt) => {
                                 const optVol = (event.optionStats ?? {})[opt.key]
                                   ?? (opt.key === 'YES' ? (event.totalYes || 0) : opt.key === 'NO' ? (event.totalNo || 0) : 0);
@@ -925,7 +925,7 @@ export default function Polymarket() {
                                 return (
                                   <div
                                     key={opt.key}
-                                    className="flex-1 rounded-xl border p-3 space-y-2 min-w-0"
+                                    className="flex min-h-[13rem] flex-1 flex-col gap-2 rounded-xl border p-3 min-w-0"
                                     style={{
                                       borderColor: isMyBet ? opt.color + '80' : opt.color + '35',
                                       background: isMyBet ? opt.color + '18' : opt.color + '0c',
@@ -948,14 +948,14 @@ export default function Polymarket() {
                                     </div>
                                     {canBet ? (
                                       <button
-                                        className="w-full rounded-lg py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-85 active:scale-95 mt-1"
+                                        className="mt-auto w-full rounded-lg py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-85 active:scale-95"
                                         style={{ background: opt.color }}
                                         onClick={() => { setSelectedEvent(event); setBetPrediction(opt.key); setBetAmount(''); setBetDialogOpen(true); }}
                                       >
                                         Parier
                                       </button>
                                     ) : isMyBet ? (
-                                      <div className="w-full rounded-lg py-1.5 text-xs font-bold text-center text-white mt-1" style={{ background: opt.color + 'cc' }}>
+                                      <div className="mt-auto w-full rounded-lg py-1.5 text-xs font-bold text-center text-white" style={{ background: opt.color + 'cc' }}>
                                         ✓ Mon pari
                                       </div>
                                     ) : null}
