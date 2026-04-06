@@ -39,6 +39,10 @@
 - anticheat
 - 2 3 affaires (non qu'une)
 - fix niveaux
+- UI avec sites UI
+- niveau xp
+- carte
+- expliciter chnagement de business
 
 Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 
