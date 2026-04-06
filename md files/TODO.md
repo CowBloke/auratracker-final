@@ -18,6 +18,27 @@
  -apr defaut grille reset
  - supprimer effet hover marketplace
  - parts entreprise et fodateur rachat de parts
+ - image dm
+ - pastille rouge DM
+ - pb pastille non lus chat main
+ - historique couleur enlever gris polymarket juste card classique 
+ - mettre prix d'origine d'achat aussi (pas sur
+ - bouton archiver et non poubelle panel deroulant inbox)
+ - choix liste grille persistant sur toutes les pages et par dafaut greille et pouvoir resest admin
+ - card polymarket hierarchie
+ - aut scroll vers le bas quand pas de message non lus dans chat main
+- racheterr part en tant que fondateur et transfert fondateur
+- changer note
+- historique solde
+- associer clan/entreprise
+- mariage compte partagé et aussi argent partagé bug
+- maeché noir
+- entreprise coca
+- braquer banque
+- blaznchir argent
+- anticheat
+- 2 3 affaires (non qu'une)
+- fix niveaux
 
 Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 

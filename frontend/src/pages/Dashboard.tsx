@@ -323,13 +323,11 @@ function ShortcutTile({ shortcut, theme }: { shortcut: GameShortcut; theme: 'lig
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
           <div className="relative z-10 flex h-full flex-col justify-end p-2 text-white">
-            <p className="text-[11px] uppercase tracking-wide text-white/70">Jeu</p>
             <p className="text-sm font-semibold leading-tight">{shortcut.label}</p>
           </div>
         </>
       ) : (
         <div className="flex h-full w-full flex-col justify-end bg-gradient-to-t from-muted/70 via-muted/30 to-transparent p-2">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Jeu</p>
           <p className="text-sm font-semibold leading-tight">{shortcut.label}</p>
         </div>
       )}
