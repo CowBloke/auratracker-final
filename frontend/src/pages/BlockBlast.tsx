@@ -235,8 +235,13 @@ export default function BlockBlast() {
       }
 
       const cellSize = rect.width / game.board.length;
-      const boardX = Math.floor((event.clientX - rect.left) / cellSize);
-      const boardY = Math.floor((event.clientY - rect.top) / cellSize);
+      
+      const exactX = (event.clientX - rect.left) / cellSize;
+      const exactY = (event.clientY - rect.top) / cellSize;
+
+      const boardX = Math.round(exactX - piece.matrix[0].length / 2);
+      const boardY = Math.round(exactY - piece.matrix.length / 2);
+
       const dropX = Math.max(0, Math.min(game.board.length - piece.matrix[0].length, boardX));
       const dropY = Math.max(0, Math.min(game.board.length - piece.matrix.length, boardY));
 
@@ -609,8 +614,8 @@ export default function BlockBlast() {
             <div
               className="pointer-events-none fixed z-[70]"
               style={{
-                left: drag.pointerX - drag.pieceWidth / 2,
-                top: drag.pointerY - drag.pieceHeight / 2,
+                left: drag.pointerX - ((activePiece.matrix[0].length * 28 + 24) * 1.08) / 2,
+                top: drag.pointerY - ((activePiece.matrix.length * 28 + 24) * 1.08) / 2,
               }}
             >
               <div
