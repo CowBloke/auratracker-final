@@ -4,8 +4,9 @@ import { randomUUID } from 'crypto';
 
 const prisma = new PrismaClient();
 
-const COMMON_PASSWORD = 'Password123!';
-const ADMIN_PASSWORD = 'SuperSecretAdminPassword';
+const DEV_PASSWORD = 'aaaaaa';
+const COMMON_PASSWORD = DEV_PASSWORD;
+const ADMIN_PASSWORD = DEV_PASSWORD;
 const MOCK_IMAGE = {
   lena: '/images/mock/avatar-lena.svg',
   milo: '/images/mock/avatar-milo.svg',
@@ -2330,8 +2331,8 @@ async function main() {
   });
 
   console.log('Seed complete.');
-  console.log('Admin login: admin / SuperSecretAdminPassword');
-  console.log('Mock users password: Password123!');
+  console.log(`Admin login: admin / ${ADMIN_PASSWORD}`);
+  console.log(`Mock users password: ${COMMON_PASSWORD}`);
   console.log('Seeded features: games, daily racer, polytrack, clash village, shop, inventory, clans, clan wars, support, social, suggestions, polymarket, gifts, badges, quests, pass, inbox, update popups, admin pending users.');
   console.log(`Kept active features only. No legacy placeholder entries were reintroduced for removed mock content.`);
   console.log(`Pending polymarket suggestion id: ${polyPending.id}`);

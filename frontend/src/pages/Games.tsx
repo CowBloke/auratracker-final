@@ -280,6 +280,28 @@ const games: Game[] = [
     hasRewards: true,
   },
   {
+    id: 'soccer',
+    pageKey: 'game-soccer',
+    name: 'Soccer',
+    description: 'Choisis une zone dans le but et tente de battre le gardien avec environ 70% de risque de perdre.',
+    type: 'Chance',
+    image: getGameImage('soccer'),
+    statsKeys: ['casino'],
+    releaseRank: 39,
+    hasRewards: true,
+  },
+  {
+    id: 'mines',
+    pageKey: 'game-mines',
+    name: 'Mines',
+    description: 'Le classique: revele les cases sures, fais grimper le multiplicateur et cashout a temps.',
+    type: 'Chance',
+    image: getGameImage('mines'),
+    statsKeys: ['casino'],
+    releaseRank: 40,
+    hasRewards: true,
+  },
+  {
     id: 'market-room',
     pageKey: 'game-market-room',
     name: 'Salle de marché',
@@ -612,6 +634,18 @@ const gameRewardTiers: Partial<Record<Game['id'], RewardTierLine[]>> = {
     { label: 'Gros gain', reward: '10 aura si gain >= 10x la mise' },
     { label: 'Tres gros gain', reward: '50 aura si gain >= 50x la mise' },
   ],
+  soccer: [
+    { label: 'But gagne', reward: 'Paiement selon la mise et les bonus casino' },
+    { label: 'Defaite', reward: 'La mise est perdue' },
+  ],
+  mines: [
+    { label: 'Cashout', reward: 'Paiement selon le multiplicateur atteint' },
+    { label: 'Mine touchee', reward: 'La mise est perdue' },
+  ],
+  crash: [
+    { label: 'Cashout avant crash', reward: 'Paiement selon le multiplicateur atteint' },
+    { label: 'Crash subi', reward: 'La mise est perdue' },
+  ],
   solitaire: [
     { label: 'Victoire', reward: '50$ + 5 aura minimum' },
     { label: '5 000+', reward: '100$ + 10 aura' },
@@ -807,6 +841,18 @@ export default function Games() {
     }
     if (gameId === 'minesweeper') {
       return '/games/minesweeper';
+    }
+    if (gameId === 'soccer') {
+      return '/games/casino?table=soccer';
+    }
+    if (gameId === 'mines') {
+      return '/games/casino?table=mines';
+    }
+    if (gameId === 'crash') {
+      return '/games/casino?table=crash';
+    }
+    if (gameId === 'casino') {
+      return '/games/casino';
     }
     if (gameId === 'blockblast') {
       return '/games/blockblast';

@@ -213,6 +213,9 @@ function App() {
         <Route path="games/stack-tower" element={<StackTower />} />
         <Route path="games/geometry-dash" element={<GeometryDash />} />
         <Route path="games/casino" element={<Casino />} />
+        <Route path="games/soccer" element={<Navigate to="/games/casino?table=soccer" replace />} />
+        <Route path="games/mines" element={<Navigate to="/games/casino?table=mines" replace />} />
+        <Route path="games/crash" element={<Navigate to="/games/casino?table=crash" replace />} />
         <Route path="games/salle-de-marche" element={<MarketRoom />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="games/stable-coin" element={<StableCoin />} />
