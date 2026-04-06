@@ -50,6 +50,19 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     level: 1,
     actions: ['deposit', 'withdraw', 'collect_npc', 'purchase_item'],
   },
+  {
+    key: 'restaurant',
+    label: 'Restaurant',
+    category: 'Restauration',
+    description: 'Un restaurant servant divers plats comme des burgers, pizzas et poulet frit.',
+    minCapital: 0,
+    creationFee: 2000,
+    monthlyRevenue: 800,
+    monthlyExpenses: 250,
+    satisfaction: 80,
+    level: 1,
+    actions: ['deposit', 'withdraw', 'collect_npc', 'purchase_item'],
+  },
   // --- Level 2 ---
   {
     key: 'coffee_shop',

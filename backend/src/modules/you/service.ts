@@ -641,7 +641,7 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     formationUrl: business.typeKey === 'formation' ? (business.formationUrl ?? null) : undefined,
     formationPrice: business.typeKey === 'formation' ? (business.formationPrice ?? 500) : undefined,
     formationProducts: business.typeKey === 'formation' ? formationProducts : undefined,
-    npcLastCollectedAt: (business.typeKey === 'lemonade' || business.typeKey === 'epicerie')
+    npcLastCollectedAt: (business.typeKey === 'lemonade' || business.typeKey === 'epicerie' || business.typeKey === 'restaurant')
       ? (business.npcLastCollectedAt ? new Date(business.npcLastCollectedAt).toISOString() : null)
       : undefined,
     level: type?.level ?? 1,

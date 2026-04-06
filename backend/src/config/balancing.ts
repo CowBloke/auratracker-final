@@ -30,6 +30,20 @@ export const BALANCING = {
       npcCollectAmount: 300,
       npcCollectCooldownHours: 6,
     },
+    restaurant: {
+      key: 'restaurant',
+      creationCost: 2000,
+      monthlyRevenue: 800,
+      level: 1,
+      items: [
+        { key: 'burger', label: 'Burger', price: 15 },
+        { key: 'pizza', label: 'Pizza', price: 18 },
+        { key: 'fried_chicken', label: 'Poulet Frit', price: 12 },
+        { key: 'soda', label: 'Soda', price: 5 },
+      ],
+      npcCollectAmount: 350,
+      npcCollectCooldownHours: 6,
+    },
     coffee_shop: {
       key: 'coffee_shop',
       creationCost: 3000,

@@ -21,6 +21,15 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-06-restaurant-business',
+    date: '2026-04-06',
+    title: 'Nouveau type de business: Restaurant',
+    summary: 'Les joueurs peuvent désormais créer et gérer des restaurants, et y acheter divers plats (burgers, pizzas, etc.).',
+    items: [
+      { category: 'BIG_FEATURE', text: '**Restaurant** — Nouvelle catégorie de business niveau 1. Permet de vendre et d\'acheter des burgers, pizzas, poulet frit et sodas pour vos besoins quotidiens.', order: 0 },
+    ],
+  },
+  {
     id: '2026-04-04-justice-system',
     date: '2026-04-04',
     title: 'Système judiciaire — Cour Suprême & Cabinets d\'avocats',

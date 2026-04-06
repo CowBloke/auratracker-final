@@ -28,6 +28,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  Utensils,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,7 @@ function formatMoney(n: number) {
   return `${n.toLocaleString('fr-FR')} EUR`;
 }
 
-const BUSINESS_TYPE_ORDER = ['supreme_court', 'law_firm', 'bank', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'epicerie', 'coffee_shop'] as const;
+const BUSINESS_TYPE_ORDER = ['supreme_court', 'law_firm', 'bank', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'restaurant', 'epicerie', 'coffee_shop'] as const;
 
 const SECTION_META: Record<
   (typeof BUSINESS_TYPE_ORDER)[number],
@@ -70,6 +71,7 @@ const SECTION_META: Record<
   startup: { label: 'Tech startups', icon: TrendingUp, pillColor: 'bg-sky-400/15 text-sky-400' },
   agency: { label: 'Agencies', icon: Building2, pillColor: 'bg-violet-400/15 text-violet-400' },
   lemonade: { label: 'Stands limonade', icon: Store, pillColor: 'bg-yellow-400/15 text-yellow-400' },
+  restaurant: { label: 'Restaurants', icon: Utensils, pillColor: 'bg-red-400/15 text-red-400' },
   epicerie: { label: 'Epiceries', icon: ShoppingBasket, pillColor: 'bg-lime-400/15 text-lime-400' },
   coffee_shop: { label: 'Coffee Shops', icon: Coffee, pillColor: 'bg-orange-400/15 text-orange-400' },
 };
@@ -378,7 +380,7 @@ function BusinessInteractionModal({
       { label: 'Formations', value: `${business.formationProducts?.length ?? 0} disponible(s)`, color: 'text-amber-400' },
       { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
     ];
-    if (business.typeKey === 'lemonade' || business.typeKey === 'epicerie') return [
+    if (business.typeKey === 'lemonade' || business.typeKey === 'epicerie' || business.typeKey === 'restaurant') return [
       { label: 'Tresorerie', value: formatMoney(business.treasuryMoney), color: 'text-emerald-400' },
       { label: 'Satisfaction', value: `${business.satisfaction}/100`, color: 'text-sky-400' },
     ];
@@ -570,6 +572,16 @@ function BusinessInteractionModal({
                   label={isOwned ? 'Achat indisponible' : 'Acheter'}
                   sub={isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Parcourir les articles disponibles'}
                   tone="bg-lime-400/15 text-lime-400"
+                  primary
+                  onClick={() => onAction('purchase')}
+                  disabled={isOwned}
+                />
+              ) : business.typeKey === 'restaurant' ? (
+                <ActionButton
+                  icon={Utensils}
+                  label={isOwned ? 'Achat indisponible' : 'Acheter'}
+                  sub={isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Parcourir les articles disponibles'}
+                  tone="bg-red-400/15 text-red-400"
                   primary
                   onClick={() => onAction('purchase')}
                   disabled={isOwned}
@@ -778,6 +790,12 @@ const ITEMS_CONFIG: Record<string, Array<{ key: string; label: string; price: nu
     { key: 'fromage', label: 'Fromage', price: 20, emoji: '🧀' },
     { key: 'vin', label: 'Vin', price: 35, emoji: '🍷' },
     { key: 'confiture', label: 'Confiture', price: 12, emoji: '🫙' },
+  ],
+  restaurant: [
+    { key: 'burger', label: 'Burger', price: 15, emoji: '🍔' },
+    { key: 'pizza', label: 'Pizza', price: 18, emoji: '🍕' },
+    { key: 'fried_chicken', label: 'Poulet Frit', price: 12, emoji: '🍗' },
+    { key: 'soda', label: 'Soda', price: 5, emoji: '🥤' },
   ],
   agency: [
     { key: 'studio', label: 'Studio 20m²', price: 800, emoji: '🏠', xpHint: '+5 XP Social' },
