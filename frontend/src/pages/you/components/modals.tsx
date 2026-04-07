@@ -1282,40 +1282,7 @@ export function ManageBusinessModal({
                     {business.shareholders.map((shareholder) => (
                       <div key={shareholder.id} className="flex items-center justify-between rounded-lg bg-background/50 px-3 py-2 text-sm">
                         <span>{shareholder.user.username}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold">{shareholder.sharePercent.toFixed(2)}%</span>
-                          {currentUserId === business.owner.id && (
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="h-6 text-xs px-2 h-auto py-0.5"
-                              onClick={async () => {
-                                const amountStr = prompt(
-                                  `Montant proposé pour racheter les ${shareholder.sharePercent.toFixed(2)}% de ${shareholder.user.username} ?\nLe joueur recevra une notification et pourra accepter ou refuser l'offre.`
-                                );
-                                if (!amountStr) return;
-                                const amount = Number(amountStr);
-                                if (isNaN(amount) || amount <= 0) {
-                                  toast({ title: 'Montant invalide', variant: 'destructive', description: 'Veuillez entrer un montant valide supérieur à 0.' });
-                                  return;
-                                }
-                                const offerDesc = `L'offre de ${amount.toLocaleString('fr-FR')} money a bien été envoyée à ${shareholder.user.username}.`;
-                                const success = await withRouteError(
-                                  () => youApi.createShareBuybackOffer(business.id, { shareholderId: shareholder.user.id, amount }),
-                                  'Impossible d\'envoyer l\'offre de rachat.'
-                                );
-                                if (success) {
-                                  toast({
-                                    title: 'Offre de rachat envoyée 📨',
-                                    description: offerDesc,
-                                  });
-                                }
-                              }}
-                            >
-                              Racheter
-                            </Button>
-                          )}
-                        </div>
+                        <span className="font-semibold">{shareholder.sharePercent.toFixed(2)}%</span>
                       </div>
                     ))}
                     {business.shareholders.length === 0 ? <p className="text-xs text-muted-foreground">Aucun actionnaire externe pour l instant.</p> : null}

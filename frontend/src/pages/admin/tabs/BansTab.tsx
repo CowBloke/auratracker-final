@@ -1,9 +1,7 @@
 import { type Dispatch, type SetStateAction } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
@@ -31,7 +29,6 @@ import {
 } from '@/components/ui/dialog';
 
 type WarningSeverity = 'LOW' | 'MEDIUM' | 'HIGH';
-type WarningType = 'AVERTISSEMENT' | 'AMENDE';
 
 type BansTabProps = {
   bans: Ban[];
@@ -47,14 +44,10 @@ type BansTabProps = {
   users: AdminUser[];
   warningUserId: string;
   setWarningUserId: Dispatch<SetStateAction<string>>;
-  warningType: WarningType;
-  setWarningType: Dispatch<SetStateAction<WarningType>>;
   warningSeverity: WarningSeverity;
   setWarningSeverity: Dispatch<SetStateAction<WarningSeverity>>;
   warningMessage: string;
   setWarningMessage: Dispatch<SetStateAction<string>>;
-  amendeAmount: number;
-  setAmendeAmount: Dispatch<SetStateAction<number>>;
   createWarning: () => void;
   creatingWarning: boolean;
 };
@@ -74,14 +67,10 @@ export function BansTab(props: BansTabProps) {
     users,
     warningUserId,
     setWarningUserId,
-    warningType,
-    setWarningType,
     warningSeverity,
     setWarningSeverity,
     warningMessage,
     setWarningMessage,
-    amendeAmount,
-    setAmendeAmount,
     createWarning,
     creatingWarning,
   } = props;
@@ -348,27 +337,12 @@ export function BansTab(props: BansTabProps) {
       <Dialog open={warningDialogOpen} onOpenChange={setWarningDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Envoyer une sanction</DialogTitle>
+            <DialogTitle>Envoyer un avertissement</DialogTitle>
             <DialogDescription>
-              {warningType === 'AMENDE' 
-                ? 'L\'utilisateur verra une notification de l\'amende en rouge sur son écran.'
-                : 'L\'utilisateur verra un popup d\'avertissement qu\'il devra confirmer avoir lu.'}
+              L'utilisateur verra un popup qu'il devra confirmer avoir lu.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Type de sanction</label>
-              <Select value={warningType} onValueChange={(value) => setWarningType(value as WarningType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="AVERTISSEMENT">Avertissement</SelectItem>
-                  <SelectItem value="AMENDE">Amende</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Utilisateur</label>
               {warningUserId ? (
@@ -390,66 +364,28 @@ export function BansTab(props: BansTabProps) {
                 </Select>
               )}
             </div>
-
-            {warningType === 'AVERTISSEMENT' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Sévérité</label>
-                <Select
-                  value={warningSeverity}
-                  onValueChange={(value) => setWarningSeverity(value as WarningSeverity)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="LOW">Information</SelectItem>
-                    <SelectItem value="MEDIUM">Avertissement</SelectItem>
-                    <SelectItem value="HIGH">Grave</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {warningType === 'AMENDE' && (
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Montant de l'amende</label>
-                  <div className="flex items-center gap-3">
-                    <Slider
-                      value={[amendeAmount]}
-                      onValueChange={(value) => setAmendeAmount(value[0])}
-                      min={10}
-                      max={Math.max(5000, amendeAmount)}
-                      step={10}
-                      className="flex-1"
-                    />
-                    <Input
-                      type="number"
-                      value={amendeAmount}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || 0;
-                        if (val >= 0) setAmendeAmount(val);
-                      }}
-                      min={10}
-                      className="w-24 text-right tabular-nums bg-red-500/10 border-red-500/50 text-red-400"
-                      placeholder="Montant"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Montant minimum: 10 | Entrez un montant personnalisé
-                </p>
-              </div>
-            )}
-
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Sévérité</label>
+              <Select
+                value={warningSeverity}
+                onValueChange={(value) => setWarningSeverity(value as WarningSeverity)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LOW">Information</SelectItem>
+                  <SelectItem value="MEDIUM">Avertissement</SelectItem>
+                  <SelectItem value="HIGH">Grave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Message</label>
               <Textarea
                 value={warningMessage}
                 onChange={(event) => setWarningMessage(event.target.value)}
-                placeholder={warningType === 'AMENDE' 
-                  ? 'Entrez la raison de l\'amende...'
-                  : 'Entrez le message de l\'avertissement...'}
+                placeholder="Entrez le message de l'avertissement..."
                 rows={4}
               />
             </div>
@@ -460,7 +396,7 @@ export function BansTab(props: BansTabProps) {
             </Button>
             <Button
               onClick={createWarning}
-              disabled={creatingWarning || !warningUserId || !warningMessage.trim() || (warningType === 'AMENDE' && (!amendeAmount || amendeAmount <= 0))}
+              disabled={creatingWarning || !warningUserId || !warningMessage.trim()}
             >
               {creatingWarning ? (
                 <>

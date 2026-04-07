@@ -1520,7 +1520,6 @@ router.get('/clans', authMiddleware, requireAdmin, async (_req: AuthRequest, res
         name: clan.name,
         description: clan.description,
         imageUrl: clan.imageUrl,
-        tagUnlocked: clan.tagUnlocked,
         isPublic: clan.isPublic,
         maxMembers: clan.maxMembers,
         clanBankMoney: clan.clanBankMoney,
@@ -1550,7 +1549,6 @@ router.put('/clans/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
     const rawDescription = typeof req.body.description === 'string' ? req.body.description.trim() : undefined;
     const rawImageUrl = typeof req.body.imageUrl === 'string' ? req.body.imageUrl.trim() : undefined;
     const isPublic = typeof req.body.isPublic === 'boolean' ? req.body.isPublic : undefined;
-    const tagUnlocked = typeof req.body.tagUnlocked === 'boolean' ? req.body.tagUnlocked : undefined;
     const maxMembers = req.body.maxMembers !== undefined ? Number(req.body.maxMembers) : undefined;
 
     const clan = await prisma.clan.findUnique({
@@ -1593,7 +1591,6 @@ router.put('/clans/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         ...(rawDescription !== undefined ? { description: rawDescription || null } : {}),
         ...(rawImageUrl !== undefined ? { imageUrl: rawImageUrl || null } : {}),
         ...(isPublic !== undefined ? { isPublic } : {}),
-        ...(tagUnlocked !== undefined ? { tagUnlocked } : {}),
         ...(maxMembers !== undefined ? { maxMembers } : {}),
       },
       include: {
@@ -1621,7 +1618,6 @@ router.put('/clans/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         name: updatedClan.name,
         description: updatedClan.description,
         imageUrl: updatedClan.imageUrl,
-        tagUnlocked: updatedClan.tagUnlocked,
         isPublic: updatedClan.isPublic,
         maxMembers: updatedClan.maxMembers,
         clanBankMoney: updatedClan.clanBankMoney,
@@ -4767,7 +4763,7 @@ router.get('/warnings', authMiddleware, requireAdmin, async (req: AuthRequest, r
 // Create a warning (admin only)
 router.post('/warnings', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { userId, message, severity, type, amount } = req.body;
+    const { userId, message, severity } = req.body;
 
     if (!userId || !message) {
       return res.status(400).json({ error: 'User ID and message are required' });
@@ -4775,19 +4771,6 @@ router.post('/warnings', authMiddleware, requireAdmin, async (req: AuthRequest, 
 
     const validSeverities = ['LOW', 'MEDIUM', 'HIGH'];
     const warningSeverity = severity && validSeverities.includes(severity) ? severity : 'MEDIUM';
-
-    const validTypes = ['AVERTISSEMENT', 'AMENDE'];
-    const warningType = type && validTypes.includes(type) ? type : 'AVERTISSEMENT';
-
-    // Validate amende amount if it's an amende
-    let amendeAmount = undefined;
-    if (warningType === 'AMENDE') {
-      if (amount && typeof amount === 'number' && amount > 0) {
-        amendeAmount = amount;
-      } else {
-        return res.status(400).json({ error: 'Valid amount is required for amende' });
-      }
-    }
 
     // Check if user exists
     const user = await prisma.user.findUnique({
@@ -4804,10 +4787,8 @@ router.post('/warnings', authMiddleware, requireAdmin, async (req: AuthRequest, 
       data: {
         userId,
         issuedById: req.user!.id,
-        type: warningType,
         message: message.trim(),
         severity: warningSeverity,
-        amount: amendeAmount,
       },
       include: {
         user: {
@@ -4828,24 +4809,20 @@ router.post('/warnings', authMiddleware, requireAdmin, async (req: AuthRequest, 
 
     // Log warning creation
     logAdmin('warning_create', req.user!.id, req.user!.username, userId, user.username, {
-      type: warningType,
       severity: warningSeverity,
       message: message.trim(),
-      amount: amendeAmount,
     });
 
     // Emit socket event to show warning modal to the user
     io.to(`user:${userId}`).emit('admin:warning', {
       id: warning.id,
-      type: warning.type,
       message: warning.message,
       severity: warning.severity,
-      amount: warning.amount,
       issuedBy: warning.issuedBy.username,
       createdAt: warning.createdAt.toISOString(),
     });
 
-    res.status(201).json({ warning, message: `${warningType === 'AMENDE' ? 'Amende' : 'Warning'} sent to ${user.username}` });
+    res.status(201).json({ warning, message: `Warning sent to ${user.username}` });
   } catch (error) {
     console.error('Admin create warning error:', error);
     res.status(500).json({ error: 'Failed to create warning' });

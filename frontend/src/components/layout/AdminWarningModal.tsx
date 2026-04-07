@@ -8,10 +8,8 @@ import { cn } from '@/lib/utils';
 
 interface SocketWarning {
   id: string;
-  type: 'AVERTISSEMENT' | 'AMENDE';
   message: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH';
-  amount?: number | null;
   issuedBy: string;
   createdAt: string;
 }
@@ -46,10 +44,8 @@ export default function AdminWarningModal() {
     const handleNewWarning = (warning: SocketWarning) => {
       const newWarning: UserPendingWarning = {
         id: warning.id,
-        type: warning.type,
         message: warning.message,
         severity: warning.severity,
-        amount: warning.amount,
         createdAt: warning.createdAt,
         issuedBy: {
           id: '',
@@ -100,8 +96,6 @@ export default function AdminWarningModal() {
     return null;
   }
 
-  const isAmende = currentWarning.type === 'AMENDE';
-
   const severityConfig = {
     LOW: {
       icon: Info,
@@ -126,16 +120,7 @@ export default function AdminWarningModal() {
     },
   };
 
-  const config = isAmende 
-    ? {
-        icon: AlertTriangle,
-        color: 'text-red-500',
-        bgColor: 'bg-red-500/10',
-        borderColor: 'border-red-500/30',
-        label: 'Amende',
-      }
-    : severityConfig[currentWarning.severity];
-
+  const config = severityConfig[currentWarning.severity];
   const Icon = config.icon;
 
   const createdDate = new Date(currentWarning.createdAt);
@@ -154,7 +139,7 @@ export default function AdminWarningModal() {
   return (
     <Dialog open>
       <DialogContent
-        className={cn("max-w-lg", isAmende && 'border-red-500/50 ')}
+        className="max-w-lg"
         onEscapeKeyDown={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
@@ -165,14 +150,7 @@ export default function AdminWarningModal() {
               <Icon className={cn('h-6 w-6', config.color)} />
             </div>
             <div>
-              <DialogTitle className={config.color}>
-                {config.label}
-                {isAmende && currentWarning.amount && (
-                  <span className="block text-xl font-bold text-red-500">
-                    {currentWarning.amount}
-                  </span>
-                )}
-              </DialogTitle>
+              <DialogTitle className={config.color}>{config.label}</DialogTitle>
               <DialogDescription>
                 Message de l'administration - {index + 1}/{warnings.length}
               </DialogDescription>
@@ -181,14 +159,6 @@ export default function AdminWarningModal() {
         </DialogHeader>
 
         <div className="space-y-4">
-          {isAmende && currentWarning.amount ? (
-            <div className={cn('rounded-lg border-2 p-4 text-center', 'border-red-500/50 bg-red-500/20')}>
-              <p className="text-xs text-red-600 font-medium mb-1">MONTANT DE L'AMENDE</p>
-              <p className="text-5xl font-bold text-red-500 mb-3">{currentWarning.amount}</p>
-              <p className="text-sm text-red-600 font-semibold">Pièces d'or</p>
-            </div>
-          ) : null}
-
           <div className={cn('rounded-lg border p-4', config.borderColor, config.bgColor)}>
             <p className="whitespace-pre-wrap text-sm text-foreground">{currentWarning.message}</p>
           </div>
@@ -203,7 +173,7 @@ export default function AdminWarningModal() {
           <Button
             onClick={handleAcknowledge}
             disabled={acknowledging}
-            variant={isAmende || currentWarning.severity === 'HIGH' ? 'destructive' : 'default'}
+            variant={currentWarning.severity === 'HIGH' ? 'destructive' : 'default'}
           >
             {acknowledging ? 'Confirmation...' : isLast ? "J'ai compris" : 'Suivant'}
           </Button>

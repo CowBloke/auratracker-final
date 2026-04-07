@@ -107,7 +107,7 @@ function MarketplaceListingCard({
   const imageUrl = listing.item.imageUrl ? resolveImageUrl(listing.item.imageUrl) : null;
 
   return (
-    <Card className="overflow-hidden border-border/60 bg-card/90 shadow-none backdrop-blur-sm">
+    <Card className="overflow-hidden border-border/60 bg-card/90 shadow-none backdrop-blur-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <CardContent className="p-0">
         <div className="relative">
           <div className="aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-amber-50 via-background to-emerald-50 dark:from-amber-950/30 dark:via-card dark:to-emerald-950/20">
@@ -217,7 +217,7 @@ function InventoryListingCard({
       type="button"
       onClick={() => onSelect(item)}
       className={cn(
-        'group w-full rounded-xl border p-3 text-left',
+        'group w-full rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:border-border/90 hover:bg-muted/20',
         selected ? 'border-primary/50 bg-primary/5 shadow-sm' : 'border-border/60 bg-card',
       )}
     >

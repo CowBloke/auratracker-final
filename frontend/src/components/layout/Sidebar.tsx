@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { useTheme } from '@/contexts/ThemeContext';
+import { FeatureHint } from '@/components/ui/feature-hint';
 import { getGameImage } from '@/lib/game-images';
 
 const navItems = [
@@ -129,6 +130,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const isOnGames = location.pathname.startsWith('/games');
   const isOnYou = location.pathname.startsWith('/you');
+  const isOnDashboard = location.pathname === '/' || location.pathname === '/dashboard';
   const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
 
   const handleLogoClick = () => {
@@ -161,7 +163,16 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarContent>
         <div className="px-3 py-4">
-          {logoButton}
+          {isOnDashboard && canOpenYouFromLogo ? (
+            <FeatureHint
+              id="dashboard-you-logo-entrepreneur-relations"
+              label="Nouveau: clique sur le logo pour ouvrir le centre Entrepreneur & Relations"
+              side="bottom"
+              className="w-full"
+            >
+              {logoButton}
+            </FeatureHint>
+          ) : logoButton}
           <SidebarMenu className="space-y-1">
 
             {/* You section nav */}
