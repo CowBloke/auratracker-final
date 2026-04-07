@@ -2250,6 +2250,7 @@ model MessageConversationMessage {
   conversationId String
   senderId       String?
   body           String
+  imageUrl       String?
   type           String   @default("TEXT") // TEXT | SYSTEM | REPORT_NOTICE | COURT_SYSTEM
   courtRole      String?  // when admin sends as a court role (JUDGE | PUBLIC_DEFENDER_PLAINTIFF | PUBLIC_DEFENDER_DEFENDANT)
   createdAt      DateTime @default(now())
