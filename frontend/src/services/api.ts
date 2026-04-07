@@ -1946,6 +1946,18 @@ export interface AdminUser {
   classLetter: string | null;
   createdAt: string;
   updatedAt: string;
+  sharedMoney: AdminSharedMoney | null;
+}
+
+export interface AdminSharedMoney {
+  relationshipId: string;
+  coupleBalance: number;
+  marriedAt: string | null;
+  partner: {
+    id: string;
+    username: string;
+    money: number;
+  };
 }
 
 export interface AdminUpdatePopup {
@@ -3038,6 +3050,7 @@ export interface MessagingConversationSummary {
   id: string;
   type: 'SUPPORT' | 'DM' | 'GROUP' | string;
   title: string | null;
+  description: string | null;
   icon: string | null;
   imageUrl: string | null;
   courtCaseId: string | null;
@@ -3105,7 +3118,7 @@ export const supportApi = {
   markRead: () => api.post<{ success: boolean }>('/support/messages/read'),
   getConversations: () => api.get<{ conversations: MessagingConversationSummary[] }>('/support/conversations'),
   getConversation: (conversationId: string) => api.get<MessagingConversationDetail>(`/support/conversations/${conversationId}`),
-  createConversation: (data: { type: 'DM' | 'GROUP'; title?: string; participantIds: string[]; body?: string }) =>
+  createConversation: (data: { type: 'DM' | 'GROUP'; title?: string; description?: string; participantIds: string[]; body?: string }) =>
     api.post<{ conversation: MessagingConversationSummary; alreadyExisted: boolean }>('/support/conversations', data),
   sendConversationMessage: (conversationId: string, body: string, courtRole?: string | null, imageUrl?: string | null) =>
     api.post<{ message: MessagingConversationDetail['messages'][number] }>(`/support/conversations/${conversationId}/messages`, { body, courtRole, imageUrl }),
@@ -3113,8 +3126,8 @@ export const supportApi = {
     api.post<{ success: boolean }>(`/support/conversations/${conversationId}/read`),
   reportConversation: (conversationId: string, reason?: string) =>
     api.post<{ report: MessagingReport }>(`/support/conversations/${conversationId}/report`, { reason }),
-  updateConversation: (conversationId: string, data: { title?: string; icon?: string; imageUrl?: string }) =>
-    api.patch<{ conversation: { id: string; title: string | null; icon: string | null; imageUrl: string | null } }>(`/support/conversations/${conversationId}`, data),
+  updateConversation: (conversationId: string, data: { title?: string; description?: string; icon?: string; imageUrl?: string }) =>
+    api.patch<{ conversation: { id: string; title: string | null; description: string | null; icon: string | null; imageUrl: string | null } }>(`/support/conversations/${conversationId}`, data),
   toggleFavorite: (conversationId: string) =>
     api.patch<{ isFavorite: boolean }>(`/support/conversations/${conversationId}/favorite`, {}),
   addMember: (conversationId: string, userId: string) =>

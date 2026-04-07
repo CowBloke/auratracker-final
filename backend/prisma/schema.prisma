@@ -2222,6 +2222,7 @@ model MessageConversation {
   id             String   @id @default(uuid())
   type           String   // DM | GROUP
   title          String?
+  description    String?
   icon           String?  // emoji for group icon
   imageUrl       String?  // custom group photo
   createdById    String?

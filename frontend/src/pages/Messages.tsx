@@ -52,6 +52,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { toast } from '@/hooks/use-toast';
@@ -77,8 +78,6 @@ const POLL_INTERVAL_MS = 15000;
 
 const REACTION_OPTIONS = ['❤️', '👍', '😂', '😮', '😢', '🔥'];
 
-const GROUP_ICONS = ['👥', '🎮', '🎯', '🏆', '💬', '🔥', '⚡', '🌟', '🎲', '🎪', '🚀', '🎭', '🦁', '🐉', '💎', '🌈'];
-
 const COURT_ROLE_LABELS: Record<string, string> = {
   JUDGE: 'Juge',
   PLAINTIFF: 'Plaignant',
@@ -93,10 +92,10 @@ const COURT_ROLE_COLORS: Record<string, { bubble: string; badge: string; sender:
   JUDGE: { bubble: 'bg-amber-500/10 border border-amber-500/30 text-foreground', badge: 'bg-amber-500/15 text-amber-500', sender: 'text-amber-500' },
   PLAINTIFF: { bubble: 'bg-sky-500/10 border border-sky-500/30 text-foreground', badge: 'bg-sky-500/15 text-sky-500', sender: 'text-sky-500' },
   DEFENDANT: { bubble: 'bg-red-500/10 border border-red-500/30 text-foreground', badge: 'bg-red-500/15 text-red-500', sender: 'text-red-500' },
-  LAWYER_PLAINTIFF: { bubble: 'bg-emerald-500/10 border border-emerald-500/30 text-foreground', badge: 'bg-emerald-500/15 text-emerald-500', sender: 'text-emerald-500' },
-  LAWYER_DEFENDANT: { bubble: 'bg-emerald-500/10 border border-emerald-500/30 text-foreground', badge: 'bg-emerald-500/15 text-emerald-500', sender: 'text-emerald-500' },
-  PUBLIC_DEFENDER_PLAINTIFF: { bubble: 'bg-teal-500/10 border border-teal-500/30 text-foreground', badge: 'bg-teal-500/15 text-teal-500', sender: 'text-teal-500' },
-  PUBLIC_DEFENDER_DEFENDANT: { bubble: 'bg-teal-500/10 border border-teal-500/30 text-foreground', badge: 'bg-teal-500/15 text-teal-500', sender: 'text-teal-500' },
+  LAWYER_PLAINTIFF: { bubble: 'bg-sky-500/10 border border-sky-500/25 text-foreground', badge: 'bg-sky-400/15 text-sky-400', sender: 'text-sky-400' },
+  LAWYER_DEFENDANT: { bubble: 'bg-red-500/10 border border-red-500/25 text-foreground', badge: 'bg-red-400/15 text-red-400', sender: 'text-red-400' },
+  PUBLIC_DEFENDER_PLAINTIFF: { bubble: 'bg-sky-400/10 border border-sky-400/25 text-foreground', badge: 'bg-sky-300/15 text-sky-300', sender: 'text-sky-300' },
+  PUBLIC_DEFENDER_DEFENDANT: { bubble: 'bg-red-400/10 border border-red-400/25 text-foreground', badge: 'bg-red-300/15 text-red-300', sender: 'text-red-300' },
 };
 
 const COURT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -117,6 +116,19 @@ const getCourtAnonymousSenderLabel = (role: string | null) => {
   if (role === 'PLAINTIFF') return COURT_ROLE_LABELS.PLAINTIFF;
   if (role === 'DEFENDANT') return COURT_ROLE_LABELS.DEFENDANT;
   return 'Avocat';
+};
+
+const getCourtPartyLabel = (courtCase: CourtCase | null, side: 'PLAINTIFF' | 'DEFENDANT') => {
+  if (side === 'PLAINTIFF') return courtCase?.plaintif?.username ?? COURT_ROLE_LABELS.PLAINTIFF;
+  return courtCase?.defendant?.username ?? COURT_ROLE_LABELS.DEFENDANT;
+};
+
+const getCourtSenderLabel = (role: string | null, courtCase: CourtCase | null) => {
+  if (role === 'LAWYER_PLAINTIFF') return `Avocat du plaignant ${getCourtPartyLabel(courtCase, 'PLAINTIFF')}`;
+  if (role === 'LAWYER_DEFENDANT') return `Avocat du coupable ${getCourtPartyLabel(courtCase, 'DEFENDANT')}`;
+  if (role === 'PUBLIC_DEFENDER_PLAINTIFF') return `Défenseur public du plaignant ${getCourtPartyLabel(courtCase, 'PLAINTIFF')}`;
+  if (role === 'PUBLIC_DEFENDER_DEFENDANT') return `Défenseur public du coupable ${getCourtPartyLabel(courtCase, 'DEFENDANT')}`;
+  return getCourtAnonymousSenderLabel(role);
 };
 
 const getCourtRoleInitials = (role: string | null) => {
@@ -185,6 +197,7 @@ const buildAdminSupportConversationSummary = (thread: SupportThread): MessagingC
   id: getAdminSupportConversationId(thread.userId),
   type: 'SUPPORT',
   title: 'Support',
+  description: null,
   icon: null,
   imageUrl: null,
   courtCaseId: null,
@@ -265,13 +278,17 @@ export default function MessagesPage() {
   const [createSearch, setCreateSearch] = useState('');
   const [createParticipantIds, setCreateParticipantIds] = useState<string[]>([]);
   const [respectOpen, setRespectOpen] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const [groupEditName, setGroupEditName] = useState('');
+  const [groupEditDescription, setGroupEditDescription] = useState('');
   const [groupEditIcon, setGroupEditIcon] = useState('');
   const [groupEditImageUrl, setGroupEditImageUrl] = useState<string | null>(null);
   const [groupImageUploading, setGroupImageUploading] = useState(false);
   const [groupSettingsSaving, setGroupSettingsSaving] = useState(false);
+  const [addMembersOpen, setAddMembersOpen] = useState(false);
+  const [groupReportOpen, setGroupReportOpen] = useState(false);
+  const [groupReportReason, setGroupReportReason] = useState('');
+  const [groupReportSubmitting, setGroupReportSubmitting] = useState(false);
   const [addMemberSearch, setAddMemberSearch] = useState('');
 
   // Court case state
@@ -773,6 +790,7 @@ export default function MessagesPage() {
     try {
       await supportApi.updateConversation(selectedConversation.id, {
         title: groupEditName,
+        description: groupEditDescription,
         icon: groupEditIcon,
         imageUrl: groupEditImageUrl ?? '',
       });
@@ -804,6 +822,38 @@ export default function MessagesPage() {
       toast({ title: 'Membre ajouté' });
     } catch {
       toast({ title: 'Erreur', variant: 'destructive' });
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!selectedConversation || selectedConversation.type !== 'GROUP' || !selectedIdSafe || !user) return;
+    try {
+      await supportApi.removeMember(selectedIdSafe, user.id);
+      const refreshedConversations = await refreshConversations();
+      const nextConversation = sortConversationsByRecent(refreshedConversations).find((conversation) => conversation.id !== selectedIdSafe) ?? null;
+      setSelectedId(nextConversation?.id ?? null);
+      setGroupSettingsOpen(false);
+      setAddMembersOpen(false);
+      setGroupReportOpen(false);
+      toast({ title: 'Tu as quitté le groupe' });
+    } catch {
+      toast({ title: 'Erreur', variant: 'destructive' });
+    }
+  };
+
+  const handleReportGroup = async () => {
+    if (!selectedConversation || selectedConversation.type !== 'GROUP' || !selectedIdSafe) return;
+    const reason = groupReportReason.trim();
+    setGroupReportSubmitting(true);
+    try {
+      await supportApi.reportConversation(selectedIdSafe, reason || undefined);
+      setGroupReportOpen(false);
+      setGroupReportReason('');
+      toast({ title: 'Conversation signalée' });
+    } catch {
+      toast({ title: 'Impossible de signaler', variant: 'destructive' });
+    } finally {
+      setGroupReportSubmitting(false);
     }
   };
 
@@ -940,9 +990,12 @@ export default function MessagesPage() {
   const openGroupSettings = () => {
     if (!selectedConversation || selectedConversation.type !== 'GROUP') return;
     setGroupEditName(selectedConversation.title ?? '');
+    setGroupEditDescription(selectedConversation.description ?? '');
     setGroupEditIcon(selectedConversation.icon ?? '');
     setGroupEditImageUrl(selectedConversation.imageUrl ?? null);
     setAddMemberSearch('');
+    setAddMembersOpen(false);
+    setGroupReportOpen(false);
     setGroupSettingsOpen(true);
   };
 
@@ -1082,25 +1135,25 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Report modal ── */}
       <Dialog
-        open={reportOpen || groupSettingsOpen}
+        open={groupSettingsOpen}
         onOpenChange={(open) => {
-          setReportOpen(open);
+          setGroupSettingsOpen(open);
           if (!open) {
-            setGroupSettingsOpen(false);
+            setAddMembersOpen(false);
+            setGroupReportOpen(false);
           }
         }}
       >
         <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
           <div className="border-b border-border/60 px-4 py-3">
             <DialogTitle className="text-sm font-semibold">Infos du groupe</DialogTitle>
-            <DialogDescription className="text-xs">Gérez le nom, l’icône et les membres du groupe depuis un seul endroit.</DialogDescription>
+            <DialogDescription className="text-xs">Gérez le nom, la description, l’icône et les membres du groupe depuis un seul endroit.</DialogDescription>
           </div>
           <ScrollArea className="max-h-[75vh]">
             <div className="space-y-5 p-4">
-              <div className="flex items-center gap-3">
-                <div className="relative">
+              <div className="flex items-start gap-3">
+                <div className="relative shrink-0">
                   <Avatar className="h-14 w-14">
                     {groupEditImageUrl ? <AvatarImage src={resolveImageUrl(groupEditImageUrl)} /> : null}
                     <AvatarFallback className={cn('text-2xl', !groupEditImageUrl && groupEditIcon && 'text-2xl')}>
@@ -1126,41 +1179,44 @@ export default function MessagesPage() {
                     }}
                   />
                 </div>
-                <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="min-w-0 flex-1 space-y-2">
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground">Nom du groupe</p>
                     <Input value={groupEditName} onChange={(e) => setGroupEditName(e.target.value)} placeholder="Nom du groupe" className="h-8 text-sm" maxLength={80} />
                   </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Description du groupe</p>
+                    <Textarea
+                      value={groupEditDescription}
+                      onChange={(e) => setGroupEditDescription(e.target.value)}
+                      placeholder="Description du groupe"
+                      className="min-h-[72px] resize-none text-sm"
+                      maxLength={280}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Icône du groupe</p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={groupEditIcon}
+                        onChange={(e) => setGroupEditIcon(e.target.value.slice(0, 8))}
+                        placeholder="👥"
+                        className="h-8 w-24 text-sm"
+                        maxLength={8}
+                      />
+                      {(groupEditIcon || groupEditImageUrl) && (
+                        <button
+                          type="button"
+                          onClick={() => { setGroupEditIcon(''); setGroupEditImageUrl(null); }}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3 w-3" />Retirer photo & icône
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   {groupImageUploading && <p className="text-xs text-muted-foreground">Upload en cours...</p>}
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Icône du groupe</p>
-                  <p className="text-[11px] text-muted-foreground">Choisissez un emoji si vous n’utilisez pas de photo.</p>
-                </div>
-                <div className="grid grid-cols-8 gap-1">
-                  {GROUP_ICONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => setGroupEditIcon(groupEditIcon === emoji ? '' : emoji)}
-                      className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors', groupEditIcon === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'hover:bg-muted/60')}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-                {(groupEditIcon || groupEditImageUrl) && (
-                  <button
-                    type="button"
-                    onClick={() => { setGroupEditIcon(''); setGroupEditImageUrl(null); }}
-                    className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3 w-3" />Retirer photo & icône
-                  </button>
-                )}
               </div>
 
               <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-3">
@@ -1169,13 +1225,17 @@ export default function MessagesPage() {
                     <p className="text-sm font-semibold">Membres</p>
                     <p className="text-xs text-muted-foreground">{selectedConversation?.participants.length ?? 0} membres dans le groupe</p>
                   </div>
-                  {selectedConversation?.type === 'GROUP' && (
-                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setReportOpen(true)}>
-                      <ShieldAlert className="h-3.5 w-3.5" />Signaler
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs"
+                    onClick={() => setAddMembersOpen(true)}
+                    disabled={nonMembers.length === 0}
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />Add
+                  </Button>
                 </div>
-                <ScrollArea className="max-h-56 rounded-lg border border-border/50">
+                <ScrollArea className="max-h-72 rounded-lg border border-border/50">
                   <div className="divide-y divide-border/40">
                     {selectedConversation?.participants.map((entry) => {
                       const isMe = entry.user.id === user?.id;
@@ -1208,40 +1268,81 @@ export default function MessagesPage() {
                   </div>
                 </ScrollArea>
               </div>
-
-              <div className="space-y-2">
-                <div>
-                  <p className="text-sm font-semibold">Ajouter un membre</p>
-                  <p className="text-xs text-muted-foreground">Recherchez un joueur puis ajoutez-le au groupe.</p>
-                </div>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input value={addMemberSearch} onChange={(e) => setAddMemberSearch(e.target.value)} placeholder="Rechercher..." className="h-8 pl-8 text-xs" />
-                </div>
-                <ScrollArea className="max-h-40 rounded-lg border border-border/50">
-                  <div className="divide-y divide-border/40">
-                    {nonMembers.map((player) => (
-                      <div key={player.id} className="flex items-center gap-2 px-3 py-2">
-                        <Avatar className="h-6 w-6 shrink-0">
-                          {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} /> : null}
-                          <AvatarFallback className="text-[9px]">{getInitials(player.username)}</AvatarFallback>
-                        </Avatar>
-                        <span className="flex-1 truncate text-xs">{player.username}</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddMember(player.id)}>
-                          <UserPlus className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                    {nonMembers.length === 0 && <p className="py-3 text-center text-xs text-muted-foreground">Tous les joueurs sont déjà membres.</p>}
-                  </div>
-                </ScrollArea>
-              </div>
             </div>
           </ScrollArea>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setGroupReportOpen(true)}>
+                <ShieldAlert className="h-3.5 w-3.5" />Signaler
+              </Button>
+              <Button variant="destructive" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => void handleLeaveGroup()}>
+                Quitter le groupe
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setGroupSettingsOpen(false)}>Annuler</Button>
+              <Button size="sm" disabled={groupSettingsSaving || groupImageUploading} onClick={() => void handleSaveGroupSettings()}>
+                {groupSettingsSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addMembersOpen} onOpenChange={setAddMembersOpen}>
+        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+          <div className="border-b border-border/60 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">Ajouter des membres</DialogTitle>
+            <DialogDescription className="text-xs">Recherchez un joueur puis ajoutez-le au groupe.</DialogDescription>
+          </div>
+          <div className="space-y-3 p-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input value={addMemberSearch} onChange={(e) => setAddMemberSearch(e.target.value)} placeholder="Rechercher..." className="h-8 pl-8 text-xs" />
+            </div>
+            <ScrollArea className="max-h-72 rounded-lg border border-border/50">
+              <div className="divide-y divide-border/40">
+                {nonMembers.map((player) => (
+                  <div key={player.id} className="flex items-center gap-2 px-3 py-2">
+                    <Avatar className="h-6 w-6 shrink-0">
+                      {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} /> : null}
+                      <AvatarFallback className="text-[9px]">{getInitials(player.username)}</AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate text-xs">{player.username}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddMember(player.id)}>
+                      <UserPlus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                {nonMembers.length === 0 && <p className="py-3 text-center text-xs text-muted-foreground">Tous les joueurs sont déjà membres.</p>}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={groupReportOpen} onOpenChange={setGroupReportOpen}>
+        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+          <div className="border-b border-border/60 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">Signaler la conversation</DialogTitle>
+            <DialogDescription className="text-xs">Décris brièvement le problème rencontré.</DialogDescription>
+          </div>
+          <div className="space-y-3 p-4">
+            <Textarea
+              value={groupReportReason}
+              onChange={(e) => setGroupReportReason(e.target.value)}
+              placeholder="Raison du signalement"
+              className="min-h-[120px] resize-none text-sm"
+              maxLength={280}
+            />
+            <p className="text-[11px] text-muted-foreground/70">{groupReportReason.trim().length}/280</p>
+          </div>
           <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-2.5">
-            <Button variant="ghost" size="sm" onClick={() => setGroupSettingsOpen(false)}>Annuler</Button>
-            <Button size="sm" disabled={groupSettingsSaving || groupImageUploading} onClick={handleSaveGroupSettings}>
-              {groupSettingsSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+            <Button variant="ghost" size="sm" onClick={() => setGroupReportOpen(false)} disabled={groupReportSubmitting}>
+              Annuler
+            </Button>
+            <Button size="sm" disabled={groupReportSubmitting || !groupReportReason.trim()} onClick={() => void handleReportGroup()}>
+              {groupReportSubmitting ? 'Envoi...' : 'Signaler'}
             </Button>
           </div>
         </DialogContent>
@@ -1595,7 +1696,7 @@ export default function MessagesPage() {
                             </>
                           )}
                           {selectedConversation.type !== 'SUPPORT' && (
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setReportOpen(true)}>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setGroupReportOpen(true)}>
                               <ShieldAlert className="mr-2 h-3.5 w-3.5" />Signaler
                             </DropdownMenuItem>
                           )}
@@ -1727,12 +1828,15 @@ export default function MessagesPage() {
                           <p className="mt-1 text-xs text-muted-foreground">Envoie un premier message.</p>
                         </div>
                       ) : currentMessages.map((msg, index) => {
-                        // COURT_SYSTEM messages render as centered announcements
-                        if (msg.type === 'COURT_SYSTEM') {
+                        // System messages render as centered announcements.
+                        if (msg.type === 'COURT_SYSTEM' || msg.type === 'SYSTEM') {
                           return (
                             <div key={msg.id} className="flex justify-center py-2">
-                              <span className="flex items-center gap-1.5 rounded-full border border-slate-300/40 bg-background px-3 py-1 text-[11px] font-medium text-foreground shadow-sm">
-                                <Scale className="h-3 w-3 shrink-0" />
+                              <span className={cn(
+                                'flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-[11px] font-medium text-foreground shadow-sm',
+                                msg.type === 'COURT_SYSTEM' ? 'border-slate-300/40' : 'border-border/60',
+                              )}>
+                                {msg.type === 'COURT_SYSTEM' ? <Scale className="h-3 w-3 shrink-0" /> : <Users className="h-3 w-3 shrink-0" />}
                                 {msg.body}
                               </span>
                             </div>
@@ -1804,7 +1908,7 @@ export default function MessagesPage() {
                               {showSender && (
                                 <div className="mb-0.5 px-1 flex items-center gap-1.5">
                                   <p className={cn('text-[11px] font-semibold', courtColors ? courtColors.sender : undefined)} style={!courtColors && msg.sender?.usernameColor ? { color: msg.sender.usernameColor } : undefined}>
-                                    {isAnonymousCourtMessage ? getCourtAnonymousSenderLabel(msgCourtRole) : (msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système'))}
+                                    {isAnonymousCourtMessage ? getCourtSenderLabel(msgCourtRole, courtCase) : (msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système'))}
                                   </p>
                                   {msgCourtRole && courtColors && !isAnonymousCourtMessage && (
                                     <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', courtColors.badge)}>

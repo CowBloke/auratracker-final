@@ -1945,7 +1945,76 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
       },
     });
 
-    res.json({ users });
+    const userIds = users.map((user) => user.id);
+    const relationships = userIds.length > 0
+      ? await prisma.relationship.findMany({
+        where: {
+          status: 'MARRIED',
+          OR: [
+            { userAId: { in: userIds } },
+            { userBId: { in: userIds } },
+          ],
+        },
+        select: {
+          id: true,
+          userAId: true,
+          userBId: true,
+          coupleBalance: true,
+          marriedAt: true,
+          userA: {
+            select: {
+              id: true,
+              username: true,
+              money: true,
+            },
+          },
+          userB: {
+            select: {
+              id: true,
+              username: true,
+              money: true,
+            },
+          },
+        },
+      })
+      : [];
+
+    const sharedMoneyByUserId = new Map<string, {
+      relationshipId: string;
+      coupleBalance: number;
+      marriedAt: string | null;
+      partner: { id: string; username: string; money: number };
+    }>();
+
+    for (const relationship of relationships) {
+      sharedMoneyByUserId.set(relationship.userAId, {
+        relationshipId: relationship.id,
+        coupleBalance: relationship.coupleBalance,
+        marriedAt: relationship.marriedAt ? relationship.marriedAt.toISOString() : null,
+        partner: {
+          id: relationship.userB.id,
+          username: relationship.userB.username,
+          money: relationship.userB.money,
+        },
+      });
+      sharedMoneyByUserId.set(relationship.userBId, {
+        relationshipId: relationship.id,
+        coupleBalance: relationship.coupleBalance,
+        marriedAt: relationship.marriedAt ? relationship.marriedAt.toISOString() : null,
+        partner: {
+          id: relationship.userA.id,
+          username: relationship.userA.username,
+          money: relationship.userA.money,
+        },
+      });
+    }
+
+    res.json({
+      users: users.map((user) => ({
+        ...user,
+        sharedMoney: sharedMoneyByUserId.get(user.id) ?? null,
+      })),
+    });
   } catch (error) {
     console.error('Admin get users error:', error);
     res.status(500).json({ error: 'Failed to get users' });
@@ -2089,6 +2158,53 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       },
     });
 
+    const sharedRelationship = await prisma.relationship.findFirst({
+      where: {
+        status: 'MARRIED',
+        OR: [{ userAId: id }, { userBId: id }],
+      },
+      select: {
+        id: true,
+        userAId: true,
+        userBId: true,
+        coupleBalance: true,
+        marriedAt: true,
+        userA: {
+          select: {
+            id: true,
+            username: true,
+            money: true,
+          },
+        },
+        userB: {
+          select: {
+            id: true,
+            username: true,
+            money: true,
+          },
+        },
+      },
+    });
+
+    const sharedMoney = sharedRelationship
+      ? {
+        relationshipId: sharedRelationship.id,
+        coupleBalance: sharedRelationship.coupleBalance,
+        marriedAt: sharedRelationship.marriedAt ? sharedRelationship.marriedAt.toISOString() : null,
+        partner: sharedRelationship.userAId === id
+          ? {
+            id: sharedRelationship.userB.id,
+            username: sharedRelationship.userB.username,
+            money: sharedRelationship.userB.money,
+          }
+          : {
+            id: sharedRelationship.userA.id,
+            username: sharedRelationship.userA.username,
+            money: sharedRelationship.userA.money,
+          },
+      }
+      : null;
+
     // Log user update
     const logChanges = { ...updateData } as { [key: string]: unknown };
     if (logChanges.passwordHash) {
@@ -2111,7 +2227,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       },
     });
 
-    res.json({ user });
+    res.json({ user: { ...user, sharedMoney } });
   } catch (error) {
     console.error('Admin update user error:', error);
     res.status(500).json({ error: 'Failed to update user' });
