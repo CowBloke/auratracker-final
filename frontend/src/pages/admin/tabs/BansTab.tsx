@@ -1,6 +1,7 @@
 import { type Dispatch, type SetStateAction } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { TabsContent } from '@/components/ui/tabs';
@@ -418,17 +419,25 @@ export function BansTab(props: BansTabProps) {
                       value={[amendeAmount]}
                       onValueChange={(value) => setAmendeAmount(value[0])}
                       min={10}
-                      max={5000}
+                      max={Math.max(5000, amendeAmount)}
                       step={10}
                       className="flex-1"
                     />
-                    <span className="text-sm font-medium tabular-nums min-w-fit px-2 py-1 rounded bg-red-500/10 text-red-400">
-                      {amendeAmount}
-                    </span>
+                    <Input
+                      type="number"
+                      value={amendeAmount}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        if (val >= 0) setAmendeAmount(val);
+                      }}
+                      min={10}
+                      className="w-24 text-right tabular-nums bg-red-500/10 border-red-500/50 text-red-400"
+                      placeholder="Montant"
+                    />
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Montant minimum: 10 | Maximum: 5000
+                  Montant minimum: 10 | Entrez un montant personnalisé
                 </p>
               </div>
             )}
