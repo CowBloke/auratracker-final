@@ -74,6 +74,25 @@ export const BALANCING = {
       monthlyRevenue: 0,
       level: 2,
     },
+    youtube: {
+      key: 'youtube',
+      creationCost: 2500,
+      monthlyRevenue: 450,
+      level: 2,
+      npcCollectAmount: 220,
+      npcCollectCooldownHours: 6,
+    },
+    medecins: {
+      key: 'medecins',
+      creationCost: 3500,
+      monthlyRevenue: 600,
+      level: 2,
+      items: [
+        { key: 'soin_leger', label: 'Soin léger', price: 2500 },
+        { key: 'soin_tactique', label: 'Soin tactique', price: 6000 },
+        { key: 'regen_totale', label: 'Régénération totale', price: 12000 },
+      ],
+    },
     startup: {
       key: 'startup',
       creationCost: 10000,

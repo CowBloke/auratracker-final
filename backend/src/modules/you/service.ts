@@ -29,6 +29,15 @@ import { writeBase64UploadFile } from '../../utils/uploads.js';
 
 const FORMATION_FILE_UPLOAD_DIR = 'uploads/formation-files';
 const MAX_FORMATION_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const safeJsonParse = <T>(value: string | null | undefined, fallback: T): T => {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+};
 
 const USER_PREVIEW_SELECT = {
   id: true,
@@ -554,6 +563,8 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     ? Math.max(0, Math.floor(treasuryMoney * 0.04))
     : business.typeKey === 'startup'
       ? startupProducts.reduce((total: number, product: any) => total + product.currentRevenue, 0)
+    : business.typeKey === 'youtube'
+      ? business.monthlyRevenue + Math.min(2200, Math.floor(((business.customData ? JSON.parse(business.customData) : { totalViews: 0 }).totalViews ?? 0) / 200))
     : business.typeKey === 'formation'
       ? business.monthlyRevenue + business.members.length * 250
     : business.monthlyRevenue;
@@ -1225,6 +1236,10 @@ export async function createBusiness(userId: string, input: { name: string; type
     }
 
     unlockedBusinessLevel = viewer?.unlockedBusinessLevel ?? 0;
+    const socialSkillLevel = skills.find((skill) => skill.key === 'social')?.level ?? 1;
+    if (type.key === 'youtube' && socialSkillLevel < 3) {
+      throw new Error('YOUTUBE_SOCIAL_LEVEL_REQUIRED');
+    }
     const requiredUnlock = type.level - 1; // to create level N, must have unlocked N-1
     if (type.level > 1 && unlockedBusinessLevel < requiredUnlock) {
       throw new Error('BUSINESS_LEVEL_LOCKED');
@@ -1258,6 +1273,9 @@ export async function createBusiness(userId: string, input: { name: string; type
         verified: type.isStateOwned ? true : false,
         hiring: type.isAdminOnly ? false : true,
         isStateOwned: type.isStateOwned ?? false,
+        customData: type.key === 'youtube'
+          ? JSON.stringify({ videos: [], totalViews: 0, sponsors: [] })
+          : null,
       },
     });
 
@@ -2628,19 +2646,40 @@ async function handleCollectNpcAction(userId: string, business: any, _input: unk
     }
   }
 
-  const amount = balancing.npcCollectAmount as number;
+  let amount = balancing.npcCollectAmount as number;
+  let transactionLabel = 'Recettes clients collectees';
+  let updatedCustomData = business.customData;
+
+  if (business.typeKey === 'youtube') {
+    const data = business.customData ? JSON.parse(business.customData) : { videos: [], totalViews: 0, sponsors: [] };
+    const views = randomInt(800, 6500);
+    const sponsorBonus = Array.isArray(data.sponsors) ? data.sponsors.length * 120 : 0;
+    amount += Math.floor(views / 12) + sponsorBonus;
+    data.totalViews = (data.totalViews ?? 0) + views;
+    data.videos = [
+      {
+        title: `Video #${(data.videos?.length ?? 0) + 1}`,
+        views,
+        createdAt: new Date().toISOString(),
+      },
+      ...(data.videos ?? []),
+    ].slice(0, 12);
+    updatedCustomData = JSON.stringify(data);
+    transactionLabel = `${views.toLocaleString('fr-FR')} vues monetisees sur la chaine`;
+  }
 
   await prisma.$transaction([
     prisma.business.update({
       where: { id: business.id },
-      data: { treasuryMoney: { increment: amount }, npcLastCollectedAt: new Date() },
+      data: { treasuryMoney: { increment: amount }, npcLastCollectedAt: new Date(), customData: updatedCustomData },
     }),
   ]);
 
-  await logBusinessTransaction(business.id, 'NPC_COLLECT', amount, `Recettes clients collectees`, userId);
+  await logBusinessTransaction(business.id, 'NPC_COLLECT', amount, transactionLabel, userId);
 
   logYouAdmin('business_collect', userId, undefined, business.id, business.name, {
     amount,
+    transactionLabel,
   });
 
   // Affaires XP: +5 par collecte NPC (récompense la gestion active de l'entreprise)
@@ -2716,6 +2755,30 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
 
   await emitSharedBalanceUpdates(prisma, userId);
   await logBusinessTransaction(business.id, 'ITEM_SALE', item.price, `Achat de ${item.label} par un client`, userId);
+
+  if (business.typeKey === 'medecins') {
+    const clanMembership = await prisma.clanMember.findUnique({
+      where: { userId },
+      select: { clanId: true },
+    });
+    if (clanMembership) {
+      const clan = await prisma.clan.findUnique({
+        where: { id: clanMembership.clanId },
+        select: { injuriesJson: true },
+      });
+      if (clan) {
+        const injuries = safeJsonParse<Array<{ userId: string; username: string; severity: number; createdAt: string }>>(clan.injuriesJson, []);
+        const healPower = item.key === 'regen_totale' ? 5 : item.key === 'soin_tactique' ? 3 : 1;
+        const healed = injuries
+          .map((entry) => ({ ...entry, severity: Math.max(0, entry.severity - healPower) }))
+          .filter((entry) => entry.severity > 0);
+        await prisma.clan.update({
+          where: { id: clanMembership.clanId },
+          data: { injuriesJson: JSON.stringify(healed) },
+        });
+      }
+    }
+  }
 
   logYouAdmin('business_sale', userId, undefined, business.id, business.name, {
     itemKey: item.key,
