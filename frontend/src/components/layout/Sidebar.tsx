@@ -19,6 +19,7 @@ import {
   Target,
   Briefcase,
   Landmark,
+  Camera,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -49,6 +50,7 @@ const navItems = [
   { to: '/market', label: 'Boutique', icon: Store },
   { to: '/inventory', label: 'Inventaire', icon: Backpack },
   { to: '/marketplace', label: 'Marché', icon: BadgeDollarSign },
+  { to: '/auravision', label: 'AuraVision', icon: Camera },
   { to: '/pass', label: 'Pass', icon: Ticket },
   { to: '/quests', label: 'Quêtes', icon: Target },
   { to: '/suggestions', label: 'Suggestions', icon: Lightbulb },

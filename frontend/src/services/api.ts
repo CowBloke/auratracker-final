@@ -3006,6 +3006,12 @@ export interface MessagingReport {
   createdAt: string;
 }
 
+export interface AuraVisionReport {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
 export const supportApi = {
   // User
   getMessages: () => api.get<{ messages: SupportMessage[] }>('/support/messages'),
@@ -3047,6 +3053,11 @@ export const supportApi = {
   getReports: () => api.get<{ reports: MessagingReport[] }>('/support/admin/reports'),
   reviewReport: (reportId: string, data: { action: 'ACTION_TAKEN' | 'DISMISSED'; reviewerNote?: string }) =>
     api.post<{ report: { id: string; status: string; reviewerNote: string | null; reviewedAt: string | null } }>(`/support/admin/reports/${reportId}/review`, data),
+};
+
+export const auraVisionApi = {
+  report: (data: { peerUserId: string; sessionId?: string | null; reason: string; transcript?: Array<{ sender: string; body: string }> }) =>
+    api.post<{ report: AuraVisionReport }>('/auravision/report', data),
 };
 
 export interface DirectConversationUser {

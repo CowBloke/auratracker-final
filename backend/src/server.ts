@@ -42,6 +42,7 @@ import changelogRoutes from './routes/changelog.js';
 import youRoutes from './routes/you.js';
 import messagesRoutes from './routes/messages.js';
 import justiceRoutes from './routes/justice.js';
+import auraVisionRoutes from './routes/auravision.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -59,6 +60,7 @@ import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 import { setupBallArenaHandlers } from './socket/ballarena.js';
 import { setupUnoHandlers } from './socket/uno.js';
 import { setupMorpionHandlers } from './socket/morpion.js';
+import { setupAuraVisionHandlers } from './socket/auravision.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -144,6 +146,7 @@ app.use('/api/polytrack', polytrackRoutes);
 app.use('/api/changelog', changelogRoutes);
 app.use('/api/you', youRoutes);
 app.use('/api/justice', justiceRoutes);
+app.use('/api/auravision', auraVisionRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -304,6 +307,7 @@ io.on('connection', (socket) => {
   setupBallArenaHandlers(socket, io);
   setupUnoHandlers(socket, io);
   setupMorpionHandlers(socket, io);
+  setupAuraVisionHandlers(socket, io);
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
   });
