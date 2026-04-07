@@ -2145,8 +2145,10 @@ model AdminWarning {
   id             String    @id @default(uuid())
   userId         String // User receiving the warning
   issuedById     String // Admin who issued the warning
+  type           String    @default("AVERTISSEMENT") // AVERTISSEMENT or AMENDE
   message        String // Warning message content
-  severity       String    @default("MEDIUM") // LOW, MEDIUM, HIGH
+  severity       String    @default("MEDIUM") // LOW, MEDIUM, HIGH (for warnings)
+  amount         Int? // Amount for amende in gold/money
   isAcknowledged Boolean   @default(false)
   acknowledgedAt DateTime?
   createdAt      DateTime  @default(now())

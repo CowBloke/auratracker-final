@@ -656,10 +656,8 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       return res.status(400).json({ error: 'Message must be 1000 characters or less' });
     }
 
-    // Only admins can send with a court role
-    if (courtRole && !req.user?.isAdmin) {
-      return res.status(403).json({ error: 'Seuls les juges peuvent envoyer avec un role de tribunal.' });
-    }
+    // Non-admin users cannot choose arbitrary court roles.
+    // For court conversations, we assign their persisted participant court role automatically.
 
     if (conversationId === SUPPORT_CONVERSATION_ID) {
       const message = await prisma.supportMessage.create({
@@ -709,50 +707,26 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       },
     });
 
-    if (courtConversation?.courtCaseId && !req.user?.isAdmin) {
+    let effectiveCourtRole: string | null = null;
+
+    if (courtConversation?.courtCaseId) {
+      const myCourtParticipant = courtConversation.participants.find((entry) => entry.userId === user.id) ?? null;
+      effectiveCourtRole = req.user?.isAdmin ? courtRole : (myCourtParticipant?.courtRole ?? null);
+
       const linkedCase = await prisma.courtCase.findUnique({
         where: { id: courtConversation.courtCaseId },
         select: {
-          conversationId: true,
-          plaintifId: true,
-          defendantId: true,
-          plaintiffLawyerId: true,
-          defendantLawyerId: true,
+          status: true,
         },
       });
 
       if (linkedCase) {
-        const needsPlaintiffRepresentation = linkedCase.plaintifId === user.id;
-        const needsDefendantRepresentation = linkedCase.defendantId === user.id;
-        const publicDefenderRequestMessage = await prisma.messageConversationMessage.findFirst({
-          where: {
-            conversationId: linkedCase.conversationId,
-            type: 'COURT_SYSTEM',
-            body: {
-              contains: needsPlaintiffRepresentation ? 'Le plaignant a demandé un défenseur public' : 'Le coupable a demandé un défenseur public',
-            },
-          },
-          select: { id: true },
-        });
-
-        if (needsPlaintiffRepresentation || needsDefendantRepresentation) {
-          const hasRepresentation = needsPlaintiffRepresentation
-            ? Boolean(
-              linkedCase.plaintiffLawyerId ||
-              courtConversation.participants.some((entry) => entry.courtRole === 'PUBLIC_DEFENDER_PLAINTIFF') ||
-              publicDefenderRequestMessage,
-            )
-            : Boolean(
-              linkedCase.defendantLawyerId ||
-              courtConversation.participants.some((entry) => entry.courtRole === 'PUBLIC_DEFENDER_DEFENDANT') ||
-              publicDefenderRequestMessage,
-            );
-
-          if (!hasRepresentation) {
-            return res.status(403).json({ error: 'Choisis d abord un avocat avant de parler dans cette affaire.' });
-          }
+        if (linkedCase.status !== 'OPEN') {
+          return res.status(403).json({ error: 'Cette affaire n est pas en cours. Le chat est verrouille.' });
         }
       }
+    } else if (req.user?.isAdmin) {
+      effectiveCourtRole = courtRole;
     }
 
     const now = new Date();
@@ -764,7 +738,7 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
           body: body || '',
           type: 'TEXT',
           imageUrl: imageUrl || null,
-          ...(courtRole ? { courtRole } : {}),
+          ...(effectiveCourtRole ? { courtRole: effectiveCourtRole } : {}),
         },
       });
 
