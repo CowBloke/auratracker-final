@@ -45,6 +45,26 @@ const emitQueueSize = (io: Server) => {
   io.emit('auravision:queue-size', { count: getQueueSize() });
 };
 
+const getActiveUserCount = () => {
+  const uniqueUserIds = new Set<string>();
+
+  for (const entry of matchmakingQueue) {
+    uniqueUserIds.add(entry.userId);
+  }
+
+  for (const session of sessions.values()) {
+    for (const member of session.members) {
+      uniqueUserIds.add(member.userId);
+    }
+  }
+
+  return uniqueUserIds.size;
+};
+
+const emitActiveUserCount = (io: Server) => {
+  io.emit('auravision:active-count', { count: getActiveUserCount() });
+};
+
 const getPeer = (session: AuraVisionSession, userId: string) =>
   session.members.find((member) => member.userId !== userId) ?? null;
 
@@ -135,11 +155,16 @@ const attemptMatchmaking = (io: Server) => {
   }
 
   emitQueueSize(io);
+  emitActiveUserCount(io);
 };
 
 export const setupAuraVisionHandlers = (socket: Socket, io: Server) => {
   socket.on('auravision:queue-size', () => {
     socket.emit('auravision:queue-size', { count: getQueueSize() });
+  });
+
+  socket.on('auravision:active-count', () => {
+    socket.emit('auravision:active-count', { count: getActiveUserCount() });
   });
 
   socket.on('auravision:join-queue', () => {
@@ -177,6 +202,7 @@ export const setupAuraVisionHandlers = (socket: Socket, io: Server) => {
 
     removeFromQueue(userId);
     emitQueueSize(io);
+    emitActiveUserCount(io);
   });
 
   socket.on('auravision:next', () => {
@@ -212,6 +238,7 @@ export const setupAuraVisionHandlers = (socket: Socket, io: Server) => {
     }
 
     endSession(io, userId, 'left');
+    emitActiveUserCount(io);
   });
 
   socket.on(
@@ -293,5 +320,6 @@ export const setupAuraVisionHandlers = (socket: Socket, io: Server) => {
     removeFromQueue(userId);
     endSession(io, userId, 'disconnect');
     emitQueueSize(io);
+    emitActiveUserCount(io);
   });
 };

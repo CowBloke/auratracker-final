@@ -71,6 +71,22 @@ const serializeMarketplaceListing = (listing: {
 const isDoodleJumpSkinItem = (item: { effect: string | null }) =>
   parseItemEffect(item.effect)?.type === 'DOODLE_JUMP_SKIN';
 
+const toUtcDateKey = (value: Date) => value.toISOString().slice(0, 10);
+
+const buildUtcDayKeys = (days: number) => {
+  const keys: string[] = [];
+  const cursor = new Date();
+  cursor.setUTCHours(0, 0, 0, 0);
+  cursor.setUTCDate(cursor.getUTCDate() - (days - 1));
+
+  for (let i = 0; i < days; i += 1) {
+    keys.push(toUtcDateKey(cursor));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return keys;
+};
+
 // Get shop categories (public)
 router.get('/categories', authMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
@@ -835,6 +851,192 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
 });
 
 // Marketplace listings
+router.get('/listings/stats', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const parsedDays = Number.parseInt(typeof req.query.days === 'string' ? req.query.days : '30', 10);
+    const days = Number.isFinite(parsedDays) ? Math.min(Math.max(parsedDays, 7), 90) : 30;
+
+    const dayKeys = buildUtcDayKeys(days);
+    const dayKeySet = new Set(dayKeys);
+    const periodStart = new Date(`${dayKeys[0]}T00:00:00.000Z`);
+
+    const [recentSales, activeListings] = await Promise.all([
+      prisma.marketplaceListing.findMany({
+        where: {
+          status: 'SOLD',
+          soldAt: { gte: periodStart },
+        },
+        select: {
+          itemId: true,
+          quantity: true,
+          unitPrice: true,
+          soldAt: true,
+          item: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              imageUrl: true,
+            },
+          },
+        },
+      }),
+      prisma.marketplaceListing.findMany({
+        where: {
+          status: 'ACTIVE',
+        },
+        select: {
+          itemId: true,
+          unitPrice: true,
+          item: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              imageUrl: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    type DayAccumulator = { weightedPriceSum: number; soldUnits: number; salesCount: number };
+    type ProductAccumulator = {
+      itemId: string;
+      itemName: string;
+      itemType: string;
+      imageUrl: string | null;
+      weightedPriceSum30d: number;
+      soldUnits30d: number;
+      revenue30d: number;
+      lowestOffer: number | null;
+      highestOffer: number | null;
+      dayStats: Map<string, DayAccumulator>;
+    };
+
+    const productMap = new Map<string, ProductAccumulator>();
+
+    const ensureProduct = (input: { itemId: string; item: { name: string; type: string; imageUrl: string | null } }) => {
+      const existing = productMap.get(input.itemId);
+      if (existing) {
+        return existing;
+      }
+
+      const created: ProductAccumulator = {
+        itemId: input.itemId,
+        itemName: input.item.name,
+        itemType: input.item.type,
+        imageUrl: input.item.imageUrl,
+        weightedPriceSum30d: 0,
+        soldUnits30d: 0,
+        revenue30d: 0,
+        lowestOffer: null,
+        highestOffer: null,
+        dayStats: new Map<string, DayAccumulator>(),
+      };
+
+      productMap.set(input.itemId, created);
+      return created;
+    };
+
+    for (const sale of recentSales) {
+      if (!sale.soldAt) {
+        continue;
+      }
+
+      const product = ensureProduct({ itemId: sale.itemId, item: sale.item });
+      const soldPrice = sale.unitPrice * sale.quantity;
+
+      product.weightedPriceSum30d += soldPrice;
+      product.revenue30d += soldPrice;
+      product.soldUnits30d += sale.quantity;
+
+      const dayKey = toUtcDateKey(sale.soldAt);
+      if (!dayKeySet.has(dayKey)) {
+        continue;
+      }
+
+      const existingDay = product.dayStats.get(dayKey);
+      if (existingDay) {
+        existingDay.weightedPriceSum += soldPrice;
+        existingDay.soldUnits += sale.quantity;
+        existingDay.salesCount += 1;
+      } else {
+        product.dayStats.set(dayKey, {
+          weightedPriceSum: soldPrice,
+          soldUnits: sale.quantity,
+          salesCount: 1,
+        });
+      }
+    }
+
+    for (const listing of activeListings) {
+      const product = ensureProduct({ itemId: listing.itemId, item: listing.item });
+
+      if (product.lowestOffer === null || listing.unitPrice < product.lowestOffer) {
+        product.lowestOffer = listing.unitPrice;
+      }
+      if (product.highestOffer === null || listing.unitPrice > product.highestOffer) {
+        product.highestOffer = listing.unitPrice;
+      }
+    }
+
+    const products = [...productMap.values()]
+      .map((product) => {
+        const averageUnitPrice30d = product.soldUnits30d > 0
+          ? Number((product.weightedPriceSum30d / product.soldUnits30d).toFixed(2))
+          : null;
+
+        const timeline = dayKeys.map((dayKey) => {
+          const day = product.dayStats.get(dayKey);
+          return {
+            date: dayKey,
+            averageUnitPrice: day && day.soldUnits > 0
+              ? Number((day.weightedPriceSum / day.soldUnits).toFixed(2))
+              : null,
+            salesCount: day?.salesCount ?? 0,
+          };
+        });
+
+        const firstNonNull = timeline.find((point) => point.averageUnitPrice !== null)?.averageUnitPrice ?? null;
+        const lastNonNull = [...timeline].reverse().find((point) => point.averageUnitPrice !== null)?.averageUnitPrice ?? null;
+
+        const priceEvolutionPct30d = firstNonNull && lastNonNull
+          ? Number((((lastNonNull - firstNonNull) / firstNonNull) * 100).toFixed(2))
+          : null;
+
+        return {
+          itemId: product.itemId,
+          itemName: product.itemName,
+          itemType: product.itemType,
+          imageUrl: product.imageUrl,
+          averageUnitPrice30d,
+          lowestOffer: product.lowestOffer,
+          highestOffer: product.highestOffer,
+          soldUnits30d: product.soldUnits30d,
+          revenue30d: product.revenue30d,
+          priceEvolutionPct30d,
+          timeline,
+        };
+      })
+      .sort((a, b) => {
+        if (b.soldUnits30d !== a.soldUnits30d) {
+          return b.soldUnits30d - a.soldUnits30d;
+        }
+        return a.itemName.localeCompare(b.itemName, 'fr');
+      });
+
+    res.json({
+      days,
+      generatedAt: new Date().toISOString(),
+      products,
+    });
+  } catch (error) {
+    console.error('Get listing stats error:', error);
+    res.status(500).json({ error: 'Failed to get marketplace listing stats' });
+  }
+});
+
 router.get('/listings', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const status = getMarketplaceListingStatus(req.query.status);

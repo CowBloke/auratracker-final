@@ -1,8 +1,10 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { ComponentProps } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   ChevronRight,
+  Bug,
   LayoutDashboard,
   Gamepad2,
   Map,
@@ -41,6 +43,7 @@ import { useFeatures } from '@/contexts/FeaturesContext';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getGameImage } from '@/lib/game-images';
+import BugReportPanel from './BugReportPanel';
 
 const navItems = [
   { to: '/leaderboards', label: 'Classement', icon: Trophy },
@@ -114,6 +117,7 @@ function GameSidebarIcon({ src, alt }: { src: string; alt: string }) {
 
 export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
+  const [isBugReportOpen, setIsBugReportOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { maintenanceStatus } = useFeatures();
@@ -323,11 +327,27 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 </SidebarMenuItem>
               );
             })}
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={() => setIsBugReportOpen(true)}
+                tooltip="Reporter un bug"
+                className="h-9 px-3 text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
+              >
+                <Bug className="h-4 w-4" />
+                <span className="group-data-[collapsible=icon]:hidden">Reporter un bug</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             </>)}
 
           </SidebarMenu>
         </div>
       </SidebarContent>
+      <BugReportPanel
+        open={isBugReportOpen}
+        onOpenChange={setIsBugReportOpen}
+        trigger={<button type="button" className="sr-only" tabIndex={-1} />}
+      />
     </Sidebar>
   );
 }

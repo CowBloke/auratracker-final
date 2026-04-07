@@ -318,6 +318,46 @@ io.on('connection', (socket) => {
 
     next();
   });
+
+  socket.on('messaging:typing', async (data: { conversationId?: string; isTyping?: boolean }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+
+    const conversationId = typeof data?.conversationId === 'string' ? data.conversationId : '';
+    if (!conversationId) return;
+
+    const membership = await prisma.messageConversationParticipant.findFirst({
+      where: { conversationId, userId },
+      include: {
+        conversation: {
+          select: {
+            type: true,
+            participants: {
+              select: { userId: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!membership || membership.conversation.type !== 'DM') {
+      return;
+    }
+
+    const isTyping = Boolean(data?.isTyping);
+    const recipients = membership.conversation.participants
+      .map((participant) => participant.userId)
+      .filter((participantId) => participantId !== userId);
+
+    for (const recipientId of recipients) {
+      io.to(`user:${recipientId}`).emit('messaging:typing', {
+        conversationId,
+        userId,
+        username: socket.data.username,
+        isTyping,
+      });
+    }
+  });
   
   setupChatHandlers(socket, io);
   setupPartyHandlers(socket, io);

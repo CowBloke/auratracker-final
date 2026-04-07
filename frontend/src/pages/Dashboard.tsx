@@ -50,6 +50,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl, resolveThemeImageUrl } from '@/lib/images';
 import { getGameImage } from '@/lib/game-images';
+import { getPartyDisplayName } from '@/lib/party-display-name';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
@@ -1441,7 +1442,7 @@ export default function Dashboard() {
                               return (
                                 <div key={party.id} className={dashboardRowClass}>
                                   <div className="min-w-0">
-                                    <p className={TYPOGRAPHY.SMALL}>{party.name || 'Groupe sans nom'}</p>
+                                    <p className={TYPOGRAPHY.SMALL}>{getPartyDisplayName(party)}</p>
                                     <p className={cn(TYPOGRAPHY.XS, "truncate text-muted-foreground")}>
                                       {party.selectedGame?.gameName || 'Pas de jeu'} · {party.memberCount}/{party.maxSize}
                                     </p>

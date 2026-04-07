@@ -57,6 +57,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { YouHeaderBar } from '@/components/you/YouHeaderBar';
 import { UserAccountMenu } from '@/components/user-account-menu';
 import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
+import { getPartyDisplayName } from '@/lib/party-display-name';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -645,7 +646,6 @@ export function SiteHeader() {
                 <DropdownMenuSeparator />
                 {availableParties.length > 0 ? (
                   availableParties.map((party) => {
-                    const isDuel = party.maxSize === 2;
                     return (
                       <DropdownMenuItem
                         key={party.id}
@@ -654,7 +654,7 @@ export function SiteHeader() {
                       >
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-medium">
-                            {party.name || (isDuel ? 'Duel sans nom' : 'Groupe sans nom')}
+                            {getPartyDisplayName(party)}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {party.memberCount}/{party.maxSize} membres

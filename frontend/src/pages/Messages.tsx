@@ -17,6 +17,7 @@ import {
   MessagesSquare,
   ImagePlus,
   MoreVertical,
+  Pin,
   Plus,
   Scale,
   Search,
@@ -25,6 +26,7 @@ import {
   Shield,
   ShieldAlert,
   Star,
+  Trash2,
   UserMinus,
   UserPlus,
   Users,
@@ -173,6 +175,14 @@ const sortConversationsByRecent = (items: MessagingConversationSummary[]) =>
     return a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
   });
 
+const DM_SORT_OPTIONS = {
+  RECENT: 'Recentes',
+  UNREAD: 'Non lus',
+  ALPHA: 'A-Z',
+} as const;
+
+type DmSortMode = keyof typeof DM_SORT_OPTIONS;
+
 const ADMIN_SUPPORT_CONVERSATION_PREFIX = 'admin-support:';
 
 const getAdminSupportConversationId = (userId: string) => `${ADMIN_SUPPORT_CONVERSATION_PREFIX}${userId}`;
@@ -251,12 +261,17 @@ export default function MessagesPage() {
   const [draft, setDraft] = useState('');
   const [imageUrlToSend, setImageUrlToSend] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [pinnedDmIds, setPinnedDmIds] = useState<Set<string>>(new Set());
+  const [dmSortMode, setDmSortMode] = useState<DmSortMode>('RECENT');
   const [loading, setLoading] = useState(true);
   const [convLoading, setConvLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [isMessagesAtBottom, setIsMessagesAtBottom] = useState(true);
+  const [typingByConversation, setTypingByConversation] = useState<Record<string, { userId: string; username: string }>>({});
 
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingConversationRef = useRef<string | null>(null);
 
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
@@ -335,8 +350,11 @@ export default function MessagesPage() {
   const hasCourtRepresentation = !isEligibleCourtClient || Boolean(assignedLawyer || hasAssignedPublicDefender);
   const selectedIdSafe = selectedConversation?.id ?? null;
   const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
-  const supportReactionsEnabled = selectedConversation?.type !== 'SUPPORT';
+  const conversationReactionsEnabled = selectedConversation?.type === 'DM' || selectedConversation?.type === 'GROUP';
   const currentMessages = detail?.messages ?? [];
+  const dmTypingUser = selectedConversation?.type === 'DM' && selectedIdSafe
+    ? (typingByConversation[selectedIdSafe] ?? null)
+    : null;
   const isCourtChatLocked = Boolean(isCourtConversation && courtCase && courtCase.status !== 'OPEN');
   const scrollMessagesToBottom = () => {
     const viewport = messagesScrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
@@ -461,6 +479,30 @@ export default function MessagesPage() {
   }, [user?.id]);
 
   useEffect(() => {
+    if (!user?.id) {
+      setPinnedDmIds(new Set());
+      return;
+    }
+    const key = `messaging-pinned-dms-${user.id}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      setPinnedDmIds(new Set());
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const pinned = parsed.filter((id): id is string => typeof id === 'string');
+        setPinnedDmIds(new Set(pinned));
+      } else {
+        setPinnedDmIds(new Set());
+      }
+    } catch {
+      setPinnedDmIds(new Set());
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
     if (loading) return;
 
     const params = new URLSearchParams(location.search);
@@ -514,17 +556,75 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!socket) return;
+    const handleTyping = (payload: { conversationId?: string; userId?: string; username?: string; isTyping?: boolean }) => {
+      const conversationId = typeof payload?.conversationId === 'string' ? payload.conversationId : null;
+      const userId = typeof payload?.userId === 'string' ? payload.userId : null;
+      if (!conversationId || !userId || userId === user?.id) return;
+
+      if (payload.isTyping) {
+        setTypingByConversation((prev) => ({
+          ...prev,
+          [conversationId]: {
+            userId,
+            username: typeof payload.username === 'string' && payload.username.trim() ? payload.username : 'Quelqu’un',
+          },
+        }));
+        return;
+      }
+
+      setTypingByConversation((prev) => {
+        if (!prev[conversationId]) return prev;
+        const next = { ...prev };
+        delete next[conversationId];
+        return next;
+      });
+    };
+
     const refresh = () => {
       refreshConversations().catch(() => {});
       if (selectedIdSafe) loadConversation(selectedIdSafe, false, false).catch(() => {});
     };
     socket.on('messaging:message', refresh);
     socket.on('messaging:conversation', refresh);
+    socket.on('messaging:typing', handleTyping);
     socket.on('support:message', refresh);
     return () => {
       socket.off('messaging:message', refresh);
       socket.off('messaging:conversation', refresh);
+      socket.off('messaging:typing', handleTyping);
       socket.off('support:message', refresh);
+    };
+  }, [socket, selectedIdSafe, user?.id]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const previousConversationId = lastTypingConversationRef.current;
+    if (previousConversationId && previousConversationId !== selectedIdSafe) {
+      socket.emit('messaging:typing', { conversationId: previousConversationId, isTyping: false });
+      setTypingByConversation((prev) => {
+        if (!prev[previousConversationId]) return prev;
+        const next = { ...prev };
+        delete next[previousConversationId];
+        return next;
+      });
+      lastTypingConversationRef.current = null;
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      const activeConversationId = lastTypingConversationRef.current;
+      if (activeConversationId) {
+        socket.emit('messaging:typing', { conversationId: activeConversationId, isTyping: false });
+      }
     };
   }, [socket, selectedIdSafe]);
 
@@ -590,7 +690,7 @@ export default function MessagesPage() {
   }, [assignedLawFirm, assignedLawyer, courtCase, isCourtConversation, isEligibleCourtClient, lawFirms.length, lawFirmsLoading]);
 
   // ── Filtered lists ────────────────────────────────────────────────────────
-  const { favorites, regular } = useMemo(() => {
+  const { pinnedDms, dms, others } = useMemo(() => {
     const term = deferredSearch.trim().toLowerCase();
     const all = term
       ? conversations.filter((c) => {
@@ -598,11 +698,34 @@ export default function MessagesPage() {
           return names.includes(term) || getPreview(c).toLowerCase().includes(term);
         })
       : conversations;
+
+    const sortDmList = (items: MessagingConversationSummary[]) => [...items].sort((a, b) => {
+      if (dmSortMode === 'ALPHA') {
+        const nameDiff = a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
+        if (nameDiff !== 0) return nameDiff;
+        return getConversationActivityAt(b) - getConversationActivityAt(a);
+      }
+      if (dmSortMode === 'UNREAD') {
+        const unreadDiff = b.unreadCount - a.unreadCount;
+        if (unreadDiff !== 0) return unreadDiff;
+        return getConversationActivityAt(b) - getConversationActivityAt(a);
+      }
+      const timeDiff = getConversationActivityAt(b) - getConversationActivityAt(a);
+      if (timeDiff !== 0) return timeDiff;
+      return a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
+    });
+
+    const dmsOnly = all.filter((c) => c.type === 'DM');
+    const pinnedDmsOnly = dmsOnly.filter((c) => pinnedDmIds.has(c.id));
+    const unpinnedDmsOnly = dmsOnly.filter((c) => !pinnedDmIds.has(c.id));
+    const nonDm = sortConversationsByRecent(all.filter((c) => c.type !== 'DM'));
+
     return {
-      favorites: all.filter((c) => c.isFavorite),
-      regular: all.filter((c) => !c.isFavorite),
+      pinnedDms: sortDmList(pinnedDmsOnly),
+      dms: sortDmList(unpinnedDmsOnly),
+      others: nonDm,
     };
-  }, [conversations, deferredSearch]);
+  }, [conversations, deferredSearch, dmSortMode, pinnedDmIds]);
 
   const filteredPlayers = useMemo(() => {
     const term = createSearch.trim().toLowerCase();
@@ -682,6 +805,14 @@ export default function MessagesPage() {
       setSending(true);
       setDraft('');
       setImageUrlToSend('');
+      if (selectedConversation?.type === 'DM') {
+        socket?.emit('messaging:typing', { conversationId: selectedIdSafe, isTyping: false });
+        lastTypingConversationRef.current = null;
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
       if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
       try {
         if (selectedAdminSupportUserId) {
@@ -754,6 +885,23 @@ export default function MessagesPage() {
     }
   };
 
+  const handleToggleDmPin = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const conversation = conversations.find((entry) => entry.id === id);
+    if (!conversation || conversation.type !== 'DM') return;
+    const key = `messaging-pinned-dms-${user?.id ?? 'anon'}`;
+    setPinnedDmIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      localStorage.setItem(key, JSON.stringify(Array.from(next)));
+      return next;
+    });
+  };
+
   const handleGroupImageUpload = async (file: File) => {
     setGroupImageUploading(true);
     try {
@@ -808,12 +956,23 @@ export default function MessagesPage() {
   };
 
   const handleReact = async (messageId: string, emoji: string) => {
-    if (!selectedIdSafe || !supportReactionsEnabled) return;
+    if (!selectedIdSafe || !conversationReactionsEnabled) return;
     try {
       await supportApi.reactToMessage(selectedIdSafe, messageId, emoji);
       await loadConversation(selectedIdSafe, false, false);
     } catch {
       toast({ title: 'Erreur', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!selectedIdSafe || !isAdminViewer) return;
+    try {
+      await supportApi.deleteConversationMessage(selectedIdSafe, messageId);
+      await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
+      toast({ title: 'Message supprimé' });
+    } catch {
+      toast({ title: 'Suppression impossible', variant: 'destructive' });
     }
   };
 
@@ -1511,7 +1670,7 @@ export default function MessagesPage() {
       </Dialog>
 
       <div className="relative h-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
-        <div className="grid h-full min-h-0 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="grid h-full min-h-0 lg:grid-cols-[300px_minmax(0,1fr)]">
 
           {/* ── Sidebar ── */}
           <aside className={cn('min-h-0 flex-col border-r border-border/60', selectedIdSafe ? 'hidden lg:flex' : 'flex')}>
@@ -1527,18 +1686,33 @@ export default function MessagesPage() {
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..."
                   className="w-full rounded-lg border border-border/50 bg-muted/30 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-primary/40 focus:bg-background transition-colors" />
               </div>
+              <div className="mt-2 flex items-center gap-1">
+                {(['RECENT', 'UNREAD', 'ALPHA'] as const).map((mode) => (
+                  <Button
+                    key={mode}
+                    type="button"
+                    size="sm"
+                    variant={dmSortMode === mode ? 'secondary' : 'ghost'}
+                    className="h-6 rounded-full px-2 text-[10px]"
+                    onClick={() => setDmSortMode(mode)}
+                  >
+                    {DM_SORT_OPTIONS[mode]}
+                  </Button>
+                ))}
+              </div>
             </div>
             <ScrollArea className="min-h-0 flex-1">
               <div className="py-1">
-                {favorites.length > 0 && (
+                {pinnedDms.length > 0 && (
                   <>
-                    <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Favoris</p>
-                    {favorites.map((c) => <ConvRow key={c.id} conversation={c} isActive={c.id === selectedIdSafe} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} />)}
-                    {regular.length > 0 && <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Toutes</p>}
+                    <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">DM épinglés</p>
+                    {pinnedDms.map((c) => <ConvRow key={c.id} conversation={c} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
+                    {(dms.length > 0 || others.length > 0) && <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Conversations</p>}
                   </>
                 )}
-                {regular.map((c) => <ConvRow key={c.id} conversation={c} isActive={c.id === selectedIdSafe} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} />)}
-                {favorites.length === 0 && regular.length === 0 && (
+                {dms.map((c) => <ConvRow key={c.id} conversation={c} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
+                {others.map((c) => <ConvRow key={c.id} conversation={c} isActive={c.id === selectedIdSafe} isPinnedDm={false} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
+                {pinnedDms.length === 0 && dms.length === 0 && others.length === 0 && (
                   <p className="px-3 py-6 text-center text-xs text-muted-foreground">Aucune conversation.</p>
                 )}
               </div>
@@ -1567,6 +1741,17 @@ export default function MessagesPage() {
                     </div>
                   </button>
                   <div className="flex shrink-0 items-center gap-0.5">
+                    {selectedConversation.type === 'DM' && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg"
+                        onClick={() => handleToggleDmPin(selectedConversation.id)}
+                      >
+                        <Pin className={cn('h-4 w-4', pinnedDmIds.has(selectedConversation.id) ? 'fill-primary/20 text-primary' : 'text-muted-foreground')} />
+                      </Button>
+                    )}
                     {selectedConversation.type !== 'SUPPORT' && (
                       <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg"
                         onClick={() => handleToggleFavorite(selectedConversation.id)}>
@@ -1765,6 +1950,7 @@ export default function MessagesPage() {
                         const showAvatar = !isOwn && selectedConversation.type === 'GROUP' && isLast;
                         const showSender = !isOwn && isFirst && selectedConversation.type === 'GROUP';
                         const reactions = msg.reactions ?? [];
+                        const canDeleteMessage = isAdminViewer && msg.type !== 'COURT_SYSTEM';
                         const supportImages = msg.images ? JSON.parse(msg.images) as string[] : [];
                         if (msg.imageUrl) supportImages.push(msg.imageUrl);
                         const isBlocked = dmOtherUser && blockedIds.has(dmOtherUser.id);
@@ -1813,7 +1999,7 @@ export default function MessagesPage() {
                                   )}
                                 </div>
                               )}
-                              {supportReactionsEnabled ? (
+                              {conversationReactionsEnabled ? (
                                 <Popover>
                                   <PopoverTrigger asChild>
                                     <div className={cn(
@@ -1869,7 +2055,7 @@ export default function MessagesPage() {
                                   </p>
                                 </div>
                               )}
-                              {supportReactionsEnabled && reactions.length > 0 && (
+                              {conversationReactionsEnabled && reactions.length > 0 && (
                                 <div className={cn('mt-0.5 flex flex-wrap gap-1 px-1', isOwn ? 'justify-end' : 'justify-start')}>
                                   {reactions.map((r) => (
                                     <button key={r.emoji} type="button"
@@ -1880,6 +2066,22 @@ export default function MessagesPage() {
                                       <span className="font-medium">{r.count}</span>
                                     </button>
                                   ))}
+                                </div>
+                              )}
+                              {canDeleteMessage && (
+                                <div className={cn('mt-0.5 px-1', isOwn ? 'text-right' : 'text-left')}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (!window.confirm('Supprimer ce message ?')) return;
+                                      void handleDeleteMessage(msg.id);
+                                    }}
+                                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                    title="Supprimer le message"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    Supprimer
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -1894,6 +2096,9 @@ export default function MessagesPage() {
 
                 {/* Input bar */}
                 <div className="border-t border-border/60 bg-card px-3 py-2.5 sm:px-4">
+                  {dmTypingUser && (
+                    <p className="mb-2 text-[11px] text-muted-foreground">{dmTypingUser.username} est en train d'écrire...</p>
+                  )}
                   {/* Admin court role selector */}
                   {isCourtConversation && isAdminViewer && (
                     <div className="mb-2 flex items-center gap-2 flex-wrap">
@@ -1964,7 +2169,30 @@ export default function MessagesPage() {
                       />
                       <div className="flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 focus-within:border-primary/40 focus-within:bg-background transition-colors">
                       <textarea ref={textareaRef} value={draft} rows={1}
-                        onChange={(e) => { setDraft(e.target.value); e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 112) + 'px'; }}
+                        onChange={(e) => {
+                          const nextValue = e.target.value;
+                          setDraft(nextValue);
+
+                          if (socket && selectedConversation?.type === 'DM' && selectedIdSafe) {
+                            lastTypingConversationRef.current = selectedIdSafe;
+                            socket.emit('messaging:typing', { conversationId: selectedIdSafe, isTyping: nextValue.trim().length > 0 });
+                            if (typingTimeoutRef.current) {
+                              clearTimeout(typingTimeoutRef.current);
+                            }
+                            if (nextValue.trim().length > 0) {
+                              typingTimeoutRef.current = setTimeout(() => {
+                                socket.emit('messaging:typing', { conversationId: selectedIdSafe, isTyping: false });
+                                typingTimeoutRef.current = null;
+                              }, 2000);
+                            } else {
+                              typingTimeoutRef.current = null;
+                              lastTypingConversationRef.current = null;
+                            }
+                          }
+
+                          e.currentTarget.style.height = 'auto';
+                          e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 112) + 'px';
+                        }}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
                         placeholder={isCourtChatLocked ? 'Le chat est disponible uniquement quand l affaire est en cours' : `Message ${selectedConversation.displayName}`}
                         className="w-full resize-none bg-transparent text-sm leading-5 outline-none placeholder:text-muted-foreground/50"
@@ -2002,19 +2230,29 @@ export default function MessagesPage() {
 function ConvRow({
   conversation,
   isActive,
+  isPinnedDm,
   onSelect,
   onToggleFavorite,
+  onToggleDmPin,
 }: {
   conversation: MessagingConversationSummary;
   isActive: boolean;
+  isPinnedDm: boolean;
   onSelect: () => void;
   onToggleFavorite: (e: React.MouseEvent) => void;
+  onToggleDmPin: (e: React.MouseEvent) => void;
 }) {
   return (
-    <button type="button" onClick={onSelect}
-      className={cn('group flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors', isActive ? 'bg-primary/10' : 'hover:bg-muted/50')}>
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'group flex w-full min-w-0 items-center gap-2.5 px-3 py-2 text-left transition-colors',
+        isActive ? 'bg-primary/10' : 'hover:bg-muted/50',
+      )}
+    >
       <ConversationAvatar conversation={conversation} />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <div className="flex items-baseline justify-between gap-1">
           <div className="flex min-w-0 items-center gap-1.5">
             <p className={cn('truncate text-xs font-semibold', isActive && 'text-primary')}>{conversation.displayName}</p>
@@ -2039,19 +2277,31 @@ function ConvRow({
         <div className="flex items-center justify-between gap-1">
           <p className="truncate text-[11px] text-muted-foreground">{getPreview(conversation)}</p>
           {conversation.unreadCount > 0 && (
-            <span className="shrink-0 inline-flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1 py-0.5 text-[10px] font-semibold text-primary-foreground">
+            <span className="shrink-0 inline-flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
               {conversation.unreadCount}
             </span>
           )}
         </div>
       </div>
       {conversation.type !== 'SUPPORT' && (
-        <button type="button"
-          onClick={onToggleFavorite}
-          className={cn('ml-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity', conversation.isFavorite && 'opacity-100')}
-          tabIndex={-1}>
-          <Star className={cn('h-3.5 w-3.5', conversation.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
-        </button>
+        <div className="ml-0.5 flex shrink-0 items-center gap-1">
+          {conversation.type === 'DM' && (
+            <button
+              type="button"
+              onClick={onToggleDmPin}
+              className={cn('opacity-0 transition-opacity group-hover:opacity-100', isPinnedDm && 'opacity-100')}
+              tabIndex={-1}
+            >
+              <Pin className={cn('h-3.5 w-3.5', isPinnedDm ? 'fill-primary/20 text-primary' : 'text-muted-foreground')} />
+            </button>
+          )}
+          <button type="button"
+            onClick={onToggleFavorite}
+            className={cn('opacity-0 transition-opacity group-hover:opacity-100', conversation.isFavorite && 'opacity-100')}
+            tabIndex={-1}>
+            <Star className={cn('h-3.5 w-3.5', conversation.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
+          </button>
+        </div>
       )}
     </button>
   );

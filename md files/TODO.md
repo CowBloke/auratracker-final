@@ -1,7 +1,6 @@
 ## TODO
 
 - textes partout qui sert UI minimaliste
-- immobilier
 - interface chargée : alléger mons de textes
 - Possibilité de pouvoir rembourser un pourcentage du pret (genre 50%) ou la totalité de ce que la personne posséde si elle a pas assez pour rembourser
 - interface pour les prets et historuque achat
@@ -10,13 +9,10 @@
 - UI blockblast
     - probleme vidée
     - en ruge lauvais placement
-- carte monde entrpeirse
 - immobilier : acheter rues
 - allainces`- chosir entre deux images
-- trois petits points
 - reset widgets
  -apr defaut grille reset
- - supprimer effet hover marketplace
  - parts entreprise et fodateur rachat de parts
  - image dm
  - pastille rouge DM
@@ -30,7 +26,6 @@
  - card polymarket hierarchie
  - aut scroll vers le bas quand pas de message non lus dans chat main
 - racheterr part en tant que fondateur et transfert fondateur
-- changer note
 - historique solde
 - associer clan/entreprise
 - mariage compte partagé et aussi argent partagé bug
@@ -38,38 +33,19 @@
 - entreprise coca
 - braquer banque
 - blaznchir argent
-- anticheat
-- 2 3 affaires (non qu'une)
-- fix niveaux
-- UI avec sites UI
-- niveau xp
-- carte
 - expliciter chnagement de business
 - niveau de clan
 - fix compte à rebours
-- ajouter/enlever aura utilisateurs- racheter parts
-- pastille chatmain
-- XP
-- groupe sans nom
 - voit déoulé des parts pour tt le monde
-- signaler
-- support image dm et réactions
-- message non lu
-- prix moyen sur 30 jours
 - plus d'objets
 - ressources complémentaire : empire
-- supprimer messages que pour admin
 - voir qui like historique enchainement
 - enquete de satisfaction
-- leaderboafrd follower
-- tag de clan pb
 - syteme d'amende qu'ils doivent payer eux memes
-- trier dm
-- en train decrire dm
-- dm coupé UI
-- report bug
 Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 - bug envoie de messages support au lieu de utilisateur
+- revendre action
+- adblock
 
 ## PROJECTS
 

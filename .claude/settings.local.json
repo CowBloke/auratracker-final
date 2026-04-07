@@ -116,7 +116,8 @@
       "Bash(grep -r bank /c/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src --include=*.tsx --include=*.ts)",
       "Bash(cp /tmp/modals_clean.tsx \"c:/Users/cowbl/source/repos/CRust/auratracker-final/frontend/src/pages/you/components/modals.tsx\")",
       "Bash(PRISMA_MIGRATE_SKIP_GENERATE=1 npx prisma db push)",
-      "Bash(grep -r \"business\\\\|you\" /c/Users/cowbl/source/repos/CRust/auratracker-final/backend/src/socket/*.ts)"
+      "Bash(grep -r \"business\\\\|you\" /c/Users/cowbl/source/repos/CRust/auratracker-final/backend/src/socket/*.ts)",
+      "Bash(grep -n \"router\\\\.\\\\\\(post\\\\|put\\\\|patch\\\\|delete\\\\\\)\\\\s*\\(\" /Users/viktorabe/Documents/GitHub/auratracker-final/backend/src/routes/*.ts)"
     ]
   },
   "outputStyle": "default"

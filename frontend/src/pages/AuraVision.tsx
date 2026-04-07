@@ -130,6 +130,7 @@ export default function AuraVision() {
   const [mirrorLocal, setMirrorLocal] = useState(true);
   const [autoNext, setAutoNext] = useState(true);
   const [queueCount, setQueueCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
   const [status, setStatus] = useState('Prends la main sur AuraVision et lance une rencontre aleatoire.');
   const [error, setError] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
@@ -437,6 +438,10 @@ export default function AuraVision() {
       setQueueCount(payload.count);
     };
 
+    const handleActiveCount = (payload: { count: number }) => {
+      setActiveCount(payload.count);
+    };
+
     const handleMessage = (payload: AuraVisionMessage) => {
       setMessages((current) => [...current.slice(-19), payload]);
     };
@@ -450,9 +455,11 @@ export default function AuraVision() {
     socket.on('auravision:signal', handleSignal);
     socket.on('auravision:partner-left', handlePartnerLeft);
     socket.on('auravision:queue-size', handleQueueSize);
+    socket.on('auravision:active-count', handleActiveCount);
     socket.on('auravision:message', handleMessage);
     socket.on('auravision:error', handleError);
     socket.emit('auravision:queue-size');
+    socket.emit('auravision:active-count');
 
     return () => {
       socket.off('auravision:queued', handleQueued);
@@ -460,6 +467,7 @@ export default function AuraVision() {
       socket.off('auravision:signal', handleSignal);
       socket.off('auravision:partner-left', handlePartnerLeft);
       socket.off('auravision:queue-size', handleQueueSize);
+      socket.off('auravision:active-count', handleActiveCount);
       socket.off('auravision:message', handleMessage);
       socket.off('auravision:error', handleError);
     };
@@ -553,6 +561,9 @@ export default function AuraVision() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-600">
               {connected ? 'Socket connecte' : 'Connexion en cours'}
+            </div>
+            <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
+              {activeCount} personne{activeCount > 1 ? 's' : ''} sur la page
             </div>
             <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
               {queueCount} joueur{queueCount > 1 ? 's' : ''} en file

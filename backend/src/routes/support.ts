@@ -1059,6 +1059,12 @@ router.post('/conversations/:conversationId/messages/:messageId/react', authMidd
     });
     if (!membership) return res.status(404).json({ error: 'Conversation not found' });
 
+    const message = await prisma.messageConversationMessage.findFirst({
+      where: { id: messageId, conversationId },
+      select: { id: true },
+    });
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+
     const existing = await prisma.messageConversationReaction.findFirst({
       where: { messageId, userId: user.id, emoji },
     });
@@ -1079,6 +1085,89 @@ router.post('/conversations/:conversationId/messages/:messageId/react', authMidd
   } catch (error) {
     console.error('React to message error:', error);
     res.status(500).json({ error: 'Failed to react' });
+  }
+});
+
+// Delete a message from a conversation (admin moderation)
+router.delete('/conversations/:conversationId/messages/:messageId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const { conversationId, messageId } = req.params;
+    const isAdminActor = Boolean(user.isAdmin || user.isSuperAdmin);
+
+    if (!isAdminActor) {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    const isAdminSupportConversation = conversationId.startsWith(ADMIN_SUPPORT_CONVERSATION_PREFIX);
+    if (conversationId === SUPPORT_CONVERSATION_ID || isAdminSupportConversation) {
+      const supportMessage = await prisma.supportMessage.findUnique({
+        where: { id: messageId },
+        select: { id: true, userId: true },
+      });
+
+      if (!supportMessage) {
+        return res.status(404).json({ error: 'Message not found' });
+      }
+
+      if (isAdminSupportConversation) {
+        const expectedUserId = conversationId.slice(ADMIN_SUPPORT_CONVERSATION_PREFIX.length);
+        if (supportMessage.userId !== expectedUserId) {
+          return res.status(404).json({ error: 'Message not found in this conversation' });
+        }
+      }
+
+      await prisma.supportMessage.delete({ where: { id: supportMessage.id } });
+
+      io.to('admin:support').emit('support:message', {
+        message: null,
+        deletedMessageId: supportMessage.id,
+        userId: supportMessage.userId,
+      });
+
+      return res.json({ success: true });
+    }
+
+    const targetMessage = await prisma.messageConversationMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true, conversationId: true },
+    });
+
+    if (!targetMessage || targetMessage.conversationId !== conversationId) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.messageConversationMessage.delete({ where: { id: targetMessage.id } });
+
+      const [latestMessage, conversation] = await Promise.all([
+        tx.messageConversationMessage.findFirst({
+          where: { conversationId },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        }),
+        tx.messageConversation.findUnique({
+          where: { id: conversationId },
+          select: { createdAt: true },
+        }),
+      ]);
+
+      if (conversation) {
+        await tx.messageConversation.update({
+          where: { id: conversationId },
+          data: {
+            lastMessageAt: latestMessage?.createdAt ?? conversation.createdAt,
+          },
+        });
+      }
+    });
+
+    await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete conversation message error:', error);
+    res.status(500).json({ error: 'Failed to delete message' });
   }
 });
 

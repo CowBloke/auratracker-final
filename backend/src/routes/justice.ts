@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { io, prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
+import { grantSkillXp, penalizeSkillXp } from '../modules/you/service.js';
 
 const router = Router();
 
@@ -183,6 +184,9 @@ router.post('/plaintes', authMiddleware, async (req: AuthRequest, res: Response)
         }).catch(() => {})
       )
     );
+
+    // Charisme XP: déposer une plainte = prendre position publiquement
+    void grantSkillXp(user.id, 'charisme', 3);
 
     res.status(201).json({ plainte: serializePlainte(plainte) });
   } catch (error) {
@@ -720,6 +724,9 @@ router.put('/cases/:id/argument', authMiddleware, async (req: AuthRequest, res: 
       )
     );
 
+    // Intelligence XP: rédiger un argument juridique = raisonnement et culture
+    void grantSkillXp(user.id, 'intelligence', 2);
+
     res.json({
       argument: {
         id: argument.id,
@@ -907,6 +914,8 @@ router.post('/cases/:id/verdict', authMiddleware, async (req: AuthRequest, res: 
 
     const verdict = typeof req.body?.verdict === 'string' ? req.body.verdict.trim() : '';
     const sentencing = typeof req.body?.sentencing === 'string' ? req.body.sentencing.trim() : null;
+    // plaintiffWins: true = plaignant gagne, false = défendeur gagne, null = pas de vainqueur désigné
+    const plaintiffWins: boolean | null = req.body?.plaintiffWins === true ? true : req.body?.plaintiffWins === false ? false : null;
 
     if (!verdict || verdict.length < 10) {
       return res.status(400).json({ error: 'Le verdict doit contenir au moins 10 caractères.' });
@@ -966,6 +975,17 @@ router.post('/cases/:id/verdict', authMiddleware, async (req: AuthRequest, res: 
         }).catch(() => {})
       )
     );
+
+    // XP justice selon le résultat (optionnel, uniquement si plaintiffWins est précisé)
+    if (plaintiffWins === true) {
+      // Plaignant gagne: gain Social, défendeur perd Social
+      void grantSkillXp(courtCase.plaintifId, 'social', 15);
+      void penalizeSkillXp(courtCase.defendantId, 'social', 15);
+    } else if (plaintiffWins === false) {
+      // Défendeur gagne (plainte infondée): défendeur gagne Social, plaignant perd un peu
+      void grantSkillXp(courtCase.defendantId, 'social', 10);
+      void penalizeSkillXp(courtCase.plaintifId, 'social', 5);
+    }
 
     await emitConversationToParticipants(courtCase.conversationId, 'messaging:message', { conversationId: courtCase.conversationId });
 

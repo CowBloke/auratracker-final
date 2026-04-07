@@ -1061,6 +1061,7 @@ export default function Admin() {
     dailyAuraLimit: 50,
   });
   const [editPassword, setEditPassword] = useState('');
+  const [editAuraDelta, setEditAuraDelta] = useState(0);
   const [saving, setSaving] = useState(false);
   const [downloadingUsersCsv, setDownloadingUsersCsv] = useState(false);
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
@@ -3938,6 +3939,7 @@ export default function Admin() {
       dailyAuraLimit: u.dailyAuraLimit,
     });
     setEditPassword('');
+    setEditAuraDelta(0);
     setEditModalOpen(true);
   };
 
@@ -3946,12 +3948,21 @@ export default function Admin() {
     setEditModalUser(null);
     setEditModalOpen(false);
     setEditPassword('');
+    setEditAuraDelta(0);
   };
 
   const saveUser = async (id: string) => {
+    const baseAura = editModalUser?.aura ?? editValues.aura;
+    const nextAura = baseAura + editAuraDelta;
+    if (nextAura < 0) {
+      showMessage('error', 'Le total d\'aura ne peut pas etre negatif');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = { ...editValues } as Parameters<typeof adminApi.updateUser>[1];
+      payload.aura = nextAura;
       if (editPassword.trim()) {
         payload.password = editPassword.trim();
       }
@@ -3961,6 +3972,7 @@ export default function Admin() {
       setEditModalUser(null);
       setEditModalOpen(false);
       setEditPassword('');
+      setEditAuraDelta(0);
       showMessage('success', 'Utilisateur mis à jour');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
@@ -6002,11 +6014,19 @@ export default function Admin() {
             {/* Economy */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura</label>
+                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura (+/-)</label>
                 <div className="relative">
                   <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400/60 pointer-events-none" />
-                  <Input type="number" value={editValues.aura} onChange={(e) => setEditValues(prev => ({ ...prev, aura: parseInt(e.target.value) || 0 }))} className="h-9 bg-transparent border-purple-500/30 focus-visible:ring-purple-500/30 pl-8" />
+                  <Input
+                    type="number"
+                    value={editAuraDelta}
+                    onChange={(e) => setEditAuraDelta(parseInt(e.target.value, 10) || 0)}
+                    className="h-9 bg-transparent border-purple-500/30 focus-visible:ring-purple-500/30 pl-8"
+                  />
                 </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Actuel: {(editModalUser?.aura ?? editValues.aura).toLocaleString()} • Apres: {Math.max(0, (editModalUser?.aura ?? editValues.aura) + editAuraDelta).toLocaleString()}
+                </p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-green-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />Argent</label>

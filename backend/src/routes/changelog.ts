@@ -21,14 +21,42 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-07-xp-system-overhaul',
+    date: '2026-04-07',
+    title: 'Système XP — Toutes les actions récompensées',
+    summary: 'Chaque action du jeu rapporte ou retire maintenant de l\'XP dans la compétence correspondante : mariage, divorce, prêts, investissements, ventes, justice, business et plus encore.',
+    items: [
+      { category: 'BIG_FEATURE', text: '**XP sur toutes les actions** — L\'ensemble des actions du jeu alimentent désormais l\'XP : créer une entreprise, encaisser un prêt, rembourser, investir, se marier, divorcer, acheter, vendre, déposer une plainte, plaider, etc.', order: 0 },
+      { category: 'BIG_FEATURE', text: '**Proportionnel aux montants** — Les XP Finance et Affaires sont proportionnels aux sommes engagées (ex. prêt de 10 000€ = plus d\'XP qu\'un prêt de 500€), ce qui évite le spam de petites actions.', order: 1 },
+      { category: 'BIG_FEATURE', text: '**Justice et XP** — Le juge peut désormais indiquer si le plaignant gagne ou perd lors du verdict. Le gagnant gagne du Social XP, le perdant en perd.', order: 2 },
+      { category: 'SMALL_FEATURE', text: '**Divorce = pénalité** — Accepter un divorce retire 15 points d\'XP Social aux deux parties.', order: 3 },
+      { category: 'SMALL_FEATURE', text: '**Mariage = bonus** — Accepter un mariage rapporte 20 XP Social aux deux et 10 XP Charisme au demandeur.', order: 4 },
+      { category: 'SMALL_FEATURE', text: '**Startup renforcée** — Lancer une recherche rapporte Affaires + Intelligence XP. Déployer un produit rapporte Affaires XP proportionnel au niveau déployé.', order: 5 },
+      { category: 'SMALL_FEATURE', text: '**Remboursement de prêt** — Rembourser intégralement un prêt rapporte 10 XP Finance (comportement financier responsable).', order: 6 },
+    ],
+  },
+  {
     id: '2026-04-07-messages-group-info-modal',
     date: '2026-04-07',
     title: 'Messagerie — Gestion des groupes & Amendes Admin',
-    summary: "Les groupes de discussion s'ouvrent maintenant dans une fiche unique. Les administrateurs peuvent désormais appliquer des amendes aux utilisateurs avec montant configurable.",
+    summary: "Les groupes de discussion s'ouvrent maintenant dans une fiche unique, les administrateurs peuvent appliquer des amendes avec montant configurable, la marketplace gagne des onglets Historique ventes et Tendances 30j (prix moyen, offres basse/haute, évolution), AuraVision affiche un compteur de présence en direct, le chat ne force plus le retour en bas quand on remonte lire l'historique, l'UI de la liste DM affiche correctement les conversations avec la pastille de non lus, les DM peuvent etre tries et epingles, les groupes sans nom affichent maintenant le createur, les reactions sont disponibles dans tous les chats prives, les admins peuvent supprimer les messages dans tous les chats de messagerie, le bouton Reporter un bug revient dans la barre latérale, et la répartition du capital des entreprises partagées est maintenant visible par tous.",
     items: [
       { category: 'SMALL_FEATURE', text: "**Fiche de groupe unifiée** — Le titre d'un groupe ouvre désormais un panneau unique pour modifier le nom, l'icône, la photo et gérer les membres sans passer par plusieurs menus.", order: 0 },
       { category: 'SMALL_FEATURE', text: "**Amendes administrateur** — Les admins peuvent maintenant appliquer des amendes avec montant configurable via un slider (10—5000). L'amende s'affiche en rouge sur l'écran de l'utilisateur sanctionné.", order: 1 },
       { category: 'BUG_FIX', text: "**Bouton Message depuis un profil** — Cliquer sur `Message` depuis le profil d'un joueur ouvre maintenant bien sa conversation DM dans l'onglet Messages, au lieu de basculer par erreur sur une conversation support.", order: 2 },
+      { category: 'SMALL_FEATURE', text: "**Marketplace, onglet Historique ventes** — La marketplace affiche maintenant un onglet dédié avec toutes les ventes finalisées (`SOLD`), présenté en liste compacte inspirée de l'onglet `Historique résolus` de Polymarket (visuel, date, vendeur, quantité, montant total).", order: 3 },
+      { category: 'BUG_FIX', text: "**Chat vertical corrigé** — Le fil de discussion ne remet plus systématiquement la vue en bas quand on fait défiler vers le haut pour relire les anciens messages.", order: 4 },
+      { category: 'SMALL_FEATURE', text: "**AuraVision, compteur de présence** — La page AuraVision affiche maintenant en haut un compteur en direct du nombre de personnes présentes sur la page, en plus du nombre de joueurs en file d'attente.", order: 5 },
+      { category: 'BUG_FIX', text: "**Liste DM recadrée + pastille non lus visible** — Les lignes de conversations dans la sidebar Messages ne sont plus coupées à droite, et la pastille de notification des nouveaux messages reste correctement affichée.", order: 6 },
+      { category: 'SMALL_FEATURE', text: "**Reporter un bug déplacé en sidebar** — Le bouton `Reporter un bug` a été retiré du menu compte et replacé dans la barre latérale pour un accès direct depuis la navigation principale.", order: 7 },
+      { category: 'SMALL_FEATURE', text: "**Tri des DM** — La liste des messages privés propose maintenant trois tris rapides: `Recentes`, `Non lus` et `A-Z`, appliqués directement dans la sidebar Messages.", order: 8 },
+      { category: 'SMALL_FEATURE', text: "**DM épinglés** — Les messages privés peuvent désormais etre epingles pour rester en haut de la liste dans une section dédiée, avec mémorisation locale par utilisateur.", order: 9 },
+      { category: 'BUG_FIX', text: "**Groupes sans nom lisibles** — Quand un groupe n'a pas de nom saisi, l'interface affiche désormais le nom du créateur/leader au lieu de `Groupe sans nom`.", order: 10 },
+      { category: 'SMALL_FEATURE', text: "**Reactions DM/GROUP** — Les reactions sont maintenant disponibles dans tous les chats de messagerie prives (`DM` et `GROUP`, hors support), avec ajout/retrait au clic sur les messages.", order: 11 },
+      { category: 'SMALL_FEATURE', text: "**Admin, ajustement d'aura simplifié** — Dans l'onglet Utilisateurs, les admins peuvent maintenant ajouter ou retirer de l'aura avec une valeur +/- (delta) au lieu de devoir saisir directement le total final du joueur.", order: 12 },
+      { category: 'SMALL_FEATURE', text: "**Suppression admin des messages** — Les comptes admin peuvent maintenant supprimer n'importe quel message (le leur ou celui d'un autre) dans tous les chats de messagerie (`DM`, `GROUP` et support).", order: 13 },
+      { category: 'SMALL_FEATURE', text: "**Répartition des parts visible par tous** — Dans l'onglet Entreprises (Explore), quand une entreprise est partagée, tous les joueurs voient maintenant le détail complet du capital: part du fondateur et part de chaque actionnaire en pourcentage.", order: 14 },
+      { category: 'SMALL_FEATURE', text: "**Marketplace, onglet Tendances 30j** — Ajout d'un onglet analytique par produit avec prix moyen sur 30 jours, offre active la plus basse/haute et évolution des prix sur la période.", order: 15 },
     ],
   },
   {

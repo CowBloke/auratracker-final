@@ -701,9 +701,31 @@ function BusinessInteractionModal({
                 <div className="rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-3">
                   <p className="text-xs font-semibold text-amber-300">Capital partage</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Fondateur: {business.ownerSharePercent.toFixed(2)}% · {business.shareholders.length} actionnaire(s)
+                    Repartition visible pour tous · {business.shareholders.length + 1} actionnaire(s)
                     {business.viewerSharePercent > 0 ? ` · toi: ${business.viewerSharePercent.toFixed(2)}%` : ''}
                   </p>
+                  <div className="mt-3 space-y-2">
+                    <div className="rounded-lg border border-amber-400/15 bg-background/50 px-3 py-2">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="font-medium">{business.owner.username} (fondateur){business.ownerId === userId ? ' · toi' : ''}</span>
+                        <span className="font-semibold text-amber-300">{business.ownerSharePercent.toFixed(2)}%</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/40">
+                        <div className="h-full rounded-full bg-amber-400/70" style={{ width: `${Math.max(0, Math.min(100, business.ownerSharePercent))}%` }} />
+                      </div>
+                    </div>
+                    {business.shareholders.map((shareholder) => (
+                      <div key={shareholder.id} className="rounded-lg border border-border/40 bg-background/50 px-3 py-2">
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="font-medium">{shareholder.user.username}{shareholder.user.id === userId ? ' · toi' : ''}</span>
+                          <span className="font-semibold">{shareholder.sharePercent.toFixed(2)}%</span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/40">
+                          <div className="h-full rounded-full bg-amber-300/70" style={{ width: `${Math.max(0, Math.min(100, shareholder.sharePercent))}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 

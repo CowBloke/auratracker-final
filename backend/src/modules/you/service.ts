@@ -258,6 +258,34 @@ export async function grantSkillXp(userId: string, skillKey: YouSkillKey, xpAmou
   }
 }
 
+export async function penalizeSkillXp(userId: string, skillKey: YouSkillKey, xpAmount: number) {
+  if (xpAmount <= 0) return;
+  try {
+    await ensureUserSkills(userId);
+    const skill = await prisma.userSkill.findUnique({
+      where: { userId_key: { userId, key: skillKey } },
+    });
+    if (!skill) return;
+    if (skill.level <= 1 && skill.xp <= 0) return;
+
+    let nextLevel = skill.level;
+    let nextXp = skill.xp - xpAmount;
+
+    while (nextXp < 0 && nextLevel > 1) {
+      nextLevel -= 1;
+      nextXp += YOU_SKILL_XP_PER_LEVEL;
+    }
+    if (nextXp < 0) nextXp = 0;
+
+    await prisma.userSkill.update({
+      where: { id: skill.id },
+      data: { level: nextLevel, xp: nextXp },
+    });
+  } catch {
+    // Silent failure — XP penalties must never break the main action flow
+  }
+}
+
 async function ensureUserSkills(userId: string) {
   await Promise.all(
     USER_SKILL_DEFAULTS.map((skill) =>
@@ -1315,6 +1343,9 @@ export async function createBusiness(userId: string, input: { name: string; type
     startingCapital,
   });
 
+  // Affaires XP: créer une entreprise (proportionnel aux frais de création, min 2)
+  void grantSkillXp(userId, 'affaires', Math.max(2, Math.floor(creationCost / 500)));
+
   return serializeBusiness(business, userId);
 }
 
@@ -1880,6 +1911,10 @@ async function handleStartResearchAction(userId: string, business: any, input: {
     researchCost,
   });
 
+  // Affaires + Intelligence XP: lancer une recherche = effort entrepreneurial et intellectuel
+  void grantSkillXp(userId, 'affaires', 5);
+  void grantSkillXp(userId, 'intelligence', 5);
+
   return {
     slotIndex,
     nextLevel,
@@ -1936,6 +1971,9 @@ async function handleDeployProductAction(userId: string, business: any, input: {
     deployedLevel: deployed.deployedLevel,
     productName: deployed.name,
   });
+
+  // Affaires XP: déployer un produit = milestone business (plus le niveau est haut, plus c'est récompensé)
+  void grantSkillXp(userId, 'affaires', deployed.deployedLevel * 3);
 
   return {
     slotIndex: deployed.slotIndex,
@@ -2076,6 +2114,11 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
     collateralAura: loan.collateralAura ?? 0,
     decision: 'accept',
   });
+
+  // Finance XP pour l'emprunteur: proportionnel au montant du prêt (plus gros prêt = plus d'XP, évite le spam de petits prêts)
+  void grantSkillXp(loan.borrowerId, 'finance', Math.min(15, Math.max(3, Math.floor(loan.amount / 1000))));
+  // Affaires XP pour la banque: gérer des prêts = activité bancaire
+  void grantSkillXp(userId, 'affaires', 3);
 
   return {
     id: result.id,
@@ -2316,6 +2359,11 @@ async function handleInvestAction(userId: string, business: any, input: { amount
     expectedReturnMin: riskRange.min,
     expectedReturnMax: riskRange.max,
   });
+
+  // Finance XP pour l'investisseur: proportionnel au montant (plus on investit, plus on gagne)
+  void grantSkillXp(investor.id, 'finance', Math.min(10, Math.max(2, Math.floor(amount / 1000))));
+  // Affaires XP pour le propriétaire: recevoir des investisseurs = succès business
+  void grantSkillXp(business.ownerId, 'affaires', 3);
 
   return {
     amount,
@@ -2786,10 +2834,19 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
     price: item.price,
   });
 
-  // Social XP: achat immobilier via agence (+1 XP par tranche de 500 EUR, min 5)
+  // XP pour l'acheteur selon le type de business
   if (business.typeKey === 'agency') {
+    // Social XP: achat immobilier via agence (+1 XP par tranche de 500 EUR, min 5)
     void grantSkillXp(userId, 'social', Math.max(5, Math.floor(item.price / 500)));
+  } else if (business.typeKey === 'medecins') {
+    // Intelligence XP: se soigner = prendre soin de soi intelligemment
+    void grantSkillXp(userId, 'intelligence', 2);
+  } else {
+    // Social XP: acheter dans une business locale = participation à l'économie sociale (proportionnel, min 1)
+    void grantSkillXp(userId, 'social', Math.max(1, Math.floor(item.price / 200)));
   }
+  // Affaires XP pour le vendeur: réaliser une vente = activité commerciale
+  void grantSkillXp(business.ownerId, 'affaires', 1);
 
   return { item: item.label, price: item.price };
 }
@@ -3385,6 +3442,10 @@ export async function createRelationship(userId: string, targetUserId: string, t
     relationshipType: type,
   });
 
+  // Social + Charisme XP: créer une relation = investissement social et charme
+  void grantSkillXp(userId, 'social', 5);
+  void grantSkillXp(userId, 'charisme', 3);
+
   return serializeRelationship(relationship, userId);
 }
 
@@ -3440,6 +3501,9 @@ export async function proposeMarriage(userId: string, relationshipId: string, me
     recipientId,
     message: message?.trim() || null,
   });
+
+  // Charisme XP pour le demandeur: faire une demande en mariage est un acte courageux et charismatique
+  void grantSkillXp(userId, 'charisme', 5);
 
   return {
     id: proposal.id,
@@ -3554,6 +3618,12 @@ export async function respondToMarriageProposal(userId: string, proposalId: stri
     emitSharedBalanceUpdates(prisma, proposal.proposerId),
     emitSharedBalanceUpdates(prisma, proposal.recipientId),
   ]);
+
+  // Social XP pour les deux: le mariage est le sommet du capital social
+  void grantSkillXp(proposal.proposerId, 'social', 20);
+  void grantSkillXp(userId, 'social', 20);
+  // Charisme XP pour le demandeur: sa demande a été acceptée
+  void grantSkillXp(proposal.proposerId, 'charisme', 10);
 
   logYouAdmin('marriage_response', userId, responderUsername, updatedRelationship.id, `${updatedRelationship.userA.username} / ${updatedRelationship.userB.username}`, {
     proposalId,
@@ -3805,6 +3875,10 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
       userB: halfB,
     },
   });
+
+  // Social XP pénalité pour les deux: le divorce dégrade le capital social
+  void penalizeSkillXp(proposal.proposerId, 'social', 15);
+  void penalizeSkillXp(userId, 'social', 15);
 
   return {
     proposal: {
@@ -4279,6 +4353,9 @@ export async function repayLoanByBorrower(userId: string, loanId: string, percen
 
   await emitSharedBalanceUpdates(prisma, userId);
   await logBusinessTransaction(loan.businessId, 'LOAN_REPAY', actualAmount, `Remboursement${!isFullyRepaid ? ' partiel' : ''} de ${loan.borrower.username}`, userId);
+
+  // Finance XP pour l'emprunteur: rembourser son prêt = comportement financier responsable
+  void grantSkillXp(userId, 'finance', isFullyRepaid ? 10 : 3);
 
   await Promise.allSettled([
     createNotification({

@@ -21,6 +21,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { useTheme } from '@/contexts/ThemeContext';
 import { resolveThemeImageUrl } from '@/lib/images';
 import { getGameImage } from '@/lib/game-images';
+import { getPartyDisplayName } from '@/lib/party-display-name';
 
 interface User {
   id: string;
@@ -280,7 +281,7 @@ export default function Party() {
                 className="flex items-center justify-between py-4 border-b border-border/30 last:border-0"
               >
                 <div>
-                  <p className={TYPOGRAPHY.SMALL}>{invite.partyName || 'Groupe sans nom'}</p>
+                  <p className={TYPOGRAPHY.SMALL}>{invite.partyName || `Groupe de ${invite.inviterUsername}`}</p>
                   <p className={TYPOGRAPHY.XS}>
                     de <UsernameDisplay username={invite.inviterUsername} />
                   </p>
@@ -662,7 +663,7 @@ export default function Party() {
                             <AccordionTrigger className="flex-1 py-0 hover:no-underline">
                               <div className="text-left">
                                 <div className="flex items-center gap-3">
-                                  <p className={TYPOGRAPHY.SMALL}>{party.name || (isDuel ? 'Duel sans nom' : 'Groupe sans nom')}</p>
+                                  <p className={TYPOGRAPHY.SMALL}>{getPartyDisplayName(party)}</p>
                                   <span className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
                                     {isDuel ? 'Duel' : 'Groupe'}
                                   </span>

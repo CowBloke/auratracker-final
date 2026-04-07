@@ -10,6 +10,7 @@ interface UseSmartScrollProps {
 export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrollProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLElement | null>(null);
+  const [scrollAreaElement, setScrollAreaElement] = useState<HTMLElement | null>(null);
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const wasAtBottomRef = useRef(true);
@@ -17,7 +18,9 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
   // Initialize scroll area ref
   useEffect(() => {
     if (scrollAreaSelector) {
-      scrollAreaRef.current = document.querySelector(scrollAreaSelector) as HTMLElement;
+      const element = document.querySelector(scrollAreaSelector) as HTMLElement | null;
+      scrollAreaRef.current = element;
+      setScrollAreaElement(element);
     }
   }, [scrollAreaSelector]);
 
@@ -33,7 +36,7 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
 
   // Handle scroll event to track if user has scrolled up
   useEffect(() => {
-    const scrollArea = scrollAreaRef.current;
+    const scrollArea = scrollAreaElement ?? scrollAreaRef.current;
     if (!scrollArea) return;
 
     const handleScroll = () => {
@@ -50,7 +53,7 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
     handleScroll();
     scrollArea.addEventListener('scroll', handleScroll);
     return () => scrollArea.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [scrollAreaElement]);
 
   // Smart scroll effect - only scroll if was at bottom
   useEffect(() => {
@@ -75,6 +78,7 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
     scrollToBottom,
     setScrollAreaRef: (ref: HTMLElement) => {
       scrollAreaRef.current = ref;
+      setScrollAreaElement(ref);
     },
   };
 }

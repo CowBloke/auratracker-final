@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BellRing, CheckCircle2, Loader2, Package, Search, Tag } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, BellRing, CheckCircle2, Loader2, Package, Search, Tag } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { marketplaceApi, type MarketplaceListing, type MarketplaceListingItem } from '../services/api';
+import { marketplaceApi, type MarketplaceListing, type MarketplaceListingItem, type MarketplaceProductStats } from '../services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,7 +21,7 @@ interface InventoryItem {
   item: MarketplaceListingItem;
 }
 
-type MarketplaceTab = 'market' | 'sell' | 'mine';
+type MarketplaceTab = 'market' | 'history' | 'stats' | 'sell' | 'mine';
 type MarketplaceSortMode = 'newest' | 'price-asc' | 'price-desc' | 'quantity-desc';
 type ItemTypeFilter = 'ALL' | 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
 
@@ -71,6 +71,66 @@ function getStatusLabel(status: MarketplaceListing['status']) {
     default:
       return humanizeUiLabel(status);
   }
+}
+
+function formatEvolution(value: number | null) {
+  if (value === null) {
+    return 'N/A';
+  }
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${value.toFixed(1)}%`;
+}
+
+function evolutionTone(value: number | null) {
+  if (value === null) {
+    return 'text-muted-foreground';
+  }
+  if (value > 0) {
+    return 'text-emerald-600 dark:text-emerald-400';
+  }
+  if (value < 0) {
+    return 'text-rose-600 dark:text-rose-400';
+  }
+  return 'text-muted-foreground';
+}
+
+function MarketplaceTrendSparkline({ timeline }: { timeline: MarketplaceProductStats['timeline'] }) {
+  const values = timeline.map((point) => point.averageUnitPrice).filter((value): value is number => value !== null);
+
+  if (values.length === 0) {
+    return (
+      <div className="flex h-14 items-center justify-center rounded-md border border-dashed border-border/60 text-xs text-muted-foreground">
+        Pas de ventes sur 30 jours
+      </div>
+    );
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const points = timeline
+    .map((point, index) => {
+      const x = (index / Math.max(timeline.length - 1, 1)) * 100;
+      const fallback = values[values.length - 1] ?? 0;
+      const sourceValue = point.averageUnitPrice ?? fallback;
+      const normalized = max === min ? 0.5 : (sourceValue - min) / (max - min);
+      const y = 100 - normalized * 100;
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  return (
+    <div className="h-14 w-full rounded-md border border-border/60 bg-muted/20 px-2 py-1">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-full w-full">
+        <polyline
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          className="text-amber-600 dark:text-amber-400"
+          points={points}
+        />
+      </svg>
+    </div>
+  );
 }
 
 function statusTone(status: MarketplaceListing['status']) {
@@ -256,6 +316,8 @@ export default function Marketplace() {
   const { user, updateBalance } = useAuth();
   const [loading, setLoading] = useState(true);
   const [marketListings, setMarketListings] = useState<MarketplaceListing[]>([]);
+  const [salesHistoryListings, setSalesHistoryListings] = useState<MarketplaceListing[]>([]);
+  const [marketStats, setMarketStats] = useState<MarketplaceProductStats[]>([]);
   const [myListings, setMyListings] = useState<MarketplaceListing[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [activeTab, setActiveTab] = useState<MarketplaceTab>('market');
@@ -274,14 +336,18 @@ export default function Marketplace() {
 
     try {
       setLoading(true);
-      const [inventoryRes, marketRes, myListingsRes] = await Promise.all([
+      const [inventoryRes, marketRes, salesHistoryRes, myListingsRes, marketStatsRes] = await Promise.all([
         marketplaceApi.getInventory(user.id),
         marketplaceApi.getListings({ status: 'ACTIVE' }),
+        marketplaceApi.getListings({ status: 'SOLD' }),
         marketplaceApi.getListings({ sellerId: user.id, status: 'ALL' }),
+        marketplaceApi.getListingStats(30),
       ]);
 
       setInventory((inventoryRes.data.items || []).filter((entry: InventoryItem) => entry.item.type !== 'GIFT'));
       setMarketListings(marketRes.data.listings || []);
+      setSalesHistoryListings(salesHistoryRes.data.listings || []);
+      setMarketStats(marketStatsRes.data.products || []);
       setMyListings(myListingsRes.data.listings || []);
     } catch (error) {
       console.error('Failed to load marketplace data:', error);
@@ -312,6 +378,14 @@ export default function Marketplace() {
   }, [selectedInventoryItem]);
 
   const activeListings = useMemo(() => marketListings.filter((listing) => listing.status === 'ACTIVE'), [marketListings]);
+  const sortedSalesHistoryListings = useMemo(
+    () => [...salesHistoryListings].sort((a, b) => {
+      const aTime = a.soldAt ? new Date(a.soldAt).getTime() : new Date(a.createdAt).getTime();
+      const bTime = b.soldAt ? new Date(b.soldAt).getTime() : new Date(b.createdAt).getTime();
+      return bTime - aTime;
+    }),
+    [salesHistoryListings],
+  );
   const myActiveListings = useMemo(() => myListings.filter((listing) => listing.status === 'ACTIVE'), [myListings]);
   const myHistoryListings = useMemo(() => myListings.filter((listing) => listing.status !== 'ACTIVE'), [myListings]);
 
@@ -425,6 +499,12 @@ export default function Marketplace() {
             <TabsTrigger value="market" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
               Marché
             </TabsTrigger>
+            <TabsTrigger value="history" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
+              Historique ventes
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
+              Tendances 30j
+            </TabsTrigger>
             <TabsTrigger value="sell" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
               Vendre
             </TabsTrigger>
@@ -495,6 +575,133 @@ export default function Marketplace() {
                         onCancel={handleCancelListing}
                       />
                     ))}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="history" className="space-y-6">
+                {sortedSalesHistoryListings.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center text-muted-foreground">
+                      Aucune vente enregistrée pour le moment.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-2">
+                    {sortedSalesHistoryListings.map((listing) => {
+                      const imageUrl = listing.item.imageUrl ? resolveImageUrl(listing.item.imageUrl) : null;
+                      return (
+                        <Card key={listing.id} className="border-border/60 bg-card/80 shadow-none">
+                          <CardContent className="flex items-center gap-3 py-3">
+                            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+                              {imageUrl ? (
+                                <img src={imageUrl} alt={listing.item.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="h-full w-full bg-muted" />
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-semibold leading-snug">{listing.item.name}</div>
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <Badge variant="secondary">Vendue</Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  Vendeur: {listing.seller.username}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {listing.soldAt
+                                    ? `Vendue le ${new Date(listing.soldAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                                    : `Publiée le ${new Date(listing.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 text-right">
+                              <div className="text-xs text-muted-foreground">Quantité</div>
+                              <div className="text-lg font-bold tabular-nums">{listing.quantity.toLocaleString('fr-FR')}</div>
+                              <div className="mt-1 text-xs text-muted-foreground">Montant total</div>
+                              <div className="text-sm font-semibold tabular-nums">{formatMoney(listing.totalPrice)}</div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="stats" className="space-y-6">
+                {marketStats.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center text-muted-foreground">
+                      Aucune donnée marché disponible pour les 30 derniers jours.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {marketStats.map((stat) => {
+                      const imageUrl = stat.imageUrl ? resolveImageUrl(stat.imageUrl) : null;
+                      const isPositive = (stat.priceEvolutionPct30d ?? 0) > 0;
+                      const isNegative = (stat.priceEvolutionPct30d ?? 0) < 0;
+
+                      return (
+                        <Card key={stat.itemId} className="border-border/60 bg-card/85 shadow-none">
+                          <CardContent className="space-y-4 p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/30">
+                                {imageUrl ? (
+                                  <img src={imageUrl} alt={stat.itemName} className="h-full w-full object-cover" />
+                                ) : (
+                                  <Package className="h-6 w-6 text-muted-foreground/50" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold">{stat.itemName}</p>
+                                <div className="mt-1 flex items-center gap-2">
+                                  <Badge variant="secondary" className="border-border/60 bg-background text-[11px]">
+                                    {getTypeLabel(stat.itemType)}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {stat.soldUnits30d.toLocaleString('fr-FR')} unités vendues
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div className="rounded-lg border border-border/60 bg-background p-2">
+                                <p className="text-xs text-muted-foreground">Prix moyen 30j</p>
+                                <p className="mt-1 font-semibold">
+                                  {stat.averageUnitPrice30d === null ? 'N/A' : formatMoney(stat.averageUnitPrice30d)}
+                                </p>
+                              </div>
+                              <div className="rounded-lg border border-border/60 bg-background p-2">
+                                <p className="text-xs text-muted-foreground">Evolution 30j</p>
+                                <p className={cn('mt-1 flex items-center gap-1 font-semibold', evolutionTone(stat.priceEvolutionPct30d))}>
+                                  {isPositive ? <ArrowUpRight className="h-3.5 w-3.5" /> : null}
+                                  {isNegative ? <ArrowDownRight className="h-3.5 w-3.5" /> : null}
+                                  {formatEvolution(stat.priceEvolutionPct30d)}
+                                </p>
+                              </div>
+                              <div className="rounded-lg border border-border/60 bg-background p-2">
+                                <p className="text-xs text-muted-foreground">Offre la plus basse</p>
+                                <p className="mt-1 font-semibold">
+                                  {stat.lowestOffer === null ? 'Aucune' : formatMoney(stat.lowestOffer)}
+                                </p>
+                              </div>
+                              <div className="rounded-lg border border-border/60 bg-background p-2">
+                                <p className="text-xs text-muted-foreground">Offre la plus haute</p>
+                                <p className="mt-1 font-semibold">
+                                  {stat.highestOffer === null ? 'Aucune' : formatMoney(stat.highestOffer)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <MarketplaceTrendSparkline timeline={stat.timeline} />
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </TabsContent>

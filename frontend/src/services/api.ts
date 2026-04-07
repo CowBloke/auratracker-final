@@ -820,6 +820,26 @@ export interface MarketplaceListing {
   cancelledAt: string | null;
 }
 
+export interface MarketplaceProductStatsPoint {
+  date: string;
+  averageUnitPrice: number | null;
+  salesCount: number;
+}
+
+export interface MarketplaceProductStats {
+  itemId: string;
+  itemName: string;
+  itemType: string;
+  imageUrl: string | null;
+  averageUnitPrice30d: number | null;
+  lowestOffer: number | null;
+  highestOffer: number | null;
+  soldUnits30d: number;
+  revenue30d: number;
+  priceEvolutionPct30d: number | null;
+  timeline: MarketplaceProductStatsPoint[];
+}
+
 // Marketplace API
 export const marketplaceApi = {
   getCategories: () => api.get<{ categories: ShopCategory[] }>('/marketplace/categories'),
@@ -830,6 +850,8 @@ export const marketplaceApi = {
   getInventory: (userId: string) => api.get(`/marketplace/inventory/${userId}`),
   getListings: (params?: { status?: 'ACTIVE' | 'SOLD' | 'CANCELLED' | 'ALL'; sellerId?: string }) =>
     api.get<{ listings: MarketplaceListing[] }>('/marketplace/listings', { params }),
+  getListingStats: (days = 30) =>
+    api.get<{ days: number; generatedAt: string; products: MarketplaceProductStats[] }>('/marketplace/listings/stats', { params: { days } }),
   createListing: (data: { userItemId: string; quantity: number; unitPrice: number }) =>
     api.post<{ listing: MarketplaceListing }>('/marketplace/listings', data),
   buyListing: (listingId: string) =>
@@ -3123,6 +3145,8 @@ export const supportApi = {
     api.delete<{ success: boolean }>(`/support/conversations/${conversationId}/members/${memberId}`),
   reactToMessage: (conversationId: string, messageId: string, emoji: string) =>
     api.post<{ added: boolean }>(`/support/conversations/${conversationId}/messages/${messageId}/react`, { emoji }),
+  deleteConversationMessage: (conversationId: string, messageId: string) =>
+    api.delete<{ success: boolean }>(`/support/conversations/${conversationId}/messages/${messageId}`),
   blockUser: (userId: string) =>
     api.post<{ success: boolean }>(`/support/block/${userId}`, {}),
   unblockUser: (userId: string) =>
