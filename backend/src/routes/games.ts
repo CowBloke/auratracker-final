@@ -37,6 +37,12 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   hexgl: 'HexGL',
 };
 
+const CASINO_HOUSE_EDGE_RATE = 0.04;
+const CASINO_ROUND_TTL_MS = 10 * 60 * 1000;
+const MAX_CASINO_PAYOUT_MULTIPLIER = 50;
+
+const activeCasinoRounds = new Map<string, { bet: number; startedAt: number }>();
+
 function getRacerDaySeed(trackDate: Date): number {
   const dayKey = getParisDayKey(trackDate);
   let seed = 2166136261;
@@ -1068,6 +1074,11 @@ router.post('/casino/start', authMiddleware, validate(casinoStartSchema), async 
       data: { money: { decrement: bet } },
     });
 
+    activeCasinoRounds.set(req.user.id, {
+      bet,
+      startedAt: Date.now(),
+    });
+
     await emitSharedBalanceUpdates(prisma, req.user.id);
 
     logGame('casino_start', req.user.id, currentUser.username, { bet });
@@ -1098,9 +1109,23 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // For casino, check if user has enough money for bet (skip if bet was pre-deducted via /casino/start)
-    if (gameType === 'casino' && bet && !preDeducted) {
-      if (currentUser.money < bet) {
+    // For casino, validate there is an active started round before accepting completion.
+    if (gameType === 'casino' && bet) {
+      if (preDeducted) {
+        const activeRound = activeCasinoRounds.get(req.user.id);
+        if (!activeRound) {
+          return res.status(400).json({ error: 'Missing active casino round' });
+        }
+
+        if (Date.now() - activeRound.startedAt > CASINO_ROUND_TTL_MS) {
+          activeCasinoRounds.delete(req.user.id);
+          return res.status(400).json({ error: 'Casino round expired' });
+        }
+
+        if (activeRound.bet !== bet) {
+          return res.status(400).json({ error: 'Casino bet mismatch' });
+        }
+      } else if (currentUser.money < bet) {
         return res.status(400).json({ error: 'Insufficient funds' });
       }
     }
@@ -1209,19 +1234,24 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'casino' && bet) {
+      const requestedPayout = Math.max(0, Math.floor(score));
+      const maxPayout = Math.floor(bet * MAX_CASINO_PAYOUT_MULTIPLIER);
+      const boundedPayout = Math.min(requestedPayout, maxPayout);
+      const edgeAdjustedPayout = Math.floor(boundedPayout * (1 - CASINO_HOUSE_EDGE_RATE));
+
       if (preDeducted) {
-        // Bet was already deducted by /casino/start — only add back the payout (0 on loss)
-        moneyReward = score;
+        // Bet was already deducted by /casino/start — add back payout after server edge/cap.
+        moneyReward = edgeAdjustedPayout;
       } else {
-        // Legacy path for roulette/slots: net = payout - bet
-        moneyReward = netGain ?? (score - bet);
+        // Legacy path: net = payout - bet, with server-side payout normalization.
+        moneyReward = edgeAdjustedPayout - bet;
       }
 
       // Aura rewards for big wins
       const config = GAME_REWARDS.casino;
-      if (won && score >= bet * config.hugeWinMultiplier) {
+      if (won && edgeAdjustedPayout >= bet * config.hugeWinMultiplier) {
         auraReward = config.auraForHugeWin;
-      } else if (won && score >= bet * config.bigWinMultiplier) {
+      } else if (won && edgeAdjustedPayout >= bet * config.bigWinMultiplier) {
         auraReward = config.auraForBigWin;
       }
     }
@@ -1294,6 +1324,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     // Emit balance update (always for casino, or if there are rewards)
     if (gameType === 'casino' || auraReward > 0 || moneyReward > 0) {
       await emitSharedBalanceUpdates(prisma, req.user.id);
+    }
+
+    if (gameType === 'casino' && preDeducted) {
+      activeCasinoRounds.delete(req.user.id);
     }
 
     // Log game completion
