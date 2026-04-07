@@ -53,6 +53,8 @@ import { getGameImage } from '@/lib/game-images';
 import { getPartyDisplayName } from '@/lib/party-display-name';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
 interface GameShortcut {
   id: string;
@@ -963,9 +965,32 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+      <div className="w-full space-y-6 px-4 pb-6 lg:px-6 lg:pb-8">
+        <div className="flex flex-col gap-3 px-1 py-1 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-2">
+            <Skeleton height={14} width={180} baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+            <Skeleton height={36} width={320} baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Skeleton height={36} width={122} baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+            <Skeleton height={36} width={122} baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+          </div>
+        </div>
+
+        <div className="grid auto-rows-[minmax(260px,_auto)] gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="rounded-2xl border border-border/50 bg-background p-5">
+              <div className="space-y-3">
+                <Skeleton height={18} width="55%" baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+                <Skeleton height={12} width="80%" baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+              </div>
+              <div className="mt-5 space-y-3">
+                <Skeleton height={48} baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+                <Skeleton height={48} baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+                <Skeleton height={40} baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
