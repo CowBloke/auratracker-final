@@ -336,19 +336,7 @@ export default function MessagesPage() {
   const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
   const supportReactionsEnabled = selectedConversation?.type !== 'SUPPORT';
   const currentMessages = detail?.messages ?? [];
-  const hasRequestedPublicDefender = Boolean(
-    isCourtConversation && myCourtSide && currentMessages.some((message) =>
-      message.type === 'COURT_SYSTEM' &&
-      message.body.includes(myCourtSide === 'PLAINTIFF' ? 'Le plaignant a demandé un défenseur public' : 'Le coupable a demandé un défenseur public'),
-    ),
-  );
-  const mustChooseRepresentationFirst = Boolean(
-    isCourtConversation &&
-    isEligibleCourtClient &&
-    courtCase?.status === 'OPEN' &&
-    !hasCourtRepresentation &&
-    !hasRequestedPublicDefender,
-  );
+  const isCourtChatLocked = Boolean(isCourtConversation && courtCase && courtCase.status !== 'OPEN');
   const scrollMessagesToBottom = () => {
     const viewport = messagesScrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
     if (!viewport) return;
@@ -649,14 +637,9 @@ export default function MessagesPage() {
     setLawyerRatingComment('');
   }, [showLawyerRatingDialog]);
 
-  useEffect(() => {
-    if (!mustChooseRepresentationFirst || showRepresentationDialog || representationSubmitting) return;
-    void openRepresentationDialog();
-  }, [mustChooseRepresentationFirst, showRepresentationDialog, representationSubmitting]);
-
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleSend = async () => {
-      if (!selectedIdSafe || (!draft.trim() && !imageUrlToSend) || sending || isUploadingImage || mustChooseRepresentationFirst) return;
+      if (!selectedIdSafe || (!draft.trim() && !imageUrlToSend) || sending || isUploadingImage || isCourtChatLocked) return;
       const body = draft.trim();
       const currentImageUrl = imageUrlToSend;
       setSending(true);
@@ -1891,9 +1874,9 @@ export default function MessagesPage() {
                       </span>
                     </div>
                   )}
-                  {mustChooseRepresentationFirst && (
+                  {isCourtChatLocked && (
                     <div className="mb-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
-                      Choisis d'abord un avocat avant de parler dans cette affaire.
+                      Cette affaire n est pas en cours. Le chat est verrouille.
                     </div>
                   )}
                   <div className="flex w-full items-end gap-2 flex-wrap">
@@ -1916,7 +1899,7 @@ export default function MessagesPage() {
                         variant="ghost"
                         size="icon"
                         className="h-9 w-9 shrink-0 rounded-xl bg-background border shadow-sm"
-                        disabled={isUploadingImage || mustChooseRepresentationFirst}
+                        disabled={isUploadingImage || isCourtChatLocked}
                         onClick={() => imageInputRef.current?.click()}
                       >
                         {isUploadingImage ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <ImagePlus className="h-4 w-4 text-muted-foreground" />}
@@ -1939,12 +1922,12 @@ export default function MessagesPage() {
                       <textarea ref={textareaRef} value={draft} rows={1}
                         onChange={(e) => { setDraft(e.target.value); e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = Math.min(e.currentTarget.scrollHeight, 112) + 'px'; }}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-                        placeholder={mustChooseRepresentationFirst ? 'Choisis un avocat avant d envoyer un message' : `Message ${selectedConversation.displayName}`}
+                        placeholder={isCourtChatLocked ? 'Le chat est disponible uniquement quand l affaire est en cours' : `Message ${selectedConversation.displayName}`}
                         className="w-full resize-none bg-transparent text-sm leading-5 outline-none placeholder:text-muted-foreground/50"
-                        maxLength={1000} style={{ minHeight: '20px' }} disabled={mustChooseRepresentationFirst} />
+                        maxLength={1000} style={{ minHeight: '20px' }} disabled={isCourtChatLocked} />
                     </div>
                     <Button type="button" size="icon" className="h-9 w-9 shrink-0 rounded-xl"
-                        disabled={sending || (!draft.trim() && !imageUrlToSend) || mustChooseRepresentationFirst} onClick={() => void handleSend()}>
+                        disabled={sending || (!draft.trim() && !imageUrlToSend) || isCourtChatLocked} onClick={() => void handleSend()}>
                       <SendHorizonal className="h-4 w-4" />
                     </Button>
                   </div>

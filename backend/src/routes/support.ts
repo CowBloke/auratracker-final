@@ -709,48 +709,17 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       },
     });
 
-    if (courtConversation?.courtCaseId && !req.user?.isAdmin) {
+    if (courtConversation?.courtCaseId) {
       const linkedCase = await prisma.courtCase.findUnique({
         where: { id: courtConversation.courtCaseId },
         select: {
-          conversationId: true,
-          plaintifId: true,
-          defendantId: true,
-          plaintiffLawyerId: true,
-          defendantLawyerId: true,
+          status: true,
         },
       });
 
       if (linkedCase) {
-        const needsPlaintiffRepresentation = linkedCase.plaintifId === user.id;
-        const needsDefendantRepresentation = linkedCase.defendantId === user.id;
-        const publicDefenderRequestMessage = await prisma.messageConversationMessage.findFirst({
-          where: {
-            conversationId: linkedCase.conversationId,
-            type: 'COURT_SYSTEM',
-            body: {
-              contains: needsPlaintiffRepresentation ? 'Le plaignant a demandé un défenseur public' : 'Le coupable a demandé un défenseur public',
-            },
-          },
-          select: { id: true },
-        });
-
-        if (needsPlaintiffRepresentation || needsDefendantRepresentation) {
-          const hasRepresentation = needsPlaintiffRepresentation
-            ? Boolean(
-              linkedCase.plaintiffLawyerId ||
-              courtConversation.participants.some((entry) => entry.courtRole === 'PUBLIC_DEFENDER_PLAINTIFF') ||
-              publicDefenderRequestMessage,
-            )
-            : Boolean(
-              linkedCase.defendantLawyerId ||
-              courtConversation.participants.some((entry) => entry.courtRole === 'PUBLIC_DEFENDER_DEFENDANT') ||
-              publicDefenderRequestMessage,
-            );
-
-          if (!hasRepresentation) {
-            return res.status(403).json({ error: 'Choisis d abord un avocat avant de parler dans cette affaire.' });
-          }
+        if (linkedCase.status !== 'OPEN') {
+          return res.status(403).json({ error: 'Cette affaire n est pas en cours. Le chat est verrouille.' });
         }
       }
     }

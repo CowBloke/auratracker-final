@@ -134,7 +134,7 @@ const formatMoney = (value: number, digits = 0) => `$${formatNumber(value, digit
 
 export default function Leaderboards() {
   const { user } = useAuth();
-  const [activeView, setActiveView] = useState<View>('aura');
+  const [activeView, setActiveView] = useState<View>('overall');
   const [period, setPeriod] = useState<Period>('all');
   const category: Category = activeView === 'nombres' ? 'aura' : activeView as Category;
 
