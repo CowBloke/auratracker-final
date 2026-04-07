@@ -596,6 +596,7 @@ export default function AuraVision() {
         }
       />
 
+      <div className="space-y-3">
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(320px,0.95fr)]">
           <VideoPanel
             title={user?.username ? `${user.username} (toi)` : 'Toi'}
