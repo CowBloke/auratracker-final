@@ -44,6 +44,7 @@
 - carte
 - expliciter chnagement de business
 - niveau de clan
+- fix compte à rebours
 
 Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 
