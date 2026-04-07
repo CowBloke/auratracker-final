@@ -1377,6 +1377,50 @@ export interface ClanSummary {
   warLosses: number;
   warDraws: number;
   clanBankMoney: number;
+  nation: {
+    tier: number;
+    hierarchyName: string;
+    influence: number;
+    intimidation: number;
+    marketControl: number;
+    territoryKey: string;
+    territory: {
+      key: string;
+      label: string;
+      bonus: string;
+    };
+    alliances: Array<{
+      clanId: string;
+      name: string;
+      status: 'ALLY' | 'BROKEN';
+      forgedAt: string;
+      betrayedAt?: string | null;
+    }>;
+    allianceRequests: Array<{
+      clanId: string;
+      name: string;
+      requestedAt: string;
+    }>;
+    arsenal: Record<string, number>;
+    injuries: Array<{
+      userId: string;
+      username: string;
+      severity: number;
+      createdAt: string;
+    }>;
+    blackMarketCatalog: Array<{
+      key: string;
+      label: string;
+      price: number;
+      disabledSlots: number;
+      penaltyPoints: number;
+    }>;
+    territories: Array<{
+      key: string;
+      label: string;
+      bonus: string;
+    }>;
+  };
 }
 
 export interface ClanMember {
@@ -1412,6 +1456,14 @@ export interface ClanDetail extends ClanSummary {
   ownedItems: ClanOwnedItem[];
   activeEffects: ClanActiveEffect[];
   warHub: ClanWarHub;
+  nationHub: {
+    canManageAlliances: boolean;
+    canUseBlackMarket: boolean;
+    weeklyWarCadenceDays: number;
+    weeklyBoostPrice: number;
+    blackMarketCatalog: ClanSummary['nation']['blackMarketCatalog'];
+    mapTerritories: ClanSummary['nation']['territories'];
+  };
 }
 
 export interface ClanBankContribution {
@@ -1608,6 +1660,22 @@ export interface ClanWarState {
       aura: number;
       trophies: number;
     };
+  };
+  nationWar: {
+    weekKey: string;
+    boosts: {
+      attacker: number;
+      defender: number;
+    };
+    penalties: {
+      attacker: number;
+      defender: number;
+    };
+    disabledSlots: {
+      attacker: number;
+      defender: number;
+    };
+    winnerBy: string;
   };
   defenses: {
     attacker: ClanWarDefenseState[];
@@ -1820,6 +1888,14 @@ export const clansApi = {
     api.put<{ success: boolean; imageUrl: string | null }>(`/clans/${id}/image`, { imageUrl }),
   updateTag: (id: string, data: { tagText?: string; tagStyle?: object }) =>
     api.put<{ success: boolean; tagText: string | null; tagStyle: string | null }>(`/clans/${id}/tag`, data),
+  requestAlliance: (clanId: string, targetClanId: string) =>
+    api.post<{ success: boolean }>(`/clans/${clanId}/nation/alliances/request`, { targetClanId }),
+  respondAlliance: (clanId: string, requestClanId: string, decision: 'accept' | 'reject') =>
+    api.post<{ success: boolean }>(`/clans/${clanId}/nation/alliances/respond`, { requestClanId, decision }),
+  betrayAlliance: (clanId: string, allyClanId: string) =>
+    api.post<{ success: boolean; betrayedAt: string }>(`/clans/${clanId}/nation/alliances/betray`, { allyClanId }),
+  buyBlackMarketItem: (clanId: string, data: { itemKey: string; targetClanId?: string; boost?: boolean }) =>
+    api.post<{ success: boolean; itemKey?: string; type?: string }>(`/clans/${clanId}/nation/black-market/buy`, data),
   useOwnedItem: (clanId: string, clanItemId: string, effectData?: { imageUrl?: string }) =>
     api.post<{ success: boolean; effect: ClanActiveEffect }>(`/clans/${clanId}/items/${clanItemId}/use`, effectData ?? {}),
   // War mini-games

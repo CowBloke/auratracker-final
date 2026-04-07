@@ -243,7 +243,6 @@ async function awardClanEventPointsTx(
           name: true,
           imageUrl: true,
           warTrophies: true,
-          level: true,
           members: { select: { id: true } },
         },
       },

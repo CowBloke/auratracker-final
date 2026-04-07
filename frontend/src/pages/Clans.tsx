@@ -926,7 +926,7 @@ export default function Clans() {
       });
       setDialogOpen(false);
       resetForm();
-      toast({ title: 'Clan créé', description: 'Ton clan est prêt à recruter et à combattre.' });
+      toast({ title: 'Nation créée', description: 'Ton organisation est prête à recruter, négocier et combattre.' });
       await refreshData(res.data.clan.id);
     } catch (error: any) {
       console.error('Failed to create clan:', error);
@@ -1103,6 +1103,62 @@ export default function Clans() {
       });
     } finally {
       setWarActionKey(null);
+    }
+  };
+
+  const handleAllianceRequest = async (targetClanId: string) => {
+    if (!selectedClan) return;
+    setActionLoading(true);
+    try {
+      await clansApi.requestAlliance(selectedClan.id, targetClanId);
+      toast({ title: "Proposition d'alliance envoyee" });
+      await refreshData(selectedClan.id);
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || "Impossible d'envoyer l'alliance.", variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAllianceResponse = async (requestClanId: string, decision: 'accept' | 'reject') => {
+    if (!selectedClan) return;
+    setActionLoading(true);
+    try {
+      await clansApi.respondAlliance(selectedClan.id, requestClanId, decision);
+      toast({ title: decision === 'accept' ? 'Alliance forgee' : 'Alliance refusee' });
+      await refreshData(selectedClan.id);
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || "Impossible de repondre a l'alliance.", variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBetrayAlliance = async (allyClanId: string) => {
+    if (!selectedClan) return;
+    setActionLoading(true);
+    try {
+      await clansApi.betrayAlliance(selectedClan.id, allyClanId);
+      toast({ title: 'Trahison executee', description: 'La confiance est rompue, mais votre pression augmente.' });
+      await refreshData(selectedClan.id);
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de trahir cette alliance.', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleBlackMarketBuy = async (itemKey: string, targetClanId?: string, boost = false) => {
+    if (!selectedClan) return;
+    setActionLoading(true);
+    try {
+      await clansApi.buyBlackMarketItem(selectedClan.id, { itemKey, targetClanId, boost });
+      toast({ title: boost ? 'Score hebdomadaire booste' : 'Operation du marche noir validee' });
+      await refreshData(selectedClan.id);
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible d utiliser le marche noir.', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -1399,7 +1455,7 @@ export default function Clans() {
               {!selectedClanId || !selectedClanSummary ? (
                 <Card className={panelClassName}>
                   <CardContent className="p-10 text-center text-muted-foreground">
-                    Sélectionne un clan pour afficher son quartier général.
+                    Sélectionne une nation pour afficher son quartier général.
                   </CardContent>
                 </Card>
               ) : detailLoading || !selectedClan ? (
@@ -1547,7 +1603,7 @@ export default function Clans() {
                     </CardContent>
                   </Card>
 
-                  {/* Tabs: Infos / Chat / Tag / Guerre */}
+                  {/* Tabs: Infos / Chat / Tag / Nation */}
                   <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages')}>
                     <TabsList className="w-full">
                       <TabsTrigger value="info" className="flex-1">
@@ -1584,7 +1640,7 @@ export default function Clans() {
                         </TabsTrigger>
                       ) : null}
                       <TabsTrigger value="guerre" className="flex-1">
-                        Guerre
+                        Nation
                         {selectedWar && selectedWar.status !== 'COMPLETED' ? (
                           <Badge variant={getStatusVariant(selectedWar.status)} className="ml-2 h-4 px-1 text-[10px]">
                             {getStatusLabel(selectedWar.status)}
@@ -1595,8 +1651,39 @@ export default function Clans() {
 
                     {/* ── Info tab ── */}
                     <TabsContent value="info" className="mt-4 space-y-4">
-
-
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-4 p-4">
+                          <SectionTitle title="Identité de nation" description="Hiérarchie, influence et contrôle territorial." />
+                          <div className="grid gap-3 md:grid-cols-4">
+                            <div className="rounded-xl border border-border/50 bg-muted/15 p-3">
+                              <div className="text-xs text-muted-foreground">Palier</div>
+                              <div className="text-lg font-semibold">Niveau {selectedClan.nation.tier}</div>
+                              <div className="text-xs text-muted-foreground">{selectedClan.nation.hierarchyName}</div>
+                            </div>
+                            <div className="rounded-xl border border-border/50 bg-muted/15 p-3">
+                              <div className="text-xs text-muted-foreground">Influence</div>
+                              <div className="text-lg font-semibold">{selectedClan.nation.influence}</div>
+                            </div>
+                            <div className="rounded-xl border border-border/50 bg-muted/15 p-3">
+                              <div className="text-xs text-muted-foreground">Menace</div>
+                              <div className="text-lg font-semibold">{selectedClan.nation.intimidation}</div>
+                            </div>
+                            <div className="rounded-xl border border-border/50 bg-muted/15 p-3">
+                              <div className="text-xs text-muted-foreground">Marché</div>
+                              <div className="text-lg font-semibold">{selectedClan.nation.marketControl}%</div>
+                            </div>
+                          </div>
+                          <div className="rounded-xl border border-border/50 bg-muted/10 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <div className="text-sm font-medium">{selectedClan.nation.territory.label}</div>
+                                <div className="text-xs text-muted-foreground">{selectedClan.nation.territory.bonus}</div>
+                              </div>
+                              <Badge variant="outline">Territoire {selectedClan.nation.territory.key}</Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
 
                       {/* Roster */}
                       <Card className={panelClassName}>
@@ -2257,6 +2344,147 @@ export default function Clans() {
 
                     {/* ── Guerre tab ── */}
                     <TabsContent value="guerre" className="mt-4 space-y-4">
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+                        <Card className={panelClassName}>
+                          <CardContent className="space-y-4 p-4">
+                            <SectionTitle title="Carte des territoires" description="Lecture rapide du poids territorial des nations." />
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              {selectedClan.nation.territories.map((territory) => {
+                                const isOwned = territory.key === selectedClan.nation.territoryKey;
+                                return (
+                                  <div
+                                    key={territory.key}
+                                    className={cn(
+                                      'rounded-xl border p-3',
+                                      isOwned ? 'border-primary bg-primary/10' : 'border-border/50 bg-muted/10'
+                                    )}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-sm font-medium">{territory.label}</span>
+                                      {isOwned ? <Badge>Votre zone</Badge> : <Badge variant="outline">{territory.key}</Badge>}
+                                    </div>
+                                    <p className="mt-1 text-xs text-muted-foreground">{territory.bonus}</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <div className="space-y-4">
+                          <Card className={panelClassName}>
+                            <CardContent className="space-y-3 p-4">
+                              <SectionTitle title="Alliances" description="Forgez des pactes ou trahissez au bon moment." />
+                              {selectedClan.nation.alliances.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">Aucune alliance active.</p>
+                              ) : (
+                                selectedClan.nation.alliances.map((alliance) => (
+                                  <div key={alliance.clanId} className="rounded-xl border border-border/50 bg-muted/15 p-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div>
+                                        <div className="text-sm font-medium">{alliance.name}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {alliance.status === 'ALLY' ? `Forgée ${formatDate(alliance.forgedAt)}` : `Brisée ${formatDate(alliance.betrayedAt ?? alliance.forgedAt)}`}
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Badge variant={alliance.status === 'ALLY' ? 'secondary' : 'destructive'}>{alliance.status}</Badge>
+                                        {selectedClan.viewer.isLeader && alliance.status === 'ALLY' ? (
+                                          <Button size="sm" variant="outline" onClick={() => void handleBetrayAlliance(alliance.clanId)} disabled={actionLoading}>
+                                            Trahir
+                                          </Button>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                              {selectedClan.viewer.isLeader && selectedClan.nation.allianceRequests.length > 0 ? (
+                                <div className="space-y-2">
+                                  {selectedClan.nation.allianceRequests.map((request) => (
+                                    <div key={request.clanId} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/10 p-3">
+                                      <div>
+                                        <div className="text-sm font-medium">{request.name}</div>
+                                        <div className="text-xs text-muted-foreground">Demandée {formatDate(request.requestedAt)}</div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Button size="sm" onClick={() => void handleAllianceResponse(request.clanId, 'accept')} disabled={actionLoading}>Accepter</Button>
+                                        <Button size="sm" variant="outline" onClick={() => void handleAllianceResponse(request.clanId, 'reject')} disabled={actionLoading}>Refuser</Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+                              {selectedClan.viewer.isLeader ? (
+                                <div className="space-y-2">
+                                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Proposer un pacte</div>
+                                  {clans
+                                    .filter((clan) => clan.id !== selectedClan.id && !selectedClan.nation.alliances.some((entry) => entry.clanId === clan.id && entry.status === 'ALLY'))
+                                    .slice(0, 4)
+                                    .map((clan) => (
+                                      <div key={clan.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/10 p-3">
+                                        <div>
+                                          <div className="text-sm font-medium">{clan.name}</div>
+                                          <div className="text-xs text-muted-foreground">Influence {clan.nation.influence} • Marché {clan.nation.marketControl}%</div>
+                                        </div>
+                                        <Button size="sm" variant="outline" onClick={() => void handleAllianceRequest(clan.id)} disabled={actionLoading}>
+                                          Proposer
+                                        </Button>
+                                      </div>
+                                    ))}
+                                </div>
+                              ) : null}
+                            </CardContent>
+                          </Card>
+
+                          <Card className={panelClassName}>
+                            <CardContent className="space-y-3 p-4">
+                              <SectionTitle title="Marché noir" description="Armes, boosts et pénalités hebdomadaires." />
+                              <div className="space-y-2">
+                                {selectedClan.nation.blackMarketCatalog.map((item) => (
+                                  <div key={item.key} className="rounded-xl border border-border/50 bg-muted/15 p-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div>
+                                        <div className="text-sm font-medium">{item.label}</div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {formatMoney(item.price)} money • neutralise {item.disabledSlots} membre(s) • pénalité {item.penaltyPoints} pts
+                                        </div>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={!selectedClan.viewer.isMember || actionLoading || !selectedWar}
+                                        onClick={() => void handleBlackMarketBuy(item.key, selectedWar ? getWarOpponent(selectedWar, selectedClan.id).id : undefined)}
+                                      >
+                                        Acheter
+                                      </Button>
+                                    </div>
+                                    <div className="mt-2 text-xs text-muted-foreground">Stock: {selectedClan.nation.arsenal[item.key] ?? 0}</div>
+                                  </div>
+                                ))}
+                              </div>
+                              <Button
+                                className="w-full"
+                                variant="secondary"
+                                disabled={!selectedClan.viewer.isMember || actionLoading || !selectedWar}
+                                onClick={() => void handleBlackMarketBuy('BOOST', undefined, true)}
+                              >
+                                Booster le score hebdomadaire • {formatMoney(selectedClan.nationHub.weeklyBoostPrice)}
+                              </Button>
+                              {selectedClan.nation.injuries.length > 0 ? (
+                                <Alert>
+                                  <AlertTriangle className="h-4 w-4" />
+                                  <AlertTitle>Blessés après conflit</AlertTitle>
+                                  <AlertDescription>
+                                    {selectedClan.nation.injuries.length} membre(s) marqués comme blessés. Les entreprises Médecins pourront servir à les remettre sur pied.
+                                  </AlertDescription>
+                                </Alert>
+                              ) : null}
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+
                       {/* War status bar */}
                       <Card className={panelClassName}>
                         <CardContent className="p-4">

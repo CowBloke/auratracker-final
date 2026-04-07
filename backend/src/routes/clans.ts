@@ -23,8 +23,8 @@ const router = Router();
 const CLAN_CREATE_COST = 100;
 const CLAN_MAX_MEMBERS = 5;
 const CLAN_WAR_PREPARATION_HOURS = 12;
-const CLAN_WAR_DURATION_HOURS = 36;
-const CLAN_WAR_COOLDOWN_HOURS = 12;
+const CLAN_WAR_DURATION_HOURS = 24 * 7;
+const CLAN_WAR_COOLDOWN_HOURS = 24 * 7;
 const CLAN_WAR_TARGET_SCORE = 180;
 const CLAN_WAR_MIN_MEMBERS = 3;
 const CLAN_WAR_STAMINA_PER_24H = 3;
@@ -32,6 +32,20 @@ const CLAN_WAR_FORTIFICATIONS_PER_MEMBER = 2;
 const CLAN_WAR_HISTORY_LIMIT = 5;
 const CLAN_WAR_STARTING_TROPHIES = 1000;
 const CLAN_WAR_MIN_TROPHIES = 0;
+const NATION_WEEKLY_BOOST_PRICE = 150000;
+const BLACK_MARKET_WEAPONS = {
+  PISTOL: { label: 'Pistolet', price: 500000, disabledSlots: 1, penaltyPoints: 12 },
+  AK: { label: 'AK K7', price: 1000000, disabledSlots: 2, penaltyPoints: 24 },
+  SNIPER: { label: 'Sniper', price: 1500000, disabledSlots: 3, penaltyPoints: 36 },
+} as const;
+const NATION_TERRITORIES = [
+  { key: 'district-1', label: 'Centre historique', bonus: 'Influence commerciale' },
+  { key: 'district-2', label: 'Port industriel', bonus: 'Intimidation logistique' },
+  { key: 'district-3', label: 'Quartier financier', bonus: 'Controle des prix' },
+  { key: 'district-4', label: 'Zone residentielle', bonus: 'Recrutement discret' },
+  { key: 'district-5', label: 'Banlieue nord', bonus: 'Reserve de membres' },
+  { key: 'district-6', label: 'Marches souterrains', bonus: 'Acces marche noir' },
+] as const;
 
 const clanMemberUserSelect = {
   id: true,
@@ -330,6 +344,48 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const getRollingWindowStart = (hours: number) => new Date(Date.now() - hours * 60 * 60 * 1000);
 const getTrophyGap = (a: number, b: number) => Math.abs(a - b);
+const getWeekKey = (date = new Date()) => {
+  const utcDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = utcDate.getUTCDay() || 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((utcDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${utcDate.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+};
+const safeJsonParse = <T>(value: string | null | undefined, fallback: T): T => {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+};
+const serializeNationLayer = (clan: {
+  nationTier: number;
+  hierarchyName: string;
+  influence: number;
+  intimidation: number;
+  marketControl: number;
+  territoryKey: string;
+  alliancesJson: string;
+  allianceRequestsJson: string;
+  arsenalJson: string;
+  injuriesJson: string;
+}) => ({
+  tier: clan.nationTier,
+  hierarchyName: clan.hierarchyName,
+  influence: clan.influence,
+  intimidation: clan.intimidation,
+  marketControl: clan.marketControl,
+  territoryKey: clan.territoryKey,
+  territory: NATION_TERRITORIES.find((entry) => entry.key === clan.territoryKey) ?? NATION_TERRITORIES[0],
+  alliances: safeJsonParse<Array<{ clanId: string; name: string; status: 'ALLY' | 'BROKEN'; forgedAt: string; betrayedAt?: string | null }>>(clan.alliancesJson, []),
+  allianceRequests: safeJsonParse<Array<{ clanId: string; name: string; requestedAt: string }>>(clan.allianceRequestsJson, []),
+  arsenal: safeJsonParse<Record<string, number>>(clan.arsenalJson, { PISTOL: 0, AK: 0, SNIPER: 0 }),
+  injuries: safeJsonParse<Array<{ userId: string; username: string; severity: number; createdAt: string }>>(clan.injuriesJson, []),
+  blackMarketCatalog: Object.entries(BLACK_MARKET_WEAPONS).map(([key, value]) => ({ key, ...value })),
+  territories: NATION_TERRITORIES,
+});
 
 const getWarMarginBonus = (scoreGap: number) => {
   if (scoreGap >= 90) return 18;
@@ -417,6 +473,7 @@ const mapClanSummary = (clan: ClanWithMembers | ClanDetailPayload) => ({
   warLosses: clan.warLosses,
   warDraws: clan.warDraws,
   clanBankMoney: clan.clanBankMoney,
+  nation: serializeNationLayer(clan),
 });
 
 const mapClanOwnedItem = (entry: {
@@ -714,6 +771,22 @@ const mapWar = async (
             : war.attackerTrophyChange,
       },
     },
+    nationWar: {
+      weekKey: war.declaredWeekKey ?? getWeekKey(war.createdAt),
+      boosts: {
+        attacker: war.attackerBoostMoney,
+        defender: war.defenderBoostMoney,
+      },
+      penalties: {
+        attacker: war.attackerPenaltyPoints,
+        defender: war.defenderPenaltyPoints,
+      },
+      disabledSlots: {
+        attacker: war.attackerDisabledSlots,
+        defender: war.defenderDisabledSlots,
+      },
+      winnerBy: 'weekly_score',
+    },
     defenses: {
       attacker: mapWarDefenseState(war, war.attackerClanId),
       defender: mapWarDefenseState(war, war.defenderClanId),
@@ -897,12 +970,14 @@ const finalizeClanWar = async (warId: string) => {
     return;
   }
 
-  const attackerWon = war.attackerScore > war.defenderScore;
-  const defenderWon = war.defenderScore > war.attackerScore;
+  const effectiveAttackerScore = war.attackerScore + war.attackerBoostMoney - war.attackerPenaltyPoints;
+  const effectiveDefenderScore = war.defenderScore + war.defenderBoostMoney - war.defenderPenaltyPoints;
+  const attackerWon = effectiveAttackerScore > effectiveDefenderScore;
+  const defenderWon = effectiveDefenderScore > effectiveAttackerScore;
   const winnerClanId = attackerWon ? war.attackerClanId : defenderWon ? war.defenderClanId : null;
   const trophyChanges = calculateClanWarTrophyChanges({
-    attackerScore: war.attackerScore,
-    defenderScore: war.defenderScore,
+    attackerScore: effectiveAttackerScore,
+    defenderScore: effectiveDefenderScore,
     attackerTrophies: war.attackerTrophiesBefore,
     defenderTrophies: war.defenderTrophiesBefore,
   });
@@ -971,6 +1046,31 @@ const finalizeClanWar = async (warId: string) => {
         data: {
           money: { increment: defenderRewardMoney },
           aura: { increment: BigInt(defenderRewardAura) },
+        },
+      });
+    }
+
+    if (winnerClanId) {
+      const loserClan = winnerClanId === war.attackerClanId ? war.defenderClan : war.attackerClan;
+      const severityBase = clamp(Math.ceil(Math.abs(effectiveAttackerScore - effectiveDefenderScore) / 30), 1, 4);
+      const injuryPayload = loserClan.members.slice(0, 6).map((member, index) => ({
+        userId: member.userId,
+        username: `Membre ${index + 1}`,
+        severity: clamp(severityBase + (index % 2), 1, 5),
+        createdAt: now.toISOString(),
+      }));
+      await tx.clan.update({
+        where: { id: loserClan.id },
+        data: {
+          injuriesJson: JSON.stringify(injuryPayload),
+          intimidation: { increment: 4 },
+        },
+      });
+      await tx.clan.update({
+        where: { id: winnerClanId },
+        data: {
+          influence: { increment: 6 },
+          marketControl: { increment: 5 },
         },
       });
     }
@@ -1480,11 +1580,196 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
             maxLevel: 3,
           })),
         },
+        nationHub: {
+          canManageAlliances: isLeader,
+          canUseBlackMarket: isMember,
+          weeklyWarCadenceDays: 7,
+          weeklyBoostPrice: NATION_WEEKLY_BOOST_PRICE,
+          blackMarketCatalog: Object.entries(BLACK_MARKET_WEAPONS).map(([key, value]) => ({ key, ...value })),
+          mapTerritories: NATION_TERRITORIES,
+        },
       },
     });
   } catch (error) {
     console.error('Get clan error:', error);
     res.status(500).json({ error: 'Failed to get clan' });
+  }
+});
+
+router.post('/:id/nation/alliances/request', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const targetClanId = typeof req.body.targetClanId === 'string' ? req.body.targetClanId : '';
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!targetClanId || targetClanId === id) return res.status(400).json({ error: 'Nation cible invalide.' });
+
+    const [leader, sourceClan, targetClan] = await Promise.all([
+      prisma.clanMember.findUnique({ where: { clanId_userId: { clanId: id, userId } }, select: { isLeader: true } }),
+      prisma.clan.findUnique({ where: { id }, select: { id: true, name: true, allianceRequestsJson: true, alliancesJson: true } }),
+      prisma.clan.findUnique({ where: { id: targetClanId }, select: { id: true, name: true, allianceRequestsJson: true } }),
+    ]);
+    if (!leader?.isLeader || !sourceClan || !targetClan) return res.status(403).json({ error: 'Action interdite.' });
+
+    const requests = safeJsonParse<Array<{ clanId: string; name: string; requestedAt: string }>>(targetClan.allianceRequestsJson, []);
+    if (!requests.some((entry) => entry.clanId === id)) {
+      requests.push({ clanId: id, name: sourceClan.name, requestedAt: new Date().toISOString() });
+      await prisma.clan.update({
+        where: { id: targetClanId },
+        data: { allianceRequestsJson: JSON.stringify(requests) },
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Nation alliance request error:', error);
+    res.status(500).json({ error: 'Impossible d envoyer la demande d alliance.' });
+  }
+});
+
+router.post('/:id/nation/alliances/respond', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const requestClanId = typeof req.body.requestClanId === 'string' ? req.body.requestClanId : '';
+    const decision = req.body.decision === 'accept' ? 'accept' : 'reject';
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const [leader, clan, requestClan] = await Promise.all([
+      prisma.clanMember.findUnique({ where: { clanId_userId: { clanId: id, userId } }, select: { isLeader: true } }),
+      prisma.clan.findUnique({ where: { id }, select: { id: true, name: true, allianceRequestsJson: true, alliancesJson: true } }),
+      prisma.clan.findUnique({ where: { id: requestClanId }, select: { id: true, name: true, alliancesJson: true } }),
+    ]);
+    if (!leader?.isLeader || !clan || !requestClan) return res.status(403).json({ error: 'Action interdite.' });
+
+    const pending = safeJsonParse<Array<{ clanId: string; name: string; requestedAt: string }>>(clan.allianceRequestsJson, []);
+    const remaining = pending.filter((entry) => entry.clanId !== requestClanId);
+    const updates: Promise<unknown>[] = [
+      prisma.clan.update({ where: { id }, data: { allianceRequestsJson: JSON.stringify(remaining) } }),
+    ];
+
+    if (decision === 'accept') {
+      const forgedAt = new Date().toISOString();
+      const sourceAlliances = safeJsonParse<Array<{ clanId: string; name: string; status: 'ALLY' | 'BROKEN'; forgedAt: string }>>(clan.alliancesJson, []);
+      const targetAlliances = safeJsonParse<Array<{ clanId: string; name: string; status: 'ALLY' | 'BROKEN'; forgedAt: string }>>(requestClan.alliancesJson, []);
+      if (!sourceAlliances.some((entry) => entry.clanId === requestClanId)) {
+        sourceAlliances.push({ clanId: requestClanId, name: requestClan.name, status: 'ALLY', forgedAt });
+      }
+      if (!targetAlliances.some((entry) => entry.clanId === id)) {
+        targetAlliances.push({ clanId: id, name: clan.name, status: 'ALLY', forgedAt });
+      }
+      updates.push(
+        prisma.clan.update({ where: { id }, data: { alliancesJson: JSON.stringify(sourceAlliances) } }),
+        prisma.clan.update({ where: { id: requestClanId }, data: { alliancesJson: JSON.stringify(targetAlliances) } }),
+      );
+    }
+
+    await Promise.all(updates);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Nation alliance respond error:', error);
+    res.status(500).json({ error: 'Impossible de traiter cette alliance.' });
+  }
+});
+
+router.post('/:id/nation/alliances/betray', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const allyClanId = typeof req.body.allyClanId === 'string' ? req.body.allyClanId : '';
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const leader = await prisma.clanMember.findUnique({ where: { clanId_userId: { clanId: id, userId } }, select: { isLeader: true } });
+    if (!leader?.isLeader) return res.status(403).json({ error: 'Seul le chef peut trahir une alliance.' });
+
+    const [clan, ally] = await Promise.all([
+      prisma.clan.findUnique({ where: { id }, select: { alliancesJson: true, influence: true, intimidation: true } }),
+      prisma.clan.findUnique({ where: { id: allyClanId }, select: { alliancesJson: true, influence: true, intimidation: true } }),
+    ]);
+    if (!clan || !ally) return res.status(404).json({ error: 'Alliance introuvable.' });
+
+    const betrayedAt = new Date().toISOString();
+    const updateEntries = (value: string, targetId: string) =>
+      safeJsonParse<Array<{ clanId: string; name: string; status: 'ALLY' | 'BROKEN'; forgedAt: string; betrayedAt?: string }>>(value, [])
+        .map((entry) => entry.clanId === targetId ? { ...entry, status: 'BROKEN' as const, betrayedAt } : entry);
+
+    await Promise.all([
+      prisma.clan.update({ where: { id }, data: { alliancesJson: JSON.stringify(updateEntries(clan.alliancesJson, allyClanId)), intimidation: { increment: 8 } } }),
+      prisma.clan.update({ where: { id: allyClanId }, data: { alliancesJson: JSON.stringify(updateEntries(ally.alliancesJson, id)), influence: { decrement: 4 } } }),
+    ]);
+
+    res.json({ success: true, betrayedAt });
+  } catch (error) {
+    console.error('Nation betrayal error:', error);
+    res.status(500).json({ error: 'Impossible de trahir cette alliance.' });
+  }
+});
+
+router.post('/:id/nation/black-market/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await advanceClanWarsState();
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const itemKey = typeof req.body.itemKey === 'string' ? req.body.itemKey.toUpperCase() : '';
+    const targetClanId = typeof req.body.targetClanId === 'string' ? req.body.targetClanId : null;
+    const boost = Boolean(req.body.boost);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!(itemKey in BLACK_MARKET_WEAPONS)) return res.status(400).json({ error: 'Arme de marche noir invalide.' });
+
+    const membership = await prisma.clanMember.findUnique({ where: { clanId_userId: { clanId: id, userId } }, select: { userId: true } });
+    const clan = await prisma.clan.findUnique({ where: { id }, select: { clanBankMoney: true, arsenalJson: true } });
+    if (!membership || !clan) return res.status(403).json({ error: 'Acces refuse.' });
+
+    const weapon = BLACK_MARKET_WEAPONS[itemKey as keyof typeof BLACK_MARKET_WEAPONS];
+    if (boost) {
+      if (clan.clanBankMoney < NATION_WEEKLY_BOOST_PRICE) {
+        return res.status(400).json({ error: 'Banque de nation insuffisante pour booster la semaine.' });
+      }
+      const war = await getCurrentWarForClan(id);
+      if (!war) return res.status(400).json({ error: 'Aucune guerre active pour booster votre score.' });
+      const field = war.attackerClanId === id ? 'attackerBoostMoney' : 'defenderBoostMoney';
+      await prisma.$transaction([
+        prisma.clan.update({ where: { id }, data: { clanBankMoney: { decrement: NATION_WEEKLY_BOOST_PRICE } } }),
+        prisma.clanWar.update({ where: { id: war.id }, data: { [field]: { increment: 20 } } as never }),
+      ]);
+      return res.json({ success: true, type: 'boost' });
+    }
+
+    if (clan.clanBankMoney < weapon.price) {
+      return res.status(400).json({ error: 'Banque de nation insuffisante.' });
+    }
+
+    const arsenal = safeJsonParse<Record<string, number>>(clan.arsenalJson, { PISTOL: 0, AK: 0, SNIPER: 0 });
+    arsenal[itemKey] = (arsenal[itemKey] ?? 0) + 1;
+
+    const txs: Promise<unknown>[] = [
+      prisma.clan.update({
+        where: { id },
+        data: {
+          clanBankMoney: { decrement: weapon.price },
+          arsenalJson: JSON.stringify(arsenal),
+          intimidation: { increment: weapon.disabledSlots * 2 },
+        },
+      }),
+    ];
+
+    const war = targetClanId ? await getCurrentWarForClan(id) : null;
+    if (war && targetClanId && (war.attackerClanId === targetClanId || war.defenderClanId === targetClanId)) {
+      const disabledField = war.attackerClanId === targetClanId ? 'attackerDisabledSlots' : 'defenderDisabledSlots';
+      const penaltyField = war.attackerClanId === targetClanId ? 'attackerPenaltyPoints' : 'defenderPenaltyPoints';
+      txs.push(prisma.clanWar.update({
+        where: { id: war.id },
+        data: {
+          [disabledField]: { increment: weapon.disabledSlots },
+          [penaltyField]: { increment: weapon.penaltyPoints },
+        } as never,
+      }));
+    }
+
+    await Promise.all(txs);
+    res.json({ success: true, itemKey, weapon });
+  } catch (error) {
+    console.error('Nation black market error:', error);
+    res.status(500).json({ error: 'Impossible de finaliser cette operation du marche noir.' });
   }
 });
 
@@ -2089,6 +2374,7 @@ router.post('/:id/war/declare', authMiddleware, async (req: AuthRequest, res: Re
         status: 'ACTIVE',
         startsAt: now,
         endsAt,
+        declaredWeekKey: getWeekKey(now),
         attackerTrophiesBefore: attackerClan.warTrophies ?? CLAN_WAR_STARTING_TROPHIES,
         defenderTrophiesBefore: defenderClan.warTrophies ?? CLAN_WAR_STARTING_TROPHIES,
         targetScore: CLAN_WAR_TARGET_SCORE,
