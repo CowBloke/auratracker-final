@@ -68,6 +68,7 @@ import OpenGD from './pages/OpenGD';
 import CrossyRoad from './pages/CrossyRoad';
 import BlockBlast from './pages/BlockBlast';
 import You from './pages/You';
+import AuraVision from './pages/AuraVision';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 
@@ -213,6 +214,9 @@ function App() {
         <Route path="games/stack-tower" element={<StackTower />} />
         <Route path="games/geometry-dash" element={<GeometryDash />} />
         <Route path="games/casino" element={<Casino />} />
+        <Route path="games/soccer" element={<Navigate to="/games/casino?table=soccer" replace />} />
+        <Route path="games/mines" element={<Navigate to="/games/casino?table=mines" replace />} />
+        <Route path="games/crash" element={<Navigate to="/games/casino?table=crash" replace />} />
         <Route path="games/salle-de-marche" element={<MarketRoom />} />
         <Route path="games/aura-coin" element={<AuraCoin />} />
         <Route path="games/stable-coin" element={<StableCoin />} />
@@ -261,6 +265,7 @@ function App() {
         <Route path="inbox" element={<Inbox />} />
         <Route path="support" element={<Support />} />
         <Route path="changelog" element={<Changelog />} />
+        <Route path="auravision" element={<AuraVision />} />
         <Route path="you" element={<You />} />
       </Route>
     </Routes>

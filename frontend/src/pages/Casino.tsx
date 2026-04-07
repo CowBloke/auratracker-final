@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api, gamesApi } from '../services/api';
 import { cn } from '@/lib/utils';
-import { CircleDollarSign, Disc3, RotateCcw, Sparkles, Spade, Trash2 } from 'lucide-react';
+import { Bomb, CircleDollarSign, Crosshair, Disc3, Rocket, RotateCcw, Sparkles, Spade, Trash2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PageShell } from '@/components/layout/page-shell';
 
-type GameTab = 'roulette' | 'slots' | 'blackjack';
+type GameTab = 'roulette' | 'slots' | 'blackjack' | 'soccer' | 'mines' | 'crash';
 
 // -----------------------------
 // Roulette setup
@@ -226,7 +226,7 @@ const getHandTotal = (hand: BlackjackCard[]) => {
   return total;
 };
 
-type CasinoCelebrationGame = 'roulette' | 'slots' | 'blackjack';
+type CasinoCelebrationGame = 'roulette' | 'slots' | 'blackjack' | 'soccer' | 'mines' | 'crash';
 type CasinoCelebrationTier = 'small' | 'big' | 'mega' | 'jackpot';
 
 interface CasinoCelebration {
@@ -249,10 +249,13 @@ const CASINO_GAME_LABELS: Record<CasinoCelebrationGame, string> = {
   roulette: 'Roulette',
   slots: 'Machine a sous',
   blackjack: 'Blackjack',
+  soccer: 'Soccer',
+  mines: 'Mines',
+  crash: 'Crash',
 };
 
 const isGameTab = (value: string | null): value is GameTab =>
-  value === 'roulette' || value === 'slots' || value === 'blackjack';
+  value === 'roulette' || value === 'slots' || value === 'blackjack' || value === 'soccer' || value === 'mines' || value === 'crash';
 
 const CASINO_TABLES: Array<{
   id: GameTab;
@@ -315,6 +318,57 @@ const CASINO_TABLES: Array<{
       { top: '74%', left: '18%', color: '#14b8a6' },
       { top: '23%', left: '77%', color: '#ffffff' },
       { top: '76%', left: '77%', color: '#fb7185' },
+    ],
+  },
+  {
+    id: 'soccer',
+    title: 'Soccer',
+    subtitle: 'Penalty game face au gardien',
+    caption: 'Choisis une zone du but et tente ta chance avec une probabilite de perte elevee.',
+    seatLabel: "S'asseoir au penalty",
+    icon: Crosshair,
+    accentClass: 'from-emerald-300 via-lime-300 to-yellow-300',
+    glowClass: 'shadow-[0_24px_70px_rgba(74,222,128,0.24)]',
+    feltClass: 'from-emerald-950 via-green-900 to-teal-950',
+    chips: [
+      { top: '20%', left: '18%', color: '#f8fafc' },
+      { top: '73%', left: '20%', color: '#22c55e' },
+      { top: '24%', left: '78%', color: '#facc15' },
+      { top: '76%', left: '76%', color: '#ef4444' },
+    ],
+  },
+  {
+    id: 'mines',
+    title: 'Mines',
+    subtitle: 'Grille 5x5 et cashout progressif',
+    caption: 'Une table de risque pur: tu ouvres, tu montes, tu sors avant l explosion.',
+    seatLabel: "S'asseoir aux mines",
+    icon: Bomb,
+    accentClass: 'from-amber-300 via-orange-400 to-red-400',
+    glowClass: 'shadow-[0_24px_70px_rgba(251,191,36,0.24)]',
+    feltClass: 'from-slate-900 via-stone-900 to-slate-950',
+    chips: [
+      { top: '18%', left: '22%', color: '#f59e0b' },
+      { top: '74%', left: '18%', color: '#ef4444' },
+      { top: '22%', left: '74%', color: '#ffffff' },
+      { top: '76%', left: '74%', color: '#22c55e' },
+    ],
+  },
+  {
+    id: 'crash',
+    title: 'Crash',
+    subtitle: 'Multiplicateur live et sortie rapide',
+    caption: 'La fusee grimpe, le palier casse sans prevenir, ton cashout fait toute la difference.',
+    seatLabel: "S'asseoir au crash",
+    icon: TrendingUp,
+    accentClass: 'from-sky-300 via-cyan-300 to-indigo-300',
+    glowClass: 'shadow-[0_24px_70px_rgba(56,189,248,0.24)]',
+    feltClass: 'from-slate-950 via-sky-950 to-slate-950',
+    chips: [
+      { top: '20%', left: '20%', color: '#38bdf8' },
+      { top: '74%', left: '22%', color: '#e879f9' },
+      { top: '23%', left: '75%', color: '#22c55e' },
+      { top: '76%', left: '73%', color: '#facc15' },
     ],
   },
 ];
@@ -626,6 +680,9 @@ function TopDownTableCard({
           {table.id === 'roulette' ? <RouletteTableIllustration table={table} /> : null}
           {table.id === 'slots' ? <SlotsTableIllustration table={table} /> : null}
           {table.id === 'blackjack' ? <BlackjackTableIllustration table={table} /> : null}
+          {table.id === 'soccer' ? <SoccerTableIllustration table={table} /> : null}
+          {table.id === 'mines' ? <MinesTableIllustration table={table} /> : null}
+          {table.id === 'crash' ? <CrashTableIllustration table={table} /> : null}
         </div>
 
         <div className="mt-6 flex items-end justify-between gap-4">
@@ -751,6 +808,681 @@ function BlackjackTableIllustration({ table }: { table: (typeof CASINO_TABLES)[n
   );
 }
 
+function SoccerTableIllustration({ table }: { table: (typeof CASINO_TABLES)[number] }) {
+  return (
+    <>
+      <div className="absolute inset-x-[10%] top-[14%] bottom-[12%] rounded-[2.2rem] border-[12px] border-[#3b2a1a] bg-[linear-gradient(180deg,#14532d,#0f3b24)] shadow-[0_28px_54px_rgba(0,0,0,0.35)]">
+        <div className="absolute inset-[8%] rounded-[1.6rem] border border-white/10" />
+        <div className="absolute inset-x-[16%] top-[12%] h-[44%] rounded-t-[1.5rem] border-[5px] border-b-0 border-white/80" />
+        <div className="absolute inset-x-[16%] top-[12%] h-[44%] rounded-t-[1.5rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]" />
+        <div className="absolute inset-x-[18%] top-[15%] grid h-[36%] grid-cols-3 grid-rows-2 gap-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="rounded-xl border border-white/10 bg-white/6" />
+          ))}
+        </div>
+        <div className="absolute bottom-[18%] left-1/2 h-12 w-12 -translate-x-1/2 rounded-full border-2 border-slate-900 bg-[radial-gradient(circle,#ffffff_0%,#e5e7eb_70%,#94a3b8_100%)]" />
+      </div>
+      {table.chips.map((chip) => (
+        <div
+          key={`${chip.left}-${chip.top}`}
+          className="absolute h-7 w-7 rounded-full border-[3px] border-white/70 shadow-[0_10px_18px_rgba(0,0,0,0.28)]"
+          style={{ top: chip.top, left: chip.left, background: chip.color }}
+        />
+      ))}
+    </>
+  );
+}
+
+function MinesTableIllustration({ table }: { table: (typeof CASINO_TABLES)[number] }) {
+  return (
+    <>
+      <div className="absolute inset-x-[12%] top-[14%] bottom-[10%] rounded-[2rem] border-[12px] border-[#49311b] bg-[linear-gradient(180deg,#1c1917,#0f0f0f)] shadow-[0_28px_54px_rgba(0,0,0,0.35)]">
+        <div className="absolute inset-[10%] grid grid-cols-5 gap-2">
+          {Array.from({ length: 25 }).map((_, index) => (
+            <div
+              key={index}
+              className={cn(
+                'rounded-lg border border-white/10',
+                index % 7 === 0 ? 'bg-red-500/30' : index % 4 === 0 ? 'bg-emerald-500/20' : 'bg-white/6'
+              )}
+            />
+          ))}
+        </div>
+      </div>
+      {table.chips.map((chip) => (
+        <div
+          key={`${chip.left}-${chip.top}`}
+          className="absolute h-7 w-7 rounded-full border-[3px] border-white/70 shadow-[0_10px_18px_rgba(0,0,0,0.28)]"
+          style={{ top: chip.top, left: chip.left, background: chip.color }}
+        />
+      ))}
+    </>
+  );
+}
+
+function CrashTableIllustration({ table }: { table: (typeof CASINO_TABLES)[number] }) {
+  return (
+    <>
+      <div className="absolute inset-x-[10%] top-[14%] bottom-[10%] rounded-[2rem] border-[12px] border-[#1e293b] bg-[linear-gradient(180deg,#0f172a,#082f49)] shadow-[0_28px_54px_rgba(0,0,0,0.35)]">
+        <div className="absolute inset-[9%] rounded-[1.5rem] border border-white/10 bg-[radial-gradient(circle_at_50%_100%,rgba(56,189,248,0.18),transparent_55%)]" />
+        <div className="absolute inset-x-[14%] bottom-[24%] h-px bg-white/20" />
+        <div className="absolute left-[18%] bottom-[24%] text-4xl text-white" style={{ transform: 'translate(120px, -52px) rotate(10deg)' }}>
+          A
+        </div>
+        <div className="absolute left-[16%] top-[22%] text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100/70">
+          x8.42
+        </div>
+      </div>
+      {table.chips.map((chip) => (
+        <div
+          key={`${chip.left}-${chip.top}`}
+          className="absolute h-7 w-7 rounded-full border-[3px] border-white/70 shadow-[0_10px_18px_rgba(0,0,0,0.28)]"
+          style={{ top: chip.top, left: chip.left, background: chip.color }}
+        />
+      ))}
+    </>
+  );
+}
+
+const SOCCER_ZONES = [
+  { id: 'top-left', label: 'Haut gauche', multiplier: 3.35 },
+  { id: 'top-center', label: 'Haut centre', multiplier: 3.35 },
+  { id: 'top-right', label: 'Haut droite', multiplier: 3.35 },
+  { id: 'bottom-left', label: 'Bas gauche', multiplier: 3.35 },
+  { id: 'bottom-center', label: 'Bas centre', multiplier: 3.35 },
+  { id: 'bottom-right', label: 'Bas droite', multiplier: 3.35 },
+] as const;
+
+const MINES_GRID_SIZE = 5;
+const MINES_TILE_COUNT = MINES_GRID_SIZE * MINES_GRID_SIZE;
+const MINES_HOUSE_EDGE = 0.94;
+
+function soccerKeeperZone(selectedZoneId: string, won: boolean) {
+  if (!won && Math.random() < 0.55) return selectedZoneId;
+  if (!won) {
+    const nearbyZones = SOCCER_ZONES.filter((zone) => zone.id !== selectedZoneId);
+    return nearbyZones[Math.floor(Math.random() * nearbyZones.length)].id;
+  }
+  const otherZones = SOCCER_ZONES.filter((zone) => zone.id !== selectedZoneId);
+  return otherZones[Math.floor(Math.random() * otherZones.length)].id;
+}
+
+function combination(n: number, k: number) {
+  if (k < 0 || k > n) return 0;
+  if (k === 0 || k === n) return 1;
+  const picks = Math.min(k, n - k);
+  let result = 1;
+  for (let index = 1; index <= picks; index += 1) {
+    result = (result * (n - picks + index)) / index;
+  }
+  return result;
+}
+
+function getMinesMultiplier(revealedSafeTiles: number, mines: number) {
+  if (revealedSafeTiles <= 0) return 1;
+  const fairMultiplier =
+    combination(MINES_TILE_COUNT, revealedSafeTiles) /
+    combination(MINES_TILE_COUNT - mines, revealedSafeTiles);
+  return Number((fairMultiplier * MINES_HOUSE_EDGE).toFixed(2));
+}
+
+function pickMinePositions(mines: number, safeIndex: number) {
+  const available = Array.from({ length: MINES_TILE_COUNT }, (_, index) => index).filter((index) => index !== safeIndex);
+  const picked = new Set<number>();
+
+  while (picked.size < mines) {
+    const randomIndex = Math.floor(Math.random() * available.length);
+    picked.add(available[randomIndex]);
+    available.splice(randomIndex, 1);
+  }
+
+  return picked;
+}
+
+function buildForcedMineSet(clickedIndex: number, protectedIndexes: number[], mines: number) {
+  const nextMines = new Set<number>([clickedIndex]);
+  const available = Array.from({ length: MINES_TILE_COUNT }, (_, index) => index).filter(
+    (index) => index !== clickedIndex && !protectedIndexes.includes(index)
+  );
+
+  while (nextMines.size < mines && available.length > 0) {
+    const randomIndex = Math.floor(Math.random() * available.length);
+    nextMines.add(available[randomIndex]);
+    available.splice(randomIndex, 1);
+  }
+
+  return nextMines;
+}
+
+function getCrashPoint() {
+  if (Math.random() < 0.7) {
+    return Number((1.02 + Math.random() * 0.42).toFixed(2));
+  }
+
+  return Number((1.55 + Math.random() * 6.45).toFixed(2));
+}
+
+function getCrashMultiplier(startedAt: number) {
+  const elapsed = (Date.now() - startedAt) / 1000;
+  return Number((0.85 + elapsed * 0.52 + elapsed * elapsed * 0.18).toFixed(2));
+}
+
+function SoccerGame({
+  onCelebrate,
+}: {
+  onCelebrate?: (game: CasinoCelebrationGame, netGain: number, grossWin: number, bet: number) => void;
+}) {
+  const { user, refreshUser } = useAuth();
+  const [bet, setBet] = useState(100);
+  const [selectedZoneId, setSelectedZoneId] = useState<string>(SOCCER_ZONES[0].id);
+  const [shooting, setShooting] = useState(false);
+  const [result, setResult] = useState<{ zoneId: string; keeperZoneId: string; won: boolean; payout: number } | null>(null);
+  const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const selectedZone = SOCCER_ZONES.find((zone) => zone.id === selectedZoneId) ?? SOCCER_ZONES[0];
+  const keeperZoneId = result?.keeperZoneId ?? (shooting ? selectedZone.id : 'bottom-center');
+  const keeperPositionClass =
+    keeperZoneId === 'top-left'
+      ? 'left-[22%] top-[18%]'
+      : keeperZoneId === 'top-center'
+        ? 'left-1/2 top-[18%] -translate-x-1/2'
+        : keeperZoneId === 'top-right'
+          ? 'right-[22%] top-[18%]'
+          : keeperZoneId === 'bottom-left'
+            ? 'left-[22%] top-[48%]'
+            : keeperZoneId === 'bottom-center'
+              ? 'left-1/2 top-[48%] -translate-x-1/2'
+              : 'right-[22%] top-[48%]';
+
+  const shoot = async () => {
+    if (!user || shooting || bet <= 0 || bet > user.money) return;
+
+    setError(null);
+    setResult(null);
+    setRewards(null);
+
+    try {
+      await gamesApi.startCasino(bet);
+      await refreshUser();
+    } catch {
+      setError('Impossible de lancer le tir.');
+      return;
+    }
+
+    setShooting(true);
+
+    window.setTimeout(async () => {
+      const won = Math.random() > 0.7;
+      const payout = won ? Math.round(bet * selectedZone.multiplier) : 0;
+      const keeperZoneId = soccerKeeperZone(selectedZone.id, won);
+
+      setResult({ zoneId: selectedZone.id, keeperZoneId, won, payout });
+      onCelebrate?.('soccer', payout - bet, payout, bet);
+
+      try {
+        const response = await gamesApi.complete('casino', {
+          score: payout,
+          won,
+          bet,
+          netGain: payout - bet,
+          preDeducted: true,
+        });
+
+        setRewards({
+          aura: response.data.auraReward || 0,
+          money: response.data.moneyReward || 0,
+        });
+
+        await refreshUser();
+      } catch {
+        setError('Le resultat du tir n a pas pu etre synchronise.');
+        try { await refreshUser(); } catch {}
+      } finally {
+        setShooting(false);
+      }
+    }, 1400);
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+      <Card>
+        <CardHeader className="pb-3 pt-4 px-4">
+          <CardTitle className="text-sm font-medium">Penalty setup</CardTitle>
+          <p className="text-xs text-muted-foreground">Environ 70% de chance de perdre face au gardien</p>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-4">
+          <Input type="number" min={1} step={10} value={bet} onChange={(event) => setBet(Math.max(1, Number(event.target.value) || 0))} />
+          <div className="grid grid-cols-3 gap-2">
+            {[50, 100, 250].map((value) => (
+              <Button key={value} variant={bet === value ? 'default' : 'outline'} onClick={() => setBet(value)} disabled={shooting}>
+                ${value}
+              </Button>
+            ))}
+          </div>
+          <div className="rounded-xl border border-border/70 bg-muted/30 p-4 text-sm">
+            <p className="text-muted-foreground">Zone choisie</p>
+            <p className="mt-1 font-semibold">{selectedZone.label}</p>
+            <p className="mt-3 text-muted-foreground">Gain brut</p>
+            <p className="text-lg font-semibold">${Math.round(bet * selectedZone.multiplier)}</p>
+          </div>
+          <Button className="w-full" onClick={shoot} disabled={!user || shooting || bet > (user?.money ?? 0)}>
+            {shooting ? 'Tir...' : 'Tirer'}
+          </Button>
+          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {rewards ? <p className="text-xs text-muted-foreground">+{rewards.aura} aura {rewards.money !== 0 ? `| ${rewards.money > 0 ? '+' : ''}$${rewards.money}` : ''}</p> : null}
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border/70 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.14),transparent_44%),linear-gradient(180deg,rgba(7,18,12,0.96),rgba(7,12,22,1))]">
+        <CardContent className="space-y-6 p-5 sm:p-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-white/55">Soccer room</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Choisis une zone et vise juste</h2>
+            </div>
+            <Badge variant="secondary">x{selectedZone.multiplier.toFixed(2)}</Badge>
+          </div>
+          <div className="relative mx-auto aspect-[7/4] max-w-4xl overflow-hidden rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(34,197,94,0.12),rgba(8,47,73,0.24))] p-4">
+            <div className="absolute inset-x-[8%] top-[8%] h-[72%] rounded-t-[1.5rem] border-[6px] border-b-0 border-white/80" />
+            <div className="absolute inset-x-[8%] top-[8%] h-[72%] bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.10)_0,rgba(255,255,255,0.10)_2px,transparent_2px,transparent_52px),repeating-linear-gradient(0deg,rgba(255,255,255,0.08)_0,rgba(255,255,255,0.08)_2px,transparent_2px,transparent_52px)] opacity-35" />
+            <div className="absolute inset-x-[8%] top-[8%] h-[72%]">
+              <div className="grid h-full grid-cols-3 grid-rows-2 gap-2 p-2">
+                {SOCCER_ZONES.map((zone) => {
+                  const isSelected = zone.id === selectedZone.id;
+                  const isKeeper = result?.keeperZoneId === zone.id;
+                  const isGoal = result?.zoneId === zone.id && result.won;
+                  const isSaved = result?.zoneId === zone.id && !result.won;
+                  return (
+                    <button
+                      key={zone.id}
+                      type="button"
+                      onClick={() => setSelectedZoneId(zone.id)}
+                      disabled={shooting}
+                      className={cn(
+                        'rounded-xl border text-left transition p-3',
+                        isSelected ? 'border-emerald-300 bg-emerald-400/20' : 'border-white/15 bg-white/5 hover:bg-white/10',
+                        isGoal && 'border-emerald-200 bg-emerald-300/25',
+                        isSaved && 'border-red-300 bg-red-400/20'
+                      )}
+                    >
+                      <span className="block text-sm font-medium text-white">{zone.label}</span>
+                      <span className="mt-2 block text-xs text-white/60">x{zone.multiplier.toFixed(2)}</span>
+                      {isKeeper ? <span className="mt-3 block text-[11px] font-semibold text-amber-200">Gardien</span> : null}
+                      {isGoal ? <span className="mt-3 block text-[11px] font-semibold text-emerald-200">BUT</span> : null}
+                      {isSaved ? <span className="mt-3 block text-[11px] font-semibold text-red-200">ARRET</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className={cn('absolute z-10 transition-all duration-500 ease-out', keeperPositionClass)}>
+              <div className="relative h-24 w-20">
+                <div className="absolute left-1/2 top-0 h-9 w-9 -translate-x-1/2 rounded-full border border-white/10 bg-slate-200 shadow-[0_8px_16px_rgba(0,0,0,0.25)]" />
+                <div className="absolute left-1/2 top-8 h-12 w-14 -translate-x-1/2 rounded-[999px] border border-white/10 bg-slate-900/80" />
+                <div className="absolute left-[2px] top-10 h-2 w-7 -rotate-[18deg] rounded-full bg-slate-700/90" />
+                <div className="absolute right-[2px] top-10 h-2 w-7 rotate-[18deg] rounded-full bg-slate-700/90" />
+                <div className="absolute left-[22px] bottom-[4px] h-8 w-2 rotate-[8deg] rounded-full bg-slate-700/90" />
+                <div className="absolute right-[22px] bottom-[4px] h-8 w-2 -rotate-[8deg] rounded-full bg-slate-700/90" />
+              </div>
+            </div>
+            <div className="absolute bottom-[13%] left-1/2 h-12 w-12 -translate-x-1/2 rounded-full border-2 border-slate-900 bg-[radial-gradient(circle,#ffffff_0%,#e5e7eb_70%,#94a3b8_100%)] shadow-[0_12px_20px_rgba(0,0,0,0.3)]" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MinesGame({
+  onCelebrate,
+}: {
+  onCelebrate?: (game: CasinoCelebrationGame, netGain: number, grossWin: number, bet: number) => void;
+}) {
+  const { user, refreshUser } = useAuth();
+  const [bet, setBet] = useState(100);
+  const [mineCount, setMineCount] = useState(5);
+  const [status, setStatus] = useState<'idle' | 'active' | 'lost' | 'cashed'>('idle');
+  const [revealedTiles, setRevealedTiles] = useState<number[]>([]);
+  const [minePositions, setMinePositions] = useState<Set<number>>(new Set());
+  const [explodedMine, setExplodedMine] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
+  const [lossMode, setLossMode] = useState(false);
+  const [riggedMineStep, setRiggedMineStep] = useState<number | null>(null);
+
+  const revealedSet = useMemo(() => new Set(revealedTiles), [revealedTiles]);
+  const safeHits = revealedTiles.filter((tile) => !minePositions.has(tile)).length;
+  const currentMultiplier = lossMode
+    ? safeHits <= 0
+      ? 1
+      : safeHits === 1
+        ? 0.92
+        : safeHits === 2
+          ? 1.08
+          : 1.22
+    : getMinesMultiplier(safeHits, mineCount);
+  const potentialPayout = Math.floor(bet * currentMultiplier);
+
+  const finalizeRound = async (payout: number, won: boolean) => {
+    onCelebrate?.('mines', payout - bet, payout, bet);
+    try {
+      const response = await gamesApi.complete('casino', {
+        score: payout,
+        won,
+        bet,
+        netGain: payout - bet,
+        preDeducted: true,
+      });
+      setRewards({ aura: response.data.auraReward || 0, money: response.data.moneyReward || 0 });
+      await refreshUser();
+    } catch {
+      setError('Le resultat de la manche n a pas pu etre synchronise.');
+      try { await refreshUser(); } catch {}
+    }
+  };
+
+  const openTile = async (index: number) => {
+    if (!user || busy || revealedSet.has(index) || status === 'lost' || status === 'cashed') return;
+
+    let roundMines = minePositions;
+    let nextStatus = status;
+
+    if (status === 'idle') {
+      if (bet <= 0 || bet > user.money) return;
+      setBusy(true);
+      setError(null);
+      setRewards(null);
+      try {
+        await gamesApi.startCasino(bet);
+        await refreshUser();
+      } catch {
+        setBusy(false);
+        setError('Impossible de demarrer la manche.');
+        return;
+      }
+      const nextLossMode = Math.random() < 0.7;
+      setLossMode(nextLossMode);
+      setRiggedMineStep(nextLossMode ? 2 + Math.floor(Math.random() * 3) : null);
+      roundMines = pickMinePositions(mineCount, index);
+      setMinePositions(roundMines);
+      setStatus('active');
+      nextStatus = 'active';
+      setBusy(false);
+    }
+
+    if (nextStatus !== 'active') return;
+
+    if (lossMode && riggedMineStep !== null && revealedTiles.length >= riggedMineStep) {
+      const forcedMines = buildForcedMineSet(index, revealedTiles, mineCount);
+      setMinePositions(forcedMines);
+      setRevealedTiles(Array.from(new Set([...revealedTiles, index, ...Array.from(forcedMines)])));
+      setExplodedMine(index);
+      setStatus('lost');
+      setBusy(true);
+      await finalizeRound(0, false);
+      setBusy(false);
+      return;
+    }
+
+    if (roundMines.has(index)) {
+      setRevealedTiles(Array.from(new Set([...revealedTiles, index, ...Array.from(roundMines)])));
+      setExplodedMine(index);
+      setStatus('lost');
+      setBusy(true);
+      await finalizeRound(0, false);
+      setBusy(false);
+      return;
+    }
+
+    setRevealedTiles((current) => [...current, index]);
+  };
+
+  const cashOut = async () => {
+    if (busy || status !== 'active' || safeHits === 0) return;
+    setBusy(true);
+    setStatus('cashed');
+    await finalizeRound(potentialPayout, true);
+    setBusy(false);
+  };
+
+  const resetBoard = () => {
+    if (busy) return;
+    setStatus('idle');
+    setRevealedTiles([]);
+    setMinePositions(new Set());
+    setExplodedMine(null);
+    setError(null);
+    setRewards(null);
+    setLossMode(false);
+    setRiggedMineStep(null);
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+      <Card>
+        <CardHeader className="pb-3 pt-4 px-4">
+          <CardTitle className="text-sm font-medium">Mines control</CardTitle>
+          <p className="text-xs text-muted-foreground">Cashout avant de toucher une mine</p>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-4">
+          <Input type="number" min={1} step={10} value={bet} onChange={(event) => setBet(Math.max(1, Number(event.target.value) || 0))} disabled={status === 'active' || busy} />
+          <div className="grid grid-cols-4 gap-2">
+            {[3, 5, 7, 10].map((value) => (
+              <Button key={value} variant={mineCount === value ? 'default' : 'outline'} onClick={() => setMineCount(value)} disabled={status === 'active' || busy}>
+                {value}
+              </Button>
+            ))}
+          </div>
+          <div className="rounded-xl border border-border/70 bg-muted/30 p-4 text-sm">
+            <p className="text-muted-foreground">Multiplicateur</p>
+            <p className="mt-1 text-lg font-semibold">x{currentMultiplier.toFixed(2)}</p>
+            <p className="mt-3 text-muted-foreground">Cashout potentiel</p>
+            <p className="text-lg font-semibold">${potentialPayout}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={cashOut} disabled={status !== 'active' || safeHits === 0 || busy}>Cashout</Button>
+            <Button variant="outline" onClick={resetBoard} disabled={busy}>Reset</Button>
+          </div>
+          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {rewards ? <p className="text-xs text-muted-foreground">+{rewards.aura} aura {rewards.money !== 0 ? `| ${rewards.money > 0 ? '+' : ''}$${rewards.money}` : ''}</p> : null}
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border/70 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.14),transparent_45%),linear-gradient(180deg,rgba(17,24,39,0.96),rgba(10,14,24,1))]">
+        <CardContent className="space-y-6 p-5 sm:p-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-white/55">Mines room</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Ouvre, grimpe, cashout</h2>
+            </div>
+            <Badge variant="secondary">{safeHits} safe</Badge>
+          </div>
+          <div className="grid grid-cols-5 gap-3">
+            {Array.from({ length: MINES_TILE_COUNT }, (_, index) => {
+              const isRevealed = revealedSet.has(index);
+              const isMine = minePositions.has(index);
+              const isExploded = explodedMine === index;
+              const showMine = status === 'lost' && isMine;
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => void openTile(index)}
+                  disabled={busy || isRevealed || status === 'cashed' || status === 'lost'}
+                  className={cn(
+                    'aspect-square rounded-2xl border text-lg font-semibold transition',
+                    !isRevealed && 'border-white/10 bg-white/5 hover:bg-white/10',
+                    isRevealed && !isMine && 'border-emerald-300/30 bg-emerald-400/20 text-emerald-50',
+                    ((isRevealed && isMine) || showMine) && 'border-red-300/30 bg-red-400/20 text-red-100',
+                    isExploded && 'scale-[0.97]'
+                  )}
+                >
+                  {isRevealed || showMine ? (isMine ? 'X' : 'G') : ''}
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function CrashGame({
+  onCelebrate,
+}: {
+  onCelebrate?: (game: CasinoCelebrationGame, netGain: number, grossWin: number, bet: number) => void;
+}) {
+  const { user, refreshUser } = useAuth();
+  const [bet, setBet] = useState(100);
+  const [status, setStatus] = useState<'idle' | 'running' | 'crashed' | 'cashed'>('idle');
+  const [currentMultiplier, setCurrentMultiplier] = useState(1);
+  const [crashPoint, setCrashPoint] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const startedAtRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (intervalRef.current) window.clearInterval(intervalRef.current);
+  }, []);
+
+  const finishRound = async (payout: number, won: boolean) => {
+    onCelebrate?.('crash', payout - bet, payout, bet);
+    try {
+      const response = await gamesApi.complete('casino', {
+        score: payout,
+        won,
+        bet,
+        netGain: payout - bet,
+        preDeducted: true,
+      });
+      setRewards({ aura: response.data.auraReward || 0, money: response.data.moneyReward || 0 });
+      await refreshUser();
+    } catch {
+      setError('Le resultat de la manche n a pas pu etre synchronise.');
+      try { await refreshUser(); } catch {}
+    }
+  };
+
+  const startRound = async () => {
+    if (!user || status === 'running' || bet <= 0 || bet > user.money) return;
+    setError(null);
+    setRewards(null);
+    try {
+      await gamesApi.startCasino(bet);
+      await refreshUser();
+    } catch {
+      setError('Impossible de demarrer la fusee.');
+      return;
+    }
+
+    const nextCrashPoint = getCrashPoint();
+    startedAtRef.current = Date.now();
+    setCrashPoint(nextCrashPoint);
+    setCurrentMultiplier(0.85);
+    setStatus('running');
+
+    if (intervalRef.current) window.clearInterval(intervalRef.current);
+    intervalRef.current = window.setInterval(() => {
+      if (!startedAtRef.current) return;
+      const nextMultiplier = getCrashMultiplier(startedAtRef.current);
+      setCurrentMultiplier(nextMultiplier);
+      if (nextMultiplier >= nextCrashPoint) {
+        if (intervalRef.current) window.clearInterval(intervalRef.current);
+        setCurrentMultiplier(nextCrashPoint);
+        setStatus('crashed');
+        void finishRound(0, false);
+      }
+    }, 100);
+  };
+
+  const cashOut = async () => {
+    if (status !== 'running') return;
+    if (intervalRef.current) window.clearInterval(intervalRef.current);
+    const payout = Math.floor(bet * currentMultiplier);
+    setStatus('cashed');
+    await finishRound(payout, true);
+  };
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+      <Card>
+        <CardHeader className="pb-3 pt-4 px-4">
+          <CardTitle className="text-sm font-medium">Crash control</CardTitle>
+          <p className="text-xs text-muted-foreground">Cashout avant la casse</p>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 space-y-4">
+          <Input type="number" min={1} step={10} value={bet} onChange={(event) => setBet(Math.max(1, Number(event.target.value) || 0))} disabled={status === 'running'} />
+          <div className="grid grid-cols-3 gap-2">
+            {[50, 100, 250].map((value) => (
+              <Button key={value} variant={bet === value ? 'default' : 'outline'} onClick={() => setBet(value)} disabled={status === 'running'}>
+                ${value}
+              </Button>
+            ))}
+          </div>
+          <div className="rounded-xl border border-border/70 bg-muted/30 p-4 text-sm">
+            <p className="text-muted-foreground">Multiplicateur live</p>
+            <p className="mt-1 text-2xl font-semibold">x{currentMultiplier.toFixed(2)}</p>
+            <p className="mt-3 text-muted-foreground">Cashout potentiel</p>
+            <p className="text-lg font-semibold">${Math.floor(bet * currentMultiplier)}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={startRound} disabled={!user || status === 'running'}>Lancer</Button>
+            <Button variant="outline" onClick={() => void cashOut()} disabled={status !== 'running'}>Cashout</Button>
+          </div>
+          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {rewards ? <p className="text-xs text-muted-foreground">+{rewards.aura} aura {rewards.money !== 0 ? `| ${rewards.money > 0 ? '+' : ''}$${rewards.money}` : ''}</p> : null}
+        </CardContent>
+      </Card>
+
+      <Card className="border border-border/70 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.18),transparent_45%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(3,7,18,1))]">
+        <CardContent className="space-y-6 p-5 sm:p-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-white/55">Crash room</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Monte haut, sors vite</h2>
+            </div>
+            <Badge variant="secondary">{status}</Badge>
+          </div>
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,165,233,0.08),rgba(15,23,42,0.02))] px-6 py-10">
+            <div className="absolute inset-x-5 bottom-5 h-px bg-white/15" />
+            <div className="text-6xl font-black text-white">x{currentMultiplier.toFixed(2)}</div>
+            <div
+              className="absolute bottom-5 left-8 transition-all duration-100 text-white"
+              style={{
+                transform: `translate(${Math.min(420, (currentMultiplier - 1) * 115)}px, -${Math.min(90, (currentMultiplier - 1) * 32)}px) rotate(12deg)`,
+                opacity: status === 'crashed' ? 0.45 : 1,
+              }}
+            >
+              {status === 'crashed' ? (
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-red-300/30 bg-red-500/20 text-lg font-black text-red-100 shadow-[0_12px_24px_rgba(239,68,68,0.28)]">
+                  X
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-sky-300/20 bg-sky-400/10 p-2 shadow-[0_18px_36px_rgba(56,189,248,0.22)]">
+                  <Rocket className="h-10 w-10 text-sky-100" />
+                </div>
+              )}
+            </div>
+            <div className="mt-24 text-sm text-white/65">
+              {status === 'running'
+                ? 'La courbe grimpe...'
+                : status === 'crashed'
+                  ? `Crash a x${(crashPoint ?? currentMultiplier).toFixed(2)}`
+                  : status === 'cashed'
+                    ? 'Cashout securise'
+                    : 'Pret pour le prochain depart'}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // -----------------------------
 // Main Casino page
 // -----------------------------
@@ -816,6 +1548,12 @@ export default function Casino() {
             <RouletteGame onExit={leaveTable} onCelebrate={triggerCelebration} />
           ) : activeGame === 'slots' ? (
             <SlotMachineGame onBetChange={() => {}} onCelebrate={triggerCelebration} />
+          ) : activeGame === 'soccer' ? (
+            <SoccerGame onCelebrate={triggerCelebration} />
+          ) : activeGame === 'mines' ? (
+            <MinesGame onCelebrate={triggerCelebration} />
+          ) : activeGame === 'crash' ? (
+            <CrashGame onCelebrate={triggerCelebration} />
           ) : (
             <BlackjackGame onBetChange={() => {}} onCelebrate={triggerCelebration} />
           )}
