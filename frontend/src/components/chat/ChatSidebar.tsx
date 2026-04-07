@@ -88,7 +88,7 @@ export default function ChatSidebar() {
     currentParty,
     pendingJoinRequests,
   } = useSocket();
-  const { unreadCount, lastReadMessageId, lastReadTimestamp, markAllAsRead } = useChatSidebar();
+  const { open, unreadCount, lastReadMessageId, lastReadTimestamp, markAllAsRead } = useChatSidebar();
   const [input, setInput] = useState('');
   const [pollQuestion, setPollQuestion] = useState('');
   const [pollOptionsText, setPollOptionsText] = useState('');
@@ -189,6 +189,20 @@ export default function ChatSidebar() {
   });
 
   const mentionableUsers = Array.from(mentionMap.values());
+
+  useEffect(() => {
+    if (isAtBottom && unreadCount > 0) {
+      markAllAsRead();
+    }
+  }, [isAtBottom, unreadCount, markAllAsRead]);
+
+  useEffect(() => {
+    if (open && unreadCount === 0) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    }
+  }, [open, unreadCount, scrollToBottom]);
 
   useEffect(() => {
     setMentionIndex(0);
@@ -456,7 +470,7 @@ export default function ChatSidebar() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Chat</span>
             {unreadCount > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
+              <span className="px-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
