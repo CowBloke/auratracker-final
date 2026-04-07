@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { Router, Response } from 'express';
 import { io, prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
@@ -10,6 +11,7 @@ const SUPPORT_CONVERSATION_ID = 'support';
 const ADMIN_SUPPORT_CONVERSATION_PREFIX = 'admin-support:';
 const MAX_MESSAGE_LENGTH = 1000;
 const MAX_REPORT_REASON_LENGTH = 280;
+const GROUP_DESCRIPTION_MAX_LENGTH = 280;
 const REPORT_SNAPSHOT_LIMIT = 8;
 
 const USER_PREVIEW_SELECT = {
@@ -114,6 +116,15 @@ function serializeConversationMessage(message: {
   };
 }
 
+function normalizeConversationText(value: unknown, maxLength: number) {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim().slice(0, maxLength);
+  return trimmed || null;
+}
+
 function buildConversationName(type: string, title: string | null, participants: ConversationParticipantWithUser[], currentUserId: string) {
   if (type === 'GROUP') {
     return title?.trim() || participants.map((participant) => participant.user.username).join(', ');
@@ -121,6 +132,27 @@ function buildConversationName(type: string, title: string | null, participants:
 
   const other = participants.find((participant) => participant.user.id !== currentUserId);
   return other?.user.username ?? 'Discussion';
+}
+
+async function recordConversationSystemMessage(
+  tx: Prisma.TransactionClient,
+  conversationId: string,
+  senderId: string,
+  body: string,
+) {
+  await tx.messageConversationMessage.create({
+    data: {
+      conversationId,
+      senderId,
+      body,
+      type: 'SYSTEM',
+    },
+  });
+
+  await tx.messageConversation.update({
+    where: { id: conversationId },
+    data: { lastMessageAt: new Date() },
+  });
 }
 
 function parseSnapshotJson(snapshotJson: string) {
@@ -182,6 +214,7 @@ async function buildSupportConversationSummary(userId: string) {
     id: SUPPORT_CONVERSATION_ID,
     type: 'SUPPORT',
     title: 'Support',
+    description: null,
     displayName: 'Support',
     isPinned: true,
     unreadCount,
@@ -245,6 +278,7 @@ async function buildConversationSummaryForUser(conversationId: string, currentUs
     id: participant.conversation.id,
     type: participant.conversation.type,
     title: participant.conversation.title,
+    description: participant.conversation.description ?? null,
     icon: participant.conversation.icon ?? null,
     imageUrl: participant.conversation.imageUrl ?? null,
     courtCaseId: (participant.conversation as any).courtCaseId ?? null,
@@ -313,6 +347,7 @@ async function listMessagingConversationsForUser(userId: string) {
         id: membership.conversation.id,
         type: membership.conversation.type,
         title: membership.conversation.title,
+        description: membership.conversation.description ?? null,
         icon: membership.conversation.icon ?? null,
         imageUrl: membership.conversation.imageUrl ?? null,
         courtCaseId: (membership.conversation as any).courtCaseId ?? null,
@@ -537,6 +572,7 @@ router.post('/conversations', authMiddleware, async (req: AuthRequest, res: Resp
 
     const type = req.body?.type === 'GROUP' ? 'GROUP' : 'DM';
     const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+    const description = normalizeConversationText(req.body?.description, GROUP_DESCRIPTION_MAX_LENGTH);
     const imageUrl = typeof req.body?.imageUrl === 'string' ? req.body.imageUrl.trim() : null;
     const participantIds = Array.isArray(req.body?.participantIds)
       ? req.body.participantIds.filter((value: unknown): value is string => typeof value === 'string')
@@ -602,6 +638,7 @@ router.post('/conversations', authMiddleware, async (req: AuthRequest, res: Resp
         data: {
           type,
           title: type === 'GROUP' ? title || null : null,
+          description: type === 'GROUP' ? description ?? null : null,
           createdById: user.id,
           lastMessageAt: now,
           participants: {
@@ -624,6 +661,17 @@ if (body || imageUrl) {
               imageUrl: imageUrl || null,
           },
         });
+
+        if (type === 'GROUP') {
+          await recordConversationSystemMessage(
+            tx,
+            created.id,
+            user.id,
+            title
+              ? `${user.username} a créé le groupe «${title}».`
+              : `${user.username} a créé le groupe.`,
+          );
+        }
       }
 
       return created;
@@ -932,22 +980,43 @@ router.patch('/conversations/:conversationId', authMiddleware, async (req: AuthR
       return res.status(400).json({ error: 'Only group conversations can be updated' });
     }
 
-    const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 80) : undefined;
-    const icon = typeof req.body?.icon === 'string' ? req.body.icon.trim().slice(0, 8) : undefined;
+    const title = normalizeConversationText(req.body?.title, 80);
+    const description = normalizeConversationText(req.body?.description, GROUP_DESCRIPTION_MAX_LENGTH);
+    const icon = normalizeConversationText(req.body?.icon, 8);
     const imageUrl = typeof req.body?.imageUrl === 'string' ? req.body.imageUrl.trim() || null : undefined;
 
-    const updated = await prisma.messageConversation.update({
-      where: { id: conversationId },
-      data: {
-        ...(title !== undefined ? { title: title || null } : {}),
-        ...(icon !== undefined ? { icon: icon || null } : {}),
-        ...(imageUrl !== undefined ? { imageUrl } : {}),
-      },
+    const changedFields: string[] = [];
+    if (title !== undefined && title !== (membership.conversation.title ?? null)) changedFields.push('nom');
+    if (description !== undefined && description !== (membership.conversation.description ?? null)) changedFields.push('description');
+    if (icon !== undefined && icon !== (membership.conversation.icon ?? null)) changedFields.push('icône');
+    if (imageUrl !== undefined && imageUrl !== (membership.conversation.imageUrl ?? null)) changedFields.push('photo');
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const conversation = await tx.messageConversation.update({
+        where: { id: conversationId },
+        data: {
+          ...(title !== undefined ? { title: title || null } : {}),
+          ...(description !== undefined ? { description: description || null } : {}),
+          ...(icon !== undefined ? { icon: icon || null } : {}),
+          ...(imageUrl !== undefined ? { imageUrl } : {}),
+        },
+      });
+
+      if (changedFields.length > 0) {
+        await recordConversationSystemMessage(
+          tx,
+          conversationId,
+          user.id,
+          `${user.username} a mis à jour ${changedFields.length === 1 ? `le ${changedFields[0]}` : `les infos du groupe : ${changedFields.join(', ')}`}.`,
+        );
+      }
+
+      return conversation;
     });
 
     await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
 
-    res.json({ conversation: { id: updated.id, title: updated.title, icon: updated.icon, imageUrl: updated.imageUrl } });
+    res.json({ conversation: { id: updated.id, title: updated.title, description: updated.description, icon: updated.icon, imageUrl: updated.imageUrl } });
   } catch (error) {
     console.error('Update conversation error:', error);
     res.status(500).json({ error: 'Failed to update conversation' });
@@ -999,8 +1068,17 @@ router.post('/conversations/:conversationId/members', authMiddleware, async (req
     const targetUser = await prisma.user.findUnique({ where: { id: targetUserId }, select: USER_PREVIEW_SELECT });
     if (!targetUser) return res.status(404).json({ error: 'User not found' });
 
-    await prisma.messageConversationParticipant.create({
-      data: { conversationId, userId: targetUserId, role: 'MEMBER' },
+    await prisma.$transaction(async (tx) => {
+      await tx.messageConversationParticipant.create({
+        data: { conversationId, userId: targetUserId, role: 'MEMBER' },
+      });
+
+      await recordConversationSystemMessage(
+        tx,
+        conversationId,
+        user.id,
+        `${user.username} a ajouté ${targetUser.username} au groupe.`,
+      );
     });
     await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
     io.to(`user:${targetUserId}`).emit('messaging:conversation', { conversationId });
@@ -1036,7 +1114,20 @@ router.delete('/conversations/:conversationId/members/:memberId', authMiddleware
       return res.status(403).json({ error: 'Only group owner can kick members' });
     }
 
-    await prisma.messageConversationParticipant.delete({ where: { id: targetMembership.id } });
+    const targetUser = await prisma.user.findUnique({ where: { id: memberId }, select: USER_PREVIEW_SELECT });
+    if (!targetUser) return res.status(404).json({ error: 'Member not found' });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.messageConversationParticipant.delete({ where: { id: targetMembership.id } });
+      await recordConversationSystemMessage(
+        tx,
+        conversationId,
+        user.id,
+        memberId === user.id
+          ? `${user.username} a quitté le groupe.`
+          : `${user.username} a retiré ${targetUser.username} du groupe.`,
+      );
+    });
     await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
     res.json({ success: true });
   } catch (error) {

@@ -57,6 +57,88 @@ function formatMoney(n: number) {
   return `${n.toLocaleString('fr-FR')} EUR`;
 }
 
+function PlainteReviewModal({
+  open,
+  plainte,
+  rejectReason,
+  onRejectReasonChange,
+  onClose,
+  onAccept,
+  onReject,
+  processing,
+}: {
+  open: boolean;
+  plainte: JusticePlainte | null;
+  rejectReason: string;
+  onRejectReasonChange: (value: string) => void;
+  onClose: () => void;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+  processing: Set<string>;
+}) {
+  return (
+    <ModalWrap
+      open={open}
+      onClose={onClose}
+      title={plainte ? plainte.title : 'Plainte'}
+      desc={plainte ? `Déposée par ${plainte.plaintif?.username ?? 'un joueur'} · ${new Date(plainte.createdAt).toLocaleString('fr-FR')}` : undefined}
+    >
+      {plainte ? (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold">Détails de la plainte</p>
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-500">En attente</span>
+            </div>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{plainte.description}</p>
+            {plainte.evidence ? (
+              <div className="rounded-lg border border-border/50 bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground/80">Preuves :</span> {plainte.evidence}
+              </div>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              Par <span className="text-sky-400">{plainte.plaintif?.username ?? '?'}</span>
+              {plainte.defendant ? <> contre <span className="text-red-400">{plainte.defendant.username}</span></> : null}
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Motif du rejet (optionnel)</p>
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => onRejectReasonChange(e.target.value)}
+              rows={3}
+              maxLength={280}
+              placeholder="Motif du rejet"
+              className="resize-none text-sm"
+            />
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="ghost" onClick={onClose}>
+              Fermer
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={processing.has(plainte.id)}
+              onClick={() => onReject(plainte.id)}
+            >
+              Rejeter
+            </Button>
+            <Button
+              className="bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border-0"
+              disabled={processing.has(plainte.id)}
+              onClick={() => onAccept(plainte.id)}
+            >
+              Accepter & ouvrir le dossier
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </ModalWrap>
+  );
+}
+
 const BUSINESS_TYPE_ORDER = ['supreme_court', 'law_firm', 'bank', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'restaurant', 'epicerie', 'coffee_shop'] as const;
 
 const SECTION_META: Record<
@@ -299,7 +381,7 @@ function BusinessInteractionModal({
   const navigate = useNavigate();
   const [plaintes, setPlaintes] = useState<JusticePlainte[]>([]);
   const [plaintesLoading, setPlaintesLoading] = useState(false);
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [selectedPlainteId, setSelectedPlainteId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [plaintesProcessing, setPlaintesProcessing] = useState<Set<string>>(new Set());
   const [reviewingFormationId, setReviewingFormationId] = useState<string | null>(null);
@@ -319,6 +401,8 @@ function BusinessInteractionModal({
     try {
       const r = await justiceApi.acceptPlainte(id);
       setPlaintes((prev) => prev.map((p) => p.id === id ? { ...p, status: 'ACCEPTED' } : p));
+      setSelectedPlainteId(null);
+      setRejectReason('');
       navigate(`/messages?conversation=${r.data.courtCase.conversationId}`);
     } catch {
       toast({ title: 'Erreur', variant: 'destructive' });
@@ -332,7 +416,7 @@ function BusinessInteractionModal({
     try {
       await justiceApi.rejectPlainte(id, rejectReason.trim() || undefined);
       setPlaintes((prev) => prev.map((p) => p.id === id ? { ...p, status: 'REJECTED' } : p));
-      setRejectingId(null);
+      setSelectedPlainteId(null);
       setRejectReason('');
     } catch {
       toast({ title: 'Erreur', variant: 'destructive' });
@@ -351,6 +435,7 @@ function BusinessInteractionModal({
   const pendingFormationProducts = business.typeKey === 'formation'
     ? (business.formationProducts ?? []).filter((product) => product.status === 'PENDING')
     : [];
+  const selectedPlainte = selectedPlainteId ? plaintes.find((plainte) => plainte.id === selectedPlainteId) ?? null : null;
 
   const reviewFormation = async (productId: string, decision: 'approve' | 'reject') => {
     if (!business) return;
@@ -457,7 +542,12 @@ function BusinessInteractionModal({
                         <p className="text-xs text-muted-foreground italic">Aucune plainte en attente.</p>
                       )}
                       {plaintes.filter(p => p.status === 'PENDING').map((plainte) => (
-                        <div key={plainte.id} className="rounded-xl border border-border/60 bg-card p-3 space-y-2">
+                        <button
+                          key={plainte.id}
+                          type="button"
+                          onClick={() => setSelectedPlainteId(plainte.id)}
+                          className="w-full rounded-xl border border-border/60 bg-card p-3 space-y-2 text-left transition-colors hover:bg-muted/20"
+                        >
                           <div className="flex items-start gap-2">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold truncate">{plainte.title}</p>
@@ -474,34 +564,21 @@ function BusinessInteractionModal({
                           {plainte.evidence && (
                             <p className="text-xs text-foreground/70 italic">Preuves : {plainte.evidence}</p>
                           )}
-                          {rejectingId === plainte.id ? (
-                            <div className="space-y-1.5">
-                              <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
-                                rows={2} maxLength={280} placeholder="Motif du rejet (optionnel)"
-                                className="w-full resize-none rounded-lg border border-border/60 bg-background px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring" />
-                              <div className="flex gap-1.5">
-                                <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => setRejectingId(null)}>Annuler</Button>
-                                <Button size="sm" variant="destructive" className="h-6 text-[10px] px-2"
-                                  disabled={plaintesProcessing.has(plainte.id)}
-                                  onClick={() => handleRejectPlainte(plainte.id)}>Confirmer le rejet</Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex gap-1.5">
-                              <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border-0"
-                                disabled={plaintesProcessing.has(plainte.id)}
-                                onClick={() => handleAcceptPlainte(plainte.id)}>
-                                Accepter & ouvrir le dossier
-                              </Button>
-                              <Button size="sm" variant="destructive" className="h-6 text-[10px] px-2"
-                                disabled={plaintesProcessing.has(plainte.id)}
-                                onClick={() => setRejectingId(plainte.id)}>
-                                Rejeter
-                              </Button>
-                            </div>
-                          )}
-                        </div>
+                        </button>
                       ))}
+                      <PlainteReviewModal
+                        open={Boolean(selectedPlainte)}
+                        plainte={selectedPlainte}
+                        rejectReason={rejectReason}
+                        onRejectReasonChange={setRejectReason}
+                        onClose={() => {
+                          setSelectedPlainteId(null);
+                          setRejectReason('');
+                        }}
+                        onAccept={(id) => void handleAcceptPlainte(id)}
+                        onReject={(id) => void handleRejectPlainte(id)}
+                        processing={plaintesProcessing}
+                      />
                       {/* Closed plaintes (last 5) */}
                       {plaintes.filter(p => p.status !== 'PENDING').length > 0 && (
                         <details className="group">

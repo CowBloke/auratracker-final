@@ -46,6 +46,22 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-07-court-lawyers',
+    date: '2026-04-07',
+    title: 'Justice — Avocats plus lisibles',
+    summary: 'Les messages de tribunal affichent maintenant le nom de la partie associée aux avocats, avec des couleurs plus proches de leur camp.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-04-07-court-lawyers-1', text: '**Justice · Avocats identifiés** — Dans les conversations de tribunal, les messages des avocats affichent désormais le nom du plaignant ou du coupable associé, au lieu d’un simple "Avocat".' },
+          { id: '2026-04-07-court-lawyers-2', text: '**Justice · Couleurs de camp** — Les avocats utilisent maintenant une nuance distincte de la couleur du plaignant ou du coupable, pour mieux les différencier sans casser le code couleur du procès.' },
+          { id: '2026-04-07-admin-shared-money-1', text: '**Admin · Comptes communs** — Dans la liste des utilisateurs, les admins voient désormais d’un coup d’œil le solde du compte commun des personnes mariées, avec un panneau de détail pour vérifier l’argent personnel et le total du foyer.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-06-carte-ville',
     date: '2026-04-06',
     title: 'Carte de la ville',

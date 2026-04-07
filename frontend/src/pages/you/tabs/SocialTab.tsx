@@ -113,6 +113,22 @@ function RelationActions({
     }
   };
 
+  const coupleDeposit = () =>
+    run('coupleDeposit', async () => {
+      const amt = parseInt(coupleAmount, 10);
+      await withRouteError(() => youApi.coupleDeposit(relationship.id, amt), 'Impossible de deposer.');
+      setCoupleAmount('');
+      toast.success(`+${amt} deposé sur le compte commun`);
+    });
+
+  const coupleWithdraw = () =>
+    run('coupleWithdraw', async () => {
+      const amt = parseInt(coupleAmount, 10);
+      await withRouteError(() => youApi.coupleWithdraw(relationship.id, amt), 'Impossible de retirer.');
+      setCoupleAmount('');
+      toast.success(`${amt} retiré du compte commun`);
+    });
+
   const respondToProposal = (proposalId: string, decision: 'accept' | 'reject') =>
     run('proposal', async () => {
       await withRouteError(() => youApi.respondToMarriageProposal(proposalId, decision), 'Impossible de traiter la demande.');
@@ -157,22 +173,6 @@ function RelationActions({
       } else {
         toast.info('Suspicion envoyee. Ton conjoint peut aller en justice.');
       }
-    });
-
-  const coupleDeposit = () =>
-    run('coupleDeposit', async () => {
-      const amt = parseInt(coupleAmount, 10);
-      await withRouteError(() => youApi.coupleDeposit(relationship.id, amt), 'Impossible de deposer.');
-      setCoupleAmount('');
-      toast.success(`+${amt} deposé sur le compte commun`);
-    });
-
-  const coupleWithdraw = () =>
-    run('coupleWithdraw', async () => {
-      const amt = parseInt(coupleAmount, 10);
-      await withRouteError(() => youApi.coupleWithdraw(relationship.id, amt), 'Impossible de retirer.');
-      setCoupleAmount('');
-      toast.success(`${amt} retiré du compte commun`);
     });
 
   const pill = getRelationshipPill(relationship.status);
@@ -400,7 +400,6 @@ export function SocialTab({ data, onReload }: { data: YouState; onReload: () => 
   });
 
   const selected = sortedRelationships.find((r) => r.id === selectedId) ?? sortedRelationships[0] ?? null;
-
   return (
     <>
       <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
