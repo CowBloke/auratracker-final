@@ -4,7 +4,7 @@ dotenv.config();
 
 const rawCorsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
-  : ['http://localhost:5173'];
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'];
 
 const expandAuratrackerOrigins = (origins: string[]): string[] => {
   const expanded = new Set<string>(origins);

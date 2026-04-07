@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { Camera, Flag, Mic, MicOff, MonitorPlay, RefreshCw, Send, Video, VideoOff, Waves } from 'lucide-react';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -114,6 +114,7 @@ export default function AuraVision() {
   const [intensity, setIntensity] = useState(62);
   const [effectsOpen, setEffectsOpen] = useState(false);
   const [queueCount, setQueueCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
   const [status, setStatus] = useState('Prends la main sur AuraVision et lance une rencontre aleatoire.');
   const [error, setError] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
@@ -590,11 +591,26 @@ export default function AuraVision() {
               {connected ? 'Socket connecte' : 'Connexion en cours'}
             </div>
             <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
-              {queueCount} joueur{queueCount > 1 ? 's' : ''} en file
+              {queueCount} en file
+            </div>
+            <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
+              {activeCount} actif{activeCount > 1 ? 's' : ''}
             </div>
           </div>
         }
       />
+
+      {error ? (
+        <div className="mb-4 rounded-xl bg-destructive/15 px-4 py-2 text-sm font-medium text-destructive">
+          {error}
+        </div>
+      ) : null}
+      
+      {status && !error ? (
+        <div className="mb-4 rounded-xl bg-muted/30 px-4 py-2 text-sm text-muted-foreground">
+          {status}
+        </div>
+      ) : null}
 
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(320px,0.95fr)]">
           <VideoPanel
@@ -773,7 +789,6 @@ export default function AuraVision() {
             </div>
           </div>
         </div>
-      </div>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent>
