@@ -114,8 +114,9 @@ COURT_ROLE_LABELS.PUBLIC_DEFENDER_DEFENDANT = 'Defenseur public du coupable';
 COURT_STATUS_LABELS.DELIBERATION = { label: 'Deliberation', color: 'text-slate-500' };
 
 const getCourtAnonymousSenderLabel = (role: string | null) => {
-  if (!role) return null;
-  return COURT_ROLE_LABELS[role] ?? role;
+  if (role === 'PLAINTIFF') return COURT_ROLE_LABELS.PLAINTIFF;
+  if (role === 'DEFENDANT') return COURT_ROLE_LABELS.DEFENDANT;
+  return 'Avocat';
 };
 
 const getCourtRoleInitials = (role: string | null) => {
@@ -131,7 +132,7 @@ const getCourtRoleInitials = (role: string | null) => {
 };
 
 const isAnonymousCourtRole = (role: string | null) =>
-  role === 'JUDGE' || role === 'PUBLIC_DEFENDER_PLAINTIFF' || role === 'PUBLIC_DEFENDER_DEFENDANT';
+  role !== 'PLAINTIFF' && role !== 'DEFENDANT';
 
 const formatTime = (value: string) => {
   const date = new Date(value);
@@ -296,7 +297,7 @@ export default function MessagesPage() {
   const [lawyerRatingComment, setLawyerRatingComment] = useState('');
   const [lawyerRatingSubmitting, setLawyerRatingSubmitting] = useState(false);
 
-  const initializedRef = useRef(false);
+  const handledSearchRef = useRef<string | null>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -461,11 +462,47 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (loading) return;
-    const conversationId = new URLSearchParams(location.search).get('conversation');
-    if (initializedRef.current || !conversationId) return;
-    initializedRef.current = true;
-    setSelectedId(conversationId);
-  }, [loading, location.search]);
+
+    const params = new URLSearchParams(location.search);
+    const conversationId = params.get('conversation');
+    const targetUserId = params.get('user');
+
+    if (!conversationId && !targetUserId) {
+      handledSearchRef.current = null;
+      return;
+    }
+
+    if (handledSearchRef.current === location.search) return;
+    handledSearchRef.current = location.search;
+
+    if (conversationId) {
+      setSelectedId(conversationId);
+      return;
+    }
+
+    if (!targetUserId || targetUserId === user?.id) return;
+
+    const existingDm = conversations.find(
+      (conversation) =>
+        conversation.type === 'DM' &&
+        conversation.participants.some((entry) => entry.user.id === targetUserId),
+    );
+
+    if (existingDm) {
+      setSelectedId(existingDm.id);
+      return;
+    }
+
+    void supportApi.createConversation({ type: 'DM', participantIds: [targetUserId] })
+      .then(async (response) => {
+        const dmConversationId = response.data.conversation.id;
+        await refreshConversations();
+        setSelectedId(dmConversationId);
+      })
+      .catch(() => {
+        toast({ title: 'Conversation indisponible', variant: 'destructive' });
+      });
+  }, [conversations, loading, location.search, user?.id]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -1143,16 +1180,23 @@ export default function MessagesPage() {
                     {selectedConversation?.participants.map((entry) => {
                       const isMe = entry.user.id === user?.id;
                       const amOwner = selectedConversation.participants.find((e) => e.user.id === user?.id)?.role === 'OWNER';
+                      const isCourtMemberEntry = Boolean(isCourtConversation && courtCase);
+                      const isPlaintiffMember = Boolean(courtCase?.plaintifId && entry.user.id === courtCase.plaintifId);
+                      const isDefendantMember = Boolean(courtCase?.defendantId && entry.user.id === courtCase.defendantId);
+                      const shouldMaskCourtMember = isCourtMemberEntry && !isPlaintiffMember && !isDefendantMember;
+                      const memberDisplayName = shouldMaskCourtMember
+                        ? 'Avocat'
+                        : entry.user.username;
                       return (
                         <div key={entry.user.id} className="flex items-center gap-2.5 px-3 py-2">
                           <Avatar className="h-7 w-7 shrink-0">
-                            {entry.user.profilePicture ? <AvatarImage src={resolveImageUrl(entry.user.profilePicture)} /> : null}
-                            <AvatarFallback className="text-[10px]">{getInitials(entry.user.username)}</AvatarFallback>
+                            {!shouldMaskCourtMember && entry.user.profilePicture ? <AvatarImage src={resolveImageUrl(entry.user.profilePicture)} /> : null}
+                            <AvatarFallback className="text-[10px]">{getInitials(memberDisplayName)}</AvatarFallback>
                           </Avatar>
-                          <span className="flex-1 truncate text-sm font-medium" style={entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}>
-                            {entry.user.username}
+                          <span className="flex-1 truncate text-sm font-medium" style={!shouldMaskCourtMember && entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}>
+                            {memberDisplayName}
                           </span>
-                          {entry.role === 'OWNER' && <span className="text-[10px] font-medium text-amber-500">Owner</span>}
+                          {!isCourtMemberEntry && entry.role === 'OWNER' && <span className="text-[10px] font-medium text-amber-500">Owner</span>}
                           {!isMe && amOwner && (
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/70 hover:text-destructive" onClick={() => handleKickMember(entry.user.id)}>
                               <UserMinus className="h-3.5 w-3.5" />
