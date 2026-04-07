@@ -7,6 +7,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
@@ -18,8 +21,8 @@ import { cn } from '@/lib/utils';
 import { auraVisionApi } from '@/services/api';
 
 type FilterPreset = 'none' | 'retro' | 'noir' | 'dream' | 'laser';
+type EffectPreset = 'halo' | 'scanlines' | 'pulse' | 'prism';
 
-      <div className="space-y-3">
 type AuraVisionSignal =
   | { type: 'offer'; sdp: RTCSessionDescriptionInit }
   | { type: 'answer'; sdp: RTCSessionDescriptionInit }
@@ -787,6 +790,8 @@ export default function AuraVision() {
             </div>
           </div>
         </div>
+
+      </div>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent>
