@@ -21,7 +21,12 @@ import gamesRoutes from './routes/games.js';
 import leaderboardsRoutes from './routes/leaderboards.js';
 import usersRoutes from './routes/users.js';
 import adminRoutes from './routes/admin.js';
-import { prismaStudioRouter, createPrismaStudioProxy } from './routes/prismaStudio.js';
+import {
+  prismaStudioRouter,
+  createPrismaStudioProxy,
+  prismaStudioAccessMiddleware,
+  canUpgradePrismaStudio,
+} from './routes/prismaStudio.js';
 import { authMiddleware, adminMiddleware } from './middleware/auth.js';
 import auraCoinRoutes, { startPriceEngine as startAuraCoinEngine, stopPriceEngine as stopAuraCoinEngine } from './routes/auracoin.js';
 import marketRoomRoutes, { startMarketRoomEngines, stopMarketRoomEngines } from './routes/marketRoom.js';
@@ -127,8 +132,23 @@ app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Prisma Studio Proxy (Admin Only)
-app.use('/api/admin/prisma-studio-api', authMiddleware, adminMiddleware, prismaStudioRouter);
-app.use('/api/admin/prisma-studio', authMiddleware, adminMiddleware, createPrismaStudioProxy());
+const prismaStudioProxy = createPrismaStudioProxy();
+app.use('/api/admin/prisma-studio', authMiddleware, adminMiddleware, prismaStudioRouter);
+app.use('/api/admin/prisma-studio', prismaStudioAccessMiddleware, prismaStudioProxy);
+
+httpServer.on('upgrade', (req, socket, head) => {
+  if (!req.url?.startsWith('/api/admin/prisma-studio')) {
+    return;
+  }
+
+  if (!canUpgradePrismaStudio(req.url)) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+    socket.destroy();
+    return;
+  }
+
+  prismaStudioProxy.upgrade?.(req, socket as any, head);
+});
 
 app.use('/api/auracoin', auraCoinRoutes);
 app.use('/api/market-room', marketRoomRoutes);

@@ -59,6 +59,7 @@ import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import {
+  CourtArgument,
   CourtCase,
   LawFirmPreview,
   MessagingConversationDetail,
@@ -274,6 +275,9 @@ export default function MessagesPage() {
 
   // Court case state
   const [courtCase, setCourtCase] = useState<CourtCase | null>(null);
+  const [courtArguments, setCourtArguments] = useState<CourtArgument[]>([]);
+  const [argumentsLoading, setArgumentsLoading] = useState(false);
+  const [showArgumentsDialog, setShowArgumentsDialog] = useState(false);
   const [selectedCourtRole, setSelectedCourtRole] = useState<string | null>(null);
   const [showVerdictPanel, setShowVerdictPanel] = useState(false);
   const [verdictDraft, setVerdictDraft] = useState('');
@@ -302,6 +306,9 @@ export default function MessagesPage() {
   const isAdminViewer = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const selectedConversation = detail?.conversation ?? conversations.find((c) => c.id === selectedId) ?? null;
   const isCourtConversation = Boolean(selectedConversation?.courtCaseId);
+  const conversationDisplayTitle = isCourtConversation && courtCase?.plainte?.title
+    ? courtCase.plainte.title
+    : selectedConversation?.displayName ?? '';
   const myCourtParty = courtCase?.parties?.find((p) => p.userId === user?.id);
   const myCourtRole = myCourtParty?.courtRole ?? null;
   const myCourtSide = myCourtRole === 'PLAINTIFF' ? 'PLAINTIFF' : myCourtRole === 'DEFENDANT' ? 'DEFENDANT' : null;
@@ -509,6 +516,8 @@ export default function MessagesPage() {
     const caseId = selectedConversation?.courtCaseId;
     if (!caseId) {
       setCourtCase(null);
+      setCourtArguments([]);
+      setShowArgumentsDialog(false);
       setSelectedCourtRole(null);
       setShowRepresentationDialog(false);
       setShowLawyerRatingDialog(false);
@@ -521,6 +530,19 @@ export default function MessagesPage() {
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [selectedConversation?.courtCaseId]);
+
+  useEffect(() => {
+    if (!isCourtConversation || !courtCase?.plainte?.title || !selectedConversation) return;
+    const caseTitle = courtCase.plainte.title;
+    setConversations((prev) => prev.map((conversation) =>
+      conversation.id === selectedConversation.id
+        ? { ...conversation, displayName: caseTitle, title: caseTitle }
+        : conversation,
+    ));
+    setDetail((prev) => prev
+      ? { ...prev, conversation: { ...prev.conversation, displayName: caseTitle, title: caseTitle } }
+      : prev);
+  }, [courtCase?.plainte?.title, isCourtConversation, selectedConversation]);
 
   useEffect(() => {
     if (!isCourtConversation || !courtCase) return;
@@ -819,6 +841,20 @@ export default function MessagesPage() {
       toast({ title: 'Erreur', variant: 'destructive' });
     } finally {
       setVerdictSaving(false);
+    }
+  };
+
+  const handleOpenArgumentsDialog = async () => {
+    if (!courtCase) return;
+    setArgumentsLoading(true);
+    setShowArgumentsDialog(true);
+    try {
+      const response = await justiceApi.getArguments(courtCase.id);
+      setCourtArguments(response.data.arguments);
+    } catch {
+      toast({ title: 'Arguments indisponibles', variant: 'destructive' });
+    } finally {
+      setArgumentsLoading(false);
     }
   };
 
@@ -1184,6 +1220,57 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={showArgumentsDialog} onOpenChange={setShowArgumentsDialog}>
+        <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0">
+          <div className="border-b border-border/60 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">Arguments des deux côtés</DialogTitle>
+            <DialogDescription className="mt-1 text-xs">
+              Historique des plaidoiries enregistrées pour cette affaire.
+            </DialogDescription>
+          </div>
+          <div className="max-h-[70vh] space-y-4 overflow-y-auto p-4">
+            {argumentsLoading ? (
+              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />Chargement des arguments...
+              </div>
+            ) : courtArguments.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Aucun argument pour le moment.</p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-3 rounded-xl border border-sky-500/25 bg-sky-500/5 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">Plaignant</p>
+                  {courtArguments.filter((argument) => argument.side === 'PLAINTIFF').map((argument) => (
+                    <div key={argument.id} className="rounded-lg border border-sky-500/25 bg-background/70 p-3">
+                      <p className="text-[11px] text-muted-foreground">
+                        {argument.author?.username ?? 'Anonyme'} · {format(new Date(argument.createdAt), 'dd MMM HH:mm', { locale: fr })}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{argument.content}</p>
+                    </div>
+                  ))}
+                  {courtArguments.every((argument) => argument.side !== 'PLAINTIFF') && (
+                    <p className="text-xs text-muted-foreground">Aucun argument du plaignant.</p>
+                  )}
+                </div>
+                <div className="space-y-3 rounded-xl border border-red-500/25 bg-red-500/5 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-red-600">Coupable</p>
+                  {courtArguments.filter((argument) => argument.side === 'DEFENDANT').map((argument) => (
+                    <div key={argument.id} className="rounded-lg border border-red-500/25 bg-background/70 p-3">
+                      <p className="text-[11px] text-muted-foreground">
+                        {argument.author?.username ?? 'Anonyme'} · {format(new Date(argument.createdAt), 'dd MMM HH:mm', { locale: fr })}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{argument.content}</p>
+                    </div>
+                  ))}
+                  {courtArguments.every((argument) => argument.side !== 'DEFENDANT') && (
+                    <p className="text-xs text-muted-foreground">Aucun argument du coupable.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* ── Verdict panel ── */}
       <Dialog open={showVerdictPanel} onOpenChange={setShowVerdictPanel}>
         <DialogContent className="max-w-lg gap-0 p-0 overflow-hidden">
@@ -1444,7 +1531,7 @@ export default function MessagesPage() {
                     className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-muted/50">
                     <ConversationAvatar conversation={selectedConversation} size="sm" />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold leading-tight">{selectedConversation.displayName}</p>
+                      <p className="truncate text-sm font-semibold leading-tight">{conversationDisplayTitle}</p>
                       <p className="truncate text-[11px] text-muted-foreground">
                         {selectedConversation.type === 'SUPPORT' ? 'Support'
                           : selectedConversation.type === 'GROUP' ? `${selectedConversation.participants.length} membres`
@@ -1535,11 +1622,59 @@ export default function MessagesPage() {
                       </div>
                     ) : null}
                     {hasAssignedPublicDefender && !assignedLawyer ? (
-                      <div className="ml-auto flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/10 px-2.5 py-1">
+                      <div className="flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/10 px-2.5 py-1">
                         <Shield className="h-3 w-3 shrink-0 text-teal-500" />
                         <span className="text-[10px] font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Defenseur public du plaignant' : 'Defenseur public du coupable'}</span>
                       </div>
                     ) : null}
+                    <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 rounded-full px-2.5 text-[10px] gap-1"
+                        onClick={() => void handleOpenArgumentsDialog()}
+                      >
+                        <FileText className="h-3 w-3" />
+                        Voir arguments
+                      </Button>
+                      {canChooseRepresentation ? (
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" onClick={() => void openRepresentationDialog()}>
+                          <Briefcase className="h-3 w-3" />
+                          {hasCourtRepresentation ? 'Changer avocat' : 'Choisir avocat'}
+                        </Button>
+                      ) : null}
+                      {canRateAssignedLawyer ? (
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10" onClick={() => setShowLawyerRatingDialog(true)}>
+                          <Star className="h-3 w-3" />
+                          Noter l'avocat
+                        </Button>
+                      ) : null}
+                      {isAdminViewer && (
+                        <>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" disabled={statusChanging}>
+                                Statut <ChevronDown className="h-2.5 w-2.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              {Object.entries(COURT_STATUS_LABELS).map(([s, meta]) => (
+                                <DropdownMenuItem key={s} onClick={() => void handleChangeStatus(s)}
+                                  className={cn(courtCase?.status === s && 'bg-muted/60 font-medium')}>
+                                  <span className={meta.color}>{meta.label}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-slate-400/40 text-foreground hover:bg-muted/60"
+                            onClick={() => { setVerdictDraft(courtCase?.verdict ?? ''); setSentencingDraft(courtCase?.sentencing ?? ''); setShowVerdictPanel(true); }}>
+                            <Gavel className="h-3 w-3" />
+                            Verdict
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
                 {isCourtConversation && courtCase?.verdict && (
@@ -1732,46 +1867,6 @@ export default function MessagesPage() {
 
                 {/* Input bar */}
                 <div className="border-t border-border/60 bg-card px-3 py-2.5 sm:px-4">
-                  {isCourtConversation && (
-                    <div className="mb-2 flex items-center gap-1.5 flex-wrap">
-                      {canChooseRepresentation ? (
-                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" onClick={() => void openRepresentationDialog()}>
-                          <Briefcase className="h-3 w-3" />
-                          {hasCourtRepresentation ? 'Changer avocat' : 'Choisir avocat'}
-                        </Button>
-                      ) : null}
-                      {canRateAssignedLawyer ? (
-                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10" onClick={() => setShowLawyerRatingDialog(true)}>
-                          <Star className="h-3 w-3" />
-                          Noter l'avocat
-                        </Button>
-                      ) : null}
-                      {isAdminViewer && (
-                        <>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" disabled={statusChanging}>
-                                Statut <ChevronDown className="h-2.5 w-2.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                              {Object.entries(COURT_STATUS_LABELS).map(([s, meta]) => (
-                                <DropdownMenuItem key={s} onClick={() => void handleChangeStatus(s)}
-                                  className={cn(courtCase?.status === s && 'bg-muted/60 font-medium')}>
-                                  <span className={meta.color}>{meta.label}</span>
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-slate-400/40 text-foreground hover:bg-muted/60"
-                            onClick={() => { setVerdictDraft(courtCase?.verdict ?? ''); setSentencingDraft(courtCase?.sentencing ?? ''); setShowVerdictPanel(true); }}>
-                            <Gavel className="h-3 w-3" />
-                            Verdict
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  )}
                   {/* Admin court role selector */}
                   {isCourtConversation && isAdminViewer && (
                     <div className="mb-2 flex items-center gap-2 flex-wrap">

@@ -106,8 +106,10 @@ export interface UserUpdatePopup {
 
 export interface UserPendingWarning {
   id: string;
+  type: 'AVERTISSEMENT' | 'AMENDE'; // AVERTISSEMENT or AMENDE
   message: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  amount?: number | null; // Amount for amende
   createdAt: string;
   issuedBy: {
     id: string;
@@ -1911,6 +1913,7 @@ export interface AdminClan {
   name: string;
   description: string | null;
   imageUrl: string | null;
+  tagUnlocked: boolean;
   isPublic: boolean;
   maxMembers: number;
   clanBankMoney: number;
@@ -2093,8 +2096,10 @@ export interface AdminWarning {
   id: string;
   userId: string;
   issuedById: string;
+  type: 'AVERTISSEMENT' | 'AMENDE'; // AVERTISSEMENT or AMENDE
   message: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH';
+  amount?: number | null; // Amount for amende
   isAcknowledged: boolean;
   acknowledgedAt: string | null;
   createdAt: string;
@@ -2277,6 +2282,7 @@ const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
 
 export const adminApi = {
   runRareAction,
+  startPrismaStudio: () => api.post<{ ok: boolean; studioToken: string }>('/admin/prisma-studio/start'),
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   getClans: () => api.get<{ clans: AdminClan[] }>('/admin/clans'),
   getClanEvents: () => api.get<{ events: AdminClanEvent[] }>('/admin/clan-events'),
@@ -2307,7 +2313,7 @@ export const adminApi = {
     rewardTiers: Array<{ title: string; minRank: number; maxRank: number; moneyReward: number; auraReward: number; itemId: string | null }>;
   }) => api.put<{ event: AdminClanEvent }>(`/admin/clan-events/${id}`, data),
   deleteClanEvent: (id: string) => api.delete<{ success: boolean }>(`/admin/clan-events/${id}`),
-  updateClan: (id: string, data: { name?: string; description?: string; imageUrl?: string; isPublic?: boolean; maxMembers?: number }) =>
+  updateClan: (id: string, data: { name?: string; description?: string; imageUrl?: string; isPublic?: boolean; tagUnlocked?: boolean; maxMembers?: number }) =>
     api.put<{ clan: AdminClan }>(`/admin/clans/${id}`, data),
   transferClanLeadership: (id: string, targetUserId: string) =>
     api.post<{ success: boolean }>(`/admin/clans/${id}/transfer-leadership`, { targetUserId }),
@@ -2497,7 +2503,7 @@ export const adminApi = {
     api.put<{ nameChangeRequest: NameChangeRequest }>(`/admin/name-change-requests/${id}`, data),
   // Admin warnings
   getWarnings: () => api.get<{ warnings: AdminWarning[] }>('/admin/warnings'),
-  createWarning: (data: { userId: string; message: string; severity?: 'LOW' | 'MEDIUM' | 'HIGH' }) =>
+  createWarning: (data: { userId: string; type?: 'AVERTISSEMENT' | 'AMENDE'; message: string; severity?: 'LOW' | 'MEDIUM' | 'HIGH'; amount?: number }) =>
     api.post<{ warning: AdminWarning; message: string }>('/admin/warnings', data),
   deleteWarning: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/warnings/${id}`),
   backfillScoreHistory: () => api.post<{ success: boolean; inserted: number; skipped: number }>('/admin/backfill-score-history'),

@@ -283,6 +283,27 @@ export function ClubsTab(props: ClubsTabProps) {
                     </div>
                   </div>
 
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <div className="text-sm font-medium">Capacité tag de clan</div>
+                      <div className="text-xs text-muted-foreground">Activer débloque immédiatement le tag pour ce clan.</div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={clanForm.tagUnlocked ? 'secondary' : 'outline'}
+                      className={cn(
+                        'h-8',
+                        clanForm.tagUnlocked
+                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/20'
+                          : 'border-border/60'
+                      )}
+                      onClick={() => setClanForm((prev: any) => ({ ...prev, tagUnlocked: !prev.tagUnlocked }))}
+                    >
+                      {clanForm.tagUnlocked ? 'Désactiver' : 'Activer'}
+                    </Button>
+                  </div>
+
                   <div className="flex gap-2">
                     <Button onClick={() => saveClan(clan.id)} disabled={savingClan}>
                       {savingClan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
