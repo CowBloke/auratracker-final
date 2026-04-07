@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
-import { X, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird, Rocket, Zap, Coins } from 'lucide-react';
+import { X, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird, Rocket, Zap, Coins, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TYPOGRAPHY } from '@/lib/design-system';
@@ -32,7 +32,7 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'snake' | 'crossy_road' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'hexgl' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'followers' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'snake' | 'crossy_road' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'hexgl' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
 type View = Category | 'nombres';
 type Period = 'all' | 'monthly' | 'weekly' | 'daily';
 
@@ -54,6 +54,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: Catego
   { id: 'money', name: 'Argent', valueLabel: '$', icon: Coins },
   { id: 'total_money', name: 'Argent total', valueLabel: '$', icon: Coins },
   { id: 'auracoin', name: 'Aura Coin', valueLabel: 'AuraCoin', icon: Gem },
+  { id: 'followers', name: 'Followers', valueLabel: 'followers', icon: Users },
   { id: 'doodle_jump', name: 'Doodle Jump', valueLabel: 'score', icon: ArrowUp },
   { id: 'doodle_jump_mort_subite', name: 'Doodle Jump - Mort subite', valueLabel: 'score', icon: Skull },
   { id: 'game_2048', name: '2048', valueLabel: 'score', icon: Layers },
@@ -90,6 +91,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: Catego
 ];
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
+const socialCategories: Category[] = ['followers'];
 const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
 const genericGameCategories: Category[] = ['snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
@@ -198,6 +200,26 @@ export default function Leaderboards() {
           badges: entry.badges,
           clanTag: entry.user?.clanTag ?? null,
         }));
+        setRankings(mapped);
+        const userEntry = mapped.find((entry) => entry.userId === user?.id);
+        setUserRank(userEntry ? userEntry.rank : null);
+      } else if (category === 'followers') {
+        const response = await usersApi.getAll();
+        const followersRows = (response.data.users || [])
+          .map((entry: any) => ({
+            userId: entry.id,
+            username: entry.username,
+            usernameColor: entry.usernameColor,
+            value: Number(entry.social?.followerCount || 0),
+          })) as Array<Omit<Ranking, 'rank'>>;
+
+        const mapped: Ranking[] = followersRows
+          .sort((a: Omit<Ranking, 'rank'>, b: Omit<Ranking, 'rank'>) => b.value - a.value)
+          .slice(0, 50)
+          .map((entry: Omit<Ranking, 'rank'>, index: number) => ({
+            ...entry,
+            rank: index + 1,
+          }));
         setRankings(mapped);
         const userEntry = mapped.find((entry) => entry.userId === user?.id);
         setUserRank(userEntry ? userEntry.rank : null);
@@ -376,6 +398,33 @@ export default function Leaderboards() {
                 </p>
                 <div className="space-y-0.5">
                   {categories.filter(c => economyCategories.includes(c.id)).map(cat => {
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setActiveView(cat.id)}
+                        className={cn(
+                          "w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/40",
+                          activeView === cat.id && "bg-muted"
+                        )}
+                      >
+                        <span className={cn("flex items-center gap-2", TYPOGRAPHY.SMALL, activeView === cat.id ? "text-foreground" : "text-muted-foreground")}>
+                          <cat.icon className="w-3.5 h-3.5 shrink-0" />
+                          {cat.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Communaute group */}
+              <div className="mt-3">
+                <p className={cn(TYPOGRAPHY.XS, "px-3 pb-1 text-muted-foreground/50 font-medium")}>
+                  Communaute
+                </p>
+                <div className="space-y-0.5">
+                  {categories.filter(c => socialCategories.includes(c.id)).map(cat => {
                     return (
                       <button
                         key={cat.id}

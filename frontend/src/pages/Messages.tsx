@@ -59,7 +59,6 @@ import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import {
-  CourtArgument,
   CourtCase,
   LawFirmPreview,
   MessagingConversationDetail,
@@ -175,7 +174,6 @@ const sortConversationsByRecent = (items: MessagingConversationSummary[]) =>
 const ADMIN_SUPPORT_CONVERSATION_PREFIX = 'admin-support:';
 
 const getAdminSupportConversationId = (userId: string) => `${ADMIN_SUPPORT_CONVERSATION_PREFIX}${userId}`;
-
 const getAdminSupportUserId = (conversationId: string) =>
   conversationId.startsWith(ADMIN_SUPPORT_CONVERSATION_PREFIX)
     ? conversationId.slice(ADMIN_SUPPORT_CONVERSATION_PREFIX.length)
@@ -266,24 +264,17 @@ export default function MessagesPage() {
   const [createParticipantIds, setCreateParticipantIds] = useState<string[]>([]);
   const [respectOpen, setRespectOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('');
   const [groupSettingsOpen, setGroupSettingsOpen] = useState(false);
   const [groupEditName, setGroupEditName] = useState('');
   const [groupEditIcon, setGroupEditIcon] = useState('');
   const [groupEditImageUrl, setGroupEditImageUrl] = useState<string | null>(null);
   const [groupImageUploading, setGroupImageUploading] = useState(false);
   const [groupSettingsSaving, setGroupSettingsSaving] = useState(false);
-  const [manageMembersOpen, setManageMembersOpen] = useState(false);
   const [addMemberSearch, setAddMemberSearch] = useState('');
-  const [blockConfirmId, setBlockConfirmId] = useState<string | null>(null);
 
   // Court case state
   const [courtCase, setCourtCase] = useState<CourtCase | null>(null);
   const [selectedCourtRole, setSelectedCourtRole] = useState<string | null>(null);
-  const [showArgumentsPanel, setShowArgumentsPanel] = useState(false);
-  const [courtArguments, setCourtArguments] = useState<CourtArgument[]>([]);
-  const [argumentDraft, setArgumentDraft] = useState('');
-  const [argumentSaving, setArgumentSaving] = useState(false);
   const [showVerdictPanel, setShowVerdictPanel] = useState(false);
   const [verdictDraft, setVerdictDraft] = useState('');
   const [sentencingDraft, setSentencingDraft] = useState('');
@@ -519,7 +510,6 @@ export default function MessagesPage() {
     if (!caseId) {
       setCourtCase(null);
       setSelectedCourtRole(null);
-      setCourtArguments([]);
       setShowRepresentationDialog(false);
       setShowLawyerRatingDialog(false);
       return;
@@ -551,12 +541,6 @@ export default function MessagesPage() {
     });
     return () => { cancelled = true; };
   }, [assignedLawFirm, assignedLawyer, courtCase, isCourtConversation, isEligibleCourtClient, lawFirms.length, lawFirmsLoading]);
-
-  const loadArguments = async () => {
-    if (!courtCase) return;
-    const r = await justiceApi.getArguments(courtCase.id);
-    setCourtArguments(r.data.arguments);
-  };
 
   // ── Filtered lists ────────────────────────────────────────────────────────
   const { favorites, regular } = useMemo(() => {
@@ -713,17 +697,6 @@ export default function MessagesPage() {
     }
   };
 
-  const handleReport = async () => {
-    if (!selectedConversation || selectedConversation.type === 'SUPPORT') return;
-    try {
-      await supportApi.reportConversation(selectedConversation.id, reportReason.trim() || undefined);
-      setReportOpen(false); setReportReason('');
-      toast({ title: 'Signalement envoyé' });
-    } catch {
-      toast({ title: 'Signalement impossible', variant: 'destructive' });
-    }
-  };
-
   const handleToggleFavorite = async (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
     const conversation = conversations.find((entry) => entry.id === id);
@@ -813,23 +786,8 @@ export default function MessagesPage() {
         setBlockedIds((prev) => new Set([...prev, userId]));
         toast({ title: 'Utilisateur bloqué' });
       }
-      setBlockConfirmId(null);
     } catch {
       toast({ title: 'Erreur', variant: 'destructive' });
-    }
-  };
-
-  const handleSaveArgument = async () => {
-    if (!courtCase || !argumentDraft.trim()) return;
-    setArgumentSaving(true);
-    try {
-      await justiceApi.submitArgument(courtCase.id, argumentDraft.trim());
-      await loadArguments();
-      toast({ title: 'Argument soumis' });
-    } catch {
-      toast({ title: 'Erreur', variant: 'destructive' });
-    } finally {
-      setArgumentSaving(false);
     }
   };
 
@@ -928,6 +886,7 @@ export default function MessagesPage() {
     setGroupEditName(selectedConversation.title ?? '');
     setGroupEditIcon(selectedConversation.icon ?? '');
     setGroupEditImageUrl(selectedConversation.imageUrl ?? null);
+    setAddMemberSearch('');
     setGroupSettingsOpen(true);
   };
 
@@ -1068,218 +1027,159 @@ export default function MessagesPage() {
       </Dialog>
 
       {/* ── Report modal ── */}
-      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Signaler</DialogTitle>
-            <DialogDescription className="text-xs">Les derniers messages seront transmis aux admins.</DialogDescription>
-          </DialogHeader>
-          <textarea value={reportReason} onChange={(e) => setReportReason(e.target.value)} placeholder="Explique le problème (optionnel)" maxLength={280} rows={3}
-            className="w-full resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring" />
-          <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setReportOpen(false)}>Annuler</Button>
-            <Button variant="destructive" size="sm" onClick={handleReport}>Signaler</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Block confirm modal ── */}
-      <Dialog open={!!blockConfirmId} onOpenChange={() => setBlockConfirmId(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">
-              {blockConfirmId && blockedIds.has(blockConfirmId) ? 'Débloquer cet utilisateur ?' : 'Bloquer cet utilisateur ?'}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              {blockConfirmId && blockedIds.has(blockConfirmId)
-                ? 'Il pourra de nouveau vous envoyer des messages.'
-                : 'Vous ne recevrez plus de messages de sa part.'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setBlockConfirmId(null)}>Annuler</Button>
-            <Button variant={blockConfirmId && blockedIds.has(blockConfirmId) ? 'outline' : 'destructive'} size="sm"
-              onClick={() => blockConfirmId && handleBlock(blockConfirmId)}>
-              {blockConfirmId && blockedIds.has(blockConfirmId) ? 'Débloquer' : 'Bloquer'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Group settings modal ── */}
-      <Dialog open={groupSettingsOpen} onOpenChange={setGroupSettingsOpen}>
-        <DialogContent className="max-w-sm gap-0 p-0 overflow-hidden">
+      <Dialog
+        open={reportOpen || groupSettingsOpen}
+        onOpenChange={(open) => {
+          setReportOpen(open);
+          if (!open) {
+            setGroupSettingsOpen(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
           <div className="border-b border-border/60 px-4 py-3">
-            <DialogTitle className="text-sm font-semibold">Paramètres du groupe</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">Infos du groupe</DialogTitle>
+            <DialogDescription className="text-xs">Gérez le nom, l’icône et les membres du groupe depuis un seul endroit.</DialogDescription>
           </div>
-          <div className="space-y-4 p-4">
-            {/* Group photo */}
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Avatar className="h-14 w-14">
-                  {groupEditImageUrl ? <AvatarImage src={resolveImageUrl(groupEditImageUrl)} /> : null}
-                  <AvatarFallback className={cn('text-2xl', !groupEditImageUrl && groupEditIcon && 'text-2xl')}>
-                    {groupEditIcon || getInitials(groupEditName || selectedConversation?.displayName)}
-                  </AvatarFallback>
-                </Avatar>
-                <button type="button"
-                  onClick={() => groupImageInputRef.current?.click()}
-                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
-                  <Camera className="h-5 w-5 text-white" />
-                </button>
-                <input ref={groupImageInputRef} type="file" accept="image/*" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleGroupImageUpload(f); e.target.value = ''; }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-muted-foreground mb-1">Nom du groupe</p>
-                <Input value={groupEditName} onChange={(e) => setGroupEditName(e.target.value)} placeholder="Nom du groupe" className="h-8 text-sm" maxLength={80} />
-              </div>
-            </div>
-            {groupImageUploading && <p className="text-xs text-muted-foreground">Upload en cours...</p>}
-            {/* Emoji icon picker */}
-            <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Icône (si pas de photo)</p>
-              <div className="grid grid-cols-8 gap-1">
-                {GROUP_ICONS.map((emoji) => (
-                  <button key={emoji} type="button"
-                    onClick={() => setGroupEditIcon(groupEditIcon === emoji ? '' : emoji)}
-                    className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors', groupEditIcon === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'hover:bg-muted/60')}>
-                    {emoji}
+          <ScrollArea className="max-h-[75vh]">
+            <div className="space-y-5 p-4">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Avatar className="h-14 w-14">
+                    {groupEditImageUrl ? <AvatarImage src={resolveImageUrl(groupEditImageUrl)} /> : null}
+                    <AvatarFallback className={cn('text-2xl', !groupEditImageUrl && groupEditIcon && 'text-2xl')}>
+                      {groupEditIcon || getInitials(groupEditName || selectedConversation?.displayName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <button
+                    type="button"
+                    onClick={() => groupImageInputRef.current?.click()}
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity hover:opacity-100"
+                  >
+                    <Camera className="h-5 w-5 text-white" />
                   </button>
-                ))}
+                  <input
+                    ref={groupImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleGroupImageUpload(f);
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Nom du groupe</p>
+                    <Input value={groupEditName} onChange={(e) => setGroupEditName(e.target.value)} placeholder="Nom du groupe" className="h-8 text-sm" maxLength={80} />
+                  </div>
+                  {groupImageUploading && <p className="text-xs text-muted-foreground">Upload en cours...</p>}
+                </div>
               </div>
-              {(groupEditIcon || groupEditImageUrl) && (
-                <button type="button" onClick={() => { setGroupEditIcon(''); setGroupEditImageUrl(null); }}
-                  className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                  <X className="h-3 w-3" />Retirer photo & icône
-                </button>
-              )}
+
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Icône du groupe</p>
+                  <p className="text-[11px] text-muted-foreground">Choisissez un emoji si vous n’utilisez pas de photo.</p>
+                </div>
+                <div className="grid grid-cols-8 gap-1">
+                  {GROUP_ICONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setGroupEditIcon(groupEditIcon === emoji ? '' : emoji)}
+                      className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors', groupEditIcon === emoji ? 'bg-primary/20 ring-1 ring-primary' : 'hover:bg-muted/60')}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                {(groupEditIcon || groupEditImageUrl) && (
+                  <button
+                    type="button"
+                    onClick={() => { setGroupEditIcon(''); setGroupEditImageUrl(null); }}
+                    className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />Retirer photo & icône
+                  </button>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border/60 bg-background/60 p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">Membres</p>
+                    <p className="text-xs text-muted-foreground">{selectedConversation?.participants.length ?? 0} membres dans le groupe</p>
+                  </div>
+                  {selectedConversation?.type === 'GROUP' && (
+                    <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setReportOpen(true)}>
+                      <ShieldAlert className="h-3.5 w-3.5" />Signaler
+                    </Button>
+                  )}
+                </div>
+                <ScrollArea className="max-h-56 rounded-lg border border-border/50">
+                  <div className="divide-y divide-border/40">
+                    {selectedConversation?.participants.map((entry) => {
+                      const isMe = entry.user.id === user?.id;
+                      const amOwner = selectedConversation.participants.find((e) => e.user.id === user?.id)?.role === 'OWNER';
+                      return (
+                        <div key={entry.user.id} className="flex items-center gap-2.5 px-3 py-2">
+                          <Avatar className="h-7 w-7 shrink-0">
+                            {entry.user.profilePicture ? <AvatarImage src={resolveImageUrl(entry.user.profilePicture)} /> : null}
+                            <AvatarFallback className="text-[10px]">{getInitials(entry.user.username)}</AvatarFallback>
+                          </Avatar>
+                          <span className="flex-1 truncate text-sm font-medium" style={entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}>
+                            {entry.user.username}
+                          </span>
+                          {entry.role === 'OWNER' && <span className="text-[10px] font-medium text-amber-500">Owner</span>}
+                          {!isMe && amOwner && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/70 hover:text-destructive" onClick={() => handleKickMember(entry.user.id)}>
+                              <UserMinus className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm font-semibold">Ajouter un membre</p>
+                  <p className="text-xs text-muted-foreground">Recherchez un joueur puis ajoutez-le au groupe.</p>
+                </div>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input value={addMemberSearch} onChange={(e) => setAddMemberSearch(e.target.value)} placeholder="Rechercher..." className="h-8 pl-8 text-xs" />
+                </div>
+                <ScrollArea className="max-h-40 rounded-lg border border-border/50">
+                  <div className="divide-y divide-border/40">
+                    {nonMembers.map((player) => (
+                      <div key={player.id} className="flex items-center gap-2 px-3 py-2">
+                        <Avatar className="h-6 w-6 shrink-0">
+                          {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} /> : null}
+                          <AvatarFallback className="text-[9px]">{getInitials(player.username)}</AvatarFallback>
+                        </Avatar>
+                        <span className="flex-1 truncate text-xs">{player.username}</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddMember(player.id)}>
+                          <UserPlus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                    {nonMembers.length === 0 && <p className="py-3 text-center text-xs text-muted-foreground">Tous les joueurs sont déjà membres.</p>}
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
-          </div>
+          </ScrollArea>
           <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-2.5">
             <Button variant="ghost" size="sm" onClick={() => setGroupSettingsOpen(false)}>Annuler</Button>
             <Button size="sm" disabled={groupSettingsSaving || groupImageUploading} onClick={handleSaveGroupSettings}>
               {groupSettingsSaving ? 'Sauvegarde...' : 'Sauvegarder'}
             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Manage members modal ── */}
-      <Dialog open={manageMembersOpen} onOpenChange={setManageMembersOpen}>
-        <DialogContent className="max-w-sm gap-0 p-0 overflow-hidden">
-          <div className="border-b border-border/60 px-4 py-3">
-            <DialogTitle className="text-sm font-semibold">Membres du groupe</DialogTitle>
-          </div>
-          <ScrollArea className="max-h-56">
-            <div className="divide-y divide-border/40">
-              {selectedConversation?.participants.map((entry) => {
-                const isMe = entry.user.id === user?.id;
-                const amOwner = selectedConversation.participants.find((e) => e.user.id === user?.id)?.role === 'OWNER';
-                return (
-                  <div key={entry.user.id} className="flex items-center gap-2.5 px-3 py-2">
-                    <Avatar className="h-7 w-7 shrink-0">
-                      {entry.user.profilePicture ? <AvatarImage src={resolveImageUrl(entry.user.profilePicture)} /> : null}
-                      <AvatarFallback className="text-[10px]">{getInitials(entry.user.username)}</AvatarFallback>
-                    </Avatar>
-                    <span className="flex-1 truncate text-sm font-medium" style={entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}>
-                      {entry.user.username}
-                    </span>
-                    {entry.role === 'OWNER' && <span className="text-[10px] text-amber-500 font-medium">Owner</span>}
-                    {!isMe && amOwner && (
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/70 hover:text-destructive"
-                        onClick={() => handleKickMember(entry.user.id)}>
-                        <UserMinus className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-          <div className="border-t border-border/60 p-3 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Ajouter un membre</p>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input value={addMemberSearch} onChange={(e) => setAddMemberSearch(e.target.value)} placeholder="Rechercher..." className="h-8 pl-8 text-xs" />
-            </div>
-            <ScrollArea className="max-h-36">
-              <div className="divide-y divide-border/40">
-                {nonMembers.filter((p) => !addMemberSearch || p.username.toLowerCase().includes(addMemberSearch.toLowerCase())).map((player) => (
-                  <div key={player.id} className="flex items-center gap-2 px-1 py-1.5">
-                    <Avatar className="h-6 w-6 shrink-0">
-                      {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} /> : null}
-                      <AvatarFallback className="text-[9px]">{getInitials(player.username)}</AvatarFallback>
-                    </Avatar>
-                    <span className="flex-1 truncate text-xs">{player.username}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddMember(player.id)}>
-                      <UserPlus className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ))}
-                {nonMembers.length === 0 && <p className="py-3 text-center text-xs text-muted-foreground">Tous les joueurs sont déjà membres.</p>}
-              </div>
-            </ScrollArea>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Arguments panel ── */}
-      <Dialog open={showArgumentsPanel} onOpenChange={(open) => { setShowArgumentsPanel(open); if (open) void loadArguments(); }}>
-        <DialogContent className="max-w-2xl gap-0 p-0 overflow-hidden">
-          <div className="border-b border-border/60 px-4 py-3 flex items-center gap-2">
-            <FileText className="h-4 w-4 text-indigo-400" />
-            <DialogTitle className="text-sm font-semibold">Documents de plaidoirie</DialogTitle>
-            {courtCase && <span className="ml-auto text-[10px] font-mono text-muted-foreground">#{courtCase.caseNumber}</span>}
-          </div>
-          <div className="p-4 space-y-4">
-            <p className="text-xs text-muted-foreground">Ces documents sont confidentiels et uniquement visibles par les juges. Chaque partie soumet un seul argument écrit.</p>
-            {isAdminViewer ? (
-              <div className="space-y-3">
-                {courtArguments.length === 0 && <p className="text-xs text-muted-foreground italic">Aucun argument soumis pour le moment.</p>}
-                {courtArguments.map((arg) => (
-                  <div key={arg.id} className={cn('rounded-xl border p-3 space-y-1', arg.side === 'PLAINTIFF' ? 'border-sky-500/30 bg-sky-500/5' : 'border-red-500/30 bg-red-500/5')}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={cn('text-[10px] font-semibold uppercase tracking-wide', arg.side === 'PLAINTIFF' ? 'text-sky-500' : 'text-red-500')}>
-                        {arg.side === 'PLAINTIFF' ? 'Plaignant' : 'Coupable'}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground ml-auto">{format(new Date(arg.createdAt), 'dd MMM HH:mm', { locale: fr })}</span>
-                    </div>
-                    <p className="text-sm whitespace-pre-wrap">{arg.content}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {(() => {
-                  const mySide = myCourtRole === 'PLAINTIFF' || myCourtRole === 'LAWYER_PLAINTIFF' ? 'PLAINTIFF'
-                    : myCourtRole === 'DEFENDANT' || myCourtRole === 'LAWYER_DEFENDANT' ? 'DEFENDANT' : null;
-                  const myArg = courtArguments.find((a) => a.side === mySide);
-                  if (!mySide) return <p className="text-xs text-muted-foreground">Vous n'avez pas accès aux plaidoiries.</p>;
-                  return (
-                    <>
-                      {myArg && (
-                        <div className={cn('rounded-xl border p-3', mySide === 'PLAINTIFF' ? 'border-sky-500/30 bg-sky-500/5' : 'border-red-500/30 bg-red-500/5')}>
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Votre argument actuel</p>
-                          <p className="text-sm whitespace-pre-wrap">{myArg.content}</p>
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-xs font-medium mb-1">{myArg ? 'Modifier votre argument' : 'Soumettre votre argument'}</p>
-                        <textarea value={argumentDraft} onChange={(e) => setArgumentDraft(e.target.value)} rows={6} maxLength={2000}
-                          placeholder="Rédigez votre plaidoirie ici..."
-                          className="w-full resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring" />
-                        <div className="flex justify-end mt-2">
-                          <Button size="sm" disabled={argumentSaving || !argumentDraft.trim()} onClick={handleSaveArgument}>
-                            {argumentSaving ? 'Envoi...' : 'Soumettre'}
-                          </Button>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -1559,40 +1459,35 @@ export default function MessagesPage() {
                         <Star className={cn('h-4 w-4', selectedConversation.isFavorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
                       </Button>
                     )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
-                          <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        {selectedConversation.type === 'GROUP' && (
-                          <>
-                            <DropdownMenuItem onClick={openGroupSettings}>
-                              <Settings2 className="mr-2 h-3.5 w-3.5" />Paramètres du groupe
+                    {selectedConversation.type === 'GROUP' ? (
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={openGroupSettings}>
+                        <Settings2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    ) : (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+                            <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          {selectedConversation.type === 'DM' && dmOtherUser && (
+                            <>
+                              <DropdownMenuItem onClick={() => void handleBlock(dmOtherUser.id)}>
+                                <Ban className="mr-2 h-3.5 w-3.5" />
+                                {blockedIds.has(dmOtherUser.id) ? 'Débloquer' : 'Bloquer'}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          {selectedConversation.type !== 'SUPPORT' && (
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setReportOpen(true)}>
+                              <ShieldAlert className="mr-2 h-3.5 w-3.5" />Signaler
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { setAddMemberSearch(''); setManageMembersOpen(true); }}>
-                              <Users className="mr-2 h-3.5 w-3.5" />Gérer les membres
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        {selectedConversation.type === 'DM' && dmOtherUser && (
-                          <>
-                            <DropdownMenuItem onClick={() => setBlockConfirmId(dmOtherUser.id)}>
-                              <Ban className="mr-2 h-3.5 w-3.5" />
-                              {blockedIds.has(dmOtherUser.id) ? 'Débloquer' : 'Bloquer'}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        {selectedConversation.type !== 'SUPPORT' && (
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setReportOpen(true)}>
-                            <ShieldAlert className="mr-2 h-3.5 w-3.5" />Signaler
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 </div>
 
@@ -1606,6 +1501,24 @@ export default function MessagesPage() {
                     <span className={cn('text-[10px] font-semibold uppercase tracking-wide', COURT_STATUS_LABELS[courtCase.status]?.color ?? 'text-muted-foreground')}>
                       {COURT_STATUS_LABELS[courtCase.status]?.label ?? courtCase.status}
                     </span>
+                    {courtCase.plainte && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button type="button" size="sm" variant="outline" className="h-6 gap-1.5 rounded-full px-2 text-[10px]">
+                            <FileText className="h-3 w-3" />
+                            Voir plainte
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-80 max-w-[92vw] p-3" sideOffset={6}>
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Titre initial</p>
+                          <p className="mt-1 text-sm font-medium text-foreground">{courtCase.plainte.title}</p>
+                          <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Description initiale</p>
+                          <p className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap text-xs text-foreground/90">
+                            {courtCase.plainte.description}
+                          </p>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                     {courtCase.plaintif && (
                       <span className="text-[10px] text-sky-500 font-medium">Plaignant</span>
                     )}
@@ -1833,13 +1746,6 @@ export default function MessagesPage() {
                           Noter l'avocat
                         </Button>
                       ) : null}
-                      {(isAdminViewer || myCourtRole === 'PLAINTIFF' || myCourtRole === 'DEFENDANT' || myCourtRole?.startsWith('LAWYER') || myCourtRole?.startsWith('PUBLIC')) && (
-                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1"
-                          onClick={() => { setArgumentDraft(''); void loadArguments().then(() => setShowArgumentsPanel(true)); }}>
-                          <FileText className="h-3 w-3" />
-                          Plaidoiries
-                        </Button>
-                      )}
                       {isAdminViewer && (
                         <>
                           <DropdownMenu>

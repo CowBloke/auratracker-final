@@ -21,6 +21,15 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-07-messages-group-info-modal',
+    date: '2026-04-07',
+    title: 'Messagerie — fiche de groupe centralisée',
+    summary: 'Les groupes de discussion s’ouvrent maintenant dans une fiche unique au clic sur le titre, avec membres, ajout/retrait et réglages regroupés au même endroit.',
+    items: [
+      { category: 'SMALL_FEATURE', text: '**Fiche de groupe unifiée** — Le titre d’un groupe ouvre désormais un panneau unique pour modifier le nom, l’icône, la photo et gérer les membres sans passer par plusieurs menus.', order: 0 },
+    ],
+  },
+  {
     id: '2026-04-06-prisma-studio',
     date: '2026-04-06',
     title: 'Accès sécurisé à Prisma Studio',

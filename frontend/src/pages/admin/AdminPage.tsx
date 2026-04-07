@@ -4248,6 +4248,7 @@ export default function Admin() {
     total: entry.total,
     ...entry.values,
   })) ?? [];
+  const isAdminOrSuperAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const platformTopGamesChartData = (platformStats?.topGames ?? []).map((entry) => ({
     ...entry,
     label: GAME_TYPE_LABELS[entry.gameType] ?? entry.gameType.replace(/_/g, ' '),

@@ -3224,7 +3224,7 @@ export interface CourtCase {
   defendantLawFirm?: { id: string; name: string; logoUrl: string | null } | null;
   defendantLawyer?: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
   parties: CourtPartyInfo[];
-  plainte: { id: string; title: string } | null;
+  plainte: { id: string; title: string; description: string } | null;
   createdAt: string;
   updatedAt: string;
 }
