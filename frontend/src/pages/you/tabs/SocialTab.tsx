@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { type YouCourtCase, type YouRelationship, type YouState, youApi } from '@/services/api';
 import { NewRelationModal } from '../components/modals';
-import { ModalWrap, Pill, SectionTitle, UserAvatar } from '../components/ui';
+import { Pill, SectionTitle, UserAvatar } from '../components/ui';
 import { getRelationshipPill, withRouteError } from '../utils';
 
 function RelationListItem({
@@ -44,49 +44,14 @@ function RelationListItem({
 
 function CourtCaseItem({
   courtCase,
-  selected,
-  onClick,
-}: {
-  courtCase: YouCourtCase;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${selected ? 'border-rose-400/45 bg-rose-400/15 ring-1 ring-rose-400/30' : 'border-rose-400/25 bg-rose-400/10 hover:bg-rose-400/15'}`}
-    >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-400/15">
-        <Gavel className="h-4 w-4 text-rose-400" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-rose-300">Suspicion de tricherie</p>
-          {selected ? <span className="rounded-full bg-rose-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-300">Ouvert</span> : null}
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{courtCase.accuser.username}</span> t'a accusé.
-        </p>
-      </div>
-      <Scale className="h-4 w-4 shrink-0 text-muted-foreground/30" />
-    </button>
-  );
-}
-
-function CourtCaseModal({
-  courtCase,
-  onClose,
   onReload,
 }: {
-  courtCase: YouCourtCase | null;
-  onClose: () => void;
+  courtCase: YouCourtCase;
   onReload: () => Promise<void>;
 }) {
   const [loading, setLoading] = useState(false);
 
   const respond = async (decision: 'court' | 'drop') => {
-    if (!courtCase) return;
     setLoading(true);
     try {
       await withRouteError(() => youApi.respondToCourtCase(courtCase.id, decision), 'Impossible de repondre.');
@@ -95,7 +60,6 @@ function CourtCaseModal({
       } else {
         toast.success('Accusation ignoree');
       }
-      onClose();
       await onReload();
     } finally {
       setLoading(false);
@@ -103,50 +67,25 @@ function CourtCaseModal({
   };
 
   return (
-    <ModalWrap
-      open={Boolean(courtCase)}
-      onClose={onClose}
-      title="Dossier judiciaire"
-      desc={courtCase ? `${courtCase.accuser.username} a ouvert une accusation de tricherie.` : undefined}
-    >
-      {courtCase ? (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-400/15">
-                <Gavel className="h-5 w-5 text-rose-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-rose-300">Suspicion de tricherie</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">{courtCase.accuser.username}</span> te soupçonne de tricherie.
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground/70">
-                  Reçu le {new Date(courtCase.createdAt).toLocaleString('fr-FR')}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-sm text-muted-foreground">
-            Aller en justice te permet de prendre tout son argent si la suspicion est infondée. Ignorer ferme le dossier sans lancer de procédure.
-          </div>
-
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={onClose}>
-              Fermer
-            </Button>
-            <Button variant="outline" className="text-amber-400" disabled={loading} onClick={() => void respond('drop')}>
-              Ignorer
-            </Button>
-            <Button variant="destructive" disabled={loading} onClick={() => void respond('court')}>
-              <Scale className="mr-1.5 h-4 w-4" />
-              Aller en justice
-            </Button>
-          </div>
-        </div>
-      ) : null}
-    </ModalWrap>
+    <div className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-4 py-3">
+      <div className="flex items-center gap-2">
+        <Gavel className="h-4 w-4 text-rose-400" />
+        <p className="text-sm font-semibold text-rose-300">Suspicion de tricherie</p>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">{courtCase.accuser.username}</span> te soupçonne de tricherie.
+        Aller en justice te permet de prendre tout son argent si la suspicion est infondee.
+      </p>
+      <div className="mt-3 flex gap-2">
+        <Button size="sm" variant="destructive" className="text-xs" disabled={loading} onClick={() => void respond('court')}>
+          <Scale className="mr-1.5 h-3.5 w-3.5" />
+          Aller en justice
+        </Button>
+        <Button size="sm" variant="outline" className="text-xs" disabled={loading} onClick={() => void respond('drop')}>
+          Ignorer
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -450,7 +389,6 @@ function RelationActions({
 export function SocialTab({ data, onReload }: { data: YouState; onReload: () => Promise<void> }) {
   const [addOpen, setAddOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedCourtCaseId, setSelectedCourtCaseId] = useState<string | null>(null);
 
   const availablePlayers = data.players.filter((p) => !p.alreadyInRelationship);
 
@@ -462,8 +400,6 @@ export function SocialTab({ data, onReload }: { data: YouState; onReload: () => 
   });
 
   const selected = sortedRelationships.find((r) => r.id === selectedId) ?? sortedRelationships[0] ?? null;
-  const selectedCourtCase = data.courtCases.find((courtCase) => courtCase.id === selectedCourtCaseId) ?? null;
-
   return (
     <>
       <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -481,12 +417,7 @@ export function SocialTab({ data, onReload }: { data: YouState; onReload: () => 
           {data.courtCases.length > 0 && (
             <div className="space-y-2">
               {data.courtCases.map((c) => (
-                <CourtCaseItem
-                  key={c.id}
-                  courtCase={c}
-                  selected={selectedCourtCase?.id === c.id}
-                  onClick={() => setSelectedCourtCaseId(c.id)}
-                />
+                <CourtCaseItem key={c.id} courtCase={c} onReload={onReload} />
               ))}
             </div>
           )}
@@ -539,12 +470,6 @@ export function SocialTab({ data, onReload }: { data: YouState; onReload: () => 
         onClose={() => setAddOpen(false)}
         players={availablePlayers}
         onSubmitted={onReload}
-      />
-
-      <CourtCaseModal
-        courtCase={selectedCourtCase}
-        onClose={() => setSelectedCourtCaseId(null)}
-        onReload={onReload}
       />
     </>
   );

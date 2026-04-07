@@ -1,21 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
-import {
-  Camera,
-  Flag,
-  Mic,
-  MicOff,
-  MonitorPlay,
-  Orbit,
-  RefreshCw,
-  Send,
-  ShieldAlert,
-  Sparkles,
-  Video,
-  VideoOff,
-  Waves,
-} from 'lucide-react';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { Camera, Flag, Mic, MicOff, MonitorPlay, RefreshCw, Send, Video, VideoOff, Waves } from 'lucide-react';
+import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -26,9 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -122,15 +106,15 @@ export default function AuraVision() {
   const currentSessionIdRef = useRef<string | null>(null);
   const currentPeerIdRef = useRef<string | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
-  const autoNextRef = useRef(false);
+  const autoNextRef = useRef(true);
+  const messagesRef = useRef<HTMLDivElement>(null);
 
   const [filterPreset, setFilterPreset] = useState<FilterPreset>('laser');
   const [effectPreset, setEffectPreset] = useState<EffectPreset>('halo');
   const [intensity, setIntensity] = useState(62);
-  const [mirrorLocal, setMirrorLocal] = useState(true);
-  const [autoNext, setAutoNext] = useState(true);
+  const [effectsOpen, setEffectsOpen] = useState(false);
   const [queueCount, setQueueCount] = useState(0);
-  const [status, setStatus] = useState('Prends la main sur AuraVision et lance une rencontre aleatoire.');
+  const [status, setStatus] = useState('Pret pour une rencontre aleatoire.');
   const [error, setError] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isQueueing, setIsQueueing] = useState(false);
@@ -140,13 +124,15 @@ export default function AuraVision() {
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
   const [rulesAccepted, setRulesAccepted] = useState(false);
+  const [rulesModalOpen, setRulesModalOpen] = useState(true);
   const [chatDraft, setChatDraft] = useState('');
   const [messages, setMessages] = useState<AuraVisionMessage[]>([]);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
 
-  autoNextRef.current = autoNext;
+  const mirrorLocal = true;
+  const rulesStorageKey = useMemo(() => `auravision-rules-accepted-${user?.id ?? 'anon'}`, [user?.id]);
 
   const filterStyle = useMemo(() => getFilterStyle(filterPreset, intensity), [filterPreset, intensity]);
   const effectMeta = useMemo(
@@ -161,6 +147,7 @@ export default function AuraVision() {
       connection.ontrack = null;
       connection.close();
     }
+
     peerConnectionRef.current = null;
     pendingCandidatesRef.current = [];
     currentSessionIdRef.current = null;
@@ -242,7 +229,7 @@ export default function AuraVision() {
         }
 
         setPeerConnected(true);
-        setStatus('Connexion video active. Vous pouvez passer au joueur suivant a tout moment.');
+        setStatus('Connexion video active.');
       };
 
       connection.onicecandidate = (event) => {
@@ -323,7 +310,7 @@ export default function AuraVision() {
       }
 
       setIsQueueing(false);
-      setStatus('AuraVision en pause. Relance quand tu veux.');
+      setStatus('AuraVision en pause.');
       setError(null);
       stopPeerConnection();
 
@@ -346,13 +333,13 @@ export default function AuraVision() {
     try {
       await ensureLocalStream();
       stopPeerConnection();
-      setStatus('Recherche d un joueur AuraTracker en cours...');
+      setStatus('Recherche d un joueur AuraTracker...');
       setIsQueueing(true);
       socket.emit('auravision:join-queue');
     } catch (mediaError) {
       console.error('AuraVision media error:', mediaError);
-      setError('Impossible d acceder a la camera ou au micro. Autorise les permissions puis recommence.');
-      setStatus('Permissions camera/micro requises pour AuraVision.');
+      setError('Impossible d acceder a la camera ou au micro.');
+      setStatus('Permissions camera/micro requises.');
     } finally {
       setIsPreparing(false);
     }
@@ -387,7 +374,11 @@ export default function AuraVision() {
 
     const handleQueued = (payload: { position: number }) => {
       setIsQueueing(true);
-      setStatus(payload.position > 1 ? `En file d attente. ${payload.position} joueurs devant toi.` : 'En file d attente. Premiere connexion disponible.');
+      setStatus(
+        payload.position > 1
+          ? `En file d attente. ${payload.position} joueurs devant toi.`
+          : 'En file d attente. Premiere connexion disponible.',
+      );
     };
 
     const handleMatched = async (payload: { sessionId: string; initiator: boolean; peer: { id: string; username: string } }) => {
@@ -438,10 +429,10 @@ export default function AuraVision() {
     };
 
     const handleMessage = (payload: AuraVisionMessage) => {
-      setMessages((current) => [...current.slice(-19), payload]);
+      setMessages((current) => [...current.slice(-49), payload]);
     };
 
-    const handleError = (payload: { message: string }) => {
+    const handleSocketError = (payload: { message: string }) => {
       setError(payload.message);
     };
 
@@ -451,7 +442,7 @@ export default function AuraVision() {
     socket.on('auravision:partner-left', handlePartnerLeft);
     socket.on('auravision:queue-size', handleQueueSize);
     socket.on('auravision:message', handleMessage);
-    socket.on('auravision:error', handleError);
+    socket.on('auravision:error', handleSocketError);
     socket.emit('auravision:queue-size');
 
     return () => {
@@ -461,7 +452,7 @@ export default function AuraVision() {
       socket.off('auravision:partner-left', handlePartnerLeft);
       socket.off('auravision:queue-size', handleQueueSize);
       socket.off('auravision:message', handleMessage);
-      socket.off('auravision:error', handleError);
+      socket.off('auravision:error', handleSocketError);
     };
   }, [applySignal, createPeerConnection, handleJoinQueue, socket, stopPeerConnection]);
 
@@ -484,6 +475,25 @@ export default function AuraVision() {
       leaveEverything(false);
     };
   }, [leaveEverything]);
+
+  useEffect(() => {
+    try {
+      const accepted = window.localStorage.getItem(rulesStorageKey) === '1';
+      setRulesAccepted(accepted);
+      setRulesModalOpen(!accepted);
+    } catch {
+      setRulesAccepted(false);
+      setRulesModalOpen(true);
+    }
+  }, [rulesStorageKey]);
+
+  useEffect(() => {
+    const container = messagesRef.current;
+    if (!container) {
+      return;
+    }
+    container.scrollTop = container.scrollHeight;
+  }, [messages]);
 
   const handleSendMessage = useCallback(() => {
     if (!socket || !sessionId || !chatDraft.trim()) {
@@ -544,268 +554,218 @@ export default function AuraVision() {
     }
   }, [messages, peerName, reportReason, sessionId]);
 
+  const handleAcceptRules = useCallback(() => {
+    try {
+      window.localStorage.setItem(rulesStorageKey, '1');
+    } catch {
+      // Ignore storage failures; we still allow current session usage.
+    }
+    setRulesAccepted(true);
+    setRulesModalOpen(false);
+  }, [rulesStorageKey]);
+
+  const handlePrimaryNext = useCallback(() => {
+    if (sessionId || isQueueing) {
+      void handleNext();
+      return;
+    }
+    void handleJoinQueue();
+  }, [handleJoinQueue, handleNext, isQueueing, sessionId]);
+
   return (
-    <PageShell size="wide">
-      <PageHeader
-        title="AuraVision"
-        description="Une roulette video entre joueurs AuraTracker: rencontres aleatoires, filtres live, ambiance webcam et passage instantane au suivant."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-600">
-              {connected ? 'Socket connecte' : 'Connexion en cours'}
-            </div>
-            <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
-              {queueCount} joueur{queueCount > 1 ? 's' : ''} en file
-            </div>
+    <PageShell size="wide" className="h-[calc(100svh-7.5rem)] overflow-hidden py-3">
+      <div className="relative flex h-full min-h-0 flex-col gap-3 overflow-hidden rounded-3xl border border-border/60 bg-card/60 p-3 shadow-sm">
+        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/70 px-3 py-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">AuraVision</p>
+            <p className="truncate text-xs text-muted-foreground">{error ?? status}</p>
           </div>
-        }
-      />
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_360px]">
-        <div className="space-y-6">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <VideoPanel
-              title={user?.username ? `${user.username} (toi)` : 'Toi'}
-              subtitle={cameraEnabled ? 'Camera active' : 'Camera coupee'}
-              icon={Camera}
-              videoRef={localVideoRef}
-              filterStyle={filterStyle}
-              mirrored={mirrorLocal}
-              effectPreset={effectPreset}
-              placeholder="Active AuraVision pour afficher ton retour camera."
-              muted
-            />
-            <VideoPanel
-              title={peerName ?? 'Connexion aleatoire'}
-              subtitle={peerConnected ? 'Flux recu en direct' : isQueueing ? 'Recherche d un joueur...' : 'Aucun joueur connecte'}
-              icon={MonitorPlay}
-              videoRef={remoteVideoRef}
-              filterStyle={filterStyle}
-              mirrored={false}
-              effectPreset={effectPreset}
-              placeholder={isQueueing ? 'La roulette cherche un joueur AuraTracker disponible.' : 'Passe en recherche pour lancer une rencontre aleatoire.'}
-            />
+          <div className="ml-3 flex items-center gap-2 text-xs">
+            <span className={cn('rounded-full border px-2 py-1', connected ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600' : 'border-amber-500/30 bg-amber-500/10 text-amber-600')}>
+              {connected ? 'Connecte' : 'Connexion'}
+            </span>
+            <span className="rounded-full border border-border/60 bg-card/70 px-2 py-1 text-muted-foreground">
+              {queueCount} en file
+            </span>
           </div>
+        </div>
 
-          <Card className="overflow-hidden border-border/60 bg-card/70 shadow-sm">
-            <CardContent className="space-y-4 p-5">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex min-w-[220px] flex-1 items-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
-                  <Orbit className="h-4 w-4 text-primary" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Statut de la session</p>
-                    <p className="text-xs text-muted-foreground">{status}</p>
-                  </div>
+        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(320px,0.95fr)]">
+          <VideoPanel
+            title={user?.username ? `${user.username} (toi)` : 'Toi'}
+            subtitle={cameraEnabled ? 'Camera active' : 'Camera coupee'}
+            icon={Camera}
+            videoRef={localVideoRef}
+            filterStyle={filterStyle}
+            mirrored={mirrorLocal}
+            effectPreset={effectPreset}
+            placeholder="Retour local"
+            muted
+          />
+          <VideoPanel
+            title={peerName ?? 'Aucun joueur'}
+            subtitle={peerConnected ? 'Connecte' : isQueueing ? 'Recherche...' : 'Hors session'}
+            icon={MonitorPlay}
+            videoRef={remoteVideoRef}
+            filterStyle={filterStyle}
+            mirrored={false}
+            effectPreset={effectPreset}
+            placeholder={isQueueing ? 'Connexion en cours...' : 'Clique sur Next pour lancer une session'}
+          />
+
+          <Card className="min-h-0 border-border/60 bg-background/70">
+            <CardContent className="flex h-full min-h-0 flex-col p-0">
+              <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">Chat de session</p>
+                  <p className="truncate text-[11px] text-muted-foreground">{peerName ? `Avec ${peerName}` : 'En attente de connexion'}</p>
                 </div>
-                {error ? (
-                  <div className="rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-xs text-red-600">
-                    {error}
-                  </div>
-                ) : null}
+                {sessionId ? <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] text-primary">Session {sessionId.slice(0, 6)}</span> : null}
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={() => void handleJoinQueue()} disabled={isPreparing || !connected || !rulesAccepted} className="gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  {isQueueing ? 'Relancer la recherche' : 'Lancer AuraVision'}
-                </Button>
-                <Button onClick={() => void handleNext()} variant="outline" disabled={isPreparing || !connected} className="gap-2">
-                  <RefreshCw className="h-4 w-4" />
-                  Joueur suivant
-                </Button>
-                <Button onClick={() => leaveEverything(true)} variant="outline" className="gap-2">
-                  <Orbit className="h-4 w-4" />
-                  Quitter la roulette
-                </Button>
-                <Button
-                  onClick={() => setReportOpen(true)}
-                  variant="outline"
-                  className="gap-2"
-                  disabled={!peerName}
-                >
-                  <Flag className="h-4 w-4" />
-                  Signaler
-                </Button>
-                <Button onClick={() => setMicrophoneEnabled((value) => !value)} variant="outline" className="gap-2">
-                  {microphoneEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                  {microphoneEnabled ? 'Couper micro' : 'Rallumer micro'}
-                </Button>
-                <Button onClick={() => setCameraEnabled((value) => !value)} variant="outline" className="gap-2">
-                  {cameraEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-                  {cameraEnabled ? 'Couper camera' : 'Rallumer camera'}
-                </Button>
+              <div ref={messagesRef} className="min-h-0 flex-1 overflow-y-auto bg-muted/15 px-3 py-3">
+                {messages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
+                    Les messages apparaitront ici.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {messages.map((message) => {
+                      const isOwn = message.senderId === user?.id;
+                      return (
+                        <div key={message.id} className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}>
+                          <div
+                            className={cn(
+                              'max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-5',
+                              isOwn
+                                ? 'rounded-br-sm bg-primary text-primary-foreground'
+                                : 'rounded-bl-sm border border-border/60 bg-card text-foreground',
+                            )}
+                          >
+                            {!isOwn ? <p className="mb-0.5 text-[11px] font-semibold text-muted-foreground">{message.sender}</p> : null}
+                            <p className="whitespace-pre-wrap break-words">{message.body}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border/60 bg-card px-3 py-2.5">
+                <div className="flex items-end gap-2">
+                  <div className="flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 focus-within:border-primary/40 focus-within:bg-background transition-colors">
+                    <textarea
+                      value={chatDraft}
+                      rows={1}
+                      onChange={(event) => setChatDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder="Envoyer un message..."
+                      className="w-full resize-none bg-transparent text-sm leading-5 outline-none placeholder:text-muted-foreground/50"
+                      maxLength={280}
+                      style={{ minHeight: '20px' }}
+                      disabled={!sessionId}
+                    />
+                  </div>
+                  <Button onClick={handleSendMessage} size="icon" className="h-9 w-9 rounded-xl" disabled={!sessionId || !chatDraft.trim()}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card className="border-border/60 bg-card/70">
-            <CardContent className="space-y-5 p-5">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold">Studio AuraVision</p>
-                <p className="text-xs text-muted-foreground">
-                  Regle tes filtres et garde une ambiance fun pendant les cours.
-                </p>
+        <div className="relative">
+          {effectsOpen ? (
+            <div className="absolute bottom-[calc(100%+0.6rem)] right-0 z-20 w-[min(92vw,420px)] rounded-2xl border border-border/70 bg-background/95 p-3 shadow-xl backdrop-blur">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-semibold">Effets video</p>
+                <span className="text-[11px] text-muted-foreground">{effectMeta.label} · {intensity}%</span>
               </div>
-
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Filtre video</label>
-                <Select value={filterPreset} onValueChange={(value) => setFilterPreset(value as FilterPreset)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir un filtre" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FILTER_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Intensite</span>
-                  <span>{intensity}%</span>
+                <p className="text-[11px] text-muted-foreground">Filtre</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {FILTER_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFilterPreset(option.value)}
+                      className={cn(
+                        'rounded-xl border px-2 py-1.5 text-xs transition-colors',
+                        filterPreset === option.value
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
-                <Slider value={[intensity]} min={0} max={100} step={1} onValueChange={(value) => setIntensity(value[0] ?? 0)} />
               </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Effet visuel</p>
-                    <p className="text-[11px] text-muted-foreground/80">{effectMeta.description}</p>
-                  </div>
-                  <Waves className="h-4 w-4 text-primary" />
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
+              <div className="mt-3 space-y-2">
+                <p className="text-[11px] text-muted-foreground">Effet</p>
+                <div className="grid grid-cols-2 gap-2">
                   {EFFECT_OPTIONS.map((option) => (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => setEffectPreset(option.value)}
                       className={cn(
-                        'rounded-2xl border px-3 py-3 text-left transition-all',
+                        'rounded-xl border px-2 py-2 text-left transition-colors',
                         effectPreset === option.value
                           ? 'border-primary bg-primary/10 text-foreground'
-                          : 'border-border/60 bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                          : 'border-border/60 bg-card text-muted-foreground hover:text-foreground',
                       )}
                     >
-                      <p className="text-sm font-medium">{option.label}</p>
-                      <p className="mt-1 text-[11px]">{option.description}</p>
+                      <p className="text-xs font-medium">{option.label}</p>
+                      <p className="mt-1 text-[10px] leading-4">{option.description}</p>
                     </button>
                   ))}
                 </div>
               </div>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span>Intensite</span>
+                  <span>{intensity}%</span>
+                </div>
+                <Slider value={[intensity]} min={0} max={100} step={1} onValueChange={(value) => setIntensity(value[0] ?? 0)} />
+              </div>
+            </div>
+          ) : null}
 
-              <ToggleRow
-                label="Miroir sur mon retour"
-                description="Plus naturel pour te cadrer rapidement."
-                checked={mirrorLocal}
-                onCheckedChange={setMirrorLocal}
-              />
-              <ToggleRow
-                label="Auto suivant"
-                description="Relance la recherche automatiquement si l autre joueur part."
-                checked={autoNext}
-                onCheckedChange={setAutoNext}
-              />
-              <ToggleRow
-                label="Je respecte les regles AuraVision"
-                description="Pas d insultes, pas de contenu sexuel, pas de harcelement."
-                checked={rulesAccepted}
-                onCheckedChange={setRulesAccepted}
-              />
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/85 p-2 backdrop-blur">
+            <div className="flex items-center gap-2">
+              <Button onClick={handlePrimaryNext} disabled={isPreparing || !connected || !rulesAccepted} className="gap-2 rounded-xl">
+                <RefreshCw className={cn('h-4 w-4', isPreparing && 'animate-spin')} />
+                <span>{sessionId || isQueueing ? 'Next' : 'Demarrer'}</span>
+              </Button>
+              <Button onClick={() => setMicrophoneEnabled((value) => !value)} variant="outline" className="gap-2 rounded-xl">
+                {microphoneEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                <span className="hidden sm:inline">Micro</span>
+              </Button>
+              <Button onClick={() => setCameraEnabled((value) => !value)} variant="outline" className="gap-2 rounded-xl">
+                {cameraEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+                <span className="hidden sm:inline">Camera</span>
+              </Button>
+            </div>
 
-          <Card className="border-border/60 bg-card/70">
-            <CardContent className="space-y-4 p-5">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-primary" />
-                <p className="text-sm font-semibold">Regles & securite</p>
-              </div>
-              <div className="space-y-3 text-sm text-muted-foreground">
-                <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-                  Respect total: pas de moqueries, pas de pression, pas de spam vocal.
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-                  Contenus sexuels, menaces, captures malveillantes et doxxing interdits.
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-                  En cas de souci, coupe la session, passe au suivant et utilise le bouton de signalement.
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 bg-card/70">
-            <CardContent className="space-y-4 p-5">
-              <div className="flex items-center gap-2">
-                <Send className="h-4 w-4 text-primary" />
-                <p className="text-sm font-semibold">Chat de session</p>
-              </div>
-              <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-border/60 bg-background/60 p-3">
-                {messages.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Les messages de la rencontre apparaitront ici.</p>
-                ) : (
-                  messages.map((message) => (
-                    <div key={message.id} className="rounded-xl border border-border/50 bg-card/80 px-3 py-2">
-                      <p className="text-xs font-medium">{message.sender}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{message.body}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Textarea
-                  value={chatDraft}
-                  onChange={(event) => setChatDraft(event.target.value)}
-                  placeholder="Envoyer un message rapide..."
-                  className="min-h-[52px] resize-none"
-                  maxLength={280}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  className="self-end"
-                  disabled={!sessionId || !chatDraft.trim()}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/60 bg-card/70">
-            <CardContent className="space-y-4 p-5">
-              <p className="text-sm font-semibold">Mode d emploi rapide</p>
-              <div className="space-y-3 text-sm text-muted-foreground">
-                <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-                  1. Autorise camera et micro, puis lance la roulette.
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-                  2. AuraVision te connecte aleatoirement a un autre joueur disponible.
-                </div>
-                <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-                  3. Ajuste tes filtres, coupe ton micro si besoin et passe au suivant en un clic.
-                </div>
-              </div>
-              {sessionId ? (
-                <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-3 text-xs text-primary">
-                  Session active: {sessionId.slice(0, 8)}
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setEffectsOpen((open) => !open)} variant="outline" className="gap-2 rounded-xl">
+                <Waves className="h-4 w-4" />
+                <span className="hidden sm:inline">Effets</span>
+              </Button>
+              <Button onClick={() => setReportOpen(true)} variant="outline" className="gap-2 rounded-xl" disabled={!peerName}>
+                <Flag className="h-4 w-4" />
+                <span className="hidden sm:inline">Signaler</span>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -838,29 +798,28 @@ export default function AuraVision() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageShell>
-  );
-}
 
-function ToggleRow({
-  label,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onCheckedChange: (value: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-      <div className="space-y-1">
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-[11px] text-muted-foreground">{description}</p>
-      </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
-    </div>
+      <Dialog open={rulesModalOpen} onOpenChange={(open) => (rulesAccepted ? setRulesModalOpen(open) : undefined)}>
+        <DialogContent className="[&>button]:hidden">
+          <DialogHeader>
+            <DialogTitle>Regles AuraVision</DialogTitle>
+            <DialogDescription>
+              Avant de commencer, tu dois accepter les regles de securite et de respect.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-3 text-sm text-muted-foreground">
+            <p>Pas de contenu sexuel, violent, humiliant ou discriminant.</p>
+            <p>Pas de harcelement, menace, spam vocal ou tentative de doxxing.</p>
+            <p>Si un comportement pose probleme, passe au suivant puis utilise Signaler.</p>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleAcceptRules} className="w-full">
+              J accepte les regles
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </PageShell>
   );
 }
 
@@ -886,11 +845,11 @@ function VideoPanel({
   muted?: boolean;
 }) {
   return (
-    <Card className="overflow-hidden border-border/60 bg-card/75">
-      <CardContent className="p-0">
+    <Card className="min-h-0 overflow-hidden border-border/60 bg-card/75">
+      <CardContent className="h-full p-0">
         <div
           className={cn(
-            'relative aspect-[4/5] overflow-hidden bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.22),transparent_42%),radial-gradient(circle_at_bottom,rgba(217,70,239,0.16),transparent_38%),linear-gradient(160deg,rgba(15,23,42,0.96),rgba(10,10,18,0.98))]',
+            'relative h-full overflow-hidden bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.22),transparent_42%),radial-gradient(circle_at_bottom,rgba(217,70,239,0.16),transparent_38%),linear-gradient(160deg,rgba(15,23,42,0.96),rgba(10,10,18,0.98))]',
             effectPreset === 'halo' && 'auravision-halo',
             effectPreset === 'scanlines' && 'auravision-scanlines',
             effectPreset === 'pulse' && 'auravision-pulse',
@@ -906,7 +865,7 @@ function VideoPanel({
             style={{ filter: filterStyle }}
           />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_48%,rgba(7,10,18,0.24)_100%)]" />
-          <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">
+          <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-3">
             <div className="rounded-2xl border border-white/10 bg-black/35 px-3 py-2 text-white backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <Icon className="h-4 w-4 text-cyan-300" />
@@ -915,7 +874,7 @@ function VideoPanel({
               <p className="mt-1 text-xs text-white/70">{subtitle}</p>
             </div>
           </div>
-          <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-white/10 bg-black/35 px-3 py-2 text-xs text-white/70 backdrop-blur-md">
+          <div className="absolute bottom-3 left-3 right-3 rounded-2xl border border-white/10 bg-black/35 px-3 py-2 text-xs text-white/70 backdrop-blur-md">
             {placeholder}
           </div>
         </div>

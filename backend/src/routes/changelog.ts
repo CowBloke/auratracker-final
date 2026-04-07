@@ -24,7 +24,7 @@ const SEED_ENTRIES = [
     id: '2026-04-07-messages-group-info-modal',
     date: '2026-04-07',
     title: 'Messagerie — Gestion des groupes & Amendes Admin',
-    summary: "Les groupes de discussion s'ouvrent maintenant dans une fiche unique, avec description modifiable, membres scrollables et notifications visibles dans le fil. Les plaintes judiciaires et les amendes admin sont aussi plus simples à gérer.",
+    summary: "Les groupes de discussion s'ouvrent maintenant dans une fiche unique, avec description modifiable, membres scrollables et notifications visibles dans le fil. Les plaintes judiciaires et les amendes admin sont aussi plus simples à gérer, et AuraVision adopte une interface en trois colonnes beaucoup plus epuree.",
     items: [
       { category: 'SMALL_FEATURE', text: "**Fiche de groupe unifiée** — Le titre d'un groupe ouvre désormais un panneau unique pour modifier le nom, l'icône, la photo et gérer les membres sans passer par plusieurs menus.", order: 0 },
       { category: 'SMALL_FEATURE', text: "**Amendes administrateur** — Les admins peuvent maintenant appliquer des amendes avec montant configurable via un slider (10—5000). L'amende s'affiche en rouge sur l'écran de l'utilisateur sanctionné.", order: 1 },
@@ -32,6 +32,7 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: "**Cour Suprême · Détails d'accusation** — Chaque plainte de tricherie s'ouvre désormais dans une modale dédiée depuis la liste, avec la description complète et les boutons de décision au même endroit.", order: 3 },
       { category: 'SMALL_FEATURE', text: "**Infos du groupe enrichies** — La fiche de groupe affiche maintenant une description modifiable sous le titre, une liste complète des membres dans une zone scrollable et un vrai bouton d'ajout de membre au même niveau que les autres actions.", order: 4 },
       { category: 'SMALL_FEATURE', text: "**Actions de groupe visibles** — Les créations, ajouts, retraits, départs et changements d'icône de groupe créent désormais des messages système visibles dans la conversation, afin que toute l'équipe voie les modifications dans le fil.", order: 5 },
+      { category: 'SMALL_FEATURE', text: "**AuraVision · Interface minimaliste** — La page AuraVision passe sur un layout 3 colonnes sans scroll (camera locale, camera distante, chat), avec une barre d'actions compacte en bas (Next, micro, camera, effets, signalement), un panneau d'effets flottant et une modale d'acceptation des regles obligatoire au premier lancement.", order: 6 },
     ],
   },
   {
