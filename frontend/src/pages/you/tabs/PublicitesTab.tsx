@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Megaphone, Plus, Trash2 } from 'lucide-react';
+import { Building2, Check, Megaphone, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { type Ad, type AdCreateInput, type YouBusiness, adsApi } from '@/services/api';
+import { ImagePicker } from '@/components/ui/image-picker';
+import { resolveImageUrl } from '@/lib/images';
+import { prepareImageUploadPayload } from '@/lib/image-upload';
+import { type Ad, type AdCreateInput, type YouBusiness, adsApi, uploadUserImage } from '@/services/api';
 import { FieldRow, ModalWrap, SectionTitle, SelectBox } from '../components/ui';
 
 type AdType = 'CARD' | 'BANNER' | 'INTERSTITIAL';
@@ -33,7 +36,9 @@ export function PublicitesTab({
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [openCreate, setOpenCreate] = useState(false);
+  const [openBusinessPicker, setOpenBusinessPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [redirectBusinessId, setRedirectBusinessId] = useState<string>('');
   const [form, setForm] = useState<AdCreateInput>({
     businessId: ownedBusinesses[0]?.id ?? '',
     title: '',
@@ -45,6 +50,7 @@ export function PublicitesTab({
   });
 
   const activeAdsCount = useMemo(() => ads.filter((ad) => ad.isActive && ad.status === 'APPROVED').length, [ads]);
+  const redirectBusiness = ownedBusinesses.find((b) => b.id === redirectBusinessId) ?? null;
 
   const loadAds = async () => {
     setLoading(true);
@@ -68,8 +74,26 @@ export function PublicitesTab({
     }
   }, [form.businessId, ownedBusinesses]);
 
+  const uploadAdImage = async (file: File): Promise<string> => {
+    const payload = await prepareImageUploadPayload(file);
+    const response = await uploadUserImage(payload);
+    return response.data.imageUrl;
+  };
+
+  const resetForm = () => {
+    setRedirectBusinessId('');
+    setForm((prev) => ({
+      ...prev,
+      title: '',
+      tagline: '',
+      imageUrl: '',
+      ctaText: 'En savoir plus',
+      ctaLink: '',
+    }));
+  };
+
   const createAd = async () => {
-    if (!form.businessId || !form.title.trim() || !form.tagline.trim() || !form.ctaLink.trim()) {
+    if (!form.businessId || !form.title.trim() || !form.tagline.trim() || !redirectBusinessId) {
       toast.error('Remplis les champs obligatoires.');
       return;
     }
@@ -80,20 +104,13 @@ export function PublicitesTab({
         ...form,
         title: form.title.trim(),
         tagline: form.tagline.trim(),
-        ctaLink: form.ctaLink.trim(),
+        ctaLink: `/you?tab=explore&business=${redirectBusinessId}`,
         ctaText: form.ctaText?.trim() || 'En savoir plus',
         imageUrl: form.imageUrl?.trim() || null,
       });
       toast.success('Publicite creee');
       setOpenCreate(false);
-      setForm((prev) => ({
-        ...prev,
-        title: '',
-        tagline: '',
-        imageUrl: '',
-        ctaLink: '',
-        ctaText: 'En savoir plus',
-      }));
+      resetForm();
       await loadAds();
       await onReload();
     } catch (error: any) {
@@ -144,9 +161,7 @@ export function PublicitesTab({
       </div>
 
       {ownedBusinesses.length === 0 ? <EmptyState text="Tu dois creer une entreprise avant de publier des publicites." /> : null}
-
       {ownedBusinesses.length > 0 && loading ? <EmptyState text="Chargement des publicites..." /> : null}
-
       {ownedBusinesses.length > 0 && !loading && ads.length === 0 ? <EmptyState text="Aucune publicite pour le moment." /> : null}
 
       {ads.map((ad) => (
@@ -180,7 +195,7 @@ export function PublicitesTab({
 
       <ModalWrap
         open={openCreate}
-        onClose={() => setOpenCreate(false)}
+        onClose={() => { setOpenCreate(false); resetForm(); }}
         title={<span className="inline-flex items-center gap-2"><Megaphone className="h-4 w-4" />Creer une publicite</span>}
         desc="Les publicites sont visibles dans la grille des jeux, la page You et avant certains lancements de jeu."
       >
@@ -218,15 +233,15 @@ export function PublicitesTab({
           />
         </FieldRow>
 
-        <FieldRow label="Image URL (optionnel)">
-          <Input
+        <FieldRow label="Image (optionnel)">
+          <ImagePicker
             value={form.imageUrl ?? ''}
-            onChange={(event) => setForm((prev) => ({ ...prev, imageUrl: event.target.value }))}
-            placeholder="https://..."
+            onChange={(url) => setForm((prev) => ({ ...prev, imageUrl: url }))}
+            uploadFn={uploadAdImage}
           />
         </FieldRow>
 
-        <FieldRow label="Texte CTA">
+        <FieldRow label="Texte du bouton">
           <Input
             value={form.ctaText ?? ''}
             onChange={(event) => setForm((prev) => ({ ...prev, ctaText: event.target.value }))}
@@ -234,17 +249,64 @@ export function PublicitesTab({
           />
         </FieldRow>
 
-        <FieldRow label="Lien CTA">
-          <Input
-            value={form.ctaLink}
-            onChange={(event) => setForm((prev) => ({ ...prev, ctaLink: event.target.value }))}
-            placeholder="/you?tab=travail ou https://..."
-          />
+        <FieldRow label="Redirection vers *">
+          {redirectBusiness ? (
+            <div className="flex items-center gap-3 rounded-md border border-border bg-background px-3 py-2">
+              {redirectBusiness.logoUrl ? (
+                <img src={resolveImageUrl(redirectBusiness.logoUrl)} alt="" className="h-7 w-7 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+              )}
+              <span className="flex-1 truncate text-sm font-medium">{redirectBusiness.name}</span>
+              <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setOpenBusinessPicker(true)}>
+                Changer
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" className="w-full gap-2" onClick={() => setOpenBusinessPicker(true)}>
+              <Building2 className="h-4 w-4" />
+              Choisir un business
+            </Button>
+          )}
+          <p className="text-xs text-muted-foreground">Cliquer sur la pub ouvrira la fiche de ce business dans l&apos;Explore.</p>
         </FieldRow>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={() => setOpenCreate(false)}>Annuler</Button>
+          <Button type="button" variant="outline" onClick={() => { setOpenCreate(false); resetForm(); }}>Annuler</Button>
           <Button type="button" onClick={() => void createAd()} disabled={saving}>{saving ? 'Creation...' : 'Creer'}</Button>
+        </div>
+      </ModalWrap>
+
+      <ModalWrap
+        open={openBusinessPicker}
+        onClose={() => setOpenBusinessPicker(false)}
+        title="Choisir un business"
+        desc="La publicite redirigera les joueurs vers ce business dans l'Explore."
+      >
+        <div className="space-y-2">
+          {ownedBusinesses.map((business) => (
+            <button
+              key={business.id}
+              type="button"
+              onClick={() => { setRedirectBusinessId(business.id); setOpenBusinessPicker(false); }}
+              className={`flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors hover:bg-muted/20 ${redirectBusinessId === business.id ? 'border-primary bg-primary/5' : 'border-border'}`}
+            >
+              {business.logoUrl ? (
+                <img src={resolveImageUrl(business.logoUrl)} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{business.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{business.type?.label ?? business.typeKey}</p>
+              </div>
+              {redirectBusinessId === business.id ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
+            </button>
+          ))}
         </div>
       </ModalWrap>
     </div>

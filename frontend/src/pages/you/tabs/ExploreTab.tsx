@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeftRight,
   Briefcase,
@@ -1531,6 +1531,8 @@ export function ExploreTab({
   onReload: (refreshBalance?: boolean) => Promise<void>;
 }) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledBusinessParam = useRef(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'you' | 'player'>('all');
@@ -1573,6 +1575,20 @@ export function ExploreTab({
     () => [...data.ownedBusinesses, ...data.exploreBusinesses],
     [data.exploreBusinesses, data.ownedBusinesses],
   );
+
+  // Open business modal from URL param (e.g. when coming from an ad click)
+  useEffect(() => {
+    if (handledBusinessParam.current) return;
+    const businessId = searchParams.get('business');
+    if (!businessId) return;
+    handledBusinessParam.current = true;
+    setDetailBusinessId(businessId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('business');
+      return next;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const now = Date.now();
