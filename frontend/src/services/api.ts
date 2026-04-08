@@ -1387,7 +1387,17 @@ export interface ClanSummary {
     territory: {
       key: string;
       label: string;
+      region: string;
+      x: number;
+      y: number;
       bonus: string;
+    };
+    flag: {
+      primary: string;
+      secondary: string;
+      accent: string;
+      pattern: string;
+      icon: string;
     };
     alliances: Array<{
       clanId: string;
@@ -1418,6 +1428,9 @@ export interface ClanSummary {
     territories: Array<{
       key: string;
       label: string;
+      region: string;
+      x: number;
+      y: number;
       bonus: string;
     }>;
   };
@@ -1890,6 +1903,8 @@ export const clansApi = {
     api.put<{ success: boolean; tagText: string | null; tagStyle: string | null }>(`/clans/${id}/tag`, data),
   requestAlliance: (clanId: string, targetClanId: string) =>
     api.post<{ success: boolean }>(`/clans/${clanId}/nation/alliances/request`, { targetClanId }),
+  updateNationFoundation: (clanId: string, data: { territoryKey: string; flag: { primary: string; secondary: string; accent: string; pattern: string; icon: string } }) =>
+    api.put<{ success: boolean }>(`/clans/${clanId}/nation/foundation`, data),
   respondAlliance: (clanId: string, requestClanId: string, decision: 'accept' | 'reject') =>
     api.post<{ success: boolean }>(`/clans/${clanId}/nation/alliances/respond`, { requestClanId, decision }),
   betrayAlliance: (clanId: string, allyClanId: string) =>

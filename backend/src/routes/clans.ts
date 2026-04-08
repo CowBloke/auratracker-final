@@ -39,12 +39,38 @@ const BLACK_MARKET_WEAPONS = {
   SNIPER: { label: 'Sniper', price: 1500000, disabledSlots: 3, penaltyPoints: 36 },
 } as const;
 const NATION_TERRITORIES = [
-  { key: 'district-1', label: 'Centre historique', bonus: 'Influence commerciale' },
-  { key: 'district-2', label: 'Port industriel', bonus: 'Intimidation logistique' },
-  { key: 'district-3', label: 'Quartier financier', bonus: 'Controle des prix' },
-  { key: 'district-4', label: 'Zone residentielle', bonus: 'Recrutement discret' },
-  { key: 'district-5', label: 'Banlieue nord', bonus: 'Reserve de membres' },
-  { key: 'district-6', label: 'Marches souterrains', bonus: 'Acces marche noir' },
+  { key: 'paris-fr', label: 'Paris', region: 'Europe', x: 50, y: 26, bonus: 'Influence commerciale' },
+  { key: 'madrid-es', label: 'Madrid', region: 'Europe', x: 45, y: 31, bonus: 'Réseaux discrets' },
+  { key: 'rome-it', label: 'Rome', region: 'Europe', x: 53, y: 33, bonus: 'Prestige historique' },
+  { key: 'berlin-de', label: 'Berlin', region: 'Europe', x: 53, y: 23, bonus: 'Discipline logistique' },
+  { key: 'london-uk', label: 'Londres', region: 'Europe', x: 44, y: 20, bonus: 'Finance offshore' },
+  { key: 'stockholm-se', label: 'Stockholm', region: 'Europe', x: 56, y: 14, bonus: 'Technologie froide' },
+  { key: 'warsaw-pl', label: 'Varsovie', region: 'Europe', x: 58, y: 22, bonus: 'Solidité militaire' },
+  { key: 'istanbul-tr', label: 'Istanbul', region: 'Europe', x: 61, y: 31, bonus: 'Pont des marchés' },
+  { key: 'newyork-us', label: 'New York', region: 'Amérique du Nord', x: 23, y: 25, bonus: 'Capitaux massifs' },
+  { key: 'miami-us', label: 'Miami', region: 'Amérique du Nord', x: 20, y: 35, bonus: 'Transit clandestin' },
+  { key: 'losangeles-us', label: 'Los Angeles', region: 'Amérique du Nord', x: 7, y: 30, bonus: 'Industrie médiatique' },
+  { key: 'mexicocity-mx', label: 'Mexico', region: 'Amérique du Nord', x: 12, y: 39, bonus: 'Flux frontaliers' },
+  { key: 'toronto-ca', label: 'Toronto', region: 'Amérique du Nord', x: 19, y: 22, bonus: 'Réserve de talents' },
+  { key: 'bogota-co', label: 'Bogota', region: 'Amérique du Sud', x: 24, y: 49, bonus: 'Routes andines' },
+  { key: 'lima-pe', label: 'Lima', region: 'Amérique du Sud', x: 18, y: 59, bonus: 'Contrôle côtier' },
+  { key: 'saopaulo-br', label: 'São Paulo', region: 'Amérique du Sud', x: 30, y: 63, bonus: 'Marché géant' },
+  { key: 'buenosaires-ar', label: 'Buenos Aires', region: 'Amérique du Sud', x: 28, y: 75, bonus: 'Pression du sud' },
+  { key: 'casablanca-ma', label: 'Casablanca', region: 'Afrique', x: 44, y: 39, bonus: 'Accès atlantique' },
+  { key: 'lagos-ng', label: 'Lagos', region: 'Afrique', x: 50, y: 54, bonus: 'Croissance explosive' },
+  { key: 'nairobi-ke', label: 'Nairobi', region: 'Afrique', x: 58, y: 58, bonus: 'Corridors est-africains' },
+  { key: 'johannesburg-za', label: 'Johannesburg', region: 'Afrique', x: 57, y: 78, bonus: 'Mainmise minière' },
+  { key: 'dubai-ae', label: 'Dubaï', region: 'Moyen-Orient', x: 67, y: 40, bonus: 'Liquidités rapides' },
+  { key: 'riyadh-sa', label: 'Riyad', region: 'Moyen-Orient', x: 64, y: 44, bonus: 'Influence énergétique' },
+  { key: 'mumbai-in', label: 'Mumbai', region: 'Asie', x: 73, y: 47, bonus: 'Hub industriel' },
+  { key: 'delhi-in', label: 'Delhi', region: 'Asie', x: 76, y: 40, bonus: 'Poids démographique' },
+  { key: 'bangkok-th', label: 'Bangkok', region: 'Asie', x: 82, y: 50, bonus: 'Réseaux gris' },
+  { key: 'singapore-sg', label: 'Singapour', region: 'Asie', x: 85, y: 58, bonus: 'Port stratégique' },
+  { key: 'hongkong-cn', label: 'Hong Kong', region: 'Asie', x: 86, y: 42, bonus: 'Trading agressif' },
+  { key: 'tokyo-jp', label: 'Tokyo', region: 'Asie', x: 94, y: 33, bonus: 'Puissance technologique' },
+  { key: 'seoul-kr', label: 'Séoul', region: 'Asie', x: 91, y: 31, bonus: 'Coordination tactique' },
+  { key: 'sydney-au', label: 'Sydney', region: 'Océanie', x: 92, y: 77, bonus: 'Expansion pacifique' },
+  { key: 'auckland-nz', label: 'Auckland', region: 'Océanie', x: 98, y: 84, bonus: 'Repli sécurisé' },
 ] as const;
 
 const clanMemberUserSelect = {
@@ -367,6 +393,7 @@ const serializeNationLayer = (clan: {
   intimidation: number;
   marketControl: number;
   territoryKey: string;
+  nationFlag: string;
   alliancesJson: string;
   allianceRequestsJson: string;
   arsenalJson: string;
@@ -379,6 +406,10 @@ const serializeNationLayer = (clan: {
   marketControl: clan.marketControl,
   territoryKey: clan.territoryKey,
   territory: NATION_TERRITORIES.find((entry) => entry.key === clan.territoryKey) ?? NATION_TERRITORIES[0],
+  flag: safeJsonParse<{ primary: string; secondary: string; accent: string; pattern: string; icon: string }>(
+    clan.nationFlag,
+    { primary: '#1d4ed8', secondary: '#f8fafc', accent: '#dc2626', pattern: 'tricolor', icon: 'star' }
+  ),
   alliances: safeJsonParse<Array<{ clanId: string; name: string; status: 'ALLY' | 'BROKEN'; forgedAt: string; betrayedAt?: string | null }>>(clan.alliancesJson, []),
   allianceRequests: safeJsonParse<Array<{ clanId: string; name: string; requestedAt: string }>>(clan.allianceRequestsJson, []),
   arsenal: safeJsonParse<Record<string, number>>(clan.arsenalJson, { PISTOL: 0, AK: 0, SNIPER: 0 }),
@@ -1770,6 +1801,61 @@ router.post('/:id/nation/black-market/buy', authMiddleware, async (req: AuthRequ
   } catch (error) {
     console.error('Nation black market error:', error);
     res.status(500).json({ error: 'Impossible de finaliser cette operation du marche noir.' });
+  }
+});
+
+router.put('/:id/nation/foundation', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const territoryKey = typeof req.body.territoryKey === 'string' ? req.body.territoryKey : '';
+    const flag = typeof req.body.flag === 'object' && req.body.flag ? req.body.flag as Record<string, string> : null;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const leader = await prisma.clanMember.findUnique({
+      where: { clanId_userId: { clanId: id, userId } },
+      select: { isLeader: true },
+    });
+    if (!leader?.isLeader) {
+      return res.status(403).json({ error: 'Seul le chef peut fonder la nation.' });
+    }
+
+    const territory = NATION_TERRITORIES.find((entry) => entry.key === territoryKey);
+    if (!territory) {
+      return res.status(400).json({ error: 'Territoire invalide.' });
+    }
+
+    const occupied = await prisma.clan.findFirst({
+      where: {
+        territoryKey,
+        id: { not: id },
+      },
+      select: { id: true, name: true },
+    });
+    if (occupied) {
+      return res.status(400).json({ error: `${occupied.name} occupe deja ce territoire.` });
+    }
+
+    const nextFlag = {
+      primary: typeof flag?.primary === 'string' ? flag.primary : '#1d4ed8',
+      secondary: typeof flag?.secondary === 'string' ? flag.secondary : '#f8fafc',
+      accent: typeof flag?.accent === 'string' ? flag.accent : '#dc2626',
+      pattern: typeof flag?.pattern === 'string' ? flag.pattern : 'tricolor',
+      icon: typeof flag?.icon === 'string' ? flag.icon : 'star',
+    };
+
+    await prisma.clan.update({
+      where: { id },
+      data: {
+        territoryKey,
+        nationFlag: JSON.stringify(nextFlag),
+      },
+    });
+
+    res.json({ success: true, territory, flag: nextFlag });
+  } catch (error) {
+    console.error('Nation foundation error:', error);
+    res.status(500).json({ error: 'Impossible de mettre a jour le territoire ou le drapeau.' });
   }
 });
 
