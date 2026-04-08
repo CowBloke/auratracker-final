@@ -187,6 +187,9 @@ const sortConversationsByRecent = (items: MessagingConversationSummary[]) =>
     return a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
   });
 
+const sortConversationsByRecentRegardlessOfReadState = (items: MessagingConversationSummary[]) =>
+  sortConversationsByRecent(items);
+
 const DM_SORT_OPTIONS = {
   RECENT: 'Recentes',
   UNREAD: 'Non lus',
@@ -739,8 +742,8 @@ export default function MessagesPage() {
 
     if (dmSortMode === 'RECENT') {
       return {
-        pinnedDms: sortConversationsByRecent(pinnedDmsOnly),
-        dms: sortConversationsByRecent([...unpinnedDmsOnly, ...nonDmOnly]),
+        pinnedDms: sortConversationsByRecentRegardlessOfReadState(pinnedDmsOnly),
+        dms: sortConversationsByRecentRegardlessOfReadState([...unpinnedDmsOnly, ...nonDmOnly]),
         others: [],
       };
     }
@@ -2360,6 +2363,10 @@ function ConvRow({
   onToggleFavorite: (e: React.MouseEvent) => void;
   onToggleDmPin: (e: React.MouseEvent) => void;
 }) {
+  const dmParticipant = conversation.type === 'DM'
+    ? conversation.participants.find((entry) => entry.user.id !== 'support')?.user ?? null
+    : null;
+
   return (
     <button
       type="button"
@@ -2373,7 +2380,12 @@ function ConvRow({
       <div className="min-w-0 flex-1 overflow-hidden">
         <div className="flex items-baseline justify-between gap-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            <p className={cn('truncate text-xs font-semibold', isActive && 'text-primary')}>{conversation.displayName}</p>
+            <p
+              className={cn('truncate text-xs font-semibold', conversation.type === 'DM' && 'text-foreground', isActive && conversation.type !== 'DM' && 'text-primary')}
+              style={conversation.type === 'DM' && dmParticipant?.usernameColor ? { color: dmParticipant.usernameColor } : undefined}
+            >
+              {conversation.displayName}
+            </p>
             {conversation.type === 'SUPPORT' && (
               <span className="shrink-0 rounded-full bg-sky-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sky-600">
                 Support
@@ -2395,7 +2407,10 @@ function ConvRow({
         <div className="flex items-center justify-between gap-1">
           <p className="truncate text-[11px] text-muted-foreground">{getPreview(conversation)}</p>
           {conversation.unreadCount > 0 && (
-            <span className="shrink-0 inline-flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+            <span
+              className="shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-primary/20 bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground shadow-sm"
+              title={`${conversation.unreadCount} message${conversation.unreadCount > 1 ? 's' : ''} non lu${conversation.unreadCount > 1 ? 's' : ''}`}
+            >
               {conversation.unreadCount}
             </span>
           )}
