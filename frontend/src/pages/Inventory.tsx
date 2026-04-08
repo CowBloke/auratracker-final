@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { marketplaceApi, uploadUserImage } from '../services/api';
+import { type Ad, adsApi, marketplaceApi, uploadUserImage } from '../services/api';
+import { AdCard } from '@/components/ads/AdCard';
+import { AdBanner } from '@/components/ads/AdBanner';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { Loader2, Palette, Camera, Package, Tag, Award } from 'lucide-react';
 import { cn, humanizeUiLabel } from '@/lib/utils';
@@ -127,12 +129,20 @@ export default function Inventory() {
   const [sortMode, setSortMode] = useState<InventorySortMode>('recent');
   const [viewMode, setViewMode] = useState<InventoryViewMode>('list');
   const [filterType, setFilterType] = useState<string>('ALL');
+  const [cardAds, setCardAds] = useState<Ad[]>([]);
+  const [bannerAd, setBannerAd] = useState<Ad | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchInventory();
     }
   }, [user]);
+
+  useEffect(() => {
+    void adsApi.listPublic({ type: 'CARD' }).then((res) => setCardAds(res.data.ads)).catch(() => {});
+    void adsApi.listPublic({ type: 'BANNER', limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
+  }, []);
 
   const fetchInventory = async () => {
     try {
@@ -596,29 +606,44 @@ export default function Inventory() {
         ) : (
           filterType === 'ALL' ? (
             <div className="space-y-8">
-              {groupedDisplayedItems.map((section) => (
-                <div key={section.type} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
-                      {section.label}
-                    </h2>
-                    <div className="h-px flex-1 bg-border/70" />
-                    <span className="text-xs text-muted-foreground">
-                      {section.items.length}
-                    </span>
-                  </div>
+              {groupedDisplayedItems.flatMap((section, sectionIdx) => {
+                const sectionEl = (
+                  <div key={section.type} className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">
+                        {section.label}
+                      </h2>
+                      <div className="h-px flex-1 bg-border/70" />
+                      <span className="text-xs text-muted-foreground">
+                        {section.items.length}
+                      </span>
+                    </div>
 
-                  <Card>
-                    <CardContent className="p-0">
-                      <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
-                        <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
-                          {section.items.map(renderInventoryItem)}
+                    <Card>
+                      <CardContent className="p-0">
+                        <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
+                          <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
+                            {viewMode === 'grid' && cardAds.length > 0
+                              ? section.items.flatMap((item, i) => {
+                                  const el = renderInventoryItem(item);
+                                  if ((i + 1) % 6 === 0) {
+                                    return [el, <AdCard key={`inv-ad-${sectionIdx}-${i}`} ad={cardAds[Math.floor(i / 6) % cardAds.length]!} />];
+                                  }
+                                  return [el];
+                                })
+                              : section.items.map(renderInventoryItem)
+                            }
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+                if (sectionIdx === 0 && bannerAd && !bannerDismissed) {
+                  return [sectionEl, <AdBanner key="inv-banner" ad={bannerAd} onDismiss={() => setBannerDismissed(true)} />];
+                }
+                return [sectionEl];
+              })}
             </div>
           ) : (
             <Card>

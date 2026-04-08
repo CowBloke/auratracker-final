@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { marketplaceApi, clansApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
+import { type Ad, adsApi, marketplaceApi, clansApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
+import { AdCard } from '@/components/ads/AdCard';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -428,16 +429,13 @@ function DoodleJumpShopSection({
                 )}
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {rotatingSkins.map(item => (
-                  <DjSkinCard
-                    key={item.id}
-                    item={item}
-                    user={user}
-                    buyingItemId={buyingItemId}
-                    ownedSkinItemIds={ownedSkinItemIds}
-                    onPurchase={onPurchase}
-                  />
-                ))}
+                {rotatingSkins.flatMap((item, i) => {
+                  const el = <DjSkinCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} onPurchase={onPurchase} />;
+                  if ((i + 1) % 3 === 0 && cardAds.length > 0) {
+                    return [el, <AdCard key={`dj-rot-ad-${i}`} ad={cardAds[Math.floor(i / 3) % cardAds.length]!} />];
+                  }
+                  return [el];
+                })}
               </div>
             </div>
           )}
@@ -453,16 +451,13 @@ function DoodleJumpShopSection({
                 <span className="text-xs text-muted-foreground">Toujours disponibles</span>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {staticSkins.map(item => (
-                  <DjSkinCard
-                    key={item.id}
-                    item={item}
-                    user={user}
-                    buyingItemId={buyingItemId}
-                    ownedSkinItemIds={ownedSkinItemIds}
-                    onPurchase={onPurchase}
-                  />
-                ))}
+                {staticSkins.flatMap((item, i) => {
+                  const el = <DjSkinCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} onPurchase={onPurchase} />;
+                  if ((i + 1) % 6 === 0 && cardAds.length > 0) {
+                    return [el, <AdCard key={`dj-static-ad-${i}`} ad={cardAds[Math.floor(i / 6) % cardAds.length]!} />];
+                  }
+                  return [el];
+                })}
               </div>
             </div>
           )}
@@ -489,6 +484,7 @@ export default function Shop() {
   const [loading, setLoading] = useState(true);
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
   const [clanStatus, setClanStatus] = useState<{ inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; maxMembers: number; clanBankMoney: number } | null>(null);
+  const [cardAds, setCardAds] = useState<Ad[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -525,6 +521,7 @@ export default function Shop() {
       }
     };
     fetchData();
+    void adsApi.listPublic({ type: 'CARD' }).then((res) => setCardAds(res.data.ads)).catch(() => {});
   }, [user?.id]);
 
   const ownedSkinItemIds = useMemo(() => new Set(
@@ -688,17 +685,13 @@ export default function Shop() {
                       </span>
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {section.items.map(item => (
-                        <ShopCard
-                          key={item.id}
-                          item={item}
-                          user={user}
-                          buyingItemId={buyingItemId}
-                        ownedSkinItemIds={ownedSkinItemIds}
-                        clanStatus={clanStatus}
-                        onPurchase={handlePurchase}
-                        />
-                      ))}
+                      {section.items.flatMap((item, i) => {
+                        const el = <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} clanStatus={clanStatus} onPurchase={handlePurchase} />;
+                        if ((i + 1) % 6 === 0 && cardAds.length > 0) {
+                          return [el, <AdCard key={`shop-ad-${section.id}-${i}`} ad={cardAds[Math.floor(i / 6) % cardAds.length]!} />];
+                        }
+                        return [el];
+                      })}
                     </div>
                   </div>
                 );
@@ -723,17 +716,13 @@ export default function Shop() {
                     <p className="py-12 text-center text-sm text-muted-foreground">Aucun objet dans cette catégorie.</p>
                   ) : (
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      {categoryItems.map(item => (
-                        <ShopCard
-                          key={item.id}
-                          item={item}
-                          user={user}
-                          buyingItemId={buyingItemId}
-                          ownedSkinItemIds={ownedSkinItemIds}
-                          clanStatus={clanStatus}
-                          onPurchase={handlePurchase}
-                        />
-                      ))}
+                      {categoryItems.flatMap((item, i) => {
+                        const el = <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} clanStatus={clanStatus} onPurchase={handlePurchase} />;
+                        if ((i + 1) % 6 === 0 && cardAds.length > 0) {
+                          return [el, <AdCard key={`cat-ad-${category.id}-${i}`} ad={cardAds[Math.floor(i / 6) % cardAds.length]!} />];
+                        }
+                        return [el];
+                      })}
                     </div>
                   )}
                 </TabsContent>

@@ -20,7 +20,10 @@ import {
   ClanWarActionType,
   clansApi,
   uploadUserImage,
+  type Ad,
+  adsApi,
 } from '@/services/api';
+import { AdInterstitial } from '@/components/ads/AdInterstitial';
 import { MemoryGame } from '@/components/clans/war-games/MemoryGame';
 import { BombDropGame } from '@/components/clans/war-games/BombDropGame';
 import { NavalWarfareGame } from '@/components/clans/war-games/NavalWarfareGame';
@@ -440,6 +443,8 @@ export default function Clans() {
   const [gameStatus, setGameStatus] = useState<ClanWarGamesStatus | null>(null);
   const [activeGame, setActiveGame] = useState<'MEMORY' | 'BOMB' | 'NAVAL' | null>(null);
   const [gamePractice, setGamePractice] = useState(false);
+  const [warGameAd, setWarGameAd] = useState<Ad | null>(null);
+  const [showWarGameAd, setShowWarGameAd] = useState(false);
   const [seenTutorials, setSeenTutorials] = useState<Record<string, boolean>>(() => ({
     MEMORY: localStorage.getItem('war_tutorial_MEMORY') === '1',
     BOMB: localStorage.getItem('war_tutorial_BOMB') === '1',
@@ -480,6 +485,7 @@ export default function Clans() {
   useEffect(() => {
     void fetchClans();
     void fetchGlobalWarHistory();
+    void adsApi.listPublic({ type: 'INTERSTITIAL', limit: 1 }).then((res) => setWarGameAd(res.data.ads[0] ?? null)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -931,6 +937,7 @@ export default function Clans() {
     try {
       await clansApi.submitMemoryGame(selectedClan.id, { ...result, isPractice: false });
       toast({ title: 'Défenses renforcées !', description: 'Les structures de ton clan ont été améliorées.' });
+      if (warGameAd) setShowWarGameAd(true);
       await afterGame();
     } catch (error: any) {
       toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de valider.', variant: 'destructive' });
@@ -943,6 +950,7 @@ export default function Clans() {
     try {
       const res = await clansApi.submitBombGame(selectedClan.id, { ...result, isPractice: false });
       toast({ title: 'Attaque enregistrée !', description: `+${res.data.finalPoints} pts de guerre.` });
+      if (warGameAd) setShowWarGameAd(true);
       await afterGame();
     } catch (error: any) {
       toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de valider.', variant: 'destructive' });
@@ -3675,6 +3683,12 @@ export default function Clans() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AdInterstitial
+        ad={warGameAd}
+        open={showWarGameAd}
+        onComplete={() => setShowWarGameAd(false)}
+      />
     </>
   );
 }

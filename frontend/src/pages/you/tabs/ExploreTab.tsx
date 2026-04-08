@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeftRight,
@@ -35,7 +35,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { type JusticePlainte, type YouBusiness, type YouFormationProduct, type YouPlayer, type YouState, youApi, justiceApi } from '@/services/api';
+import { type Ad, adsApi, type JusticePlainte, type YouBusiness, type YouFormationProduct, type YouPlayer, type YouState, youApi, justiceApi } from '@/services/api';
+import { AdBanner } from '@/components/ads/AdBanner';
+import { AdInterstitial } from '@/components/ads/AdInterstitial';
 import {
   BankAccountModal,
   BuyoutOfferModal,
@@ -1533,6 +1535,11 @@ export function ExploreTab({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const handledBusinessParam = useRef(false);
+  const shownExploreAd = useRef(false);
+  const [exploreBannerAd, setExploreBannerAd] = useState<Ad | null>(null);
+  const [exploreBannerDismissed, setExploreBannerDismissed] = useState(false);
+  const [exploreInterstitialAd, setExploreInterstitialAd] = useState<Ad | null>(null);
+  const [showExploreAd, setShowExploreAd] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'you' | 'player'>('all');
@@ -1575,6 +1582,11 @@ export function ExploreTab({
     () => [...data.ownedBusinesses, ...data.exploreBusinesses],
     [data.exploreBusinesses, data.ownedBusinesses],
   );
+
+  useEffect(() => {
+    void adsApi.listPublic({ type: 'BANNER', limit: 1 }).then((res) => setExploreBannerAd(res.data.ads[0] ?? null)).catch(() => {});
+    void adsApi.listPublic({ type: 'INTERSTITIAL', limit: 1 }).then((res) => setExploreInterstitialAd(res.data.ads[0] ?? null)).catch(() => {});
+  }, []);
 
   // Open business modal from URL param (e.g. when coming from an ad click)
   useEffect(() => {
@@ -1871,15 +1883,15 @@ export function ExploreTab({
                     </div>
                   ) : null}
 
-                  {groupedBusinesses.map((section) => {
+                  {groupedBusinesses.flatMap((section, sectionIdx) => {
                     // In "show all" view, state-owned businesses are already shown in the top "Institutions" section
                     const showingStateInstitutions = typeFilter === 'all' && !search && ownerFilter === 'all';
                     const isStateSectionHidden = showingStateInstitutions && allBusinesses.some((b) => b.isStateOwned && b.typeKey === section.typeKey);
-                    if (isStateSectionHidden) return null;
+                    if (isStateSectionHidden) return [];
                     const meta = SECTION_META[section.typeKey as keyof typeof SECTION_META];
                     const Icon = meta.icon;
                     const sectionStyle = BUSINESS_STYLE_MAP[section.typeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
-                    return (
+                    const sectionEl = (
                       <div key={section.typeKey} className="space-y-2">
                         <div className="flex items-center gap-3 px-1">
                           <div className={cn('flex h-8 w-8 items-center justify-center rounded-xl', sectionStyle.iconWrap)}>
@@ -1940,6 +1952,13 @@ export function ExploreTab({
                         </div>
                       </div>
                     );
+                    const nodes: ReactNode[] = [sectionEl];
+                    if ((sectionIdx + 1) % 3 === 0 && exploreBannerAd && !exploreBannerDismissed) {
+                      nodes.push(
+                        <AdBanner key={`explore-banner-${sectionIdx}`} ad={exploreBannerAd} onDismiss={() => setExploreBannerDismissed(true)} />
+                      );
+                    }
+                    return nodes;
                   })}
 
                   {filteredBusinesses.length === 0 ? (
@@ -1958,7 +1977,13 @@ export function ExploreTab({
           business={detailBusiness}
           userId={userId}
           isAdmin={isAdmin}
-          onClose={() => setDetailBusinessId(null)}
+          onClose={() => {
+            setDetailBusinessId(null);
+            if (exploreInterstitialAd && !shownExploreAd.current) {
+              shownExploreAd.current = true;
+              setTimeout(() => setShowExploreAd(true), 200);
+            }
+          }}
           onAction={(action) => openAction(detailBusiness.id, action)}
           onManage={() => {
             setDetailBusinessId(null);
@@ -2054,6 +2079,12 @@ export function ExploreTab({
         userId={userId}
         players={players}
         onSubmitted={() => void onReload()}
+      />
+
+      <AdInterstitial
+        ad={exploreInterstitialAd}
+        open={showExploreAd}
+        onComplete={() => setShowExploreAd(false)}
       />
     </>
   );
