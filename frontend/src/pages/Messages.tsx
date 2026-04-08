@@ -847,8 +847,11 @@ export default function MessagesPage() {
       if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
       try {
         if (selectedAdminSupportUserId) {
-          // Support messages don't have images yet
-          await supportApi.reply(selectedAdminSupportUserId, body);
+          await supportApi.reply(
+            selectedAdminSupportUserId,
+            body,
+            currentImageUrl ? [currentImageUrl] : undefined,
+          );
         } else {
           const roleToSend = isCourtConversation
             ? (isAdminViewer ? selectedCourtRole : myCourtRole)

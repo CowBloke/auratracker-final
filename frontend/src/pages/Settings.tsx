@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
 import {
   CustomThemeConfig,
   DEFAULT_CUSTOM_THEME,
