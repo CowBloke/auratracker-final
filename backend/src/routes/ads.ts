@@ -259,6 +259,16 @@ router.patch('/:id', authMiddleware, async (req: AuthRequest, res: Response) => 
       return routeError(res, 'AD_INVALID_TYPE');
     }
 
+    const contentEdited =
+      title !== undefined ||
+      tagline !== undefined ||
+      imageUrl !== undefined ||
+      ctaText !== undefined ||
+      ctaLink !== undefined ||
+      adType !== undefined;
+
+    const canToggleActive = ownership.ad.status === 'APPROVED';
+
     const ad = await prisma.ad.update({
       where: { id: req.params.id },
       data: {
@@ -268,8 +278,15 @@ router.patch('/:id', authMiddleware, async (req: AuthRequest, res: Response) => 
         ...(ctaText !== undefined ? { ctaText: ctaText.trim() || 'En savoir plus' } : {}),
         ...(ctaLink !== undefined ? { ctaLink: ctaLink.trim() } : {}),
         ...(adType !== undefined ? { adType } : {}),
-        ...(isActive !== undefined ? { isActive } : {}),
-        ...(ad.tagline !== tagline || ad.adType !== adType ? { status: ad.status } : {}),
+        ...(isActive !== undefined && canToggleActive ? { isActive } : {}),
+        ...(contentEdited
+          ? {
+            status: 'PENDING',
+            isActive: false,
+            reviewedAt: null,
+            reviewedById: null,
+          }
+          : {}),
       },
       include: {
         business: {
