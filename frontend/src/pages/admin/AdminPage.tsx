@@ -1077,6 +1077,7 @@ export default function Admin() {
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
   const [exportingChat, setExportingChat] = useState(false);
+  const [openingPrisma, setOpeningPrisma] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>('inbox');
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [loginCommOpen, setLoginCommOpen] = useState(false);
@@ -1444,12 +1445,13 @@ export default function Admin() {
   const [loadingClans, setLoadingClans] = useState(false);
   const [editingClanId, setEditingClanId] = useState<string | null>(null);
   const [clanSearchQuery, setClanSearchQuery] = useState('');
-  const [clanForm, setClanForm] = useState<{ name: string; description: string; imageUrl: string; maxMembers: number; isPublic: boolean }>({
+  const [clanForm, setClanForm] = useState<{ name: string; description: string; imageUrl: string; maxMembers: number; isPublic: boolean; tagUnlocked: boolean }>({
     name: '',
     description: '',
     imageUrl: '',
     maxMembers: 5,
     isPublic: true,
+    tagUnlocked: false,
   });
   const [savingClan, setSavingClan] = useState(false);
   const [deletingClan, setDeletingClan] = useState<string | null>(null);
@@ -1532,8 +1534,10 @@ export default function Admin() {
   const [loadingWarnings, setLoadingWarnings] = useState(false);
   const [warningDialogOpen, setWarningDialogOpen] = useState(false);
   const [warningUserId, setWarningUserId] = useState<string>('');
+  const [warningType, setWarningType] = useState<'AVERTISSEMENT' | 'AMENDE'>('AVERTISSEMENT');
   const [warningMessage, setWarningMessage] = useState('');
   const [warningSeverity, setWarningSeverity] = useState<'LOW' | 'MEDIUM' | 'HIGH'>('MEDIUM');
+  const [amendeAmount, setAmendeAmount] = useState<number>(100);
   const [creatingWarning, setCreatingWarning] = useState(false);
   const [deletingWarning, setDeletingWarning] = useState<string | null>(null);
 
@@ -2421,19 +2425,27 @@ export default function Admin() {
       showMessage('error', 'Utilisateur et message requis');
       return;
     }
+    if (warningType === 'AMENDE' && (!amendeAmount || amendeAmount <= 0)) {
+      showMessage('error', 'Montant requis pour une amende');
+      return;
+    }
     try {
       setCreatingWarning(true);
       const res = await adminApi.createWarning({
         userId: warningUserId,
+        type: warningType,
         message: warningMessage.trim(),
         severity: warningSeverity,
+        amount: warningType === 'AMENDE' ? amendeAmount : undefined,
       });
       setWarnings((prev) => [res.data.warning, ...prev]);
       setWarningDialogOpen(false);
       setWarningUserId('');
       setWarningMessage('');
+      setWarningType('AVERTISSEMENT');
       setWarningSeverity('MEDIUM');
-      showMessage('success', res.data.message || 'Avertissement envoyé');
+      setAmendeAmount(100);
+      showMessage('success', res.data.message || (warningType === 'AMENDE' ? 'Amende envoyée' : 'Avertissement envoyé'));
     } catch (error) {
       console.error('Failed to create warning:', error);
       showMessage('error', 'Erreur lors de l\'envoi de l\'avertissement');
@@ -3516,6 +3528,7 @@ export default function Admin() {
       imageUrl: clan.imageUrl || '',
       maxMembers: clan.maxMembers,
       isPublic: clan.isPublic,
+      tagUnlocked: clan.tagUnlocked,
     });
     setActiveTab('clubs');
   };
@@ -3528,6 +3541,7 @@ export default function Admin() {
       imageUrl: '',
       maxMembers: 5,
       isPublic: true,
+      tagUnlocked: false,
     });
   };
 
@@ -3545,6 +3559,7 @@ export default function Admin() {
         imageUrl: clanForm.imageUrl.trim(),
         maxMembers: clanForm.maxMembers,
         isPublic: clanForm.isPublic,
+        tagUnlocked: clanForm.tagUnlocked,
       });
       setClans((prev) => prev.map((clan) => (clan.id === id ? res.data.clan : clan)));
       cancelEditingClan();
@@ -4247,6 +4262,7 @@ export default function Admin() {
     total: entry.total,
     ...entry.values,
   })) ?? [];
+  const isAdminOrSuperAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const platformTopGamesChartData = (platformStats?.topGames ?? []).map((entry) => ({
     ...entry,
     label: GAME_TYPE_LABELS[entry.gameType] ?? entry.gameType.replace(/_/g, ' '),
@@ -4266,10 +4282,36 @@ export default function Admin() {
   const allSelected = selectableUsers.length > 0 && selectableUsers.every((entry) => selectedUserIds.includes(entry.id));
 
 
+  const openPrismaStudio = async () => {
+    try {
+      setOpeningPrisma(true);
+      const res = await adminApi.startPrismaStudio();
+      const studioToken = res.data?.studioToken;
+      if (!studioToken) {
+        throw new Error('Missing studio token');
+      }
+
+      window.open(`/api/admin/prisma-studio?studioToken=${encodeURIComponent(studioToken)}`, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      toast({ title: 'Erreur', description: 'Impossible de lancer Prisma Studio', variant: 'destructive' });
+    } finally {
+      setOpeningPrisma(false);
+    }
+  };
+
   return (
     <>
     <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">Administration</h1>
+          {isAdminOrSuperAdmin && (
+            <Button onClick={openPrismaStudio} disabled={openingPrisma} variant="outline" size="sm">
+              {openingPrisma ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Terminal className="w-4 h-4 mr-2" />}
+              Ouvrir Prisma Studio
+            </Button>
+          )}
+        </div>
         {/* Tabs */}
         <Tabs
           value={activeTab}
@@ -5780,10 +5822,14 @@ export default function Admin() {
           users={users}
           warningUserId={warningUserId}
           setWarningUserId={setWarningUserId}
+          warningType={warningType}
+          setWarningType={setWarningType}
           warningSeverity={warningSeverity}
           setWarningSeverity={setWarningSeverity}
           warningMessage={warningMessage}
           setWarningMessage={setWarningMessage}
+          amendeAmount={amendeAmount}
+          setAmendeAmount={setAmendeAmount}
           createWarning={createWarning}
           creatingWarning={creatingWarning}
         />

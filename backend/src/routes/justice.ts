@@ -107,7 +107,7 @@ function serializeCourtCase(c: any) {
       courtRole: party.courtRole,
       user: party.user ? { id: party.user.id, username: party.user.username, profilePicture: party.user.profilePicture, usernameColor: party.user.usernameColor } : null,
     })) ?? [],
-    plainte: c.plainte ? { id: c.plainte.id, title: c.plainte.title } : null,
+    plainte: c.plainte ? { id: c.plainte.id, title: c.plainte.title, description: c.plainte.description } : null,
     createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
     updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
   };
@@ -681,14 +681,14 @@ router.put('/cases/:id/argument', authMiddleware, async (req: AuthRequest, res: 
     });
     if (!courtCase) return res.status(404).json({ error: 'Affaire introuvable.' });
 
-    const myParty = courtCase.parties.find((p) => p.userId === user.id);
-    if (!myParty) return res.status(403).json({ error: 'Tu ne participes pas à cette affaire.' });
+    const myParties = courtCase.parties.filter((p) => p.userId === user.id);
+    if (myParties.length === 0) return res.status(403).json({ error: 'Tu ne participes pas à cette affaire.' });
 
     // Determine side: PLAINTIFF or DEFENDANT
     let side: string | null = null;
-    if (myParty.courtRole === 'PLAINTIFF' || myParty.courtRole === 'LAWYER_PLAINTIFF' || myParty.courtRole === 'PUBLIC_DEFENDER_PLAINTIFF') {
+    if (myParties.some((p) => p.courtRole === 'PLAINTIFF' || p.courtRole === 'LAWYER_PLAINTIFF' || p.courtRole === 'PUBLIC_DEFENDER_PLAINTIFF')) {
       side = 'PLAINTIFF';
-    } else if (myParty.courtRole === 'DEFENDANT' || myParty.courtRole === 'LAWYER_DEFENDANT' || myParty.courtRole === 'PUBLIC_DEFENDER_DEFENDANT') {
+    } else if (myParties.some((p) => p.courtRole === 'DEFENDANT' || p.courtRole === 'LAWYER_DEFENDANT' || p.courtRole === 'PUBLIC_DEFENDER_DEFENDANT')) {
       side = 'DEFENDANT';
     }
 
@@ -749,9 +749,18 @@ router.get('/cases/:id/arguments', authMiddleware, async (req: AuthRequest, res:
     });
     if (!courtCase) return res.status(404).json({ error: 'Affaire introuvable.' });
 
-    const myParty = courtCase.parties.find((p) => p.userId === user.id);
+    const myParties = courtCase.parties.filter((p) => p.userId === user.id);
+    const myParty = myParties[0] ?? null;
     const isAdmin = user.isAdmin || user.isSuperAdmin;
-    const isJudge = isAdmin || myParty?.courtRole === 'JUDGE';
+    const hasSideRole = myParties.some((p) =>
+      p.courtRole === 'PLAINTIFF' ||
+      p.courtRole === 'LAWYER_PLAINTIFF' ||
+      p.courtRole === 'PUBLIC_DEFENDER_PLAINTIFF' ||
+      p.courtRole === 'DEFENDANT' ||
+      p.courtRole === 'LAWYER_DEFENDANT' ||
+      p.courtRole === 'PUBLIC_DEFENDER_DEFENDANT',
+    );
+    const isJudge = !hasSideRole && (isAdmin || myParties.some((p) => p.courtRole === 'JUDGE'));
 
     if (!myParty && !isAdmin) return res.status(403).json({ error: 'Accès refusé.' });
 
@@ -762,12 +771,14 @@ router.get('/cases/:id/arguments', authMiddleware, async (req: AuthRequest, res:
 
     // Non-judges can only see their own side
     let visibleArgs = arguments_;
-    if (!isJudge && myParty) {
-      const mySide =
-        myParty.courtRole === 'PLAINTIFF' || myParty.courtRole === 'LAWYER_PLAINTIFF' || myParty.courtRole === 'PUBLIC_DEFENDER_PLAINTIFF'
-          ? 'PLAINTIFF'
-          : 'DEFENDANT';
-      visibleArgs = arguments_.filter((a) => a.side === mySide);
+    if (!isJudge) {
+      let mySide: 'PLAINTIFF' | 'DEFENDANT' | null = null;
+      if (myParties.some((p) => p.courtRole === 'PLAINTIFF' || p.courtRole === 'LAWYER_PLAINTIFF' || p.courtRole === 'PUBLIC_DEFENDER_PLAINTIFF')) {
+        mySide = 'PLAINTIFF';
+      } else if (myParties.some((p) => p.courtRole === 'DEFENDANT' || p.courtRole === 'LAWYER_DEFENDANT' || p.courtRole === 'PUBLIC_DEFENDER_DEFENDANT')) {
+        mySide = 'DEFENDANT';
+      }
+      visibleArgs = mySide ? arguments_.filter((a) => a.side === mySide) : [];
     }
 
     res.json({

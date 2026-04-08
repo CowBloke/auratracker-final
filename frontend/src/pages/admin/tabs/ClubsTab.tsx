@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction } from 'react';
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -87,69 +88,99 @@ export function ClubsTab(props: ClubsTabProps) {
     savingClanEvent,
   } = props;
 
+  const [clanModalOpen, setClanModalOpen] = useState(false);
+  const [eventsModalOpen, setEventsModalOpen] = useState(false);
+
+  const handleOpenClanModal = (clan: any) => {
+    startEditingClan(clan);
+    setClanModalOpen(true);
+  };
+
+  const handleClanModalChange = (open: boolean) => {
+    setClanModalOpen(open);
+    if (!open) cancelEditingClan();
+  };
+
+  const handleEventsModalChange = (open: boolean) => {
+    setEventsModalOpen(open);
+    if (!open) resetClanEventForm();
+  };
+
   return (
     <TabsContent value="clubs" className={SPACING.SECTION_SPACING}>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <CardDescription>Gestion des clans</CardDescription>
-                <p className="text-sm text-muted-foreground">{filteredClans.length} clan(s) affiché(s)</p>
-              </div>
-              <div className="relative w-full lg:w-80">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={clanSearchQuery}
-                  onChange={(e) => setClanSearchQuery(e.target.value)}
-                  placeholder="Rechercher un clan, chef ou membre"
-                  className="pl-9"
-                />
-              </div>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={clanSearchQuery}
+                onChange={(e) => setClanSearchQuery(e.target.value)}
+                placeholder="Rechercher un clan, chef ou membre"
+                className="pl-9 bg-transparent border-border/50 h-9"
+              />
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {loadingClans ? (
-              <div className="py-10 text-center text-muted-foreground">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-              </div>
-            ) : filteredClans.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                Aucun clan trouvé.
-              </div>
-            ) : (
-              filteredClans.map((clan) => (
-                <div key={clan.id} className="rounded-xl border border-border/50 p-4">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-medium">{clan.name}</h3>
+            <Button size="sm" variant="outline" onClick={() => setEventsModalOpen(true)} className="h-9 border-border/50 shrink-0">
+              <Swords className="h-4 w-4 mr-1" />
+              Gérer événements ({clanEvents.length})
+            </Button>
+          </div>
+          <CardDescription>{filteredClans.length} clan(s) affiché(s)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingClans ? (
+            <div className="flex justify-center py-12">
+              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+            </div>
+          ) : filteredClans.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-12">
+              {clanSearchQuery.trim() ? 'Aucun clan trouvé' : 'Aucun clan'}
+            </p>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {filteredClans.map((clan) => (
+                <div key={clan.id} className="py-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                        <span className="font-medium text-sm">{clan.name}</span>
                         <span className={cn(
-                          'rounded-full px-2 py-0.5 text-xs',
+                          'text-xs px-1.5 py-0.5 rounded-full shrink-0',
                           clan.isPublic ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'
                         )}>
                           {clan.isPublic ? 'Public' : 'Privé'}
                         </span>
                         {clan.activeWar && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-xs text-rose-400">
-                            <Swords className="h-3 w-3" />
+                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-400 shrink-0">
+                            <Swords className="h-2.5 w-2.5" />
                             {clan.activeWar.status === 'ACTIVE' ? 'En guerre' : 'Préparation'}
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground/70 line-clamp-2">
                         {clan.description || 'Aucune description.'}
                       </p>
-                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <span>Chef: {clan.owner.username}</span>
-                        <span>Membres: {clan.members.length}/{clan.maxMembers}</span>
-                        <span>Créé le {new Date(clan.createdAt).toLocaleDateString('fr-FR')}</span>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+                          Chef: {clan.owner.username}
+                        </span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+                          Membres: {clan.members.length}/{clan.maxMembers}
+                        </span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+                          Créé le {new Date(clan.createdAt).toLocaleDateString('fr-FR')}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => startEditingClan(clan)}>
-                        <Edit2 className="mr-2 h-4 w-4" />
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenClanModal(clan)}
+                        className="h-8 border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+                      >
+                        <Edit2 className="h-3.5 w-3.5 mr-1.5" />
                         Gérer
                       </Button>
                       <AlertDialog>
@@ -157,10 +188,10 @@ export function ClubsTab(props: ClubsTabProps) {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                            className="h-8 w-8 p-0 border-destructive/50 text-destructive hover:bg-destructive/10"
                             disabled={deletingClan === clan.id}
                           >
-                            {deletingClan === clan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            {deletingClan === clan.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -181,189 +212,221 @@ export function ClubsTab(props: ClubsTabProps) {
                     </div>
                   </div>
                 </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardDescription>{editingClanId ? 'Édition du clan' : 'Sélectionne un clan à gérer'}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {!editingClanId ? (
-              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                Choisis un clan dans la liste pour modifier ses paramètres ou changer son chef.
-              </div>
-            ) : (
-              (() => {
-                const clan = clans.find((entry) => entry.id === editingClanId);
-                if (!clan) {
-                  return <div className="text-sm text-muted-foreground">Clan introuvable.</div>;
-                }
-
-                return (
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <label className="text-xs text-muted-foreground">Nom</label>
-                      <Input value={clanForm.name} onChange={(e) => setClanForm((prev: any) => ({ ...prev, name: e.target.value }))} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs text-muted-foreground">Description</label>
-                      <Textarea
-                        value={clanForm.description}
-                        onChange={(e) => setClanForm((prev: any) => ({ ...prev, description: e.target.value }))}
-                        rows={4}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs text-muted-foreground">Image</label>
-                      <ImagePicker
-                        value={clanForm.imageUrl}
-                        onChange={(url) => setClanForm((prev: any) => ({ ...prev, imageUrl: url }))}
-                        uploadFn={uploadItemImageFile}
-                        hidePreview
-                      />
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <label className="text-xs text-muted-foreground">Capacité max</label>
-                        <Input
-                          type="number"
-                          min={clan.members.length}
-                          max={12}
-                          value={clanForm.maxMembers}
-                          onChange={(e) => setClanForm((prev: any) => ({ ...prev, maxMembers: parseInt(e.target.value) || clan.members.length }))}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between rounded-lg border p-3">
-                        <div>
-                          <div className="text-sm font-medium">Clan public</div>
-                          <div className="text-xs text-muted-foreground">Entrée directe ou sur candidature</div>
-                        </div>
-                        <Switch
-                          checked={clanForm.isPublic}
-                          onCheckedChange={(checked) => setClanForm((prev: any) => ({ ...prev, isPublic: checked }))}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button onClick={() => saveClan(clan.id)} disabled={savingClan}>
-                        {savingClan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Sauvegarder
-                      </Button>
-                      <Button variant="outline" onClick={cancelEditingClan}>Annuler</Button>
-                    </div>
-
-                    <div className="space-y-3 border-t border-border/40 pt-5">
-                      <div className="flex items-center gap-2">
-                        <Crown className="h-4 w-4 text-amber-500" />
-                        <h3 className="font-medium">Changer le chef</h3>
-                      </div>
-                      <div className="space-y-2">
-                        {clan.members.map((member: any) => (
-                          <div key={member.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{member.user.username}</span>
-                                {member.isLeader && <span className="text-xs text-amber-500">chef actuel</span>}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {Number(member.user.aura).toLocaleString('fr-FR')} aura • membre depuis {new Date(member.joinedAt).toLocaleDateString('fr-FR')}
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant={member.isLeader ? 'secondary' : 'outline'}
-                              disabled={member.isLeader || transferringClanLeader === `${clan.id}:${member.userId}`}
-                              onClick={() => transferClanLeadership(clan.id, member.userId)}
-                            >
-                              {transferringClanLeader === `${clan.id}:${member.userId}` ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                <Crown className="mr-2 h-4 w-4" />
-                              )}
-                              Nommer chef
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_480px]">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardDescription>Événements de clan</CardDescription>
-                <p className="text-sm text-muted-foreground">{clanEvents.length} événement(s)</p>
-              </div>
-              <Button size="sm" variant="outline" onClick={resetClanEventForm}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouvel événement
-              </Button>
+              ))}
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {loadingClanEvents ? (
-              <div className="py-10 text-center text-muted-foreground">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-              </div>
-            ) : clanEvents.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                Aucun événement de clan configuré.
-              </div>
-            ) : clanEvents.map((event) => (
-              <div key={event.id} className="rounded-xl border border-border/50 p-4">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-medium">{event.title}</h3>
-                      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-400">{event.status}</span>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.quests.length} quête(s)</span>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.miniGames.length} mini-jeu(x)</span>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={clanModalOpen} onOpenChange={handleClanModalChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingClanId ? 'Gérer le clan' : 'Gestion du clan'}</DialogTitle>
+            <DialogDescription>
+              Modifie les paramètres du clan et transfère le rôle de chef.
+            </DialogDescription>
+          </DialogHeader>
+          {!editingClanId ? (
+            <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+              Choisis un clan dans la liste pour modifier ses paramètres ou changer son chef.
+            </div>
+          ) : (
+            (() => {
+              const clan = clans.find((entry) => entry.id === editingClanId);
+              if (!clan) {
+                return <div className="text-sm text-muted-foreground">Clan introuvable.</div>;
+              }
+
+              return (
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Nom</label>
+                    <Input value={clanForm.name} onChange={(e) => setClanForm((prev: any) => ({ ...prev, name: e.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Description</label>
+                    <Textarea
+                      value={clanForm.description}
+                      onChange={(e) => setClanForm((prev: any) => ({ ...prev, description: e.target.value }))}
+                      rows={4}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Image</label>
+                    <ImagePicker
+                      value={clanForm.imageUrl}
+                      onChange={(url) => setClanForm((prev: any) => ({ ...prev, imageUrl: url }))}
+                      uploadFn={uploadItemImageFile}
+                      hidePreview
+                    />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-xs text-muted-foreground">Capacité max</label>
+                      <Input
+                        type="number"
+                        min={clan.members.length}
+                        max={12}
+                        value={clanForm.maxMembers}
+                        onChange={(e) => setClanForm((prev: any) => ({ ...prev, maxMembers: parseInt(e.target.value) || clan.members.length }))}
+                      />
                     </div>
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{event.description || 'Aucune description.'}</p>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>Début: {new Date(event.startsAt).toLocaleString('fr-FR')}</span>
-                      <span>Fin: {new Date(event.endsAt).toLocaleString('fr-FR')}</span>
-                      <span>Leaderboard: {event.leaderboard.length} clan(s)</span>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <div className="text-sm font-medium">Clan public</div>
+                        <div className="text-xs text-muted-foreground">Entrée directe ou sur candidature</div>
+                      </div>
+                      <Switch
+                        checked={clanForm.isPublic}
+                        onCheckedChange={(checked) => setClanForm((prev: any) => ({ ...prev, isPublic: checked }))}
+                      />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => startEditingClanEvent(event)}>
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      Gérer
-                    </Button>
+
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <div className="text-sm font-medium">Capacité tag de clan</div>
+                      <div className="text-xs text-muted-foreground">Activer débloque immédiatement le tag pour ce clan.</div>
+                    </div>
                     <Button
+                      type="button"
                       size="sm"
-                      variant="outline"
-                      className="border-destructive/50 text-destructive hover:bg-destructive/10"
-                      disabled={deletingClanEvent === event.id}
-                      onClick={() => { void deleteClanEvent(event.id); }}
+                      variant={clanForm.tagUnlocked ? 'secondary' : 'outline'}
+                      className={cn(
+                        'h-8',
+                        clanForm.tagUnlocked
+                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/20'
+                          : 'border-border/60'
+                      )}
+                      onClick={() => setClanForm((prev: any) => ({ ...prev, tagUnlocked: !prev.tagUnlocked }))}
                     >
-                      {deletingClanEvent === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      {clanForm.tagUnlocked ? 'Désactiver' : 'Activer'}
                     </Button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button onClick={() => saveClan(clan.id)} disabled={savingClan}>
+                      {savingClan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      Sauvegarder
+                    </Button>
+                    <Button variant="outline" onClick={cancelEditingClan}>Annuler</Button>
+                  </div>
+
+                  <div className="space-y-3 border-t border-border/40 pt-5">
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 text-amber-500" />
+                      <h3 className="font-medium">Changer le chef</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {clan.members.map((member: any) => (
+                        <div key={member.id} className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{member.user.username}</span>
+                              {member.isLeader && <span className="text-xs text-amber-500">chef actuel</span>}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {Number(member.user.aura).toLocaleString('fr-FR')} aura • membre depuis {new Date(member.joinedAt).toLocaleDateString('fr-FR')}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={member.isLeader ? 'secondary' : 'outline'}
+                            disabled={member.isLeader || transferringClanLeader === `${clan.id}:${member.userId}`}
+                            onClick={() => transferClanLeadership(clan.id, member.userId)}
+                          >
+                            {transferringClanLeader === `${clan.id}:${member.userId}` ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Crown className="mr-2 h-4 w-4" />
+                            )}
+                            Nommer chef
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              );
+            })()
+          )}
+        </DialogContent>
+      </Dialog>
 
-        <Card>
-          <CardHeader>
-            <CardDescription>{editingClanEventId ? 'Édition événement' : 'Créer un événement de clan'}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
+      <Dialog open={eventsModalOpen} onOpenChange={handleEventsModalChange}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40">
+            <DialogTitle>Gérer les événements de clan</DialogTitle>
+            <DialogDescription>
+              Crée, modifie et supprime les événements de clan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_480px] overflow-y-auto p-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardDescription>Événements de clan</CardDescription>
+                    <p className="text-sm text-muted-foreground">{clanEvents.length} événement(s)</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={resetClanEventForm}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nouvel événement
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loadingClanEvents ? (
+                  <div className="py-10 text-center text-muted-foreground">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                  </div>
+                ) : clanEvents.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                    Aucun événement de clan configuré.
+                  </div>
+                ) : clanEvents.map((event) => (
+                  <div key={event.id} className="rounded-xl border border-border/50 p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-medium">{event.title}</h3>
+                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-400">{event.status}</span>
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.quests.length} quête(s)</span>
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{event.miniGames.length} mini-jeu(x)</span>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{event.description || 'Aucune description.'}</p>
+                        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          <span>Début: {new Date(event.startsAt).toLocaleString('fr-FR')}</span>
+                          <span>Fin: {new Date(event.endsAt).toLocaleString('fr-FR')}</span>
+                          <span>Leaderboard: {event.leaderboard.length} clan(s)</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => startEditingClanEvent(event)}>
+                          <Edit2 className="mr-2 h-4 w-4" />
+                          Gérer
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                          disabled={deletingClanEvent === event.id}
+                          onClick={() => { void deleteClanEvent(event.id); }}
+                        >
+                          {deletingClanEvent === event.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardDescription>{editingClanEventId ? 'Édition événement' : 'Créer un événement de clan'}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground">Titre</label>
               <Input value={clanEventForm.title} onChange={(e) => setClanEventForm((prev: any) => ({ ...prev, title: e.target.value }))} />
@@ -560,9 +623,11 @@ export function ClubsTab(props: ClubsTabProps) {
               </Button>
               <Button variant="outline" onClick={resetClanEventForm}>Réinitialiser</Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
     </TabsContent>
   );
 }

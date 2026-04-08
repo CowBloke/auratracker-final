@@ -2163,8 +2163,10 @@ model AdminWarning {
   id             String    @id @default(uuid())
   userId         String // User receiving the warning
   issuedById     String // Admin who issued the warning
+  type           String    @default("AVERTISSEMENT") // AVERTISSEMENT or AMENDE
   message        String // Warning message content
-  severity       String    @default("MEDIUM") // LOW, MEDIUM, HIGH
+  severity       String    @default("MEDIUM") // LOW, MEDIUM, HIGH (for warnings)
+  amount         Int? // Amount for amende in gold/money
   isAcknowledged Boolean   @default(false)
   acknowledgedAt DateTime?
   createdAt      DateTime  @default(now())
@@ -2268,6 +2270,7 @@ model MessageConversationMessage {
   conversationId String
   senderId       String?
   body           String
+  imageUrl       String?
   type           String   @default("TEXT") // TEXT | SYSTEM | REPORT_NOTICE | COURT_SYSTEM
   courtRole      String?  // when admin sends as a court role (JUDGE | PUBLIC_DEFENDER_PLAINTIFF | PUBLIC_DEFENDER_DEFENDANT)
   createdAt      DateTime @default(now())

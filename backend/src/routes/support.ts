@@ -96,6 +96,7 @@ function serializeConversationMessage(message: {
   senderId: string | null;
   body: string;
   type: string;
+  imageUrl?: string | null;
   courtRole?: string | null;
   createdAt: Date;
   sender?: BasicUser | null;
@@ -106,6 +107,7 @@ function serializeConversationMessage(message: {
     senderId: message.senderId,
     body: message.body,
     type: message.type,
+    imageUrl: message.imageUrl ?? null,
     courtRole: message.courtRole ?? null,
     createdAt: message.createdAt instanceof Date ? message.createdAt.toISOString() : message.createdAt,
     sender: message.sender ? serializeBasicUser(message.sender) : null,
@@ -259,6 +261,7 @@ async function buildConversationSummaryForUser(conversationId: string, currentUs
           senderId: lastMessage.senderId,
           body: lastMessage.body,
           type: lastMessage.type,
+            imageUrl: (lastMessage as any).imageUrl ?? null,
           createdAt: lastMessage.createdAt,
           sender: lastMessage.sender,
         })
@@ -326,6 +329,7 @@ async function listMessagingConversationsForUser(userId: string) {
               senderId: lastMessage.senderId,
               body: lastMessage.body,
               type: lastMessage.type,
+            imageUrl: (lastMessage as any).imageUrl ?? null,
               createdAt: lastMessage.createdAt,
               sender: lastMessage.sender,
             })
@@ -503,6 +507,7 @@ router.get('/conversations/:conversationId', authMiddleware, async (req: AuthReq
           senderId: message.senderId,
           body: message.body,
           type: message.type,
+            imageUrl: (message as any).imageUrl ?? null,
           courtRole: (message as any).courtRole ?? null,
           createdAt: message.createdAt,
           sender: message.sender,
@@ -532,6 +537,7 @@ router.post('/conversations', authMiddleware, async (req: AuthRequest, res: Resp
 
     const type = req.body?.type === 'GROUP' ? 'GROUP' : 'DM';
     const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
+    const imageUrl = typeof req.body?.imageUrl === 'string' ? req.body.imageUrl.trim() : null;
     const participantIds = Array.isArray(req.body?.participantIds)
       ? req.body.participantIds.filter((value: unknown): value is string => typeof value === 'string')
       : [];
@@ -608,13 +614,14 @@ router.post('/conversations', authMiddleware, async (req: AuthRequest, res: Resp
         },
       });
 
-      if (body) {
-        await tx.messageConversationMessage.create({
-          data: {
-            conversationId: created.id,
-            senderId: user.id,
-            body,
-            type: 'TEXT',
+if (body || imageUrl) {
+          await tx.messageConversationMessage.create({
+            data: {
+              conversationId: created.id,
+              senderId: user.id,
+              body: body || '',
+              type: 'TEXT',
+              imageUrl: imageUrl || null,
           },
         });
       }
@@ -639,19 +646,18 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
 
     const { conversationId } = req.params;
     const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
+    const imageUrl = typeof req.body?.imageUrl === 'string' ? req.body.imageUrl.trim() : null;
     const courtRole = typeof req.body?.courtRole === 'string' ? req.body.courtRole : null;
 
-    if (!body) {
-      return res.status(400).json({ error: 'Message body is required' });
+    if (!body && !imageUrl) {
+      return res.status(400).json({ error: 'Message body or image is required' });
     }
     if (body.length > MAX_MESSAGE_LENGTH) {
       return res.status(400).json({ error: 'Message must be 1000 characters or less' });
     }
 
-    // Only admins can send with a court role
-    if (courtRole && !req.user?.isAdmin) {
-      return res.status(403).json({ error: 'Seuls les juges peuvent envoyer avec un role de tribunal.' });
-    }
+    // Non-admin users cannot choose arbitrary court roles.
+    // For court conversations, we assign their persisted participant court role automatically.
 
     if (conversationId === SUPPORT_CONVERSATION_ID) {
       const message = await prisma.supportMessage.create({
@@ -701,50 +707,26 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       },
     });
 
-    if (courtConversation?.courtCaseId && !req.user?.isAdmin) {
+    let effectiveCourtRole: string | null = null;
+
+    if (courtConversation?.courtCaseId) {
+      const myCourtParticipant = courtConversation.participants.find((entry) => entry.userId === user.id) ?? null;
+      effectiveCourtRole = req.user?.isAdmin ? courtRole : (myCourtParticipant?.courtRole ?? null);
+
       const linkedCase = await prisma.courtCase.findUnique({
         where: { id: courtConversation.courtCaseId },
         select: {
-          conversationId: true,
-          plaintifId: true,
-          defendantId: true,
-          plaintiffLawyerId: true,
-          defendantLawyerId: true,
+          status: true,
         },
       });
 
       if (linkedCase) {
-        const needsPlaintiffRepresentation = linkedCase.plaintifId === user.id;
-        const needsDefendantRepresentation = linkedCase.defendantId === user.id;
-        const publicDefenderRequestMessage = await prisma.messageConversationMessage.findFirst({
-          where: {
-            conversationId: linkedCase.conversationId,
-            type: 'COURT_SYSTEM',
-            body: {
-              contains: needsPlaintiffRepresentation ? 'Le plaignant a demandé un défenseur public' : 'Le coupable a demandé un défenseur public',
-            },
-          },
-          select: { id: true },
-        });
-
-        if (needsPlaintiffRepresentation || needsDefendantRepresentation) {
-          const hasRepresentation = needsPlaintiffRepresentation
-            ? Boolean(
-              linkedCase.plaintiffLawyerId ||
-              courtConversation.participants.some((entry) => entry.courtRole === 'PUBLIC_DEFENDER_PLAINTIFF') ||
-              publicDefenderRequestMessage,
-            )
-            : Boolean(
-              linkedCase.defendantLawyerId ||
-              courtConversation.participants.some((entry) => entry.courtRole === 'PUBLIC_DEFENDER_DEFENDANT') ||
-              publicDefenderRequestMessage,
-            );
-
-          if (!hasRepresentation) {
-            return res.status(403).json({ error: 'Choisis d abord un avocat avant de parler dans cette affaire.' });
-          }
+        if (linkedCase.status !== 'OPEN') {
+          return res.status(403).json({ error: 'Cette affaire n est pas en cours. Le chat est verrouille.' });
         }
       }
+    } else if (req.user?.isAdmin) {
+      effectiveCourtRole = courtRole;
     }
 
     const now = new Date();
@@ -753,9 +735,10 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
         data: {
           conversationId,
           senderId: user.id,
-          body,
+          body: body || '',
           type: 'TEXT',
-          ...(courtRole ? { courtRole } : {}),
+          imageUrl: imageUrl || null,
+          ...(effectiveCourtRole ? { courtRole: effectiveCourtRole } : {}),
         },
       });
 
@@ -783,6 +766,7 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       senderId: message.senderId,
       body: message.body,
       type: message.type,
+            imageUrl: (message as any).imageUrl ?? null,
       courtRole: (message as any).courtRole ?? null,
       createdAt: message.createdAt,
       sender: {
@@ -874,6 +858,7 @@ router.post('/conversations/:conversationId/report', authMiddleware, async (req:
         senderId: message.senderId,
         body: message.body,
         type: message.type,
+            imageUrl: (message as any).imageUrl ?? null,
         createdAt: message.createdAt,
         sender: message.sender,
       })
