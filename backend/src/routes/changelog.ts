@@ -29,6 +29,9 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Boot app** — L\'écran de chargement global et les redirections protégées utilisent maintenant un skeleton plein écran au lieu d\'un texte "Chargement...".', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Pages clés** — YOU, Messages, Inbox, Changelog, Settings, Inventory, Marketplace, Leaderboards, Clash Village, Polytrack et Clans affichent désormais des placeholders adaptés à leur mise en page.', order: 1 },
       { category: 'SMALL_FEATURE', text: '**Chat et listes** — Les vues de messagerie et de classement utilisent des squelettes de conversation, de tableau et de liste pour garder la structure visible pendant le chargement.', order: 2 },
+      { category: 'SMALL_FEATURE', text: '**Admin · Répartition utilisateurs** — Un nouvel onglet `Répartition` a été ajouté dans le dashboard admin avec des graphes par niveau et par classe, les moyennes Aura/Argent par classe et un top des joueurs par niveau.', order: 3 },
+      { category: 'SMALL_FEATURE', text: '**Admin · Ajustement Répartition** — Le bloc `Répartition par sexe` a été retiré de l\'onglet pour conserver un focus sur les statistiques classe/niveau demandées.', order: 4 },
+      { category: 'BUG_FIX', text: '**Hub Jeux · Raccourci Soccer** — Le raccourci direct vers la table `Soccer` a été retiré de la page Jeux pour éviter l\'accès rapide dédié depuis le catalogue.', order: 5 },
     ],
   },
   {

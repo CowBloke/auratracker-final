@@ -280,17 +280,6 @@ const games: Game[] = [
     hasRewards: true,
   },
   {
-    id: 'soccer',
-    pageKey: 'game-soccer',
-    name: 'Soccer',
-    description: 'Choisis une zone dans le but et tente de battre le gardien avec environ 70% de risque de perdre.',
-    type: 'Chance',
-    image: getGameImage('soccer'),
-    statsKeys: ['casino'],
-    releaseRank: 39,
-    hasRewards: true,
-  },
-  {
     id: 'mines',
     pageKey: 'game-mines',
     name: 'Mines',
@@ -841,9 +830,6 @@ export default function Games() {
     }
     if (gameId === 'minesweeper') {
       return '/games/minesweeper';
-    }
-    if (gameId === 'soccer') {
-      return '/games/casino?table=soccer';
     }
     if (gameId === 'mines') {
       return '/games/casino?table=mines';

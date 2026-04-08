@@ -1820,7 +1820,7 @@ export default function MessagesPage() {
               </div>
             </div>
             <ScrollArea className="min-h-0 flex-1">
-              <div className="py-1">
+              <div className="w-full min-w-0 overflow-hidden py-1">
                 {pinnedDms.length > 0 && (
                   <>
                     <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">DM épinglés</p>
@@ -2378,16 +2378,16 @@ function ConvRow({
       type="button"
       onClick={onSelect}
       className={cn(
-        'group flex w-full min-w-0 items-center gap-2.5 px-3 py-2 text-left transition-colors',
+        'group flex w-full min-w-0 max-w-full items-center gap-2.5 overflow-hidden px-3 py-2 text-left transition-colors',
         isActive ? 'bg-primary/10' : 'hover:bg-muted/50',
       )}
     >
       <ConversationAvatar conversation={conversation} />
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <div className="flex items-baseline justify-between gap-1">
-          <div className="flex min-w-0 items-center gap-1.5">
+      <div className="w-0 min-w-0 flex-1 overflow-hidden">
+        <div className="flex min-w-0 items-baseline gap-1 overflow-hidden">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
             <p
-              className={cn('truncate text-xs font-semibold', conversation.type === 'DM' && 'text-foreground', isActive && conversation.type !== 'DM' && 'text-primary')}
+              className={cn('min-w-0 flex-1 truncate text-xs font-semibold', conversation.type === 'DM' && 'text-foreground', isActive && conversation.type !== 'DM' && 'text-primary')}
               style={conversation.type === 'DM' && dmParticipant?.usernameColor ? { color: dmParticipant.usernameColor } : undefined}
             >
               {conversation.displayName}
@@ -2408,13 +2408,13 @@ function ConvRow({
               </span>
             )}
           </div>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{conversation.lastMessage?.createdAt ? formatTime(conversation.lastMessage.createdAt) : ''}</span>
+          <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{conversation.lastMessage?.createdAt ? formatTime(conversation.lastMessage.createdAt) : ''}</span>
         </div>
-        <div className="flex items-center justify-between gap-1">
-          <p className="truncate text-[11px] text-muted-foreground">{getPreview(conversation)}</p>
+        <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+          <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-muted-foreground">{getPreview(conversation)}</p>
           {conversation.unreadCount > 0 && (
             <span
-              className="shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-primary/20 bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground shadow-sm"
+              className="ml-auto shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-primary/20 bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground shadow-sm"
               title={`${conversation.unreadCount} message${conversation.unreadCount > 1 ? 's' : ''} non lu${conversation.unreadCount > 1 ? 's' : ''}`}
             >
               {conversation.unreadCount}
