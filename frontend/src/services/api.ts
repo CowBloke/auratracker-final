@@ -1413,7 +1413,17 @@ export interface ClanSummary {
     territory: {
       key: string;
       label: string;
+      region: string;
+      x: number;
+      y: number;
       bonus: string;
+    };
+    flag: {
+      primary: string;
+      secondary: string;
+      accent: string;
+      pattern: string;
+      icon: string;
     };
     alliances: Array<{
       clanId: string;
@@ -1444,6 +1454,9 @@ export interface ClanSummary {
     territories: Array<{
       key: string;
       label: string;
+      region: string;
+      x: number;
+      y: number;
       bonus: string;
     }>;
   };
@@ -1892,7 +1905,7 @@ export const clansApi = {
   fortifyWar: (clanId: string, defenseType: ClanWarDefenseType['type']) =>
     api.post<{ war: ClanWarState | null }>(`/clans/${clanId}/war/fortify`, { defenseType }),
   attackWar: (clanId: string, attackType: ClanWarActionType['type']) =>
-    api.post<{ war: ClanWarState | null; completed: boolean }>(`/clans/${clanId}/war/attack`, { attackType }),
+    api.post<{ war: ClanWarState | null; completed: boolean; finalPoints: number; attackType: ClanWarActionType['type'] }>(`/clans/${clanId}/war/attack`, { attackType }),
   leave: (id: string) => api.delete(`/clans/${id}/leave`),
   acceptRequest: (clanId: string, requestId: string) =>
     api.post(`/clans/${clanId}/requests/${requestId}/accept`),
@@ -1916,6 +1929,8 @@ export const clansApi = {
     api.put<{ success: boolean; tagText: string | null; tagStyle: string | null }>(`/clans/${id}/tag`, data),
   requestAlliance: (clanId: string, targetClanId: string) =>
     api.post<{ success: boolean }>(`/clans/${clanId}/nation/alliances/request`, { targetClanId }),
+  updateNationFoundation: (clanId: string, data: { territoryKey: string; flag: { primary: string; secondary: string; accent: string; pattern: string; icon: string } }) =>
+    api.put<{ success: boolean }>(`/clans/${clanId}/nation/foundation`, data),
   respondAlliance: (clanId: string, requestClanId: string, decision: 'accept' | 'reject') =>
     api.post<{ success: boolean }>(`/clans/${clanId}/nation/alliances/respond`, { requestClanId, decision }),
   betrayAlliance: (clanId: string, allyClanId: string) =>

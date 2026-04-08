@@ -989,6 +989,7 @@ model Clan {
   intimidation  Int      @default(0)
   marketControl Int      @default(0)
   territoryKey  String   @default("district-1")
+  nationFlag    String   @default("{\"primary\":\"#1d4ed8\",\"secondary\":\"#f8fafc\",\"accent\":\"#dc2626\",\"pattern\":\"tricolor\",\"icon\":\"star\"}")
   alliancesJson String   @default("[]")
   allianceRequestsJson String @default("[]")
   arsenalJson   String   @default("{\"PISTOL\":0,\"AK\":0,\"SNIPER\":0}")
