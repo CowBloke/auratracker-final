@@ -735,7 +735,17 @@ export default function MessagesPage() {
     const dmsOnly = all.filter((c) => c.type === 'DM');
     const pinnedDmsOnly = dmsOnly.filter((c) => pinnedDmIds.has(c.id));
     const unpinnedDmsOnly = dmsOnly.filter((c) => !pinnedDmIds.has(c.id));
-    const nonDm = sortConversationsByRecent(all.filter((c) => c.type !== 'DM'));
+    const nonDmOnly = all.filter((c) => c.type !== 'DM');
+
+    if (dmSortMode === 'RECENT') {
+      return {
+        pinnedDms: sortConversationsByRecent(pinnedDmsOnly),
+        dms: sortConversationsByRecent([...unpinnedDmsOnly, ...nonDmOnly]),
+        others: [],
+      };
+    }
+
+    const nonDm = sortConversationsByRecent(nonDmOnly);
 
     return {
       pinnedDms: sortDmList(pinnedDmsOnly),
@@ -2077,7 +2087,7 @@ export default function MessagesPage() {
                               </div>
                             )}
                             <div
-                              className={cn('flex items-end gap-1.5', isOwn ? 'flex-row-reverse' : 'flex-row', isLast ? 'mb-1' : 'mb-0')}
+                              className={cn('group flex items-end gap-1.5', isOwn ? 'flex-row-reverse' : 'flex-row', isLast ? 'mb-1' : 'mb-0')}
                             >
                             {/* Avatar placeholder for alignment in group */}
                             {selectedConversation.type === 'GROUP' && !isOwn && (
@@ -2173,18 +2183,22 @@ export default function MessagesPage() {
                                 </div>
                               )}
                               {canDeleteMessage && (
-                                <div className={cn('mt-0.5 px-1', isOwn ? 'text-right' : 'text-left')}>
+                                <div
+                                  className={cn(
+                                    'mt-0.5 px-1 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto',
+                                    isOwn ? 'text-right' : 'text-left',
+                                  )}
+                                >
                                   <button
                                     type="button"
                                     onClick={() => {
                                       if (!window.confirm('Supprimer ce message ?')) return;
                                       void handleDeleteMessage(msg.id);
                                     }}
-                                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                    className="inline-flex h-6 w-6 items-center justify-center rounded-md text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive"
                                     title="Supprimer le message"
                                   >
                                     <Trash2 className="h-3 w-3" />
-                                    Supprimer
                                   </button>
                                 </div>
                               )}
