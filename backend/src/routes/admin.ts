@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import path from 'path';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import { adminPurgeAllBusinesses, adminResetBusinessUnlockLevels } from '../modules/you/service.js';
+import { adminPurgeAllBusinesses, adminResetBusinessUnlockLevels, forceDivorceRelationship } from '../modules/you/service.js';
 import { validate, adminRareActionSchema } from '../middleware/validation.js';
 import { logAdmin, logSuggestion, logBan } from '../utils/logger.js';
 import { isAllowedImageUrl, writeBase64UploadImage } from '../utils/uploads.js';
@@ -2231,6 +2231,21 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
   } catch (error) {
     console.error('Admin update user error:', error);
     res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+router.post('/users/:id/force-divorce', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await forceDivorceRelationship(req.user!.id, id);
+    res.json({ success: true, message: 'Divorce force applique.' });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'RELATIONSHIP_NOT_MARRIED') {
+      return res.status(400).json({ error: 'Cet utilisateur n est pas marie.' });
+    }
+
+    console.error('Admin force divorce error:', error);
+    res.status(500).json({ error: 'Failed to force divorce' });
   }
 });
 

@@ -12,6 +12,7 @@ import { toClanTagData } from '@/components/clans/ClanTag';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserBadges, BadgeData } from '@/components/badges/UserBadges';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
+import { TableSkeleton } from '@/components/ui/loading-skeletons';
 
 type CategoryIcon = React.ComponentType<{ className?: string }>;
 
@@ -564,9 +565,7 @@ export default function Leaderboards() {
 
             {activeView === 'nombres' ? (
               nombresLoading ? (
-                <div className="flex justify-center py-12">
-                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-                </div>
+                <TableSkeleton rows={3} />
               ) : nombresSections.length === 0 ? (
                 <div className="py-12" />
               ) : (
@@ -593,9 +592,7 @@ export default function Leaderboards() {
             ) : (
               <>
                 {loading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-                  </div>
+                  <TableSkeleton rows={8} />
                 ) : rankings.length === 0 ? (
                   <div className="py-12" />
                 ) : (

@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from '@/hooks/use-toast';
+import { GridSkeleton } from '@/components/ui/loading-skeletons';
 
 interface InventoryItem {
   id: string;
@@ -514,8 +515,8 @@ export default function Marketplace() {
           </TabsList>
 
           {loading ? (
-            <div className="flex min-h-[40vh] items-center justify-center rounded-2xl border border-border/60 bg-card/70">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
+              <GridSkeleton cards={6} />
             </div>
           ) : (
             <>

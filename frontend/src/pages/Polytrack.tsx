@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { PageShell } from '@/components/layout/page-shell';
+import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useHideGameLeaderboards } from '@/lib/game-preferences';
@@ -274,7 +275,9 @@ export default function Polytrack() {
             </CardHeader>
             <CardContent className="p-0">
               {loadingLb ? (
-                <p className="px-4 py-8 text-center text-sm text-muted-foreground">Chargement…</p>
+                <div className="px-4 py-4">
+                  <ListSkeleton rows={5} />
+                </div>
               ) : leaderboard.length === 0 ? (
                 <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun temps enregistré. Sois le premier !</p>
               ) : (

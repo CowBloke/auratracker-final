@@ -397,6 +397,7 @@ const ACTION_LABELS: Record<string, string> = {
   marriage_response: 'Réponse mariage',
   divorce_proposal: 'Demande de divorce',
   divorce_response: 'Réponse divorce',
+  relationship_force_divorce: 'Divorce forcé',
   relationship_mistress: 'Liaison créée',
   relationship_cheating_report: 'Soupçon de tricherie',
   relationship_court_case: 'Décision tribunal',
@@ -1067,6 +1068,7 @@ export default function Admin() {
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [mutingUser, setMutingUser] = useState<string | null>(null);
+  const [forcingDivorceUserId, setForcingDivorceUserId] = useState<string | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editModalUser, setEditModalUser] = useState<AdminUser | null>(null);
@@ -4106,6 +4108,19 @@ export default function Admin() {
     }
   };
 
+  const forceDivorceUser = async (id: string) => {
+    setForcingDivorceUserId(id);
+    try {
+      const res = await adminApi.forceDivorceUser(id);
+      await fetchUsers();
+      showMessage('success', res.data.message);
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setForcingDivorceUserId(null);
+    }
+  };
+
   const exportChat = async () => {
     setExportingChat(true);
     try {
@@ -4457,6 +4472,8 @@ export default function Admin() {
           openWarningDialog={openWarningDialog}
           openBanDialog={openBanDialog}
           deleting={deleting}
+          forcingDivorceUserId={forcingDivorceUserId}
+          forceDivorceUser={forceDivorceUser}
           deleteUser={deleteUser}
         />
         <ClubsTab

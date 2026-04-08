@@ -71,15 +71,16 @@ import You from './pages/You';
 import AuraVision from './pages/AuraVision';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
+import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-primary text-xl">
-          Chargement...
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md">
+          <CenteredSkeletonCard />
         </div>
       </div>
     );
@@ -97,9 +98,9 @@ function DefaultLandingRedirect() {
 
   if (maintenanceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-primary text-xl">
-          Chargement...
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md">
+          <CenteredSkeletonCard />
         </div>
       </div>
     );
@@ -170,9 +171,9 @@ function App() {
 
   if (loading || maintenanceLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-primary text-xl">
-          Chargement...
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md">
+          <CenteredSkeletonCard />
         </div>
       </div>
     );

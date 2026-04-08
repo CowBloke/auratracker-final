@@ -35,6 +35,7 @@ import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { PageHeader, PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { cn } from '@/lib/utils';
 import { type Notification } from '@/services/api';
@@ -371,8 +372,8 @@ export default function InboxPage() {
 
           <div className="flex min-w-0 flex-1 flex-col">
             {(isArchiveView ? loadingArchived : loading) && filteredNotifications.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center py-16">
-                <p className="text-sm text-muted-foreground">Chargement...</p>
+              <div className="flex-1 p-4">
+                <ListSkeleton rows={5} showAvatar={false} showActions />
               </div>
             ) : filteredNotifications.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">

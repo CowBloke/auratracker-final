@@ -24,6 +24,7 @@ import {
   Crown,
   Download,
   Edit2,
+  HeartCrack,
   Loader2,
   Package,
   Search,
@@ -60,6 +61,8 @@ type UsersTabProps = {
   openWarningDialog: (userId: string) => void;
   openBanDialog: (userId: string) => void;
   deleting: string | null;
+  forcingDivorceUserId: string | null;
+  forceDivorceUser: (userId: string) => void;
   deleteUser: (userId: string) => void;
 };
 
@@ -89,6 +92,8 @@ export function UsersTab(props: UsersTabProps) {
     openWarningDialog,
     openBanDialog,
     deleting,
+    forcingDivorceUserId,
+    forceDivorceUser,
     deleteUser,
   } = props;
 
@@ -256,6 +261,39 @@ export function UsersTab(props: UsersTabProps) {
                       <Button size="sm" variant="outline" onClick={() => openBadgeModal(u.id)} className="h-8 w-8 p-0 border-violet-500/50 text-violet-400 hover:bg-violet-500/10" title="Attribuer badge">
                         <Award className="h-3.5 w-3.5" />
                       </Button>
+
+                      {getAdminRole(u) === 'USER' && u.sharedMoney && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 border-rose-500/50 text-rose-400 hover:bg-rose-500/10"
+                              disabled={forcingDivorceUserId === u.id}
+                              title="Forcer divorce"
+                            >
+                              {forcingDivorceUserId === u.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HeartCrack className="h-3.5 w-3.5" />}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="flex items-center gap-2">
+                                <HeartCrack className="h-5 w-5 text-rose-400" />
+                                Forcer le divorce de {u.username} et {u.sharedMoney.partner.username} ?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Cette action dissout immédiatement le mariage, partage le compte commun et annule les demandes de mariage ou divorce en attente sur cette relation.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => void forceDivorceUser(u.id)} className="bg-rose-500 hover:bg-rose-600">
+                                Forcer le divorce
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
 
                       {getAdminRole(u) === 'USER' && (
                         <Button

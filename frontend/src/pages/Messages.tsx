@@ -55,6 +55,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { ChatSkeleton, ListSkeleton } from '@/components/ui/loading-skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { toast } from '@/hooks/use-toast';
@@ -186,6 +187,9 @@ const sortConversationsByRecent = (items: MessagingConversationSummary[]) =>
     if (timeDiff !== 0) return timeDiff;
     return a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
   });
+
+const sortConversationsByRecentRegardlessOfReadState = (items: MessagingConversationSummary[]) =>
+  sortConversationsByRecent(items);
 
 const DM_SORT_OPTIONS = {
   RECENT: 'Recentes',
@@ -735,7 +739,17 @@ export default function MessagesPage() {
     const dmsOnly = all.filter((c) => c.type === 'DM');
     const pinnedDmsOnly = dmsOnly.filter((c) => pinnedDmIds.has(c.id));
     const unpinnedDmsOnly = dmsOnly.filter((c) => !pinnedDmIds.has(c.id));
-    const nonDm = sortConversationsByRecent(all.filter((c) => c.type !== 'DM'));
+    const nonDmOnly = all.filter((c) => c.type !== 'DM');
+
+    if (dmSortMode === 'RECENT') {
+      return {
+        pinnedDms: sortConversationsByRecentRegardlessOfReadState(pinnedDmsOnly),
+        dms: sortConversationsByRecentRegardlessOfReadState([...unpinnedDmsOnly, ...nonDmOnly]),
+        others: [],
+      };
+    }
+
+    const nonDm = sortConversationsByRecent(nonDmOnly);
 
     return {
       pinnedDms: sortDmList(pinnedDmsOnly),
@@ -833,8 +847,11 @@ export default function MessagesPage() {
       if (textareaRef.current) { textareaRef.current.style.height = 'auto'; }
       try {
         if (selectedAdminSupportUserId) {
-          // Support messages don't have images yet
-          await supportApi.reply(selectedAdminSupportUserId, body);
+          await supportApi.reply(
+            selectedAdminSupportUserId,
+            body,
+            currentImageUrl ? [currentImageUrl] : undefined,
+          );
         } else {
           const roleToSend = isCourtConversation
             ? (isAdminViewer ? selectedCourtRole : myCourtRole)
@@ -1204,7 +1221,7 @@ export default function MessagesPage() {
   if (loading) {
     return (
       <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
-        <div className="h-full rounded-2xl border border-border/60 bg-card" />
+        <ChatSkeleton className="h-full" />
       </PageShell>
     );
   }
@@ -2003,7 +2020,9 @@ export default function MessagesPage() {
                   <ScrollArea ref={messagesScrollAreaRef} className="h-full px-4 py-4 sm:px-6">
                     <div className="flex w-full flex-col gap-0.5">
                       {convLoading ? (
-                        <p className="py-8 text-center text-xs text-muted-foreground">Chargement...</p>
+                        <div className="py-2">
+                          <ListSkeleton rows={4} showAvatar={false} />
+                        </div>
                       ) : currentMessages.length === 0 ? (
                         <div className="flex flex-col items-center py-12 text-center">
                           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-card">
@@ -2077,7 +2096,7 @@ export default function MessagesPage() {
                               </div>
                             )}
                             <div
-                              className={cn('flex items-end gap-1.5', isOwn ? 'flex-row-reverse' : 'flex-row', isLast ? 'mb-1' : 'mb-0')}
+                              className={cn('group flex items-end gap-1.5', isOwn ? 'flex-row-reverse' : 'flex-row', isLast ? 'mb-1' : 'mb-0')}
                             >
                             {/* Avatar placeholder for alignment in group */}
                             {selectedConversation.type === 'GROUP' && !isOwn && (
@@ -2173,18 +2192,22 @@ export default function MessagesPage() {
                                 </div>
                               )}
                               {canDeleteMessage && (
-                                <div className={cn('mt-0.5 px-1', isOwn ? 'text-right' : 'text-left')}>
+                                <div
+                                  className={cn(
+                                    'mt-0.5 px-1 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto',
+                                    isOwn ? 'text-right' : 'text-left',
+                                  )}
+                                >
                                   <button
                                     type="button"
                                     onClick={() => {
                                       if (!window.confirm('Supprimer ce message ?')) return;
                                       void handleDeleteMessage(msg.id);
                                     }}
-                                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                    className="inline-flex h-6 w-6 items-center justify-center rounded-md text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive"
                                     title="Supprimer le message"
                                   >
                                     <Trash2 className="h-3 w-3" />
-                                    Supprimer
                                   </button>
                                 </div>
                               )}
@@ -2346,6 +2369,10 @@ function ConvRow({
   onToggleFavorite: (e: React.MouseEvent) => void;
   onToggleDmPin: (e: React.MouseEvent) => void;
 }) {
+  const dmParticipant = conversation.type === 'DM'
+    ? conversation.participants.find((entry) => entry.user.id !== 'support')?.user ?? null
+    : null;
+
   return (
     <button
       type="button"
@@ -2359,7 +2386,12 @@ function ConvRow({
       <div className="min-w-0 flex-1 overflow-hidden">
         <div className="flex items-baseline justify-between gap-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            <p className={cn('truncate text-xs font-semibold', isActive && 'text-primary')}>{conversation.displayName}</p>
+            <p
+              className={cn('truncate text-xs font-semibold', conversation.type === 'DM' && 'text-foreground', isActive && conversation.type !== 'DM' && 'text-primary')}
+              style={conversation.type === 'DM' && dmParticipant?.usernameColor ? { color: dmParticipant.usernameColor } : undefined}
+            >
+              {conversation.displayName}
+            </p>
             {conversation.type === 'SUPPORT' && (
               <span className="shrink-0 rounded-full bg-sky-500/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sky-600">
                 Support
@@ -2381,7 +2413,10 @@ function ConvRow({
         <div className="flex items-center justify-between gap-1">
           <p className="truncate text-[11px] text-muted-foreground">{getPreview(conversation)}</p>
           {conversation.unreadCount > 0 && (
-            <span className="shrink-0 inline-flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+            <span
+              className="shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-primary/20 bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground shadow-sm"
+              title={`${conversation.unreadCount} message${conversation.unreadCount > 1 ? 's' : ''} non lu${conversation.unreadCount > 1 ? 's' : ''}`}
+            >
               {conversation.unreadCount}
             </span>
           )}

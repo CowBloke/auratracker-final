@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { toast } from '@/hooks/use-toast';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
@@ -443,8 +444,10 @@ export default function ClashVillage() {
   if (loading && !state) {
     return (
       <PageShell>
-        <div className="flex min-h-[40vh] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-muted/10">
-          <p className="text-sm text-muted-foreground">Chargement du village...</p>
+        <div className="flex min-h-[40vh] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-muted/10 px-4">
+          <div className="w-full max-w-md">
+            <CenteredSkeletonCard />
+          </div>
         </div>
       </PageShell>
     );

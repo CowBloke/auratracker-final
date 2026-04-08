@@ -708,8 +708,14 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
     // For court conversations, we assign their persisted participant court role automatically.
 
     if (conversationId === SUPPORT_CONVERSATION_ID) {
+      const images = normalizeSupportImages(imageUrl ? [imageUrl] : []);
       const message = await prisma.supportMessage.create({
-        data: { userId: user.id, body, fromAdmin: false },
+        data: {
+          userId: user.id,
+          body,
+          fromAdmin: false,
+          images: images.length ? JSON.stringify(images) : null,
+        },
       });
 
       const serializedMessage = {
@@ -728,7 +734,7 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
         message: serializeSupportMessage(message),
         username: user.username,
       });
-      await notifyAdminsOfSupportMessage(body, user.id, user.username);
+      await notifyAdminsOfSupportMessage(body || 'Images', user.id, user.username);
 
       return res.json({ message: serializedMessage });
     }
