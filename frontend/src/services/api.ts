@@ -697,6 +697,63 @@ export const youApi = {
     api.post<{ ok: boolean }>(`/you/court-cases/${caseId}/lawyers/${lawyerUserId}/rate`, { rating, comment }),
 };
 
+export interface Ad {
+  id: string;
+  businessId: string;
+  title: string;
+  tagline: string;
+  imageUrl: string | null;
+  ctaText: string;
+  ctaLink: string;
+  adType: 'CARD' | 'BANNER' | 'INTERSTITIAL';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | string;
+  isActive: boolean;
+  impressions: number;
+  clicks: number;
+  reviewedAt: string | null;
+  reviewedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  business: {
+    id: string;
+    name: string;
+    logoUrl?: string | null;
+    verified: boolean;
+  };
+}
+
+export interface AdCreateInput {
+  businessId: string;
+  title: string;
+  tagline: string;
+  imageUrl?: string | null;
+  ctaText?: string;
+  ctaLink: string;
+  adType: 'CARD' | 'BANNER' | 'INTERSTITIAL';
+}
+
+export interface PendingAdReview extends Ad {
+  business: Ad['business'] & {
+    owner: {
+      id: string;
+      username: string;
+      profilePicture?: string | null;
+    };
+  };
+}
+
+export const adsApi = {
+  create: (data: AdCreateInput) => api.post<{ ad: Ad }>('/ads', data),
+  listOwn: () => api.get<{ ads: Ad[] }>('/ads'),
+  listPublic: (params?: { type?: 'CARD' | 'BANNER' | 'INTERSTITIAL'; limit?: number }) =>
+    api.get<{ ads: Ad[] }>('/ads/public', { params }),
+  update: (id: string, data: Partial<AdCreateInput & { isActive: boolean }>) =>
+    api.patch<{ ad: Ad }>(`/ads/${id}`, data),
+  delete: (id: string) => api.delete<{ ok: boolean }>(`/ads/${id}`),
+  trackImpression: (id: string) => api.post<{ ok: boolean }>(`/ads/${id}/impression`, {}),
+  trackClick: (id: string) => api.post<{ ok: boolean }>(`/ads/${id}/click`, {}),
+};
+
 // Economy API
 export interface AuraTransferEntry {
   id: string;
@@ -2408,6 +2465,9 @@ const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
 export const adminApi = {
   runRareAction,
   startPrismaStudio: () => api.post<{ ok: boolean; studioToken: string }>('/admin/prisma-studio/start'),
+  getPendingAds: () => api.get<{ pendingAds: PendingAdReview[] }>('/admin/ads/pending'),
+  approveAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/approve`, {}),
+  rejectAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/reject`, {}),
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   getClans: () => api.get<{ clans: AdminClan[] }>('/admin/clans'),
   getClanEvents: () => api.get<{ events: AdminClanEvent[] }>('/admin/clan-events'),

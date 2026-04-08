@@ -46,6 +46,21 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-08-business-ads',
+    date: '2026-04-08',
+    title: 'Publicites des entreprises',
+    summary: 'Les entreprises peuvent maintenant creer des pubs visibles dans plusieurs zones du site, y compris avant le lancement de certains jeux.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-04-08-business-ads-1', text: '**Publicites entreprises** — Les entreprises peuvent creer des **publicites** depuis l onglet Travail -> Gerer mes publicites.' },
+          { id: '2026-04-08-business-ads-2', text: '**Placements pub** — Les pubs apparaissent dans la grille des jeux, dans l apercu You, et en **interstitiel** avant de lancer un jeu.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-07-court-lawyers',
     date: '2026-04-07',
     title: 'Justice — Avocats plus lisibles',

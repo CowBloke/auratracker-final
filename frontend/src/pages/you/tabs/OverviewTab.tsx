@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, BookOpen, Building2, Globe, Heart, RotateCcw, ShoppingBasket, TrendingUp, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { AdBanner } from '@/components/ads/AdBanner';
 import { cn } from '@/lib/utils';
-import { type YouJobOffer, type YouState, youApi } from '@/services/api';
+import { type Ad, adsApi, type YouJobOffer, type YouState, youApi } from '@/services/api';
 import { FeedCard, DashboardCard } from '../components/ui';
 import { type FeedItem } from '../types';
 import { isYouNotification, withRouteError } from '../utils';
@@ -170,6 +171,18 @@ function YouTutorial() {
 export function OverviewTab({ data, userId, onReload }: { data: YouState; userId: string; onReload: (refreshBalance?: boolean) => Promise<void> }) {
   const { notifications } = useNotifications();
   const youNotifications = useMemo(() => notifications.filter(isYouNotification).slice(0, 8), [notifications]);
+  const [bannerAd, setBannerAd] = useState<Ad | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    void adsApi.listPublic({ type: 'BANNER', limit: 3 })
+      .then((response) => {
+        if (response.data.ads[0]) {
+          setBannerAd(response.data.ads[0]);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const feedItems = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = [];
@@ -234,6 +247,8 @@ export function OverviewTab({ data, userId, onReload }: { data: YouState; userId
           <YouTutorial />
         </CardContent>
       </Card>
+
+      {bannerAd && !bannerDismissed ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
 
       <DashboardCard
         title={feedItems.length > 0 ? `Fil d'actualite (${feedItems.length})` : "Fil d'actualite"}

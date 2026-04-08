@@ -47,6 +47,7 @@ import clashRoutes from './routes/clash.js';
 import polytrackRoutes from './routes/polytrack.js';
 import changelogRoutes from './routes/changelog.js';
 import youRoutes from './routes/you.js';
+import adsRoutes from './routes/ads.js';
 import messagesRoutes from './routes/messages.js';
 import justiceRoutes from './routes/justice.js';
 import auraVisionRoutes from './routes/auravision.js';
@@ -172,6 +173,7 @@ app.use('/api/clash', clashRoutes);
 app.use('/api/polytrack', polytrackRoutes);
 app.use('/api/changelog', changelogRoutes);
 app.use('/api/you', youRoutes);
+app.use('/api/ads', adsRoutes);
 app.use('/api/justice', justiceRoutes);
 app.use('/api/auravision', auraVisionRoutes);
 

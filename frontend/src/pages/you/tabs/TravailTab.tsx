@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Users } from 'lucide-react';
+import { Building2, Megaphone, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -75,6 +75,14 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
           <SectionTitle>Actions</SectionTitle>
           <ActionCard>
             <ActionRow icon={Building2} label="Creer une entreprise" sub={`${slotLabel} · Niveau debloque : ${unlockedLevel}`} iconBg="bg-emerald-400/15" iconColor="text-emerald-400" onClick={() => { if (canCreateBusiness) setCreateOpen(true); else toast.error('Monte Affaires pour debloquer un nouveau slot business.'); }} />
+            <ActionRow
+              icon={Megaphone}
+              label="Gerer mes publicites"
+              sub="Cree des annonces pour tes entreprises"
+              iconBg="bg-violet-400/15"
+              iconColor="text-violet-400"
+              onClick={() => { window.location.href = '?tab=publicites'; }}
+            />
           </ActionCard>
         </div>
         <div className="space-y-6">

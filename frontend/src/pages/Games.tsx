@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { AdCard } from '@/components/ads/AdCard';
+import { AdInterstitial } from '@/components/ads/AdInterstitial';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,7 +29,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveThemeImageUrl } from '@/lib/images';
 import { getGameImage } from '@/lib/game-images';
-import { adminApi, gamesApi } from '@/services/api';
+import { type Ad, adminApi, adsApi, gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 
 type GamesTab = 'singleplayer' | 'multiplayer' | 'all';
@@ -703,6 +705,7 @@ const gameRewardTiers: Partial<Record<Game['id'], RewardTierLine[]>> = {
 };
 
 export default function Games() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<GamesTab>('all');
   const [activeMultiplayerTab, setActiveMultiplayerTab] = useState<MultiplayerTab>('all');
   const [sortBy, setSortBy] = useState<SortOption>('popular');
@@ -717,6 +720,10 @@ export default function Games() {
   const [managedNewGameIds, setManagedNewGameIds] = useState<string[]>([]);
   const [savingCatalogTag, setSavingCatalogTag] = useState<string | null>(null);
   const [rewardDetailsGameId, setRewardDetailsGameId] = useState<string | null>(null);
+  const [adPool, setAdPool] = useState<Ad[]>([]);
+  const [interstitialAd, setInterstitialAd] = useState<Ad | null>(null);
+  const [pendingGameLink, setPendingGameLink] = useState<string | null>(null);
+  const [interstitialOpen, setInterstitialOpen] = useState(false);
   const { maintenanceStatus, refreshFeatures } = useFeatures();
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -751,6 +758,14 @@ export default function Games() {
       cancelled = true;
     };
   }, [user]);
+
+  useEffect(() => {
+    void adsApi.listPublic({ limit: 12 })
+      .then((response) => {
+        setAdPool(response.data.ads);
+      })
+      .catch(() => {});
+  }, []);
 
   const visibleGames = useMemo(
     () => (canBypassMaintenance ? games : games.filter((game) => !disabledPages.includes(game.pageKey))),
@@ -877,6 +892,38 @@ export default function Games() {
       return '/games/salle-de-marche';
     }
     return `/games/${gameId}`;
+  };
+
+  const handleGameClick = (gameId: string) => {
+    const link = getGameLink(gameId);
+    const ads = adPool.filter((ad) => ad.adType === 'INTERSTITIAL' && ad.isActive);
+
+    if (ads.length > 0 && Math.random() > 0.5) {
+      setInterstitialAd(ads[Math.floor(Math.random() * ads.length)]!);
+      setPendingGameLink(link);
+      setInterstitialOpen(true);
+      return;
+    }
+
+    navigate(link);
+  };
+
+  const injectAdsIntoGrid = (nodes: JSX.Element[]): JSX.Element[] => {
+    const cardAds = adPool.filter((ad) => ad.adType === 'CARD' && ad.isActive);
+    if (cardAds.length === 0) return nodes;
+
+    const result: JSX.Element[] = [];
+    let adIdx = 0;
+
+    nodes.forEach((node, i) => {
+      result.push(node);
+      if ((i + 1) % 6 === 0) {
+        result.push(<AdCard key={`ad-${adIdx}`} ad={cardAds[adIdx % cardAds.length]!} />);
+        adIdx += 1;
+      }
+    });
+
+    return result;
   };
 
   const multiplayerGamesToRender = activeMultiplayerTab === 'duel'
@@ -1014,7 +1061,12 @@ export default function Games() {
       className="group block"
     >
       <Card className="relative isolate aspect-square overflow-hidden transition hover:border-foreground/40 hover:shadow-md">
-        <Link to={getGameLink(game.id)} className="absolute inset-0 z-10" aria-label={`Ouvrir ${game.name}`} />
+        <button
+          type="button"
+          className="absolute inset-0 z-10 cursor-pointer"
+          aria-label={`Ouvrir ${game.name}`}
+          onClick={() => handleGameClick(game.id)}
+        />
         {renderAdminControls(game)}
         {gameRewardTiers[game.id]?.length ? (
           <Button
@@ -1182,7 +1234,7 @@ export default function Games() {
                 </div>
                 {soloGames.length > 0 ? (
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                    {soloGames.map(renderGameCard)}
+                    {injectAdsIntoGrid(soloGames.map(renderGameCard))}
                   </div>
                 ) : (
                   renderEmptyState()
@@ -1196,7 +1248,7 @@ export default function Games() {
                 </div>
                 {multiplayerGames.length > 0 ? (
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                    {multiplayerGames.map(renderGameCard)}
+                    {injectAdsIntoGrid(multiplayerGames.map(renderGameCard))}
                   </div>
                 ) : (
                   renderEmptyState()
@@ -1206,7 +1258,7 @@ export default function Games() {
           ) : (
             gamesToRender.length > 0 ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                {gamesToRender.map(renderGameCard)}
+                {injectAdsIntoGrid(gamesToRender.map(renderGameCard))}
               </div>
             ) : (
               renderEmptyState()
@@ -1246,6 +1298,18 @@ export default function Games() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AdInterstitial
+        ad={interstitialAd}
+        open={interstitialOpen}
+        onComplete={() => {
+          setInterstitialOpen(false);
+          if (pendingGameLink) {
+            navigate(pendingGameLink);
+            setPendingGameLink(null);
+          }
+        }}
+      />
     </PageShell>
   );
 }

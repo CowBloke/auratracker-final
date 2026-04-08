@@ -952,6 +952,179 @@ router.post('/registration-reviews/import-local', authMiddleware, requireAdmin, 
           motivationMessage: typeof candidate.motivationMessage === 'string' && candidate.motivationMessage.trim() ? candidate.motivationMessage : null,
           registrationCreatedAt,
           status,
+ 
+       router.get('/ads/pending', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+         try {
+           const pendingAds = await prisma.ad.findMany({
+             where: { status: 'PENDING' },
+             include: {
+               business: {
+                 include: {
+                   owner: {
+                     select: {
+                       id: true,
+                       username: true,
+                       profilePicture: true,
+                     },
+                   },
+                 },
+               },
+             },
+             orderBy: { createdAt: 'asc' },
+           });
+ 
+           res.json({ pendingAds });
+         } catch (error) {
+           console.error('Admin get pending ads error:', error);
+           res.status(500).json({ error: 'Failed to get pending ads' });
+         }
+       });
+ 
+       router.post('/ads/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+         try {
+           const ad = await prisma.ad.findUnique({
+             where: { id: req.params.id },
+             include: {
+               business: {
+                 include: {
+                   owner: {
+                     select: {
+                       id: true,
+                       username: true,
+                     },
+                   },
+                 },
+               },
+             },
+           });
+ 
+           if (!ad) {
+             return res.status(404).json({ error: 'AD_NOT_FOUND' });
+           }
+ 
+           if (ad.status !== 'PENDING') {
+             return res.status(400).json({ error: 'AD_ALREADY_REVIEWED' });
+           }
+ 
+           const updated = await prisma.ad.update({
+             where: { id: ad.id },
+             data: {
+               status: 'APPROVED',
+               isActive: true,
+               reviewedAt: new Date(),
+               reviewedById: req.user!.id,
+             },
+             include: {
+               business: {
+                 include: {
+                   owner: {
+                     select: {
+                       id: true,
+                       username: true,
+                       profilePicture: true,
+                     },
+                   },
+                 },
+               },
+             },
+           });
+ 
+           logAdmin('ad_approve', req.user!.id, req.user!.username, ad.business.ownerId, ad.business.owner.username, {
+             adId: ad.id,
+             businessId: ad.businessId,
+             title: ad.title,
+             adType: ad.adType,
+           });
+ 
+           createNotification({
+             userId: ad.business.ownerId,
+             type: 'SYSTEM',
+             title: 'Publicite approuvee',
+             body: `Ta publicite "${ad.title}" a ete approuvee et peut maintenant apparaitre sur le site.`,
+             data: { adId: ad.id, businessId: ad.businessId, status: 'APPROVED' },
+             link: '/you?tab=publicites',
+             icon: 'megaphone',
+           }).catch(() => {});
+ 
+           res.json({ ad: updated });
+         } catch (error) {
+           console.error('Admin approve ad error:', error);
+           res.status(500).json({ error: 'Failed to approve ad' });
+         }
+       });
+ 
+       router.post('/ads/:id/reject', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+         try {
+           const ad = await prisma.ad.findUnique({
+             where: { id: req.params.id },
+             include: {
+               business: {
+                 include: {
+                   owner: {
+                     select: {
+                       id: true,
+                       username: true,
+                     },
+                   },
+                 },
+               },
+             },
+           });
+ 
+           if (!ad) {
+             return res.status(404).json({ error: 'AD_NOT_FOUND' });
+           }
+ 
+           if (ad.status !== 'PENDING') {
+             return res.status(400).json({ error: 'AD_ALREADY_REVIEWED' });
+           }
+ 
+           const updated = await prisma.ad.update({
+             where: { id: ad.id },
+             data: {
+               status: 'REJECTED',
+               isActive: false,
+               reviewedAt: new Date(),
+               reviewedById: req.user!.id,
+             },
+             include: {
+               business: {
+                 include: {
+                   owner: {
+                     select: {
+                       id: true,
+                       username: true,
+                       profilePicture: true,
+                     },
+                   },
+                 },
+               },
+             },
+           });
+ 
+           logAdmin('ad_reject', req.user!.id, req.user!.username, ad.business.ownerId, ad.business.owner.username, {
+             adId: ad.id,
+             businessId: ad.businessId,
+             title: ad.title,
+             adType: ad.adType,
+           });
+ 
+           createNotification({
+             userId: ad.business.ownerId,
+             type: 'SYSTEM',
+             title: 'Publicite rejetee',
+             body: `Ta publicite "${ad.title}" a ete rejetee par l'administration.`,
+             data: { adId: ad.id, businessId: ad.businessId, status: 'REJECTED' },
+             link: '/you?tab=publicites',
+             icon: 'megaphone',
+           }).catch(() => {});
+ 
+           res.json({ ad: updated });
+         } catch (error) {
+           console.error('Admin reject ad error:', error);
+           res.status(500).json({ error: 'Failed to reject ad' });
+         }
+       });
           reviewedAt,
           reviewedById: req.user!.id,
           importedFromLegacy: true,

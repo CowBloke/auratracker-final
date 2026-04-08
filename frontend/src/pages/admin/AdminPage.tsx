@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, type PendingFormationReviewItem } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, type PendingFormationReviewItem, type PendingAdReview } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -1147,6 +1147,9 @@ export default function Admin() {
   const [pendingFormationReviews, setPendingFormationReviews] = useState<PendingFormationReviewItem[]>([]);
   const [pendingFormationReviewsLoading, setPendingFormationReviewsLoading] = useState(false);
   const [reviewingFormationProductId, setReviewingFormationProductId] = useState<string | null>(null);
+  const [pendingAds, setPendingAds] = useState<PendingAdReview[]>([]);
+  const [pendingAdsLoading, setPendingAdsLoading] = useState(false);
+  const [reviewingAdId, setReviewingAdId] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [badgeFormOpen, setBadgeFormOpen] = useState(false);
   const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
@@ -1337,6 +1340,18 @@ export default function Admin() {
     }
   };
 
+  const fetchPendingAds = async () => {
+    setPendingAdsLoading(true);
+    try {
+      const res = await adminApi.getPendingAds();
+      setPendingAds(res.data.pendingAds);
+    } catch (error) {
+      console.error('Failed to fetch pending ads:', error);
+    } finally {
+      setPendingAdsLoading(false);
+    }
+  };
+
   const handleApproveCustomBadge = async (id: string) => {
     try {
       await customBadgesApi.approve(id);
@@ -1380,6 +1395,28 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la revue de la formation');
     } finally {
       setReviewingFormationProductId(null);
+    }
+  };
+
+  const handleReviewAd = async (adId: string, decision: 'approve' | 'reject') => {
+    setReviewingAdId(adId);
+    try {
+      const res = decision === 'approve'
+        ? await adminApi.approveAd(adId)
+        : await adminApi.rejectAd(adId);
+      setPendingAds((prev) => prev.filter((ad) => ad.id !== adId));
+      if (decision === 'approve') {
+        showMessage('success', 'Publicite approuvee');
+      } else {
+        showMessage('success', 'Publicite rejetee');
+      }
+      return res.data.ad;
+    } catch (error: any) {
+      console.error('Failed to review ad:', error);
+      showMessage('error', error.response?.data?.error || 'Erreur lors de la revue de la publicite');
+      return null;
+    } finally {
+      setReviewingAdId(null);
     }
   };
 
@@ -1911,6 +1948,7 @@ export default function Admin() {
     fetchBadges();
     fetchCustomBadgeRequests();
     fetchPendingFormationReviews();
+    fetchPendingAds();
     fetchLogs();
     fetchLogStats();
     fetchSettings();
@@ -4447,11 +4485,11 @@ export default function Admin() {
           className={SPACING.SECTION_SPACING}
         >
           <TabsList className="flex flex-wrap h-auto p-1">
-          <TabsTrigger value="inbox" onClick={() => { fetchCustomBadgeRequests(); fetchPendingFormationReviews(); }}>
+          <TabsTrigger value="inbox" onClick={() => { fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); }}>
             Boîte de réception
-            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length) > 0 && (
+            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length) > 0 && (
               <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
-                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length}
+                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length}
               </span>
             )}
           </TabsTrigger>
@@ -4542,6 +4580,70 @@ export default function Admin() {
           rejectCustomBadgeRequest={handleRejectCustomBadge}
           reviewFormationProduct={handleReviewFormationProduct}
         />
+
+        {activeTab === 'inbox' && pendingAds.length > 0 ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Publicités à valider</h2>
+              <span className={TYPOGRAPHY.XS}>{pendingAds.length} en attente</span>
+            </div>
+            <div className="space-y-3">
+              {pendingAdsLoading ? (
+                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement des publicités...</CardContent></Card>
+              ) : pendingAds.map((ad) => (
+                <Card key={ad.id} className="overflow-hidden">
+                  <CardContent className="space-y-4 px-5 py-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-base font-semibold">{ad.title}</p>
+                          <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs text-violet-300">{ad.adType}</span>
+                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">En attente</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{ad.tagline}</p>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{ad.business.name} · par {ad.business.owner.username}</p>
+                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          <span>CTA: {ad.ctaText}</span>
+                          <span>·</span>
+                          <span className="break-all">{ad.ctaLink}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" onClick={() => void handleReviewAd(ad.id, 'approve')} disabled={reviewingAdId === ad.id}>
+                          Approuver
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => void handleReviewAd(ad.id, 'reject')} disabled={reviewingAdId === ad.id}>
+                          Rejeter
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+                      <div className="overflow-hidden rounded-xl border border-border/40 bg-background/50">
+                        {ad.imageUrl ? (
+                          <img src={resolveImageUrl(ad.imageUrl)} alt={ad.title} className="h-40 w-full object-cover" />
+                        ) : (
+                          <div className="flex h-40 items-center justify-center bg-muted/30 text-xs text-muted-foreground">Pas d'image</div>
+                        )}
+                      </div>
+                      <div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-3">
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Aperçu joueur</p>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold">{ad.title}</p>
+                          <p className="text-sm text-muted-foreground">{ad.tagline}</p>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>{ad.business.owner.username}</span>
+                          <span>·</span>
+                          <span>{ad.business.verified ? 'Entreprise vérifiée' : 'Entreprise non vérifiée'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <UsersTab
           userSearchQuery={userSearchQuery}

@@ -546,12 +546,38 @@ model Business {
   supportConversations MessageConversation[]
   plaintiffCourtCases  CourtCase[]                     @relation("CourtCasePlaintiffLawFirm")
   defendantCourtCases  CourtCase[]                     @relation("CourtCaseDefendantLawFirm")
+  ads                  Ad[]                            @relation("BusinessAds")
 
   @@index([ownerId])
   @@index([supportAgentId])
   @@index([typeKey, createdAt])
   @@index([hiring])
   @@index([isStateOwned])
+}
+
+model Ad {
+  id          String   @id @default(uuid())
+  businessId  String
+  title       String
+  tagline     String
+  imageUrl    String?
+  ctaText     String   @default("En savoir plus")
+  ctaLink     String
+  adType      String
+  status      String   @default("PENDING")
+  isActive    Boolean  @default(true)
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  reviewedAt  DateTime?
+  reviewedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation("BusinessAds", fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([isActive, adType])
+  @@index([status, createdAt])
 }
 
 model FormationProduct {
