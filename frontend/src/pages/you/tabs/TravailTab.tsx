@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Building2, Megaphone, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { type YouBusiness, type YouPlayer, type YouState, youApi } from '@/services/api';
+import { type Ad, adsApi, type YouBusiness, type YouPlayer, type YouState, youApi } from '@/services/api';
+import { AdBanner } from '@/components/ads/AdBanner';
 import { BUSINESS_ICON_MAP } from '../constants';
 import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '../components/modals';
 import { ActionCard, ActionRow, Pill, SectionTitle } from '../components/ui';
@@ -55,6 +56,13 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
     await onReload(true);
   };
 
+  const [bannerAd, setBannerAd] = useState<Ad | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    void adsApi.listPublic({ type: 'BANNER', limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
+  }, []);
+
   const cancelBuyoutOffer = async (offerId: string) => {
     setCancellingOfferId(offerId);
     try {
@@ -93,6 +101,8 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
               : data.ownedBusinesses.map((business) => <BusinessCard key={business.id} business={business} onOpen={(entry) => setManagedBusinessId(entry.id)} />)
             }
           </div>
+          {bannerAd && !bannerDismissed ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
+
           {data.jobOffers.length > 0 && (
             <div className="space-y-4">
               <SectionTitle>Contrats en attente ({data.jobOffers.length})</SectionTitle>

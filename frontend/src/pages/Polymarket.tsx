@@ -4,9 +4,11 @@ import {
 } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import {
+  type Ad, adsApi,
   polymarketApi, PolymarketEvent, PolymarketSuggestion, PolymarketBet,
   uploadUserImage,
 } from '../services/api';
+import { AdCard } from '@/components/ads/AdCard';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 
 interface PolymarketOption {
@@ -297,6 +299,7 @@ export default function Polymarket() {
     const stored = window.localStorage.getItem(POLYMARKET_VIEW_STORAGE_KEY);
     return stored === 'grid' ? 'grid' : 'list';
   });
+  const [cardAds, setCardAds] = useState<Ad[]>([]);
 
   // Suggestion dialog
   const [suggestionDialogOpen, setSuggestionDialogOpen] = useState(false);
@@ -414,6 +417,7 @@ export default function Polymarket() {
 
   useEffect(() => {
     fetchData();
+    void adsApi.listPublic({ type: 'CARD' }).then((res) => setCardAds(res.data.ads)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -825,7 +829,12 @@ export default function Polymarket() {
               </Card>
             ) : (
               <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-3' : 'space-y-4')}>
-                {sortedOpenEvents.map((event) => {
+                {sortedOpenEvents.flatMap((event, i) => {
+                  const adRow = viewMode === 'grid' && (i + 1) % 6 === 0 && cardAds.length > 0
+                    ? [0, 1, 2].map((offset) => <AdCard key={`poly-ad-${i}-${offset}`} ad={cardAds[(Math.floor(i / 6) * 3 + offset) % cardAds.length]!} />)
+                    : [];
+                  // original event render below — use IIFE to preserve the original map body
+                  const eventEl = ((event) => {
                   const userBet = bets.find((b) => b.eventId === event.id);
                   const canBet = !userBet && event.status === 'OPEN' && new Date(event.eventDate) > new Date();
                   const options = getEventOptions(event);
@@ -968,6 +977,8 @@ export default function Polymarket() {
                       </div>
                     </Card>
                   );
+                  })(event);
+                  return [eventEl, ...adRow];
                 })}
               </div>
             )}

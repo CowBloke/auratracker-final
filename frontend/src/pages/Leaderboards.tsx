@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
+import { type Ad, adsApi, auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
+import { AdBanner } from '@/components/ads/AdBanner';
 import { X, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird, Rocket, Zap, Coins, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -150,6 +151,13 @@ export default function Leaderboards() {
 
   // Breakdown panel for overall ranking
   const [showBreakdown, setShowBreakdown] = useState(false);
+
+  const [bannerAd, setBannerAd] = useState<Ad | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    void adsApi.listPublic({ type: 'BANNER', limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
+  }, []);
 
   // Reset period when switching to a category that doesn't support it
   useEffect(() => {
@@ -480,6 +488,8 @@ export default function Leaderboards() {
           <ScrollArea className="h-full">
           <div className="space-y-4">
             <h2 className={TYPOGRAPHY.H3}>{activeTitle}</h2>
+
+            {bannerAd && !bannerDismissed ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
 
             {activeView === 'overall' && (
               <div className="rounded-lg border border-border/40 bg-muted/20">
