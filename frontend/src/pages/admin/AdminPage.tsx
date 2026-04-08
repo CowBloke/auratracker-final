@@ -1065,8 +1065,10 @@ export default function Admin() {
   const [saving, setSaving] = useState(false);
   const [downloadingUsersCsv, setDownloadingUsersCsv] = useState(false);
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet } from 'lucide-react';
   const [deleting, setDeleting] = useState<string | null>(null);
   const [mutingUser, setMutingUser] = useState<string | null>(null);
+  const [forcingDivorceUserId, setForcingDivorceUserId] = useState<string | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editModalUser, setEditModalUser] = useState<AdminUser | null>(null);
@@ -4101,8 +4103,22 @@ export default function Admin() {
       showMessage('success', res.data.message);
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
+
+    const forceDivorceUser = async (id: string) => {
+      setForcingDivorceUserId(id);
+      try {
+        const res = await adminApi.forceDivorceUser(id);
+        await fetchUsers();
+        showMessage('success', res.data.message);
+      } catch (error: any) {
+        showMessage('error', error.response?.data?.error || 'Erreur');
+      } finally {
+        setForcingDivorceUserId(null);
+      }
+    };
     } finally {
       setClearingChat(false);
+    relationship_force_divorce: 'Divorce forcé',
     }
   };
 
@@ -4457,6 +4473,8 @@ export default function Admin() {
           openWarningDialog={openWarningDialog}
           openBanDialog={openBanDialog}
           deleting={deleting}
+          forcingDivorceUserId={forcingDivorceUserId}
+          forceDivorceUser={forceDivorceUser}
           deleteUser={deleteUser}
         />
         <ClubsTab

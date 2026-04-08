@@ -2445,6 +2445,7 @@ export const adminApi = {
   deleteClan: (id: string) => api.delete<{ success: boolean }>(`/admin/clans/${id}`),
   updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; role?: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
+  forceDivorceUser: (id: string) => api.post<{ success: boolean; message: string }>(`/admin/users/${id}/force-divorce`),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
   getUserInventory: (id: string) =>
     api.get<{ items: AdminInventoryItem[] }>(`/admin/users/${id}/inventory`),

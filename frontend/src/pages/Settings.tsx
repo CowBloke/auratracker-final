@@ -803,9 +803,8 @@ function ParrainageSection({
       <div>
         <SettingsGroupLabel>Parrainage</SettingsGroupLabel>
         <SettingsCard>
-          <div className="flex items-center gap-3 px-4 py-4">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Chargement...</p>
+          <div className="px-4 py-4">
+            <CenteredSkeletonCard />
           </div>
         </SettingsCard>
       </div>

@@ -3890,6 +3890,96 @@ export async function respondToDivorceProposal(userId: string, proposalId: strin
   };
 }
 
+export async function forceDivorceRelationship(adminUserId: string, targetUserId: string) {
+  const relationship = await prisma.relationship.findFirst({
+    where: {
+      status: 'MARRIED',
+      OR: [{ userAId: targetUserId }, { userBId: targetUserId }],
+    },
+    include: RELATIONSHIP_INCLUDE,
+  });
+
+  if (!relationship) {
+    throw new Error('RELATIONSHIP_NOT_MARRIED');
+  }
+
+  const coupleBalance = relationship.coupleBalance ?? 0;
+  const halfA = Math.floor(coupleBalance / 2);
+  const halfB = coupleBalance - halfA;
+  const now = new Date();
+
+  const [updatedRelationship] = await prisma.$transaction([
+    prisma.marriageProposal.updateMany({
+      where: {
+        relationshipId: relationship.id,
+        status: 'PENDING',
+      },
+      data: {
+        status: 'REJECTED',
+        respondedAt: now,
+      },
+    }),
+    prisma.divorceProposal.updateMany({
+      where: {
+        relationshipId: relationship.id,
+        status: 'PENDING',
+      },
+      data: {
+        status: 'REJECTED',
+        respondedAt: now,
+      },
+    }),
+    prisma.relationship.update({
+      where: { id: relationship.id },
+      data: {
+        status: 'DIVORCED',
+        marriedAt: null,
+        coupleBalance: 0,
+      },
+      include: RELATIONSHIP_INCLUDE,
+    }),
+    prisma.user.update({ where: { id: relationship.userAId }, data: { money: { increment: halfA } } }),
+    prisma.user.update({ where: { id: relationship.userBId }, data: { money: { increment: halfB } } }),
+  ]);
+
+  await Promise.allSettled([
+    createNotification({
+      userId: relationship.userAId,
+      type: 'SYSTEM',
+      title: 'Divorce force',
+      body: 'Un administrateur a force la dissolution de votre mariage.',
+      link: '/you?tab=social',
+      icon: 'heart-crack',
+    }),
+    createNotification({
+      userId: relationship.userBId,
+      type: 'SYSTEM',
+      title: 'Divorce force',
+      body: 'Un administrateur a force la dissolution de votre mariage.',
+      link: '/you?tab=social',
+      icon: 'heart-crack',
+    }),
+  ]);
+
+  await emitSharedBalanceUpdatesForUserIds(prisma, [relationship.userAId, relationship.userBId]);
+
+  void penalizeSkillXp(relationship.userAId, 'social', 15);
+  void penalizeSkillXp(relationship.userBId, 'social', 15);
+
+  logYouAdmin('relationship_force_divorce', adminUserId, undefined, relationship.id, `${relationship.userA.username} / ${relationship.userB.username}`, {
+    targetUserId,
+    forcedBy: adminUserId,
+    coupleBalanceSplit: {
+      userA: halfA,
+      userB: halfB,
+    },
+  });
+
+  return {
+    relationship: serializeRelationship(updatedRelationship, adminUserId),
+  };
+}
+
 export async function forgetRelationship(userId: string, relationshipId: string) {
   const relationship = await prisma.relationship.findUnique({
     where: { id: relationshipId },

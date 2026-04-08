@@ -4,6 +4,7 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Card, CardContent } from '@/components/ui/card';
+import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
 import { type YouState, youApi } from '@/services/api';
 import { ExploreTab } from './tabs/ExploreTab';
 import { FinanceTab } from './tabs/FinanceTab';
@@ -44,7 +45,18 @@ export default function You() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (loading && !data) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Chargement du hub YOU...</CardContent></Card></div>;
+  if (loading && !data) {
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <CenteredSkeletonCard key={index} />
+          ))}
+        </div>
+        <CenteredSkeletonCard className="min-h-[380px]" />
+      </div>
+    );
+  }
   if (!data || !user) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Impossible de charger les donnees YOU.</CardContent></Card></div>;
 
   return (

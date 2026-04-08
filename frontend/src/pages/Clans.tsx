@@ -25,6 +25,7 @@ import { MemoryGame } from '@/components/clans/war-games/MemoryGame';
 import { BombDropGame } from '@/components/clans/war-games/BombDropGame';
 import { NavalWarfareGame } from '@/components/clans/war-games/NavalWarfareGame';
 import { PageShell } from '@/components/layout/page-shell';
+import { CenteredSkeletonCard, ListSkeleton } from '@/components/ui/loading-skeletons';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -1490,7 +1491,9 @@ export default function Clans() {
                     }
                   />
                   {loading ? (
-                    <div className={cn(TYPOGRAPHY.MUTED, 'py-10')}>Chargement...</div>
+                    <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
+                      <ListSkeleton rows={4} />
+                    </div>
                   ) : clans.length === 0 ? (
                     <div className={cn(TYPOGRAPHY.MUTED, 'py-6')}>Aucun clan pour le moment.</div>
                   ) : (
@@ -1551,8 +1554,8 @@ export default function Clans() {
                 </Card>
               ) : detailLoading || !selectedClan ? (
                 <Card className={panelClassName}>
-                  <CardContent className="flex items-center justify-center p-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <CardContent className="p-4">
+                    <CenteredSkeletonCard className="min-h-[180px]" />
                   </CardContent>
                 </Card>
               ) : (

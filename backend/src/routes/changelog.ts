@@ -21,6 +21,26 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-08-skeleton-loading-screens',
+    date: '2026-04-08',
+    title: 'Chargement - Ecrans skeleton partout',
+    summary: 'Les principales pages affichent désormais des skeleton screens cohérents à la place des textes de chargement et des spinners bruts.',
+    items: [
+      { category: 'SMALL_FEATURE', text: '**Boot app** — L\'écran de chargement global et les redirections protégées utilisent maintenant un skeleton plein écran au lieu d\'un texte "Chargement...".', order: 0 },
+      { category: 'SMALL_FEATURE', text: '**Pages clés** — YOU, Messages, Inbox, Changelog, Settings, Inventory, Marketplace, Leaderboards, Clash Village, Polytrack et Clans affichent désormais des placeholders adaptés à leur mise en page.', order: 1 },
+      { category: 'SMALL_FEATURE', text: '**Chat et listes** — Les vues de messagerie et de classement utilisent des squelettes de conversation, de tableau et de liste pour garder la structure visible pendant le chargement.', order: 2 },
+    ],
+  },
+  {
+    id: '2026-04-08-admin-forced-divorce',
+    date: '2026-04-08',
+    title: 'Administration — Divorce forcé dans la liste utilisateurs',
+    summary: 'Les admins peuvent désormais dissoudre immédiatement un mariage depuis la liste des utilisateurs.',
+    items: [
+      { category: 'SMALL_FEATURE', text: '**Users · Divorce forcé** — Un nouveau bouton permet aux admins de forcer la dissolution d’un mariage depuis la liste des utilisateurs. Le compte commun est partagé, les demandes en attente sont nettoyées et la relation repasse en état divorcé.', order: 0 },
+    ],
+  },
+  {
     id: '2026-04-07-xp-system-overhaul',
     date: '2026-04-07',
     title: 'Système XP — Toutes les actions récompensées',

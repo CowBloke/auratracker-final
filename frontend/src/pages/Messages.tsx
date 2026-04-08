@@ -55,6 +55,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { ChatSkeleton, ListSkeleton } from '@/components/ui/loading-skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { toast } from '@/hooks/use-toast';
@@ -1217,7 +1218,7 @@ export default function MessagesPage() {
   if (loading) {
     return (
       <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
-        <div className="h-full rounded-2xl border border-border/60 bg-card" />
+        <ChatSkeleton className="h-full" />
       </PageShell>
     );
   }
@@ -2016,7 +2017,9 @@ export default function MessagesPage() {
                   <ScrollArea ref={messagesScrollAreaRef} className="h-full px-4 py-4 sm:px-6">
                     <div className="flex w-full flex-col gap-0.5">
                       {convLoading ? (
-                        <p className="py-8 text-center text-xs text-muted-foreground">Chargement...</p>
+                        <div className="py-2">
+                          <ListSkeleton rows={4} showAvatar={false} />
+                        </div>
                       ) : currentMessages.length === 0 ? (
                         <div className="flex flex-col items-center py-12 text-center">
                           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-card">

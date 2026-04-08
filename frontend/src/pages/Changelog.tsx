@@ -3,6 +3,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { Input } from '@/components/ui/input';
 import { PageShell } from '@/components/layout/page-shell';
 import { TYPOGRAPHY } from '@/lib/design-system';
@@ -275,7 +276,7 @@ export default function Changelog() {
   if (loading) {
     return (
       <PageShell size="default" className="space-y-6">
-        <div className="text-sm text-muted-foreground">Chargement…</div>
+        <ListSkeleton rows={4} showAvatar={false} />
       </PageShell>
     );
   }

@@ -25,6 +25,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
+import { GridSkeleton, ListSkeleton } from '@/components/ui/loading-skeletons';
 
 interface UserItem {
   id: string;
@@ -524,9 +525,12 @@ export default function Inventory() {
 
   if (loading) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+      <div className="w-full space-y-8 px-4 pb-6 lg:px-6 lg:pb-8">
+        <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
+          <GridSkeleton cards={3} columns="sm:grid-cols-3" />
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
+          <ListSkeleton rows={6} />
         </div>
       </div>
     );
