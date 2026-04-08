@@ -24,7 +24,6 @@ const CLAN_CREATE_COST = 100;
 const CLAN_MAX_MEMBERS = 5;
 const CLAN_WAR_PREPARATION_HOURS = 12;
 const CLAN_WAR_DURATION_HOURS = 24 * 7;
-const CLAN_WAR_COOLDOWN_HOURS = 24 * 7;
 const CLAN_WAR_TARGET_SCORE = 180;
 const CLAN_WAR_MIN_MEMBERS = 3;
 const CLAN_WAR_STAMINA_PER_24H = 3;
@@ -877,25 +876,7 @@ const getCurrentWarForClan = async (clanId: string) =>
   });
 
 const getClanCooldownEndsAt = async (clanId: string) => {
-  const lastWar = await prisma.clanWar.findFirst({
-    where: {
-      status: 'COMPLETED',
-      OR: [{ attackerClanId: clanId }, { defenderClanId: clanId }],
-    },
-    select: {
-      completedAt: true,
-    },
-    orderBy: {
-      completedAt: 'desc',
-    },
-  });
-
-  if (!lastWar?.completedAt) {
-    return null;
-  }
-
-  const cooldownEndsAt = addHours(lastWar.completedAt, CLAN_WAR_COOLDOWN_HOURS);
-  return cooldownEndsAt > new Date() ? cooldownEndsAt : null;
+  return null;
 };
 
 const getClosestWarOpponents = async (clanId: string) => {
@@ -2763,6 +2744,8 @@ router.post('/:id/war/attack', authMiddleware, async (req: AuthRequest, res: Res
     res.json({
       war: await mapWar(refreshedWar, id, userId),
       completed: false,
+      finalPoints,
+      attackType: rawAttackType,
     });
   } catch (error) {
     console.error('Clan war attack error:', error);

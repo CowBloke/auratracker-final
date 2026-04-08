@@ -17,6 +17,7 @@ import {
   ClanWarDefenseState,
   ClanWarGamesStatus,
   ClanWarState,
+  ClanWarActionType,
   clansApi,
   uploadUserImage,
 } from '@/services/api';
@@ -571,6 +572,10 @@ export default function Clans() {
   );
   const canCreateClan = !viewerClanId;
   const canJoinSelectedClan = Boolean(selectedClan && !selectedClan.viewer.isMember && !viewerClanId);
+  const selectedTerritory = selectedClan?.nation.territories.find((territory) => territory.key === selectedTerritoryKey) ?? null;
+  const selectedTerritoryOccupant = selectedTerritory
+    ? clans.find((entry) => entry.nation.territoryKey === selectedTerritory.key) ?? null
+    : null;
   const clanWars = useMemo(() => {
     if (!selectedClan) return [];
     const currentWar = selectedClan.warHub.currentWar ? [selectedClan.warHub.currentWar] : [];
@@ -1160,6 +1165,28 @@ export default function Clans() {
       toast({ title: 'Erreur', description: error.response?.data?.error || "Impossible d'envoyer l'alliance.", variant: 'destructive' });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleWarAttack = async (attackType: ClanWarActionType['type']) => {
+    if (!selectedClan || !selectedWar) return;
+    setWarActionKey(`attack:${attackType}`);
+    try {
+      const res = await clansApi.attackWar(selectedClan.id, attackType);
+      toast({
+        title: 'Assaut lancé',
+        description: `+${res.data.finalPoints} pts avec ${attackType.toLowerCase()}.`,
+      });
+      await refreshData(selectedClan.id);
+      await fetchGameStatus(selectedClan.id);
+    } catch (error: any) {
+      toast({
+        title: 'Erreur',
+        description: error.response?.data?.error || "Impossible d'effectuer cette attaque.",
+        variant: 'destructive',
+      });
+    } finally {
+      setWarActionKey(null);
     }
   };
 
@@ -2440,11 +2467,10 @@ export default function Clans() {
                                     <button
                                       key={territory.key}
                                       type="button"
-                                      disabled={!selectedClan.viewer.isLeader && territory.key !== selectedClan.nation.territoryKey}
-                                      onClick={() => selectedClan.viewer.isLeader ? setSelectedTerritoryKey(territory.key) : undefined}
+                                      onClick={() => setSelectedTerritoryKey(territory.key)}
                                       className={cn(
                                         'absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1',
-                                        selectedClan.viewer.isLeader ? 'cursor-pointer' : 'cursor-default'
+                                        'cursor-pointer'
                                       )}
                                       style={{ left: `${territory.x}%`, top: `${territory.y}%` }}
                                     >
@@ -2470,6 +2496,45 @@ export default function Clans() {
                                 })}
                               </div>
                             </div>
+                            {selectedTerritory ? (
+                              <div className="grid gap-3 rounded-2xl border border-border/50 bg-slate-950/40 p-4 md:grid-cols-[minmax(0,1fr)_auto]">
+                                <div className="space-y-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-sm font-semibold text-foreground">{selectedTerritory.label}</span>
+                                    <Badge variant={selectedTerritoryOccupant?.id === selectedClan.id ? 'default' : selectedTerritoryOccupant ? 'secondary' : 'outline'}>
+                                      {selectedTerritoryOccupant?.id === selectedClan.id
+                                        ? 'Votre territoire'
+                                        : selectedTerritoryOccupant
+                                          ? selectedTerritoryOccupant.name
+                                          : selectedTerritory.region}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{selectedTerritory.bonus}</p>
+                                  {selectedTerritoryOccupant && selectedTerritoryOccupant.id !== selectedClan.id ? (
+                                    <p className="text-xs text-muted-foreground">
+                                      Attaque directe disponible depuis la carte des nations.
+                                    </p>
+                                  ) : null}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {selectedTerritoryOccupant && selectedWar && [selectedWar.attackerClan.id, selectedWar.defenderClan.id].includes(selectedTerritoryOccupant.id) ? (
+                                    <Button variant="outline" onClick={openMyWarDialog} disabled={!isOwnClan || !selectedClan.viewer.isMember}>
+                                      <Swords className="mr-2 h-4 w-4" />
+                                      Ouvrir la guerre
+                                    </Button>
+                                  ) : null}
+                                  {selectedClan.viewer.isLeader && selectedClan.warHub.canDeclareWar && selectedTerritoryOccupant && selectedTerritoryOccupant.id !== selectedClan.id ? (
+                                    <Button
+                                      onClick={() => void handleDeclareWar(selectedTerritoryOccupant.id)}
+                                      disabled={warActionKey === `declare:${selectedTerritoryOccupant.id}`}
+                                    >
+                                      {warActionKey === `declare:${selectedTerritoryOccupant.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Swords className="mr-2 h-4 w-4" />}
+                                      Attaquer cette nation
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
                             <div className="grid gap-2 sm:grid-cols-2">
                               {selectedClan.nation.territories.map((territory) => {
                                 const isOwned = territory.key === selectedTerritoryKey;
@@ -2679,11 +2744,11 @@ export default function Clans() {
                               </div>
                               <div className={mutedPanelClassName}>
                                 <div className="px-3 py-2">
-                                  <div className="text-xs text-muted-foreground">Temps de recharge</div>
+                                  <div className="text-xs text-muted-foreground">Disponibilité</div>
                                   <div className="text-sm">
                                     {selectedClan.warHub.cooldownEndsAt
                                       ? `Disponible dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}`
-                                      : 'Disponible'}
+                                      : 'Aucun délai, attaque immédiate'}
                                   </div>
                                 </div>
                               </div>
@@ -2744,6 +2809,49 @@ export default function Clans() {
                           <CardContent className="space-y-4 p-6">
                             {isOwnClan ? (
                               <div className="space-y-4">
+                                <div className={mutedPanelClassName}>
+                                  <div className="space-y-4 p-4">
+                                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                      <div>
+                                        <h3 className="font-medium">Centre de commandement</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                          Lance des assauts tactiques instantanés ou complète les mini-jeux pour pousser la ligne de front.
+                                        </p>
+                                      </div>
+                                      <Badge variant="outline">
+                                        Endurance {selectedWar.viewerActions.staminaRemaining}/{selectedWar.viewerActions.staminaCap}
+                                      </Badge>
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-3">
+                                      {selectedClan.warHub.attackTypes.map((attackType) => {
+                                        const disabled =
+                                          warActionKey === `attack:${attackType.type}`
+                                          || selectedWar.viewerActions.staminaRemaining < attackType.staminaCost
+                                          || !['PREPARING', 'ACTIVE'].includes(selectedWar.status);
+                                        return (
+                                          <div key={attackType.type} className="rounded-2xl border border-border/50 bg-background/80 p-4">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="text-sm font-medium">{attackType.label}</div>
+                                              <Badge variant="secondary">Coût {attackType.staminaCost}</Badge>
+                                            </div>
+                                            <p className="mt-2 text-xs text-muted-foreground">{attackType.description}</p>
+                                            <div className="mt-3 text-xs text-muted-foreground">
+                                              {attackType.minPoints} à {attackType.maxPoints} pts • dégâts structurels {attackType.structureDamage}
+                                            </div>
+                                            <Button
+                                              className="mt-4 w-full"
+                                              disabled={disabled}
+                                              onClick={() => void handleWarAttack(attackType.type)}
+                                            >
+                                              {warActionKey === `attack:${attackType.type}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Axe className="mr-2 h-4 w-4" />}
+                                              Frapper maintenant
+                                            </Button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
                                 {/* Games */}
                                 <div className={mutedPanelClassName}>
                                   <div className="space-y-4 p-4">

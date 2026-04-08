@@ -1883,7 +1883,7 @@ export const clansApi = {
   fortifyWar: (clanId: string, defenseType: ClanWarDefenseType['type']) =>
     api.post<{ war: ClanWarState | null }>(`/clans/${clanId}/war/fortify`, { defenseType }),
   attackWar: (clanId: string, attackType: ClanWarActionType['type']) =>
-    api.post<{ war: ClanWarState | null; completed: boolean }>(`/clans/${clanId}/war/attack`, { attackType }),
+    api.post<{ war: ClanWarState | null; completed: boolean; finalPoints: number; attackType: ClanWarActionType['type'] }>(`/clans/${clanId}/war/attack`, { attackType }),
   leave: (id: string) => api.delete(`/clans/${id}/leave`),
   acceptRequest: (clanId: string, requestId: string) =>
     api.post(`/clans/${clanId}/requests/${requestId}/accept`),
