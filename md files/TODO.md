@@ -55,6 +55,16 @@ Quand on est invité comme associé et qu’on accepte on a le rôle d’employ�
 - fix chat coué message trop long et nom mettre ...
 - opti
 - monnaie reele api
+- pause sur demineur et sudoku bug
+- pour suppoet message mettre non répondu pour admin
+- pb compteur eb ligne auravision
+- reaction et reply et ticks vus dm
+- fix roulette
+- fix auto maintenace desactivation
+- maintenance sur periode jorunalier quand pas cours
+- interaction e tre niveau et classe
+- voir les gens qui ont acheté
+- illégal
 
 ## PROJECTS
 
