@@ -375,11 +375,13 @@ function DoodleJumpShopSection({
   buyingItemId,
   ownedSkinItemIds,
   onPurchase,
+  cardAds,
 }: {
   user: ReturnType<typeof useAuth>['user'];
   buyingItemId: string | null;
   ownedSkinItemIds: Set<string>;
   onPurchase: (item: ShopItem) => void;
+  cardAds: Ad[];
 }) {
   const [staticSkins, setStaticSkins] = useState<ShopItem[]>([]);
   const [rotatingSkins, setRotatingSkins] = useState<ShopItem[]>([]);
@@ -670,6 +672,7 @@ export default function Shop() {
                 buyingItemId={buyingItemId}
                 ownedSkinItemIds={ownedSkinItemIds}
                 onPurchase={handlePurchase}
+                cardAds={cardAds}
               />
 
               {sections.map(section => {
@@ -704,6 +707,7 @@ export default function Shop() {
                 buyingItemId={buyingItemId}
                 ownedSkinItemIds={ownedSkinItemIds}
                 onPurchase={handlePurchase}
+                cardAds={cardAds}
               />
             </TabsContent>
 
