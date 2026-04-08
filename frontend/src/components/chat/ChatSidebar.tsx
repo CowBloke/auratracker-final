@@ -30,6 +30,7 @@ import { UserBadges } from '@/components/badges/UserBadges';
 import { toClanTagData } from '@/components/clans/ClanTag';
 import { uploadUserImage } from '@/services/api';
 import { IMAGE_UPLOAD_INPUT_ACCEPT, prepareImageUploadPayload } from '@/lib/image-upload';
+import { t } from '@/lib/i18n';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -52,17 +53,17 @@ type MentionableUser = {
 };
 
 const REACTION_OPTIONS = [
-  { value: '❤️', label: 'Coeur' },
-  { value: '👍', label: 'Like' },
-  { value: '😂', label: 'Haha' },
-  { value: '😮', label: 'Wow' },
-  { value: '😢', label: 'Triste' },
-  { value: '😡', label: 'Grr' },
+  { value: '❤️', label: t('chat_reaction_heart') },
+  { value: '👍', label: t('chat_reaction_like') },
+  { value: '😂', label: t('chat_reaction_haha') },
+  { value: '😮', label: t('chat_reaction_wow') },
+  { value: '😢', label: t('chat_reaction_sad') },
+  { value: '😡', label: t('chat_reaction_angry') },
 ];
 
 const getReactionUsersLabel = (users: string[]) => {
-  if (users.length === 0) return 'Aucune reaction';
-  return users.length === 1 ? `${users[0]} a reagi` : `${users.join(', ')} ont reagi`;
+  if (users.length === 0) return t('chat_reactions_none');
+  return users.length === 1 ? `${users[0]} ${t('chat_reaction_single_suffix')}` : `${users.join(', ')} ${t('chat_reaction_multiple_suffix')}`;
 };
 
 export default function ChatSidebar() {
@@ -468,7 +469,7 @@ export default function ChatSidebar() {
       <SidebarHeader className="border-b border-border/40">
         <div className="flex items-center justify-between px-3 py-2">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Chat</span>
+            <span className="text-sm text-muted-foreground">{t('chat_title')}</span>
             {unreadCount > 0 && (
               <span className="px-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -499,7 +500,7 @@ export default function ChatSidebar() {
                           variant="ghost"
                           size="icon"
                           className="ml-auto h-6 w-6 text-muted-foreground/70 hover:text-foreground"
-                          title="Désépingler"
+                          title={t('chat_unpin')}
                         >
                           <PinOff className="h-3 w-3" />
                         </Button>
@@ -514,7 +515,7 @@ export default function ChatSidebar() {
                       {msg.imageUrl && (
                         <img
                           src={resolveImageUrl(msg.imageUrl)}
-                          alt={`Image épinglée envoyee par ${msg.username}`}
+                          alt={`${t('chat_pinned_image_alt_prefix')} ${msg.username}`}
                           className="max-h-48 w-full rounded-md border border-border/50 object-cover"
                         />
                       )}
@@ -530,8 +531,8 @@ export default function ChatSidebar() {
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <BarChart3 className="h-3.5 w-3.5" />
-                    <span className="font-medium text-foreground">Sondage actif</span>
-                    <span>• {activePoll.totalVotes} vote{activePoll.totalVotes > 1 ? 's' : ''}</span>
+                    <span className="font-medium text-foreground">{t('chat_poll_active')}</span>
+                    <span>• {activePoll.totalVotes} {t('chat_vote')}{activePoll.totalVotes > 1 ? 's' : ''}</span>
                   </div>
                   {canManagePolls && (
                     <Button
@@ -542,7 +543,7 @@ export default function ChatSidebar() {
                       onClick={() => closePoll(activePoll.id)}
                     >
                       <X className="mr-1 h-3.5 w-3.5" />
-                      Cloturer
+                      {t('chat_poll_close')}
                     </Button>
                   )}
                 </div>
@@ -601,10 +602,10 @@ export default function ChatSidebar() {
                     {isLoadingOlderMessages ? (
                       <>
                         <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                        Chargement...
+                        {t('common_loading')}
                       </>
                     ) : (
-                      'Charger les messages plus anciens'
+                      t('chat_load_older_messages')
                     )}
                   </Button>
                 </div>
@@ -617,14 +618,14 @@ export default function ChatSidebar() {
                 const isPendingInvite = invite?.visibility === 'private' && pendingJoinRequests.includes(invite.partyId);
                 const inviteDisabled = Boolean(isSameParty || isOtherParty || isPendingInvite);
                 const inviteActionLabel = isSameParty
-                  ? 'Deja dans la party'
+                  ? t('chat_party_already_here')
                   : isOtherParty
-                    ? 'Quitte ta party pour rejoindre'
+                    ? t('chat_party_leave_current')
                     : invite?.visibility === 'private'
                       ? isPendingInvite
-                        ? 'Demande envoyee'
-                        : 'Demander a rejoindre'
-                      : 'Rejoindre';
+                        ? t('chat_party_request_sent')
+                        : t('chat_party_request_join')
+                      : t('chat_join');
 
                 return (
                   <div key={msg.id}>
@@ -632,7 +633,7 @@ export default function ChatSidebar() {
                       <div className="my-2 flex items-center gap-2 px-1">
                         <div className="h-px flex-1 bg-border/70" />
                         <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Non lus
+                          {t('chat_unread_label')}
                         </span>
                         <div className="h-px flex-1 bg-border/70" />
                       </div>
@@ -666,7 +667,7 @@ export default function ChatSidebar() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 text-muted-foreground/70 hover:text-foreground"
-                                title="Réagir"
+                                title={t('chat_react')}
                               >
                                 <MoreHorizontal className="h-3.5 w-3.5" />
                               </Button>
@@ -697,7 +698,7 @@ export default function ChatSidebar() {
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6 text-[10px] text-muted-foreground/60 hover:text-foreground"
-                              title={msg.pinned ? 'Désépingler' : 'Épingler'}
+                              title={msg.pinned ? t('chat_unpin') : t('chat_pin')}
                             >
                               {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
                             </Button>
@@ -716,7 +717,7 @@ export default function ChatSidebar() {
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6 text-muted-foreground/70 hover:text-foreground"
-                            title="Répondre"
+                            title={t('chat_reply')}
                           >
                             <Reply className="h-3.5 w-3.5" />
                           </Button>
@@ -782,14 +783,14 @@ export default function ChatSidebar() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
-                                      Argent
+                                      {t('chat_top_money_badge')}
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <div className="space-y-1">
-                                      <p className="font-medium">Top 5 Argent</p>
+                                      <p className="font-medium">{t('chat_top_money_title')}</p>
                                       <p className="text-xs text-muted-foreground">
-                                        Ce joueur fait partie des 5 joueurs avec le plus d'argent
+                                        {t('chat_top_money_description')}
                                       </p>
                                     </div>
                                   </TooltipContent>
@@ -801,14 +802,14 @@ export default function ChatSidebar() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
-                                      Aura
+                                      {t('chat_top_aura_badge')}
                                     </span>
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     <div className="space-y-1">
-                                      <p className="font-medium">Top 5 Aura</p>
+                                      <p className="font-medium">{t('chat_top_aura_title')}</p>
                                       <p className="text-xs text-muted-foreground">
-                                        Ce joueur fait partie des 5 joueurs avec le plus d'aura
+                                        {t('chat_top_aura_description')}
                                       </p>
                                     </div>
                                   </TooltipContent>
@@ -854,7 +855,7 @@ export default function ChatSidebar() {
                           {msg.imageUrl && (
                             <img
                               src={resolveImageUrl(msg.imageUrl)}
-                              alt={`Image envoyee par ${msg.username}`}
+                              alt={`${t('chat_image_alt_prefix')} ${msg.username}`}
                               className="max-h-72 w-full rounded-md border border-border/50 object-cover"
                             />
                           )}
@@ -885,10 +886,10 @@ export default function ChatSidebar() {
                   <button
                     onClick={scrollToLatestUnread}
                     className="flex items-center gap-1 rounded-full bg-foreground/15 px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-foreground/25"
-                    title="Aller au message non lu le plus récent"
+                    title={t('chat_go_to_latest_unread')}
                   >
                     <ChevronDown className="h-3 w-3" />
-                    <span>Dernier non lu</span>
+                    <span>{t('chat_latest_unread')}</span>
                   </button>
                 </div>
               )}
@@ -897,10 +898,10 @@ export default function ChatSidebar() {
                   <button
                     onClick={scrollToBottom}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground/10 hover:bg-foreground/20 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    title="Aller au dernier message"
+                    title={t('chat_go_to_latest_message')}
                   >
                     <ChevronDown className="h-3 w-3" />
-                    <span>Nouveau message</span>
+                    <span>{t('chat_new_message')}</span>
                   </button>
                 </div>
               )}
@@ -910,7 +911,7 @@ export default function ChatSidebar() {
 
           {typingUsers.length > 0 && (
             <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border/40">
-              {typingUsers.map((u) => u.username).join(', ')} écrit...
+              {typingUsers.map((u) => u.username).join(', ')} {t('chat_typing_suffix')}
             </div>
           )}
 
@@ -950,7 +951,7 @@ export default function ChatSidebar() {
               <div className="mb-2 relative overflow-hidden rounded-md border border-border/60 bg-background/60 p-2">
                 <img
                   src={resolveImageUrl(imageUrl)}
-                  alt="Apercu de l'image"
+                  alt={t('chat_image_preview_alt')}
                   className="max-h-40 w-full rounded object-cover"
                 />
                 <Button
@@ -973,7 +974,7 @@ export default function ChatSidebar() {
                   onKeyDown={handleInputKeyDown}
                   onKeyUp={handleInputCursorChange}
                   onClick={handleInputCursorChange}
-                  placeholder="Message..."
+                  placeholder={t('chat_message_placeholder')}
                   rows={1}
                   className="min-h-9 max-h-40 resize-none overflow-y-hidden text-sm bg-transparent border-border/50 py-2"
                 />
@@ -1025,7 +1026,7 @@ export default function ChatSidebar() {
                     variant="outline"
                     size="icon"
                     className="h-9 w-9 text-muted-foreground"
-                    title="Actions"
+                    title={t('chat_actions')}
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </Button>
@@ -1033,14 +1034,14 @@ export default function ChatSidebar() {
                 <DropdownMenuContent align="start" side="top" className="w-48">
                   <DropdownMenuItem onClick={() => imageInputRef.current?.click()} disabled={isUploadingImage}>
                     <ImagePlus className="mr-2 h-4 w-4" />
-                    {isUploadingImage ? "Upload de l'image..." : 'Image'}
+                    {isUploadingImage ? t('chat_uploading_image') : t('chat_image')}
                   </DropdownMenuItem>
                   {canManagePolls && !activePoll && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => setPollModalOpen(true)}>
                         <BarChart3 className="mr-2 h-4 w-4" />
-                        Sondage
+                        {t('chat_poll')}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -1062,40 +1063,40 @@ export default function ChatSidebar() {
       <Dialog open={pollModalOpen} onOpenChange={setPollModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Creer un sondage</DialogTitle>
+            <DialogTitle>{t('chat_create_poll_title')}</DialogTitle>
             <DialogDescription>
-              Ajoute une question et au moins deux options. Le sondage sera publie dans le chat.
+              {t('chat_create_poll_description')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <Textarea
               value={pollQuestion}
               onChange={(e) => setPollQuestion(e.target.value)}
-              placeholder="Question du sondage"
+              placeholder={t('chat_poll_question_placeholder')}
               rows={2}
               className="min-h-9 resize-none text-sm bg-transparent border-border/50 py-2"
             />
             <Textarea
               value={pollOptionsText}
               onChange={(e) => setPollOptionsText(e.target.value)}
-              placeholder={'Une option par ligne\nExemple:\nOui\nNon'}
+              placeholder={t('chat_poll_options_placeholder')}
               rows={4}
               className="min-h-[96px] resize-none text-xs bg-transparent border-border/50 py-2"
             />
             <p className="text-[11px] text-muted-foreground">
-              {pollOptionsPreview.length} option{pollOptionsPreview.length > 1 ? 's' : ''} detectee{pollOptionsPreview.length > 1 ? 's' : ''}
+              {pollOptionsPreview.length} {t('chat_poll_option')}{pollOptionsPreview.length > 1 ? 's' : ''} {t('chat_poll_detected')}{pollOptionsPreview.length > 1 ? 's' : ''}
             </p>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setPollModalOpen(false)}>
-              Annuler
+              {t('common_cancel')}
             </Button>
             <Button
               type="button"
               onClick={handleCreatePoll}
               disabled={pollQuestion.trim().length < 3 || pollOptionsPreview.length < 2}
             >
-              Lancer le sondage
+              {t('chat_launch_poll')}
             </Button>
           </DialogFooter>
         </DialogContent>

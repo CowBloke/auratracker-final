@@ -3,6 +3,7 @@ import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { initSocket, getSocket, partyEvents, connectSocket } from '../services/socket';
+import { t } from '@/lib/i18n';
 
 interface PartyMember {
   userId: string;
@@ -227,10 +228,10 @@ export function PartySocketProvider({ children }: { children: React.ReactNode })
     s.on('party:invite', (invite: PartyInvite) => {
       setPartyInvites((prev) => [...prev, invite]);
       if (typeof window !== 'undefined') {
-        toast(`Invitation de party`, {
-          description: `${invite.inviterUsername} vous invite à rejoindre ${invite.partyName || 'leur party'}`,
+        toast(t('party_invite_title'), {
+          description: `${invite.inviterUsername} ${t('party_invite_description_prefix')} ${invite.partyName || t('party_invite_their_party')}`,
           action: {
-            label: 'Voir',
+            label: t('common_view'),
             onClick: () => {
               if (window.location.pathname !== '/party') window.location.href = '/party';
             },

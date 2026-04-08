@@ -16,6 +16,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { UserBadges } from '@/components/badges/UserBadges';
 import { toClanTagData } from '@/components/clans/ClanTag';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
+import { t } from '@/lib/i18n';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 
@@ -25,17 +26,17 @@ interface ChatProps {
 }
 
 const REACTION_OPTIONS = [
-  { value: '❤️', label: 'Coeur' },
-  { value: '👍', label: 'Like' },
-  { value: '😂', label: 'Haha' },
-  { value: '😮', label: 'Wow' },
-  { value: '😢', label: 'Triste' },
-  { value: '😡', label: 'Grr' },
+  { value: '❤️', label: t('chat_reaction_heart') },
+  { value: '👍', label: t('chat_reaction_like') },
+  { value: '😂', label: t('chat_reaction_haha') },
+  { value: '😮', label: t('chat_reaction_wow') },
+  { value: '😢', label: t('chat_reaction_sad') },
+  { value: '😡', label: t('chat_reaction_angry') },
 ];
 
 const getReactionUsersLabel = (users: string[]) => {
-  if (users.length === 0) return 'Aucune reaction';
-  return users.length === 1 ? `${users[0]} a reagi` : `${users.join(', ')} ont reagi`;
+  if (users.length === 0) return t('chat_reactions_none');
+  return users.length === 1 ? `${users[0]} ${t('chat_reaction_single_suffix')}` : `${users.join(', ')} ${t('chat_reaction_multiple_suffix')}`;
 };
 
 export default function Chat({ isOpen, onToggle }: ChatProps) {
@@ -59,11 +60,11 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     !user?.isAdmin &&
     !user?.isSuperAdmin
   );
-  const chatBlockedLabel = maintenanceStatus.chatBlockMessage || 'Le chat est temporairement bloque.';
+  const chatBlockedLabel = maintenanceStatus.chatBlockMessage || t('chat_blocked_default');
   const chatScheduleLabel = maintenanceStatus.chatAutoBlockEnabled &&
     maintenanceStatus.chatAutoBlockStart &&
     maintenanceStatus.chatAutoBlockEnd
-    ? `Blocage auto: ${maintenanceStatus.chatAutoBlockStart} -> ${maintenanceStatus.chatAutoBlockEnd} (${maintenanceStatus.chatBlockTimezone})`
+    ? `${t('chat_auto_block_prefix')} ${maintenanceStatus.chatAutoBlockStart} -> ${maintenanceStatus.chatAutoBlockEnd} (${maintenanceStatus.chatBlockTimezone})`
     : null;
   const pinnedMessages = useMemo(() => {
     return messages
@@ -184,9 +185,9 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
         <CollapsibleTrigger asChild>
           <Button variant="ghost" className="h-12 w-full justify-between rounded-none px-6 text-sm">
             <div className="flex items-center gap-3">
-              <span className="text-muted-foreground">chat</span>
+              <span className="text-muted-foreground">{t('chat_title')}</span>
               <span className="text-xs text-muted-foreground tabular-nums">
-                {onlineCount} en ligne
+                {onlineCount} {t('chat_online')}
               </span>
               {!isOpen && unreadCount > 0 && (
                 <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
@@ -297,7 +298,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                                     variant="ghost"
                                     size="icon"
                                     className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
-                                    title="Réagir"
+                                      title={t('chat_react')}
                                   >
                                     <MoreHorizontal className="h-3.5 w-3.5" />
                                   </Button>
@@ -329,7 +330,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                                     variant="ghost"
                                     size="icon"
                                     className="h-6 w-6 opacity-0 transition-opacity text-muted-foreground/70 group-hover:opacity-100 hover:text-foreground"
-                                    title={msg.pinned ? 'Désépingler' : 'Épingler'}
+                                    title={msg.pinned ? t('chat_unpin') : t('chat_pin')}
                                   >
                                     {msg.pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
                                   </Button>
@@ -339,7 +340,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                                     variant="ghost"
                                     size="icon"
                                     className="h-6 w-6 opacity-0 transition-opacity text-destructive group-hover:opacity-100 hover:text-destructive/80"
-                                    title="Delete message"
+                                    title={t('chat_delete_message')}
                                   >
                                     <Trash2 className="w-3 h-3" />
                                   </Button>
@@ -372,7 +373,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         >
                           <div className="flex-1 h-px bg-gradient-to-r from-transparent via-foreground/30 to-transparent" />
                           <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
-                            Messages non lus
+                            {t('chat_unread_messages')}
                           </span>
                           <div className="flex-1 h-px bg-gradient-to-r from-transparent via-foreground/30 to-transparent" />
                         </div>
@@ -386,7 +387,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
 
             {typingUsers.length > 0 && (
               <div className="px-6 py-2 text-xs text-muted-foreground">
-                {typingUsers.map((u) => u.username).join(', ')} écrit...
+                {typingUsers.map((u) => u.username).join(', ')} {t('chat_typing_suffix')}
               </div>
             )}
 
@@ -400,7 +401,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                   className="w-full text-xs"
                 >
                   <ChevronDown className="h-3 w-3 mr-1" />
-                  Aller aux messages non lus
+                  {t('chat_go_to_unread')}
                 </Button>
               </div>
             )}
@@ -420,7 +421,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                   type="text"
                   value={input}
                   onChange={handleInputChange}
-                  placeholder={chatBlockedForUser ? 'Chat temporairement bloque' : 'Message...'}
+                  placeholder={chatBlockedForUser ? t('chat_blocked_placeholder') : t('chat_message_placeholder')}
                   className="flex-1 h-9 bg-transparent border-border/50"
                   disabled={chatBlockedForUser}
                 />
@@ -445,7 +446,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
             }}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" className="h-auto w-full justify-between rounded-none px-4 py-3 text-xs text-muted-foreground">
-                  <span>en ligne</span>
+                  <span>{t('chat_online')}</span>
                   <span className="tabular-nums">{onlineCount}</span>
                 </Button>
               </CollapsibleTrigger>
@@ -480,7 +481,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                                 {canViewConnectedStatus && (
                                   <>
                                     <Monitor className="ml-1 h-3 w-3" />
-                                    <span>{u.isPageActive ? 'sur page' : 'arriere-plan'}</span>
+                                    <span>{u.isPageActive ? t('chat_online_page') : t('chat_background')}</span>
                                   </>
                                 )}
                               </span>

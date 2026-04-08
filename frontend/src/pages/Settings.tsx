@@ -67,13 +67,14 @@ import {
   useKeyboardShortcuts,
   type KeyboardShortcutActionId,
 } from '@/lib/keyboard-shortcuts';
+import { t } from '@/lib/i18n';
 
 interface ColorSchemeEntry {
   id: string;
   label: string;
 }
 
-const CUSTOM_SCHEME_ENTRY: ColorSchemeEntry = { id: 'custom', label: 'Personnalisé' };
+const CUSTOM_SCHEME_ENTRY: ColorSchemeEntry = { id: 'custom', label: t('settings_custom_scheme_entry') };
 
 function parseRootVars(css: string): Record<string, string> {
   const vars: Record<string, string> = {};
@@ -100,11 +101,11 @@ function parseRootVars(css: string): Record<string, string> {
 type SectionId = 'personnalisation' | 'sons' | 'compte' | 'parrainage' | 'raccourcis';
 
 const SECTIONS: { id: SectionId; label: string; iconBg: string; icon: React.ElementType }[] = [
-  { id: 'personnalisation', label: 'Personnalisation', iconBg: 'bg-blue-500', icon: Paintbrush },
-  { id: 'sons', label: 'Sons', iconBg: 'bg-emerald-500', icon: Volume2 },
-  { id: 'compte', label: 'Compte', iconBg: 'bg-zinc-500', icon: User },
-  { id: 'parrainage', label: 'Parrainage', iconBg: 'bg-purple-500', icon: Ticket },
-  { id: 'raccourcis', label: 'Raccourcis', iconBg: 'bg-indigo-500', icon: Keyboard },
+  { id: 'personnalisation', label: t('settings_appearance_group'), iconBg: 'bg-blue-500', icon: Paintbrush },
+  { id: 'sons', label: t('settings_sound_group'), iconBg: 'bg-emerald-500', icon: Volume2 },
+  { id: 'compte', label: t('settings_account_group'), iconBg: 'bg-zinc-500', icon: User },
+  { id: 'parrainage', label: t('settings_referral_group'), iconBg: 'bg-purple-500', icon: Ticket },
+  { id: 'raccourcis', label: t('settings_shortcuts_group'), iconBg: 'bg-indigo-500', icon: Keyboard },
 ];
 
 /* ─── Primitives ─────────────────────────────────────────────────────────── */
@@ -335,15 +336,13 @@ function CustomThemeEditor({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-medium">Ton thème</p>
-          <p className="text-xs text-muted-foreground">
-            Crée une palette perso avec tes couleurs, tes coins et l’intensité des ombres.
-          </p>
+          <p className="text-sm font-medium">{t('settings_custom_theme_title')}</p>
+          <p className="text-xs text-muted-foreground">{t('settings_custom_theme_description')}</p>
         </div>
         <div className="flex gap-2">
           {colorScheme !== 'custom' && (
             <Button size="sm" variant="outline" onClick={() => setColorScheme('custom')}>
-              Utiliser
+              {t('settings_use')}
             </Button>
           )}
           <Button
@@ -354,45 +353,45 @@ function CustomThemeEditor({
               setColorScheme('custom');
             }}
           >
-            Réinitialiser
+            {t('settings_reset')}
           </Button>
         </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
         <ColorInputField
-          label="Couleur principale"
-          description="Boutons, accents forts, focus."
+          label={t('settings_primary_color')}
+          description={t('settings_primary_color_description')}
           value={customTheme.primary}
           onChange={(primary) => updateTheme({ primary })}
         />
         <ColorInputField
-          label="Couleur d'accent"
-          description="États secondaires et zones mises en avant."
+          label={t('settings_accent_color')}
+          description={t('settings_accent_color_description')}
           value={customTheme.accent}
           onChange={(accent) => updateTheme({ accent })}
         />
         <ColorInputField
-          label="Fond clair"
-          description="Arrière-plan utilisé en mode clair."
+          label={t('settings_light_background')}
+          description={t('settings_light_background_description')}
           value={customTheme.backgroundLight}
           onChange={(backgroundLight) => updateTheme({ backgroundLight })}
         />
         <ColorInputField
-          label="Cartes claires"
-          description="Surface des panneaux en mode clair."
+          label={t('settings_light_cards')}
+          description={t('settings_light_cards_description')}
           value={customTheme.surfaceLight}
           onChange={(surfaceLight) => updateTheme({ surfaceLight })}
         />
         <ColorInputField
-          label="Fond sombre"
-          description="Arrière-plan utilisé en mode sombre."
+          label={t('settings_dark_background')}
+          description={t('settings_dark_background_description')}
           value={customTheme.backgroundDark}
           onChange={(backgroundDark) => updateTheme({ backgroundDark })}
         />
         <ColorInputField
-          label="Cartes sombres"
-          description="Surface des panneaux en mode sombre."
+          label={t('settings_dark_cards')}
+          description={t('settings_dark_cards_description')}
           value={customTheme.surfaceDark}
           onChange={(surfaceDark) => updateTheme({ surfaceDark })}
         />
@@ -402,8 +401,8 @@ function CustomThemeEditor({
         <div className="rounded-xl border border-border/40 bg-background/70 p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-medium">Radius</p>
-              <p className="text-xs text-muted-foreground">Coins plus nets ou plus arrondis.</p>
+              <p className="text-sm font-medium">{t('settings_radius')}</p>
+              <p className="text-xs text-muted-foreground">{t('settings_radius_description')}</p>
             </div>
             <span className="font-mono text-xs text-muted-foreground">
               {Math.round(customTheme.radius)} px
@@ -421,8 +420,8 @@ function CustomThemeEditor({
         <div className="rounded-xl border border-border/40 bg-background/70 p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-medium">Ombres</p>
-              <p className="text-xs text-muted-foreground">Donne plus ou moins de relief.</p>
+              <p className="text-sm font-medium">{t('settings_shadows')}</p>
+              <p className="text-xs text-muted-foreground">{t('settings_shadows_description')}</p>
             </div>
             <span className="font-mono text-xs text-muted-foreground">
               {Math.round(customTheme.shadowOpacity * 100)}%
@@ -470,9 +469,9 @@ function PersonnalisationSection({
     <div className="space-y-6">
       {/* Apparence */}
       <div>
-        <SettingsGroupLabel>Apparence</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_appearance_group')}</SettingsGroupLabel>
         <SettingsCard>
-          <SettingsRow label="Thème" description="Apparence de l'interface" last>
+          <SettingsRow label={t('settings_theme_row')} description={t('settings_theme_row_description')} last>
             <div className="flex items-center gap-2">
               {theme === 'dark' ? (
                 <Moon className="h-4 w-4 text-muted-foreground" />
@@ -490,7 +489,7 @@ function PersonnalisationSection({
 
       {/* Palette */}
       <div>
-        <SettingsGroupLabel>Palette de couleurs</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_palette_group')}</SettingsGroupLabel>
         <SettingsCard>
           <div className="space-y-4 px-4 py-3">
             <ColorSchemeCarousel
@@ -518,11 +517,11 @@ function PersonnalisationSection({
 
       {/* Jeux */}
       <div>
-        <SettingsGroupLabel>Jeux</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_games_group')}</SettingsGroupLabel>
         <SettingsCard>
           <SettingsRow
-            label="Sans classement"
-            description="Masquer les classements sur les pages de jeux"
+            label={t('settings_hide_leaderboards')}
+            description={t('settings_hide_leaderboards_description')}
           >
             <Switch
               checked={hideGameLeaderboards}
@@ -530,8 +529,8 @@ function PersonnalisationSection({
             />
           </SettingsRow>
           <SettingsRow
-            label="Sans infos à gauche"
-            description="Masquer les panneaux d'infos à gauche"
+            label={t('settings_hide_left_info')}
+            description={t('settings_hide_left_info_description')}
             last
           >
             <Switch
@@ -581,11 +580,11 @@ function CompteSection({
   const handlePasswordChange = async () => {
     setPasswordError(null);
     if (newPassword.length < 8) {
-      setPasswordError('Le nouveau mot de passe doit faire au moins 8 caractères.');
+      setPasswordError(t('settings_password_min_error'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('Les mots de passe ne correspondent pas.');
+      setPasswordError(t('settings_password_mismatch_error'));
       return;
     }
     setPasswordSubmitting(true);
@@ -595,9 +594,9 @@ function CompteSection({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      toast('Mot de passe modifié', { description: 'Ton mot de passe a été mis à jour.', duration: 3000 });
+      toast(t('settings_password_updated_title'), { description: t('settings_password_updated_description'), duration: 3000 });
     } catch (err: any) {
-      setPasswordError(err.response?.data?.error || 'Erreur lors du changement');
+      setPasswordError(err.response?.data?.error || t('settings_password_change_error'));
     } finally {
       setPasswordSubmitting(false);
     }
@@ -607,9 +606,9 @@ function CompteSection({
     <div className="space-y-6">
       {/* Informations */}
       <div>
-        <SettingsGroupLabel>Informations</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_information_group')}</SettingsGroupLabel>
         <SettingsCard>
-          <SettingsRow label="Pseudo actuel" last>
+          <SettingsRow label={t('settings_current_username')} last>
             <span className="text-sm text-muted-foreground">{user?.username ?? '—'}</span>
           </SettingsRow>
         </SettingsCard>
@@ -617,25 +616,25 @@ function CompteSection({
 
       {/* Compte actions */}
       <div>
-        <SettingsGroupLabel>Compte</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_account_group')}</SettingsGroupLabel>
         <SettingsCard>
-          <SettingsRow label="Changer de pseudo" description="Envoyer une demande aux admins">
+          <SettingsRow label={t('settings_change_username')} description={t('settings_change_username_description')}>
             {nameChangeSuccess ? (
               <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
                 <Check className="h-3.5 w-3.5" />
-                Demande envoyée
+                {t('settings_name_change_sent')}
               </div>
             ) : (
               <Button size="sm" variant="outline" onClick={() => setNameChangeOpen(true)}>
                 <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                Demander
+                {t('settings_request')}
               </Button>
             )}
           </SettingsRow>
-          <SettingsRow label="Mot de passe" description="Modifier ton mot de passe">
+          <SettingsRow label={t('settings_change_password')} description={t('settings_change_password_description')}>
             <Button size="sm" variant="outline" onClick={() => setPasswordChangeOpen(true)}>
               <Lock className="mr-1.5 h-3.5 w-3.5" />
-              Modifier
+              {t('settings_modify')}
             </Button>
           </SettingsRow>
         </SettingsCard>
@@ -645,31 +644,27 @@ function CompteSection({
       <Dialog open={nameChangeOpen} onOpenChange={setNameChangeOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Changer de pseudo</DialogTitle>
+            <DialogTitle>{t('settings_change_username_title')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <p className="text-xs text-muted-foreground">
-              Envoie une demande aux admins pour changer ton pseudo.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('settings_username_change_help')}</p>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Nouveau pseudo souhaité</label>
+              <label className="text-xs text-muted-foreground">{t('settings_new_username_label')}</label>
               <Input
                 value={requestedUsername}
                 onChange={(e) => setRequestedUsername(e.target.value)}
-                placeholder="Entre ton nouveau pseudo..."
+                placeholder={t('settings_new_username_placeholder')}
                 maxLength={20}
                 className="h-9 bg-transparent border-border/40"
               />
-              <p className="text-[11px] text-muted-foreground/60">
-                3–20 caractères, lettres, chiffres et underscores uniquement.
-              </p>
+              <p className="text-[11px] text-muted-foreground/60">{t('settings_username_rules')}</p>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Raison (optionnel)</label>
+              <label className="text-xs text-muted-foreground">{t('settings_reason_label')}</label>
               <Textarea
                 value={nameChangeReason}
                 onChange={(e) => setNameChangeReason(e.target.value)}
-                placeholder="Pourquoi souhaites-tu changer de pseudo ?"
+                placeholder={t('settings_reason_placeholder')}
                 maxLength={300}
                 rows={3}
                 className="resize-none bg-transparent border-border/40"
@@ -678,7 +673,7 @@ function CompteSection({
             {nameChangeError && <p className="text-xs text-destructive">{nameChangeError}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setNameChangeOpen(false)}>
-                Annuler
+                {t('settings_cancel')}
               </Button>
               <Button
                 size="sm"
@@ -688,7 +683,7 @@ function CompteSection({
                 }}
                 disabled={submittingNameChange || requestedUsername.trim().length < 3}
               >
-                {submittingNameChange ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Envoyer la demande'}
+                {submittingNameChange ? <Loader2 className="h-4 w-4 animate-spin" /> : t('settings_send_request')}
               </Button>
             </div>
           </div>
@@ -702,17 +697,17 @@ function CompteSection({
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Modifier le mot de passe</DialogTitle>
+            <DialogTitle>{t('settings_change_password')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Mot de passe actuel</label>
+              <label className="text-xs text-muted-foreground">{t('settings_current_password')}</label>
               <div className="relative">
                 <Input
                   type={showCurrentPw ? 'text' : 'password'}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('settings_password_placeholder')}
                   className="h-9 bg-transparent border-border/40 pr-9"
                 />
                 <button
@@ -725,13 +720,13 @@ function CompteSection({
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Nouveau mot de passe</label>
+              <label className="text-xs text-muted-foreground">{t('settings_new_password')}</label>
               <div className="relative">
                 <Input
                   type={showNewPw ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('settings_password_placeholder')}
                   className="h-9 bg-transparent border-border/40 pr-9"
                 />
                 <button
@@ -742,29 +737,29 @@ function CompteSection({
                   {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <p className="text-[11px] text-muted-foreground/60">Minimum 8 caractères.</p>
+              <p className="text-[11px] text-muted-foreground/60">{t('settings_min_8_chars')}</p>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground">Confirmer le nouveau mot de passe</label>
+              <label className="text-xs text-muted-foreground">{t('settings_confirm_new_password')}</label>
               <Input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder={t('settings_password_placeholder')}
                 className="h-9 bg-transparent border-border/40"
               />
             </div>
             {passwordError && <p className="text-xs text-destructive">{passwordError}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setPasswordChangeOpen(false)}>
-                Annuler
+                {t('settings_cancel')}
               </Button>
               <Button
                 size="sm"
                 onClick={handlePasswordChange}
                 disabled={passwordSubmitting || !currentPassword || !newPassword || !confirmPassword}
               >
-                {passwordSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enregistrer'}
+                {passwordSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : t('settings_save')}
               </Button>
             </div>
           </div>
@@ -788,11 +783,11 @@ function ParrainageSection({
   if (!referralEnabled) {
     return (
       <div>
-        <SettingsGroupLabel>Parrainage</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_referral_group')}</SettingsGroupLabel>
         <SettingsCard>
           <div className="px-4 py-4">
-            <p className="text-sm font-medium">Parrainage désactivé pour le moment.</p>
-            <p className="mt-1 text-xs text-muted-foreground">Cette fonctionnalité reviendra bientôt.</p>
+            <p className="text-sm font-medium">{t('settings_referral_disabled_title')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('settings_referral_disabled_description')}</p>
           </div>
         </SettingsCard>
       </div>
@@ -802,7 +797,7 @@ function ParrainageSection({
   if (referralLoading) {
     return (
       <div>
-        <SettingsGroupLabel>Parrainage</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_referral_group')}</SettingsGroupLabel>
         <SettingsCard>
           <div className="px-4 py-4">
             <CenteredSkeletonCard />
@@ -815,12 +810,10 @@ function ParrainageSection({
   if (!referralSummary) {
     return (
       <div>
-        <SettingsGroupLabel>Parrainage</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_referral_group')}</SettingsGroupLabel>
         <SettingsCard>
           <div className="px-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              Impossible de charger le parrainage pour le moment.
-            </p>
+            <p className="text-sm text-muted-foreground">{t('settings_referral_unavailable')}</p>
           </div>
         </SettingsCard>
       </div>
@@ -831,7 +824,7 @@ function ParrainageSection({
     <div className="space-y-6">
       {/* Code */}
       <div>
-        <SettingsGroupLabel>Ton code</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_your_code')}</SettingsGroupLabel>
         <SettingsCard>
           <div className="px-4 py-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
@@ -840,7 +833,7 @@ function ParrainageSection({
                   <Ticket className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Code de parrainage</p>
+                  <p className="text-xs text-muted-foreground">{t('settings_referral_code')}</p>
                   <p className="font-mono text-base font-semibold tracking-[0.25em]">
                     {referralSummary.referralCode}
                   </p>
@@ -853,7 +846,7 @@ function ParrainageSection({
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={onCopy}>
                 <Copy className="mr-2 h-3.5 w-3.5" />
-                Copier
+                {t('settings_copy')}
               </Button>
             </div>
           </div>
@@ -862,19 +855,19 @@ function ParrainageSection({
 
       {/* Stats */}
       <div>
-        <SettingsGroupLabel>Statistiques</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_statistics')}</SettingsGroupLabel>
         <SettingsCard>
-          <SettingsRow label="Parrainages validés">
+          <SettingsRow label={t('settings_validated_referrals')}>
             <span className="text-sm font-semibold tabular-nums">
               {referralSummary.successfulReferrals}
             </span>
           </SettingsRow>
-          <SettingsRow label="En attente">
+          <SettingsRow label={t('settings_pending')}>
             <span className="text-sm font-semibold tabular-nums">
               {referralSummary.pendingReferrals}
             </span>
           </SettingsRow>
-          <SettingsRow label="Récompenses gagnées" last>
+          <SettingsRow label={t('settings_rewards_earned')} last>
             <span className="text-sm font-semibold tabular-nums">
               {referralSummary.totalRewardsEarned}
             </span>
@@ -907,14 +900,14 @@ function RaccourcisSection({
     <div className="space-y-6">
       <div>
         <div className="mb-2 flex items-center justify-between px-1">
-          <SettingsGroupLabel>Raccourcis clavier</SettingsGroupLabel>
+          <SettingsGroupLabel>{t('settings_shortcuts_group')}</SettingsGroupLabel>
           <button
             type="button"
             onClick={onResetAll}
             className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
           >
             <RotateCcw className="h-3 w-3" />
-            Tout réinitialiser
+            {t('settings_reset_all')}
           </button>
         </div>
 
@@ -936,12 +929,12 @@ function RaccourcisSection({
                         <p className="text-sm font-medium">{shortcut.label}</p>
                         {isCustomized && (
                           <Badge variant="default" className="h-4 px-1.5 text-[10px]">
-                            Modifié
+                            {t('settings_modified')}
                           </Badge>
                         )}
                         {!shortcut.enabled && (
                           <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
-                            Désactivé
+                            {t('settings_disabled')}
                           </Badge>
                         )}
                       </div>
@@ -964,7 +957,7 @@ function RaccourcisSection({
                     {/* Controls */}
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-2 rounded-lg border border-border/30 px-3 py-1.5">
-                        <span className="text-xs text-muted-foreground">Actif</span>
+                        <span className="text-xs text-muted-foreground">{t('settings_active')}</span>
                         <Switch
                           checked={shortcut.enabled}
                           onCheckedChange={(enabled) =>
@@ -983,7 +976,7 @@ function RaccourcisSection({
                         }}
                         className="text-xs"
                       >
-                        {isCapturing ? 'Appuie...' : 'Modifier'}
+                        {isCapturing ? t('settings_press_shortcut') : t('settings_modify')}
                       </Button>
 
                       <Button
@@ -993,7 +986,7 @@ function RaccourcisSection({
                         onClick={() => onReset(shortcut.id)}
                         className="text-xs"
                       >
-                        Défaut
+                        {t('settings_default')}
                       </Button>
                     </div>
                   </div>
@@ -1014,19 +1007,19 @@ function SonsSection() {
   const soundVolume = useSoundVolume();
 
   const PREVIEWS: { label: string; fn: () => void }[] = [
-    { label: 'Notification', fn: playNotification },
-    { label: 'Récompense', fn: playReward },
-    { label: 'Clic', fn: playClick },
+    { label: t('settings_notification'), fn: playNotification },
+    { label: t('settings_reward'), fn: playReward },
+    { label: t('settings_click'), fn: playClick },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <SettingsGroupLabel>Général</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_sound_group')}</SettingsGroupLabel>
         <SettingsCard>
           <SettingsRow
-            label="Sons activés"
-            description="Active ou désactive tous les effets sonores du site."
+            label={t('settings_sounds_enabled')}
+            description={t('settings_sounds_enabled_description')}
           >
             <Switch
               checked={soundEnabled}
@@ -1034,8 +1027,8 @@ function SonsSection() {
             />
           </SettingsRow>
           <SettingsRow
-            label="Volume"
-            description="Ajuste le volume des effets sonores."
+            label={t('settings_volume')}
+            description={t('settings_volume_description')}
             last
           >
             <div className="flex w-36 items-center gap-2">
@@ -1057,13 +1050,13 @@ function SonsSection() {
       </div>
 
       <div>
-        <SettingsGroupLabel>Aperçu</SettingsGroupLabel>
+        <SettingsGroupLabel>{t('settings_preview_group')}</SettingsGroupLabel>
         <SettingsCard>
           {PREVIEWS.map(({ label, fn }, i) => (
             <SettingsRow
               key={label}
               label={label}
-              description="Cliquer pour écouter."
+              description={t('settings_click_to_listen')}
               last={i === PREVIEWS.length - 1}
             >
               <Button
@@ -1072,7 +1065,7 @@ function SonsSection() {
                 disabled={!soundEnabled}
                 onClick={fn}
               >
-                Écouter
+                {t('settings_listen')}
               </Button>
             </SettingsRow>
           ))}
@@ -1091,7 +1084,7 @@ export default function Settings() {
   const { maintenanceStatus } = useFeatures();
   const [activeSection, setActiveSection] = useState<SectionId>('personnalisation');
   const [colorSchemes, setColorSchemes] = useState<ColorSchemeEntry[]>([
-    { id: 'default', label: 'Default' },
+    { id: 'default', label: t('settings_default') },
   ]);
   const [themeVars, setThemeVars] = useState<Record<string, Record<string, string>>>({});
   const [referralSummary, setReferralSummary] = useState<ReferralSummary | null>(null);
@@ -1191,13 +1184,13 @@ export default function Settings() {
     if (!referralSummary?.referralCode) return;
     try {
       await navigator.clipboard.writeText(referralSummary.referralCode);
-      toast('Code copié', {
-        description: `${referralSummary.referralCode} est prêt à être partagé.`,
+      toast(t('settings_code_copied'), {
+        description: `${referralSummary.referralCode} ${t('settings_code_ready_suffix')}`,
         duration: 3000,
       });
     } catch {
-      toast('Copie impossible', {
-        description: 'Le code est affiché, mais la copie automatique a échoué.',
+      toast(t('settings_copy_failed_title'), {
+        description: t('settings_copy_failed_description'),
         duration: 3000,
       });
     }
@@ -1218,16 +1211,16 @@ export default function Settings() {
     }
     const combo = getShortcutComboFromEvent(event);
     if (!combo) {
-      toast('Raccourci invalide', {
-        description: 'Utilise au moins une touche modificatrice comme Alt, Ctrl, Cmd ou Shift.',
+      toast(t('settings_shortcut_invalid'), {
+        description: t('settings_shortcut_invalid_description'),
         duration: 3000,
       });
       return;
     }
     updateKeyboardShortcut(shortcutId, { combo, enabled: true });
     setCapturingShortcutId(null);
-    toast('Raccourci mis à jour', {
-      description: `Nouveau raccourci : ${formatShortcutCombo(combo)}.`,
+    toast(t('settings_shortcut_updated'), {
+      description: `${t('settings_shortcut_updated_prefix')} ${formatShortcutCombo(combo)}.`,
       duration: 3000,
     });
   };
@@ -1253,7 +1246,7 @@ export default function Settings() {
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{user.username}</p>
-                <p className="text-xs text-muted-foreground">Mon compte</p>
+                <p className="text-xs text-muted-foreground">{t('settings_account_group')}</p>
               </div>
             </div>
           )}

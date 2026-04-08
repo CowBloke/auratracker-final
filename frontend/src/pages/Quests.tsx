@@ -12,15 +12,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
+import { t } from '@/lib/i18n';
 
 type QuestSortMode = 'recommended' | 'reward-desc' | 'target-asc' | 'title-asc';
 type QuestViewMode = 'list' | 'grid';
 
 const QUEST_SORT_OPTIONS: Array<{ value: QuestSortMode; label: string }> = [
-  { value: 'recommended', label: 'Recommandé' },
-  { value: 'reward-desc', label: 'Récompenses max' },
-  { value: 'target-asc', label: 'Objectif le plus simple' },
-  { value: 'title-asc', label: 'Nom (A-Z)' },
+  { value: 'recommended', label: t('quests_sort_recommended') },
+  { value: 'reward-desc', label: t('quests_sort_reward_desc') },
+  { value: 'target-asc', label: t('quests_sort_target_asc') },
+  { value: 'title-asc', label: t('quests_sort_title_asc') },
 ];
 
 export default function Quests() {
@@ -49,7 +50,7 @@ export default function Quests() {
     } catch (error: any) {
       console.error('Error fetching quests:', error);
       console.error('Error response:', error.response?.data);
-      toast.error(error.response?.data?.error || 'Erreur lors du chargement des quêtes');
+      toast.error(error.response?.data?.error || t('quests_error_load'));
     } finally {
       setLoading(false);
     }
@@ -64,7 +65,7 @@ export default function Quests() {
       setSelectedQuestIds(selectedQuestIds.filter((id) => id !== questId));
     } else {
       if (selectedQuestIds.length >= 3) {
-        toast.error('Vous ne pouvez sélectionner que 3 quêtes maximum');
+        toast.error(t('quests_error_select_limit'));
         return;
       }
       setSelectedQuestIds([...selectedQuestIds, questId]);
@@ -73,19 +74,19 @@ export default function Quests() {
 
   const handleConfirmSelection = async () => {
     if (selectedQuestIds.length !== 3) {
-      toast.error('Vous devez sélectionner exactement 3 quêtes');
+      toast.error(t('quests_error_select_exact'));
       return;
     }
 
     try {
       setSelecting(true);
       await questsApi.select(selectedQuestIds);
-      toast.success('Quêtes sélectionnées avec succès !');
+      toast.success(t('quests_success_selected'));
       setSelectedQuestIds([]);
       await fetchQuests();
     } catch (error: any) {
       console.error('Error selecting quests:', error);
-      toast.error(error.response?.data?.error || 'Erreur lors de la sélection des quêtes');
+      toast.error(error.response?.data?.error || t('quests_error_select'));
     } finally {
       setSelecting(false);
     }
@@ -97,13 +98,13 @@ export default function Quests() {
       const res = await questsApi.claim(questIds);
       const { money, aura } = res.data.rewards;
       const rewardItems: RewardItem[] = [];
-      if (money > 0) rewardItems.push({ id: 'money', type: 'money', amount: money, label: 'Coins' });
-      if (aura > 0) rewardItems.push({ id: 'aura', type: 'aura', amount: aura, label: 'Aura' });
+      if (money > 0) rewardItems.push({ id: 'money', type: 'money', amount: money, label: t('quests_reward_money') });
+      if (aura > 0) rewardItems.push({ id: 'aura', type: 'aura', amount: aura, label: t('quests_reward_aura') });
       if (rewardItems.length > 0) enqueue(rewardItems);
       await fetchQuests();
     } catch (error: any) {
       console.error('Error claiming quests:', error);
-      toast.error(error.response?.data?.error || 'Erreur lors de la réclamation');
+      toast.error(error.response?.data?.error || t('quests_error_claim'));
     } finally {
       setClaiming(false);
     }
@@ -198,14 +199,14 @@ export default function Quests() {
               {completedQuests.length > 0 && (
                 <>
                   <span className={TYPOGRAPHY.SMALL}>
-                    {completedQuests.length} récompense{completedQuests.length > 1 ? 's' : ''} à réclamer
+                    {completedQuests.length} {t('quests_rewards_to_claim')}
                   </span>
                   <Button
                     onClick={() => handleClaim(completedQuests.map((q) => q.id))}
                     disabled={claiming}
                     className="w-full sm:w-auto"
                   >
-                    Réclamer toutes les récompenses ({completedQuests.length})
+                    {t('quests_claim_all')} ({completedQuests.length})
                   </Button>
                 </>
               )}
@@ -213,14 +214,14 @@ export default function Quests() {
               {canSelectNewQuests && (
                 <>
                   <span className={TYPOGRAPHY.SMALL}>
-                    {selectedQuestIds.length} / 3 quêtes sélectionnées
+                    {selectedQuestIds.length} / 3 {t('quests_selected_count')}
                   </span>
                   <Button
                     onClick={handleConfirmSelection}
                     disabled={selectedQuestIds.length !== 3 || selecting}
                     className="w-full sm:w-auto"
                   >
-                    {selecting ? 'Sélection en cours...' : 'Confirmer la sélection'}
+                    {selecting ? t('quests_selection_in_progress') : t('quests_confirm_selection')}
                   </Button>
                 </>
               )}
@@ -236,7 +237,7 @@ export default function Quests() {
             <Input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Rechercher une quête..."
+              placeholder={t('quests_search_placeholder')}
               className="pl-9"
             />
           </div>
@@ -244,7 +245,7 @@ export default function Quests() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:w-full lg:w-auto">
             <Select value={sortMode} onValueChange={(value) => setSortMode(value as QuestSortMode)}>
               <SelectTrigger className="w-full sm:w-56">
-                <SelectValue placeholder="Trier" />
+                <SelectValue placeholder={t('quests_sort_placeholder')} />
               </SelectTrigger>
               <SelectContent>
                 {QUEST_SORT_OPTIONS.map((option) => (
@@ -262,11 +263,11 @@ export default function Quests() {
 
       {hasSelectedQuests && (
         <div className={SPACING.CARD_SPACING}>
-          <h2 className={TYPOGRAPHY.H3}>Mes Quêtes</h2>
+          <h2 className={TYPOGRAPHY.H3}>{t('quests_my_quests')}</h2>
           {displayedMyQuests.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-center">
-                <p className={TYPOGRAPHY.MUTED}>Aucune quête ne correspond à votre recherche.</p>
+                <p className={TYPOGRAPHY.MUTED}>{t('quests_no_match')}</p>
               </CardContent>
             </Card>
           ) : (
@@ -288,13 +289,13 @@ export default function Quests() {
                       {isCompleted && !isClaimed && (
                         <Badge variant="default" className="bg-green-500">
                           <CheckCircle2 className="w-4 h-4 mr-1" />
-                          Terminée
+                          {t('quests_completed')}
                         </Badge>
                       )}
                       {isClaimed && (
                         <Badge variant="secondary">
                           <CheckCircle2 className="w-4 h-4 mr-1" />
-                          Réclamée
+                          {t('quests_claimed')}
                         </Badge>
                       )}
                       {isCompleted && !isClaimed && (
@@ -303,7 +304,7 @@ export default function Quests() {
                           onClick={() => handleClaim([userQuest.id])}
                           disabled={claiming}
                         >
-                          Réclamer
+                          {t('quests_claim')}
                         </Button>
                       )}
                     </div>
@@ -312,7 +313,7 @@ export default function Quests() {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <span>Progression</span>
+                        <span>{t('quests_progression')}</span>
                         <span className="font-semibold">
                           {progress} / {target}
                         </span>
@@ -346,7 +347,7 @@ export default function Quests() {
           {displayedDailyQuests.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-center">
-                <p className={TYPOGRAPHY.MUTED}>Aucune quête ne correspond à votre recherche.</p>
+                <p className={TYPOGRAPHY.MUTED}>{t('quests_no_match')}</p>
               </CardContent>
             </Card>
           ) : (
@@ -403,7 +404,7 @@ export default function Quests() {
         <Card>
           <CardContent className="p-6 text-center">
             <p className={TYPOGRAPHY.MUTED}>
-              Aucune quête disponible pour le moment. Revenez demain pour de nouvelles quêtes !
+              {t('quests_no_available')}
             </p>
           </CardContent>
         </Card>

@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useSocketBase } from '@/contexts/SocketContext';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { auraVisionApi } from '@/services/api';
 
@@ -29,18 +30,18 @@ type AuraVisionSignal =
   | { type: 'ice-candidate'; candidate: RTCIceCandidateInit };
 
 const FILTER_OPTIONS: Array<{ value: FilterPreset; label: string }> = [
-  { value: 'none', label: 'Naturel' },
-  { value: 'retro', label: 'Retro VHS' },
-  { value: 'noir', label: 'Noir & blanc' },
-  { value: 'dream', label: 'Dream' },
-  { value: 'laser', label: 'Laser pop' },
+  { value: 'none', label: t('aura_vision_filter_natural') },
+  { value: 'retro', label: t('aura_vision_filter_retro_vhs') },
+  { value: 'noir', label: t('aura_vision_filter_noir_blanc') },
+  { value: 'dream', label: t('aura_vision_filter_dream') },
+  { value: 'laser', label: t('aura_vision_filter_laser_pop') },
 ];
 
 const EFFECT_OPTIONS: Array<{ value: EffectPreset; label: string; description: string }> = [
-  { value: 'halo', label: 'Halo', description: 'Lueur douce autour du cadre' },
-  { value: 'scanlines', label: 'Scanlines', description: 'Ambiance webcam retro' },
-  { value: 'pulse', label: 'Pulse', description: 'Cadre vivant et nerveux' },
-  { value: 'prism', label: 'Prism', description: 'Reflets colores plus fun' },
+  { value: 'halo', label: t('aura_vision_effect_halo'), description: t('aura_vision_effect_desc_halo') },
+  { value: 'scanlines', label: t('aura_vision_effect_scanlines'), description: t('aura_vision_effect_desc_scanlines') },
+  { value: 'pulse', label: t('aura_vision_effect_pulse'), description: t('aura_vision_effect_desc_pulse') },
+  { value: 'prism', label: t('aura_vision_effect_prism'), description: t('aura_vision_effect_desc_prism') },
 ];
 
 const buildIceServers = (): RTCIceServer[] => {
@@ -115,7 +116,7 @@ export default function AuraVision() {
   const [effectsOpen, setEffectsOpen] = useState(false);
   const [queueCount, setQueueCount] = useState(0);
   const [activeCount, setActiveCount] = useState(0);
-  const [status, setStatus] = useState('Prends la main sur AuraVision et lance une rencontre aleatoire.');
+  const [status, setStatus] = useState(t('aura_vision_status_take_control'));
   const [error, setError] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isQueueing, setIsQueueing] = useState(false);
@@ -230,7 +231,7 @@ export default function AuraVision() {
         }
 
         setPeerConnected(true);
-        setStatus('Connexion video active.');
+        setStatus(t('aura_vision_status_video_active'));
       };
 
       connection.onicecandidate = (event) => {
@@ -311,7 +312,7 @@ export default function AuraVision() {
       }
 
       setIsQueueing(false);
-      setStatus('AuraVision en pause.');
+      setStatus(t('aura_vision_status_paused'));
       setError(null);
       stopPeerConnection();
 
@@ -324,7 +325,7 @@ export default function AuraVision() {
 
   const handleJoinQueue = useCallback(async () => {
     if (!socket) {
-      setError('La connexion temps reel n est pas encore prete.');
+      setError(t('aura_vision_error_realtime_not_ready'));
       return;
     }
 
@@ -334,13 +335,13 @@ export default function AuraVision() {
     try {
       await ensureLocalStream();
       stopPeerConnection();
-      setStatus('Recherche d un joueur AuraTracker...');
+      setStatus(t('aura_vision_status_searching_player'));
       setIsQueueing(true);
       socket.emit('auravision:join-queue');
     } catch (mediaError) {
       console.error('AuraVision media error:', mediaError);
-      setError('Impossible d acceder a la camera ou au micro.');
-      setStatus('Permissions camera/micro requises.');
+      setError(t('aura_vision_error_camera_mic_access'));
+      setStatus(t('aura_vision_status_permissions_required'));
     } finally {
       setIsPreparing(false);
     }
@@ -357,12 +358,12 @@ export default function AuraVision() {
     try {
       await ensureLocalStream();
       stopPeerConnection();
-      setStatus('Passage au joueur suivant...');
+      setStatus(t('aura_vision_status_next_player'));
       setIsQueueing(true);
       socket.emit('auravision:next');
     } catch (mediaError) {
       console.error('AuraVision next error:', mediaError);
-      setError('Impossible de relancer la camera pour le joueur suivant.');
+      setError(t('aura_vision_error_restart_camera'));
     } finally {
       setIsPreparing(false);
     }
@@ -377,8 +378,8 @@ export default function AuraVision() {
       setIsQueueing(true);
       setStatus(
         payload.position > 1
-          ? `En file d attente. ${payload.position} joueurs devant toi.`
-          : 'En file d attente. Premiere connexion disponible.',
+            ? `${t('aura_vision_status_queue_waiting')} ${payload.position} ${t('aura_vision_status_players_ahead')}`
+            : t('aura_vision_status_first_connection_available'),
       );
     };
 
@@ -389,7 +390,7 @@ export default function AuraVision() {
       setPeerName(payload.peer.username);
       setPeerConnected(false);
       setMessages([]);
-      setStatus(`Connexion avec ${payload.peer.username}...`);
+      setStatus(`${t('aura_vision_status_connecting_with')} ${payload.peer.username}...`);
 
       try {
         const connection = await createPeerConnection(payload.sessionId, payload.peer.id);
@@ -407,7 +408,7 @@ export default function AuraVision() {
         }
       } catch (matchError) {
         console.error('AuraVision match error:', matchError);
-        setError('La connexion video a echoue. Nouvelle tentative en cours.');
+        setError(t('aura_vision_error_video_connection_failed'));
         socket.emit('auravision:next');
       }
     };
@@ -418,7 +419,7 @@ export default function AuraVision() {
 
     const handlePartnerLeft = (payload: { reason: 'left' | 'next' | 'disconnect' }) => {
       stopPeerConnection();
-      setStatus(payload.reason === 'next' ? 'Ton contact est passe au suivant.' : 'Ton contact a quitte AuraVision.');
+      setStatus(payload.reason === 'next' ? t('aura_vision_status_partner_next') : t('aura_vision_status_partner_left'));
 
       if (autoNextRef.current) {
         void handleJoinQueue();
@@ -523,8 +524,8 @@ export default function AuraVision() {
     const trimmedReason = reportReason.trim();
     if (!trimmedReason) {
       toast({
-        title: 'Motif requis',
-        description: 'Ajoute une raison avant d envoyer le signalement.',
+        title: t('aura_vision_report_reason_required_title'),
+        description: t('aura_vision_report_reason_required_desc'),
         variant: 'destructive',
       });
       return;
@@ -544,8 +545,8 @@ export default function AuraVision() {
       });
 
       toast({
-        title: 'Signalement envoye',
-        description: `${peerName} a ete signale a l equipe de moderation.`,
+        title: t('aura_vision_report_sent_title'),
+        description: `${peerName} ${t('aura_vision_report_sent_desc_suffix')}`,
       });
 
       setReportOpen(false);
@@ -553,8 +554,8 @@ export default function AuraVision() {
     } catch (reportError) {
       console.error('AuraVision report error:', reportError);
       toast({
-        title: 'Erreur de signalement',
-        description: 'Le signalement n a pas pu etre envoye.',
+        title: t('aura_vision_report_error_title'),
+        description: t('aura_vision_report_error_desc'),
         variant: 'destructive',
       });
     } finally {
@@ -583,18 +584,18 @@ export default function AuraVision() {
   return (
     <PageShell size="wide">
       <PageHeader
-        title="AuraVision"
-        description="Une roulette video entre joueurs AuraTracker: rencontres aleatoires, filtres live, ambiance webcam et passage instantane au suivant."
+        title={t('aura_vision_title')}
+        description={t('aura_vision_description')}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-600">
-              {connected ? 'Socket connecte' : 'Connexion en cours'}
+              {connected ? t('aura_vision_socket_connected') : t('aura_vision_socket_connecting')}
             </div>
             <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
-              {queueCount} en file
+              {queueCount} {t('aura_vision_in_queue')}
             </div>
             <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
-              {activeCount} actif{activeCount > 1 ? 's' : ''}
+              {activeCount} {t('aura_vision_active')}{activeCount > 1 ? 's' : ''}
             </div>
           </div>
         }
@@ -615,41 +616,41 @@ export default function AuraVision() {
       <div className="space-y-3">
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(320px,0.95fr)]">
           <VideoPanel
-            title={user?.username ? `${user.username} (toi)` : 'Toi'}
-            subtitle={cameraEnabled ? 'Camera active' : 'Camera coupee'}
+            title={user?.username ? `${user.username} (${t('aura_vision_you')})` : t('aura_vision_you')}
+            subtitle={cameraEnabled ? t('aura_vision_camera_active') : t('aura_vision_camera_off')}
             icon={Camera}
             videoRef={localVideoRef}
             filterStyle={filterStyle}
             mirrored={mirrorLocal}
             effectPreset={effectPreset}
-            placeholder="Retour local"
+            placeholder={t('aura_vision_local_preview')}
             muted
           />
           <VideoPanel
-            title={peerName ?? 'Aucun joueur'}
-            subtitle={peerConnected ? 'Connecte' : isQueueing ? 'Recherche...' : 'Hors session'}
+            title={peerName ?? t('aura_vision_no_player')}
+            subtitle={peerConnected ? t('aura_vision_connected') : isQueueing ? t('aura_vision_searching') : t('aura_vision_out_of_session')}
             icon={MonitorPlay}
             videoRef={remoteVideoRef}
             filterStyle={filterStyle}
             mirrored={false}
             effectPreset={effectPreset}
-            placeholder={isQueueing ? 'Connexion en cours...' : 'Clique sur Next pour lancer une session'}
+            placeholder={isQueueing ? t('aura_vision_connecting_in_progress') : t('aura_vision_click_next')}
           />
 
           <Card className="min-h-0 border-border/60 bg-background/70">
             <CardContent className="flex h-full min-h-0 flex-col p-0">
               <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">Chat de session</p>
-                  <p className="truncate text-[11px] text-muted-foreground">{peerName ? `Avec ${peerName}` : 'En attente de connexion'}</p>
+                  <p className="truncate text-sm font-semibold">{t('aura_vision_session_chat')}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">{peerName ? `${t('aura_vision_with')} ${peerName}` : t('aura_vision_waiting_connection')}</p>
                 </div>
-                {sessionId ? <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] text-primary">Session {sessionId.slice(0, 6)}</span> : null}
+                {sessionId ? <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] text-primary">{t('aura_vision_session')} {sessionId.slice(0, 6)}</span> : null}
               </div>
 
               <div ref={messagesRef} className="min-h-0 flex-1 overflow-y-auto bg-muted/15 px-3 py-3">
                 {messages.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-center text-xs text-muted-foreground">
-                    Les messages apparaitront ici.
+                    {t('aura_vision_messages_will_appear')}
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
@@ -688,7 +689,7 @@ export default function AuraVision() {
                           handleSendMessage();
                         }
                       }}
-                      placeholder="Envoyer un message..."
+                      placeholder={t('aura_vision_send_message_placeholder')}
                       className="w-full resize-none bg-transparent text-sm leading-5 outline-none placeholder:text-muted-foreground/50"
                       maxLength={280}
                       style={{ minHeight: '20px' }}
@@ -708,11 +709,11 @@ export default function AuraVision() {
           {effectsOpen ? (
             <div className="absolute bottom-[calc(100%+0.6rem)] right-0 z-20 w-[min(92vw,420px)] rounded-2xl border border-border/70 bg-background/95 p-3 shadow-xl backdrop-blur">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold">Effets video</p>
+                <p className="text-sm font-semibold">{t('aura_vision_video_effects')}</p>
                 <span className="text-[11px] text-muted-foreground">{effectMeta.label} · {intensity}%</span>
               </div>
               <div className="space-y-2">
-                <p className="text-[11px] text-muted-foreground">Filtre</p>
+                <p className="text-[11px] text-muted-foreground">{t('aura_vision_filter')}</p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {FILTER_OPTIONS.map((option) => (
                     <button
@@ -732,7 +733,7 @@ export default function AuraVision() {
                 </div>
               </div>
               <div className="mt-3 space-y-2">
-                <p className="text-[11px] text-muted-foreground">Effet</p>
+                <p className="text-[11px] text-muted-foreground">{t('aura_vision_effect')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {EFFECT_OPTIONS.map((option) => (
                     <button
@@ -754,7 +755,7 @@ export default function AuraVision() {
               </div>
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Intensite</span>
+                  <span>{t('aura_vision_intensity')}</span>
                   <span>{intensity}%</span>
                 </div>
                 <Slider value={[intensity]} min={0} max={100} step={1} onValueChange={(value) => setIntensity(value[0] ?? 0)} />
@@ -766,26 +767,26 @@ export default function AuraVision() {
             <div className="flex items-center gap-2">
               <Button onClick={handlePrimaryNext} disabled={isPreparing || !connected || !rulesAccepted} className="gap-2 rounded-xl">
                 <RefreshCw className={cn('h-4 w-4', isPreparing && 'animate-spin')} />
-                <span>{sessionId || isQueueing ? 'Next' : 'Demarrer'}</span>
+                <span>{sessionId || isQueueing ? t('aura_vision_next') : t('aura_vision_start')}</span>
               </Button>
               <Button onClick={() => setMicrophoneEnabled((value) => !value)} variant="outline" className="gap-2 rounded-xl">
                 {microphoneEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-                <span className="hidden sm:inline">Micro</span>
+                <span className="hidden sm:inline">{t('aura_vision_microphone')}</span>
               </Button>
               <Button onClick={() => setCameraEnabled((value) => !value)} variant="outline" className="gap-2 rounded-xl">
                 {cameraEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-                <span className="hidden sm:inline">Camera</span>
+                <span className="hidden sm:inline">{t('aura_vision_camera')}</span>
               </Button>
             </div>
 
             <div className="flex items-center gap-2">
               <Button onClick={() => setEffectsOpen((open) => !open)} variant="outline" className="gap-2 rounded-xl">
                 <Waves className="h-4 w-4" />
-                <span className="hidden sm:inline">Effets</span>
+                <span className="hidden sm:inline">{t('aura_vision_effects')}</span>
               </Button>
               <Button onClick={() => setReportOpen(true)} variant="outline" className="gap-2 rounded-xl" disabled={!peerName}>
                 <Flag className="h-4 w-4" />
-                <span className="hidden sm:inline">Signaler</span>
+                <span className="hidden sm:inline">{t('aura_vision_report')}</span>
               </Button>
             </div>
           </div>
@@ -796,28 +797,28 @@ export default function AuraVision() {
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Signaler sur AuraVision</DialogTitle>
+            <DialogTitle>{t('aura_vision_report_title')}</DialogTitle>
             <DialogDescription>
-              Ce signalement sera transmis a l equipe de moderation avec le contexte recent de la session.
+              {t('aura_vision_report_description')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3 text-sm text-muted-foreground">
-              Joueur concerne: <span className="font-medium text-foreground">{peerName ?? 'Aucun'}</span>
+              {t('aura_vision_player_concerned')} <span className="font-medium text-foreground">{peerName ?? t('aura_vision_none')}</span>
             </div>
             <Textarea
               value={reportReason}
               onChange={(event) => setReportReason(event.target.value)}
-              placeholder="Explique brievement le probleme rencontre..."
+              placeholder={t('aura_vision_report_placeholder')}
               maxLength={280}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setReportOpen(false)}>
-              Annuler
+              {t('aura_vision_cancel')}
             </Button>
             <Button onClick={() => void handleReport()} disabled={reportSubmitting || !peerName}>
-              Envoyer le signalement
+              {t('aura_vision_send_report')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -826,19 +827,19 @@ export default function AuraVision() {
       <Dialog open={rulesModalOpen} onOpenChange={(open) => (rulesAccepted ? setRulesModalOpen(open) : undefined)}>
         <DialogContent className="[&>button]:hidden">
           <DialogHeader>
-            <DialogTitle>Regles AuraVision</DialogTitle>
+            <DialogTitle>{t('aura_vision_rules_title')}</DialogTitle>
             <DialogDescription>
-              Avant de commencer, tu dois accepter les regles de securite et de respect.
+              {t('aura_vision_rules_description')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/20 p-3 text-sm text-muted-foreground">
-            <p>Pas de contenu sexuel, violent, humiliant ou discriminant.</p>
-            <p>Pas de harcelement, menace, spam vocal ou tentative de doxxing.</p>
-            <p>Si un comportement pose probleme, passe au suivant puis utilise Signaler.</p>
+            <p>{t('aura_vision_rules_1')}</p>
+            <p>{t('aura_vision_rules_2')}</p>
+            <p>{t('aura_vision_rules_3')}</p>
           </div>
           <DialogFooter>
             <Button onClick={handleAcceptRules} className="w-full">
-              J accepte les regles
+              {t('aura_vision_accept_rules')}
             </Button>
           </DialogFooter>
         </DialogContent>

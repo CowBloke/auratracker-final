@@ -3,6 +3,7 @@ import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { initSocket, duelEvents } from '../services/socket';
+import { t } from '@/lib/i18n';
 
 interface IncomingDuelChallenge {
   challengerId: string;
@@ -76,17 +77,17 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
 
     s.on('duel:challenge-accepted', (data: { targetId: string; targetUsername: string }) => {
       setOutgoingDuelChallenge(null);
-      toast(`Défi accepté !`, { description: `${data.targetUsername} a accepté. Redirection en cours...` });
+      toast(t('duel_challenge_accepted_title'), { description: `${data.targetUsername} ${t('duel_challenge_accepted_description_suffix')}` });
     });
 
     s.on('duel:challenge-declined', (data: { targetUsername: string }) => {
       setOutgoingDuelChallenge(null);
-      toast(`Défi refusé`, { description: `${data.targetUsername} a refusé le défi.` });
+      toast(t('duel_challenge_declined_title'), { description: `${data.targetUsername} ${t('duel_challenge_declined_description_suffix')}` });
     });
 
     s.on('duel:challenge-expired', () => {
       setOutgoingDuelChallenge(null);
-      toast('Défi expiré', { description: "Le joueur n'a pas répondu à temps." });
+      toast(t('duel_challenge_expired_title'), { description: t('duel_challenge_expired_description') });
     });
 
     s.on('duel:challenge-cancelled', () => setIncomingDuelChallenge(null));
@@ -115,8 +116,15 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
     });
 
     s.on('duel:matchmaking-match-found', (data: { gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' }) => {
-      const labels = { chess: 'Echecs', battleship: 'Bataille navale', p4: 'Puissance 4', ballarena: 'Arène des balles', uno: 'UNO', morpion: 'Morpion' } as const;
-      toast('Adversaire trouve !', { description: `Duel ${labels[data.gameType] ?? 'aleatoire'} en cours de lancement...` });
+      const labels = {
+        chess: t('duel_game_chess'),
+        battleship: t('duel_game_battleship'),
+        p4: t('duel_game_puissance_4'),
+        ballarena: t('duel_game_ball_arena'),
+        uno: t('duel_game_uno'),
+        morpion: t('duel_game_morpion'),
+      } as const;
+      toast(t('duel_opponent_found_title'), { description: `${t('duel_opponent_found_prefix')} ${labels[data.gameType] ?? t('duel_game_random')} ${t('duel_opponent_found_suffix')}` });
     });
 
     return () => {

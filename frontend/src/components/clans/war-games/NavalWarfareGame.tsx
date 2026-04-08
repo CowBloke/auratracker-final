@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { ClanWarNavalShot } from '@/services/api';
+import { t } from '@/lib/i18n';
 
 const GRID = 6;
 
@@ -150,28 +151,28 @@ export function NavalWarfareGame({
           )}
         >
           {lastResult.isHit
-            ? `💥 Touché ! ${BUILDING_ICONS[lastResult.building ?? '']} ${lastResult.building ?? 'Bâtiment'} +${lastResult.points} pts de guerre`
-            : '💧 À l\'eau !'}
+            ? `${t('naval_hit_prefix')} ${BUILDING_ICONS[lastResult.building ?? '']} ${lastResult.building ?? t('naval_building_generic')} +${lastResult.points} ${t('naval_war_points')}`
+            : t('naval_miss_message')}
         </div>
       )}
 
       {/* Team shots summary */}
       {shots.filter((s) => !s.isOwnShot).length > 0 && (
         <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-2 text-xs text-muted-foreground">
-          {shots.filter((s) => !s.isOwnShot && s.isHit).length} touche(s) par tes coéquipiers
+          {shots.filter((s) => !s.isOwnShot && s.isHit).length} {t('naval_team_hits_suffix')}
         </div>
       )}
 
       {/* Legend */}
       <div className="flex gap-4 text-xs text-muted-foreground">
-        <span>💥 Touché</span>
-        <span>💧 Manqué</span>
-        <span className="text-muted-foreground/60">🏰⚔️🚩 = bâtiments révélés par les hits</span>
+        <span>{t('naval_legend_hit')}</span>
+        <span>{t('naval_legend_miss')}</span>
+        <span className="text-muted-foreground/60">{t('naval_legend_buildings')}</span>
       </div>
 
       {shotsRemaining <= 0 && (
         <div className="rounded-xl border border-border/40 bg-muted/15 p-3 text-center text-sm text-muted-foreground">
-          Tu as utilisé tous tes tirs pour cette guerre. Reviens lors d'une prochaine guerre !
+          {t('naval_no_shots_remaining')}
         </div>
       )}
     </div>

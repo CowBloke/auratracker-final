@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { CenteredShell } from '@/components/layout/centered-shell';
 import { Loader2, Send, Check } from 'lucide-react';
+import { t } from '@/lib/i18n';
 
 const APPEAL_SUBMITTED_KEY = 'banAppealSubmitted';
 
@@ -19,13 +20,13 @@ const formatExpiry = (expiresAt: string | null) => {
 
 export default function Banned() {
   const banInfo = loadBanInfo();
-  const reason = banInfo?.reason?.trim() || 'Non specifie';
+  const reason = banInfo?.reason?.trim() || t('banned_reason_not_specified');
   const expiresAt = banInfo?.expiresAt ?? null;
   const durationLabel = banInfo?.type === 'PERMANENT'
-    ? 'Permanent'
+    ? t('banned_duration_permanent')
     : expiresAt
-      ? `Jusqu'au ${formatExpiry(expiresAt)}`
-      : 'Temporaire';
+      ? `${t('banned_duration_until_prefix')} ${formatExpiry(expiresAt)}`
+      : t('banned_duration_temporary');
 
   const [appealMessage, setAppealMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -37,7 +38,7 @@ export default function Banned() {
   const handleSubmitAppeal = async () => {
     if (!banInfo?.banId || !banInfo?.userId) return;
     if (appealMessage.trim().length < 10) {
-      setAppealError('Le message doit faire au moins 10 caractères.');
+      setAppealError(t('banned_appeal_length_error'));
       return;
     }
 
@@ -52,7 +53,7 @@ export default function Banned() {
       localStorage.setItem(APPEAL_SUBMITTED_KEY, '1');
       setSubmitted(true);
     } catch (err: any) {
-      setAppealError(err.response?.data?.error || 'Erreur lors de l\'envoi. Réessaie plus tard.');
+      setAppealError(err.response?.data?.error || t('banned_appeal_send_error'));
     } finally {
       setSubmitting(false);
     }
@@ -63,17 +64,17 @@ export default function Banned() {
       <div className="space-y-4">
         <Card>
           <CardHeader className="text-center">
-            <CardDescription>Accès restreint</CardDescription>
-            <CardTitle>Compte banni</CardTitle>
+            <CardDescription>{t('banned_access_restricted')}</CardDescription>
+            <CardTitle>{t('banned_account_title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 text-left">
             <div className="space-y-2 rounded-lg border border-border/40 bg-muted/20 p-4">
               <div className={TYPOGRAPHY.SMALL}>
-                <span className="text-muted-foreground">Motif:</span>{' '}
+                <span className="text-muted-foreground">{t('banned_reason_label')}</span>{' '}
                 <span className="text-foreground">{reason}</span>
               </div>
               <div className={TYPOGRAPHY.SMALL}>
-                <span className="text-muted-foreground">Durée:</span>{' '}
+                <span className="text-muted-foreground">{t('banned_duration_label')}</span>{' '}
                 <span className="text-foreground">{durationLabel}</span>
               </div>
             </div>
@@ -86,21 +87,19 @@ export default function Banned() {
         {canAppeal && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Faire appel</CardTitle>
-              <CardDescription>
-                Si tu penses que ce bannissement est injustifié, envoie un message aux admins.
-              </CardDescription>
+              <CardTitle className="text-base">{t('banned_appeal_title')}</CardTitle>
+              <CardDescription>{t('banned_appeal_description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {submitted ? (
                 <div className="flex items-center gap-2 text-green-500 text-sm">
                   <Check className="h-4 w-4" />
-                  Ton appel a été envoyé. Les admins le traiteront prochainement.
+                  {t('banned_appeal_submitted')}
                 </div>
               ) : (
                 <>
                   <Textarea
-                    placeholder="Explique pourquoi tu penses que ce ban est injustifié..."
+                    placeholder={t('banned_appeal_placeholder')}
                     value={appealMessage}
                     onChange={(e) => setAppealMessage(e.target.value)}
                     maxLength={1000}
@@ -121,7 +120,7 @@ export default function Banned() {
                   >
                     {submitting
                       ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <><Send className="h-4 w-4 mr-1.5" />Envoyer l'appel</>}
+                      : <><Send className="h-4 w-4 mr-1.5" />{t('banned_appeal_send')}</>}
                   </Button>
                 </>
               )}
@@ -131,7 +130,7 @@ export default function Banned() {
 
         {!canAppeal && (
           <p className={TYPOGRAPHY.XS}>
-            Si vous pensez que c'est une erreur, contactez un administrateur.
+            {t('banned_contact_admin')}
           </p>
         )}
       </div>

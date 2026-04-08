@@ -62,6 +62,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { computeNewChangelogCount, markChangelogSeen } from '@/lib/changelog';
+import { t } from '@/lib/i18n';
 
 interface SearchUser {
   id: string;
@@ -140,11 +141,11 @@ export function SiteHeader() {
     return sessionsByUser;
   }, [chessSpectateSessions]);
   const gameStatus = bombPartyGame
-    ? `Bombe de mots - Manche ${bombPartyGame.round}`
+    ? `${t('site_header_bomb_party_status_prefix')} ${bombPartyGame.round}`
     : petitBacGame
-      ? `Petit Bac - Manche ${petitBacGame.round}/${petitBacGame.maxRounds}`
-      : 'En attente';
-  const inviteLabel = currentParty?.name ? `Rejoins ${currentParty.name}` : 'Rejoins mon groupe';
+      ? `${t('site_header_petit_bac_status_prefix')} ${petitBacGame.round}/${petitBacGame.maxRounds}`
+      : t('site_header_waiting');
+  const inviteLabel = currentParty?.name ? `${t('site_header_join_current_party_prefix')} ${currentParty.name}` : t('site_header_join_my_group');
   const inviteVisibility = currentParty?.isPublic ? 'public' : 'private';
   const duelMatchmakingEnabled = maintenanceStatus.duelMatchmakingEnabled;
   const availableParties = useMemo(
@@ -189,7 +190,7 @@ export function SiteHeader() {
         setSearchUsers(response.data.users || []);
         setHasFetchedSearchUsers(true);
       } catch {
-        setSearchLoadError('Impossible de charger les joueurs.');
+        setSearchLoadError(t('site_header_search_error'));
       } finally {
         setIsLoadingSearchUsers(false);
       }
@@ -248,11 +249,11 @@ export function SiteHeader() {
     const items = [];
 
     if (location.pathname === '/') {
-      return [{ label: 'Tableau de bord', path: '/' }];
+      return [{ label: t('site_header_dashboard'), path: '/' }];
     }
 
     items.push({
-      label: 'Tableau de bord',
+      label: t('site_header_dashboard'),
       path: '/',
     });
 
@@ -301,7 +302,7 @@ export function SiteHeader() {
 
   const getBioPreview = (bio?: string | null, maxLength = 80) => {
     const trimmed = bio?.trim();
-    if (!trimmed) return 'Aucune description.';
+    if (!trimmed) return t('site_header_no_description');
     if (trimmed.length <= maxLength) return trimmed;
     return `${trimmed.slice(0, maxLength)}...`;
   };
@@ -315,7 +316,7 @@ export function SiteHeader() {
   const searchSheet = (
     <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Rechercher un joueur">
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title={t('site_header_search_player')}>
           <Search className="h-4 w-4" />
         </Button>
       </SheetTrigger>
@@ -339,7 +340,7 @@ export function SiteHeader() {
               ) : searchLoadError ? (
                 <p className="text-sm text-muted-foreground py-4">{searchLoadError}</p>
               ) : filteredSearchUsers.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4">Aucun joueur trouvé.</p>
+                <p className="text-sm text-muted-foreground py-4">{t('site_header_no_player_found')}</p>
               ) : (
                 filteredSearchUsers.map((u) => (
                   <Button
@@ -431,7 +432,7 @@ export function SiteHeader() {
               variant="ghost"
               className="h-auto gap-1 px-0 py-0 text-sm text-muted-foreground hover:text-foreground"
             >
-              <span className="text-green-500">{onlineCount}<span className="hidden sm:inline"> connectés</span></span>
+              <span className="text-green-500">{onlineCount}<span className="hidden sm:inline"> {t('site_header_connected_suffix')}</span></span>
               {showUsers ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </Button>
           </CollapsibleTrigger>
@@ -688,7 +689,7 @@ export function SiteHeader() {
                       className="gap-2"
                     >
                       <UserPlus className="h-4 w-4" />
-                      Créer un groupe
+                      {t('site_header_create_group')}
                     </DropdownMenuItem>
                   </>
                 )}
@@ -898,7 +899,7 @@ export function SiteHeader() {
                     variant="ghost"
                     className="h-auto gap-1 px-0 py-0 text-sm text-muted-foreground hover:text-foreground"
                   >
-                    <span className="text-green-500">{onlineCount}<span className="hidden sm:inline"> connectés</span></span>
+                    <span className="text-green-500">{onlineCount}<span className="hidden sm:inline"> {t('site_header_connected_suffix')}</span></span>
                     {showUsers ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   </Button>
                 </CollapsibleTrigger>
@@ -1043,7 +1044,7 @@ export function SiteHeader() {
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="max-w-48 text-center">
                       <p className="font-medium">{effect.name}</p>
-                      <p className="text-muted-foreground text-xs">+{effect.value}% d&apos;argent sur les récompenses de jeux</p>
+                      <p className="text-muted-foreground text-xs">+{effect.value}% {t('site_header_game_reward_bonus')}</p>
                       <p className="text-muted-foreground/70 text-xs mt-0.5">Fin : {formatRemaining(effect.activeUntil)}</p>
                     </TooltipContent>
                   </Tooltip>

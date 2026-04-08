@@ -20,10 +20,11 @@ import { cn } from '@/lib/utils';
 import { CenteredShell } from '@/components/layout/centered-shell';
 import { maintenanceApi } from '@/services/api';
 import { normalizeDefaultLandingPage } from '@/lib/default-landing-page';
+import { t } from '@/lib/i18n';
 
 const loginSchema = z.object({
-  username: z.string().min(1, 'Pseudo requis'),
-  password: z.string().min(1, 'Mot de passe requis'),
+  username: z.string().min(1, t('login_username_required')),
+  password: z.string().min(1, t('login_password_required')),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -61,7 +62,7 @@ export default function Login() {
       const statusRes = await maintenanceApi.getStatus().catch(() => null);
       navigate(normalizeDefaultLandingPage(statusRes?.data.defaultLandingPage ?? defaultLandingPage));
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Échec de connexion');
+      setError(err.response?.data?.error || t('login_failed'));
     } finally {
       setLoading(false);
     }
@@ -70,8 +71,8 @@ export default function Login() {
   const loginForm = (
     <Card>
       <CardHeader className="space-y-2 text-center">
-        <CardTitle className={TYPOGRAPHY.H1}>AuraTracker</CardTitle>
-        <CardDescription>Connexion</CardDescription>
+        <CardTitle className={TYPOGRAPHY.H1}>{t('login_title')}</CardTitle>
+        <CardDescription>{t('login_description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (
@@ -88,7 +89,7 @@ export default function Login() {
                   <FormControl>
                     <Input
                       type="text"
-                      placeholder="Pseudo"
+                      placeholder={t('login_username_placeholder')}
                       className="h-12 border-border/50 text-center"
                       {...field}
                     />
@@ -106,7 +107,7 @@ export default function Login() {
                   <FormControl>
                     <Input
                       type="password"
-                      placeholder="Mot de passe"
+                      placeholder={t('login_password_placeholder')}
                       className="h-12 border-border/50 text-center"
                       {...field}
                     />
@@ -121,7 +122,7 @@ export default function Login() {
               disabled={loading}
               className="h-12 w-full"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Connexion'}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('login_submit')}
             </Button>
           </form>
         </Form>
@@ -141,7 +142,7 @@ export default function Login() {
               <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.38)_50%,transparent_80%)] bg-[length:220%_100%] animate-[shimmer_2.8s_linear_infinite]" />
               <span className="relative flex w-full items-center justify-center gap-3 text-center">
                 <Sparkles className="h-6 w-6 animate-bounce" />
-                <span>Creer un compte</span>
+                <span>{t('login_register_cta')}</span>
                 <ArrowRight className="h-6 w-6 transition-transform duration-300 group-hover:translate-x-1" />
               </span>
             </Link>
@@ -149,9 +150,9 @@ export default function Login() {
         )}
 
         <p className={cn(TYPOGRAPHY.SMALL, "text-center text-muted-foreground")}>
-          Pas de compte ?{' '}
+          {t('login_no_account')}{' '}
           <Link to="/register" className="text-foreground hover:underline">
-            Créer un compte
+            {t('login_register_link')}
           </Link>
         </p>
       </CardContent>

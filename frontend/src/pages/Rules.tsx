@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
+import { t } from '@/lib/i18n';
 
 interface RuleSection {
   title: string;
@@ -10,66 +11,66 @@ interface RuleSection {
 
 const sections: RuleSection[] = [
   {
-    title: "Principes généraux",
+    title: t('rules_general_title'),
     rules: [
-      "L'aura est une monnaie virtuelle utilisée uniquement dans le cadre de cette application.",
-      "Tout comportement visant à exploiter des failles ou bugs du système est interdit.",
-      "Les administrateurs se réservent le droit de modifier ces règles à tout moment.",
-      "L'utilisation de l'application implique l'acceptation de ce règlement.",
+      t('rules_general_1'),
+      t('rules_general_2'),
+      t('rules_general_3'),
+      t('rules_general_4'),
     ],
   },
   {
-    title: "Comportement entre utilisateurs",
+    title: t('rules_behavior_title'),
     rules: [
-      "Le respect mutuel est obligatoire dans toutes les interactions.",
-      "Tout harcèlement, insulte ou discrimination est strictement interdit.",
-      "L'usurpation d'identité est prohibée.",
-      "Les messages dans le chat doivent rester appropriés et respectueux.",
+      t('rules_behavior_1'),
+      t('rules_behavior_2'),
+      t('rules_behavior_3'),
+      t('rules_behavior_4'),
     ],
   },
   {
-    title: "Système de dons",
+    title: t('rules_donations_title'),
     rules: [
-      "Chaque utilisateur dispose d'une limite quotidienne de dons d'aura.",
-      "Les dons sont définitifs et ne peuvent pas être annulés.",
-      "Il est interdit de demander des dons en échange de faveurs réelles.",
-      "Le farming d'aura via des comptes multiples est interdit.",
+      t('rules_donations_1'),
+      t('rules_donations_2'),
+      t('rules_donations_3'),
+      t('rules_donations_4'),
     ],
   },
   {
-    title: "Jeux et compétitions",
+    title: t('rules_games_title'),
     rules: [
-      "L'utilisation de scripts, bots ou logiciels tiers est interdite.",
-      "Les scores obtenus de manière frauduleuse seront supprimés.",
-      "Les résultats des jeux sont finaux et non contestables.",
-      "Le fair-play est attendu de tous les participants.",
+      t('rules_games_1'),
+      t('rules_games_2'),
+      t('rules_games_3'),
+      t('rules_games_4'),
     ],
   },
   {
-    title: "Marché et économie",
+    title: t('rules_market_title'),
     rules: [
-      "Les transactions sur le marché sont définitives.",
-      "Il est interdit de manipuler les prix artificiellement.",
-      "Les objets achetés ne peuvent pas être échangés contre de l'argent réel.",
-      "Tout abus du système économique entraînera des sanctions.",
+      t('rules_market_1'),
+      t('rules_market_2'),
+      t('rules_market_3'),
+      t('rules_market_4'),
     ],
   },
   {
-    title: "Confidentialité et sécurité",
+    title: t('rules_security_title'),
     rules: [
-      "Ne partagez jamais vos identifiants de connexion.",
-      "Chaque utilisateur est responsable de la sécurité de son compte.",
-      "Les données personnelles sont traitées conformément à la législation en vigueur.",
-      "Signaler tout comportement suspect aux administrateurs.",
+      t('rules_security_1'),
+      t('rules_security_2'),
+      t('rules_security_3'),
+      t('rules_security_4'),
     ],
   },
 ];
 
 const sanctions = [
-  { offense: "Première infraction mineure", sanction: "Avertissement" },
-  { offense: "Récidive ou infraction modérée", sanction: "Suspension temporaire (1-7 jours)" },
-  { offense: "Infraction grave", sanction: "Suspension longue (30 jours)" },
-  { offense: "Infraction très grave ou récidive multiple", sanction: "Bannissement permanent" },
+  { offense: t('rules_sanction_1_offense'), sanction: t('rules_sanction_1_sanction') },
+  { offense: t('rules_sanction_2_offense'), sanction: t('rules_sanction_2_sanction') },
+  { offense: t('rules_sanction_3_offense'), sanction: t('rules_sanction_3_sanction') },
+  { offense: t('rules_sanction_4_offense'), sanction: t('rules_sanction_4_sanction') },
 ];
 
 export default function Rules() {
@@ -77,8 +78,8 @@ export default function Rules() {
     <PageShell>
       <Card>
         <CardHeader>
-          <CardDescription>Règlement</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>Principes</CardTitle>
+          <CardDescription>{t('rules_regulation')}</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H2}>{t('rules_principles')}</CardTitle>
         </CardHeader>
         <CardContent className={SPACING.SECTION_SPACING}>
           {sections.map((section, index) => (
@@ -115,12 +116,12 @@ export default function Rules() {
       </Card>
       <Card>
         <CardHeader>
-          <CardDescription>Modération</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>Sanctions</CardTitle>
+          <CardDescription>{t('rules_moderation')}</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H2}>{t('rules_sanctions')}</CardTitle>
         </CardHeader>
         <CardContent className={SPACING.CARD_SPACING}>
           <p className={TYPOGRAPHY.SMALL}>
-            Le non-respect du règlement entraîne des sanctions proportionnelles à la gravité de l'infraction.
+            {t('rules_sanction_intro')}
           </p>
           
           <div className="divide-y divide-border/30">
@@ -140,12 +141,12 @@ export default function Rules() {
       </Card>
       <Card>
         <CardHeader>
-          <CardDescription>Informations</CardDescription>
-          <CardTitle className={TYPOGRAPHY.H2}>Contact</CardTitle>
+          <CardDescription>{t('rules_information')}</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H2}>{t('rules_contact')}</CardTitle>
         </CardHeader>
         <CardContent className={SPACING.CARD_SPACING}>
           <p className={TYPOGRAPHY.SMALL}>
-            Pour toute question concernant ce règlement, contactez l'équipe d'administration.
+            {t('rules_contact_text')}
           </p>
         </CardContent>
       </Card>

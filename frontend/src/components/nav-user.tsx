@@ -33,6 +33,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { resolveImageUrl } from "@/lib/images"
+import { t } from "@/lib/i18n"
 import { UsernameDisplay } from "@/components/ui/username-display"
 
 export function NavUser({
@@ -84,7 +85,7 @@ export function NavUser({
                   usernameColor={user.usernameColor}
                   usernameClassName="font-semibold"
                 />
-                <span className="truncate text-xs">{user.email || 'Utilisateur'}</span>
+                <span className="truncate text-xs">{user.email || t('nav_user_user')}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
@@ -111,7 +112,7 @@ export function NavUser({
                     usernameColor={user.usernameColor}
                     usernameClassName="font-semibold"
                   />
-                  <span className="truncate text-xs">{user.email || 'Utilisateur'}</span>
+                  <span className="truncate text-xs">{user.email || t('nav_user_user')}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
@@ -120,24 +121,24 @@ export function NavUser({
               <DropdownMenuItem asChild>
                 <Link to={`/profile/${authUser?.id}`}>
                   <User />
-                  Profil
+                  {t('nav_user_profile')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/settings">
                   <Settings />
-                  Réglages
+                  {t('nav_user_settings')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={toggleTheme}>
                 {theme === 'dark' ? <Sun /> : <Moon />}
-                {theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+                {theme === 'dark' ? t('nav_user_light_mode') : t('nav_user_dark_mode')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>
               <LogOut />
-              Déconnexion
+              {t('nav_user_logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

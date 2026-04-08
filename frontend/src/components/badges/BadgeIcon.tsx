@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { t } from '@/lib/i18n';
 
 export interface BadgeData {
   id: string;
@@ -37,11 +38,11 @@ const RARITY_TEXT_COLOR: Record<string, string> = {
 };
 
 const RARITY_LABELS: Record<string, string> = {
-  legendary: 'Légendaire',
-  epic:      'Épique',
-  rare:      'Rare',
-  uncommon:  'Peu commun',
-  common:    'Commun',
+  legendary: t('badge_rarity_legendary'),
+  epic:      t('badge_rarity_epic'),
+  rare:      t('badge_rarity_rare'),
+  uncommon:  t('badge_rarity_uncommon'),
+  common:    t('badge_rarity_common'),
 };
 
 interface BadgeIconProps {
@@ -61,12 +62,12 @@ function getOwnerPct(ownerCount?: number, totalUsers?: number): number | null {
 function PctBadge({ pct }: { pct: number }) {
   let color = '#9ca3af';
   let label = '';
-  if (pct < 5) { color = '#facc15'; label = 'Extrêmement rare'; }
-  else if (pct < 10) { color = '#f97316'; label = 'Très rare'; }
-  else if (pct < 20) { color = '#60a5fa'; label = 'Rare'; }
+  if (pct < 5) { color = '#facc15'; label = t('badge_drop_extremely_rare'); }
+  else if (pct < 10) { color = '#f97316'; label = t('badge_drop_very_rare'); }
+  else if (pct < 20) { color = '#60a5fa'; label = t('badge_rarity_rare'); }
   return (
     <p className="text-[10px] pt-0.5 border-t border-border/30" style={{ color }}>
-      {pct}% des joueurs l'ont{label ? ` · ${label}` : ''}
+      {pct}% {t('badge_drop_ownership_suffix')}{label ? ` · ${label}` : ''}
     </p>
   );
 }
@@ -129,7 +130,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
               backgroundColor: '#1f2937',
               border: '1.5px solid #374151',
             }}
-            aria-label="Badge mystère"
+            aria-label={t('badge_mystery_aria_label')}
           >
             <span className={cn(text, 'leading-none pointer-events-none text-muted-foreground/40 font-bold')}>
               ?
@@ -143,11 +144,11 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
             </div>
             <div className="min-w-0">
               <p className="font-bold text-sm leading-tight text-muted-foreground drop-shadow">???</p>
-              <p className="text-[11px] font-medium mt-0.5 text-muted-foreground/50">Achievement caché</p>
+              <p className="text-[11px] font-medium mt-0.5 text-muted-foreground/50">{t('badge_hidden_achievement_label')}</p>
             </div>
           </div>
           <div className="px-3 py-2 bg-popover">
-            <p className="text-xs text-muted-foreground/50 italic">Continuez à jouer pour découvrir cet achievement.</p>
+            <p className="text-xs text-muted-foreground/50 italic">{t('badge_hidden_description')}</p>
           </div>
         </TooltipContent>
       </Tooltip>
@@ -193,7 +194,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
             <div className="min-w-0">
               <p className="font-bold text-sm leading-tight text-white drop-shadow">{badge.name}</p>
               <p className="text-[11px] font-medium mt-0.5" style={{ color: rarityColor }}>
-                {RARITY_LABELS[badge.rarity] ?? badge.rarity} · <span className="text-muted-foreground/70">Non obtenu</span>
+                {RARITY_LABELS[badge.rarity] ?? badge.rarity} · <span className="text-muted-foreground/70">{t('badge_not_obtained')}</span>
               </p>
             </div>
           </div>

@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Edit2, Loader2, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { t } from '@/lib/i18n';
 
 interface ProfileBadgeSlotsProps {
   /** All badges earned by this user */
@@ -113,7 +114,7 @@ export function ProfileBadgeSlots({
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher..."
+                    placeholder={t('badge_search_placeholder')}
                   className="h-7 border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
                   autoFocus
                 />
@@ -123,7 +124,7 @@ export function ProfileBadgeSlots({
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
-                    title="Déséquiper"
+                    title={t('badge_unequip')}
                     onClick={() => handleEquip(slot, null)}
                   >
                     <X className="w-3 h-3" />
@@ -135,7 +136,7 @@ export function ProfileBadgeSlots({
               <div className="p-1.5 max-h-60 overflow-y-auto grid grid-cols-3 gap-1">
                 {filteredBadges.length === 0 ? (
                   <p className="col-span-3 text-center text-xs text-muted-foreground py-4">
-                    Aucun badge trouvé
+                    {t('badge_no_badge_found')}
                   </p>
                 ) : (
                   filteredBadges.map((b) => {

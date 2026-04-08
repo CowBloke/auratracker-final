@@ -39,6 +39,7 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { youApi, type Notification } from '@/services/api';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 const TYPE_ICON: Record<string, ComponentType<{ className?: string }>> = {
@@ -190,7 +191,7 @@ function NotificationCard({
               className="h-6 rounded-full px-2.5 text-[10px] font-medium"
             >
               <Check className="mr-1 h-3 w-3" />
-              {actingKey === `${notification.id}:accept` ? '…' : 'Accepter'}
+              {actingKey === `${notification.id}:accept` ? '…' : t('inbox_accept')}
             </Button>
             <Button
               type="button"
@@ -201,7 +202,7 @@ function NotificationCard({
               className="h-6 rounded-full px-2.5 text-[10px] font-medium"
             >
               <X className="mr-1 h-3 w-3" />
-              {actingKey === `${notification.id}:decline` ? '…' : 'Refuser'}
+              {actingKey === `${notification.id}:decline` ? '…' : t('inbox_decline')}
             </Button>
           </div>
         )}
@@ -215,7 +216,7 @@ function NotificationCard({
           e.stopPropagation();
           void onDismiss(notification);
         }}
-        title="Retirer"
+        title={t('inbox_dismiss')}
       >
         <X className="h-3 w-3" />
       </button>
@@ -283,7 +284,7 @@ export function InboxDropdown() {
   const handleBusinessInvitationDecision = async (notification: Notification, decision: 'accept' | 'reject') => {
     const invitationId = getBusinessInvitationId(notification);
     if (!invitationId) {
-      toast.error("Cette invitation n'a pas les informations necessaires.");
+      toast.error(t('inbox_invitation_missing_info'));
       return;
     }
 
@@ -292,11 +293,11 @@ export function InboxDropdown() {
     try {
       await withNotificationFallback(
         () => youApi.respondToBusinessInvitation(invitationId, decision),
-        "Impossible de repondre a l'invitation."
+        t('inbox_invitation_response_error')
       );
       if (!notification.isRead) await markRead(notification.id);
       await dismissNotification(notification.id);
-      toast.success(decision === 'accept' ? 'Invitation acceptee.' : 'Invitation refusee.');
+      toast.success(decision === 'accept' ? t('inbox_invitation_accepted') : t('inbox_invitation_declined'));
     } finally {
       setActingKey(null);
     }
@@ -318,7 +319,7 @@ export function InboxDropdown() {
         size="icon"
         onClick={() => setOpen((value) => !value)}
         className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
-        title="Boîte de réception"
+        title={t('inbox_title')}
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 ? (
@@ -333,7 +334,7 @@ export function InboxDropdown() {
           {/* Header */}
           <div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground">Boîte de réception</span>
+              <span className="text-sm font-semibold text-foreground">{t('inbox_title')}</span>
               {unreadCount > 0 && (
                 <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-bold text-background">
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -346,7 +347,7 @@ export function InboxDropdown() {
                   {unreadCount > 0 && (
                     <button
                       type="button"
-                      title="Tout marquer comme lu"
+                      title={t('inbox_mark_all_read')}
                       onClick={() => void markAllRead()}
                       className="rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground"
                     >
@@ -355,7 +356,7 @@ export function InboxDropdown() {
                   )}
                   <button
                     type="button"
-                    title="Tout effacer"
+                    title={t('inbox_dismiss_all')}
                     disabled={dismissingAll}
                     onClick={() => void handleDismissAll()}
                     className="rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
@@ -369,7 +370,7 @@ export function InboxDropdown() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
               >
-                Voir tout
+                {t('inbox_see_all')}
                 <ExternalLink className="h-3 w-3" />
               </Link>
             </div>
@@ -379,7 +380,7 @@ export function InboxDropdown() {
           <div className="max-h-[min(28rem,65vh)] overflow-y-auto px-2 py-2" onScroll={handleScroll}>
             {loading && notifications.length === 0 ? (
               <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-                Chargement…
+                {t('common_loading')}
               </div>
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-10 text-center">
@@ -387,8 +388,8 @@ export function InboxDropdown() {
                   <Bell className="h-5 w-5 text-muted-foreground/40" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-foreground">Aucune notification</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">Les nouvelles alertes apparaîtront ici.</p>
+                  <p className="text-xs font-medium text-foreground">{t('inbox_empty_title')}</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{t('inbox_empty_message')}</p>
                 </div>
               </div>
             ) : (
@@ -405,7 +406,7 @@ export function InboxDropdown() {
                   />
                 ))}
                 {loading && notifications.length > 0 ? (
-                  <p className="pb-1 pt-2 text-center text-[10px] text-muted-foreground">Chargement…</p>
+                  <p className="pb-1 pt-2 text-center text-[10px] text-muted-foreground">{t('common_loading')}</p>
                 ) : null}
               </div>
             )}

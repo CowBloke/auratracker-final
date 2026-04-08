@@ -21,11 +21,12 @@ import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { CenteredShell } from '@/components/layout/centered-shell';
 import { useFeatures } from '@/contexts/FeaturesContext';
+import { t } from '@/lib/i18n';
 
 const SCHOOL_LEVELS = [
-  { value: 'SECONDE', label: 'Seconde' },
-  { value: 'PREMIERE', label: 'Premiere' },
-  { value: 'TERMINALE', label: 'Terminale' },
+  { value: 'SECONDE', label: t('register_school_level_second') },
+  { value: 'PREMIERE', label: t('register_school_level_premiere') },
+  { value: 'TERMINALE', label: t('register_school_level_terminale') },
 ] as const;
 
 const CLASS_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const;
@@ -33,27 +34,27 @@ const CLASS_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const;
 const registerSchema = z.object({
   firstName: z.string()
     .trim()
-    .min(1, 'Prenom requis')
-    .max(50, 'Maximum 50 caracteres'),
+    .min(1, t('register_first_name_required'))
+    .max(50, t('register_max_50_chars')),
   schoolLevel: z.enum(['SECONDE', 'PREMIERE', 'TERMINALE']),
   classLetter: z.enum(['A', 'B', 'C', 'D', 'E', 'F', 'G']),
   username: z.string()
-    .min(3, 'Minimum 3 caracteres')
-    .max(20, 'Maximum 20 caracteres'),
-  email: z.string().email('Email invalide').min(1, 'Email requis'),
-  password: z.string().min(6, 'Minimum 6 caracteres'),
-  confirmPassword: z.string().min(1, 'Confirmation requise'),
+    .min(3, t('register_min_3_chars'))
+    .max(20, t('register_max_20_chars')),
+  email: z.string().email(t('register_email_invalid')).min(1, t('register_email_required')),
+  password: z.string().min(6, t('register_min_6_chars')),
+  confirmPassword: z.string().min(1, t('register_confirm_required')),
   motivationMessage: z.string()
     .trim()
-    .min(10, 'Minimum 10 caracteres')
-    .max(500, 'Maximum 500 caracteres'),
+    .min(10, t('register_min_10_chars'))
+    .max(500, t('register_max_500_chars')),
   referralCode: z.string()
     .trim()
-    .max(24, 'Maximum 24 caracteres')
+    .max(24, t('register_max_24_chars'))
     .optional()
     .or(z.literal('')),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: 'Les mots de passe ne correspondent pas',
+  message: t('register_passwords_mismatch'),
   path: ['confirmPassword'],
 });
 
@@ -100,7 +101,7 @@ export default function Register() {
       setSuccessMessage(response.data.message || '');
       setSuccess(true);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Echec de l\'envoi de la demande');
+      setError(err.response?.data?.error || t('register_request_failed'));
     } finally {
       setLoading(false);
     }
@@ -114,16 +115,16 @@ export default function Register() {
             <div className="space-y-4">
               <CheckCircle2 className="mx-auto h-16 w-16 text-green-500" />
               <h1 className={TYPOGRAPHY.H2}>
-                Demande envoyee !
+                {t('register_success_title')}
               </h1>
               <p className={TYPOGRAPHY.MUTED}>
-                {successMessage || 'Un administrateur doit approuver votre compte avant que vous puissiez vous connecter.'}
+                {successMessage || t('register_success_description')}
               </p>
             </div>
 
             <Button asChild className="h-12 w-full">
               <Link to="/login">
-                Retour a la connexion
+                {t('register_back_to_login')}
               </Link>
             </Button>
           </CardContent>
@@ -136,8 +137,8 @@ export default function Register() {
     <CenteredShell widthClassName="max-w-sm">
       <Card>
         <CardHeader className="space-y-2 text-center">
-          <CardTitle className={TYPOGRAPHY.H1}>AuraTracker</CardTitle>
-          <CardDescription>Demande d&apos;inscription</CardDescription>
+          <CardTitle className={TYPOGRAPHY.H1}>{t('register_title')}</CardTitle>
+          <CardDescription>{t('register_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
@@ -145,7 +146,7 @@ export default function Register() {
           )}
 
           <p className={cn(TYPOGRAPHY.XS, 'rounded border border-border/30 p-3 text-center text-muted-foreground')}>
-            Votre demande sera examinee par un administrateur avant d&apos;etre approuvee.
+            {t('register_review_notice')}
           </p>
 
           <Form {...form}>
@@ -158,7 +159,7 @@ export default function Register() {
                     <FormControl>
                       <Input
                         type="text"
-                        placeholder="Prenom (reel)"
+                        placeholder={t('register_first_name_placeholder')}
                         className="h-12 border-border/50 text-center"
                         {...field}
                       />
@@ -176,7 +177,7 @@ export default function Register() {
                     <FormControl>
                       <Input
                         type="text"
-                        placeholder="Pseudo"
+                        placeholder={t('register_username_placeholder')}
                         className="h-12 border-border/50 text-center"
                         {...field}
                       />
@@ -195,7 +196,7 @@ export default function Register() {
                       <FormControl>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger className="h-12 border-border/50">
-                            <SelectValue placeholder="Niveau" />
+                            <SelectValue placeholder={t('register_school_level_placeholder')} />
                           </SelectTrigger>
                           <SelectContent>
                             {SCHOOL_LEVELS.map((level) => (
@@ -219,7 +220,7 @@ export default function Register() {
                       <FormControl>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger className="h-12 border-border/50">
-                            <SelectValue placeholder="Lettre" />
+                            <SelectValue placeholder={t('register_class_letter_placeholder')} />
                           </SelectTrigger>
                           <SelectContent>
                             {CLASS_LETTERS.map((letter) => (
@@ -244,7 +245,7 @@ export default function Register() {
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="Email"
+                        placeholder={t('register_email_placeholder')}
                         className="h-12 border-border/50 text-center"
                         {...field}
                       />
@@ -263,7 +264,7 @@ export default function Register() {
                       <FormControl>
                         <Input
                           type="text"
-                          placeholder="Code de parrainage (optionnel)"
+                            placeholder={t('register_referral_placeholder')}
                           className="h-12 border-border/50 text-center uppercase tracking-[0.24em]"
                           {...field}
                           value={field.value || ''}
@@ -283,7 +284,7 @@ export default function Register() {
                   <FormItem>
                     <FormControl>
                       <Textarea
-                        placeholder="Message de motivation: explique pourquoi on devrait t'accepter"
+                        placeholder={t('register_motivation_placeholder')}
                         className="min-h-28 border-border/50"
                         maxLength={500}
                         {...field}
@@ -302,7 +303,7 @@ export default function Register() {
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="Mot de passe"
+                        placeholder={t('register_password_placeholder')}
                         className="h-12 border-border/50 text-center"
                         {...field}
                       />
@@ -320,7 +321,7 @@ export default function Register() {
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="Confirmer le mot de passe"
+                        placeholder={t('register_confirm_password_placeholder')}
                         className="h-12 border-border/50 text-center"
                         {...field}
                       />
@@ -340,7 +341,7 @@ export default function Register() {
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
-                    Envoyer la demande
+                    {t('register_send_request')}
                   </>
                 )}
               </Button>
@@ -348,9 +349,9 @@ export default function Register() {
           </Form>
 
           <p className={cn(TYPOGRAPHY.SMALL, 'text-center text-muted-foreground')}>
-            Deja un compte ?{' '}
+            {t('register_have_account')}{' '}
             <Link to="/login" className="text-foreground hover:underline">
-              Connexion
+              {t('register_login_link')}
             </Link>
           </p>
         </CardContent>

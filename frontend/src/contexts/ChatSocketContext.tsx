@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
 import { chatEvents, initSocket, getSocket } from '../services/socket';
+import { t } from '@/lib/i18n';
 
 export interface ChatBadge {
   id: string;
@@ -235,13 +236,13 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
 
     s.on('chat:muted', (data: { message?: string }) => {
       if (typeof window !== 'undefined') {
-        toast(data.message || 'Vous êtes mute du chat.');
+        toast(data.message || t('chat_muted_default'));
       }
     });
 
     s.on('chat:blocked', (data: { message?: string }) => {
       if (typeof window !== 'undefined') {
-        toast(data.message || 'Le chat est temporairement bloque.');
+        toast(data.message || t('chat_blocked_default'));
       }
     });
 
@@ -286,7 +287,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
 
     s.on('chat:poll-error', (data: { message?: string }) => {
       if (typeof window !== 'undefined') {
-        toast(data.message || 'Impossible de mettre a jour le sondage.');
+        toast(data.message || t('chat_poll_update_error_default'));
       }
     });
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { t } from '@/lib/i18n';
 
 // Canvas dimensions
 const W = 600;
@@ -595,10 +596,10 @@ export function BombDropGame({ isPractice, onComplete }: BombDropGameProps) {
     <div className="space-y-3">
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">
-          Bombes: <span className="font-semibold text-orange-400">{display.bombsLeft}/{MAX_BOMBS}</span>
+          {t('bombdrop_bombs_label')} <span className="font-semibold text-orange-400">{display.bombsLeft}/{MAX_BOMBS}</span>
         </span>
-        <span className="font-semibold text-primary">Score: {display.score}</span>
-        <span className="text-muted-foreground">Touches: {display.hits}</span>
+        <span className="font-semibold text-primary">{t('bombdrop_score_label')}: {display.score}</span>
+        <span className="text-muted-foreground">{t('bombdrop_hits_label')}: {display.hits}</span>
       </div>
       <canvas
         ref={canvasRef}
@@ -610,9 +611,9 @@ export function BombDropGame({ isPractice, onComplete }: BombDropGameProps) {
       {over ? (
         <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-center space-y-2">
           <div className="text-base font-semibold">
-            {display.hits > 0 ? `💥 Mission terminée · ${display.hits} touche(s)` : '🎯 Aucun bâtiment touché'}
+            {display.hits > 0 ? `${t('bombdrop_mission_ended_prefix')} ${display.hits} ${t('bombdrop_hits_plural')}` : t('bombdrop_no_building_hit')}
           </div>
-          <div className="text-2xl font-bold text-primary">{display.score} pts</div>
+          <div className="text-2xl font-bold text-primary">{display.score} {t('bombdrop_points')}</div>
           {!isPractice ? (
             <button
               type="button"
@@ -620,16 +621,14 @@ export function BombDropGame({ isPractice, onComplete }: BombDropGameProps) {
               disabled={submitted}
               className="rounded-xl bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
-              Valider l'attaque
+              {t('bombdrop_submit')}
             </button>
           ) : (
-            <p className="text-sm text-muted-foreground">Mode entraînement — aucun point enregistré.</p>
+            <p className="text-sm text-muted-foreground">{t('bombdrop_practice_note')}</p>
           )}
         </div>
       ) : (
-        <p className="text-center text-xs text-muted-foreground">
-          ↑ Maintenir pour monter · Espace ou clic = Larguer une bombe · Le vent dévie les bombes →
-        </p>
+        <p className="text-center text-xs text-muted-foreground">{t('bombdrop_controls_hint')}</p>
       )}
     </div>
   );

@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
+import { t } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 interface BugReportPanelProps {
@@ -52,7 +53,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
     if (!files) return;
 
     if (images.length + files.length > 5) {
-      setError('Maximum 5 images autorisées');
+      setError(t('bug_report_error_max_images'));
       return;
     }
 
@@ -69,7 +70,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
             const { data } = await uploadUserImage({ base64Data, mimeType });
             setImages((prev) => [...prev, data.imageUrl]);
           } catch (err: any) {
-            setError(err.response?.data?.error || 'Erreur lors de l\'upload');
+            setError(err.response?.data?.error || t('bug_report_error_upload'));
           }
         };
         reader.readAsDataURL(file);
@@ -90,17 +91,17 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
     e.preventDefault();
 
     if (!title.trim() || !description.trim()) {
-      setError('Veuillez remplir tous les champs');
+      setError(t('bug_report_error_fill_all_fields'));
       return;
     }
 
     if (title.length > 100) {
-      setError('Le titre doit faire moins de 100 caractères');
+      setError(t('bug_report_error_title_max'));
       return;
     }
 
     if (description.length > 2000) {
-      setError('La description doit faire moins de 2000 caractères');
+      setError(t('bug_report_error_description_max'));
       return;
     }
 
@@ -118,7 +119,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
       setDescription('');
       setImages([]);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Une erreur est survenue');
+      setError(err.response?.data?.error || t('bug_report_error_generic'));
     } finally {
       setSubmitting(false);
     }
@@ -129,9 +130,9 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-xl">
         <SheetHeader>
-          <SheetTitle>Reporter un bug</SheetTitle>
+          <SheetTitle>{t('bug_report_title')}</SheetTitle>
           <SheetDescription>
-            Décris précisément le problème pour aider l'équipe à le reproduire.
+            {t('bug_report_description')}
           </SheetDescription>
         </SheetHeader>
 
@@ -139,17 +140,17 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
           {submitted ? (
             <div className={SPACING.SECTION_SPACING}>
               <div className={SPACING.CARD_SPACING}>
-                <h3 className={TYPOGRAPHY.BODY}>Rapport envoyé</h3>
+                <h3 className={TYPOGRAPHY.BODY}>{t('bug_report_sent_title')}</h3>
                 <p className={TYPOGRAPHY.SMALL}>
-                  Votre rapport de bug a été envoyé aux administrateurs.
+                  {t('bug_report_sent_description')}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setSubmitted(false)}>
-                  Signaler un autre bug
+                  {t('bug_report_send_another')}
                 </Button>
                 <Button onClick={() => handleOpenChange(false)}>
-                  Fermer
+                  {t('common_close')}
                 </Button>
               </div>
             </div>
@@ -162,12 +163,12 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
               ) : null}
 
               <div className={SPACING.CARD_SPACING}>
-                <label className={TYPOGRAPHY.SMALL}>Titre du bug</label>
+                <label className={TYPOGRAPHY.SMALL}>{t('bug_report_label_title')}</label>
                 <Input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex: Le bouton ne fonctionne pas sur la page..."
+                  placeholder={t('bug_report_placeholder_title')}
                   maxLength={100}
                   disabled={submitting}
                 />
@@ -177,11 +178,11 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
               </div>
 
               <div className={SPACING.CARD_SPACING}>
-                <label className={TYPOGRAPHY.SMALL}>Description détaillée</label>
+                <label className={TYPOGRAPHY.SMALL}>{t('bug_report_label_description')}</label>
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Décrivez le bug en détail : que faisiez-vous, qu'est-ce qui s'est passé, qu'est-ce qui aurait dû se passer..."
+                  placeholder={t('bug_report_placeholder_description')}
                   className="min-h-[220px]"
                   maxLength={2000}
                   disabled={submitting}
@@ -192,7 +193,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
               </div>
 
               <div className={SPACING.CARD_SPACING}>
-                <label className={TYPOGRAPHY.SMALL}>Images (optionnel)</label>
+                <label className={TYPOGRAPHY.SMALL}>{t('bug_report_label_images_optional')}</label>
                 <div className="flex gap-2 items-center">
                   <Button
                     type="button"
@@ -202,7 +203,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                     disabled={submitting || uploadingImage || images.length >= 5}
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    {uploadingImage ? 'Upload...' : `Ajouter image (${images.length}/5)`}
+                    {uploadingImage ? t('bug_report_uploading') : `${t('bug_report_add_image')} (${images.length}/5)`}
                   </Button>
                   <input
                     ref={fileInputRef}
@@ -226,7 +227,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                           type="button"
                           onClick={() => removeImage(idx)}
                           className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Supprimer l'image"
+                          title={t('bug_report_remove_image')}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -243,7 +244,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                   onClick={() => handleOpenChange(false)}
                   disabled={submitting}
                 >
-                  Annuler
+                  {t('common_cancel')}
                 </Button>
 
                 <Button
@@ -253,10 +254,10 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                   {submitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Envoi...
+                      {t('common_sending')}
                     </>
                   ) : (
-                    'Envoyer'
+                    t('common_send')
                   )}
                 </Button>
               </div>

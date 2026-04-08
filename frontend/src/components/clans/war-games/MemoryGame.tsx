@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { t } from '@/lib/i18n';
 
 type DefenseType = 'FORTRESS' | 'ARMORY' | 'BANNER' | 'STAR';
 
@@ -137,7 +138,7 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
             </span>
           ))}
         </div>
-        <span className="text-muted-foreground">{moves} mvt</span>
+        <span className="text-muted-foreground">{moves} {t('memory_moves')}</span>
       </div>
 
       {/* Card grid */}
@@ -166,11 +167,11 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
       {isOver && (
         <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-center space-y-3">
           <div className="text-base font-semibold">
-            {done ? '🎉 Toutes les paires trouvées !' : '⏰ Temps écoulé !'}
+            {done ? t('memory_win_message') : t('memory_timeout_message')}
           </div>
           <div className="flex justify-center gap-4 text-sm text-muted-foreground">
-            {(['FORTRESS', 'ARMORY', 'BANNER'] as const).map((t) => (
-              <span key={t}>{ICONS[t]} {matched[t]} paire(s)</span>
+              {(['FORTRESS', 'ARMORY', 'BANNER'] as const).map((type) => (
+                <span key={type}>{ICONS[type]} {matched[type]} {t('memory_pairs')}</span>
             ))}
           </div>
           {!isPractice ? (
@@ -180,10 +181,10 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
               disabled={submitted}
               className="rounded-xl bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
-              Valider les améliorations
+              {t('memory_submit')}
             </button>
           ) : (
-            <p className="text-sm text-muted-foreground">Mode entraînement — aucune amélioration enregistrée.</p>
+            <p className="text-sm text-muted-foreground">{t('memory_practice_note')}</p>
           )}
         </div>
       )}

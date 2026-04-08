@@ -15,13 +15,14 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { t } from '@/lib/i18n';
 
 const RARITY_OPTIONS = [
-  { value: 'common', label: 'Commun' },
-  { value: 'uncommon', label: 'Peu commun' },
-  { value: 'rare', label: 'Rare' },
-  { value: 'epic', label: 'Épique' },
-  { value: 'legendary', label: 'Légendaire' },
+  { value: 'common', label: t('badge_rarity_common') },
+  { value: 'uncommon', label: t('badge_rarity_uncommon') },
+  { value: 'rare', label: t('badge_rarity_rare') },
+  { value: 'epic', label: t('badge_rarity_epic') },
+  { value: 'legendary', label: t('badge_rarity_legendary') },
 ];
 
 const BG_PRESETS = [
@@ -47,7 +48,7 @@ function StatusBadge({ status, adminNote }: { status: string; adminNote?: string
     return (
       <span className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
         <Clock className="w-3 h-3" />
-        En attente
+        {t('badge_status_pending')}
       </span>
     );
   }
@@ -55,7 +56,7 @@ function StatusBadge({ status, adminNote }: { status: string; adminNote?: string
     return (
       <span className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400">
         <CheckCircle2 className="w-3 h-3" />
-        Approuvé
+        {t('badge_status_approved')}
       </span>
     );
   }
@@ -63,10 +64,10 @@ function StatusBadge({ status, adminNote }: { status: string; adminNote?: string
     <div className="space-y-1">
       <span className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-400">
         <XCircle className="w-3 h-3" />
-        Refusé
+        {t('badge_status_rejected')}
       </span>
       {adminNote && (
-        <p className="text-xs text-muted-foreground">Raison : {adminNote}</p>
+        <p className="text-xs text-muted-foreground">{t('badge_status_reason_prefix')} {adminNote}</p>
       )}
     </div>
   );
@@ -120,7 +121,7 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
 
   const previewBadge: BadgeData = {
     id: 'preview',
-    name: name || 'Mon Badge',
+    name: name || t('badge_preview_name'),
     description: description || '',
     icon,
     backgroundColor,
@@ -134,7 +135,7 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
   const handleSubmit = async () => {
     setError(null);
     if (!name.trim() || !description.trim()) {
-      setError('Le nom et la description sont requis.');
+      setError(t('badge_error_name_description_required'));
       return;
     }
     setSubmitting(true);
@@ -147,7 +148,7 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
       setName(''); setDescription(''); setIcon('⭐');
       setBackgroundColor('#374151'); setBorderColor('#6b7280'); setRarity('common');
     } catch (err: any) {
-      setError(err?.response?.data?.error ?? 'Une erreur est survenue.');
+      setError(err?.response?.data?.error ?? t('badge_error_generic'));
     } finally {
       setSubmitting(false);
     }
@@ -157,26 +158,26 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Badge personnalisé</DialogTitle>
+          <DialogTitle>{t('badge_custom_title')}</DialogTitle>
           <DialogDescription>
-            Crée un badge unique pour ton profil. Un admin devra l'approuver avant que tu puisses l'équiper.
+            {t('badge_custom_description')}
           </DialogDescription>
         </DialogHeader>
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-border/40 -mt-1">
-          {(['new', 'history'] as const).map((t) => (
+          {(['new', 'history'] as const).map((tabKey) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
               className={cn(
                 'px-3 py-2 text-sm transition-colors border-b-2 -mb-px',
-                tab === t
+                tab === tabKey
                   ? 'border-primary text-foreground font-medium'
                   : 'border-transparent text-muted-foreground hover:text-foreground',
               )}
             >
-              {t === 'new' ? 'Nouvelle demande' : `Mes demandes${requests.length > 0 ? ` (${requests.length})` : ''}`}
+              {tabKey === 'new' ? t('badge_request_tab_new') : `${t('badge_request_tab_history')}${requests.length > 0 ? ` (${requests.length})` : ''}`}
             </button>
           ))}
         </div>
@@ -184,14 +185,14 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
         {tab === 'new' && (
           <div className="space-y-4">
             {hasPending && (
-              <div className="text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-md px-3 py-2">
-                Tu as déjà une demande en attente. Attend qu'elle soit traitée avant d'en soumettre une nouvelle.
+                <div className="text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-md px-3 py-2">
+                {t('badge_request_pending_warning')}
               </div>
             )}
 
             {success && (
-              <div className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-md px-3 py-2">
-                Demande envoyée ! Un admin la traitera bientôt.
+                <div className="text-xs text-green-400 bg-green-500/10 border border-green-500/20 rounded-md px-3 py-2">
+                {t('badge_request_sent_success')}
               </div>
             )}
 
@@ -199,8 +200,8 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
             <div className="flex items-center gap-4 p-3 rounded-lg border border-border/40 bg-muted/20">
               <BadgeIcon badge={previewBadge} size="xl" />
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{name || 'Nom du badge'}</p>
-                <p className="text-xs text-muted-foreground truncate">{description || 'Description…'}</p>
+                <p className="text-sm font-medium truncate">{name || t('badge_preview_name_label')}</p>
+                <p className="text-xs text-muted-foreground truncate">{description || t('badge_preview_description_label')}</p>
                 <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full border mt-1 inline-block', RARITY_BORDER[rarity])}>
                   {RARITY_OPTIONS.find((r) => r.value === rarity)?.label}
                 </span>
@@ -210,22 +211,22 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
             {/* Form */}
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Nom</label>
+                <label className="text-xs text-muted-foreground">{t('badge_field_name')}</label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ex : Gamer Pro"
+                  placeholder={t('badge_placeholder_name')}
                   maxLength={40}
                   disabled={hasPending}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Description</label>
+                <label className="text-xs text-muted-foreground">{t('badge_field_description')}</label>
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Décris ton badge…"
+                  placeholder={t('badge_placeholder_description')}
                   maxLength={120}
                   rows={2}
                   disabled={hasPending}
@@ -234,7 +235,7 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Emoji</label>
+                  <label className="text-xs text-muted-foreground">{t('badge_field_emoji')}</label>
                   <Input
                     value={icon}
                     onChange={(e) => setIcon(e.target.value.slice(-2) || '⭐')}
@@ -244,7 +245,7 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Rareté</label>
+                  <label className="text-xs text-muted-foreground">{t('badge_field_rarity')}</label>
                   <Select value={rarity} onValueChange={setRarity} disabled={hasPending}>
                     <SelectTrigger>
                       <SelectValue />
@@ -259,7 +260,7 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Couleur de fond</label>
+                <label className="text-xs text-muted-foreground">{t('badge_field_background_color')}</label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {BG_PRESETS.map((c) => (
                     <button
@@ -279,13 +280,13 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
                     disabled={hasPending}
                     onChange={(e) => setBackgroundColor(e.target.value)}
                     className="w-6 h-6 rounded cursor-pointer border border-border/40"
-                    title="Couleur personnalisée"
+                    title={t('common_custom_color')}
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Couleur de bordure</label>
+                <label className="text-xs text-muted-foreground">{t('badge_field_border_color')}</label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {BORDER_PRESETS.map((c) => (
                     <button
@@ -305,7 +306,7 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
                     disabled={hasPending}
                     onChange={(e) => setBorderColor(e.target.value)}
                     className="w-6 h-6 rounded cursor-pointer border border-border/40"
-                    title="Couleur personnalisée"
+                    title={t('common_custom_color')}
                   />
                 </div>
               </div>
@@ -322,7 +323,7 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             ) : requests.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Aucune demande pour l'instant.</p>
+              <p className="text-sm text-muted-foreground text-center py-8">{t('badge_history_empty')}</p>
             ) : (
               requests.map((r) => (
                 <div key={r.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/40 bg-muted/10">
@@ -350,11 +351,11 @@ export function CustomBadgeRequestDialog({ open, onOpenChange }: Props) {
           {tab === 'new' && (
             <Button onClick={handleSubmit} disabled={submitting || hasPending} size="sm">
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Envoyer la demande
+              {t('badge_send_request')}
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            Fermer
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            {t('common_close')}
           </Button>
         </DialogFooter>
       </DialogContent>

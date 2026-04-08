@@ -44,41 +44,42 @@ import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getGameImage } from '@/lib/game-images';
 import BugReportPanel from './BugReportPanel';
+import { t } from '@/lib/i18n';
 
 const navItems = [
-  { to: '/leaderboards', label: 'Classement', icon: Trophy },
-  { to: '/party', label: 'Groupe', icon: Users },
-  { to: '/clans', label: 'Clans', icon: Flag },
-  { to: '/market', label: 'Boutique', icon: Store },
-  { to: '/inventory', label: 'Inventaire', icon: Backpack },
-  { to: '/marketplace', label: 'Marché', icon: BadgeDollarSign },
-  { to: '/auravision', label: 'AuraVision', icon: Camera },
-  { to: '/pass', label: 'Pass', icon: Ticket },
-  { to: '/quests', label: 'Quêtes', icon: Target },
-  { to: '/suggestions', label: 'Suggestions', icon: Lightbulb },
-  { to: '/rules', label: 'Infos', icon: BookOpen },
+  { to: '/leaderboards', label: t('sidebar_nav_leaderboard'), icon: Trophy },
+  { to: '/party', label: t('sidebar_nav_party'), icon: Users },
+  { to: '/clans', label: t('sidebar_nav_clans'), icon: Flag },
+  { to: '/market', label: t('sidebar_nav_shop'), icon: Store },
+  { to: '/inventory', label: t('sidebar_nav_inventory'), icon: Backpack },
+  { to: '/marketplace', label: t('sidebar_nav_marketplace'), icon: BadgeDollarSign },
+  { to: '/auravision', label: t('sidebar_nav_auravision'), icon: Camera },
+  { to: '/pass', label: t('sidebar_nav_pass'), icon: Ticket },
+  { to: '/quests', label: t('sidebar_nav_quests'), icon: Target },
+  { to: '/suggestions', label: t('sidebar_nav_suggestions'), icon: Lightbulb },
+  { to: '/rules', label: t('sidebar_nav_info'), icon: BookOpen },
 ];
 
 const gameItems = [
-  { to: '/games/russian-roulette', label: 'Roulette russe', image: getGameImage('russian-roulette') },
-  { to: '/games/bomb-party', label: 'Bombe de mots', image: getGameImage('bomb-party') },
+  { to: '/games/russian-roulette', label: t('sidebar_game_russian_roulette'), image: getGameImage('russian-roulette') },
+  { to: '/games/bomb-party', label: t('sidebar_game_bomb_party'), image: getGameImage('bomb-party') },
   { to: '/games/poker', label: 'Poker', image: getGameImage('poker') },
-  { to: '/games/petit-bac', label: 'Petit Bac', image: getGameImage('petit-bac') },
+  { to: '/games/petit-bac', label: t('sidebar_game_petit_bac'), image: getGameImage('petit-bac') },
   { to: '/games/uno', label: 'UNO', image: getGameImage('uno') },
-  { to: '/games/bataille-navale', label: 'Bataille Navale', image: getGameImage('bataille-navale') },
+  { to: '/games/bataille-navale', label: t('sidebar_game_bataille_navale'), image: getGameImage('bataille-navale') },
   { to: '/games/doodle-jump', label: 'Doodle Jump', image: getGameImage('doodle-jump') },
   { to: '/games/logic-lab', label: 'Sudoku', image: getGameImage('logic-lab') },
-  { to: '/games/minesweeper', label: 'Démineur', image: getGameImage('minesweeper') },
+  { to: '/games/minesweeper', label: t('sidebar_game_minesweeper'), image: getGameImage('minesweeper') },
   { to: '/games/2048', label: '2048', image: getGameImage('game-2048') },
   { to: '/games/flappy-bird', label: 'Flappy Bird', image: getGameImage('flappy-bird') },
   { to: '/games/chrome-dino', label: 'Chrome Dino', image: getGameImage('chrome-dino') },
   { to: '/games/snake', label: 'Snake', image: getGameImage('snake') },
   { to: '/games/fruit-ninja', label: 'Fruit Ninja', image: getGameImage('fruit-ninja') },
   { to: '/games/qs-watermelon', label: 'QS Watermelon', image: getGameImage('qs-watermelon') },
-  { to: '/games/stack-tower', label: 'Tour empilée', image: getGameImage('stack-tower') },
+  { to: '/games/stack-tower', label: t('sidebar_game_stack_tower'), image: getGameImage('stack-tower') },
   { to: '/games/geometry-dash', label: 'Geometry Dash', image: getGameImage('geometry-dash') },
   { to: '/games/casino', label: 'Casino', image: getGameImage('casino') },
-  { to: '/games/salle-de-marche', label: 'Salle de marché', image: getGameImage('market-room') },
+  { to: '/games/salle-de-marche', label: t('sidebar_game_market_room'), image: getGameImage('market-room') },
   { to: '/games/solitaire', label: 'Solitaire', image: getGameImage('solitaire') },
   { to: '/games/racer', label: 'Racer', image: getGameImage('racer') },
   { to: '/games/tetris', label: 'Tetris', image: getGameImage('tetris') },
@@ -89,19 +90,19 @@ const gameItems = [
   { to: '/games/eaglercraft', label: 'Eaglercraft', image: getGameImage('eaglercraft') },
   { to: '/games/hexgl', label: 'HexGL', image: getGameImage('hexgl') },
   { to: '/games/opengd', label: 'OpenGD', image: getGameImage('opengd') },
-  { to: '/games/puissance-quatre', label: 'Puissance 4', image: getGameImage('puissance-quatre') },
-  { to: '/games/echecs', label: 'Échecs', image: getGameImage('echecs') },
-  { to: '/games/ball-arena', label: 'Arène des balles', image: getGameImage('ball-arena') },
+  { to: '/games/puissance-quatre', label: t('sidebar_game_puissance_quatre'), image: getGameImage('puissance-quatre') },
+  { to: '/games/echecs', label: t('sidebar_game_echecs'), image: getGameImage('echecs') },
+  { to: '/games/ball-arena', label: t('sidebar_game_ball_arena'), image: getGameImage('ball-arena') },
   { to: '/games/morpion', label: 'Morpion', image: getGameImage('morpion') },
 ];
 
 const youNavItems = [
-  { tab: null,       label: "Vue d'ensemble", icon: LayoutDashboard },
-  { tab: 'travail',  label: 'Travail',         icon: Briefcase      },
-  { tab: 'social',   label: 'Social',          icon: Users          },
-  { tab: 'explore',  label: 'Explore',         icon: BarChart3      },
-  { tab: 'carte',    label: 'Carte',            icon: Map            },
-  { tab: 'finance',  label: 'Finance',          icon: Landmark       },
+  { tab: null,       label: t('sidebar_you_overview'), icon: LayoutDashboard },
+  { tab: 'travail',  label: t('sidebar_you_work'),     icon: Briefcase      },
+  { tab: 'social',   label: t('sidebar_you_social'),   icon: Users          },
+  { tab: 'explore',  label: t('sidebar_you_explore'),  icon: BarChart3      },
+  { tab: 'carte',    label: t('sidebar_you_map'),      icon: Map            },
+  { tab: 'finance',  label: t('sidebar_you_finance'),  icon: Landmark       },
 ];
 
 function GameSidebarIcon({ src, alt }: { src: string; alt: string }) {
@@ -148,7 +149,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
       type="button"
       onClick={handleLogoClick}
       className="mb-4 flex h-9 w-full items-center gap-2 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2"
-      aria-label={isOnYou ? 'Retour au tableau de bord' : (canOpenYouFromLogo ? 'Accéder à Moi' : 'Accéder au tableau de bord')}
+      aria-label={isOnYou ? t('sidebar_logo_back_to_dashboard') : (canOpenYouFromLogo ? t('sidebar_logo_go_to_you') : t('sidebar_logo_go_to_dashboard'))}
     >
       <img
         src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
@@ -156,7 +157,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         className={cn('h-5 w-5 shrink-0 transition-transform group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4', isOnYou && 'scale-110 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]')}
       />
       <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-        {isOnYou ? 'Moi' : 'AuraTracker'}
+        {isOnYou ? t('sidebar_logo_you') : t('sidebar_logo_aura_tracker')}
       </span>
     </button>
   );
@@ -204,7 +205,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   asChild
                   isActive={location.pathname === '/' || location.pathname === '/dashboard'}
-                  tooltip="Tableau de bord"
+                  tooltip={t('sidebar_dashboard')}
                   className={cn(
                     'h-9 px-3 text-sm font-normal',
                     location.pathname === '/' || location.pathname === '/dashboard'
@@ -214,7 +215,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 >
                   <NavLink to="/dashboard" end>
                     <LayoutDashboard className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">Tableau de bord</span>
+                    <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_dashboard')}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -230,7 +231,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                     <SidebarMenuButton
                       asChild
                       isActive={isOnGames}
-                      tooltip="Jeux"
+                      tooltip={t('sidebar_games')}
                       className={cn(
                         'h-9 px-3 text-sm font-normal',
                         isOnGames
@@ -240,7 +241,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                     >
                       <NavLink to="/games">
                         <Gamepad2 className="h-4 w-4" />
-                        <span className="group-data-[collapsible=icon]:hidden">Jeux</span>
+                        <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_games')}</span>
                         <ChevronRight className={cn(
                           'ml-auto h-4 w-4 transition-transform duration-200',
                           isOnGames && 'rotate-90',
@@ -285,7 +286,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton
                   asChild
                   isActive={location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')}
-                  tooltip="Polymarket"
+                  tooltip={t('sidebar_polymarket')}
                   className={cn(
                     'h-9 px-3 text-sm font-normal',
                     location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')
@@ -295,7 +296,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                 >
                   <NavLink to="/polymarket">
                     <BarChart3 className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">Polymarket</span>
+                    <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_polymarket')}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -331,11 +332,11 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setIsBugReportOpen(true)}
-                tooltip="Reporter un bug"
+                tooltip={t('sidebar_report_bug')}
                 className="h-9 px-3 text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
               >
                 <Bug className="h-4 w-4" />
-                <span className="group-data-[collapsible=icon]:hidden">Reporter un bug</span>
+                <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_report_bug')}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             </>)}
