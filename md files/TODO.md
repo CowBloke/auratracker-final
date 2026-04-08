@@ -46,6 +46,15 @@ Quand on est invité comme associé et qu’on accepte on a le rôle d’employ�
 - bug envoie de messages support au lieu de utilisateur
 - revendre action
 - adblock
+- pastille chat main
+- revenus journaliers
+- message pour demander de relancer
+- remette crossy road
+- fix chat bug
+- pb offline pas compté ausi dcp
+- fix chat coué message trop long et nom mettre ...
+- opti
+- monnaie reele api
 
 ## PROJECTS
 
