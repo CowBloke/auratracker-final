@@ -50,6 +50,13 @@
 - forcer avis avec popp up sur you pour tous les business quon a acheté
 - tous les jeux limite
 - max gain par jour jeux a/a
+- rescroll en bas dm
+- role gerer affaires
+- medecin/youtube
+- taux d'intérêt
+- aura moyenne admin dashbaord
+- change joueur ajout aura bug x10
+- pourcentage salaire balances
 
 ## PROJECTS
 
