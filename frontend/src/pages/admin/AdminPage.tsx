@@ -15,7 +15,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet, Inbox, Settings, BarChart2 } from 'lucide-react';
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet, Inbox, Settings, BarChart2, Briefcase } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
@@ -284,10 +284,11 @@ const mapRegistrationReviewToArchivedRegistration = (review: RegistrationReview)
   importedFromLegacy: review.importedFromLegacy,
 });
 
-const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin' | 'isBetaTester'>): AdminRole => {
+const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin' | 'isBetaTester' | 'isFiscalInspector'>): AdminRole => {
   if (user.isSuperAdmin) return 'SUPER_ADMIN';
   if (user.isAdmin) return 'ADMIN';
   if (user.isBetaTester) return 'BETA_TESTER';
+  if (user.isFiscalInspector) return 'FISCAL_INSPECTOR';
   return 'USER';
 };
 
@@ -303,6 +304,7 @@ const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: s
   BAN: { label: 'Bans', color: 'text-red-300', bgColor: 'bg-red-700', borderColor: 'border-red-700', icon: Gavel },
   SUGGESTION: { label: 'Suggestions', color: 'text-cyan-400', bgColor: 'bg-cyan-500', borderColor: 'border-cyan-500', icon: Lightbulb },
   AURACOIN: { label: 'AuraCoin', color: 'text-amber-400', bgColor: 'bg-amber-500', borderColor: 'border-amber-500', icon: TrendingUp },
+  BUSINESS: { label: 'Business', color: 'text-emerald-400', bgColor: 'bg-emerald-600', borderColor: 'border-emerald-600', icon: Briefcase },
 };
 
 // Human-readable action labels
@@ -2000,8 +2002,8 @@ export default function Admin() {
     };
   }, [logFilter.username]);
 
-  // Redirect non-admin users
-  if (!user?.isAdmin) {
+  // Redirect non-admin users (fiscal inspectors also allowed for read-only access)
+  if (!user?.isAdmin && !user?.isFiscalInspector) {
     return <Navigate to="/" replace />;
   }
 
@@ -2044,6 +2046,16 @@ export default function Admin() {
       setActiveTab(tab as AdminTab);
     }
   }, [location.search]);
+
+  // Fiscal inspectors can only access logs and taxes tabs
+  const FISCAL_INSPECTOR_TABS: AdminTab[] = ['logs', 'taxes'];
+  useEffect(() => {
+    if (user?.isFiscalInspector && !user?.isAdmin) {
+      if (!FISCAL_INSPECTOR_TABS.includes(activeTab)) {
+        setActiveTab('logs');
+      }
+    }
+  }, [user, activeTab]);
 
   // Real-time support messages for admin
   useEffect(() => {
@@ -4598,31 +4610,32 @@ export default function Admin() {
             // Outer: transparent padding bridges the gap so hover state persists when moving into the dropdown
             const dropdownOuter = 'absolute left-0 top-full pt-1 z-50 hidden group-hover:block';
             const dropdownInner = 'min-w-40 rounded-md border border-border/50 bg-popover shadow-lg p-1 flex flex-col gap-0.5';
+            const isFiscalOnly = Boolean(user?.isFiscalInspector && !user?.isAdmin);
             return (
               <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-lg border border-border/30 mb-6">
-                {/* Réception */}
-                {navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); },
+                {/* Réception — admin only */}
+                {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); },
                   inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{inboxCount}</span> : undefined
                 )}
 
-                {/* Utilisateurs */}
-                {navBtn('users', 'Utilisateurs', <Users className="w-4 h-4 shrink-0" />, () => setActiveTab('users'))}
+                {/* Utilisateurs — admin only */}
+                {!isFiscalOnly && navBtn('users', 'Utilisateurs', <Users className="w-4 h-4 shrink-0" />, () => setActiveTab('users'))}
 
-                {/* Clubs */}
-                {navBtn('clubs', 'Clubs', <Shield className="w-4 h-4 shrink-0" />, () => setActiveTab('clubs'))}
+                {/* Clubs — admin only */}
+                {!isFiscalOnly && navBtn('clubs', 'Clubs', <Shield className="w-4 h-4 shrink-0" />, () => setActiveTab('clubs'))}
 
-                {/* Logs */}
+                {/* Logs — visible to all */}
                 {navBtn('logs', 'Logs', <Activity className="w-4 h-4 shrink-0" />, () => setActiveTab('logs'),
                   logStats ? <span className={TYPOGRAPHY.XS}>{logStats.total.toLocaleString()}</span> : undefined
                 )}
 
-                {/* Sanctions */}
-                {navBtn('bans', 'Sanctions', <Gavel className="w-4 h-4 shrink-0" />, () => setActiveTab('bans'),
+                {/* Sanctions — admin only */}
+                {!isFiscalOnly && navBtn('bans', 'Sanctions', <Gavel className="w-4 h-4 shrink-0" />, () => setActiveTab('bans'),
                   bans.filter(b => b.isActive).length > 0 ? <span className={TYPOGRAPHY.XS}>{bans.filter(b => b.isActive).length}</span> : undefined
                 )}
 
-                {/* Contenu dropdown */}
-                <div className="relative group">
+                {/* Contenu dropdown — admin only */}
+                {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
                     ['content', 'ads'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
@@ -4639,10 +4652,12 @@ export default function Admin() {
                       )}
                     </div>
                   </div>
-                </div>
+                </div>}
 
-                {/* Finance dropdown */}
-                <div className="relative group">
+                {/* Finance — taxes visible to all, referrals admin only */}
+                {isFiscalOnly
+                  ? navBtn('taxes', 'Impôts', <Landmark className="w-4 h-4 shrink-0" />, () => { setActiveTab('taxes'); fetchTaxSettings(); })
+                  : <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
                     ['taxes', 'referrals'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
@@ -4659,10 +4674,10 @@ export default function Admin() {
                       )}
                     </div>
                   </div>
-                </div>
+                </div>}
 
-                {/* Statistiques dropdown */}
-                <div className="relative group">
+                {/* Statistiques dropdown — admin only */}
+                {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
                     ['activity', 'demographics', 'badges'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
@@ -4681,10 +4696,10 @@ export default function Admin() {
                       {dropdownItemBtn('badges', 'Badges', <Award className="w-3.5 h-3.5" />, () => { setActiveTab('badges'); fetchBadges(); })}
                     </div>
                   </div>
-                </div>
+                </div>}
 
-                {/* Paramètres dropdown */}
-                <div className="relative group">
+                {/* Paramètres dropdown — admin only */}
+                {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
                     ['settings', 'communication'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
@@ -4711,9 +4726,9 @@ export default function Admin() {
                         </button>
                       </div>
                     )}
+                    </div>
                   </div>
-                </div>
-              </div>
+                </div>}
             </div>
             );
           })()}
@@ -6503,6 +6518,7 @@ export default function Admin() {
                 <SelectContent>
                   <SelectItem value="USER">{ROLE_LABELS.USER}</SelectItem>
                   <SelectItem value="BETA_TESTER">{ROLE_LABELS.BETA_TESTER}</SelectItem>
+                  <SelectItem value="FISCAL_INSPECTOR">{ROLE_LABELS.FISCAL_INSPECTOR}</SelectItem>
                   <SelectItem value="ADMIN">{ROLE_LABELS.ADMIN}</SelectItem>
                   <SelectItem value="SUPER_ADMIN">{ROLE_LABELS.SUPER_ADMIN}</SelectItem>
                 </SelectContent>

@@ -834,10 +834,19 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
-const toUserRoleFlags = (role: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN') => ({
+// Middleware for routes accessible by admins OR fiscal inspectors (read-only access)
+const requireAdminOrFiscal = (req: AuthRequest, res: Response, next: Function) => {
+  if (!req.user?.isAdmin && !req.user?.isFiscalInspector) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+};
+
+const toUserRoleFlags = (role: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' | 'FISCAL_INSPECTOR') => ({
   isAdmin: role === 'ADMIN' || role === 'SUPER_ADMIN',
   isSuperAdmin: role === 'SUPER_ADMIN',
   isBetaTester: role === 'BETA_TESTER',
+  isFiscalInspector: role === 'FISCAL_INSPECTOR',
 });
 
 const serializeRegistrationReview = (review: {
@@ -2197,7 +2206,7 @@ router.delete('/clan-events/:id', authMiddleware, requireAdmin, async (req: Auth
 });
 
 // Get all approved users with full details (admin only)
-router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+router.get('/users', authMiddleware, requireAdminOrFiscal, async (req: AuthRequest, res: Response) => {
   try {
     const users = await prisma.user.findMany({
       where: { isApproved: true }, // Only return approved users
@@ -2390,7 +2399,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       updateData.passwordHash = await bcrypt.hash(normalizedPassword, 10);
     }
     if (role !== undefined) {
-      if (role !== 'USER' && role !== 'BETA_TESTER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+      if (role !== 'USER' && role !== 'BETA_TESTER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN' && role !== 'FISCAL_INSPECTOR') {
         return res.status(400).json({ error: 'Invalid role' });
       }
       if (req.user?.id === id) {
@@ -3199,8 +3208,8 @@ router.delete('/bugs/:id', authMiddleware, requireAdmin, async (req: AuthRequest
 
 // ========== ACTIVITY LOGS ==========
 
-// Get activity logs (admin only)
-router.get('/logs', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+// Get activity logs (admin or fiscal inspector)
+router.get('/logs', authMiddleware, requireAdminOrFiscal, async (req: AuthRequest, res: Response) => {
   try {
     const {
       type,
@@ -3238,8 +3247,8 @@ router.get('/logs', authMiddleware, requireAdmin, async (req: AuthRequest, res: 
   }
 });
 
-// Download activity logs as CSV (admin only)
-router.get('/logs/download', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+// Download activity logs as CSV (admin or fiscal inspector)
+router.get('/logs/download', authMiddleware, requireAdminOrFiscal, async (req: AuthRequest, res: Response) => {
   try {
     const {
       type,
@@ -3322,8 +3331,8 @@ router.get('/logs/download', authMiddleware, requireAdmin, async (req: AuthReque
   }
 });
 
-// Get log stats (admin only)
-router.get('/logs/stats', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+// Get log stats (admin or fiscal inspector)
+router.get('/logs/stats', authMiddleware, requireAdminOrFiscal, async (req: AuthRequest, res: Response) => {
   try {
     const [
       totalLogs,
@@ -3950,7 +3959,7 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
 
 // ========== TAX MANAGEMENT ==========
 
-router.get('/tax-settings', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+router.get('/tax-settings', authMiddleware, requireAdminOrFiscal, async (_req: AuthRequest, res: Response) => {
   try {
     const [brackets, lastRunSetting] = await Promise.all([
       prisma.taxBracket.findMany({

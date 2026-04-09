@@ -22,6 +22,7 @@ model User {
   isAdmin                 Boolean   @default(false)
   isSuperAdmin            Boolean   @default(false)
   isBetaTester            Boolean   @default(false)
+  isFiscalInspector       Boolean   @default(false)
   isChatMuted             Boolean   @default(false)
   isApproved              Boolean   @default(false) // Account must be approved by admin before login
   dailyAuraGiven          Int       @default(0) // Aura given today

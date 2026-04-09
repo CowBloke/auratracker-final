@@ -2046,6 +2046,7 @@ export interface AdminUser {
   isAdmin: boolean;
   isSuperAdmin: boolean;
   isBetaTester: boolean;
+  isFiscalInspector: boolean;
   isChatMuted: boolean;
   dailyAuraGiven: number;
   dailyAuraLimit: number;
@@ -2391,7 +2392,7 @@ export const suggestionsApi = {
 // Log Interface
 export interface ActivityLog {
   id: string;
-  type: 'AUTH' | 'CHAT' | 'GAME' | 'ECONOMY' | 'PARTY' | 'SUGGESTION' | 'MARKETPLACE' | 'ADMIN' | 'BAN' | 'AURACOIN';
+  type: 'AUTH' | 'CHAT' | 'GAME' | 'ECONOMY' | 'PARTY' | 'SUGGESTION' | 'MARKETPLACE' | 'ADMIN' | 'BAN' | 'AURACOIN' | 'BUSINESS';
   action: string;
   userId: string | null;
   username: string | null;
@@ -2520,7 +2521,7 @@ export const adminApi = {
   transferClanLeadership: (id: string, targetUserId: string) =>
     api.post<{ success: boolean }>(`/admin/clans/${id}/transfer-leadership`, { targetUserId }),
   deleteClan: (id: string) => api.delete<{ success: boolean }>(`/admin/clans/${id}`),
-  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; role?: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' }) =>
+  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; role?: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' | 'FISCAL_INSPECTOR' }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   forceDivorceUser: (id: string) => api.post<{ success: boolean; message: string }>(`/admin/users/${id}/force-divorce`),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),

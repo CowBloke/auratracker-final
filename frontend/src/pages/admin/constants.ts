@@ -11,6 +11,7 @@ export const ROLE_LABELS = {
   BETA_TESTER: 'beta tester',
   ADMIN: 'admin',
   SUPER_ADMIN: 'super admin',
+  FISCAL_INSPECTOR: 'inspecteur du fisc',
 } as const;
 
 export type AdminRole = keyof typeof ROLE_LABELS;

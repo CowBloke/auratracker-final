@@ -1,15 +1,15 @@
-import { type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { TabsContent } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SPACING } from '@/lib/design-system';
 import { cn, humanizeUiLabel } from '@/lib/utils';
-import { ChevronDown, Download, Gamepad2, Loader2, ScrollText, Search } from 'lucide-react';
+import { ChevronDown, Clock, Download, Gamepad2, Loader2, ScrollText, Search } from 'lucide-react';
 
 type LogFilter = {
   type: string;
@@ -94,47 +94,54 @@ export function LogsTab(props: LogsTabProps) {
     renderMetadataValue,
   } = props;
 
+  const [timelineModalOpen, setTimelineModalOpen] = useState(false);
+
   return (
     <TabsContent value="logs" className={SPACING.CARD_SPACING}>
       {logStats && (
-        <ToggleGroup
-          type="single"
-          value={logFilter.type === 'ALL' ? '' : logFilter.type}
-          onValueChange={(value) => {
-            const newType = value || 'ALL';
-            setLogFilter((prev) => ({ ...prev, type: newType, gameType: 'ALL' }));
-            setTimeout(() => fetchLogs(0, newType, 'ALL'), 0);
-          }}
-          className="flex flex-wrap justify-start gap-2"
-        >
-          {Object.entries(logStats.byType).map(([type, count]) => {
-            const config = logTypeConfig[type];
-            if (!config) return null;
-            const Icon = config.icon;
-            const isSelected = logFilter.type === type;
+        <TooltipProvider delayDuration={150}>
+          <ToggleGroup
+            type="single"
+            value={logFilter.type === 'ALL' ? '' : logFilter.type}
+            onValueChange={(value) => {
+              const newType = value || 'ALL';
+              setLogFilter((prev) => ({ ...prev, type: newType, gameType: 'ALL' }));
+              setTimeout(() => fetchLogs(0, newType, 'ALL'), 0);
+            }}
+            className="flex flex-wrap justify-start gap-2"
+          >
+            {Object.entries(logStats.byType).map(([type, count]) => {
+              const config = logTypeConfig[type];
+              if (!config) return null;
+              const Icon = config.icon;
+              const isSelected = logFilter.type === type;
 
-            return (
-              <ToggleGroupItem
-                key={type}
-                value={type}
-                variant="outline"
-                size="sm"
-                className={cn(
-                  'rounded-full text-xs transition-all data-[state=on]:hover:text-white',
-                  isSelected
-                    ? `${config.bgColor} ${config.borderColor} text-white hover:${config.bgColor}`
-                    : `${config.borderColor} ${config.color} bg-transparent hover:bg-muted/30 hover:${config.color}`
-                )}
-              >
-                <Icon className="h-3 w-3" />
-                <span>{config.label}</span>
-                <span className={cn('tabular-nums', isSelected ? 'text-white/80' : 'text-muted-foreground')}>
-                  {count as ReactNode}
-                </span>
-              </ToggleGroupItem>
-            );
-          })}
-        </ToggleGroup>
+              return (
+                <Tooltip key={type}>
+                  <TooltipTrigger asChild>
+                    <ToggleGroupItem
+                      value={type}
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        'rounded-full text-xs transition-all data-[state=on]:hover:text-white px-2.5',
+                        isSelected
+                          ? `${config.bgColor} ${config.borderColor} text-white hover:${config.bgColor}`
+                          : `${config.borderColor} ${config.color} bg-transparent hover:bg-muted/30 hover:${config.color}`
+                      )}
+                    >
+                      <Icon className="h-3 w-3" />
+                    </ToggleGroupItem>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <span className="font-medium">{config.label}</span>
+                    <span className="ml-1.5 text-muted-foreground tabular-nums">({count as ReactNode})</span>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </ToggleGroup>
+        </TooltipProvider>
       )}
 
       {logFilter.type === 'GAME' && (
@@ -171,107 +178,6 @@ export function LogsTab(props: LogsTabProps) {
         </ToggleGroup>
       )}
 
-      <Card className="border-border/40 bg-background/70">
-        <CardHeader className="pb-3">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="text-sm font-semibold">Filtre horaire</div>
-              <div className="text-xs text-muted-foreground">
-                Sélectionne un créneau précis sur une journée via la timeline.
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                {logTimelineEnabled ? 'Activé' : 'Désactivé'}
-              </span>
-              <Switch
-                checked={logTimelineEnabled}
-                onCheckedChange={(checked) => {
-                  setLogTimelineEnabled(checked);
-                  setTimeout(() => fetchLogs(0), 0);
-                }}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Jour</label>
-              <Input
-                type="date"
-                value={logTimelineDate}
-                disabled={!logTimelineEnabled}
-                onChange={(e) => {
-                  setLogTimelineDate(e.target.value);
-                  setTimeout(() => fetchLogs(0), 0);
-                }}
-                className="h-9 w-full md:w-[210px]"
-              />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!logTimelineEnabled}
-              onClick={() => {
-                setLogTimelineRange([0, 1439]);
-                setTimeout(() => fetchLogs(0), 0);
-              }}
-              className="h-9 md:self-end"
-            >
-              Toute la journée
-            </Button>
-          </div>
-
-          <div className={cn('space-y-4 transition-opacity', !logTimelineEnabled && 'opacity-50')}>
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="rounded-full border border-border/50 px-2.5 py-1 font-mono">
-                Début {formatTimelineMinutes(logTimelineRange[0])}
-              </span>
-              <span className="text-muted-foreground">
-                {Math.max(15, logTimelineRange[1] - logTimelineRange[0] + 1)} min sélectionnées
-              </span>
-              <span className="rounded-full border border-border/50 px-2.5 py-1 font-mono">
-                Fin {formatTimelineMinutes(logTimelineRange[1])}
-              </span>
-            </div>
-
-            <div className="rounded-xl border border-border/40 bg-muted/20 px-4 py-5">
-              <Slider
-                min={0}
-                max={1439}
-                step={15}
-                minStepsBetweenThumbs={1}
-                value={logTimelineRange}
-                disabled={!logTimelineEnabled}
-                onValueChange={(value) => {
-                  if (value.length !== 2) return;
-                  setLogTimelineRange([value[0], value[1]]);
-                }}
-                onValueCommit={(value) => {
-                  if (value.length !== 2) return;
-                  setLogTimelineRange([value[0], value[1]]);
-                  fetchLogs(0);
-                }}
-                className="py-3"
-              />
-
-              <div className="mt-3 grid grid-cols-6 gap-2 text-[11px] text-muted-foreground sm:grid-cols-8 lg:grid-cols-12">
-                {Array.from({ length: 12 }, (_, index) => {
-                  const hour = index * 2;
-                  return (
-                    <div key={hour} className="text-center font-mono">
-                      {String(hour).padStart(2, '0')}h
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -286,6 +192,21 @@ export function LogsTab(props: LogsTabProps) {
           type="button"
           variant="outline"
           size="sm"
+          onClick={() => setTimelineModalOpen(true)}
+          className={cn('h-9', logTimelineEnabled && 'border-primary/60 text-primary')}
+        >
+          <Clock className="h-4 w-4 mr-2" />
+          Filtre horaire
+          {logTimelineEnabled && (
+            <span className="ml-1.5 text-xs opacity-70">
+              {formatTimelineMinutes(logTimelineRange[0])}–{formatTimelineMinutes(logTimelineRange[1])}
+            </span>
+          )}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
           onClick={() => {
             setDownloadLogsError(null);
             setDownloadLogsOpen(true);
@@ -296,6 +217,115 @@ export function LogsTab(props: LogsTabProps) {
           Télécharger les logs
         </Button>
       </div>
+
+      {/* Timeline filter modal */}
+      <Dialog open={timelineModalOpen} onOpenChange={setTimelineModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Filtre horaire
+            </DialogTitle>
+            <DialogDescription>
+              Sélectionne un créneau précis sur une journée via la timeline.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">
+                {logTimelineEnabled ? 'Activé' : 'Désactivé'}
+              </span>
+              <Switch
+                checked={logTimelineEnabled}
+                onCheckedChange={(checked) => {
+                  setLogTimelineEnabled(checked);
+                  setTimeout(() => fetchLogs(0), 0);
+                }}
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Jour</label>
+                <Input
+                  type="date"
+                  value={logTimelineDate}
+                  disabled={!logTimelineEnabled}
+                  onChange={(e) => {
+                    setLogTimelineDate(e.target.value);
+                    setTimeout(() => fetchLogs(0), 0);
+                  }}
+                  className="h-9 w-full md:w-[210px]"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!logTimelineEnabled}
+                onClick={() => {
+                  setLogTimelineRange([0, 1439]);
+                  setTimeout(() => fetchLogs(0), 0);
+                }}
+                className="h-9 md:self-end"
+              >
+                Toute la journée
+              </Button>
+            </div>
+
+            <div className={cn('space-y-4 transition-opacity', !logTimelineEnabled && 'opacity-50')}>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="rounded-full border border-border/50 px-2.5 py-1 font-mono">
+                  Début {formatTimelineMinutes(logTimelineRange[0])}
+                </span>
+                <span className="text-muted-foreground">
+                  {Math.max(15, logTimelineRange[1] - logTimelineRange[0] + 1)} min sélectionnées
+                </span>
+                <span className="rounded-full border border-border/50 px-2.5 py-1 font-mono">
+                  Fin {formatTimelineMinutes(logTimelineRange[1])}
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-border/40 bg-muted/20 px-4 py-5">
+                <Slider
+                  min={0}
+                  max={1439}
+                  step={15}
+                  minStepsBetweenThumbs={1}
+                  value={logTimelineRange}
+                  disabled={!logTimelineEnabled}
+                  onValueChange={(value) => {
+                    if (value.length !== 2) return;
+                    setLogTimelineRange([value[0], value[1]]);
+                  }}
+                  onValueCommit={(value) => {
+                    if (value.length !== 2) return;
+                    setLogTimelineRange([value[0], value[1]]);
+                    fetchLogs(0);
+                  }}
+                  className="py-3"
+                />
+
+                <div className="mt-3 grid grid-cols-6 gap-2 text-[11px] text-muted-foreground sm:grid-cols-8 lg:grid-cols-12">
+                  {Array.from({ length: 12 }, (_, index) => {
+                    const hour = index * 2;
+                    return (
+                      <div key={hour} className="text-center font-mono">
+                        {String(hour).padStart(2, '0')}h
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTimelineModalOpen(false)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={downloadLogsOpen}

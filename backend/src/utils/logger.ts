@@ -11,7 +11,8 @@ export type LogType =
   | 'MARKETPLACE'// Item purchases, item usage
   | 'ADMIN'      // Admin actions (user edits, item management)
   | 'BAN'        // Bans created, removed
-  | 'AURACOIN';  // AuraCoin buy/sell
+  | 'AURACOIN'   // AuraCoin buy/sell
+  | 'BUSINESS';  // Business, bank, formation, and relationship actions
 
 // Log actions by type
 export type AuthAction = 'login' | 'logout' | 'register' | 'login_failed' | 'login_banned';
@@ -34,8 +35,25 @@ export type BanAction = 'ban_create' | 'ban_remove';
 export type AuraCoinAction =
   | 'auracoin_buy'
   | 'auracoin_sell';
+export type BusinessAction =
+  | 'business_create' | 'business_delete' | 'business_invite' | 'business_loan_request'
+  | 'business_loan_decision' | 'business_loan_repay' | 'business_deposit' | 'business_withdraw'
+  | 'business_invest' | 'business_transfer' | 'business_transfer_fee_update'
+  | 'business_buyout_offer_create' | 'business_buyout_offer_respond' | 'business_buyout_offer_cancel'
+  | 'business_share_proposal_create' | 'business_share_proposal_review'
+  | 'business_research_start' | 'business_product_deploy' | 'business_collect' | 'business_sale'
+  | 'business_profile_update' | 'business_invitation_respond' | 'business_member_sack'
+  | 'business_member_salary_update' | 'business_formation_product_buy' | 'business_rate'
+  | 'bank_upgrade_purchase' | 'bank_rate_update' | 'bank_daily_revenue'
+  | 'bank_account_open' | 'bank_account_deposit' | 'bank_account_withdraw'
+  | 'formation_update' | 'formation_purchase' | 'formation_product_create'
+  | 'formation_product_update' | 'formation_product_delete' | 'formation_product_review'
+  | 'relationship_create' | 'relationship_forget' | 'relationship_reactivate'
+  | 'marriage_proposal' | 'marriage_response' | 'divorce_proposal' | 'divorce_response'
+  | 'relationship_force_divorce' | 'relationship_mistress' | 'relationship_cheating_report'
+  | 'relationship_court_case' | 'couple_deposit' | 'couple_withdraw';
 
-export type LogAction = AuthAction | ChatAction | GameAction | EconomyAction | PartyAction | SuggestionAction | MarketplaceAction | AdminAction | BanAction | AuraCoinAction;
+export type LogAction = AuthAction | ChatAction | GameAction | EconomyAction | PartyAction | SuggestionAction | MarketplaceAction | AdminAction | BanAction | AuraCoinAction | BusinessAction;
 
 export interface LogEntry {
   type: LogType;
@@ -110,3 +128,6 @@ export const logBan = (action: BanAction, userId?: string | null, username?: str
 
 export const logAuraCoin = (action: AuraCoinAction, userId?: string | null, username?: string | null, metadata?: Record<string, unknown>) =>
   createLog({ type: 'AURACOIN', action, userId, username, metadata });
+
+export const logBusiness = (action: BusinessAction, userId?: string | null, username?: string | null, targetId?: string | null, targetName?: string | null, details?: Record<string, unknown>) =>
+  createLog({ type: 'BUSINESS', action, userId, username, targetId, targetName, details });
