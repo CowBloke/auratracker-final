@@ -4595,7 +4595,9 @@ export default function Admin() {
                 {badge && <span className="ml-auto">{badge}</span>}
               </button>
             );
-            const dropdownClass = 'absolute left-0 top-full mt-1 z-50 min-w-40 rounded-md border border-border/50 bg-popover shadow-lg p-1 hidden group-hover:flex flex-col gap-0.5';
+            // Outer: transparent padding bridges the gap so hover state persists when moving into the dropdown
+            const dropdownOuter = 'absolute left-0 top-full pt-1 z-50 hidden group-hover:block';
+            const dropdownInner = 'min-w-40 rounded-md border border-border/50 bg-popover shadow-lg p-1 flex flex-col gap-0.5';
             return (
               <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-lg border border-border/30 mb-6">
                 {/* Réception */}
@@ -4629,11 +4631,13 @@ export default function Admin() {
                     Contenu
                     <ChevronDown className="w-3 h-3 shrink-0" />
                   </button>
-                  <div className={dropdownClass}>
-                    {dropdownItemBtn('content', 'Objets', <Package className="w-3.5 h-3.5" />, () => setActiveTab('content'))}
-                    {dropdownItemBtn('ads', 'Publicités', <Eye className="w-3.5 h-3.5" />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
-                      pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">{pendingAds.length}</span> : undefined
-                    )}
+                  <div className={dropdownOuter}>
+                    <div className={dropdownInner}>
+                      {dropdownItemBtn('content', 'Objets', <Package className="w-3.5 h-3.5" />, () => setActiveTab('content'))}
+                      {dropdownItemBtn('ads', 'Publicités', <Eye className="w-3.5 h-3.5" />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
+                        pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">{pendingAds.length}</span> : undefined
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -4647,11 +4651,13 @@ export default function Admin() {
                     Finance
                     <ChevronDown className="w-3 h-3 shrink-0" />
                   </button>
-                  <div className={dropdownClass}>
-                    {dropdownItemBtn('taxes', 'Impôts', <Landmark className="w-3.5 h-3.5" />, () => { setActiveTab('taxes'); fetchTaxSettings(); })}
-                    {dropdownItemBtn('referrals', 'Parrainage', <Users className="w-3.5 h-3.5" />, () => { setActiveTab('referrals'); fetchReferralStats(); },
-                      referralStats ? <span className="text-xs text-muted-foreground">{referralStats.overview.approvedReferredUsers.toLocaleString('fr-FR')} validés</span> : undefined
-                    )}
+                  <div className={dropdownOuter}>
+                    <div className={dropdownInner}>
+                      {dropdownItemBtn('taxes', 'Impôts', <Landmark className="w-3.5 h-3.5" />, () => { setActiveTab('taxes'); fetchTaxSettings(); })}
+                      {dropdownItemBtn('referrals', 'Parrainage', <Users className="w-3.5 h-3.5" />, () => { setActiveTab('referrals'); fetchReferralStats(); },
+                        referralStats ? <span className="text-xs text-muted-foreground">{referralStats.overview.approvedReferredUsers.toLocaleString('fr-FR')} validés</span> : undefined
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -4666,12 +4672,14 @@ export default function Admin() {
                     {onlineStats && <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>}
                     <ChevronDown className="w-3 h-3 shrink-0" />
                   </button>
-                  <div className={dropdownClass}>
-                    {dropdownItemBtn('activity', 'Activité', <Activity className="w-3.5 h-3.5" />, () => { setActiveTab('activity'); fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); fetchPlatformStats(); fetchGamesLeaderboard(); })}
-                    {dropdownItemBtn('demographics', 'Répartition', <BarChart2 className="w-3.5 h-3.5" />, () => setActiveTab('demographics'),
-                      <span className="text-xs text-muted-foreground">{totalDemographicUsers.toLocaleString('fr-FR')} users</span>
-                    )}
-                    {dropdownItemBtn('badges', 'Badges', <Award className="w-3.5 h-3.5" />, () => { setActiveTab('badges'); fetchBadges(); })}
+                  <div className={dropdownOuter}>
+                    <div className={dropdownInner}>
+                      {dropdownItemBtn('activity', 'Activité', <Activity className="w-3.5 h-3.5" />, () => { setActiveTab('activity'); fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); fetchPlatformStats(); fetchGamesLeaderboard(); })}
+                      {dropdownItemBtn('demographics', 'Répartition', <BarChart2 className="w-3.5 h-3.5" />, () => setActiveTab('demographics'),
+                        <span className="text-xs text-muted-foreground">{totalDemographicUsers.toLocaleString('fr-FR')} users</span>
+                      )}
+                      {dropdownItemBtn('badges', 'Badges', <Award className="w-3.5 h-3.5" />, () => { setActiveTab('badges'); fetchBadges(); })}
+                    </div>
                   </div>
                 </div>
 
@@ -4685,7 +4693,8 @@ export default function Admin() {
                     Paramètres
                     <ChevronDown className="w-3 h-3 shrink-0" />
                   </button>
-                  <div className={cn(dropdownClass, 'left-auto right-0')}>
+                  <div className={cn(dropdownOuter, 'left-auto right-0')}>
+                    <div className={dropdownInner}>
                     {dropdownItemBtn('settings', 'Paramètres', <Settings className="w-3.5 h-3.5" />, () => setActiveTab('settings'))}
                     {dropdownItemBtn('communication', 'Communication', <MessageCircle className="w-3.5 h-3.5" />, () => { setActiveTab('communication'); fetchSupportThreads(); },
                       supportUnread > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{supportUnread}</span> : undefined
@@ -4705,6 +4714,7 @@ export default function Admin() {
                   </div>
                 </div>
               </div>
+            </div>
             );
           })()}
 

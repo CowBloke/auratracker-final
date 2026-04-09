@@ -159,8 +159,7 @@ export const createPrismaStudioProxy = () => {
     target: 'http://localhost:5555',
     changeOrigin: true,
     ws: true,
-    pathRewrite: {
-      '^/api/admin/prisma-studio': ''
-    }
+    // Ensure empty path rewrites to "/" so Prisma Studio's root is served correctly
+    pathRewrite: (path: string) => path.replace(/^\/api\/admin\/prisma-studio/, '') || '/',
   });
 };
