@@ -4804,14 +4804,11 @@ export default function Admin() {
                   bans.filter(b => b.isActive).length > 0 ? <span className={TYPOGRAPHY.XS}>{bans.filter(b => b.isActive).length}</span> : undefined
                 )}
 
-                {/* Loto — admin only */}
-                {!isFiscalOnly && navBtn('braquageLegal', 'Loto', <Ticket className="w-4 h-4 shrink-0" />, () => setActiveTab('braquageLegal'))}
-
                 {/* Contenu dropdown — admin only */}
                 {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['content', 'ads'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                    ['content', 'ads', 'braquageLegal'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                   )}>
                     <Package className="w-4 h-4 shrink-0" />
                     Contenu
@@ -4823,6 +4820,7 @@ export default function Admin() {
                       {dropdownItemBtn('ads', 'Publicités', <Eye className="w-3.5 h-3.5" />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
                         pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">{pendingAds.length}</span> : undefined
                       )}
+                      {dropdownItemBtn('braquageLegal', 'Loto', <Ticket className="w-3.5 h-3.5" />, () => setActiveTab('braquageLegal'))}
                     </div>
                   </div>
                 </div>}
