@@ -498,5 +498,17 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
         pendingChallenges.delete(key);
       }
     }
+
+    // Cancel any incoming challenges when the target disconnects
+    for (const [key, challenge] of pendingChallenges.entries()) {
+      if (challenge.targetId === userId) {
+        clearTimeout(challenge.timer);
+        io.to(`user:${challenge.challengerId}`).emit('duel:challenge-cancelled', {
+          challengerId: challenge.challengerId,
+          gameType: challenge.gameType,
+        });
+        pendingChallenges.delete(key);
+      }
+    }
   });
 };

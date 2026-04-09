@@ -1231,7 +1231,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         },
         link: '/party',
         icon: 'users',
-      }).catch(() => {});
+      }).catch((e) => console.error('Notification failed (party):', e));
 
       socket.emit('party:invite-sent', { targetUserId });
     } catch (error) {
@@ -1299,7 +1299,7 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
         },
         link: '/party',
         icon: 'user-minus',
-      }).catch(() => {});
+      }).catch((e) => console.error('Notification failed (party):', e));
 
       // Notify others
       io.to(`party:${membership.partyId}`).emit('party:member-left', {

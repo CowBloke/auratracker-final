@@ -293,7 +293,7 @@ const checkLiquidations = async (config: CoinConfig) => {
       },
       link: config.pagePath,
       icon: 'triangle-alert',
-    }).catch(() => {});
+    }).catch((e) => console.error('Notification failed (marketRoom):', e));
   }
 };
 
@@ -480,7 +480,7 @@ router.post('/:coinKey/buy', authMiddleware, async (req: AuthRequest, res: Respo
       data: { coinKey: config.key, coinsReceived, moneySpent: moneyAmount, fee, price: tradePrice },
       link: config.pagePath,
       icon: 'coins',
-    }).catch(() => {});
+    }).catch((e) => console.error('Notification failed (marketRoom):', e));
 
     res.json({
       success: true,
@@ -583,7 +583,7 @@ router.post('/:coinKey/sell', authMiddleware, async (req: AuthRequest, res: Resp
       data: { coinKey: config.key, coinsSold: coinAmount, moneyReceived: netAmount, fee, price: tradePrice },
       link: config.pagePath,
       icon: 'coins',
-    }).catch(() => {});
+    }).catch((e) => console.error('Notification failed (marketRoom):', e));
 
     res.json({
       success: true,
@@ -769,7 +769,7 @@ router.post('/:coinKey/position/open', authMiddleware, async (req: AuthRequest, 
       data: { coinKey: config.key, positionId: position.id, leverage, marginAmount, entryPrice },
       link: config.pagePath,
       icon: 'chart-candlestick',
-    }).catch(() => {});
+    }).catch((e) => console.error('Notification failed (marketRoom):', e));
 
     res.json({
       success: true,
@@ -849,7 +849,7 @@ router.post('/:coinKey/position/close/:positionId', authMiddleware, async (req: 
       data: { coinKey: config.key, positionId: position.id, pnl, exitPrice: closePrice },
       link: config.pagePath,
       icon: 'chart-no-axes-column',
-    }).catch(() => {});
+    }).catch((e) => console.error('Notification failed (marketRoom):', e));
 
     res.json({
       success: true,

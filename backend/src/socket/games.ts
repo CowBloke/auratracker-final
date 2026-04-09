@@ -253,7 +253,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       },
       link: '/games',
       icon: 'gamepad-2',
-    }).catch(() => {});
+    }).catch((e) => console.error('Notification failed (games):', e));
     
     socket.emit('game:invite-sent', { targetUserId, gameType });
   });
@@ -296,7 +296,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       },
       link: '/games',
       icon: 'swords',
-    }).catch(() => {});
+    }).catch((e) => console.error('Notification failed (games):', e));
     
     // Create game room
     const gameRoomId = `game:${gameType}:${Date.now()}`;
@@ -355,7 +355,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
       },
       link: '/games',
       icon: 'circle-x',
-    }).catch(() => {});
+    }).catch((e) => console.error('Notification failed (games):', e));
   });
   
   // Game update (for real-time multiplayer)

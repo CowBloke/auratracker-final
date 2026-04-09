@@ -211,7 +211,7 @@ async function notifyAdminsOfSupportMessage(messageBody: string, actingUserId: s
           data: { userId: actingUserId, username },
           link: `/messages?conversation=${ADMIN_SUPPORT_CONVERSATION_PREFIX}${actingUserId}`,
           icon: 'message-circle',
-        }).catch(() => {})
+        }).catch((e) => console.error('Notification failed (support):', e))
       )
   );
 }
@@ -225,7 +225,7 @@ async function notifyUserOfSupportReply(userId: string, body: string) {
     data: { fromAdmin: true },
     link: `/messages?conversation=${SUPPORT_CONVERSATION_ID}`,
     icon: 'message-circle',
-  }).catch(() => {});
+  }).catch((e) => console.error('Notification failed (support):', e));
 }
 
 async function buildSupportConversationSummary(userId: string) {
@@ -974,7 +974,7 @@ router.post('/conversations/:conversationId/report', authMiddleware, async (req:
           data: { reportId: report.id, conversationId },
           link: '/messages',
           icon: 'shield-alert',
-        }).catch(() => {})
+        }).catch((e) => console.error('Notification failed (support):', e))
       )
     );
 
@@ -1252,7 +1252,7 @@ router.post('/conversations/:conversationId/witness-requests', authMiddleware, a
             },
             link: `/messages?conversation=${conversationId}`,
             icon: 'scale',
-          }).catch(() => {})
+          }).catch((e) => console.error('Notification failed (support):', e))
         )
     );
 

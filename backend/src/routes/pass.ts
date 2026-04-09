@@ -325,6 +325,18 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
       .reduce((sum, reward) => sum + (reward.amount ?? 0), 0);
 
     const updatedUser = await prisma.$transaction(async (tx) => {
+      // Re-check inside transaction to prevent double-claim via concurrent requests
+      const freshUser = await tx.user.findUnique({
+        where: { id: req.user!.id },
+        select: { lastDailyPassClaim: true },
+      });
+      const freshLastClaimKey = freshUser?.lastDailyPassClaim
+        ? getLocalDateKey(freshUser.lastDailyPassClaim)
+        : null;
+      if (freshLastClaimKey && getDayDiff(freshLastClaimKey, todayKey) === 0) {
+        throw Object.assign(new Error('Reward already claimed today'), { code: 'ALREADY_CLAIMED' });
+      }
+
       const nextUser = await tx.user.update({
         where: { id: req.user!.id },
         data: {
@@ -378,7 +390,7 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
       },
       link: '/pass',
       icon: 'gift',
-    }).catch(() => {});
+    }).catch((e) => console.error('Notification failed (pass claim):', e));
 
     logEconomy('pass_reward', req.user.id, req.user.username, undefined, undefined, {
       streak: newStreak,
@@ -412,7 +424,10 @@ router.post('/claim', authMiddleware, async (req: AuthRequest, res: Response) =>
         aura: Number(updatedUser.aura),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'ALREADY_CLAIMED') {
+      return res.status(400).json({ error: 'Reward already claimed today' });
+    }
     console.error('Claim pass reward error:', error);
     res.status(500).json({ error: 'Failed to claim reward' });
   }

@@ -425,7 +425,7 @@ export async function finalizeClanEvent(eventId: string) {
         },
         link: '/clans',
         icon: 'trophy',
-      }).catch(() => {});
+      }).catch((e) => console.error('Notification failed (clanEvents):', e));
 
       logEconomy('pass_reward', member.userId, member.user.username, undefined, undefined, {
         source: 'clan_event_reward',
@@ -612,7 +612,7 @@ export async function trackClanEventActivity(
         },
         link: '/clans',
         icon: 'target',
-      }).catch(() => {});
+      }).catch((e) => console.error('Notification failed (clanEvents):', e));
     }
   }
 }

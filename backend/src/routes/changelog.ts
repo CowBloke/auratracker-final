@@ -21,6 +21,17 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-10-bug-fixes-race-condition-notifs',
+    date: '2026-04-10',
+    title: 'Corrections de bugs — double claim, defis duels, notifications',
+    summary: 'Correction d une race condition sur le pass quotidien, fuite de defis en duel quand la cible se deconnecte, et journalisation des echecs de notifications.',
+    items: [
+      { category: 'BUG_FIX', text: '**Pass quotidien · Double claim impossible** — La verification "deja reclamé aujourd\'hui" est maintenant effectuee a l interieur de la transaction Prisma, ce qui empeche deux requetes simultanees d accorder deux fois les recompenses.', order: 0 },
+      { category: 'BUG_FIX', text: '**Duels · Defi annule quand la cible se deconnecte** — Quand le joueur cible d un defi se deconnecte, le defi est maintenant annule immediatement (timer stoppe, challenger notifie), au lieu de rester en attente jusqu a expiration.', order: 1 },
+      { category: 'BUG_FIX', text: '**Notifications · Echecs journalises** — Les erreurs de creation de notification ne sont plus silencieusement ignorees ; elles apparaissent maintenant dans les logs serveur pour faciliter le debug.', order: 2 },
+    ],
+  },
+  {
     id: '2026-04-09-inbox-group-chat-notifications',
     date: '2026-04-09',
     title: 'Inbox - Notifications de chat regroupees',
