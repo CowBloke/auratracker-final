@@ -76,7 +76,7 @@ export default function BraquageLegal() {
       setSession(currentRes.data.session);
       setHistory(historyRes.data.sessions);
     } catch {
-      toast.error('Impossible de charger Le Braquage Légal.');
+      toast.error('Impossible de charger Loto.');
     } finally {
       setLoading(false);
     }
@@ -236,14 +236,14 @@ export default function BraquageLegal() {
       <PageShell size="wide">
         <div className="space-y-6">
           <PageHeader
-            title="Le Braquage Légal"
+            title="Loto"
             description="Achetez des tickets par tier, alimentez le pool, puis laissez le tirage décider du gagnant et du propriétaire de la session."
           />
 
           <Card className="overflow-hidden border-border/60 bg-gradient-to-br from-background via-background to-amber-500/5">
             <CardContent className="space-y-6 p-6 md:p-8">
               <div className="flex flex-col items-center gap-4 text-center">
-                <img src="/braquage-legal-logo.png" alt="Le Braquage Légal" className="h-24 w-auto object-contain" />
+                <img src="/braquage-legal-logo.png" alt="Loto" className="h-24 w-auto object-contain" />
                 <div>
                   <p className="text-sm uppercase tracking-[0.22em] text-muted-foreground">Propriétaire actuel</p>
                   <div className="mt-2 flex items-center justify-center gap-3">

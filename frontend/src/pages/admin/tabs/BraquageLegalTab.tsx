@@ -62,7 +62,7 @@ export function BraquageLegalTab({ users }: Props) {
       setHistory(historyRes.data.sessions);
       setSelectedOwnerId(currentRes.data.session?.owner?.id ?? '');
     } catch {
-      toast.error('Impossible de charger Le Braquage Légal.');
+      toast.error('Impossible de charger Loto.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -125,7 +125,7 @@ export function BraquageLegalTab({ users }: Props) {
       const response = await adminApi.adminCreateBraquageSession(parsed);
       setSession(response.data.session);
       setSelectedOwnerId(response.data.session.owner?.id ?? '');
-      toast.success('Session Braquage Légal créée.');
+      toast.success('Session Loto créée.');
     } catch (error) {
       toast.error((error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Impossible de créer la session.');
     } finally {
@@ -161,7 +161,7 @@ export function BraquageLegalTab({ users }: Props) {
     setSettingOwner(true);
     try {
       await adminApi.adminSetBraquageOwner(selectedOwnerId);
-      toast.success('Propriétaire du Braquage Légal mis à jour.');
+      toast.success('Propriétaire du Loto mis à jour.');
       await loadData();
     } catch (error) {
       toast.error((error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Impossible de définir le propriétaire.');
@@ -176,10 +176,10 @@ export function BraquageLegalTab({ users }: Props) {
     <TabsContent value="braquageLegal" className="space-y-4">
       <Card>
         <CardHeader>
-          <CardDescription>Gestion de la loterie</CardDescription>
+          <CardDescription>Gestion du loto</CardDescription>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-muted-foreground" />
-            Le Braquage Légal
+            Loto
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 xl:grid-cols-3">

@@ -4806,7 +4806,7 @@ export default function Admin() {
                 )}
 
                 {/* Braquage Légal — admin only */}
-                {!isFiscalOnly && navBtn('braquageLegal', 'Braquage Légal', <Ticket className="w-4 h-4 shrink-0" />, () => setActiveTab('braquageLegal'))}
+                {!isFiscalOnly && navBtn('braquageLegal', 'Loto', <Ticket className="w-4 h-4 shrink-0" />, () => setActiveTab('braquageLegal'))}
 
                 {/* Contenu dropdown — admin only */}
                 {!isFiscalOnly && <div className="relative group">

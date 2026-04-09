@@ -925,7 +925,7 @@ model BusinessStartupProduct {
 
 model BraquageLegalSession {
   id             Int                       @id @default(autoincrement())
-  status         BraquageLegalStatus       @default(ACTIVE)
+  status         String                    @default("ACTIVE")
   startTime      DateTime                  @default(now())
   endTime        DateTime
   totalPool      Int                       @default(0)
@@ -947,7 +947,7 @@ model BraquageLegalParticipation {
   session     BraquageLegalSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   userId      String
   user        User                  @relation("BraquageLegalParticipant", fields: [userId], references: [id], onDelete: Cascade)
-  tier        BraquageLegalTier
+  tier        String
   ticketCount Int
   amount      Int
   createdAt   DateTime              @default(now())
@@ -955,20 +955,6 @@ model BraquageLegalParticipation {
   @@index([sessionId, createdAt])
   @@index([userId, tier])
   @@index([sessionId, userId, tier])
-}
-
-enum BraquageLegalStatus {
-  ACTIVE
-  DRAWN
-  CANCELLED
-}
-
-enum BraquageLegalTier {
-  BRONZE
-  ARGENT
-  OR
-  PLATINE
-  VIP
 }
 
 model UserSkill {

@@ -1,5 +1,5 @@
 import { Router, type Response } from 'express';
-import { BraquageLegalStatus, type PrismaClient, type Prisma } from '@prisma/client';
+import { type PrismaClient, type Prisma } from '@prisma/client';
 import { authMiddleware, adminMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { prisma, io } from '../server.js';
 
@@ -13,11 +13,18 @@ const TIER_CONFIG = {
   VIP: { cost: 1700, tickets: 60, maxParticipations: 2 },
 } as const;
 
+const BRAQUAGE_LEGAL_STATUS = {
+  ACTIVE: 'ACTIVE',
+  DRAWN: 'DRAWN',
+  CANCELLED: 'CANCELLED',
+} as const;
+
 const WINNER_SHARE = 0.7;
 const OWNER_SHARE = 0.3;
 const DRAW_EVENT = 'braquage-legal:drawn';
 
 type BraquageLegalTierKey = keyof typeof TIER_CONFIG;
+type BraquageLegalStatusKey = keyof typeof BRAQUAGE_LEGAL_STATUS;
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
 type BraquageLegalOwner = {
@@ -35,7 +42,7 @@ type BraquageLegalUserParticipationSummary = {
 
 type BraquageLegalCurrentSessionResponse = {
   id: number;
-  status: BraquageLegalStatus;
+  status: BraquageLegalStatusKey;
   startTime: string;
   endTime: string;
   isExpired: boolean;
@@ -48,7 +55,7 @@ type BraquageLegalCurrentSessionResponse = {
 
 type BraquageLegalHistoryEntry = {
   id: number;
-  status: BraquageLegalStatus;
+  status: BraquageLegalStatusKey;
   totalPool: number;
   winnerPayout: number | null;
   ownerPayout: number | null;
@@ -149,6 +156,7 @@ const buildSessionResponse = (
 const getCurrentSession = async (db: DbClient, userId: string): Promise<BraquageLegalCurrentSessionResponse | null> => {
   const session = await db.braquageLegalSession.findFirst({
     where: { status: BraquageLegalStatus.ACTIVE },
+    where: { status: BRAQUAGE_LEGAL_STATUS.ACTIVE },
     orderBy: { createdAt: 'desc' },
     select: sessionSelect,
   });
@@ -215,7 +223,7 @@ export async function drawBraquageLegalSession(sessionId: number): Promise<Braqu
     throw new Error('Session introuvable');
   }
 
-  if (session.status !== BraquageLegalStatus.ACTIVE) {
+  if (session.status !== BRAQUAGE_LEGAL_STATUS.ACTIVE) {
     throw new Error('Session already closed');
   }
 
@@ -231,7 +239,7 @@ export async function drawBraquageLegalSession(sessionId: number): Promise<Braqu
     await prisma.braquageLegalSession.update({
       where: { id: sessionId },
       data: {
-        status: BraquageLegalStatus.CANCELLED,
+        status: BRAQUAGE_LEGAL_STATUS.CANCELLED,
         winnerId: null,
         winnerPayout: null,
         ownerPayout: null,
@@ -278,7 +286,7 @@ export async function drawBraquageLegalSession(sessionId: number): Promise<Braqu
     const sessionUpdate = tx.braquageLegalSession.update({
       where: { id: sessionId },
       data: {
-        status: BraquageLegalStatus.DRAWN,
+        status: BRAQUAGE_LEGAL_STATUS.DRAWN,
         winnerId,
         winnerPayout,
         ownerPayout,
@@ -364,7 +372,7 @@ router.post('/participate', authMiddleware, async (req: AuthRequest, res: Respon
 
     const result = await prisma.$transaction(async (tx) => {
       const session = await tx.braquageLegalSession.findFirst({
-        where: { status: BraquageLegalStatus.ACTIVE },
+        where: { status: BRAQUAGE_LEGAL_STATUS.ACTIVE },
         orderBy: { createdAt: 'desc' },
         select: sessionSelect,
       });

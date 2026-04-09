@@ -51,6 +51,7 @@ import adsRoutes from './routes/ads.js';
 import messagesRoutes from './routes/messages.js';
 import justiceRoutes from './routes/justice.js';
 import auraVisionRoutes from './routes/auravision.js';
+import braquageLegalRoutes, { drawBraquageLegalSession } from './routes/braquageLegal.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -89,6 +90,7 @@ import {
 // Initialize Prisma
 export const prisma = new PrismaClient();
 let clanEventsTimer: ReturnType<typeof setInterval> | null = null;
+let braquageLegalTimer: ReturnType<typeof setInterval> | null = null;
 
 // Initialize logger with Prisma client
 initLogger(prisma);
@@ -177,6 +179,7 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/clash', clashRoutes);
 app.use('/api/polytrack', polytrackRoutes);
 app.use('/api/changelog', changelogRoutes);
+app.use('/api/braquage-legal', braquageLegalRoutes);
 app.use('/api/you', youRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/justice', justiceRoutes);
@@ -434,6 +437,25 @@ const start = async () => {
         void advanceClanEventsState();
       }, 60_000);
     }
+    if (!braquageLegalTimer) {
+      braquageLegalTimer = setInterval(() => {
+        void (async () => {
+          try {
+            const expiredSession = await prisma.braquageLegalSession.findFirst({
+              where: { status: 'ACTIVE', endTime: { lte: new Date() } },
+              select: { id: true },
+              orderBy: { endTime: 'asc' },
+            });
+
+            if (expiredSession) {
+              await drawBraquageLegalSession(expiredSession.id);
+            }
+          } catch (error) {
+            console.error('Braquage Legal auto-draw error:', error);
+          }
+        })();
+      }, 5 * 60 * 1000);
+    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
       console.error(`Failed to start server: port ${config.port} is already in use`);
@@ -458,6 +480,7 @@ process.on('SIGINT', async () => {
   stopDailyTaxScheduler();
   stopDailyRacerRewardsScheduler();
   if (clanEventsTimer) clearInterval(clanEventsTimer);
+  if (braquageLegalTimer) clearInterval(braquageLegalTimer);
   await prisma.$disconnect();
   process.exit(0);
 });
@@ -473,6 +496,7 @@ process.on('SIGTERM', async () => {
   stopDailyTaxScheduler();
   stopDailyRacerRewardsScheduler();
   if (clanEventsTimer) clearInterval(clanEventsTimer);
+  if (braquageLegalTimer) clearInterval(braquageLegalTimer);
   await prisma.$disconnect();
   process.exit(0);
 });
