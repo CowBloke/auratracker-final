@@ -169,6 +169,29 @@ function App() {
     });
   };
 
+  const getCurrentBlockedPageKey = () => {
+    if (!maintenanceStatus.disabledPages || maintenanceStatus.disabledPages.length === 0) {
+      return null;
+    }
+
+    const matchedPage = BLOCKABLE_PAGES.find((page) => {
+      if (!maintenanceStatus.disabledPages.includes(page.key)) {
+        return false;
+      }
+
+      if (page.path === '/') {
+        return location.pathname === '/' || location.pathname === '/dashboard';
+      }
+
+      return (
+        location.pathname === page.path ||
+        location.pathname.startsWith(`${page.path}/`)
+      );
+    });
+
+    return matchedPage?.key ?? null;
+  };
+
   if (loading || maintenanceLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -184,7 +207,11 @@ function App() {
   }
 
   if (isCurrentPageBlocked()) {
-    return <Blocked message={maintenanceStatus.blockedMessage} />;
+    const blockedPageKey = getCurrentBlockedPageKey();
+    const pageSpecificMessage = blockedPageKey
+      ? maintenanceStatus.blockedPageMessages?.[blockedPageKey]
+      : undefined;
+    return <Blocked message={pageSpecificMessage || maintenanceStatus.blockedMessage} />;
   }
 
   return (

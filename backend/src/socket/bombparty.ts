@@ -5,6 +5,7 @@ import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
+import { applyDailyGameRewardCaps } from '../utils/dailyGameRewards.js';
 import { readBombPartyDictionaryWords, resolveBombPartyLanguageFile } from '../utils/bombpartyDictionary.js';
 import { getBombPartyLanguageSetting, getBombPartyThreeLetterStartRound, getBombPartyWppSettings } from '../utils/bombpartySettings.js';
 
@@ -907,16 +908,13 @@ async function endGame(game: BombPartyGame, io: Server) {
       });
 
       // Update user balance
-      const reward = rewards[player.userId];
-      if (reward.aura > 0 || reward.money > 0) {
-        await prisma.user.update({
-          where: { id: player.userId },
-          data: {
-            aura: { increment: reward.aura },
-            money: { increment: reward.money },
-          },
-        });
-      }
+      const reward = rewards[player.userId] ?? { aura: 0, money: 0 };
+      const cappedReward = await applyDailyGameRewardCaps(prisma, player.userId, reward);
+      const resolvedReward = {
+        aura: cappedReward?.appliedAura ?? 0,
+        money: cappedReward?.appliedMoney ?? 0,
+      };
+      rewards[player.userId] = resolvedReward;
 
       // Check quest progress
       await checkQuestProgress(player.userId, 'BOMB_PARTY_PLAYS', 1);

@@ -9,6 +9,7 @@ const MAINTENANCE_PAGES_KEY = 'maintenance_pages';
 const MAINTENANCE_END_DATE_KEY = 'maintenance_end_date';
 const BLOCKED_PAGES_KEY = 'blocked_pages';
 const BLOCKED_MESSAGE_KEY = 'blocked_message';
+const BLOCKED_PAGE_MESSAGES_KEY = 'blocked_page_messages';
 const LOGIN_MESSAGE_KEY = 'login_message';
 const LOGIN_REGISTER_CTA_ENABLED_KEY = 'login_register_cta_enabled';
 const REFERRAL_ENABLED_KEY = 'referral_enabled';
@@ -35,6 +36,28 @@ function parseStringArraySetting(rawValue?: string | null): string[] {
   }
 }
 
+function parseStringRecordSetting(rawValue?: string | null): Record<string, string> {
+  if (!rawValue) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+
+    const entries = Object.entries(parsed as Record<string, unknown>)
+      .filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+      .map(([key, value]) => [key, value.trim()] as const)
+      .filter(([, value]) => value.length > 0);
+
+    return Object.fromEntries(entries);
+  } catch {
+    return {};
+  }
+}
+
 router.get('/', async (_req, res) => {
   try {
     const [
@@ -44,6 +67,7 @@ router.get('/', async (_req, res) => {
       endDateSetting,
       blockedPagesSetting,
       blockedMessageSetting,
+      blockedPageMessagesSetting,
       loginMessageSetting,
       loginRegisterCtaEnabledSetting,
       referralEnabledSetting,
@@ -61,6 +85,7 @@ router.get('/', async (_req, res) => {
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_END_DATE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: BLOCKED_PAGES_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: BLOCKED_MESSAGE_KEY } }),
+      prisma.gameSettings.findUnique({ where: { key: BLOCKED_PAGE_MESSAGES_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: LOGIN_MESSAGE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: LOGIN_REGISTER_CTA_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: REFERRAL_ENABLED_KEY } }),
@@ -76,6 +101,7 @@ router.get('/', async (_req, res) => {
     const message = messageSetting?.value ?? '';
     let pages: string[] = [];
     const blockedPages = parseStringArraySetting(blockedPagesSetting?.value);
+    const blockedPageMessages = parseStringRecordSetting(blockedPageMessagesSetting?.value);
     const betaGameIds = parseStringArraySetting(betaGameIdsSetting?.value);
     const newGameIds = parseStringArraySetting(newGameIdsSetting?.value);
     
@@ -127,6 +153,7 @@ router.get('/', async (_req, res) => {
       endDate,
       blockedPages,
       blockedMessage: blockedMessageSetting?.value ?? '',
+      blockedPageMessages,
       loginMessage: loginMessageSetting?.value ?? '',
       loginRegisterCtaEnabled: loginRegisterCtaEnabledSetting?.value !== 'false',
       referralEnabled: referralEnabledSetting?.value !== 'false',

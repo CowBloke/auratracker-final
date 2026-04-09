@@ -13,6 +13,7 @@ import { SocialTab } from './tabs/SocialTab';
 import { TravailTab } from './tabs/TravailTab';
 import { CarteTab } from './tabs/CarteTab';
 import { PublicitesTab } from './tabs/PublicitesTab';
+import { BanquesTab } from './tabs/BanquesTab';
 
 export default function You() {
   const [params] = useSearchParams();
@@ -39,7 +40,7 @@ export default function You() {
   }, [loadState]);
 
   const tab = params.get('tab');
-  const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' ? tab : 'overview';
+  const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' || tab === 'banques' ? tab : 'overview';
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
 
   if (maintenanceStatus.youLogoAdminOnly && !canBypassMaintenance) {
@@ -76,6 +77,7 @@ export default function You() {
       {currentTab === 'travail' ? <TravailTab data={data} players={data.players} currentUserId={user.id} onReload={loadState} /> : null}
       {currentTab === 'social' ? <SocialTab data={data} onReload={() => loadState()} /> : null}
       {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
+      {currentTab === 'banques' ? <BanquesTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'finance' ? <FinanceTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'carte' ? <CarteTab data={data} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
       {currentTab === 'publicites' ? <PublicitesTab ownedBusinesses={data.ownedBusinesses} onReload={loadState} /> : null}

@@ -4,6 +4,7 @@ import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
+import { applyDailyGameRewardCaps } from '../utils/dailyGameRewards.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 interface BattleshipPlayer {
@@ -179,25 +180,24 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
 
   // Update user balances and stats
   try {
-    const [updatedWinner, updatedLoser] = await Promise.all([
-      prisma.user.update({
-        where: { id: winnerId },
-        data: {
-          aura: { increment: resolvedWinnerReward.aura },
-          money: { increment: resolvedWinnerReward.money },
-        },
-        select: { aura: true, money: true },
-      }),
-      prisma.user.update({
-        where: { id: loser.userId },
-        data: {
-          money: { increment: resolvedLoserReward.money },
-        },
-        select: { aura: true, money: true },
-      }),
-    ]);
+    const cappedWinnerReward = await applyDailyGameRewardCaps(prisma, winnerId, resolvedWinnerReward);
+    const cappedLoserReward = await applyDailyGameRewardCaps(prisma, loser.userId, resolvedLoserReward);
+    const finalWinnerReward = {
+      aura: cappedWinnerReward?.appliedAura ?? 0,
+      money: cappedWinnerReward?.appliedMoney ?? 0,
+    };
+    const finalLoserReward = {
+      aura: cappedLoserReward?.appliedAura ?? 0,
+      money: cappedLoserReward?.appliedMoney ?? 0,
+    };
 
-    await emitSharedBalanceUpdatesForUserIds(prisma, [winnerId, loser.userId]);
+    await emitSharedBalanceUpdatesForUserIds(
+      prisma,
+      [
+        finalWinnerReward.aura > 0 || finalWinnerReward.money > 0 ? winnerId : null,
+        finalLoserReward.aura > 0 || finalLoserReward.money > 0 ? loser.userId : null,
+      ].filter((id): id is string => Boolean(id))
+    );
 
     // Check quest progress
     await checkQuestProgress(winnerId, 'BATTLESHIP_PLAYS', 1);
@@ -216,17 +216,15 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
     winnerId,
     winnerUsername: winner.username,
     rewards: {
-      winner: resolvedWinnerReward,
-      loser: resolvedLoserReward,
+        winner: finalWinnerReward,
+        loser: finalLoserReward,
     },
   });
 
   logGame('game_complete', winner.userId, winner.username, {
     gameType: 'battleship',
-    score: 1,
-    won: true,
-    auraReward: resolvedWinnerReward.aura,
-    moneyReward: resolvedWinnerReward.money,
+    auraReward: finalWinnerReward.aura,
+    moneyReward: finalWinnerReward.money,
     isMultiplayer: true,
     partyId: game.partyId,
     totalPlayers: game.players.length,
@@ -238,8 +236,8 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
     gameType: 'battleship',
     score: 0,
     won: false,
-    auraReward: resolvedLoserReward.aura,
-    moneyReward: resolvedLoserReward.money,
+    auraReward: finalLoserReward.aura,
+    moneyReward: finalLoserReward.money,
     isMultiplayer: true,
     partyId: game.partyId,
     totalPlayers: game.players.length,

@@ -4,6 +4,7 @@ import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
+import { applyDailyGameRewardCaps } from '../utils/dailyGameRewards.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -353,21 +354,28 @@ async function endGame(game: UnoGame, io: Server, winnerId: string) {
     const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
     const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
     const resolvedWinReward = { ...winReward, money: resolveMoneyReward(winner.userId, winReward.money) };
+    const cappedWinReward = await applyDailyGameRewardCaps(prisma, winnerId, resolvedWinReward);
+    const cappedLossRewards = await Promise.all(
+      others.map(async (other) => {
+        const resolvedLossReward = { ...lossReward, money: resolveMoneyReward(other.userId, lossReward.money) };
+        const capped = await applyDailyGameRewardCaps(prisma, other.userId, resolvedLossReward);
+        return {
+          userId: other.userId,
+          reward: {
+            aura: capped?.appliedAura ?? 0,
+            money: capped?.appliedMoney ?? 0,
+          },
+        };
+      })
+    );
 
-    const updatedWinner = await prisma.user.update({
-      where: { id: winnerId },
-      data: { aura: { increment: resolvedWinReward.aura }, money: { increment: resolvedWinReward.money } },
-      select: { id: true, aura: true, money: true },
-    });
-    for (const other of others) {
-      const resolvedLossReward = { ...lossReward, money: resolveMoneyReward(other.userId, lossReward.money) };
-      await prisma.user.update({
-        where: { id: other.userId },
-        data: { money: { increment: resolvedLossReward.money } },
-      });
-    }
-
-    await emitSharedBalanceUpdatesForUserIds(prisma, [updatedWinner.id, ...others.map((player) => player.userId)]);
+    await emitSharedBalanceUpdatesForUserIds(
+      prisma,
+      [
+        (cappedWinReward?.appliedAura ?? 0) > 0 || (cappedWinReward?.appliedMoney ?? 0) > 0 ? winnerId : null,
+        ...cappedLossRewards.filter(({ reward }) => reward.aura > 0 || reward.money > 0).map(({ userId }) => userId),
+      ].filter((userId): userId is string => Boolean(userId))
+    );
 
     await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
     await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
@@ -391,12 +399,18 @@ async function endGame(game: UnoGame, io: Server, winnerId: string) {
     io.to(`party:${game.partyId}`).emit('uno:game-over', {
       winnerId,
       winnerUsername: winner.username,
-      rewards: { winner: resolvedWinReward, other: lossReward },
+      rewards: {
+        winner: {
+          aura: cappedWinReward?.appliedAura ?? 0,
+          money: cappedWinReward?.appliedMoney ?? 0,
+        },
+        loser: lossReward,
+      },
     });
 
     logGame('game_complete', winner.userId, winner.username, {
       gameType: 'uno', score: 1, won: true,
-      auraReward: resolvedWinReward.aura, moneyReward: resolvedWinReward.money,
+      auraReward: cappedWinReward?.appliedAura ?? 0, moneyReward: cappedWinReward?.appliedMoney ?? 0,
       isMultiplayer: true, partyId: game.partyId,
     });
   } catch (err) {

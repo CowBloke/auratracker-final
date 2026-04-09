@@ -5,6 +5,7 @@ import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
+import { applyDailyGameRewardCaps } from '../utils/dailyGameRewards.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 
 // ─── Arena constants ──────────────────────────────────────────────────────────
@@ -333,21 +334,27 @@ async function endGame(
       const losers = game.players.filter((p) => p.userId !== winnerId);
       const resolvedWinnerReward = { ...winnerReward, money: resolveMoneyReward(winner.userId, winnerReward.money) };
       const resolvedLoserRewards = new Map(losers.map((loser) => [loser.userId, { ...loserReward, money: resolveMoneyReward(loser.userId, loserReward.money) }]));
-
-      const updatedWinner = await prisma.user.update({
-        where: { id: winnerId },
-        data: { aura: { increment: resolvedWinnerReward.aura }, money: { increment: resolvedWinnerReward.money } },
-        select: { id: true, aura: true, money: true },
-      });
-      const updatedLosers = await Promise.all(losers.map((loser) => (
-        prisma.user.update({
-          where: { id: loser.userId },
-          data: { money: { increment: resolvedLoserRewards.get(loser.userId)?.money ?? loserReward.money } },
-          select: { id: true, aura: true, money: true },
+      const cappedWinnerReward = await applyDailyGameRewardCaps(prisma, winner.userId, resolvedWinnerReward);
+      const cappedLoserRewards = new Map(await Promise.all(
+        losers.map(async (loser) => {
+          const capped = await applyDailyGameRewardCaps(prisma, loser.userId, resolvedLoserRewards.get(loser.userId) ?? loserReward);
+          return [loser.userId, {
+            aura: capped?.appliedAura ?? 0,
+            money: capped?.appliedMoney ?? 0,
+          }] as const;
         })
-      )));
+      ));
+      const finalWinnerReward = {
+        aura: cappedWinnerReward?.appliedAura ?? 0,
+        money: cappedWinnerReward?.appliedMoney ?? 0,
+      };
 
-      await emitSharedBalanceUpdatesForUserIds(prisma, [updatedWinner.id, ...updatedLosers.map((user) => user.id)]);
+      const rewardedUserIds = [winner.userId, ...losers.map((loser) => loser.userId)].filter((userId) => {
+        const reward = userId === winner.userId ? finalWinnerReward : (cappedLoserRewards.get(userId) ?? { aura: 0, money: 0 });
+        return reward.aura > 0 || reward.money > 0;
+      });
+
+      await emitSharedBalanceUpdatesForUserIds(prisma, rewardedUserIds);
 
       await checkQuestProgress(winnerId, 'PLAY_GAMES', 1);
       await checkQuestProgress(winnerId, 'WIN_GAMES', 1);
@@ -372,7 +379,7 @@ async function endGame(
         winnerId,
         winnerUsername: winner.username,
         isDraw: false,
-        rewards: { winner: resolvedWinnerReward, loser: loserReward },
+        rewards: { winner: finalWinnerReward, loser: cappedLoserRewards.get(loser.userId) ?? { aura: 0, money: 0 } },
         replayFrames: game.replayFrames,
         players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor, playerIndex: p.playerIndex })),
         results: game.players.map((player) => ({
@@ -380,17 +387,17 @@ async function endGame(
           username: player.username,
           usernameColor: player.usernameColor,
           isWinner: player.userId === winnerId,
-          rewards: player.userId === winnerId ? resolvedWinnerReward : (resolvedLoserRewards.get(player.userId) ?? loserReward),
+          rewards: player.userId === winnerId ? finalWinnerReward : (cappedLoserRewards.get(player.userId) ?? { aura: 0, money: 0 }),
         })),
       });
 
       logGame('game_complete', winner.userId, winner.username, {
         gameType: 'ball_arena', score: 1, won: true,
-        auraReward: resolvedWinnerReward.aura, moneyReward: resolvedWinnerReward.money,
+        auraReward: finalWinnerReward.aura, moneyReward: finalWinnerReward.money,
         isMultiplayer: true, partyId: game.partyId,
       });
       for (const loser of losers) {
-        const resolvedLoserReward = resolvedLoserRewards.get(loser.userId) ?? loserReward;
+        const resolvedLoserReward = cappedLoserRewards.get(loser.userId) ?? { aura: 0, money: 0 };
         logGame('game_complete', loser.userId, loser.username, {
           gameType: 'ball_arena', score: 0, won: false,
           auraReward: resolvedLoserReward.aura, moneyReward: resolvedLoserReward.money,
@@ -398,16 +405,23 @@ async function endGame(
         });
       }
     } else {
-      const updated = await Promise.all(
-        game.players.map((p) =>
-          prisma.user.update({
-            where: { id: p.userId },
-            data: { aura: { increment: drawReward.aura }, money: { increment: resolveMoneyReward(p.userId, drawReward.money) } },
-            select: { id: true, aura: true, money: true },
-          })
-        )
+      const cappedDrawRewards = await Promise.all(
+        game.players.map(async (p) => {
+          const baseReward = { aura: drawReward.aura, money: resolveMoneyReward(p.userId, drawReward.money) };
+          const capped = await applyDailyGameRewardCaps(prisma, p.userId, baseReward);
+          return {
+            userId: p.userId,
+            reward: {
+              aura: capped?.appliedAura ?? 0,
+              money: capped?.appliedMoney ?? 0,
+            },
+          };
+        })
       );
-      await emitSharedBalanceUpdatesForUserIds(prisma, updated.map((user) => user.id));
+      await emitSharedBalanceUpdatesForUserIds(
+        prisma,
+        cappedDrawRewards.filter(({ reward }) => reward.aura > 0 || reward.money > 0).map(({ userId }) => userId)
+      );
       for (const p of game.players) {
         await checkQuestProgress(p.userId, 'PLAY_GAMES', 1);
       }
@@ -424,7 +438,7 @@ async function endGame(
           username: player.username,
           usernameColor: player.usernameColor,
           isWinner: false,
-          rewards: { ...drawReward, money: resolveMoneyReward(player.userId, drawReward.money) },
+          rewards: cappedDrawRewards.find(({ userId }) => userId === player.userId)?.reward ?? { aura: 0, money: 0 },
         })),
       });
     }

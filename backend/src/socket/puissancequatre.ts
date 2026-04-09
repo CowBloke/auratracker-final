@@ -5,6 +5,7 @@ import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
+import { applyDailyGameRewardCaps } from '../utils/dailyGameRewards.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 import { AI_PLAYER_ID, AI_PLAYER_NAMES, AI_MOVE_DELAY_MS, aiPartyInfos, getAIP4Move, type AIDifficulty } from './aiGameState.js';
 
@@ -271,23 +272,23 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
       const loserIsHuman = loser.userId !== AI_PLAYER_ID;
       const resolvedWinnerReward = { ...winnerReward, money: winnerIsHuman ? resolveMoneyReward(winner.userId, winnerReward.money) : winnerReward.money };
       const resolvedLoserReward = { ...loserReward, money: loserIsHuman ? resolveMoneyReward(loser.userId, loserReward.money) : loserReward.money };
-
-      const [updatedWinner, updatedLoser] = await Promise.all([
-        winnerIsHuman ? prisma.user.update({
-          where: { id: winnerId },
-          data: { aura: { increment: resolvedWinnerReward.aura }, money: { increment: resolvedWinnerReward.money } },
-          select: { id: true, aura: true, money: true },
-        }) : null,
-        loserIsHuman ? prisma.user.update({
-          where: { id: loser.userId },
-          data: { money: { increment: resolvedLoserReward.money } },
-          select: { id: true, aura: true, money: true },
-        }) : null,
-      ]);
+      const cappedWinnerReward = winnerIsHuman ? await applyDailyGameRewardCaps(prisma, winnerId, resolvedWinnerReward) : null;
+      const cappedLoserReward = loserIsHuman ? await applyDailyGameRewardCaps(prisma, loser.userId, resolvedLoserReward) : null;
+      const finalWinnerReward = {
+        aura: cappedWinnerReward?.appliedAura ?? 0,
+        money: cappedWinnerReward?.appliedMoney ?? 0,
+      };
+      const finalLoserReward = {
+        aura: cappedLoserReward?.appliedAura ?? 0,
+        money: cappedLoserReward?.appliedMoney ?? 0,
+      };
 
       await emitSharedBalanceUpdatesForUserIds(
         prisma,
-        [updatedWinner?.id, updatedLoser?.id].filter((id): id is string => Boolean(id))
+        [
+          winnerIsHuman && (finalWinnerReward.aura > 0 || finalWinnerReward.money > 0) ? winnerId : null,
+          loserIsHuman && (finalLoserReward.aura > 0 || finalLoserReward.money > 0) ? loser.userId : null,
+        ].filter((id): id is string => Boolean(id))
       );
 
       if (winnerIsHuman) {
@@ -301,7 +302,7 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
         void recheckBadgeForCondition('PUISSANCE_4_WIN');
         logGame('game_complete', winner.userId, winner.username, {
           gameType: 'puissance_4', score: 1, won: true,
-          auraReward: resolvedWinnerReward.aura, moneyReward: resolvedWinnerReward.money,
+          auraReward: cappedWinnerReward?.appliedAura ?? 0, moneyReward: cappedWinnerReward?.appliedMoney ?? 0,
           isMultiplayer: true, partyId: game.partyId,
         });
       }
@@ -314,7 +315,7 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
         });
         logGame('game_complete', loser.userId, loser.username, {
           gameType: 'puissance_4', score: 0, won: false,
-          auraReward: resolvedLoserReward.aura, moneyReward: resolvedLoserReward.money,
+          auraReward: cappedLoserReward?.appliedAura ?? 0, moneyReward: cappedLoserReward?.appliedMoney ?? 0,
           isMultiplayer: true, partyId: game.partyId,
         });
       }
@@ -323,19 +324,28 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
         winnerId,
         winnerUsername: winner.username,
         isDraw: false,
-        rewards: { winner: resolvedWinnerReward, loser: resolvedLoserReward },
+        rewards: { winner: finalWinnerReward, loser: finalLoserReward },
       });
     } else {
-      const updated = await Promise.all(
-        humanPlayers.map((p) =>
-          prisma.user.update({
-            where: { id: p.userId },
-            data: { aura: { increment: drawReward.aura }, money: { increment: resolveMoneyReward(p.userId, drawReward.money) } },
-            select: { id: true, aura: true, money: true },
-          })
-        )
+      const cappedDrawRewards = await Promise.all(
+        humanPlayers.map(async (p) => {
+          const capped = await applyDailyGameRewardCaps(prisma, p.userId, {
+            aura: drawReward.aura,
+            money: resolveMoneyReward(p.userId, drawReward.money),
+          });
+          return {
+            userId: p.userId,
+            reward: {
+              aura: capped?.appliedAura ?? 0,
+              money: capped?.appliedMoney ?? 0,
+            },
+          };
+        })
       );
-      await emitSharedBalanceUpdatesForUserIds(prisma, updated.map((user) => user.id));
+      await emitSharedBalanceUpdatesForUserIds(
+        prisma,
+        cappedDrawRewards.filter(({ reward }) => reward.aura > 0 || reward.money > 0).map(({ userId }) => userId)
+      );
       for (const p of humanPlayers) {
         await checkQuestProgress(p.userId, 'PLAY_GAMES', 1);
       }
@@ -345,6 +355,13 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
         winnerUsername: null,
         isDraw: true,
         rewards: { draw: drawReward },
+        results: game.players.map((player) => ({
+          userId: player.userId,
+          username: player.username,
+          usernameColor: player.usernameColor,
+          isWinner: false,
+          rewards: cappedDrawRewards.find(({ userId }) => userId === player.userId)?.reward ?? { aura: 0, money: 0 },
+        })),
       });
     }
   } catch (error) {

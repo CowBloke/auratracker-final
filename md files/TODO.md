@@ -36,21 +36,22 @@
 - plus visible bouton you
 - pas pouvoir vendre place de clan
 - raison block page
-- jsp si c l'onglet suggestion mais j'ai quelques requetes a vous faire tout d'abord j'aimerai créer une agence de journalisme avec un petit abonnement pour acceder au journal pour tenir au courant les joueurs des changeemnts et des mises a jour etc... et aussi j'aimerai organiser un loto ces requetes seraient elles possibles ?? merci d'avance
 - puff business illegal
-- on peut pas mettre d'avis banque
-- voir les comptes en banque
 - ban par ip/verif par ip
-- limiter argent gagnable par j ppar jeu
 - objet pour demander changement de psuedo
-- forcer avis et bug double modal
 - contestation mute
-- medecin apparait pas
+- scroller conv dignalement
+- pastille notif chat main
+- utilisateurs : ajouter/enlever aura/argent
+- balance aura chaos levier
+- bug offline
+- ajouter tri business, avis, recent, carte, etc
+- reaction pop up chat main
+- forcer avis avec popp up sur you pour tous les business quon a acheté
 
 ## PROJECTS
 
 - merch/qr code
-
 
 on arrive pas à achetr les objets que vendent les entreprises par exemple limonade. De plsu implémente le systeme d'xp, qu'on gagne quand on achète des biens et services comme se suit :
 
