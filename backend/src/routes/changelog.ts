@@ -24,9 +24,10 @@ const SEED_ENTRIES = [
     id: '2026-04-09-inbox-group-chat-notifications',
     date: '2026-04-09',
     title: 'Inbox - Notifications de chat regroupees',
-    summary: 'Les notifications de chat ne s empilent plus message par message: elles sont regroupees par conversation et mises a jour avec le dernier message.',
+    summary: 'Les notifications de chat ne s empilent plus message par message: elles sont regroupees par conversation et mises a jour avec le dernier message. Le modal admin de modification utilisateur permet aussi de saisir directement l aura finale cible.',
     items: [
       { category: 'BUG_FIX', text: '**Inbox chat regroupee** — Pour une meme conversation (Messages prives) ou un meme chat de clan, les nouveaux messages mettent maintenant a jour une notification unique au lieu d en creer plusieurs.', order: 0 },
+      { category: 'BUG_FIX', text: '**Admin utilisateurs · Aura finale directe** — Dans le modal de modification utilisateur, le champ aura attend maintenant directement le total cible (au lieu d un +/−), avec affichage de la variation calculee automatiquement.', order: 1 },
     ],
   },
   {

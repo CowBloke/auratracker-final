@@ -2747,7 +2747,7 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
     throw new Error('BUSINESS_ACTION_UNAVAILABLE');
   }
 
-  let items = balancing.items as unknown as Array<{ key: string; label: string; price: number }>;
+  let items = balancing.items as unknown as Array<{ key: string; label: string; price: number; emoji?: string; imageUrl?: string }>;
   if (business.customData) {
     try {
       items = JSON.parse(business.customData);
@@ -2803,6 +2803,31 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
 
   await emitSharedBalanceUpdates(prisma, userId);
   await logBusinessTransaction(business.id, 'ITEM_SALE', item.price, `Achat de ${item.label} par un client`, userId);
+
+  // Add item to buyer's inventory
+  const existingPurchase = await prisma.businessPurchasedItem.findFirst({
+    where: { userId, businessId: business.id, itemKey: item.key },
+  });
+  if (existingPurchase) {
+    await prisma.businessPurchasedItem.update({
+      where: { id: existingPurchase.id },
+      data: { quantity: { increment: 1 }, acquiredAt: new Date() },
+    });
+  } else {
+    await prisma.businessPurchasedItem.create({
+      data: {
+        userId,
+        businessId: business.id,
+        businessName: business.name,
+        itemKey: item.key,
+        itemLabel: item.label,
+        itemEmoji: item.emoji ?? null,
+        itemImageUrl: item.imageUrl ?? null,
+        price: item.price,
+        quantity: 1,
+      },
+    });
+  }
 
   if (business.typeKey === 'medecins') {
     const clanMembership = await prisma.clanMember.findUnique({
@@ -4295,15 +4320,18 @@ export async function setLoanRate(userId: string, businessId: string, rate: numb
   return { loanInterestRate: rate };
 }
 
-export async function updateBusinessMenu(userId: string, businessId: string, menu: Array<{ key: string; label: string; price: number; emoji?: string }>) {
+export async function updateBusinessMenu(userId: string, businessId: string, menu: Array<{ key: string; label: string; price: number; emoji?: string; imageUrl?: string; section?: string }>) {
   if (!Array.isArray(menu)) throw new Error('INVALID_MENU_FORMAT');
   if (menu.length > 20) throw new Error('MAX_MENU_ITEMS_EXCEEDED');
-  
+
+  const { isAllowedImageUrl } = await import('../../utils/uploads.js');
+
   for (const item of menu) {
     if (typeof item.key !== 'string' || !item.key || item.key.length > 30) throw new Error('INVALID_ITEM_KEY');
     if (typeof item.label !== 'string' || !item.label || item.label.length > 50) throw new Error('INVALID_ITEM_LABEL');
     if (typeof item.price !== 'number' || item.price <= 0 || item.price > 100000) throw new Error('INVALID_ITEM_PRICE');
     if (item.emoji && (typeof item.emoji !== 'string' || item.emoji.length > 10)) throw new Error('INVALID_ITEM_EMOJI');
+    if (item.imageUrl && (typeof item.imageUrl !== 'string' || !isAllowedImageUrl(item.imageUrl))) throw new Error('INVALID_ITEM_IMAGE_URL');
   }
 
   const business = await prisma.business.findUnique({
@@ -4323,6 +4351,15 @@ export async function updateBusinessMenu(userId: string, businessId: string, men
   });
 
   return { success: true };
+}
+
+export async function getUserBusinessPurchases(userId: string) {
+  const items = await prisma.businessPurchasedItem.findMany({
+    where: { userId },
+    orderBy: { acquiredAt: 'desc' },
+    take: 100,
+  });
+  return items;
 }
 
 export async function setTransferFeeRate(userId: string, businessId: string, rate: number) {

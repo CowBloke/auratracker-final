@@ -438,6 +438,19 @@ export interface YouBusiness {
   supportEnabled?: boolean;
 }
 
+export interface BusinessPurchasedItem {
+  id: string;
+  businessId: string | null;
+  businessName: string;
+  itemKey: string;
+  itemLabel: string;
+  itemEmoji: string | null;
+  itemImageUrl: string | null;
+  price: number;
+  quantity: number;
+  acquiredAt: string;
+}
+
 export interface PendingFormationReviewItem {
   id: string;
   businessId: string;
@@ -631,8 +644,10 @@ export const youApi = {
     api.post<{ result: { loanInterestRate: number } }>(`/you/businesses/${businessId}/set-loan-rate`, { rate }),
   setTransferFeeRate: (businessId: string, rate: number) =>
     api.post<{ result: { transferFeeRate: number } }>(`/you/businesses/${businessId}/set-transfer-fee-rate`, { rate }),
-  updateBusinessMenu: (businessId: string, menu: Array<{ key: string; label: string; price: number; emoji?: string }>) =>
+  updateBusinessMenu: (businessId: string, menu: Array<{ key: string; label: string; price: number; emoji?: string; imageUrl?: string; section?: string }>) =>
     api.post<{ result: { success: boolean } }>(`/you/businesses/${businessId}/update-menu`, { menu }),
+  getMyBusinessPurchases: () =>
+    api.get<{ items: BusinessPurchasedItem[] }>('/you/my-purchases'),
   getBusinessTransactions: (businessId: string) =>
     api.get<{ transactions: YouBusinessTransaction[] }>(`/you/businesses/${businessId}/transactions`),
   getBankAccounts: (businessId: string) =>

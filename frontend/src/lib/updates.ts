@@ -46,6 +46,21 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-09-epicerie-items',
+    date: '2026-04-09',
+    title: 'Épiceries — articles personnalisables & inventaire',
+    summary: 'Les gérants d\'épicerie peuvent maintenant personnaliser entièrement leurs articles (nom, catégorie, prix, emoji ou image). Les articles achetés apparaissent dans l\'inventaire des acheteurs.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-04-09-epicerie-items-1', text: '**Image par article** — En plus de l\'emoji, vous pouvez désormais ajouter une **photo** personnalisée à chaque article de votre menu (épicerie, restaurant, limonade).' },
+          { id: '2026-04-09-epicerie-items-2', text: '**Inventaire achats** — Les articles achetés en boutique apparaissent dans l\'onglet **Achats** de votre inventaire, avec la quantité et la boutique d\'origine.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-08-business-ads',
     date: '2026-04-08',
     title: 'Publicites des entreprises',

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { type Ad, adsApi, marketplaceApi, uploadUserImage } from '../services/api';
+import { type Ad, type BusinessPurchasedItem, adsApi, marketplaceApi, uploadUserImage, youApi } from '../services/api';
 import { AdCard } from '@/components/ads/AdCard';
 import { AdBanner } from '@/components/ads/AdBanner';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { Loader2, Palette, Camera, Package, Tag, Award } from 'lucide-react';
+import { Loader2, Palette, Camera, Package, ShoppingBag, Tag, Award } from 'lucide-react';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -132,6 +132,9 @@ export default function Inventory() {
   const [cardAds, setCardAds] = useState<Ad[]>([]);
   const [bannerAd, setBannerAd] = useState<Ad | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [mainTab, setMainTab] = useState<'inventory' | 'purchases'>('inventory');
+  const [purchases, setPurchases] = useState<BusinessPurchasedItem[]>([]);
+  const [purchasesLoading, setPurchasesLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -143,6 +146,13 @@ export default function Inventory() {
     void adsApi.listPublic({ type: 'CARD' }).then((res) => setCardAds(res.data.ads)).catch(() => {});
     void adsApi.listPublic({ type: 'BANNER', limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (mainTab === 'purchases' && purchases.length === 0) {
+      setPurchasesLoading(true);
+      youApi.getMyBusinessPurchases().then((res) => setPurchases(res.data.items)).catch(() => {}).finally(() => setPurchasesLoading(false));
+    }
+  }, [mainTab]);
 
   const fetchInventory = async () => {
     try {
@@ -551,6 +561,53 @@ export default function Inventory() {
       <div className={SPACING.PAGE_CONTENT}>
       <div className={SPACING.SECTION_SPACING}>
 
+        {/* Main tab: Inventaire / Achats */}
+        <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'inventory' | 'purchases')}>
+          <TabsList className="border-border/60 bg-muted/20">
+            <TabsTrigger value="inventory" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Inventaire
+            </TabsTrigger>
+            <TabsTrigger value="purchases" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground flex items-center gap-2">
+              <ShoppingBag className="h-4 w-4" />
+              Achats
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {mainTab === 'purchases' ? (
+          purchasesLoading ? (
+            <ListSkeleton />
+          ) : purchases.length === 0 ? (
+            <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>Aucun achat en boutique pour l'instant</p>
+          ) : (
+            <Card>
+              <CardContent className="p-0 divide-y divide-border/30">
+                {purchases.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/30 text-xl overflow-hidden">
+                      {p.itemImageUrl
+                        ? <img src={p.itemImageUrl} className="h-10 w-10 object-cover" alt={p.itemLabel} />
+                        : (p.itemEmoji ?? <ShoppingBag className="h-5 w-5 text-muted-foreground" />)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{p.itemLabel}</p>
+                      <p className="text-xs text-muted-foreground">{p.businessName} · {p.price.toLocaleString('fr-FR')} money</p>
+                    </div>
+                    {p.quantity > 1 && (
+                      <span className="text-xs font-semibold text-muted-foreground bg-muted/40 rounded-full px-2 py-0.5">×{p.quantity}</span>
+                    )}
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {new Date(p.acquiredAt).toLocaleDateString('fr-FR')}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )
+        ) : (
+          <>
+
         {availableTypes.length > 1 && (
           <Tabs value={filterType} onValueChange={setFilterType}>
             <TabsList className="h-auto flex-wrap border-border/60 bg-muted/20">
@@ -656,6 +713,8 @@ export default function Inventory() {
               </CardContent>
             </Card>
           )
+        )}
+        </>
         )}
       </div>
 
