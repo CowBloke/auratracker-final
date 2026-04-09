@@ -21,6 +21,15 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-09-inbox-group-chat-notifications',
+    date: '2026-04-09',
+    title: 'Inbox - Notifications de chat regroupees',
+    summary: 'Les notifications de chat ne s empilent plus message par message: elles sont regroupees par conversation et mises a jour avec le dernier message.',
+    items: [
+      { category: 'BUG_FIX', text: '**Inbox chat regroupee** — Pour une meme conversation (Messages prives) ou un meme chat de clan, les nouveaux messages mettent maintenant a jour une notification unique au lieu d en creer plusieurs.', order: 0 },
+    ],
+  },
+  {
     id: '2026-04-08-skeleton-loading-screens',
     date: '2026-04-08',
     title: 'Chargement - Ecrans skeleton partout',
