@@ -24,6 +24,7 @@ export type AdminTab =
   | 'bans'
   | 'content'
   | 'ads'
+  | 'aura-scroll'
   | 'taxes'
   | 'settings'
   | 'referrals'
@@ -40,6 +41,7 @@ export const ADMIN_TABS: AdminTab[] = [
   'bans',
   'content',
   'ads',
+  'aura-scroll',
   'taxes',
   'settings',
   'referrals',

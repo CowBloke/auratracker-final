@@ -51,6 +51,7 @@ import adsRoutes from './routes/ads.js';
 import messagesRoutes from './routes/messages.js';
 import justiceRoutes from './routes/justice.js';
 import auraVisionRoutes from './routes/auravision.js';
+import auraScrollRoutes from './routes/auraScroll.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -181,6 +182,7 @@ app.use('/api/you', youRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/justice', justiceRoutes);
 app.use('/api/auravision', auraVisionRoutes);
+app.use('/api/aura-scroll', auraScrollRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -22,6 +22,7 @@ import {
   Briefcase,
   Landmark,
   Camera,
+  Sparkles,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -54,6 +55,7 @@ const navItems = [
   { to: '/inventory', label: t('sidebar_nav_inventory'), icon: Backpack },
   { to: '/marketplace', label: t('sidebar_nav_marketplace'), icon: BadgeDollarSign },
   { to: '/auravision', label: t('sidebar_nav_auravision'), icon: Camera },
+  { to: '/aura-scroll', label: 'Aura Scroll', icon: Sparkles },
   { to: '/pass', label: t('sidebar_nav_pass'), icon: Ticket },
   { to: '/quests', label: t('sidebar_nav_quests'), icon: Target },
   { to: '/suggestions', label: t('sidebar_nav_suggestions'), icon: Lightbulb },

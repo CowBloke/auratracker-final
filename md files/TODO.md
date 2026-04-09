@@ -61,6 +61,11 @@
 - role qui s'actualise pas
 - pastille messages websocket
 - trier messages/affaires deux tabs
+- actualisation notif demande emploi
+- guere inter classe/niveau/école
+- remettre entrée modififcation aura/argent utilisateur
+- bug pas investir
+- badge plus de badge
 
 ## PROJECTS
 

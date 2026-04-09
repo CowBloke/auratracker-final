@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, type PendingFormationReviewItem, type PendingAdReview } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, type PendingFormationReviewItem, type PendingAdReview, auraScrollApi, type AuraScrollPost } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -1167,6 +1167,14 @@ export default function Admin() {
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [badgeFormOpen, setBadgeFormOpen] = useState(false);
   const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
+
+  // ── Aura Scroll tab state ─────────────────────────────────────────────────
+  const [auraScrollPendingPosts, setAuraScrollPendingPosts] = useState<AuraScrollPost[]>([]);
+  const [auraScrollAllPosts, setAuraScrollAllPosts] = useState<AuraScrollPost[]>([]);
+  const [auraScrollLoading, setAuraScrollLoading] = useState(false);
+  const [auraScrollFilter, setAuraScrollFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'>('PENDING');
+  const [auraScrollRejectReason, setAuraScrollRejectReason] = useState<Record<string, string>>({});
+  const [auraScrollReviewingId, setAuraScrollReviewingId] = useState<string | null>(null);
   const [badgeForm, setBadgeForm] = useState<Partial<Badge>>({
     name: '', description: '', howToObtain: '',
     backgroundType: 'solid', backgroundColor: '#374151',
@@ -1390,6 +1398,45 @@ export default function Admin() {
       console.error('Failed to fetch all ads:', error);
     } finally {
       setAllAdsLoading(false);
+    }
+  };
+
+  const fetchAuraScrollPending = async () => {
+    setAuraScrollLoading(true);
+    try {
+      const res = await auraScrollApi.adminGetPending();
+      setAuraScrollPendingPosts(res.data.posts);
+    } catch (error) {
+      console.error('Failed to fetch aura scroll pending:', error);
+    } finally {
+      setAuraScrollLoading(false);
+    }
+  };
+
+  const fetchAuraScrollAll = async (status?: string) => {
+    setAuraScrollLoading(true);
+    try {
+      const res = await auraScrollApi.adminGetAll(status === 'ALL' ? undefined : status);
+      setAuraScrollAllPosts(res.data.posts);
+    } catch (error) {
+      console.error('Failed to fetch aura scroll all:', error);
+    } finally {
+      setAuraScrollLoading(false);
+    }
+  };
+
+  const handleAuraScrollStatus = async (id: string, status: 'APPROVED' | 'REJECTED') => {
+    setAuraScrollReviewingId(id);
+    try {
+      const reason = status === 'REJECTED' ? auraScrollRejectReason[id] : undefined;
+      await auraScrollApi.adminUpdateStatus(id, status, reason);
+      showMessage('success', status === 'APPROVED' ? 'Post approuvé !' : 'Post refusé.');
+      setAuraScrollPendingPosts((prev) => prev.filter((p) => p.id !== id));
+      setAuraScrollAllPosts((prev) => prev.map((p) => p.id === id ? { ...p, status } : p));
+    } catch {
+      showMessage('error', 'Erreur lors de la modération.');
+    } finally {
+      setAuraScrollReviewingId(null);
     }
   };
 
@@ -4741,7 +4788,7 @@ export default function Admin() {
                 {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['content', 'ads'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                    ['content', 'ads', 'aura-scroll'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                   )}>
                     <Package className="w-4 h-4 shrink-0" />
                     Contenu
@@ -4753,6 +4800,7 @@ export default function Admin() {
                       {dropdownItemBtn('ads', 'Publicités', <Eye className="w-3.5 h-3.5" />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
                         pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">{pendingAds.length}</span> : undefined
                       )}
+                      {dropdownItemBtn('aura-scroll', 'Aura Scroll', <Sparkles className="w-3.5 h-3.5" />, () => { setActiveTab('aura-scroll'); fetchAuraScrollPending(); })}
                     </div>
                   </div>
                 </div>}
@@ -9575,6 +9623,159 @@ export default function Admin() {
               </DialogContent>
             </Dialog>
 
+          </div>
+        </TabsContent>
+
+        {/* ── AURA SCROLL TAB ──────────────────────────────────────────────────── */}
+        <TabsContent value="aura-scroll" className={SPACING.SECTION_SPACING}>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className={TYPOGRAPHY.H3}>Aura Scroll — Modération</h3>
+                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Approuve ou refuse les posts avant publication.</p>
+              </div>
+              <div className="flex gap-2">
+                {(['PENDING', 'APPROVED', 'REJECTED', 'ALL'] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => {
+                      setAuraScrollFilter(f);
+                      if (f === 'PENDING') fetchAuraScrollPending();
+                      else fetchAuraScrollAll(f);
+                    }}
+                    className={cn(
+                      'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                      auraScrollFilter === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {f === 'PENDING' ? `En attente${auraScrollPendingPosts.length > 0 ? ` (${auraScrollPendingPosts.length})` : ''}` : f === 'APPROVED' ? 'Approuvés' : f === 'REJECTED' ? 'Refusés' : 'Tous'}
+                  </button>
+                ))}
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => auraScrollFilter === 'PENDING' ? fetchAuraScrollPending() : fetchAuraScrollAll(auraScrollFilter)}>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            {auraScrollLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (() => {
+              const displayPosts = auraScrollFilter === 'PENDING' ? auraScrollPendingPosts : auraScrollAllPosts;
+              if (displayPosts.length === 0) {
+                return <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>Aucun post{auraScrollFilter === 'PENDING' ? ' en attente' : ''}.</p>;
+              }
+              return (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {displayPosts.map((post) => (
+                    <div key={post.id} className="rounded-xl border border-border bg-card overflow-hidden">
+                      {/* Media preview */}
+                      <div className="relative aspect-[9/16] max-h-64 bg-black overflow-hidden">
+                        {post.mediaType === 'VIDEO' ? (
+                          <video
+                            src={`${(import.meta.env.VITE_API_URL || 'http://localhost:3000')}${post.mediaUrls[0]}`}
+                            className="h-full w-full object-cover"
+                            muted
+                            preload="metadata"
+                          />
+                        ) : (
+                          <img
+                            src={`${(import.meta.env.VITE_API_URL || 'http://localhost:3000')}${post.mediaUrls[0]}`}
+                            className="h-full w-full object-cover"
+                            alt=""
+                          />
+                        )}
+                        {/* Status badge */}
+                        <span className={cn(
+                          'absolute top-2 right-2 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                          post.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                          post.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                          'bg-red-500/20 text-red-400 border border-red-500/30'
+                        )}>
+                          {post.status === 'PENDING' ? 'En attente' : post.status === 'APPROVED' ? 'Approuvé' : 'Refusé'}
+                        </span>
+                        {/* Photo count */}
+                        {post.mediaType === 'PHOTOS' && post.mediaUrls.length > 1 && (
+                          <span className="absolute top-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-black/60 text-white">
+                            {post.mediaUrls.length} photos
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground">{post.user.username}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(post.createdAt).toLocaleDateString('fr-FR')}</span>
+                        </div>
+                        {post.title && <p className="text-sm font-medium">{post.title}</p>}
+                        {post.description && <p className="text-xs text-muted-foreground line-clamp-2">{post.description}</p>}
+                        {post.status === 'REJECTED' && post.rejectReason && (
+                          <p className="text-xs text-red-400 italic">Raison : {post.rejectReason}</p>
+                        )}
+
+                        {/* Reject reason input (pending only) */}
+                        {post.status === 'PENDING' && (
+                          <Input
+                            placeholder="Raison de refus (optionnel)"
+                            value={auraScrollRejectReason[post.id] || ''}
+                            onChange={(e) => setAuraScrollRejectReason((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                            className="text-xs h-7"
+                          />
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-2 pt-1">
+                          {post.status === 'PENDING' && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-7"
+                                disabled={auraScrollReviewingId === post.id}
+                                onClick={() => handleAuraScrollStatus(post.id, 'APPROVED')}
+                              >
+                                {auraScrollReviewingId === post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approuver'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="flex-1 text-xs h-7"
+                                disabled={auraScrollReviewingId === post.id}
+                                onClick={() => handleAuraScrollStatus(post.id, 'REJECTED')}
+                              >
+                                {auraScrollReviewingId === post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Refuser'}
+                              </Button>
+                            </>
+                          )}
+                          {post.status === 'APPROVED' && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              className="flex-1 text-xs h-7"
+                              disabled={auraScrollReviewingId === post.id}
+                              onClick={() => handleAuraScrollStatus(post.id, 'REJECTED')}
+                            >
+                              Révoquer
+                            </Button>
+                          )}
+                          {post.status === 'REJECTED' && (
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-7"
+                              disabled={auraScrollReviewingId === post.id}
+                              onClick={() => handleAuraScrollStatus(post.id, 'APPROVED')}
+                            >
+                              Approuver quand même
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </TabsContent>
 

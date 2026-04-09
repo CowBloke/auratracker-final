@@ -2,6 +2,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
 
+export const SUPPORTED_UPLOAD_VIDEO_MIME_TYPES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+] as const;
+
 export const SUPPORTED_UPLOAD_IMAGE_MIME_TYPES = [
   'image/png',
   'image/jpeg',
@@ -324,4 +330,107 @@ export const isLocalUploadPath = (value?: string | null) => {
 
 export const isAllowedImageUrl = (value?: string | null) => {
   return isRemoteImageUrl(value) || isLocalUploadPath(value);
+};
+
+// ─── Video Upload ────────────────────────────────────────────────────────────
+
+const UPLOAD_VIDEO_MIME_TYPE_ALIASES: Record<string, (typeof SUPPORTED_UPLOAD_VIDEO_MIME_TYPES)[number]> = {
+  'video/mov': 'video/quicktime',
+  'video/x-quicktime': 'video/quicktime',
+  'video/x-mp4': 'video/mp4',
+};
+
+export const normalizeUploadVideoMimeType = (mimeType?: string | null) => {
+  if (typeof mimeType !== 'string') return null;
+  const normalized = mimeType.trim().toLowerCase();
+  if (!normalized) return null;
+  if ((SUPPORTED_UPLOAD_VIDEO_MIME_TYPES as readonly string[]).includes(normalized)) {
+    return normalized as (typeof SUPPORTED_UPLOAD_VIDEO_MIME_TYPES)[number];
+  }
+  return UPLOAD_VIDEO_MIME_TYPE_ALIASES[normalized] ?? null;
+};
+
+export const inferUploadVideoExtension = (mimeType?: string | null) => {
+  const normalizedMimeType = normalizeUploadVideoMimeType(mimeType);
+  switch (normalizedMimeType) {
+    case 'video/mp4':
+      return 'mp4';
+    case 'video/webm':
+      return 'webm';
+    case 'video/quicktime':
+      return 'mov';
+    default:
+      return null;
+  }
+};
+
+type DecodedUploadVideoResult = {
+  buffer: Buffer;
+  extension: string;
+  mimeType: (typeof SUPPORTED_UPLOAD_VIDEO_MIME_TYPES)[number];
+};
+
+type WrittenUploadVideoResult = {
+  fileName: string;
+  sizeBytes: number;
+  mimeType: (typeof SUPPORTED_UPLOAD_VIDEO_MIME_TYPES)[number];
+};
+
+export const decodeBase64UploadVideo = (
+  base64Data?: string | null,
+  mimeType?: string | null,
+): DecodedUploadVideoResult | UploadImageErrorResult => {
+  const normalizedMimeType = normalizeUploadVideoMimeType(mimeType);
+  if (!normalizedMimeType) {
+    return {
+      error: `Unsupported video type. Allowed: ${SUPPORTED_UPLOAD_VIDEO_MIME_TYPES.map((t) => t.replace('video/', '')).join(', ')}`,
+    };
+  }
+
+  if (typeof base64Data !== 'string' || base64Data.trim() === '') {
+    return { error: 'Invalid video payload' };
+  }
+
+  const normalizedPayload = normalizeBase64Payload(base64Data);
+  if (!normalizedPayload) {
+    return { error: 'Invalid video payload' };
+  }
+
+  const buffer = Buffer.from(normalizedPayload, 'base64');
+  if (buffer.byteLength === 0) {
+    return { error: 'Invalid video payload' };
+  }
+
+  const extension = inferUploadVideoExtension(normalizedMimeType);
+  if (!extension) {
+    return { error: 'Invalid video payload' };
+  }
+
+  return { buffer, extension, mimeType: normalizedMimeType };
+};
+
+export const writeBase64UploadVideo = async ({
+  base64Data,
+  mimeType,
+  uploadDir,
+  maxBytes,
+}: {
+  base64Data?: string | null;
+  mimeType?: string | null;
+  uploadDir: string;
+  maxBytes: number;
+}): Promise<WrittenUploadVideoResult | UploadImageErrorResult> => {
+  const decoded = decodeBase64UploadVideo(base64Data, mimeType);
+  if ('error' in decoded) return decoded;
+
+  if (decoded.buffer.byteLength > maxBytes) {
+    return { error: `Video too large (max ${Math.floor(maxBytes / (1024 * 1024))}MB)` };
+  }
+
+  await fs.mkdir(uploadDir, { recursive: true });
+  const fileName = `${Date.now()}-${randomUUID()}.${decoded.extension}`;
+  const absolutePath = path.join(uploadDir, fileName);
+  await fs.writeFile(absolutePath, decoded.buffer);
+
+  return { fileName, sizeBytes: decoded.buffer.byteLength, mimeType: decoded.mimeType };
 };
