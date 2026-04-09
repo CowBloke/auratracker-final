@@ -40,13 +40,10 @@
 - puff business illegal
 - on peut pas mettre d'avis banque
 - voir les comptes en banque
-- pub fin de jeu (pas sur de l'idée)
 - ban par ip/verif par ip
 - limiter argent gagnable par j ppar jeu
 - objet pour demander changement de psuedo
-- regler cashout crossy road
 - forcer avis et bug double modal
-- fix casino
 - contestation mute
 - medecin apparait pas
 
