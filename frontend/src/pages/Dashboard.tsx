@@ -23,18 +23,21 @@ import { usePartySocket } from '../contexts/PartySocketContext';
 import { useFeatures } from '../contexts/FeaturesContext';
 import {
   AuraTransferEntry,
+  ChangelogEntry,
   ClanPumpUpMessage,
   ClanWarState,
   DailyAuraState,
   ReferralSummary,
   authApi,
   auraCoinApi,
+  changelogApi,
   clansApi,
   economyApi,
   marketRoomApi,
   usersApi,
 } from '../services/api';
-import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, Swords, Loader2, Ticket, Copy } from 'lucide-react';
+import { GripVertical, Users, TrendingUp, TrendingDown, Star, Gamepad2, Swords, Loader2, Ticket, Copy, Rocket, Sparkles, Bug } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,8 +47,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { AreaChart, Area, XAxis, YAxis } from 'recharts';
+import { AreaChart, Area, CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl, resolveThemeImageUrl } from '@/lib/images';
@@ -91,6 +95,15 @@ interface ClanWarWidgetItem {
     imageUrl: string | null;
   };
 }
+
+interface DashboardEconomyUser {
+  id: string;
+  username: string;
+  aura: number;
+  money: number;
+}
+
+type DashboardUpdateCategory = 'BIG_FEATURE' | 'SMALL_FEATURE' | 'BUG_FIX';
 
 type DashboardWidgetId =
   | 'shortcuts'
@@ -199,6 +212,20 @@ const dashboardWidgetContentClass = "min-h-0 flex-1 px-4 pb-4 pt-0 sm:px-5 sm:pb
 const dashboardRowClass = "flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-3";
 const dashboardGhostButtonClass = "border-border/50 bg-transparent shadow-none hover:bg-muted/30";
 const dashboardCompactListClass = "space-y-2.5";
+const dashboardUpdateCategoryMeta: Record<DashboardUpdateCategory, { label: string; badgeClass: string }> = {
+  BIG_FEATURE: {
+    label: 'Grandes fonctionnalités',
+    badgeClass: 'border-chart-3/40 text-chart-3 bg-chart-3/10',
+  },
+  SMALL_FEATURE: {
+    label: 'Petites fonctionnalités',
+    badgeClass: 'border-chart-1/40 text-chart-1 bg-chart-1/10',
+  },
+  BUG_FIX: {
+    label: 'Correctifs',
+    badgeClass: 'border-border text-muted-foreground',
+  },
+};
 
 const formatCountdown = (value: string | null | undefined) => {
   if (!value) return null;
@@ -231,6 +258,15 @@ const getWarOpponent = (war: ClanWarWidgetItem, clanId: string | null) => {
 };
 
 const getAvatarFallback = (value: string) => value.trim().slice(0, 2).toUpperCase();
+
+const renderDashboardUpdateText = (text: string) => {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((part, index) =>
+    index % 2 === 1
+      ? <strong key={index} className="font-semibold text-foreground">{part}</strong>
+      : part
+  );
+};
 
 function DashboardWidgetTitle({
   title,
@@ -401,6 +437,10 @@ export default function Dashboard() {
   const [resetCountdown, setResetCountdown] = useState('--:--:--');
   const [referralSummary, setReferralSummary] = useState<ReferralSummary | null>(null);
   const [referralLoading, setReferralLoading] = useState(false);
+  const [activeDashboardTab, setActiveDashboardTab] = useState<'updates' | 'economy' | 'widgets'>('widgets');
+  const [changelogEntries, setChangelogEntries] = useState<ChangelogEntry[]>([]);
+  const [changelogLoading, setChangelogLoading] = useState(true);
+  const [economyLeaderboardUsers, setEconomyLeaderboardUsers] = useState<DashboardEconomyUser[]>([]);
 
   const referralWidgetEnabled = maintenanceStatus.referralDashboardCardEnabled;
   const referralEnabled = maintenanceStatus.referralEnabled;
@@ -464,6 +504,41 @@ export default function Dashboard() {
     [auraUsers, selectedAuraUserId]
   );
   const remainingAura = dailyAuraState?.remainingAura ?? 0;
+  const economyChartData = useMemo(() => {
+    const auraLeaderboard = [...economyLeaderboardUsers]
+      .sort((a, b) => b.aura - a.aura)
+      .slice(0, 20);
+    const moneyLeaderboard = [...economyLeaderboardUsers]
+      .sort((a, b) => b.money - a.money)
+      .slice(0, 20);
+    const maxLength = Math.max(auraLeaderboard.length, moneyLeaderboard.length);
+
+    return Array.from({ length: maxLength }, (_, index) => ({
+      rank: index + 1,
+      aura: auraLeaderboard[index]?.aura ?? null,
+      money: moneyLeaderboard[index]?.money ?? null,
+      auraUser: auraLeaderboard[index]?.username ?? null,
+      moneyUser: moneyLeaderboard[index]?.username ?? null,
+    }));
+  }, [economyLeaderboardUsers]);
+  const economyTopAura = useMemo(
+    () => [...economyLeaderboardUsers].sort((a, b) => b.aura - a.aura).slice(0, 3),
+    [economyLeaderboardUsers]
+  );
+  const economyTopMoney = useMemo(
+    () => [...economyLeaderboardUsers].sort((a, b) => b.money - a.money).slice(0, 3),
+    [economyLeaderboardUsers]
+  );
+  const economyChartConfig = {
+    aura: {
+      label: 'Aura',
+      color: '#eab308',
+    },
+    money: {
+      label: 'Argent',
+      color: '#22c55e',
+    },
+  } satisfies ChartConfig;
 
   useEffect(() => {
     if (!user?.username) return;
@@ -503,6 +578,15 @@ export default function Dashboard() {
             username: candidate.username,
             usernameColor: candidate.usernameColor ?? null,
             aura: Number(candidate.aura ?? 0),
+          }))
+      );
+      setEconomyLeaderboardUsers(
+        (usersRes.data.users as Array<{ id: string; username: string; aura: number | string; money?: number | string | null }>)
+          .map((candidate) => ({
+            id: candidate.id,
+            username: candidate.username,
+            aura: Number(candidate.aura ?? 0),
+            money: Number(candidate.money ?? 0),
           }))
       );
     } catch (error) {
@@ -578,6 +662,31 @@ export default function Dashboard() {
       cancelled = true;
     };
   }, [referralEnabled, referralWidgetEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setChangelogLoading(true);
+    changelogApi.getAll()
+      .then((res) => {
+        if (!cancelled) {
+          setChangelogEntries(res.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChangelogEntries([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setChangelogLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -1015,83 +1124,293 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="flex flex-wrap justify-end gap-2">
-            <Dialog open={widgetsDialogOpen} onOpenChange={setWidgetsDialogOpen}>
-              <Button variant="outline" className={dashboardGhostButtonClass} onClick={() => setWidgetsDialogOpen(true)}>
-                Gérer widgets
-              </Button>
-              <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className={TYPOGRAPHY.H5}>Widgets du dashboard</DialogTitle>
-                  <DialogDescription>
-                    Choisis les widgets a afficher sur la page.
-                  </DialogDescription>
-                </DialogHeader>
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
-                  {visibleDashboardLayout.length}/{availableDashboardWidgets.length} visibles
-                </p>
-                <div className="space-y-3">
-                  {availableDashboardWidgets.map((widgetId) => {
-                    const widget = dashboardWidgetLabels[widgetId];
-                    const checked = visibleWidgets.includes(widgetId);
-                    const isLastVisible = checked && visibleWidgets.length === 1;
+          {activeDashboardTab === 'widgets' ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              <Dialog open={widgetsDialogOpen} onOpenChange={setWidgetsDialogOpen}>
+                <Button variant="outline" className={dashboardGhostButtonClass} onClick={() => setWidgetsDialogOpen(true)}>
+                  Gérer widgets
+                </Button>
+                <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className={TYPOGRAPHY.H5}>Widgets du dashboard</DialogTitle>
+                    <DialogDescription>
+                      Choisis les widgets a afficher sur la page.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground")}>
+                    {visibleDashboardLayout.length}/{availableDashboardWidgets.length} visibles
+                  </p>
+                  <div className="space-y-3">
+                    {availableDashboardWidgets.map((widgetId) => {
+                      const widget = dashboardWidgetLabels[widgetId];
+                      const checked = visibleWidgets.includes(widgetId);
+                      const isLastVisible = checked && visibleWidgets.length === 1;
 
-                    return (
-                      <label
-                        key={widgetId}
-                        className={cn(
-                          "flex items-start gap-3 rounded-xl border px-3 py-3 transition",
-                          checked ? "border-foreground/30 bg-muted/40" : "border-border/50",
-                          isLastVisible && "opacity-50"
-                        )}
-                      >
-                        <Checkbox
-                          checked={checked}
-                          disabled={isLastVisible}
-                          onCheckedChange={() => {
-                            setVisibleWidgets((prev) =>
-                              prev.includes(widgetId)
-                                ? prev.length === 1
-                                  ? prev
-                                  : prev.filter((id) => id !== widgetId)
-                                : [...prev, widgetId]
-                            );
-                          }}
-                          className="mt-1"
-                        />
-                        <div className="min-w-0">
-                          <p className="font-medium">{widget.title}</p>
-                          <p className="text-sm text-muted-foreground">{widget.description}</p>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-                <DialogFooter className="gap-2 sm:gap-0">
-                  <Button
-                    variant="ghost"
-                    className="hover:bg-muted/30"
-                    onClick={() => setVisibleWidgets(availableDashboardWidgets)}
-                  >
-                    Tout afficher
-                  </Button>
-                  <Button onClick={() => setWidgetsDialogOpen(false)}>Terminer</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <Button
-              variant="ghost"
-              className="hover:bg-muted/30"
-              onClick={() => {
-                setDashboardLayout(availableDashboardWidgets);
-                setVisibleWidgets(availableDashboardWidgets);
-              }}
-            >
-              Réinitialiser la grille
-            </Button>
-          </div>
+                      return (
+                        <label
+                          key={widgetId}
+                          className={cn(
+                            "flex items-start gap-3 rounded-xl border px-3 py-3 transition",
+                            checked ? "border-foreground/30 bg-muted/40" : "border-border/50",
+                            isLastVisible && "opacity-50"
+                          )}
+                        >
+                          <Checkbox
+                            checked={checked}
+                            disabled={isLastVisible}
+                            onCheckedChange={() => {
+                              setVisibleWidgets((prev) =>
+                                prev.includes(widgetId)
+                                  ? prev.length === 1
+                                    ? prev
+                                    : prev.filter((id) => id !== widgetId)
+                                  : [...prev, widgetId]
+                              );
+                            }}
+                            className="mt-1"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium">{widget.title}</p>
+                            <p className="text-sm text-muted-foreground">{widget.description}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                      variant="ghost"
+                      className="hover:bg-muted/30"
+                      onClick={() => setVisibleWidgets(availableDashboardWidgets)}
+                    >
+                      Tout afficher
+                    </Button>
+                    <Button onClick={() => setWidgetsDialogOpen(false)}>Terminer</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Button
+                variant="ghost"
+                className="hover:bg-muted/30"
+                onClick={() => {
+                  setDashboardLayout(availableDashboardWidgets);
+                  setVisibleWidgets(availableDashboardWidgets);
+                }}
+              >
+                Réinitialiser la grille
+              </Button>
+            </div>
+          ) : null}
         </div>
 
+        <Tabs value={activeDashboardTab} onValueChange={(value) => setActiveDashboardTab(value as 'updates' | 'economy' | 'widgets')}>
+          <TabsList className="w-full max-w-xl">
+            <TabsTrigger value="updates" className="flex-1">Nouveautés</TabsTrigger>
+            <TabsTrigger value="economy" className="flex-1">Classement Aura/Argent</TabsTrigger>
+            <TabsTrigger value="widgets" className="flex-1">Widgets</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {activeDashboardTab === 'updates' ? (
+          <Card className={dashboardWidgetCardClass}>
+            <CardHeader className={dashboardWidgetHeaderClass}>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <DashboardWidgetTitle
+                  title="Nouveautés"
+                  icon={Rocket}
+                  iconClassName="text-chart-3"
+                  iconWrapperClassName="bg-chart-3/15"
+                />
+                <Button asChild variant="outline" className={dashboardGhostButtonClass}>
+                  <Link to="/changelog">Ouvrir la page changelog</Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className={cn(dashboardWidgetContentClass, "h-full overflow-hidden")}>
+              {changelogLoading ? (
+                <div className="space-y-3">
+                  <Skeleton height={22} width="35%" baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+                  <Skeleton height={74} baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+                  <Skeleton height={74} baseColor="hsl(var(--muted))" highlightColor="hsl(var(--accent))" />
+                </div>
+              ) : changelogEntries.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucune nouveauté disponible.</p>
+              ) : (
+                <div className="max-h-[70vh] overflow-y-auto pr-1">
+                  <Accordion type="multiple" defaultValue={changelogEntries[0] ? [changelogEntries[0].id] : []}>
+                    {changelogEntries.map((entry) => {
+                      const counts: Record<DashboardUpdateCategory, number> = {
+                        BIG_FEATURE: 0,
+                        SMALL_FEATURE: 0,
+                        BUG_FIX: 0,
+                      };
+
+                      entry.sections.forEach((section) => {
+                        counts[section.category as DashboardUpdateCategory] += section.items.length;
+                      });
+
+                      const parsedDate = new Date(entry.date);
+                      const dateLabel = Number.isNaN(parsedDate.getTime())
+                        ? entry.date
+                        : parsedDate.toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          });
+
+                      return (
+                        <AccordionItem key={entry.id} value={entry.id} className="px-4 sm:px-5">
+                          <AccordionTrigger className="py-4 text-left hover:no-underline">
+                            <div className="space-y-2 flex-1 pr-3">
+                              <p className="text-lg font-semibold capitalize">{dateLabel}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {counts.BIG_FEATURE > 0 ? (
+                                  <Badge variant="outline" className={cn("gap-1.5 text-xs", dashboardUpdateCategoryMeta.BIG_FEATURE.badgeClass)}>
+                                    <Rocket className="h-3 w-3" />
+                                    {counts.BIG_FEATURE}
+                                  </Badge>
+                                ) : null}
+                                {counts.SMALL_FEATURE > 0 ? (
+                                  <Badge variant="outline" className={cn("gap-1.5 text-xs", dashboardUpdateCategoryMeta.SMALL_FEATURE.badgeClass)}>
+                                    <Sparkles className="h-3 w-3" />
+                                    {counts.SMALL_FEATURE}
+                                  </Badge>
+                                ) : null}
+                                {counts.BUG_FIX > 0 ? (
+                                  <Badge variant="outline" className={cn("gap-1.5 text-xs", dashboardUpdateCategoryMeta.BUG_FIX.badgeClass)}>
+                                    <Bug className="h-3 w-3" />
+                                    {counts.BUG_FIX}
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              <p className={TYPOGRAPHY.SMALL}>{entry.summary}</p>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="space-y-4 pb-4">
+                              {(['BIG_FEATURE', 'SMALL_FEATURE', 'BUG_FIX'] as DashboardUpdateCategory[]).map((category) => {
+                                const section = entry.sections.find((candidate) => candidate.category === category);
+                                if (!section || section.items.length === 0) return null;
+
+                                return (
+                                  <div key={`${entry.id}-${category}`} className="space-y-1.5">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                      {dashboardUpdateCategoryMeta[category].label}
+                                    </p>
+                                    <ul className="space-y-1">
+                                      {section.items.map((item) => (
+                                        <li key={item.id} className="flex gap-2 text-sm text-foreground/85 leading-relaxed">
+                                          <span className="mt-[3px] shrink-0 text-muted-foreground/40 select-none">-</span>
+                                          <span>{renderDashboardUpdateText(item.text)}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {activeDashboardTab === 'economy' ? (
+          <Card className={dashboardWidgetCardClass}>
+            <CardHeader className={dashboardWidgetHeaderClass}>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <DashboardWidgetTitle
+                  title="Classement superposé Aura / Argent"
+                  icon={TrendingUp}
+                  iconClassName="text-emerald-500"
+                  iconWrapperClassName="bg-emerald-500/15"
+                />
+                <Badge variant="secondary" className="w-fit border border-border/50 bg-muted/30 tabular-nums">
+                  Top {economyChartData.length}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className={cn(dashboardWidgetContentClass, "space-y-4")}>
+              {economyChartData.length === 0 ? (
+                <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucune donnée de classement disponible.</p>
+              ) : (
+                <>
+                  <ChartContainer config={economyChartConfig} className="!aspect-auto h-[360px] w-full">
+                    <LineChart data={economyChartData} margin={{ top: 16, right: 20, bottom: 6, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="rank" tickLine={false} axisLine={false} tickFormatter={(value) => `#${value}`} />
+                      <YAxis yAxisId="aura" orientation="left" tickLine={false} axisLine={false} width={60} />
+                      <YAxis yAxisId="money" orientation="right" tickLine={false} axisLine={false} width={70} />
+                      <ChartTooltip
+                        content={
+                          <ChartTooltipContent
+                            formatter={(value, name, _item, _index, payload) => {
+                              const chartPayload = payload as { auraUser?: string | null; moneyUser?: string | null; aura?: number | null; money?: number | null };
+                              const label = name === 'aura'
+                                ? `Aura (${chartPayload.auraUser ?? 'N/A'})`
+                                : `Argent (${chartPayload.moneyUser ?? 'N/A'})`;
+                              return [Number(value).toLocaleString('fr-FR'), label];
+                            }}
+                            labelFormatter={(label) => `Rang #${label}`}
+                          />
+                        }
+                      />
+                      <Line
+                        yAxisId="aura"
+                        type="monotone"
+                        dataKey="aura"
+                        stroke="var(--color-aura)"
+                        strokeWidth={3}
+                        dot={false}
+                        activeDot={{ r: 5, fill: 'var(--color-aura)' }}
+                        connectNulls
+                        isAnimationActive={false}
+                      />
+                      <Line
+                        yAxisId="money"
+                        type="monotone"
+                        dataKey="money"
+                        stroke="var(--color-money)"
+                        strokeWidth={3}
+                        dot={false}
+                        activeDot={{ r: 5, fill: 'var(--color-money)' }}
+                        connectNulls
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ChartContainer>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Top Aura</p>
+                      {economyTopAura.map((userEntry, index) => (
+                        <p key={`aura-top-${userEntry.id}`} className="mt-1 text-sm">
+                          #{index + 1} {userEntry.username} · <span className="font-semibold tabular-nums">{userEntry.aura.toLocaleString('fr-FR')}</span>
+                        </p>
+                      ))}
+                    </div>
+                    <div className="rounded-xl border border-border/50 bg-muted/20 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Top Argent</p>
+                      {economyTopMoney.map((userEntry, index) => (
+                        <p key={`money-top-${userEntry.id}`} className="mt-1 text-sm">
+                          #{index + 1} {userEntry.username} · <span className="font-semibold tabular-nums">{userEntry.money.toLocaleString('fr-FR')}</span>
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {activeDashboardTab === 'widgets' ? (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -1654,6 +1973,7 @@ export default function Dashboard() {
             </div>
           </SortableContext>
         </DndContext>
+        ) : null}
       </div>
     </>
   );

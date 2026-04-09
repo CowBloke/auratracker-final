@@ -650,6 +650,8 @@ export const youApi = {
     api.get<{ items: BusinessPurchasedItem[] }>('/you/my-purchases'),
   getBusinessTransactions: (businessId: string) =>
     api.get<{ transactions: YouBusinessTransaction[] }>(`/you/businesses/${businessId}/transactions`),
+  getBusinessLoansHistory: (businessId: string) =>
+    api.get<{ loans: YouBusinessLoan[] }>(`/you/businesses/${businessId}/loans-history`),
   getBankAccounts: (businessId: string) =>
     api.get<{ accounts: YouBankAccount[] }>(`/you/businesses/${businessId}/bank-accounts`),
   openBankAccount: (businessId: string, accountType: 'COURANT' | 'EPARGNE') =>
@@ -2727,6 +2729,32 @@ export const adminApi = {
     topGames: Array<{ gameType: string; totalPlayed: number; wins: number }>;
     activityChart: Array<{ date: string; count: number }>;
   }>('/admin/platform-stats'),
+  getReferralStats: () => api.get<{
+    overview: {
+      referralEnabled: boolean;
+      rewardAmount: number;
+      totalUsersWithCode: number;
+      totalReferredUsers: number;
+      approvedReferredUsers: number;
+      pendingReferredUsers: number;
+      rewardedReferrals: number;
+      rewardPayoutTotal: number;
+      conversionRate: number;
+      pendingRate: number;
+      stalePendingOlderThan7Days: number;
+    };
+    topReferrers: Array<{
+      userId: string;
+      username: string;
+      referralCode: string | null;
+      isApproved: boolean;
+      totalReferrals: number;
+      approvedReferrals: number;
+      pendingReferrals: number;
+      rewardedReferrals: number;
+      totalRewardsGiven: number;
+    }>;
+  }>('/admin/referrals/stats'),
   // Playtime leaderboard
   getPlaytimeLeaderboard: (params?: {
     period?: 'day' | 'week' | 'month' | 'custom';

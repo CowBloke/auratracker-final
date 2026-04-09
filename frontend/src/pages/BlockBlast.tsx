@@ -349,6 +349,12 @@ export default function BlockBlast() {
   };
 
   const gameOver = game.status === 'game-over';
+  const boardContainerStyle: CSSProperties = {
+    aspectRatio: '1 / 1',
+    width: isFullscreen
+      ? '100%'
+      : 'min(100%, 620px, max(280px, calc(100vh - 28rem)))',
+  };
 
   return (
     <PageShell size="wide">
@@ -464,8 +470,8 @@ export default function BlockBlast() {
 
               <div
                 ref={boardRef}
-                className="relative z-10 w-full max-w-[620px] rounded-[22px] border-[3px] border-white/70 bg-[#0f0f11] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
-                style={{ aspectRatio: '1 / 1' }}
+                className="relative z-10 max-w-[620px] rounded-[22px] border-[3px] border-white/70 bg-[#0f0f11] p-2 shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
+                style={boardContainerStyle}
               >
                 <div
                   className="grid h-full w-full gap-[3px] rounded-[14px] bg-[#16161a] p-[3px]"

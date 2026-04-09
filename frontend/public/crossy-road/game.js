@@ -36,8 +36,7 @@
   const IDLE_TIMEOUT = 7.0;
   const EAGLE_SWOOP_DURATION = 1.2;
   const CAMERA_BEHIND = 4;
-  const params = new URLSearchParams(window.location.search);
-  const GAME_MODE = params.get('mode') === 'money' ? 'money' : 'classic';
+  const GAME_MODE = 'classic';
 
   const LANE_TYPE = { GRASS: 0, ROAD: 1, WATER: 2, RAIL: 3 };
 

@@ -24,6 +24,7 @@ export type AdminTab =
   | 'content'
   | 'taxes'
   | 'settings'
+  | 'referrals'
   | 'activity'
   | 'demographics'
   | 'badges'
@@ -38,6 +39,7 @@ export const ADMIN_TABS: AdminTab[] = [
   'content',
   'taxes',
   'settings',
+  'referrals',
   'activity',
   'demographics',
   'badges',

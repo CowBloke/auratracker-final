@@ -1,21 +1,7 @@
 ## TODO
 
-- textes partout qui sert UI minimaliste
-- interface chargée : alléger mons de textes
-- Possibilité de pouvoir rembourser un pourcentage du pret (genre 50%) ou la totalité de ce que la personne posséde si elle a pas assez pour rembourser
-- interface pour les prets et historuque achat
-- crossy road fix nouvelle version highscore et gain revoir mecanique casino
 - tutoriel
-- UI blockblast
-    - probleme vidée
-    - en ruge lauvais placement
 - immobilier : acheter rues
-- allainces`- chosir entre deux images
-- reset widgets
- -apr defaut grille reset
- - parts entreprise et fodateur rachat de parts
- - image dm
- - pastille rouge DM
  - pb pastille non lus chat main
  - historique couleur enlever gris polymarket juste card classique 
  - mettre prix d'origine d'achat aussi (pas sur)
@@ -77,6 +63,26 @@ Nan mais en gros genre pendant un temps les 40K marchait je perdais et tt mais a
 - ajouter enlever/ajoute aura
 - tutotiel cioomplet you
 - role pour ne que voir les logs
+- paier mock impot
+- conetster page ban 
+- impot sur les entreprises
+- alleger dashboard moins de widgets
+- plus visible bouton you
+- pas pouvoir vendre place de clan
+- raison block page
+- jsp si c l'onglet suggestion mais j'ai quelques requetes a vous faire tout d'abord j'aimerai créer une agence de journalisme avec un petit abonnement pour acceder au journal pour tenir au courant les joueurs des changeemnts et des mises a jour etc... et aussi j'aimerai organiser un loto ces requetes seraient elles possibles ?? merci d'avance
+- puff business illegal
+- on peut pas mettre d'avis banque
+- voir les comptes en banque
+- pub fin de jeu (pas sur de l'idée)
+- ban par ip/verif par ip
+- limiter argent gagnable par j ppar jeu
+- objet pour demander changement de psuedo
+- regler cashout crossy road
+- forcer avis et bug double modal
+- fix casino
+- contestation mute
+- medecin apparait pas
 
 ## PROJECTS
 

@@ -5535,6 +5535,180 @@ router.get('/platform-stats', authMiddleware, requireAdmin, async (req: AuthRequ
   }
 });
 
+// GET /api/admin/referrals/stats
+// Returns referral funnel stats and top referrers for admin dashboard
+router.get('/referrals/stats', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const [
+      rewardAmount,
+      referralEnabled,
+      totalUsersWithCode,
+      totalReferredUsers,
+      approvedReferredUsers,
+      pendingReferredUsers,
+      rewardedReferrals,
+      neverApprovedReferredUsers,
+      topReferrers,
+    ] = await Promise.all([
+      getReferralRewardAmount(),
+      isReferralEnabled(),
+      prisma.user.count({
+        where: {
+          isSuperAdmin: false,
+          referralCode: { not: null },
+        },
+      }),
+      prisma.user.count({
+        where: {
+          isSuperAdmin: false,
+          referredById: { not: null },
+        },
+      }),
+      prisma.user.count({
+        where: {
+          isSuperAdmin: false,
+          referredById: { not: null },
+          isApproved: true,
+        },
+      }),
+      prisma.user.count({
+        where: {
+          isSuperAdmin: false,
+          referredById: { not: null },
+          isApproved: false,
+        },
+      }),
+      prisma.user.count({
+        where: {
+          isSuperAdmin: false,
+          referredById: { not: null },
+          referralRewardGrantedAt: { not: null },
+        },
+      }),
+      prisma.user.count({
+        where: {
+          isSuperAdmin: false,
+          referredById: { not: null },
+          isApproved: false,
+          createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+      prisma.user.groupBy({
+        by: ['referredById'],
+        where: {
+          referredById: { not: null },
+          isSuperAdmin: false,
+        },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 20,
+      }),
+    ]);
+
+    const referrerIds = topReferrers
+      .map((entry) => entry.referredById)
+      .filter((value): value is string => Boolean(value));
+
+    const [referrers, approvedByReferrer, pendingByReferrer, rewardedByReferrer] = await Promise.all([
+      prisma.user.findMany({
+        where: { id: { in: referrerIds } },
+        select: {
+          id: true,
+          username: true,
+          referralCode: true,
+          isApproved: true,
+        },
+      }),
+      prisma.user.groupBy({
+        by: ['referredById'],
+        where: {
+          referredById: { in: referrerIds },
+          isApproved: true,
+          isSuperAdmin: false,
+        },
+        _count: { id: true },
+      }),
+      prisma.user.groupBy({
+        by: ['referredById'],
+        where: {
+          referredById: { in: referrerIds },
+          isApproved: false,
+          isSuperAdmin: false,
+        },
+        _count: { id: true },
+      }),
+      prisma.user.groupBy({
+        by: ['referredById'],
+        where: {
+          referredById: { in: referrerIds },
+          referralRewardGrantedAt: { not: null },
+          isSuperAdmin: false,
+        },
+        _count: { id: true },
+      }),
+    ]);
+
+    const referrerById = new Map(referrers.map((referrer) => [referrer.id, referrer]));
+    const approvedCountById = new Map(
+      approvedByReferrer
+        .filter((entry): entry is typeof entry & { referredById: string } => Boolean(entry.referredById))
+        .map((entry) => [entry.referredById, entry._count.id ?? 0])
+    );
+    const pendingCountById = new Map(
+      pendingByReferrer
+        .filter((entry): entry is typeof entry & { referredById: string } => Boolean(entry.referredById))
+        .map((entry) => [entry.referredById, entry._count.id ?? 0])
+    );
+    const rewardedCountById = new Map(
+      rewardedByReferrer
+        .filter((entry): entry is typeof entry & { referredById: string } => Boolean(entry.referredById))
+        .map((entry) => [entry.referredById, entry._count.id ?? 0])
+    );
+
+    const top = topReferrers
+      .map((entry) => {
+        if (!entry.referredById) return null;
+        const referrer = referrerById.get(entry.referredById);
+        if (!referrer) return null;
+        const approvedCount = approvedCountById.get(entry.referredById) ?? 0;
+        const pendingCount = pendingCountById.get(entry.referredById) ?? 0;
+        const rewardedCount = rewardedCountById.get(entry.referredById) ?? 0;
+        return {
+          userId: referrer.id,
+          username: referrer.username,
+          referralCode: referrer.referralCode,
+          isApproved: referrer.isApproved,
+          totalReferrals: entry._count.id ?? 0,
+          approvedReferrals: approvedCount,
+          pendingReferrals: pendingCount,
+          rewardedReferrals: rewardedCount,
+          totalRewardsGiven: rewardedCount * rewardAmount,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+    return res.json({
+      overview: {
+        referralEnabled,
+        rewardAmount,
+        totalUsersWithCode,
+        totalReferredUsers,
+        approvedReferredUsers,
+        pendingReferredUsers,
+        rewardedReferrals,
+        rewardPayoutTotal: rewardedReferrals * rewardAmount,
+        conversionRate: totalReferredUsers > 0 ? Number(((approvedReferredUsers / totalReferredUsers) * 100).toFixed(2)) : 0,
+        pendingRate: totalReferredUsers > 0 ? Number(((pendingReferredUsers / totalReferredUsers) * 100).toFixed(2)) : 0,
+        stalePendingOlderThan7Days: neverApprovedReferredUsers,
+      },
+      topReferrers: top,
+    });
+  } catch (error) {
+    console.error('Admin referral stats error:', error);
+    return res.status(500).json({ error: 'Failed to fetch referral stats' });
+  }
+});
+
 // --- Business Admin Controls ---
 const BUSINESS_CREATION_ENABLED_KEY = 'business_creation_enabled';
 

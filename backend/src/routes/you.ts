@@ -32,6 +32,7 @@ import {
   trainUserSkill,
   withdrawFromCouple,
   getBusinessTransactions,
+  getBusinessLoansHistory,
   getBankAccounts,
   openBankAccount,
   bankAccountDeposit,
@@ -692,6 +693,15 @@ router.get('/businesses/:businessId/transactions', authMiddleware, requireYouAcc
     res.json({ transactions });
   } catch (error) {
     handleRouteError(error, res, 'Get business transactions error');
+  }
+});
+
+router.get('/businesses/:businessId/loans-history', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const loans = await getBusinessLoansHistory(req.user!.id, req.params.businessId);
+    res.json({ loans });
+  } catch (error) {
+    handleRouteError(error, res, 'Get business loans history error');
   }
 });
 

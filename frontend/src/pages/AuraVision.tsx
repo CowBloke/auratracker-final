@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { Camera, Flag, Mic, MicOff, MonitorPlay, RefreshCw, Send, Video, VideoOff, Waves } from 'lucide-react';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -583,23 +583,17 @@ export default function AuraVision() {
 
   return (
     <PageShell size="wide">
-      <PageHeader
-        title={t('aura_vision_title')}
-        description={t('aura_vision_description')}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-600">
-              {connected ? t('aura_vision_socket_connected') : t('aura_vision_socket_connecting')}
-            </div>
-            <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
-              {queueCount} {t('aura_vision_in_queue')}
-            </div>
-            <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
-              {activeCount} {t('aura_vision_active')}{activeCount > 1 ? 's' : ''}
-            </div>
-          </div>
-        }
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-600">
+          {connected ? t('aura_vision_socket_connected') : t('aura_vision_socket_connecting')}
+        </div>
+        <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
+          {queueCount} {t('aura_vision_in_queue')}
+        </div>
+        <div className="rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs text-muted-foreground">
+          {activeCount} {t('aura_vision_active')}{activeCount > 1 ? 's' : ''}
+        </div>
+      </div>
 
       {error ? (
         <div className="mb-4 rounded-xl bg-destructive/15 px-4 py-2 text-sm font-medium text-destructive">

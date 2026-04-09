@@ -457,6 +457,24 @@ function serializeShareProposal(proposal: any, viewerId: string) {
   };
 }
 
+function serializeBusinessLoan(loan: any) {
+  return {
+    id: loan.id,
+    amount: loan.amount,
+    termDays: loan.termMonths,
+    interestRate: loan.interestRate,
+    motivationMessage: loan.motivationMessage ?? null,
+    collateralAura: loan.collateralAura ?? 0,
+    collateralAuraHeld: loan.collateralAuraHeld ?? 0,
+    status: loan.status,
+    repaidAmount: loan.repaidAmount ?? 0,
+    decidedAt: loan.decidedAt ? loan.decidedAt.toISOString() : null,
+    collateralClaimedAt: loan.collateralClaimedAt ? loan.collateralClaimedAt.toISOString() : null,
+    createdAt: loan.createdAt.toISOString(),
+    borrower: loan.borrower,
+  };
+}
+
 function computeBusinessSuggestedShareAmount(business: {
   startingCapital: number;
   treasuryMoney: number;
@@ -652,21 +670,7 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     pendingInvitations: business.invitations.map((invite: any) => ({
       ...serializeEmploymentInvitation(invite, viewerId),
     })),
-    recentLoans: business.loans.map((loan: any) => ({
-      id: loan.id,
-      amount: loan.amount,
-      termDays: loan.termMonths,
-      interestRate: loan.interestRate,
-      motivationMessage: loan.motivationMessage ?? null,
-      collateralAura: loan.collateralAura ?? 0,
-      collateralAuraHeld: loan.collateralAuraHeld ?? 0,
-      status: loan.status,
-      repaidAmount: loan.repaidAmount ?? 0,
-      decidedAt: loan.decidedAt ? loan.decidedAt.toISOString() : null,
-      collateralClaimedAt: loan.collateralClaimedAt ? loan.collateralClaimedAt.toISOString() : null,
-      createdAt: loan.createdAt.toISOString(),
-      borrower: loan.borrower,
-    })),
+    recentLoans: business.loans.map((loan: any) => serializeBusinessLoan(loan)),
     recentInvestments: business.investments.map((investment: any) => ({
       id: investment.id,
       amount: investment.amount,
@@ -4423,6 +4427,27 @@ export async function getBusinessTransactions(userId: string, businessId: string
     actorId: tx.actorId,
     createdAt: tx.createdAt.toISOString(),
   }));
+}
+
+export async function getBusinessLoansHistory(userId: string, businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_NOT_FOUND');
+
+  const loans = await prisma.businessLoan.findMany({
+    where: { businessId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      borrower: {
+        select: USER_PREVIEW_SELECT,
+      },
+    },
+  });
+
+  return loans.map((loan) => serializeBusinessLoan(loan));
 }
 
 // --- Loan Repayment ---

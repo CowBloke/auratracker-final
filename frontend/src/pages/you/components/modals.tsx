@@ -115,6 +115,40 @@ function getLoanTimeLeftLabel(loan: YouBusinessLoan) {
   return `${days}j ${hours}h restantes`;
 }
 
+function getLoanStatusLabel(status: string) {
+  switch (status) {
+    case 'PENDING':
+      return 'En attente';
+    case 'ACTIVE':
+      return 'Actif';
+    case 'REPAID':
+      return 'Rembourse';
+    case 'DEFAULTED':
+      return 'En defaut';
+    case 'REJECTED':
+      return 'Refuse';
+    default:
+      return status;
+  }
+}
+
+function getLoanStatusPillColor(status: string) {
+  switch (status) {
+    case 'PENDING':
+      return 'bg-sky-400/15 text-sky-300';
+    case 'ACTIVE':
+      return 'bg-amber-400/15 text-amber-300';
+    case 'REPAID':
+      return 'bg-emerald-400/15 text-emerald-300';
+    case 'DEFAULTED':
+      return 'bg-rose-400/15 text-rose-300';
+    case 'REJECTED':
+      return 'bg-zinc-400/20 text-zinc-300';
+    default:
+      return 'bg-muted/30 text-muted-foreground';
+  }
+}
+
 function BusinessTypePickerModal({
   open,
   onClose,
@@ -808,6 +842,9 @@ export function ManageBusinessModal({
   const [manageMenuOpen, setManageMenuOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [loanViewTab, setLoanViewTab] = useState<'active' | 'history'>('active');
+  const [loanHistory, setLoanHistory] = useState<YouBusinessLoan[]>([]);
+  const [loadingLoanHistory, setLoadingLoanHistory] = useState(false);
 
   const toggleSection = (s: typeof activeSection) => setActiveSection((prev) => (prev === s ? null : s));
 
@@ -825,6 +862,8 @@ export function ManageBusinessModal({
       setTransferFeeInput(String(business?.transferFeeRate ?? 2));
       setTransactions([]);
       setTransferOpen(false);
+      setLoanViewTab('active');
+      setLoanHistory([]);
     }
   }, [open, business?.id]);
 
@@ -840,8 +879,20 @@ export function ManageBusinessModal({
     return () => { cancelled = true; };
   }, [open, business?.id]);
 
-  const pendingLoans = business?.recentLoans.filter((loan) => loan.status === 'PENDING') ?? [];
-  const activeLoans = business?.recentLoans.filter((loan) => loan.status === 'ACTIVE') ?? [];
+  useEffect(() => {
+    if (!open || !business || business.ownerKind !== 'you' || business.typeKey !== 'bank') return;
+    let cancelled = false;
+    setLoadingLoanHistory(true);
+    youApi.getBusinessLoansHistory(business.id)
+      .then((res) => { if (!cancelled) setLoanHistory(res.data.loans); })
+      .catch(() => { if (!cancelled) setLoanHistory([]); })
+      .finally(() => { if (!cancelled) setLoadingLoanHistory(false); });
+    return () => { cancelled = true; };
+  }, [open, business?.id, business?.typeKey, business?.ownerKind]);
+
+  const bankLoans = loanHistory.length > 0 ? loanHistory : (business?.recentLoans ?? []);
+  const pendingLoans = bankLoans.filter((loan) => loan.status === 'PENDING');
+  const activeLoans = bankLoans.filter((loan) => loan.status === 'ACTIVE');
   const pendingBuyoutOffers = business?.pendingBuyoutOffers.filter((offer) => offer.status === 'PENDING') ?? [];
   const pendingShareholderProposals = business?.pendingShareholderProposals.filter((proposal) => proposal.status === 'PENDING') ?? [];
   const isBank = business?.typeKey === 'bank';
@@ -1325,69 +1376,104 @@ export function ManageBusinessModal({
               </CardContent>
             </Card>
 
-            {/* Active loans — shown at top, above tx log (bank only) */}
-            {isBank && activeLoans.length > 0 ? (
+            {/* Bank loans: active + full history */}
+            {isBank ? (
               <Card>
                 <CardContent className="space-y-3 px-5 py-4">
-                  <SectionTitle>Prêts actifs ({activeLoans.length})</SectionTitle>
-                  {activeLoans.map((loan) => {
-                    const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
-                    const repaid = loan.repaidAmount ?? 0;
-                    const remaining = Math.max(0, totalOwed - repaid);
-                    const pct = totalOwed > 0 ? Math.round((repaid / totalOwed) * 100) : 0;
-                    const dueDate = getLoanDueDate(loan);
-                    const isPastDue = new Date() >= dueDate;
-                    const canClaimCollateral = isPastDue && loan.collateralAuraHeld > 0;
-                    return (
-                      <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-2">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold">{loan.borrower.username}</p>
-                            <p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} € principal · {loan.interestRate} % · {loan.termDays} jours</p>
-                            <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-                              <div className="rounded-lg bg-background/50 px-3 py-2">
-                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Reste du</p>
-                                <p className="mt-1 text-sm font-semibold text-foreground">{remaining.toLocaleString('fr-FR')} €</p>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <SectionTitle>Prêts banque</SectionTitle>
+                    <div className="inline-flex items-center rounded-lg border border-border/40 bg-muted/10 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setLoanViewTab('active')}
+                        className={cn('rounded-md px-2.5 py-1 text-xs transition-colors', loanViewTab === 'active' ? 'bg-amber-400/20 text-amber-300' : 'text-muted-foreground hover:text-foreground')}
+                      >
+                        Actifs ({activeLoans.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLoanViewTab('history')}
+                        className={cn('rounded-md px-2.5 py-1 text-xs transition-colors', loanViewTab === 'history' ? 'bg-emerald-400/20 text-emerald-300' : 'text-muted-foreground hover:text-foreground')}
+                      >
+                        Historique ({bankLoans.length})
+                      </button>
+                    </div>
+                  </div>
+
+                  {loadingLoanHistory && bankLoans.length === 0 ? (
+                    <p className="py-4 text-center text-xs text-muted-foreground">Chargement de l'historique des prêts…</p>
+                  ) : ((loanViewTab === 'active' ? activeLoans : bankLoans).length === 0) ? (
+                    <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
+                      {loanViewTab === 'active' ? 'Aucun prêt actif actuellement.' : 'Aucun prêt enregistré pour cette banque.'}
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-[34rem] overflow-y-auto pr-1">
+                      {(loanViewTab === 'active' ? activeLoans : bankLoans).map((loan) => {
+                        const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
+                        const repaid = loan.repaidAmount ?? 0;
+                        const remaining = Math.max(0, totalOwed - repaid);
+                        const pct = totalOwed > 0 ? Math.round((repaid / totalOwed) * 100) : 0;
+                        const dueDate = getLoanDueDate(loan);
+                        const isPastDue = loan.status === 'ACTIVE' && new Date() >= dueDate;
+                        const canClaimCollateral = isPastDue && loan.collateralAuraHeld > 0;
+                        const isActive = loan.status === 'ACTIVE';
+                        return (
+                          <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-2">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold">{loan.borrower.username}</p>
+                                  <Pill label={getLoanStatusLabel(loan.status)} color={getLoanStatusPillColor(loan.status)} />
+                                </div>
+                                <p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} € principal · {loan.interestRate} % · {loan.termDays} jours</p>
+                                <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+                                  <div className="rounded-lg bg-background/50 px-3 py-2">
+                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Reste du</p>
+                                    <p className="mt-1 text-sm font-semibold text-foreground">{remaining.toLocaleString('fr-FR')} €</p>
+                                  </div>
+                                  <div className="rounded-lg bg-background/50 px-3 py-2">
+                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Echeance</p>
+                                    <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-rose-400' : 'text-foreground'}`}>{formatLoanDate(dueDate)}</p>
+                                  </div>
+                                  <div className="rounded-lg bg-background/50 px-3 py-2">
+                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Temps restant</p>
+                                    <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-rose-400' : 'text-foreground'}`}>{isActive ? getLoanTimeLeftLabel(loan) : '-'}</p>
+                                  </div>
+                                  <div className="rounded-lg bg-background/50 px-3 py-2">
+                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Accorde le</p>
+                                    <p className="mt-1 text-sm font-semibold text-foreground">{formatLoanDate(loan.decidedAt ?? loan.createdAt)}</p>
+                                  </div>
+                                </div>
+                                {loan.collateralAura > 0 || loan.collateralAuraHeld > 0 ? (
+                                  <p className="mt-2 text-xs text-amber-400">Hypothèque aura: {Math.max(loan.collateralAuraHeld, loan.collateralAura).toLocaleString('fr-FR')}</p>
+                                ) : null}
+                                {loan.motivationMessage ? <p className="mt-2 text-xs text-muted-foreground">Motivation: "{loan.motivationMessage}"</p> : null}
+                                <p className="mt-2 text-xs text-muted-foreground">{repaid.toLocaleString('fr-FR')} / {totalOwed.toLocaleString('fr-FR')} € rembourses</p>
+                                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
+                                  <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} />
+                                </div>
                               </div>
-                              <div className="rounded-lg bg-background/50 px-3 py-2">
-                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Echeance</p>
-                                <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-rose-400' : 'text-foreground'}`}>{formatLoanDate(dueDate)}</p>
-                              </div>
-                              <div className="rounded-lg bg-background/50 px-3 py-2">
-                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Temps restant</p>
-                                <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-rose-400' : 'text-foreground'}`}>{getLoanTimeLeftLabel(loan)}</p>
-                              </div>
-                              <div className="rounded-lg bg-background/50 px-3 py-2">
-                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Accorde le</p>
-                                <p className="mt-1 text-sm font-semibold text-foreground">{formatLoanDate(loan.decidedAt ?? loan.createdAt)}</p>
-                              </div>
-                            </div>
-                            {loan.collateralAuraHeld > 0 ? (
-                              <p className="mt-2 text-xs text-amber-400">{loan.collateralAuraHeld.toLocaleString('fr-FR')} aura bloquees en hypothèque</p>
-                            ) : null}
-                            {loan.motivationMessage ? <p className="mt-2 text-xs text-muted-foreground">Motivation: "{loan.motivationMessage}"</p> : null}
-                            <p className="mt-2 text-xs text-muted-foreground">{repaid.toLocaleString('fr-FR')} / {totalOwed.toLocaleString('fr-FR')} € rembourses</p>
-                            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
-                              <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} />
+                              {canClaimCollateral ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="shrink-0 text-xs border-rose-400/40 text-rose-400 hover:bg-rose-400/10"
+                                  onClick={() => void repayLoanNow(loan.id)}
+                                  disabled={repayingLoanId !== null}
+                                >
+                                  Saisir l'hypothèque
+                                </Button>
+                              ) : isPastDue ? (
+                                <p className="shrink-0 text-xs text-rose-400/70">En defaut · pas d'hypothèque</p>
+                              ) : isActive ? (
+                                <p className="shrink-0 text-xs text-muted-foreground">Remboursement en cours</p>
+                              ) : null}
                             </div>
                           </div>
-                          {canClaimCollateral ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="shrink-0 text-xs border-rose-400/40 text-rose-400 hover:bg-rose-400/10"
-                              onClick={() => void repayLoanNow(loan.id)}
-                              disabled={repayingLoanId !== null}
-                            >
-                              Saisir l'hypothèque
-                            </Button>
-                          ) : isPastDue ? (
-                            <p className="shrink-0 text-xs text-rose-400/70">En defaut · pas d'hypothèque</p>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
+                        );
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : null}
