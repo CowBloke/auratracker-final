@@ -396,8 +396,6 @@ const safeJsonParse = <T>(value: string | null | undefined, fallback: T): T => {
   }
 };
 const serializeNationLayer = (clan: {
-  nationTier: number;
-  hierarchyName: string;
   influence: number;
   intimidation: number;
   marketControl: number;
@@ -408,8 +406,6 @@ const serializeNationLayer = (clan: {
   arsenalJson: string;
   injuriesJson: string;
 }) => ({
-  tier: clan.nationTier,
-  hierarchyName: clan.hierarchyName,
   influence: clan.influence,
   intimidation: clan.intimidation,
   marketControl: clan.marketControl,

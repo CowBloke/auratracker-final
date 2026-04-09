@@ -437,7 +437,7 @@ export default function Dashboard() {
   const [resetCountdown, setResetCountdown] = useState('--:--:--');
   const [referralSummary, setReferralSummary] = useState<ReferralSummary | null>(null);
   const [referralLoading, setReferralLoading] = useState(false);
-  const [activeDashboardTab, setActiveDashboardTab] = useState<'updates' | 'economy' | 'widgets'>('widgets');
+  const [activeDashboardTab, setActiveDashboardTab] = useState<'updates' | 'economy' | 'widgets'>('updates');
   const [changelogEntries, setChangelogEntries] = useState<ChangelogEntry[]>([]);
   const [changelogLoading, setChangelogLoading] = useState(true);
   const [economyLeaderboardUsers, setEconomyLeaderboardUsers] = useState<DashboardEconomyUser[]>([]);

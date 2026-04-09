@@ -92,12 +92,30 @@ router.get('/', async (_req, res) => {
 
     const enabledFromSetting = enabledSetting?.value === 'true';
     const enabledFromLegacyPages = pages.length > 0;
-    const enabled = enabledFromSetting || enabledFromLegacyPages;
 
     // Ne retourner endDate que si elle n'est pas vide
     const endDate = endDateSetting?.value && endDateSetting.value.trim() !== '' 
       ? endDateSetting.value 
       : null;
+
+    const endDateMs = endDate ? new Date(endDate).getTime() : Number.NaN;
+    const isExpired = Number.isFinite(endDateMs) && endDateMs <= Date.now();
+    const enabled = (enabledFromSetting || enabledFromLegacyPages) && !isExpired;
+
+    if (isExpired && (enabledFromSetting || enabledFromLegacyPages)) {
+      await Promise.all([
+        prisma.gameSettings.upsert({
+          where: { key: MAINTENANCE_ENABLED_KEY },
+          create: { key: MAINTENANCE_ENABLED_KEY, value: 'false' },
+          update: { value: 'false' },
+        }),
+        prisma.gameSettings.upsert({
+          where: { key: MAINTENANCE_PAGES_KEY },
+          create: { key: MAINTENANCE_PAGES_KEY, value: '[]' },
+          update: { value: '[]' },
+        }),
+      ]);
+    }
 
     // Garder le champ pages pour compat avec d'anciens front, mais il est désormais global
     const responsePages = enabled ? ['/'] : [];

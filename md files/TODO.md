@@ -1,60 +1,32 @@
 ## TODO
 
 - chat buggé
+- casino bug : roulette (Nan mais en gros genre pendant un temps les 40K marchait je perdais et tt mais a un moment j'ai mise plein de fois mais genre ca perdait l'argent mais la roulette tournait pas et ducoup ca depensait l'argent dans le vide)
 - tutoriel
+    - expliciter changement de business
 - immobilier : acheter rues
 - impot sur les societes : fisc
 - aut scroll vers le bas quand pas de message non lus dans chat main
 - racheterr part en tant que fondateur et transfert fondateur
 - historique solde
-- associer clan/entreprise
-- mariage compte partagé et aussi argent partagé bug
-- maeché noir
-- entreprise coca
-- braquer banque
-- blaznchir argent
-- expliciter chnagement de business
-- niveau de clan
-- fix compte à rebours
-- voit déoulé des parts pour tt le monde
-- plus d'objets
-- ressources complémentaire : empire
-- voir qui like historique enchainement
-- enquete de satisfaction
+- marché noir
+    - entreprise coca
 - syteme d'amende qu'ils doivent payer eux memes
-Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
-- bug envoie de messages support au lieu de utilisateur
+- Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 - revendre action
-- adblock
-- pastille chat main
+- adblock objet
 - revenus journaliers
 - message pour demander de relancer
-- remette crossy road
-- fix chat bug
-- pb offline pas compté ausi dcp
-- fix chat coué message trop long et nom mettre ...
-- opti
 - monnaie reele api
-- pause sur demineur et sudoku bug
-- pour suppoet message mettre non répondu pour admin
-- pb compteur eb ligne auravision
+- pb compteur en ligne auravision
 - reaction et reply et ticks vus dm
-- fix roulette
 - fix auto maintenace desactivation
-- maintenance sur periode jorunalier quand pas cours
-- interaction e tre niveau et classe
-- voir les gens qui ont acheté
-- illégal
-
-- bug roulette
-Nan mais en gros genre pendant un temps les 40K marchait je perdais et tt mais a un moment j'ai mise plein de fois mais genre ca perdait l'argent mais la roulette tournait pas et ducoup ca depensait l'argent dans le vide
-
+- maintenance we
 - pb quand on envoie argent on envoie aussi aura
 - voit historique des gens qui achetent tes biens et services
 - avocat de qui ?
 - pb aura vision
 - on peut pas enlever aura
-- ajouter enlever/ajoute aura
 - tutotiel cioomplet you
 - role pour ne que voir les logs
 - paier mock impot

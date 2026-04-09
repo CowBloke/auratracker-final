@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
-import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -575,7 +574,6 @@ export default function Solitaire() {
           <RotateCcw className="h-4 w-4" />
           Nouvelle partie
         </Button>
-        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={isWon} className="w-full" />
       </div>
       )}
 
@@ -595,7 +593,6 @@ export default function Solitaire() {
                   Nouvelle partie
                 </Button>
               )}
-              <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={isWon} />
               <GameFullscreenButton isFullscreen={isFullscreen} onClick={toggleFullscreen} />
             </div>
           </div>

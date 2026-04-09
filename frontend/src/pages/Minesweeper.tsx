@@ -8,8 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils';
 import { Bomb, Flag, RotateCcw } from 'lucide-react';
 import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
-import { GamePauseButton } from '@/components/game/GamePauseButton';
-import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
@@ -213,7 +211,6 @@ export default function Minesweeper() {
   const [lastScore, setLastScore] = useState(0);
   const [flagMode, setFlagMode] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
 
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -223,7 +220,6 @@ export default function Minesweeper() {
   const totalSafeCells = config.rows * config.columns - config.mines;
   const progress = Math.min(100, Math.round((revealedSafeCells / totalSafeCells) * 100));
   const winRate = totalPlayed > 0 ? Math.round((wins / totalPlayed) * 100) : 0;
-  const canPause = status === 'ready' || status === 'playing';
 
   const wrongFlags = useMemo(
     () => board.flat().filter((cell) => cell.isFlagged && !cell.isMine).length,
@@ -249,7 +245,6 @@ export default function Minesweeper() {
     setIsNewHighScore(false);
     setLastScore(0);
     setHasStarted(false);
-    setIsPaused(false);
   }, [difficulty]);
 
   const fetchStats = useCallback(async () => {
@@ -283,7 +278,7 @@ export default function Minesweeper() {
   }, [difficulty, resetBoard]);
 
   useEffect(() => {
-    if (status !== 'playing' || isPaused) {
+    if (status !== 'playing') {
       if (timerRef.current) {
         window.clearInterval(timerRef.current);
         timerRef.current = null;
@@ -302,7 +297,7 @@ export default function Minesweeper() {
         timerRef.current = null;
       }
     };
-  }, [isPaused, status]);
+  }, [status]);
 
   const submitResult = useCallback(async (won: boolean, score: number, duration: number) => {
     if (!user || submitLockRef.current) return;
@@ -361,7 +356,6 @@ export default function Minesweeper() {
   }, [finishGame, totalSafeCells]);
 
   const revealAt = useCallback((row: number, column: number) => {
-    if (isPaused) return;
     if (status === 'won' || status === 'lost') return;
 
     let workingBoard = board;
@@ -420,10 +414,9 @@ export default function Minesweeper() {
     if (nextStatus === 'playing') {
       tryWinCheck(result.board, nextRevealedSafeCells);
     }
-  }, [board, config, finishGame, isPaused, revealedSafeCells, status, tryWinCheck]);
+  }, [board, config, finishGame, revealedSafeCells, status, tryWinCheck]);
 
   const toggleFlagAt = useCallback((row: number, column: number) => {
-    if (isPaused) return;
     if (status === 'won' || status === 'lost') return;
 
     if (status === 'ready' && !hasStarted) {
@@ -439,13 +432,7 @@ export default function Minesweeper() {
     setBoard(nextBoard);
     setFlagsUsed(nextFlagsUsed);
     setMinesLeft(config.mines - nextFlagsUsed);
-  }, [board, config.mines, flagsUsed, hasStarted, isPaused, status]);
-
-  useEffect(() => {
-    if (!canPause && isPaused) {
-      setIsPaused(false);
-    }
-  }, [canPause, isPaused]);
+  }, [board, config.mines, flagsUsed, hasStarted, status]);
 
   const handleCellAction = useCallback((row: number, column: number) => {
     if (flagMode) {
@@ -534,7 +521,6 @@ export default function Minesweeper() {
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Nouvelle partie
               </Button>
-              <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} className="w-full" />
             </CardContent>
           </Card>
 
@@ -569,7 +555,6 @@ export default function Minesweeper() {
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Nouvelle partie
                 </Button>
-                <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
                 <Button
                   type="button"
                   variant={flagMode ? 'default' : 'outline'}
@@ -587,7 +572,6 @@ export default function Minesweeper() {
 
           <div className="rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
             <div className="relative rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
-              <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
               <div className="grid gap-1" style={boardStyle}>
                 {board.flat().map((cell) => {
                   const isExplodedMine = status === 'lost' && cell.isMine;

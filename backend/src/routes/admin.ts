@@ -77,6 +77,14 @@ const MAX_ITEM_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ADMIN_CLAN_MAX_MEMBERS_LIMIT = 12;
 const LOG_EXPORT_BATCH_SIZE = 5000;
 const MAX_TAX_BRACKETS = 25;
+const SITE_RELOAD_TRIGGER_KEYS = new Set([
+  'maintenance_enabled',
+  'maintenance_message',
+  'maintenance_pages',
+  'maintenance_end_date',
+  'blocked_pages',
+  'blocked_message',
+]);
 
 type TaxBracketInput = {
   threshold: number;
@@ -3711,6 +3719,10 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
+    if (SITE_RELOAD_TRIGGER_KEYS.has(key)) {
+      io.emit('site:reload-required', { reason: 'settings-updated', keys: [key] });
+    }
+
     res.json({ setting });
   } catch (error) {
     console.error('Admin update setting error:', error);
@@ -3885,6 +3897,16 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
       } catch {
         // Ignore if function not available
       }
+    }
+
+    const reloadKeys = updates
+      .map(({ key }) => key)
+      .filter((key) => SITE_RELOAD_TRIGGER_KEYS.has(key));
+    if (reloadKeys.length > 0) {
+      io.emit('site:reload-required', {
+        reason: 'settings-updated',
+        keys: reloadKeys,
+      });
     }
 
     // Return updated settings

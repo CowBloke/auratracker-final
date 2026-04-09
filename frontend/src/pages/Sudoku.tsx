@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Brain, Eraser, RefreshCcw, Target } from 'lucide-react';
 import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
-import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
@@ -551,7 +550,6 @@ export default function Sudoku() {
                 <RefreshCcw className="mr-2 h-4 w-4" />
                 Nouvelle grille
               </Button>
-              <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} className="w-full" />
             </CardContent>
           </Card>
 
@@ -617,7 +615,6 @@ export default function Sudoku() {
                   <RefreshCcw className="mr-2 h-4 w-4" />
                   Nouvelle grille
                 </Button>
-                <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
               </div>
             ) : (
               <div />

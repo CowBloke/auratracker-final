@@ -1780,12 +1780,7 @@ export default function Clans() {
                               <div>Territoire fondateur: <span className="font-medium text-foreground">{selectedClan.nation.territory.label}</span></div>
                             </div>
                           </div>
-                          <div className="grid gap-3 md:grid-cols-4">
-                            <div className="rounded-xl border border-border/50 bg-muted/15 p-3">
-                              <div className="text-xs text-muted-foreground">Palier</div>
-                              <div className="text-lg font-semibold">Niveau {selectedClan.nation.tier}</div>
-                              <div className="text-xs text-muted-foreground">{selectedClan.nation.hierarchyName}</div>
-                            </div>
+                          <div className="grid gap-3 md:grid-cols-3">
                             <div className="rounded-xl border border-border/50 bg-muted/15 p-3">
                               <div className="text-xs text-muted-foreground">Influence</div>
                               <div className="text-lg font-semibold">{selectedClan.nation.influence}</div>

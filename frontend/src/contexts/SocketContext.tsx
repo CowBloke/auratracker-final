@@ -55,6 +55,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     s.on('connect', () => setConnected(true));
     s.on('disconnect', () => setConnected(false));
 
+    const handleSiteReloadRequired = () => {
+      window.location.reload();
+    };
+
     const handleBan = (data: { message?: string; ban?: { reason?: string; type?: string; expiresAt?: string | null } }) => {
       storeBanInfo({
         reason: data?.ban?.reason ?? null,
@@ -69,9 +73,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     s.on('ban:enforced', handleBan);
     s.on('ban:active', handleBan);
+    s.on('site:reload-required', handleSiteReloadRequired);
 
     return () => {
       disconnectSocket();
+      s.off('site:reload-required', handleSiteReloadRequired);
       s.removeAllListeners();
       setSocket(null);
       setConnected(false);

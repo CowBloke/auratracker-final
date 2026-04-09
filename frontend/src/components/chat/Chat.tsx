@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { getPageMeta } from './presence';
 import { resolveImageUrl } from '@/lib/images';
@@ -39,6 +40,14 @@ const getReactionUsersLabel = (users: string[]) => {
   return users.length === 1 ? `${users[0]} ${t('chat_reaction_single_suffix')}` : `${users.join(', ')} ${t('chat_reaction_multiple_suffix')}`;
 };
 
+type ReactionDetails = {
+  emoji: string;
+  count: number;
+  users: string[];
+  author: string;
+  preview: string;
+};
+
 export default function Chat({ isOpen, onToggle }: ChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -48,6 +57,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const [showUsers, setShowUsers] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
+  const [selectedReaction, setSelectedReaction] = useState<ReactionDetails | null>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
   const lastMessageIdRef = useRef<string | null>(null);
   const unreadMessageRef = useRef<HTMLDivElement>(null);
@@ -172,6 +182,19 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
 
   const scrollToUnread = () => {
     unreadMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const openReactionUsers = (
+    msg: { username: string; message: string; imageUrl?: string | null },
+    reaction: { emoji: string; count: number; users: string[] }
+  ) => {
+    setSelectedReaction({
+      emoji: reaction.emoji,
+      count: reaction.count,
+      users: reaction.users,
+      author: msg.username,
+      preview: msg.message || (msg.imageUrl ? '[image]' : ''),
+    });
   };
 
   return (
@@ -352,15 +375,17 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                           {msg.reactions.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {msg.reactions.map((reaction) => (
-                                <span
+                                <button
                                   key={`${msg.id}-${reaction.emoji}`}
-                                  className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                                  type="button"
+                                  className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
                                   title={getReactionUsersLabel(reaction.users)}
                                   aria-label={getReactionUsersLabel(reaction.users)}
+                                  onClick={() => openReactionUsers(msg, reaction)}
                                 >
                                   <span>{reaction.emoji}</span>
                                   <span className="tabular-nums">{reaction.count}</span>
-                                </span>
+                                </button>
                               ))}
                             </div>
                           )}
@@ -437,6 +462,48 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
               </div>
             </form>
           </div>
+
+          <Dialog
+            open={Boolean(selectedReaction)}
+            onOpenChange={(open) => {
+              if (!open) setSelectedReaction(null);
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  {selectedReaction ? `${selectedReaction.emoji} ${t('chat_reaction_users_title')}` : t('chat_reaction_users_title')}
+                </DialogTitle>
+                {selectedReaction && (
+                  <DialogDescription>
+                    {`${selectedReaction.count} personne${selectedReaction.count > 1 ? 's' : ''} ${selectedReaction.count > 1 ? 'ont' : 'a'} réagi au message de ${selectedReaction.author}.`}
+                  </DialogDescription>
+                )}
+              </DialogHeader>
+
+              {selectedReaction && (
+                <div className="space-y-3">
+                  {selectedReaction.preview && (
+                    <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">{selectedReaction.author}</span>
+                      <span className="mx-1">•</span>
+                      <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{selectedReaction.preview}</span>
+                    </div>
+                  )}
+
+                  <ScrollArea className="max-h-72 rounded-lg border border-border/60">
+                    <div className="divide-y divide-border/60">
+                      {selectedReaction.users.map((username) => (
+                        <div key={username} className="px-3 py-2 text-sm text-foreground">
+                          {username}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           {/* Online Users */}
           <div className="w-40 border-l border-border/40">

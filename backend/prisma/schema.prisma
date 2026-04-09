@@ -1011,8 +1011,6 @@ model Clan {
   warLosses     Int      @default(0)
   warDraws      Int      @default(0)
   clanBankMoney Int      @default(0)
-  nationTier    Int      @default(1)
-  hierarchyName String   @default("Crew locale")
   influence     Int      @default(0)
   intimidation  Int      @default(0)
   marketControl Int      @default(0)

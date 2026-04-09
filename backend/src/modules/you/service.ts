@@ -2197,6 +2197,8 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
   }
 
   const acceptedInvitation = await prisma.$transaction(async (tx) => {
+    const assignedMemberRole = 'EMPLOYEE';
+
     const updatedInvitation = await tx.businessInvitation.update({
       where: { id: invitation.id },
       data: {
@@ -2219,14 +2221,14 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
           },
         },
         update: {
-          role: invitation.role,
+          role: assignedMemberRole,
           salary: invitation.salary ?? 0,
           status: 'ACTIVE',
         },
         create: {
           businessId: invitation.businessId,
           userId: invitation.employeeId,
-          role: invitation.role,
+          role: assignedMemberRole,
           salary: invitation.salary ?? 0,
           status: 'ACTIVE',
         },

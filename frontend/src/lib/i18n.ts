@@ -178,6 +178,8 @@ const fr = {
   chat_reaction_wow: 'Wow',
   chat_reaction_sad: 'Triste',
   chat_reaction_angry: 'Grr',
+  chat_reaction_users_title: 'Réactions',
+  chat_reaction_users_description: 'Utilisateurs ayant réagi à ce message.',
   chat_auto_block_prefix: 'Blocage auto:',
   chat_unpin: 'Désépingler',
   chat_pin: 'Épingler',

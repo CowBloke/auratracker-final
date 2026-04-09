@@ -1477,8 +1477,6 @@ export interface ClanSummary {
   warDraws: number;
   clanBankMoney: number;
   nation: {
-    tier: number;
-    hierarchyName: string;
     influence: number;
     intimidation: number;
     marketControl: number;

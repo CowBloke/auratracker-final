@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { maintenanceApi } from '@/services/api';
 import { normalizeDefaultLandingPage } from '@/lib/default-landing-page';
 
@@ -65,6 +65,7 @@ const FeaturesContext = createContext<FeaturesContextValue>({
 export function FeaturesProvider({ children }: { children: React.ReactNode }) {
   const [maintenanceStatus, setMaintenanceStatus] = useState<MaintenanceStatus>(DEFAULT_STATUS);
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
+  const maintenanceExpiryTimerRef = useRef<number | null>(null);
 
   const doFetch = useCallback(async () => {
     try {
@@ -104,6 +105,34 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
     const interval = window.setInterval(doFetch, 60000);
     return () => window.clearInterval(interval);
   }, [doFetch]);
+
+  useEffect(() => {
+    if (maintenanceExpiryTimerRef.current !== null) {
+      window.clearTimeout(maintenanceExpiryTimerRef.current);
+      maintenanceExpiryTimerRef.current = null;
+    }
+
+    if (!maintenanceStatus.enabled || !maintenanceStatus.endDate) {
+      return undefined;
+    }
+
+    const endAt = new Date(maintenanceStatus.endDate).getTime();
+    if (Number.isNaN(endAt)) {
+      return undefined;
+    }
+
+    const delay = Math.max(0, endAt - Date.now());
+    maintenanceExpiryTimerRef.current = window.setTimeout(() => {
+      void doFetch();
+    }, delay);
+
+    return () => {
+      if (maintenanceExpiryTimerRef.current !== null) {
+        window.clearTimeout(maintenanceExpiryTimerRef.current);
+        maintenanceExpiryTimerRef.current = null;
+      }
+    };
+  }, [maintenanceStatus.enabled, maintenanceStatus.endDate, doFetch]);
 
   const value = useMemo(
     () => ({ maintenanceStatus, maintenanceLoading, refreshFeatures: doFetch }),
