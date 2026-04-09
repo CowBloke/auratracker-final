@@ -50,7 +50,12 @@ function requireAdmin(req: AuthRequest, res: Response): boolean {
   return true;
 }
 
-function isAdminUser(user: AuthRequest['user'] | null | undefined): boolean {
+type AdminFlagUser = {
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+};
+
+function isAdminUser(user: AdminFlagUser | null | undefined): boolean {
   return Boolean(user?.isAdmin || user?.isSuperAdmin);
 }
 
