@@ -2468,6 +2468,7 @@ export const adminApi = {
   getPendingAds: () => api.get<{ pendingAds: PendingAdReview[] }>('/admin/ads/pending'),
   approveAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/approve`, {}),
   rejectAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/reject`, {}),
+  deleteAdForever: (id: string) => api.delete<{ ok: boolean }>(`/admin/ads/${id}`),
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   getClans: () => api.get<{ clans: AdminClan[] }>('/admin/clans'),
   getClanEvents: () => api.get<{ events: AdminClanEvent[] }>('/admin/clan-events'),
@@ -3230,6 +3231,8 @@ export const supportApi = {
     api.patch<{ isFavorite: boolean }>(`/support/conversations/${conversationId}/favorite`, {}),
   addMember: (conversationId: string, userId: string) =>
     api.post<{ success: boolean }>(`/support/conversations/${conversationId}/members`, { userId }),
+  requestWitness: (conversationId: string, data: { witnessUserId: string; anonymous: boolean }) =>
+    api.post<{ success: boolean }>(`/support/conversations/${conversationId}/witness-requests`, data),
   removeMember: (conversationId: string, memberId: string) =>
     api.delete<{ success: boolean }>(`/support/conversations/${conversationId}/members/${memberId}`),
   reactToMessage: (conversationId: string, messageId: string, emoji: string) =>

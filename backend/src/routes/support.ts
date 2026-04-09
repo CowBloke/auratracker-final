@@ -50,6 +50,10 @@ function requireAdmin(req: AuthRequest, res: Response): boolean {
   return true;
 }
 
+function isAdminUser(user: AuthRequest['user'] | null | undefined): boolean {
+  return Boolean(user?.isAdmin || user?.isSuperAdmin);
+}
+
 function normalizeSupportImages(input: unknown): string[] {
   if (!Array.isArray(input)) {
     return [];
@@ -985,6 +989,9 @@ router.patch('/conversations/:conversationId', authMiddleware, async (req: AuthR
     if (membership.conversation.type !== 'GROUP') {
       return res.status(400).json({ error: 'Only group conversations can be updated' });
     }
+    if ((membership.conversation as any).courtCaseId && !isAdminUser(user)) {
+      return res.status(403).json({ error: 'Only admins can rename court case groups' });
+    }
 
     const title = normalizeConversationText(req.body?.title, 80);
     const description = normalizeConversationText(req.body?.description, GROUP_DESCRIPTION_MAX_LENGTH);
@@ -1065,6 +1072,9 @@ router.post('/conversations/:conversationId/members', authMiddleware, async (req
     });
     if (!membership) return res.status(404).json({ error: 'Conversation not found' });
     if (membership.conversation.type !== 'GROUP') return res.status(400).json({ error: 'Not a group' });
+    if ((membership.conversation as any).courtCaseId && !isAdminUser(user)) {
+      return res.status(403).json({ error: 'Only admins can add people to a court case group' });
+    }
 
     const existing = await prisma.messageConversationParticipant.findFirst({
       where: { conversationId, userId: targetUserId },
@@ -1092,6 +1102,119 @@ router.post('/conversations/:conversationId/members', authMiddleware, async (req
   } catch (error) {
     console.error('Add member error:', error);
     res.status(500).json({ error: 'Failed to add member' });
+  }
+});
+
+router.post('/conversations/:conversationId/witness-requests', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+
+    const { conversationId } = req.params;
+    const witnessUserId = typeof req.body?.witnessUserId === 'string' ? req.body.witnessUserId.trim() : '';
+    const anonymous = Boolean(req.body?.anonymous);
+
+    if (!witnessUserId) {
+      return res.status(400).json({ error: 'witnessUserId required' });
+    }
+    if (isAdminUser(user)) {
+      return res.status(400).json({ error: 'Admins can directly manage participants without witness requests' });
+    }
+
+    const membership = await prisma.messageConversationParticipant.findFirst({
+      where: { conversationId, userId: user.id },
+      include: {
+        conversation: {
+          select: {
+            id: true,
+            courtCaseId: true,
+            participants: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    isAdmin: true,
+                    isSuperAdmin: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    if (!membership.conversation.courtCaseId) {
+      return res.status(400).json({ error: 'Witness requests are only available in court case conversations' });
+    }
+
+    const existingMember = await prisma.messageConversationParticipant.findFirst({
+      where: { conversationId, userId: witnessUserId },
+      select: { id: true },
+    });
+    if (existingMember) {
+      return res.status(400).json({ error: 'This witness is already in the case conversation' });
+    }
+
+    const witnessUser = await prisma.user.findUnique({
+      where: { id: witnessUserId },
+      select: { id: true, username: true, isApproved: true },
+    });
+    if (!witnessUser?.isApproved) {
+      return res.status(404).json({ error: 'Witness not found' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.messageConversationMessage.create({
+        data: {
+          conversationId,
+          senderId: user.id,
+          type: 'COURT_SYSTEM',
+          body: anonymous
+            ? `${user.username} demande l'ajout d'un temoin anonyme.`
+            : `${user.username} demande l'ajout du temoin ${witnessUser.username}.`,
+        },
+      });
+
+      await tx.messageConversation.update({
+        where: { id: conversationId },
+        data: { lastMessageAt: new Date() },
+      });
+    });
+
+    const adminParticipants = membership.conversation.participants.filter((entry) => isAdminUser(entry.user));
+
+    await Promise.all(
+      adminParticipants
+        .filter((entry) => entry.userId !== user.id)
+        .map((entry) =>
+          createNotification({
+            userId: entry.userId,
+            type: 'SUPPORT_MESSAGE',
+            title: 'Demande de temoin',
+            body: anonymous
+              ? `${user.username} demande un temoin anonyme sur un dossier.`
+              : `${user.username} demande ${witnessUser.username} comme temoin sur un dossier.`,
+            data: {
+              conversationId,
+              witnessUserId: witnessUser.id,
+              anonymous,
+            },
+            link: `/messages?conversation=${conversationId}`,
+            icon: 'scale',
+          }).catch(() => {})
+        )
+    );
+
+    await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Witness request error:', error);
+    res.status(500).json({ error: 'Failed to request witness' });
   }
 });
 

@@ -1420,6 +1420,23 @@ export default function Admin() {
     }
   };
 
+  const handleDeleteAdForever = async (adId: string) => {
+    const confirmed = window.confirm('Supprimer cette publicite definitivement ? Cette action est irreversible.');
+    if (!confirmed) return;
+
+    setReviewingAdId(adId);
+    try {
+      await adminApi.deleteAdForever(adId);
+      setPendingAds((prev) => prev.filter((ad) => ad.id !== adId));
+      showMessage('success', 'Publicite supprimee definitivement');
+    } catch (error: any) {
+      console.error('Failed to delete ad forever:', error);
+      showMessage('error', error.response?.data?.error || 'Erreur lors de la suppression definitive de la publicite');
+    } finally {
+      setReviewingAdId(null);
+    }
+  };
+
   const openCreateBadge = () => {
     setEditingBadge(null);
     setBadgeForm({
@@ -4614,6 +4631,9 @@ export default function Admin() {
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => void handleReviewAd(ad.id, 'reject')} disabled={reviewingAdId === ad.id}>
                           Rejeter
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => void handleDeleteAdForever(ad.id)} disabled={reviewingAdId === ad.id}>
+                          Supprimer
                         </Button>
                       </div>
                     </div>

@@ -1171,6 +1171,56 @@ router.post('/ads/:id/reject', authMiddleware, requireAdmin, async (req: AuthReq
   }
 });
 
+router.delete('/ads/:id', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const ad = await prisma.ad.findUnique({
+      where: { id: req.params.id },
+      include: {
+        business: {
+          include: {
+            owner: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!ad) {
+      return res.status(404).json({ error: 'AD_NOT_FOUND' });
+    }
+
+    await prisma.ad.delete({ where: { id: ad.id } });
+
+    logAdmin('ad_delete_forever', req.user!.id, req.user!.username, ad.business.ownerId, ad.business.owner.username, {
+      adId: ad.id,
+      businessId: ad.businessId,
+      title: ad.title,
+      adType: ad.adType,
+      previousStatus: ad.status,
+      previousIsActive: ad.isActive,
+    });
+
+    createNotification({
+      userId: ad.business.ownerId,
+      type: 'SYSTEM',
+      title: 'Publicite supprimee',
+      body: `Ta publicite "${ad.title}" a ete supprimee definitivement par l'administration.`,
+      data: { adId: ad.id, businessId: ad.businessId, status: 'DELETED' },
+      link: '/you?tab=publicites',
+      icon: 'megaphone',
+    }).catch(() => {});
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Admin delete ad error:', error);
+    res.status(500).json({ error: 'Failed to delete ad' });
+  }
+});
+
 // Approve a user
 router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
