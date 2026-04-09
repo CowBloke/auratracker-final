@@ -1,8 +1,8 @@
 ## TODO
 
+- chat buggé
 - tutoriel
 - immobilier : acheter rues
-- pb pastille non lus chat main
 - impot sur les societes : fisc
 - aut scroll vers le bas quand pas de message non lus dans chat main
 - racheterr part en tant que fondateur et transfert fondateur

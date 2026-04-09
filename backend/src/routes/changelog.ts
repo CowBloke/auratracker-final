@@ -35,6 +35,7 @@ const SEED_ENTRIES = [
       { category: 'BIG_FEATURE', text: '**Epiceries/Restaurants · Articles personnalises + inventaire achats** — Les menus peuvent inclure image/emoji par article, et chaque achat est maintenant enregistre dans un onglet `Achats` de l inventaire du joueur.', order: 6 },
       { category: 'SMALL_FEATURE', text: '**Cabinets d avocats · Roles metier** — Le profil avocat permet maintenant de choisir un vrai titre (Associe, Collaborateur, Stagiaire, Of Counsel...), avec gestion et tri plus lisibles cote equipe.', order: 7 },
       { category: 'BUG_FIX', text: '**Justice · Groupes dossier securises** — Les conversations de dossier limitent maintenant le renommage/ajout de membres aux admins, et les demandes de temoin des parties passent par un flux dedie.', order: 8 },
+      { category: 'BUG_FIX', text: '**Marketplace · URL image skin simplifiee** — Le calcul de l image de skin dans les statistiques du marche utilise maintenant directement `stat.effect`, ce qui supprime un cast inutile et fiabilise la recuperation de l URL.', order: 9 },
     ],
   },
   {
