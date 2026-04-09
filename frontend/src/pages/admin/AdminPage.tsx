@@ -11,11 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet, Inbox, Settings, BarChart2 } from 'lucide-react';
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
@@ -1135,7 +1135,6 @@ export default function Admin() {
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
   const [exportingChat, setExportingChat] = useState(false);
-  const [openingPrisma, setOpeningPrisma] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>('inbox');
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [loginCommOpen, setLoginCommOpen] = useState(false);
@@ -1180,7 +1179,6 @@ export default function Admin() {
   const [supportReplyImages, setSupportReplyImages] = useState<string[]>([]);
   const [supportUploadingImage, setSupportUploadingImage] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
-  const [supportUnread, setSupportUnread] = useState(0);
   const [supportReports, setSupportReports] = useState<MessagingReport[]>([]);
   const [supportReportsLoading, setSupportReportsLoading] = useState(false);
   const [reviewingSupportReportId, setReviewingSupportReportId] = useState<string | null>(null);
@@ -1197,7 +1195,6 @@ export default function Admin() {
     try {
       const res = await supportApi.getThreads();
       setSupportThreads(res.data.threads);
-      setSupportUnread(res.data.threads.reduce((sum, t) => sum + t.unreadCount, 0));
     } catch { /* non-critical */ }
     finally { setSupportThreadsLoading(false); }
   };
@@ -1221,10 +1218,6 @@ export default function Admin() {
       setSupportThreads((prev) =>
         prev.map((t) => (t.userId === userId ? { ...t, unreadCount: 0 } : t))
       );
-      setSupportUnread((prev) => {
-        const thread = supportThreads.find((t) => t.userId === userId);
-        return Math.max(0, prev - (thread?.unreadCount ?? 0));
-      });
     } catch { /* non-critical */ }
   };
 
@@ -2084,9 +2077,6 @@ export default function Admin() {
           ...prev,
         ];
       });
-      if (!msg.fromAdmin) {
-        setSupportUnread((c) => (activeThreadUserId !== msg.userId ? c + 1 : c));
-      }
       if (activeThreadUserId === msg.userId) {
         setActiveThreadMessages((prev) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
@@ -4572,7 +4562,6 @@ export default function Admin() {
     total: entry.total,
     ...entry.values,
   })) ?? [];
-  const isAdminOrSuperAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const platformTopGamesChartData = (platformStats?.topGames ?? []).map((entry) => ({
     ...entry,
     label: GAME_TYPE_LABELS[entry.gameType] ?? entry.gameType.replace(/_/g, ' '),
@@ -4636,23 +4625,6 @@ export default function Admin() {
   const nextEditAura = baseEditAura + editAuraAddAmount - editAuraRemoveAmount;
   const nextEditMoney = baseEditMoney + editMoneyAddAmount - editMoneyRemoveAmount;
 
-
-  const openPrismaStudio = async () => {
-    try {
-      setOpeningPrisma(true);
-      const res = await adminApi.startPrismaStudio();
-      const studioToken = res.data?.studioToken;
-      if (!studioToken) {
-        throw new Error('Missing studio token');
-      }
-
-      window.open(`/api/admin/prisma-studio?studioToken=${encodeURIComponent(studioToken)}`, '_blank', 'noopener,noreferrer');
-    } catch (e) {
-      toast({ title: 'Erreur', description: 'Impossible de lancer Prisma Studio', variant: 'destructive' });
-    } finally {
-      setOpeningPrisma(false);
-    }
-  };
 
   return (
     <>
