@@ -780,7 +780,7 @@ export default function Marketplace() {
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {marketStats.map((stat) => {
-                      const skinImageUrl = getSkinImageUrl((stat as { effect?: string | null }).effect ?? null);
+                      const skinImageUrl = getSkinImageUrl(stat.effect);
                       const imageUrl = stat.imageUrl ? resolveImageUrl(stat.imageUrl) : null;
                       const isPositive = (stat.priceEvolutionPct30d ?? 0) > 0;
                       const isNegative = (stat.priceEvolutionPct30d ?? 0) < 0;
