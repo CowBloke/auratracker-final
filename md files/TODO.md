@@ -58,6 +58,9 @@
 - change joueur ajout aura bug x10
 - pourcentage salaire balances
 - pas 2 fois emme pub sur la meme page
+- role qui s'actualise pas
+- pastille messages websocket
+- trier messages/affaires deux tabs
 
 ## PROJECTS
 
