@@ -379,7 +379,7 @@ async function endGame(
         winnerId,
         winnerUsername: winner.username,
         isDraw: false,
-        rewards: { winner: finalWinnerReward, loser: cappedLoserRewards.get(loser.userId) ?? { aura: 0, money: 0 } },
+        rewards: { winner: finalWinnerReward, loser: cappedLoserRewards.get(losers[0]?.userId ?? '') ?? { aura: 0, money: 0 } },
         replayFrames: game.replayFrames,
         players: game.players.map((p) => ({ userId: p.userId, username: p.username, usernameColor: p.usernameColor, playerIndex: p.playerIndex })),
         results: game.players.map((player) => ({
