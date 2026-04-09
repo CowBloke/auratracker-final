@@ -801,6 +801,17 @@ export interface DailyAuraState {
   nextResetAt: string;
 }
 
+export interface DailyGameRewardState {
+  dailyGameAuraGiven: number;
+  dailyGameAuraLimit: number;
+  remainingAura: number;
+  dailyGameMoneyGiven: number;
+  dailyGameMoneyLimit: number;
+  remainingMoney: number;
+  lastDailyGameReset: string;
+  nextResetAt: string;
+}
+
 export const economyApi = {
   transfer: (data: { receiverId: string; auraAmount: number; message: string }) =>
     api.post<{ success: boolean; transfer: AuraTransferEntry; state: Omit<DailyAuraState, 'nextResetAt'> }>('/economy/transfer', data),
@@ -953,6 +964,8 @@ export const gamesApi = {
     api.get(`/games/${gameType}/stats/${userId}`),
   getCatalogStats: () =>
     api.get<{ global: Record<string, number>; personal: Record<string, number> }>('/games/catalog/stats'),
+  getDailyRewardState: () =>
+    api.get<{ state: DailyGameRewardState }>('/games/daily/reward-state'),
   startCasino: (bet: number) =>
     api.post<{ success: true; money: number }>('/games/casino/start', { bet }),
   complete: (gameType: string, data: { score: number; won: boolean; duration?: number; bet?: number; netGain?: number; maxTile?: number; difficulty?: string; preDeducted?: boolean }) =>
@@ -2040,6 +2053,7 @@ export interface AdminUser {
   username: string;
   firstName: string | null;
   email: string;
+  lastLoginIpAddress: string | null;
   aura: number;
   money: number;
   auraCoinBalance: number;
@@ -2784,6 +2798,7 @@ export const maintenanceApi = {
     endDate: string | null;
     blockedPages?: string[];
     blockedMessage?: string;
+    blockedPageMessages?: Record<string, string>;
     loginMessage?: string;
     loginRegisterCtaEnabled?: boolean;
     referralEnabled?: boolean;

@@ -6,6 +6,7 @@ import { logGame } from '../utils/logger.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
+import { applyDailyGameRewardCaps } from '../utils/dailyGameRewards.js';
 import { duelPartyIds, deleteDuelParty } from './duelParties.js';
 import { AI_PLAYER_ID, AI_PLAYER_NAMES, AI_MOVE_DELAY_MS, aiPartyInfos, getAIChessMove, type AIDifficulty } from './aiGameState.js';
 
@@ -96,19 +97,26 @@ function calculateTimers(game: ChessGame) {
   const elapsed = Date.now() - game.lastMoveTimestamp;
   const turn = game.engine.turn();
   return {
-    timeWhite: turn === 'w' ? Math.max(0, game.timeWhite - elapsed) : game.timeWhite,
-    timeBlack: turn === 'b' ? Math.max(0, game.timeBlack - elapsed) : game.timeBlack,
-  };
-}
+      const cappedDrawRewards = await Promise.all(
+        humanPlayers.map(async (player) => {
+          const capped = await applyDailyGameRewardCaps(prisma, player.userId, {
+            aura: drawReward.aura,
+            money: resolveMoneyReward(player.userId, drawReward.money),
+          });
 
-function serializeBoard(engine: Chess) {
-  return engine.board().map((row) =>
-    row.map((piece) => (piece ? { type: piece.type, color: piece.color } : null))
-  );
-}
-
-function getCurrentPlayer(game: ChessGame) {
-  return game.players.find((player) => player.color === game.engine.turn()) ?? null;
+          return {
+            userId: player.userId,
+            reward: {
+              aura: capped?.appliedAura ?? 0,
+              money: capped?.appliedMoney ?? 0,
+            },
+          };
+        })
+      );
+      await emitSharedBalanceUpdatesForUserIds(
+        prisma,
+        cappedDrawRewards.filter(({ reward }) => reward.aura > 0 || reward.money > 0).map(({ userId }) => userId)
+      );
 }
 
 function getLegalMoves(game: ChessGame, userId?: string) {
@@ -305,23 +313,23 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
       const loserIsHuman = loser.userId !== AI_PLAYER_ID;
       const resolvedWinnerReward = { ...winnerReward, money: winnerIsHuman ? resolveMoneyReward(winner.userId, winnerReward.money) : winnerReward.money };
       const resolvedLoserReward = { ...loserReward, money: loserIsHuman ? resolveMoneyReward(loser.userId, loserReward.money) : loserReward.money };
-
-      const [updatedWinner, updatedLoser] = await Promise.all([
-        winnerIsHuman ? prisma.user.update({
-          where: { id: winner.userId },
-          data: { aura: { increment: resolvedWinnerReward.aura }, money: { increment: resolvedWinnerReward.money } },
-          select: { id: true, aura: true, money: true },
-        }) : null,
-        loserIsHuman ? prisma.user.update({
-          where: { id: loser.userId },
-          data: { money: { increment: resolvedLoserReward.money } },
-          select: { id: true, aura: true, money: true },
-        }) : null,
-      ]);
+      const cappedWinnerReward = winnerIsHuman ? await applyDailyGameRewardCaps(prisma, winner.userId, resolvedWinnerReward) : null;
+      const cappedLoserReward = loserIsHuman ? await applyDailyGameRewardCaps(prisma, loser.userId, resolvedLoserReward) : null;
+      const finalWinnerReward = {
+        aura: cappedWinnerReward?.appliedAura ?? 0,
+        money: cappedWinnerReward?.appliedMoney ?? 0,
+      };
+      const finalLoserReward = {
+        aura: cappedLoserReward?.appliedAura ?? 0,
+        money: cappedLoserReward?.appliedMoney ?? 0,
+      };
 
       await emitSharedBalanceUpdatesForUserIds(
         prisma,
-        [updatedWinner?.id, updatedLoser?.id].filter((id): id is string => Boolean(id))
+        [
+          winnerIsHuman && (finalWinnerReward.aura > 0 || finalWinnerReward.money > 0) ? winner.userId : null,
+          loserIsHuman && (finalLoserReward.aura > 0 || finalLoserReward.money > 0) ? loser.userId : null,
+        ].filter((id): id is string => Boolean(id))
       );
 
       if (winnerIsHuman) {
@@ -349,19 +357,19 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
         isDraw: false,
         result,
         rewards: {
-          winner: resolvedWinnerReward,
-          loser: resolvedLoserReward,
+          winner: finalWinnerReward,
+          loser: finalLoserReward,
         },
       });
 
       if (winnerIsHuman) logGame('game_complete', winner.userId, winner.username, {
         gameType: 'chess', score: 1, won: true,
-        auraReward: resolvedWinnerReward.aura, moneyReward: resolvedWinnerReward.money,
+        auraReward: finalWinnerReward.aura, moneyReward: finalWinnerReward.money,
         isMultiplayer: true, partyId: game.partyId,
       });
       if (loserIsHuman) logGame('game_complete', loser.userId, loser.username, {
         gameType: 'chess', score: 0, won: false,
-        auraReward: resolvedLoserReward.aura, moneyReward: resolvedLoserReward.money,
+        auraReward: finalLoserReward.aura, moneyReward: finalLoserReward.money,
         isMultiplayer: true, partyId: game.partyId,
       });
     } else {
@@ -398,6 +406,15 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
           draw: drawReward,
         },
       });
+
+      for (const player of humanPlayers) {
+        const cappedReward = cappedDrawRewards.find(({ userId }) => userId === player.userId)?.reward ?? { aura: 0, money: 0 };
+        logGame('game_complete', player.userId, player.username, {
+          gameType: 'chess', score: 0, won: false,
+          auraReward: cappedReward.aura, moneyReward: cappedReward.money,
+          isMultiplayer: true, partyId: game.partyId,
+        });
+      }
     }
   } catch (error) {
     console.error('chess:endGame error:', error);

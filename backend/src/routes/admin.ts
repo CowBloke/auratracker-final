@@ -23,6 +23,10 @@ import {
   DAILY_AURA_LIMIT_SETTING_KEY,
 } from '../utils/dailyAura.js';
 import {
+  DAILY_GAME_AURA_LIMIT_SETTING_KEY,
+  DAILY_GAME_MONEY_LIMIT_SETTING_KEY,
+} from '../utils/dailyGameRewards.js';
+import {
   DEFAULT_TAX_BRACKET_RATE,
   DEFAULT_TAX_BRACKET_THRESHOLD,
   LAST_TAX_RUN_KEY,
@@ -56,6 +60,8 @@ const CHAOS_COIN_BUY_FEE_PERCENTAGE_KEY = 'chaos_coin_buy_fee_percentage';
 const DUEL_MATCHMAKING_ENABLED_SETTING_KEY = 'duel_matchmaking_enabled';
 const CLASH_ATTACK_COOLDOWN_MINUTES_KEY = 'clash_attack_cooldown_minutes';
 const DAILY_AURA_DISTRIBUTION_LIMIT_KEY = DAILY_AURA_LIMIT_SETTING_KEY;
+const DAILY_GAME_AURA_LIMIT_KEY = DAILY_GAME_AURA_LIMIT_SETTING_KEY;
+const DAILY_GAME_MONEY_LIMIT_KEY = DAILY_GAME_MONEY_LIMIT_SETTING_KEY;
 const DEFAULT_LANDING_PAGE_SETTING_KEY = 'default_landing_page';
 const YOU_LOGO_ADMIN_ONLY_SETTING_KEY = 'you_logo_admin_only';
 const ALLOWED_DEFAULT_LANDING_PAGES = new Set([
@@ -84,6 +90,7 @@ const SITE_RELOAD_TRIGGER_KEYS = new Set([
   'maintenance_end_date',
   'blocked_pages',
   'blocked_message',
+  'blocked_page_messages',
 ]);
 
 type TaxBracketInput = {
@@ -2205,6 +2212,31 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
     });
 
     const userIds = users.map((user) => user.id);
+    const latestLoginLogs = userIds.length > 0
+      ? await prisma.log.findMany({
+        where: {
+          type: 'AUTH',
+          action: 'login',
+          userId: { in: userIds },
+        },
+        select: {
+          userId: true,
+          ipAddress: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      })
+      : [];
+
+    const lastLoginIpByUserId = new Map<string, string | null>();
+    for (const log of latestLoginLogs) {
+      if (!log.userId || lastLoginIpByUserId.has(log.userId)) continue;
+      lastLoginIpByUserId.set(log.userId, log.ipAddress ?? null);
+      if (lastLoginIpByUserId.size >= userIds.length) break;
+    }
+
     const relationships = userIds.length > 0
       ? await prisma.relationship.findMany({
         where: {
@@ -2271,6 +2303,7 @@ router.get('/users', authMiddleware, requireAdmin, async (req: AuthRequest, res:
     res.json({
       users: users.map((user) => ({
         ...user,
+        lastLoginIpAddress: lastLoginIpByUserId.get(user.id) ?? null,
         sharedMoney: sharedMoneyByUserId.get(user.id) ?? null,
       })),
     });
@@ -3651,6 +3684,13 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
+    if ([DAILY_GAME_AURA_LIMIT_KEY, DAILY_GAME_MONEY_LIMIT_KEY].includes(key)) {
+      const numValue = Number.parseInt(normalizedValue, 10);
+      if (!Number.isInteger(numValue) || numValue < 0 || numValue > 100000) {
+        return res.status(400).json({ error: 'Daily game reward limits must be integers between 0 and 100000' });
+      }
+    }
+
     if (key === DEFAULT_LANDING_PAGE_SETTING_KEY && !ALLOWED_DEFAULT_LANDING_PAGES.has(normalizedValue)) {
       return res.status(400).json({ error: 'Invalid default landing page selection' });
     }
@@ -3814,6 +3854,14 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         const numValue = Number.parseInt(normalizedValue, 10);
         if (!Number.isInteger(numValue) || numValue < 0 || numValue > 10000) {
           errors.push(`${key}: Daily aura distribution limit must be an integer between 0 and 10000`);
+          continue;
+        }
+      }
+
+      if ([DAILY_GAME_AURA_LIMIT_KEY, DAILY_GAME_MONEY_LIMIT_KEY].includes(key)) {
+        const numValue = Number.parseInt(normalizedValue, 10);
+        if (!Number.isInteger(numValue) || numValue < 0 || numValue > 100000) {
+          errors.push(`${key}: Daily game reward limits must be integers between 0 and 100000`);
           continue;
         }
       }

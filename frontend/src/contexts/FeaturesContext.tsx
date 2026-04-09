@@ -9,6 +9,7 @@ interface MaintenanceStatus {
   endDate: string | null;
   disabledPages: string[];
   blockedMessage: string;
+  blockedPageMessages: Record<string, string>;
   referralEnabled: boolean;
   referralDashboardCardEnabled: boolean;
   duelMatchmakingEnabled: boolean;
@@ -33,6 +34,7 @@ const DEFAULT_STATUS: MaintenanceStatus = {
   endDate: null,
   disabledPages: [],
   blockedMessage: '',
+  blockedPageMessages: {},
   referralEnabled: true,
   referralDashboardCardEnabled: true,
   duelMatchmakingEnabled: true,
@@ -77,6 +79,7 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
         endDate: res.data.endDate || null,
         disabledPages: res.data.blockedPages || [],
         blockedMessage: res.data.blockedMessage || '',
+        blockedPageMessages: res.data.blockedPageMessages || {},
         referralEnabled: res.data.referralEnabled !== false,
         referralDashboardCardEnabled: res.data.referralDashboardCardEnabled !== false,
         duelMatchmakingEnabled: res.data.duelMatchmakingEnabled !== false,

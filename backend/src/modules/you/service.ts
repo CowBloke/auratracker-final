@@ -2081,6 +2081,36 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
       },
     });
 
+    const existingEligibility = await tx.reviewEligibility.findFirst({
+      where: {
+        userId: loan.borrowerId,
+        businessId: loan.businessId,
+        targetType: 'BUSINESS',
+      },
+    });
+
+    if (existingEligibility) {
+      await tx.reviewEligibility.update({
+        where: { id: existingEligibility.id },
+        data: {
+          sourceType: 'LOAN_ACCEPTED',
+          promptAt: getReviewPromptAt(),
+          promptedAt: null,
+          reviewedAt: null,
+        },
+      });
+    } else {
+      await tx.reviewEligibility.create({
+        data: {
+          userId: loan.borrowerId,
+          businessId: loan.businessId,
+          targetType: 'BUSINESS',
+          sourceType: 'LOAN_ACCEPTED',
+          promptAt: getReviewPromptAt(),
+        },
+      });
+    }
+
     return updatedLoan;
   });
 

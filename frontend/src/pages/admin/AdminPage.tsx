@@ -1113,7 +1113,10 @@ export default function Admin() {
     dailyAuraLimit: 50,
   });
   const [editPassword, setEditPassword] = useState('');
-  const [editAuraTarget, setEditAuraTarget] = useState(0);
+  const [editAuraAddAmount, setEditAuraAddAmount] = useState(0);
+  const [editAuraRemoveAmount, setEditAuraRemoveAmount] = useState(0);
+  const [editMoneyAddAmount, setEditMoneyAddAmount] = useState(0);
+  const [editMoneyRemoveAmount, setEditMoneyRemoveAmount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [downloadingUsersCsv, setDownloadingUsersCsv] = useState(false);
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
@@ -1737,6 +1740,7 @@ export default function Admin() {
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [blockedPages, setBlockedPages] = useState<string[]>([]);
   const [blockedMessage, setBlockedMessage] = useState('');
+  const [blockedPageMessages, setBlockedPageMessages] = useState<Record<string, string>>({});
   const [savingBlocks, setSavingBlocks] = useState(false);
   const [fonctionnalitesOpen, setFonctionnalitesOpen] = useState(false);
   const [fakeOnlineEnabled, setFakeOnlineEnabled] = useState(true);
@@ -1759,6 +1763,9 @@ export default function Admin() {
   const [savingReferralReward, setSavingReferralReward] = useState(false);
   const [dailyAuraDistributionLimit, setDailyAuraDistributionLimit] = useState('100');
   const [savingDailyAuraDistributionLimit, setSavingDailyAuraDistributionLimit] = useState(false);
+  const [dailyGameAuraLimit, setDailyGameAuraLimit] = useState('500');
+  const [dailyGameMoneyLimit, setDailyGameMoneyLimit] = useState('1000');
+  const [savingDailyGameLimits, setSavingDailyGameLimits] = useState(false);
   const [taxBrackets, setTaxBrackets] = useState<EditableTaxBracket[]>([DEFAULT_TAX_BRACKET]);
   const [loadingTaxSettings, setLoadingTaxSettings] = useState(false);
   const [savingTaxSettings, setSavingTaxSettings] = useState(false);
@@ -2896,12 +2903,33 @@ export default function Admin() {
       setReferralDashboardCardEnabled(res.data.settings.referral_dashboard_card_enabled !== 'false');
       setReferralRewardAmount(res.data.settings.referral_reward_amount || '250');
       setDailyAuraDistributionLimit(res.data.settings.daily_aura_distribution_limit || '100');
+      setDailyGameAuraLimit(res.data.settings.daily_game_aura_limit || '500');
+      setDailyGameMoneyLimit(res.data.settings.daily_game_money_limit || '1000');
       setAuraCoinBuyFeePercentage(res.data.settings.auracoin_buy_fee_percentage || '0.02');
       setStableCoinBuyFeePercentage(res.data.settings.stable_coin_buy_fee_percentage || '0.01');
       setChaosCoinBuyFeePercentage(res.data.settings.chaos_coin_buy_fee_percentage || '0.035');
       setClashAttackCooldownMinutes(res.data.settings.clash_attack_cooldown_minutes || '10');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
       setBlockedMessage(res.data.settings.blocked_message || '');
+      if (res.data.settings.blocked_page_messages) {
+        try {
+          const parsed = JSON.parse(res.data.settings.blocked_page_messages);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            const nextMessages = Object.fromEntries(
+              Object.entries(parsed as Record<string, unknown>)
+                .filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+                .map(([key, value]) => [key, value])
+            );
+            setBlockedPageMessages(nextMessages);
+          } else {
+            setBlockedPageMessages({});
+          }
+        } catch {
+          setBlockedPageMessages({});
+        }
+      } else {
+        setBlockedPageMessages({});
+      }
       setLoginMessage(res.data.settings.login_message || '');
       setLoginRegisterCtaEnabled(res.data.settings.login_register_cta_enabled !== 'false');
       setDefaultLandingPage(normalizeDefaultLandingPage(res.data.settings[DEFAULT_LANDING_PAGE_KEY]));
@@ -3131,19 +3159,41 @@ export default function Admin() {
   const toggleBlockedPage = (pageKey: string) => {
     setBlockedPages(prev => {
       if (prev.includes(pageKey)) {
+        setBlockedPageMessages((messages) => {
+          if (!(pageKey in messages)) {
+            return messages;
+          }
+          const next = { ...messages };
+          delete next[pageKey];
+          return next;
+        });
         return prev.filter(key => key !== pageKey);
       }
       return [...prev, pageKey];
     });
   };
 
+  const updateBlockedPageMessage = (pageKey: string, value: string) => {
+    setBlockedPageMessages((prev) => ({
+      ...prev,
+      [pageKey]: value,
+    }));
+  };
+
   const saveBlockedPages = async (): Promise<boolean> => {
     try {
       setSavingBlocks(true);
       const uniquePages = Array.from(new Set(blockedPages)).sort();
+      const normalizedMessages = Object.fromEntries(
+        Object.entries(blockedPageMessages)
+          .filter(([key]) => uniquePages.includes(key))
+          .map(([key, value]) => [key, value.trim()])
+          .filter(([, value]) => value.length > 0)
+      );
       await adminApi.updateSettings({
         blocked_pages: JSON.stringify(uniquePages),
         blocked_message: blockedMessage.trim(),
+        blocked_page_messages: JSON.stringify(normalizedMessages),
       });
       showMessage('success', 'Feature switches mis à jour');
       fetchSettings();
@@ -3319,6 +3369,37 @@ export default function Admin() {
       showMessage('error', "Erreur lors de la sauvegarde du quota d'aura");
     } finally {
       setSavingDailyAuraDistributionLimit(false);
+    }
+  };
+
+  const saveDailyGameLimits = async () => {
+    try {
+      const parsedAura = Number.parseInt(dailyGameAuraLimit, 10);
+      const parsedMoney = Number.parseInt(dailyGameMoneyLimit, 10);
+
+      if (!Number.isInteger(parsedAura) || parsedAura < 0 || parsedAura > 100000) {
+        showMessage('error', "Le plafond d'aura des jeux doit etre un entier entre 0 et 100000");
+        return;
+      }
+
+      if (!Number.isInteger(parsedMoney) || parsedMoney < 0 || parsedMoney > 100000) {
+        showMessage('error', "Le plafond d'argent des jeux doit etre un entier entre 0 et 100000");
+        return;
+      }
+
+      setSavingDailyGameLimits(true);
+      await adminApi.updateSettings({
+        daily_game_aura_limit: parsedAura,
+        daily_game_money_limit: parsedMoney,
+      });
+      setDailyGameAuraLimit(String(parsedAura));
+      setDailyGameMoneyLimit(String(parsedMoney));
+      showMessage('success', 'Plafonds de recompense des jeux sauvegardes');
+    } catch (error) {
+      console.error('Failed to save daily game limits:', error);
+      showMessage('error', "Erreur lors de la sauvegarde des plafonds des jeux");
+    } finally {
+      setSavingDailyGameLimits(false);
     }
   };
 
@@ -4110,7 +4191,10 @@ export default function Admin() {
       dailyAuraLimit: u.dailyAuraLimit,
     });
     setEditPassword('');
-    setEditAuraTarget(u.aura);
+    setEditAuraAddAmount(0);
+    setEditAuraRemoveAmount(0);
+    setEditMoneyAddAmount(0);
+    setEditMoneyRemoveAmount(0);
     setEditModalOpen(true);
   };
 
@@ -4119,13 +4203,23 @@ export default function Admin() {
     setEditModalUser(null);
     setEditModalOpen(false);
     setEditPassword('');
-    setEditAuraTarget(0);
+    setEditAuraAddAmount(0);
+    setEditAuraRemoveAmount(0);
+    setEditMoneyAddAmount(0);
+    setEditMoneyRemoveAmount(0);
   };
 
   const saveUser = async (id: string) => {
-    const nextAura = editAuraTarget;
+    const baseAura = editModalUser?.aura ?? editValues.aura;
+    const baseMoney = editModalUser?.money ?? editValues.money;
+    const nextAura = baseAura + editAuraAddAmount - editAuraRemoveAmount;
+    const nextMoney = baseMoney + editMoneyAddAmount - editMoneyRemoveAmount;
     if (nextAura < 0) {
       showMessage('error', 'Le total d\'aura ne peut pas etre negatif');
+      return;
+    }
+    if (nextMoney < 0) {
+      showMessage('error', 'Le total d\'argent ne peut pas etre negatif');
       return;
     }
 
@@ -4133,6 +4227,7 @@ export default function Admin() {
     try {
       const payload = { ...editValues } as Parameters<typeof adminApi.updateUser>[1];
       payload.aura = nextAura;
+      payload.money = nextMoney;
       if (editPassword.trim()) {
         payload.password = editPassword.trim();
       }
@@ -4142,7 +4237,10 @@ export default function Admin() {
       setEditModalUser(null);
       setEditModalOpen(false);
       setEditPassword('');
-      setEditAuraTarget(0);
+      setEditAuraAddAmount(0);
+      setEditAuraRemoveAmount(0);
+      setEditMoneyAddAmount(0);
+      setEditMoneyRemoveAmount(0);
       showMessage('success', 'Utilisateur mis à jour');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
@@ -4520,6 +4618,10 @@ export default function Admin() {
     : users;
   const selectableUsers = filteredUsers.filter((entry) => !entry.isSuperAdmin && entry.id !== user?.id);
   const allSelected = selectableUsers.length > 0 && selectableUsers.every((entry) => selectedUserIds.includes(entry.id));
+  const baseEditAura = editModalUser?.aura ?? editValues.aura;
+  const baseEditMoney = editModalUser?.money ?? editValues.money;
+  const nextEditAura = baseEditAura + editAuraAddAmount - editAuraRemoveAmount;
+  const nextEditMoney = baseEditMoney + editMoneyAddAmount - editMoneyRemoveAmount;
 
 
   const openPrismaStudio = async () => {
@@ -4594,6 +4696,9 @@ export default function Admin() {
           </TabsTrigger>
           <TabsTrigger value="taxes" onClick={fetchTaxSettings}>
             Impôts
+          </TabsTrigger>
+          <TabsTrigger value="game-limits">
+            Plafonds jeux
           </TabsTrigger>
           <TabsTrigger value="settings">
             Paramètres
@@ -5105,6 +5210,55 @@ export default function Admin() {
           runTaxNow={runTaxNow}
           runningTaxNow={runningTaxNow}
         />
+
+        <TabsContent value="game-limits" className={SPACING.SECTION_SPACING}>
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Récompenses de jeux</p>
+            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Plafond d'aura journalier</div>
+                  <div className="text-xs text-muted-foreground">Total maximum d'aura gagnable via les jeux avant le reset de minuit. Valeur par défaut: 500.</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Input
+                    id="daily-game-aura-limit"
+                    type="number"
+                    min={0}
+                    max={100000}
+                    step={1}
+                    value={dailyGameAuraLimit}
+                    onChange={(event) => setDailyGameAuraLimit(event.target.value)}
+                    className="w-28 h-8 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                <div>
+                  <div className="text-sm font-medium">Plafond d'argent journalier</div>
+                  <div className="text-xs text-muted-foreground">Total maximum d'argent gagnable via les jeux avant le reset de minuit. Valeur par défaut: 1000.</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Input
+                    id="daily-game-money-limit"
+                    type="number"
+                    min={0}
+                    max={100000}
+                    step={1}
+                    value={dailyGameMoneyLimit}
+                    onChange={(event) => setDailyGameMoneyLimit(event.target.value)}
+                    className="w-28 h-8 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end px-4 py-3.5">
+                <Button size="sm" onClick={saveDailyGameLimits} disabled={savingDailyGameLimits}>
+                  {savingDailyGameLimits ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
 
         <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
 
@@ -6151,12 +6305,28 @@ export default function Admin() {
                     <div className="mx-4 rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
                       {pages.map((page) => {
                         const isBlocked = blockedPages.includes(page.key);
+                        const blockedReason = blockedPageMessages[page.key] || '';
                         return (
-                          <div key={page.key} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-muted/30 transition-colors cursor-default">
-                            <div className={cn('text-sm font-medium', isBlocked && 'text-muted-foreground/50 line-through')}>
-                              {page.label}
+                          <div key={page.key} className="px-4 py-3 hover:bg-muted/30 transition-colors cursor-default space-y-2">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className={cn('text-sm font-medium', isBlocked && 'text-muted-foreground/50 line-through')}>
+                                {page.label}
+                              </div>
+                              <Switch checked={!isBlocked} onCheckedChange={() => toggleBlockedPage(page.key)} />
                             </div>
-                            <Switch checked={!isBlocked} onCheckedChange={() => toggleBlockedPage(page.key)} />
+                            {isBlocked && (
+                              <div className="space-y-1.5">
+                                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                                  Raison spécifique
+                                </label>
+                                <Textarea
+                                  value={blockedReason}
+                                  onChange={(e) => updateBlockedPageMessage(page.key, e.target.value)}
+                                  placeholder={`Ex: ${page.label} est bloquée temporairement pour maintenance ciblée.`}
+                                  className="min-h-[64px] text-xs"
+                                />
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -6379,26 +6549,64 @@ export default function Admin() {
             {/* Economy */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura (total)</label>
-                <div className="relative">
-                  <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400/60 pointer-events-none" />
-                  <Input
-                    type="number"
-                    value={editAuraTarget}
-                    onChange={(e) => setEditAuraTarget(parseInt(e.target.value, 10) || 0)}
-                    className="h-9 bg-transparent border-purple-500/30 focus-visible:ring-purple-500/30 pl-8"
-                  />
+                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura (ajout / retrait)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400/70 pointer-events-none" />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={editAuraAddAmount}
+                      onChange={(e) => setEditAuraAddAmount(Number.parseInt(e.target.value, 10) || 0)}
+                      className="h-9 bg-transparent border-emerald-500/30 focus-visible:ring-emerald-500/30 pl-8"
+                      placeholder="Ajouter"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Minus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-rose-400/70 pointer-events-none" />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={editAuraRemoveAmount}
+                      onChange={(e) => setEditAuraRemoveAmount(Number.parseInt(e.target.value, 10) || 0)}
+                      className="h-9 bg-transparent border-rose-500/30 focus-visible:ring-rose-500/30 pl-8"
+                      placeholder="Enlever"
+                    />
+                  </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Actuel: {(editModalUser?.aura ?? editValues.aura).toLocaleString()} • Variation: {(editAuraTarget - (editModalUser?.aura ?? editValues.aura)).toLocaleString()}
+                  Actuel: {baseEditAura.toLocaleString()} • Resultat: <span className={cn(nextEditAura < 0 ? 'text-rose-400' : 'text-purple-300')}>{nextEditAura.toLocaleString()}</span>
                 </p>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-green-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />Argent</label>
-                <div className="relative">
-                  <CurrencyIcon type="money" className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" />
-                  <Input type="number" value={editValues.money} onChange={(e) => setEditValues(prev => ({ ...prev, money: parseInt(e.target.value) || 0 }))} className="h-9 bg-transparent border-green-500/30 focus-visible:ring-green-500/30 pl-8" />
+                <label className="text-xs font-medium text-green-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />Argent (ajout / retrait)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400/70 pointer-events-none" />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={editMoneyAddAmount}
+                      onChange={(e) => setEditMoneyAddAmount(Number.parseInt(e.target.value, 10) || 0)}
+                      className="h-9 bg-transparent border-emerald-500/30 focus-visible:ring-emerald-500/30 pl-8"
+                      placeholder="Ajouter"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Minus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-rose-400/70 pointer-events-none" />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={editMoneyRemoveAmount}
+                      onChange={(e) => setEditMoneyRemoveAmount(Number.parseInt(e.target.value, 10) || 0)}
+                      className="h-9 bg-transparent border-rose-500/30 focus-visible:ring-rose-500/30 pl-8"
+                      placeholder="Enlever"
+                    />
+                  </div>
                 </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Actuel: {baseEditMoney.toLocaleString()} • Resultat: <span className={cn(nextEditMoney < 0 ? 'text-rose-400' : 'text-green-300')}>{nextEditMoney.toLocaleString()}</span>
+                </p>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-yellow-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />AuraCoin</label>

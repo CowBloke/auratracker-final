@@ -29,6 +29,8 @@ import {
   Users,
   Wallet,
   Utensils,
+  Video,
+  Stethoscope,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -141,7 +143,7 @@ function PlainteReviewModal({
   );
 }
 
-const BUSINESS_TYPE_ORDER = ['supreme_court', 'law_firm', 'bank', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'restaurant', 'epicerie', 'coffee_shop'] as const;
+const BUSINESS_TYPE_ORDER = ['supreme_court', 'law_firm', 'bank', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'restaurant', 'epicerie', 'coffee_shop', 'youtube', 'medecins'] as const;
 
 const SECTION_META: Record<
   (typeof BUSINESS_TYPE_ORDER)[number],
@@ -158,6 +160,8 @@ const SECTION_META: Record<
   restaurant: { label: 'Restaurants', icon: Utensils, pillColor: 'bg-red-400/15 text-red-400' },
   epicerie: { label: 'Epiceries', icon: ShoppingBasket, pillColor: 'bg-lime-400/15 text-lime-400' },
   coffee_shop: { label: 'Coffee Shops', icon: Coffee, pillColor: 'bg-orange-400/15 text-orange-400' },
+  youtube: { label: 'Chaînes YouTube', icon: Video, pillColor: 'bg-rose-400/15 text-rose-400' },
+  medecins: { label: 'Cabinets médicaux', icon: Stethoscope, pillColor: 'bg-teal-400/15 text-teal-400' },
 };
 
 function isNewBusiness(business: YouBusiness) {

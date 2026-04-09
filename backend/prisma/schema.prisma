@@ -27,6 +27,11 @@ model User {
   dailyAuraGiven          Int       @default(0) // Aura given today
   dailyAuraLimit          Int       @default(100) // Personal daily aura limit (default 100)
   lastDailyReset          DateTime  @default(now()) // When daily allowance was last reset
+  dailyGameAuraGiven      Int       @default(0) // Aura earned from games today
+  dailyGameMoneyGiven     Int       @default(0) // Money earned from games today
+  dailyGameAuraLimit      Int       @default(500) // Default daily aura cap from games
+  dailyGameMoneyLimit     Int       @default(1000) // Default daily money cap from games
+  lastDailyGameReset      DateTime  @default(now()) // When game earnings were last reset
   dailyPassStreak         Int       @default(0) // Current daily pass streak
   lastDailyPassClaim      DateTime? // Last date when daily pass reward was claimed
   usernameColor           String? // Custom username color for chat (hex)

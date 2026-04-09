@@ -226,6 +226,9 @@ export function UsersTab(props: UsersTabProps) {
                           </span>
                         )}
                       </div>
+                      <div className="mt-1 text-[11px] text-muted-foreground/65">
+                        Dernière IP: <span className="font-mono">{u.lastLoginIpAddress || 'N/A'}</span>
+                      </div>
                     </div>
 
                     <div className="hidden xl:flex items-center gap-1.5 shrink-0">

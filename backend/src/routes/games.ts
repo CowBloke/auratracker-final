@@ -10,6 +10,7 @@ import { getActiveClanMoneyBoostForUser } from '../utils/clanEffects.js';
 import { trackClanEventActivity } from '../utils/clanEvents.js';
 import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
 import { getParisDayKey, getParisDayStart } from '../utils/dailyAura.js';
+import { applyDailyGameRewardCaps, syncUserDailyGameRewardState } from '../utils/dailyGameRewards.js';
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
@@ -880,6 +881,35 @@ router.get('/daily/racer', authMiddleware, async (req: AuthRequest, res: Respons
   }
 });
 
+router.get('/daily/reward-state', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const state = await syncUserDailyGameRewardState(prisma, req.user.id);
+    if (!state) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      state: {
+        dailyGameAuraGiven: state.dailyGameAuraGiven,
+        dailyGameAuraLimit: state.dailyGameAuraLimit,
+        remainingAura: state.remainingAura,
+        dailyGameMoneyGiven: state.dailyGameMoneyGiven,
+        dailyGameMoneyLimit: state.dailyGameMoneyLimit,
+        remainingMoney: state.remainingMoney,
+        lastDailyGameReset: state.lastDailyGameReset,
+        nextResetAt: state.nextResetAt,
+      },
+    });
+  } catch (error) {
+    console.error('Get daily game reward state error:', error);
+    res.status(500).json({ error: 'Failed to get daily game reward state' });
+  }
+});
+
 router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -907,7 +937,14 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
       (isFirstRunToday ? bonusConfig.dailyFirstRunReward.aura : 0) +
       (isNewDailyBest ? bonusConfig.dailyBestBonus.aura : 0);
 
-    const [run, user] = await prisma.$transaction([
+    const cappedDailyRewards = await applyDailyGameRewardCaps(prisma, req.user.id, {
+      aura: dailyAuraReward,
+      money: dailyMoneyReward,
+    });
+    const appliedDailyMoneyReward = cappedDailyRewards?.appliedMoney ?? 0;
+    const appliedDailyAuraReward = cappedDailyRewards?.appliedAura ?? 0;
+
+    const [run] = await prisma.$transaction([
       prisma.dailyRacerRun.create({
         data: {
           userId: req.user.id,
@@ -915,24 +952,17 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
           lapTimeMs,
         },
       }),
-      prisma.user.update({
-        where: { id: req.user.id },
-        data: {
-          money: { increment: dailyMoneyReward },
-          aura: { increment: dailyAuraReward },
-        },
-      }),
     ]);
 
-    if (dailyMoneyReward > 0 || dailyAuraReward > 0) {
+    if (appliedDailyMoneyReward > 0 || appliedDailyAuraReward > 0) {
       await emitSharedBalanceUpdates(prisma, req.user.id);
       logGame('game_reward', req.user.id, req.user.username, {
         gameType: 'racer_daily',
         lapTimeMs,
         isFirstRunToday,
         isNewDailyBest,
-        auraReward: dailyAuraReward,
-        moneyReward: dailyMoneyReward,
+        auraReward: appliedDailyAuraReward,
+        moneyReward: appliedDailyMoneyReward,
       });
     }
 
@@ -943,8 +973,8 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
       won: true,
       isFirstRunToday,
       isNewDailyBest,
-      auraReward: dailyAuraReward,
-      moneyReward: dailyMoneyReward,
+      auraReward: appliedDailyAuraReward,
+      moneyReward: appliedDailyMoneyReward,
     });
 
     if (isNewDailyBest) {
@@ -964,8 +994,8 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
         createdAt: run.createdAt.toISOString(),
       },
       rewards: {
-        money: dailyMoneyReward,
-        aura: dailyAuraReward,
+        money: appliedDailyMoneyReward,
+        aura: appliedDailyAuraReward,
         isFirstRunToday,
         isNewDailyBest,
       },
@@ -1280,9 +1310,15 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       : 0;
 
     moneyReward += clanMoneyBoostBonus;
+    const cappedRewards = await applyDailyGameRewardCaps(prisma, req.user.id, {
+      aura: auraReward,
+      money: moneyReward,
+    });
+    const appliedAuraReward = cappedRewards?.appliedAura ?? 0;
+    const appliedMoneyReward = cappedRewards?.appliedMoney ?? 0;
 
     // Update stats and user balance in transaction
-    const [stats, user] = await prisma.$transaction([
+    const [stats] = await prisma.$transaction([
       prisma.gameStats.upsert({
         where: {
           userId_gameType: {
@@ -1307,13 +1343,6 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         // For racer, we need to ensure highScore is always the best (lowest) time
         // This is handled by isNewHighScore check above
       }),
-      prisma.user.update({
-        where: { id: req.user.id },
-        data: {
-          aura: { increment: auraReward },
-          money: { increment: moneyReward },
-        },
-      }),
     ]);
 
     // Record score history outside the main transaction so it never blocks game completion
@@ -1322,7 +1351,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     }).catch((err) => console.error('[gameScoreHistory] failed to insert:', err));
 
     // Emit balance update (always for casino, or if there are rewards)
-    if (gameType === 'casino' || auraReward > 0 || moneyReward > 0) {
+    if (gameType === 'casino' || appliedAuraReward > 0 || appliedMoneyReward > 0) {
       await emitSharedBalanceUpdates(prisma, req.user.id);
     }
 
@@ -1338,8 +1367,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       duration,
       bet: bet || undefined,
       netGain: netGain || undefined,
-      auraReward,
-      moneyReward,
+      auraReward: appliedAuraReward,
+      moneyReward: appliedMoneyReward,
       clanMoneyBoostBonus,
       clanMoneyBoostPercent,
       isNewHighScore,

@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import { getNextParisMidnight, getParisDayKey, getParisDayStart } from './dailyAura.js';
 import { emitNotificationCreated } from './notifications.js';
 import { emitSharedBalanceUpdatesForUserIds } from './sharedBalance.js';
+import { applyDailyGameRewardCaps } from './dailyGameRewards.js';
 
 const LAST_DAILY_RACER_REWARD_RUN_KEY = 'last_daily_racer_reward_run_date';
 
@@ -65,33 +66,28 @@ export const runDailyRacerRewards = async (
 
   for (const [index, winner] of winners.entries()) {
     const reward = DAILY_RACER_RANK_REWARDS[index];
-    const notification = await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: winner.userId },
-        data: {
-          money: { increment: reward.money },
-          aura: { increment: reward.aura },
-        },
-      });
-
-      return tx.notification.create({
-        data: {
-          userId: winner.userId,
-          type: 'SYSTEM',
-          title: `Recompense Daily Racer - Top ${reward.rank}`,
-          body: `Tu as termine #${reward.rank} du classement Daily Racer du ${rewardedDayKey}. Gain: ${reward.money}$ et ${reward.aura} aura.`,
-          icon: 'trophy',
-          link: '/games/racer',
-          data: JSON.stringify({
-            gameType: 'racer_daily',
-            dayKey: rewardedDayKey,
-            rank: reward.rank,
-            lapTimeMs: winner.lapTimeMs,
-            rewardMoney: reward.money,
-            rewardAura: reward.aura,
-          }),
-        },
-      });
+    const cappedReward = await applyDailyGameRewardCaps(prisma, winner.userId, reward);
+    const appliedReward = {
+      money: cappedReward?.appliedMoney ?? 0,
+      aura: cappedReward?.appliedAura ?? 0,
+    };
+    const notification = await prisma.notification.create({
+      data: {
+        userId: winner.userId,
+        type: 'SYSTEM',
+        title: `Recompense Daily Racer - Top ${reward.rank}`,
+        body: `Tu as termine #${reward.rank} du classement Daily Racer du ${rewardedDayKey}. Gain: ${appliedReward.money}$ et ${appliedReward.aura} aura.`,
+        icon: 'trophy',
+        link: '/games/racer',
+        data: JSON.stringify({
+          gameType: 'racer_daily',
+          dayKey: rewardedDayKey,
+          rank: reward.rank,
+          lapTimeMs: winner.lapTimeMs,
+          rewardMoney: appliedReward.money,
+          rewardAura: appliedReward.aura,
+        }),
+      },
     });
 
     emitNotificationCreated(notification);

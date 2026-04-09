@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType, type UIEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  Archive,
   BadgeCheck,
   BadgeX,
   Bell,
@@ -27,7 +28,6 @@ import {
   TrendingDown,
   TrendingUp,
   Trophy,
-  Trash2,
   UserMinus,
   Users,
   X,
@@ -227,7 +227,6 @@ function NotificationCard({
 export function InboxDropdown() {
   const [open, setOpen] = useState(false);
   const [actingKey, setActingKey] = useState<string | null>(null);
-  const [dismissingAll, setDismissingAll] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const {
@@ -268,16 +267,6 @@ export function InboxDropdown() {
     if (notification.link) {
       setOpen(false);
       navigate(notification.link);
-    }
-  };
-
-  const handleDismissAll = async () => {
-    setDismissingAll(true);
-    try {
-      await markAllRead();
-      await archiveAllRead();
-    } finally {
-      setDismissingAll(false);
     }
   };
 
@@ -356,12 +345,11 @@ export function InboxDropdown() {
                   )}
                   <button
                     type="button"
-                    title={t('inbox_dismiss_all')}
-                    disabled={dismissingAll}
-                    onClick={() => void handleDismissAll()}
-                    className="rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
+                    title={t('inbox_archive_read')}
+                    onClick={() => void archiveAllRead()}
+                    className="rounded-md p-1.5 text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Archive className="h-3.5 w-3.5" />
                   </button>
                 </>
               )}
