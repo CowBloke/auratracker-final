@@ -186,6 +186,7 @@ model User {
   lawyerRatingsReceived     LawyerRating[]                  @relation("LawyerRatingLawyer")
   reviewEligibilities       ReviewEligibility[]            @relation("ReviewEligibilityUser")
   lawyerReviewEligibilities ReviewEligibility[]            @relation("ReviewEligibilityLawyer")
+  businessPurchasedItems    BusinessPurchasedItem[]
 
   @@index([aura])
   @@index([money])
@@ -547,6 +548,7 @@ model Business {
   plaintiffCourtCases  CourtCase[]                     @relation("CourtCasePlaintiffLawFirm")
   defendantCourtCases  CourtCase[]                     @relation("CourtCaseDefendantLawFirm")
   ads                  Ad[]                            @relation("BusinessAds")
+  purchasedItems       BusinessPurchasedItem[]
 
   @@index([ownerId])
   @@index([supportAgentId])
@@ -2539,4 +2541,25 @@ model CourtArgument {
 
   @@unique([caseId, side])
   @@index([caseId])
+}
+
+// Items purchased from businesses (épicerie, restaurant, lemonade, etc.)
+model BusinessPurchasedItem {
+  id           String   @id @default(uuid())
+  userId       String
+  businessId   String?
+  businessName String
+  itemKey      String
+  itemLabel    String
+  itemEmoji    String?
+  itemImageUrl String?
+  price        Int
+  quantity     Int      @default(1)
+  acquiredAt   DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  @@index([userId, acquiredAt])
+  @@index([businessId])
 }

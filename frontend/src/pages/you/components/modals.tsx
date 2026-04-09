@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
-  CreditCard, Download, Edit2, ExternalLink, GraduationCap, Landmark, Loader2, Percent,
+  CreditCard, Download, Edit2, ExternalLink, GraduationCap, Image, Landmark, Loader2, Percent,
   Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X, Utensils,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -12,8 +12,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import {
   type YouBankAccount, type YouBusiness, type YouBusinessLoan, type YouBusinessTransaction,
-  type YouBusinessType, type YouFormationProduct, type YouPlayer, type YouRelationship, type YouStartupProduct, youApi,
+  type YouBusinessType, type YouFormationProduct, type YouPlayer, type YouRelationship, type YouStartupProduct, youApi, uploadUserImage,
 } from '@/services/api';
+import { resolveImageUrl } from '@/lib/images';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';
 import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, SectionTitle, SelectBox, UserAvatar } from './ui';
@@ -2664,6 +2665,66 @@ export function FormationCatalogModal({
   );
 }
 
+type MenuItem = { key: string; label: string; price: number; emoji: string; imageUrl: string; section: string };
+
+function MenuItemImagePicker({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve((reader.result as string).replace(/^data:[^;]+;base64,/, ''));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await uploadUserImage({ base64Data, mimeType: file.type });
+      onChange(res.data.imageUrl);
+    } catch {
+      toast.error('Erreur lors du téléchargement');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      {value ? (
+        <div className="relative h-9 w-9 shrink-0">
+          <img src={resolveImageUrl(value)} className="h-9 w-9 rounded object-cover border border-border/40" alt="" />
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center text-[10px]"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="h-9 w-9 shrink-0 flex items-center justify-center rounded border border-dashed border-border/60 hover:border-border text-muted-foreground hover:text-foreground transition-colors"
+          title="Ajouter une image"
+        >
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Image className="h-4 w-4" />}
+        </button>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }}
+      />
+    </div>
+  );
+}
+
 export function ManageMenuModal({
   open,
   onClose,
@@ -2700,7 +2761,7 @@ export function ManageMenuModal({
 
   const sourceItems = business.customData ?? getDefaults(business.typeKey);
 
-  const [menu, setMenu] = useState<{ key: string; label: string; price: number; emoji: string; section?: string }[]>([]);
+  const [menu, setMenu] = useState<MenuItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [draggedItemIdx, setDraggedItemIdx] = useState<number | null>(null);
 
@@ -2711,10 +2772,15 @@ export function ManageMenuModal({
         label: item.label ?? '',
         price: item.price ?? 5,
         emoji: item.emoji ?? '',
+        imageUrl: item.imageUrl ?? '',
         section: item.section ?? '',
       })));
     }
   }, [open, business]);
+
+  const updateItem = (idx: number, patch: Partial<MenuItem>) => {
+    setMenu((prev) => { const n = [...prev]; n[idx] = { ...n[idx]!, ...patch }; return n; });
+  };
 
   const save = async () => {
     setSaving(true);
@@ -2724,6 +2790,7 @@ export function ManageMenuModal({
         label: m.label.trim().substring(0, 50),
         price: Math.max(1, Math.min(100000, Number(m.price))),
         emoji: m.emoji.trim().substring(0, 10),
+        imageUrl: m.imageUrl.trim() || undefined,
         section: m.section?.trim().substring(0, 50) || '',
       }));
 
@@ -2737,77 +2804,59 @@ export function ManageMenuModal({
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={`Menu : ${business.name}`} desc="Modifie au maximum 20 articles à vendre.">
+    <ModalWrap open={open} onClose={onClose} title={`Menu : ${business.name}`} desc="Modifie au maximum 20 articles. Emoji ou image au choix.">
       <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
         {menu.map((item, idx) => (
           <div
             key={item.key}
             draggable
-            onDragStart={(e) => {
-              setDraggedItemIdx(idx);
-              e.currentTarget.style.opacity = '0.5';
-            }}
-            onDragEnd={(e) => {
-              setDraggedItemIdx(null);
-              e.currentTarget.style.opacity = '1';
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-            }}
+            onDragStart={(e) => { setDraggedItemIdx(idx); e.currentTarget.style.opacity = '0.5'; }}
+            onDragEnd={(e) => { setDraggedItemIdx(null); e.currentTarget.style.opacity = '1'; }}
+            onDragOver={(e) => { e.preventDefault(); }}
             onDrop={(e) => {
               if (draggedItemIdx === null || draggedItemIdx === idx) return;
               e.preventDefault();
               const newMenu = [...menu];
-              const [draggedItem] = newMenu.splice(draggedItemIdx, 1);
-              newMenu.splice(idx, 0, draggedItem);
+              const [dragged] = newMenu.splice(draggedItemIdx, 1);
+              newMenu.splice(idx, 0, dragged!);
               setMenu(newMenu);
               setDraggedItemIdx(null);
             }}
             className="flex flex-col gap-2 rounded-xl border border-border/40 p-2 cursor-grab active:cursor-grabbing hover:bg-muted/10 transition-colors"
           >
             <div className="flex gap-2 items-center w-full">
-              <div title="Maintient pour glisser" className="select-none text-muted-foreground mr-1">
-                ⋮⋮
-              </div>
+              <div title="Maintient pour glisser" className="select-none text-muted-foreground mr-1">⋮⋮</div>
               <Input
-                placeholder="Section (ex: Entrées)"
-                value={item.section || ''}
-                onChange={(e) => {
-                  const newMenu = [...menu];
-                  newMenu[idx].section = e.target.value;
-                  setMenu(newMenu);
-                }}
-                className="w-[140px] text-xs h-9"
+                placeholder="Section"
+                value={item.section}
+                onChange={(e) => updateItem(idx, { section: e.target.value })}
+                className="w-[120px] text-xs h-9"
               />
-              <Input
-                placeholder="Emoji"
-                value={item.emoji}
-                onChange={(e) => {
-                  const newMenu = [...menu];
-                  newMenu[idx].emoji = e.target.value;
-                  setMenu(newMenu);
-                }}
-                className="w-[70px] h-9"
-              />
+              {/* Emoji or image — image takes priority */}
+              {item.imageUrl ? (
+                <MenuItemImagePicker value={item.imageUrl} onChange={(url) => updateItem(idx, { imageUrl: url })} />
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Input
+                    placeholder="Emoji"
+                    value={item.emoji}
+                    onChange={(e) => updateItem(idx, { emoji: e.target.value })}
+                    className="w-[58px] h-9"
+                  />
+                  <MenuItemImagePicker value="" onChange={(url) => updateItem(idx, { imageUrl: url, emoji: '' })} />
+                </div>
+              )}
               <Input
                 placeholder="Nom"
                 value={item.label}
-                onChange={(e) => {
-                  const newMenu = [...menu];
-                  newMenu[idx].label = e.target.value;
-                  setMenu(newMenu);
-                }}
+                onChange={(e) => updateItem(idx, { label: e.target.value })}
                 className="flex-1 h-9"
               />
               <Input
                 type="number"
                 placeholder="Prix"
                 value={item.price}
-                onChange={(e) => {
-                  const newMenu = [...menu];
-                  newMenu[idx].price = Number(e.target.value);
-                  setMenu(newMenu);
-                }}
+                onChange={(e) => updateItem(idx, { price: Number(e.target.value) })}
                 className="w-20 h-9"
                 min={1}
               />
@@ -2815,11 +2864,7 @@ export function ManageMenuModal({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-red-400"
-                onClick={() => {
-                  const newMenu = [...menu];
-                  newMenu.splice(idx, 1);
-                  setMenu(newMenu);
-                }}
+                onClick={() => setMenu((prev) => prev.filter((_, i) => i !== idx))}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -2830,7 +2875,7 @@ export function ManageMenuModal({
           <Button
             variant="outline"
             className="w-full mt-2"
-            onClick={() => setMenu([...menu, { key: Math.random().toString(36).substring(7), label: '', price: 10, emoji: '🍔' }])}
+            onClick={() => setMenu((prev) => [...prev, { key: Math.random().toString(36).substring(7), label: '', price: 10, emoji: '🍔', imageUrl: '', section: '' }])}
           >
             <Plus className="mr-2 h-4 w-4" />
             Ajouter un article

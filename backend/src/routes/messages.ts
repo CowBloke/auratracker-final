@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import { createNotification } from '../utils/notifications.js';
+import { createNotification, emitNotificationUpdated } from '../utils/notifications.js';
 
 const router = Router();
 
@@ -18,6 +18,16 @@ const OTHER_USER_SELECT = {
 } as const;
 
 const getDirectKey = (userA: string, userB: string) => [userA, userB].sort().join(':');
+
+const parseNotificationData = (rawData: string | null) => {
+  if (!rawData) return null;
+  try {
+    const parsed = JSON.parse(rawData);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+};
 
 const ensureAuthenticated = (req: AuthRequest, res: Response) => {
   if (!req.user) {
@@ -375,18 +385,72 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       return createdMessage;
     });
 
-    await createNotification({
-      userId: otherParticipant.userId,
-      type: 'DIRECT_MESSAGE',
-      title: `Nouveau message de ${user.username}`,
-      body: body.length > 90 ? `${body.slice(0, 90)}...` : body,
-      link: `/messages?conversation=${conversationId}`,
-      icon: 'message-square',
-      data: {
-        conversationId,
-        senderId: user.id,
-      },
-    }).catch(() => {});
+    try {
+      const preview = body.length > 90 ? `${body.slice(0, 90)}...` : body;
+
+      const openConversationNotifications = await prisma.notification.findMany({
+        where: {
+          userId: otherParticipant.userId,
+          type: 'DIRECT_MESSAGE',
+          isRead: false,
+          isArchived: false,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      });
+
+      const existingConversationNotification = openConversationNotifications.find((notification) => {
+        const data = parseNotificationData(notification.data);
+        return data?.conversationId === conversationId;
+      });
+
+      if (existingConversationNotification) {
+        const existingData = parseNotificationData(existingConversationNotification.data) ?? {};
+        const existingMessageCount = typeof existingData.messageCount === 'number'
+          ? existingData.messageCount
+          : 1;
+        const nextMessageCount = existingMessageCount + 1;
+
+        const updated = await prisma.notification.update({
+          where: { id: existingConversationNotification.id },
+          data: {
+            title: `Nouveaux messages de ${user.username}`,
+            body: `${preview} (${nextMessageCount})`,
+            data: JSON.stringify({
+              ...existingData,
+              conversationId,
+              senderId: user.id,
+              senderUsername: user.username,
+              messageId: message.id,
+              messageCount: nextMessageCount,
+            }),
+            link: `/messages?conversation=${conversationId}`,
+            icon: 'message-square',
+            createdAt: now,
+          },
+        });
+
+        emitNotificationUpdated(updated);
+      } else {
+        await createNotification({
+          userId: otherParticipant.userId,
+          type: 'DIRECT_MESSAGE',
+          title: `Nouveau message de ${user.username}`,
+          body: preview,
+          link: `/messages?conversation=${conversationId}`,
+          icon: 'message-square',
+          data: {
+            conversationId,
+            senderId: user.id,
+            senderUsername: user.username,
+            messageId: message.id,
+            messageCount: 1,
+          },
+        });
+      }
+    } catch {
+      // Keep message delivery successful even if notification upsert fails.
+    }
 
     res.json({
       message: {

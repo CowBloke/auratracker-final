@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { Router, Response } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { io, prisma } from '../server.js';
-import { createNotification } from '../utils/notifications.js';
+import { createNotification, emitNotificationUpdated } from '../utils/notifications.js';
 import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
 import {
   buildClanEffectActivation,
@@ -71,6 +71,16 @@ const NATION_TERRITORIES = [
   { key: 'sydney-au', label: 'Sydney', region: 'Océanie', x: 92, y: 77, bonus: 'Expansion pacifique' },
   { key: 'auckland-nz', label: 'Auckland', region: 'Océanie', x: 98, y: 84, bonus: 'Repli sécurisé' },
 ] as const;
+
+const parseNotificationData = (rawData: string | null) => {
+  if (!rawData) return null;
+  try {
+    const parsed = JSON.parse(rawData);
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+};
 
 const clanMemberUserSelect = {
   id: true,
@@ -2139,8 +2149,55 @@ router.post('/:id/chat', authMiddleware, async (req: AuthRequest, res: Response)
       const preview = message.length > 120 ? `${message.slice(0, 117)}...` : message;
 
       Promise.all(
-        recipientIds.map((recipientId) =>
-          createNotification({
+        recipientIds.map(async (recipientId) => {
+          const openClanNotifications = await prisma.notification.findMany({
+            where: {
+              userId: recipientId,
+              type: 'CLAN_MESSAGE',
+              isRead: false,
+              isArchived: false,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+          });
+
+          const existingClanNotification = openClanNotifications.find((notification) => {
+            const data = parseNotificationData(notification.data);
+            return data?.clanId === id;
+          });
+
+          if (existingClanNotification) {
+            const existingData = parseNotificationData(existingClanNotification.data) ?? {};
+            const existingMessageCount = typeof existingData.messageCount === 'number'
+              ? existingData.messageCount
+              : 1;
+            const nextMessageCount = existingMessageCount + 1;
+
+            const updated = await prisma.notification.update({
+              where: { id: existingClanNotification.id },
+              data: {
+                title: `Nouveaux messages dans ${sender.clan.name}`,
+                body: `${sender.user.username}: ${preview} (${nextMessageCount})`,
+                data: JSON.stringify({
+                  ...existingData,
+                  clanId: id,
+                  clanName: sender.clan.name,
+                  senderId: userId,
+                  senderUsername: sender.user.username,
+                  messageId: createdMessage.id,
+                  messageCount: nextMessageCount,
+                }),
+                link: '/clans',
+                icon: 'message-square',
+                createdAt: createdMessage.createdAt,
+              },
+            });
+
+            emitNotificationUpdated(updated);
+            return;
+          }
+
+          await createNotification({
             userId: recipientId,
             type: 'CLAN_MESSAGE',
             title: `Nouveau message dans ${sender.clan.name}`,
@@ -2151,11 +2208,12 @@ router.post('/:id/chat', authMiddleware, async (req: AuthRequest, res: Response)
               senderId: userId,
               senderUsername: sender.user.username,
               messageId: createdMessage.id,
+              messageCount: 1,
             },
             link: '/clans',
             icon: 'message-square',
-          })
-        )
+          });
+        })
       ).catch(() => {});
     }
 

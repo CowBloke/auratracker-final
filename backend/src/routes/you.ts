@@ -62,6 +62,7 @@ import {
   createBusinessShareProposal,
   createBusinessShareBuybackOffer,
   respondToBusinessShareProposal,
+  getUserBusinessPurchases,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
@@ -644,6 +645,15 @@ router.post('/businesses/:businessId/update-menu', authMiddleware, requireYouAcc
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Update business menu error');
+  }
+});
+
+router.get('/my-purchases', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const items = await getUserBusinessPurchases(req.user!.id);
+    res.json({ items });
+  } catch (error) {
+    handleRouteError(error, res, 'Get business purchases error');
   }
 });
 

@@ -944,8 +944,10 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
             {(sectionItems as any[]).map((item) => (
               <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-400/15 text-lg">
-                    {item.emoji ?? <ShoppingCart className="h-4 w-4 text-yellow-400" />}
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-yellow-400/15 text-lg overflow-hidden">
+                    {item.imageUrl
+                      ? <img src={item.imageUrl} className="h-9 w-9 object-cover" alt={item.label} />
+                      : (item.emoji ?? <ShoppingCart className="h-4 w-4 text-yellow-400" />)}
                   </div>
                   <div>
                     <p className="text-sm font-medium">{item.label}</p>

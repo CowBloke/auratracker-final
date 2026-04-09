@@ -438,6 +438,19 @@ export interface YouBusiness {
   supportEnabled?: boolean;
 }
 
+export interface BusinessPurchasedItem {
+  id: string;
+  businessId: string | null;
+  businessName: string;
+  itemKey: string;
+  itemLabel: string;
+  itemEmoji: string | null;
+  itemImageUrl: string | null;
+  price: number;
+  quantity: number;
+  acquiredAt: string;
+}
+
 export interface PendingFormationReviewItem {
   id: string;
   businessId: string;
@@ -631,8 +644,10 @@ export const youApi = {
     api.post<{ result: { loanInterestRate: number } }>(`/you/businesses/${businessId}/set-loan-rate`, { rate }),
   setTransferFeeRate: (businessId: string, rate: number) =>
     api.post<{ result: { transferFeeRate: number } }>(`/you/businesses/${businessId}/set-transfer-fee-rate`, { rate }),
-  updateBusinessMenu: (businessId: string, menu: Array<{ key: string; label: string; price: number; emoji?: string }>) =>
+  updateBusinessMenu: (businessId: string, menu: Array<{ key: string; label: string; price: number; emoji?: string; imageUrl?: string; section?: string }>) =>
     api.post<{ result: { success: boolean } }>(`/you/businesses/${businessId}/update-menu`, { menu }),
+  getMyBusinessPurchases: () =>
+    api.get<{ items: BusinessPurchasedItem[] }>('/you/my-purchases'),
   getBusinessTransactions: (businessId: string) =>
     api.get<{ transactions: YouBusinessTransaction[] }>(`/you/businesses/${businessId}/transactions`),
   getBankAccounts: (businessId: string) =>
@@ -2465,9 +2480,11 @@ const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
 export const adminApi = {
   runRareAction,
   startPrismaStudio: () => api.post<{ ok: boolean; studioToken: string }>('/admin/prisma-studio/start'),
+  getAllAds: () => api.get<{ ads: PendingAdReview[] }>('/admin/ads'),
   getPendingAds: () => api.get<{ pendingAds: PendingAdReview[] }>('/admin/ads/pending'),
   approveAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/approve`, {}),
   rejectAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/reject`, {}),
+  deleteAdForever: (id: string) => api.delete<{ ok: boolean }>(`/admin/ads/${id}`),
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   getClans: () => api.get<{ clans: AdminClan[] }>('/admin/clans'),
   getClanEvents: () => api.get<{ events: AdminClanEvent[] }>('/admin/clan-events'),
@@ -3230,6 +3247,8 @@ export const supportApi = {
     api.patch<{ isFavorite: boolean }>(`/support/conversations/${conversationId}/favorite`, {}),
   addMember: (conversationId: string, userId: string) =>
     api.post<{ success: boolean }>(`/support/conversations/${conversationId}/members`, { userId }),
+  requestWitness: (conversationId: string, data: { witnessUserId: string; anonymous: boolean }) =>
+    api.post<{ success: boolean }>(`/support/conversations/${conversationId}/witness-requests`, data),
   removeMember: (conversationId: string, memberId: string) =>
     api.delete<{ success: boolean }>(`/support/conversations/${conversationId}/members/${memberId}`),
   reactToMessage: (conversationId: string, messageId: string, emoji: string) =>

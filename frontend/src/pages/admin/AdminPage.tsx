@@ -1113,7 +1113,7 @@ export default function Admin() {
     dailyAuraLimit: 50,
   });
   const [editPassword, setEditPassword] = useState('');
-  const [editAuraDelta, setEditAuraDelta] = useState(0);
+  const [editAuraTarget, setEditAuraTarget] = useState(0);
   const [saving, setSaving] = useState(false);
   const [downloadingUsersCsv, setDownloadingUsersCsv] = useState(false);
   const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null);
@@ -1149,6 +1149,8 @@ export default function Admin() {
   const [reviewingFormationProductId, setReviewingFormationProductId] = useState<string | null>(null);
   const [pendingAds, setPendingAds] = useState<PendingAdReview[]>([]);
   const [pendingAdsLoading, setPendingAdsLoading] = useState(false);
+  const [allAds, setAllAds] = useState<PendingAdReview[]>([]);
+  const [allAdsLoading, setAllAdsLoading] = useState(false);
   const [reviewingAdId, setReviewingAdId] = useState<string | null>(null);
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [badgeFormOpen, setBadgeFormOpen] = useState(false);
@@ -1352,6 +1354,18 @@ export default function Admin() {
     }
   };
 
+  const fetchAllAds = async () => {
+    setAllAdsLoading(true);
+    try {
+      const res = await adminApi.getAllAds();
+      setAllAds(res.data.ads);
+    } catch (error) {
+      console.error('Failed to fetch all ads:', error);
+    } finally {
+      setAllAdsLoading(false);
+    }
+  };
+
   const handleApproveCustomBadge = async (id: string) => {
     try {
       await customBadgesApi.approve(id);
@@ -1405,6 +1419,7 @@ export default function Admin() {
         ? await adminApi.approveAd(adId)
         : await adminApi.rejectAd(adId);
       setPendingAds((prev) => prev.filter((ad) => ad.id !== adId));
+      setAllAds((prev) => prev.map((ad) => (ad.id === adId ? res.data.ad : ad)));
       if (decision === 'approve') {
         showMessage('success', 'Publicite approuvee');
       } else {
@@ -1415,6 +1430,24 @@ export default function Admin() {
       console.error('Failed to review ad:', error);
       showMessage('error', error.response?.data?.error || 'Erreur lors de la revue de la publicite');
       return null;
+    } finally {
+      setReviewingAdId(null);
+    }
+  };
+
+  const handleDeleteAdForever = async (adId: string) => {
+    const confirmed = window.confirm('Supprimer cette publicite definitivement ? Cette action est irreversible.');
+    if (!confirmed) return;
+
+    setReviewingAdId(adId);
+    try {
+      await adminApi.deleteAdForever(adId);
+      setPendingAds((prev) => prev.filter((ad) => ad.id !== adId));
+      setAllAds((prev) => prev.filter((ad) => ad.id !== adId));
+      showMessage('success', 'Publicite supprimee definitivement');
+    } catch (error: any) {
+      console.error('Failed to delete ad forever:', error);
+      showMessage('error', error.response?.data?.error || 'Erreur lors de la suppression definitive de la publicite');
     } finally {
       setReviewingAdId(null);
     }
@@ -1949,6 +1982,7 @@ export default function Admin() {
     fetchCustomBadgeRequests();
     fetchPendingFormationReviews();
     fetchPendingAds();
+    fetchAllAds();
     fetchLogs();
     fetchLogStats();
     fetchSettings();
@@ -4035,7 +4069,7 @@ export default function Admin() {
       dailyAuraLimit: u.dailyAuraLimit,
     });
     setEditPassword('');
-    setEditAuraDelta(0);
+    setEditAuraTarget(u.aura);
     setEditModalOpen(true);
   };
 
@@ -4044,12 +4078,11 @@ export default function Admin() {
     setEditModalUser(null);
     setEditModalOpen(false);
     setEditPassword('');
-    setEditAuraDelta(0);
+    setEditAuraTarget(0);
   };
 
   const saveUser = async (id: string) => {
-    const baseAura = editModalUser?.aura ?? editValues.aura;
-    const nextAura = baseAura + editAuraDelta;
+    const nextAura = editAuraTarget;
     if (nextAura < 0) {
       showMessage('error', 'Le total d\'aura ne peut pas etre negatif');
       return;
@@ -4068,7 +4101,7 @@ export default function Admin() {
       setEditModalUser(null);
       setEditModalOpen(false);
       setEditPassword('');
-      setEditAuraDelta(0);
+      setEditAuraTarget(0);
       showMessage('success', 'Utilisateur mis à jour');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
@@ -4485,7 +4518,7 @@ export default function Admin() {
           className={SPACING.SECTION_SPACING}
         >
           <TabsList className="flex flex-wrap h-auto p-1">
-          <TabsTrigger value="inbox" onClick={() => { fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); }}>
+          <TabsTrigger value="inbox" onClick={() => { fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchAllAds(); }}>
             Boîte de réception
             {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length) > 0 && (
               <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
@@ -4615,6 +4648,9 @@ export default function Admin() {
                         <Button size="sm" variant="outline" onClick={() => void handleReviewAd(ad.id, 'reject')} disabled={reviewingAdId === ad.id}>
                           Rejeter
                         </Button>
+                        <Button size="sm" variant="destructive" onClick={() => void handleDeleteAdForever(ad.id)} disabled={reviewingAdId === ad.id}>
+                          Supprimer
+                        </Button>
                       </div>
                     </div>
                     <div className="grid gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
@@ -4636,6 +4672,63 @@ export default function Admin() {
                           <span>·</span>
                           <span>{ad.business.verified ? 'Entreprise vérifiée' : 'Entreprise non vérifiée'}</span>
                         </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === 'inbox' ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Toutes les publicités</h2>
+              <span className={TYPOGRAPHY.XS}>{allAds.length} au total</span>
+            </div>
+            <div className="space-y-3">
+              {allAdsLoading ? (
+                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement de toutes les publicités...</CardContent></Card>
+              ) : allAds.length === 0 ? (
+                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Aucune publicité créée par les utilisateurs.</CardContent></Card>
+              ) : allAds.map((ad) => (
+                <Card key={`all-${ad.id}`} className="overflow-hidden">
+                  <CardContent className="space-y-4 px-5 py-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-base font-semibold">{ad.title}</p>
+                          <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs text-violet-300">{ad.adType}</span>
+                          <span className={ad.status === 'APPROVED' ? 'rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300' : ad.status === 'PENDING' ? 'rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300' : 'rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-300'}>
+                            {ad.status === 'APPROVED' ? 'Approuvée' : ad.status === 'PENDING' ? 'En attente' : ad.status === 'REJECTED' ? 'Rejetée' : ad.status}
+                          </span>
+                          <span className={ad.isActive ? 'rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300' : 'rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground'}>
+                            {ad.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{ad.tagline}</p>
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{ad.business.name} · par {ad.business.owner.username}</p>
+                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          <span>Impressions: {ad.impressions.toLocaleString('fr-FR')}</span>
+                          <span>·</span>
+                          <span>Clics: {ad.clicks.toLocaleString('fr-FR')}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {ad.status === 'PENDING' ? (
+                          <>
+                            <Button size="sm" onClick={() => void handleReviewAd(ad.id, 'approve')} disabled={reviewingAdId === ad.id}>
+                              Approuver
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => void handleReviewAd(ad.id, 'reject')} disabled={reviewingAdId === ad.id}>
+                              Rejeter
+                            </Button>
+                          </>
+                        ) : null}
+                        <Button size="sm" variant="destructive" onClick={() => void handleDeleteAdForever(ad.id)} disabled={reviewingAdId === ad.id}>
+                          Supprimer définitivement
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -6239,18 +6332,18 @@ export default function Admin() {
             {/* Economy */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura (+/-)</label>
+                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura (total)</label>
                 <div className="relative">
                   <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400/60 pointer-events-none" />
                   <Input
                     type="number"
-                    value={editAuraDelta}
-                    onChange={(e) => setEditAuraDelta(parseInt(e.target.value, 10) || 0)}
+                    value={editAuraTarget}
+                    onChange={(e) => setEditAuraTarget(parseInt(e.target.value, 10) || 0)}
                     className="h-9 bg-transparent border-purple-500/30 focus-visible:ring-purple-500/30 pl-8"
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Actuel: {(editModalUser?.aura ?? editValues.aura).toLocaleString()} • Apres: {Math.max(0, (editModalUser?.aura ?? editValues.aura) + editAuraDelta).toLocaleString()}
+                  Actuel: {(editModalUser?.aura ?? editValues.aura).toLocaleString()} • Variation: {(editAuraTarget - (editModalUser?.aura ?? editValues.aura)).toLocaleString()}
                 </p>
               </div>
               <div className="space-y-1">

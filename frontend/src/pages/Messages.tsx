@@ -116,9 +116,8 @@ COURT_ROLE_LABELS.PUBLIC_DEFENDER_DEFENDANT = 'Defenseur public du coupable';
 COURT_STATUS_LABELS.DELIBERATION = { label: 'Deliberation', color: 'text-slate-500' };
 
 const getCourtAnonymousSenderLabel = (role: string | null) => {
-  if (role === 'PLAINTIFF') return COURT_ROLE_LABELS.PLAINTIFF;
-  if (role === 'DEFENDANT') return COURT_ROLE_LABELS.DEFENDANT;
-  return 'Avocat';
+  if (role && COURT_ROLE_LABELS[role]) return COURT_ROLE_LABELS[role];
+  return 'Participant';
 };
 
 const getCourtPartyLabel = (courtCase: CourtCase | null, side: 'PLAINTIFF' | 'DEFENDANT') => {
@@ -308,6 +307,11 @@ export default function MessagesPage() {
   const [groupReportOpen, setGroupReportOpen] = useState(false);
   const [groupReportReason, setGroupReportReason] = useState('');
   const [groupReportSubmitting, setGroupReportSubmitting] = useState(false);
+  const [witnessRequestOpen, setWitnessRequestOpen] = useState(false);
+  const [witnessSearch, setWitnessSearch] = useState('');
+  const [witnessUserId, setWitnessUserId] = useState<string | null>(null);
+  const [witnessAnonymous, setWitnessAnonymous] = useState(true);
+  const [witnessSubmitting, setWitnessSubmitting] = useState(false);
   const [addMemberSearch, setAddMemberSearch] = useState('');
 
   // Court case state
@@ -343,6 +347,7 @@ export default function MessagesPage() {
   const isAdminViewer = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const selectedConversation = detail?.conversation ?? conversations.find((c) => c.id === selectedId) ?? null;
   const isCourtConversation = Boolean(selectedConversation?.courtCaseId);
+  const canManageCourtGroup = Boolean(!isCourtConversation || isAdminViewer);
   const conversationDisplayTitle = isCourtConversation && courtCase?.plainte?.title
     ? courtCase.plainte.title
     : selectedConversation?.displayName ?? '';
@@ -809,6 +814,28 @@ export default function MessagesPage() {
     assignedLawFirm &&
     assignedLawyer,
   );
+  const canRequestWitness = Boolean(isCourtConversation && courtCase && !isAdminViewer && courtCase.status === 'OPEN');
+
+  useEffect(() => {
+    if (!selectedConversation) return;
+    if (selectedConversation.courtCaseId && isAdminViewer) {
+      setSelectedCourtRole('JUDGE');
+      return;
+    }
+    setSelectedCourtRole(null);
+  }, [selectedConversation?.id, isAdminViewer]);
+
+  const witnessCandidates = useMemo(() => {
+    if (!selectedConversation) return [] as SocialUser[];
+    const memberIds = new Set(selectedConversation.participants.map((entry) => entry.user.id));
+    const term = witnessSearch.trim().toLowerCase();
+    return players.filter((player) => {
+      if (player.id === user?.id) return false;
+      if (memberIds.has(player.id)) return false;
+      if (!term) return true;
+      return player.username.toLowerCase().includes(term);
+    });
+  }, [players, selectedConversation, user?.id, witnessSearch]);
 
   useEffect(() => {
     if (representationType !== 'PRIVATE_LAWYER') return;
@@ -854,7 +881,7 @@ export default function MessagesPage() {
           );
         } else {
           const roleToSend = isCourtConversation
-            ? (isAdminViewer ? selectedCourtRole : myCourtRole)
+            ? (isAdminViewer ? (selectedCourtRole ?? 'JUDGE') : myCourtRole)
             : null;
           await supportApi.sendConversationMessage(selectedIdSafe, body, roleToSend, currentImageUrl || null);
         }
@@ -951,6 +978,10 @@ export default function MessagesPage() {
 
   const handleSaveGroupSettings = async () => {
     if (!selectedConversation || selectedConversation.type !== 'GROUP') return;
+    if (!canManageCourtGroup) {
+      toast({ title: 'Seuls les admins peuvent renommer un groupe de dossier', variant: 'destructive' });
+      return;
+    }
     setGroupSettingsSaving(true);
     try {
       await supportApi.updateConversation(selectedConversation.id, {
@@ -981,6 +1012,10 @@ export default function MessagesPage() {
 
   const handleAddMember = async (memberId: string) => {
     if (!selectedIdSafe) return;
+    if (!canManageCourtGroup) {
+      toast({ title: 'Seuls les admins peuvent ajouter des personnes sur un dossier', variant: 'destructive' });
+      return;
+    }
     try {
       await supportApi.addMember(selectedIdSafe, memberId);
       await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false)]);
@@ -1175,6 +1210,31 @@ export default function MessagesPage() {
     setGroupSettingsOpen(true);
   };
 
+  const openWitnessRequestDialog = () => {
+    setWitnessSearch('');
+    setWitnessUserId(null);
+    setWitnessAnonymous(true);
+    setWitnessRequestOpen(true);
+  };
+
+  const handleRequestWitness = async () => {
+    if (!selectedIdSafe || !witnessUserId || !canRequestWitness) return;
+    setWitnessSubmitting(true);
+    try {
+      await supportApi.requestWitness(selectedIdSafe, {
+        witnessUserId,
+        anonymous: witnessAnonymous,
+      });
+      setWitnessRequestOpen(false);
+      await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
+      toast({ title: 'Demande de temoin envoyee aux admins' });
+    } catch {
+      toast({ title: 'Impossible de demander ce temoin', variant: 'destructive' });
+    } finally {
+      setWitnessSubmitting(false);
+    }
+  };
+
   const handleHeaderClick = () => {
     if (!selectedConversation) return;
     if (selectedConversation.type === 'GROUP') openGroupSettings();
@@ -1325,6 +1385,9 @@ export default function MessagesPage() {
           <div className="border-b border-border/60 px-4 py-3">
             <DialogTitle className="text-sm font-semibold">Infos du groupe</DialogTitle>
             <DialogDescription className="text-xs">Gérez le nom, la description, l’icône et les membres du groupe depuis un seul endroit.</DialogDescription>
+            {!canManageCourtGroup && (
+              <p className="mt-1 text-[11px] text-muted-foreground">Sur un dossier judiciaire, seuls les admins peuvent renommer le groupe et ajouter des membres.</p>
+            )}
           </div>
           <ScrollArea className="max-h-[75vh]">
             <div className="space-y-5 p-4">
@@ -1340,6 +1403,7 @@ export default function MessagesPage() {
                     type="button"
                     onClick={() => groupImageInputRef.current?.click()}
                     className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity hover:opacity-100"
+                    disabled={!canManageCourtGroup}
                   >
                     <Camera className="h-5 w-5 text-white" />
                   </button>
@@ -1349,6 +1413,7 @@ export default function MessagesPage() {
                     accept="image/*"
                     className="hidden"
                     onChange={(e) => {
+                      if (!canManageCourtGroup) return;
                       const f = e.target.files?.[0];
                       if (f) void handleGroupImageUpload(f);
                       e.target.value = '';
@@ -1358,7 +1423,7 @@ export default function MessagesPage() {
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground">Nom du groupe</p>
-                    <Input value={groupEditName} onChange={(e) => setGroupEditName(e.target.value)} placeholder="Nom du groupe" className="h-8 text-sm" maxLength={80} />
+                    <Input value={groupEditName} onChange={(e) => setGroupEditName(e.target.value)} placeholder="Nom du groupe" className="h-8 text-sm" maxLength={80} disabled={!canManageCourtGroup} />
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-muted-foreground">Description du groupe</p>
@@ -1368,6 +1433,7 @@ export default function MessagesPage() {
                       placeholder="Description du groupe"
                       className="min-h-[72px] resize-none text-sm"
                       maxLength={280}
+                      disabled={!canManageCourtGroup}
                     />
                   </div>
                   <div className="space-y-1">
@@ -1379,12 +1445,14 @@ export default function MessagesPage() {
                         placeholder="👥"
                         className="h-8 w-24 text-sm"
                         maxLength={8}
+                        disabled={!canManageCourtGroup}
                       />
                       {(groupEditIcon || groupEditImageUrl) && (
                         <button
                           type="button"
                           onClick={() => { setGroupEditIcon(''); setGroupEditImageUrl(null); }}
                           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                          disabled={!canManageCourtGroup}
                         >
                           <X className="h-3 w-3" />Retirer photo & icône
                         </button>
@@ -1406,7 +1474,7 @@ export default function MessagesPage() {
                     size="sm"
                     className="h-8 gap-1.5 text-xs"
                     onClick={() => setAddMembersOpen(true)}
-                    disabled={nonMembers.length === 0}
+                    disabled={!canManageCourtGroup || nonMembers.length === 0}
                   >
                     <UserPlus className="h-3.5 w-3.5" />Add
                   </Button>
@@ -1421,7 +1489,7 @@ export default function MessagesPage() {
                       const isDefendantMember = Boolean(courtCase?.defendantId && entry.user.id === courtCase.defendantId);
                       const shouldMaskCourtMember = isCourtMemberEntry && !isPlaintiffMember && !isDefendantMember;
                       const memberDisplayName = shouldMaskCourtMember
-                        ? 'Avocat'
+                        ? getCourtAnonymousSenderLabel(entry.courtRole ?? null)
                         : entry.user.username;
                       return (
                         <div key={entry.user.id} className="flex items-center gap-2.5 px-3 py-2">
@@ -1457,10 +1525,57 @@ export default function MessagesPage() {
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => setGroupSettingsOpen(false)}>Annuler</Button>
-              <Button size="sm" disabled={groupSettingsSaving || groupImageUploading} onClick={() => void handleSaveGroupSettings()}>
+              <Button size="sm" disabled={!canManageCourtGroup || groupSettingsSaving || groupImageUploading} onClick={() => void handleSaveGroupSettings()}>
                 {groupSettingsSaving ? 'Sauvegarde...' : 'Sauvegarder'}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={witnessRequestOpen} onOpenChange={setWitnessRequestOpen}>
+        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+          <div className="border-b border-border/60 px-4 py-3">
+            <DialogTitle className="text-sm font-semibold">Demander un témoin</DialogTitle>
+            <DialogDescription className="text-xs">Les admins recevront la demande et décideront d'ajouter ou non le témoin.</DialogDescription>
+          </div>
+          <div className="space-y-3 p-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input value={witnessSearch} onChange={(e) => setWitnessSearch(e.target.value)} placeholder="Rechercher un témoin..." className="h-8 pl-8 text-xs" />
+            </div>
+            <ScrollArea className="max-h-60 rounded-lg border border-border/50">
+              <div className="divide-y divide-border/40">
+                {witnessCandidates.map((player) => {
+                  const selected = witnessUserId === player.id;
+                  return (
+                    <button
+                      key={player.id}
+                      type="button"
+                      onClick={() => setWitnessUserId(player.id)}
+                      className={cn('flex w-full items-center gap-2 px-3 py-2 text-left transition-colors', selected ? 'bg-primary/10' : 'hover:bg-muted/40')}
+                    >
+                      <Avatar className="h-6 w-6 shrink-0">
+                        {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} /> : null}
+                        <AvatarFallback className="text-[9px]">{getInitials(player.username)}</AvatarFallback>
+                      </Avatar>
+                      <span className="truncate text-xs" style={player.usernameColor ? { color: player.usernameColor } : undefined}>{player.username}</span>
+                    </button>
+                  );
+                })}
+                {witnessCandidates.length === 0 && <p className="py-3 text-center text-xs text-muted-foreground">Aucun témoin disponible.</p>}
+              </div>
+            </ScrollArea>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Checkbox checked={witnessAnonymous} onCheckedChange={(checked) => setWitnessAnonymous(Boolean(checked))} />
+              Garder le témoin anonyme (visible uniquement comme rôle)
+            </label>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-2.5">
+            <Button variant="ghost" size="sm" onClick={() => setWitnessRequestOpen(false)} disabled={witnessSubmitting}>Annuler</Button>
+            <Button size="sm" disabled={witnessSubmitting || !witnessUserId} onClick={() => void handleRequestWitness()}>
+              {witnessSubmitting ? 'Envoi...' : 'Envoyer la demande'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1974,6 +2089,12 @@ export default function MessagesPage() {
                           {hasCourtRepresentation ? 'Changer avocat' : 'Choisir avocat'}
                         </Button>
                       ) : null}
+                      {canRequestWitness ? (
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" onClick={openWitnessRequestDialog}>
+                          <Users className="h-3 w-3" />
+                          Demander témoin
+                        </Button>
+                      ) : null}
                       {canRateAssignedLawyer ? (
                         <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10" onClick={() => setShowLawyerRatingDialog(true)}>
                           <Star className="h-3 w-3" />
@@ -2232,7 +2353,7 @@ export default function MessagesPage() {
                       <span className="text-[10px] text-muted-foreground font-medium">Envoyer en tant que :</span>
                       {Object.entries(COURT_ROLE_LABELS).map(([role, label]) => (
                         <button key={role} type="button"
-                          onClick={() => setSelectedCourtRole(selectedCourtRole === role ? null : role)}
+                          onClick={() => setSelectedCourtRole(role)}
                           className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors border', selectedCourtRole === role
                             ? cn(COURT_ROLE_COLORS[role]?.badge ?? 'bg-primary/15 text-primary', 'border-transparent')
                             : 'border-border/50 text-muted-foreground hover:border-border hover:text-foreground')}>
