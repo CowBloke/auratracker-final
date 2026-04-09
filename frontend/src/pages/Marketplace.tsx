@@ -780,7 +780,6 @@ export default function Marketplace() {
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {marketStats.map((stat) => {
-                      const skinImageUrl = getSkinImageUrl(stat.effect);
                       const imageUrl = stat.imageUrl ? resolveImageUrl(stat.imageUrl) : null;
                       const isPositive = (stat.priceEvolutionPct30d ?? 0) > 0;
                       const isNegative = (stat.priceEvolutionPct30d ?? 0) < 0;
@@ -790,9 +789,7 @@ export default function Marketplace() {
                           <CardContent className="space-y-4 p-4">
                             <div className="flex items-start gap-3">
                               <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/30">
-                                {skinImageUrl ? (
-                                  <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
-                                ) : imageUrl ? (
+                                {imageUrl ? (
                                   <img src={imageUrl} alt={stat.itemName} className="h-full w-full object-cover" />
                                 ) : (
                                   <Package className="h-6 w-6 text-muted-foreground/50" />
