@@ -849,11 +849,12 @@ const requireAdminOrFiscal = (req: AuthRequest, res: Response, next: Function) =
   next();
 };
 
-const toUserRoleFlags = (role: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' | 'FISCAL_INSPECTOR') => ({
+const toUserRoleFlags = (role: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' | 'FISCAL_INSPECTOR' | 'JUDGE') => ({
   isAdmin: role === 'ADMIN' || role === 'SUPER_ADMIN',
   isSuperAdmin: role === 'SUPER_ADMIN',
   isBetaTester: role === 'BETA_TESTER',
   isFiscalInspector: role === 'FISCAL_INSPECTOR',
+  isJudge: role === 'JUDGE',
 });
 
 const serializeRegistrationReview = (review: {
@@ -2221,6 +2222,8 @@ router.get('/users', authMiddleware, requireAdminOrFiscal, async (req: AuthReque
         id: true,
         username: true,
         firstName: true,
+        usernameColor: true,
+        profilePicture: true,
         email: true,
         aura: true,
         money: true,
@@ -2229,6 +2232,7 @@ router.get('/users', authMiddleware, requireAdminOrFiscal, async (req: AuthReque
         isSuperAdmin: true,
         isBetaTester: true,
         isChatMuted: true,
+        isBraquageLegalOwner: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
         lastDailyReset: true,
@@ -2432,7 +2436,7 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       updateData.passwordHash = await bcrypt.hash(normalizedPassword, 10);
     }
     if (role !== undefined) {
-      if (role !== 'USER' && role !== 'BETA_TESTER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN' && role !== 'FISCAL_INSPECTOR') {
+      if (role !== 'USER' && role !== 'BETA_TESTER' && role !== 'ADMIN' && role !== 'SUPER_ADMIN' && role !== 'FISCAL_INSPECTOR' && role !== 'JUDGE') {
         return res.status(400).json({ error: 'Invalid role' });
       }
       if (req.user?.id === id) {
@@ -5858,6 +5862,285 @@ router.post('/businesses/creation-enabled', authMiddleware, async (req: AuthRequ
     res.json({ enabled });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update setting' });
+  }
+});
+
+// ========== FISCAL INSPECTOR — USERS LIST (READ-ONLY) ==========
+
+router.get('/fiscal/users', authMiddleware, requireAdminOrFiscal, async (req: AuthRequest, res: Response) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { isApproved: true },
+      select: {
+        id: true,
+        username: true,
+        firstName: true,
+        money: true,
+        aura: true,
+        relationshipSideA: {
+          where: { status: 'MARRIED' },
+          select: { id: true, coupleBalance: true, marriedAt: true, userB: { select: { id: true, username: true, money: true } } },
+          take: 1,
+        },
+        relationshipSideB: {
+          where: { status: 'MARRIED' },
+          select: { id: true, coupleBalance: true, marriedAt: true, userA: { select: { id: true, username: true, money: true } } },
+          take: 1,
+        },
+      },
+      orderBy: { username: 'asc' },
+    });
+
+    const result = users.map((u) => {
+      const married = u.relationshipSideA[0] ?? u.relationshipSideB[0] ?? null;
+      const sharedMoney = married
+        ? {
+            coupleBalance: married.coupleBalance,
+            partner: 'userB' in married
+              ? { id: married.userB.id, username: married.userB.username, money: married.userB.money }
+              : { id: (married as typeof u.relationshipSideB[0]).userA.id, username: (married as typeof u.relationshipSideB[0]).userA.username, money: (married as typeof u.relationshipSideB[0]).userA.money },
+          }
+        : null;
+      return {
+        id: u.id,
+        username: u.username,
+        firstName: u.firstName,
+        money: u.money,
+        aura: Number(u.aura),
+        sharedMoney,
+      };
+    });
+
+    res.json({ users: result });
+  } catch (error) {
+    console.error('Fiscal users list error:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des joueurs.' });
+  }
+});
+
+// ========== PENDING SANCTIONS ==========
+
+const PENDING_SANCTION_INCLUDE = {
+  requestedBy: { select: { id: true, username: true } },
+  targetUser: { select: { id: true, username: true } },
+  beneficiary: { select: { id: true, username: true } },
+  reviewedBy: { select: { id: true, username: true } },
+} as const;
+
+// List pending sanctions (admin only)
+router.get('/pending-sanctions', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { status } = req.query;
+    const where = status ? { status: String(status) } : {};
+    const sanctions = await prisma.pendingSanction.findMany({
+      where,
+      include: PENDING_SANCTION_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ sanctions });
+  } catch (error) {
+    console.error('List pending sanctions error:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des sanctions.' });
+  }
+});
+
+// Fiscal inspector submits a sanction proposal
+router.post('/fiscal-sanctions', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user?.isFiscalInspector && !user?.isAdmin) {
+      return res.status(403).json({ error: 'Accès refusé.' });
+    }
+
+    const { type, targetUserId, beneficiaryUserId, amount, message } = req.body;
+
+    if (!type || !targetUserId || !amount || !message) {
+      return res.status(400).json({ error: 'Champs requis manquants.' });
+    }
+    if (type !== 'AMENDE' && type !== 'PAYMENT') {
+      return res.status(400).json({ error: 'Type de sanction invalide.' });
+    }
+    if (typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ error: 'Montant invalide.' });
+    }
+    if (type === 'PAYMENT' && !beneficiaryUserId) {
+      return res.status(400).json({ error: 'Bénéficiaire requis pour un paiement forcé.' });
+    }
+
+    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true, username: true } });
+    if (!targetUser) return res.status(404).json({ error: 'Joueur cible introuvable.' });
+
+    if (beneficiaryUserId) {
+      const bene = await prisma.user.findUnique({ where: { id: beneficiaryUserId }, select: { id: true } });
+      if (!bene) return res.status(404).json({ error: 'Bénéficiaire introuvable.' });
+    }
+
+    const sanction = await prisma.pendingSanction.create({
+      data: {
+        requestedById: user.id,
+        requestedByRole: 'FISCAL_INSPECTOR',
+        type,
+        targetUserId,
+        beneficiaryUserId: beneficiaryUserId ?? null,
+        amount,
+        message: message.trim(),
+      },
+      include: PENDING_SANCTION_INCLUDE,
+    });
+
+    // Notify all admins
+    const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { id: true } });
+    await Promise.all(admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: 'SYSTEM',
+        title: '🏛️ Demande de sanction fiscale',
+        body: `L'agent du fisc ${user.username} souhaite ${type === 'AMENDE' ? `infliger une amende de ${amount}€ à` : `forcer un paiement de ${amount}€ de`} ${targetUser.username}.`,
+        data: { pendingSanctionId: sanction.id },
+        link: `/admin?tab=inbox`,
+        icon: 'landmark',
+      }).catch(() => {})
+    ));
+
+    res.status(201).json({ sanction });
+  } catch (error) {
+    console.error('Fiscal sanction error:', error);
+    res.status(500).json({ error: 'Erreur lors de la soumission de la sanction.' });
+  }
+});
+
+// Approve a pending sanction (admin only — execute the action)
+router.patch('/pending-sanctions/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { adminNote } = req.body;
+
+    const sanction = await prisma.pendingSanction.findUnique({
+      where: { id },
+      include: {
+        targetUser: { select: { id: true, username: true, money: true } },
+        beneficiary: { select: { id: true, username: true, money: true } },
+        requestedBy: { select: { id: true, username: true } },
+      },
+    });
+
+    if (!sanction) return res.status(404).json({ error: 'Sanction introuvable.' });
+    if (sanction.status !== 'PENDING') return res.status(400).json({ error: 'Cette sanction a déjà été traitée.' });
+
+    await prisma.$transaction(async (tx) => {
+      // Execute the financial action
+      if (sanction.type === 'AMENDE') {
+        // Deduct from target, create an AdminWarning record
+        await tx.user.update({
+          where: { id: sanction.targetUserId },
+          data: { money: { decrement: sanction.amount } },
+        });
+        await tx.adminWarning.create({
+          data: {
+            userId: sanction.targetUserId,
+            issuedById: req.user!.id,
+            type: 'AMENDE',
+            message: sanction.message,
+            severity: 'HIGH',
+            amount: sanction.amount,
+          },
+        });
+      } else if (sanction.type === 'PAYMENT' && sanction.beneficiaryUserId) {
+        // Transfer from target to beneficiary
+        await tx.user.update({
+          where: { id: sanction.targetUserId },
+          data: { money: { decrement: sanction.amount } },
+        });
+        await tx.user.update({
+          where: { id: sanction.beneficiaryUserId },
+          data: { money: { increment: sanction.amount } },
+        });
+        // Notify target
+        await createNotification({
+          userId: sanction.targetUserId,
+          type: 'SYSTEM',
+          title: '⚖️ Paiement forcé',
+          body: `Un paiement de ${sanction.amount}€ a été prélevé sur votre compte : ${sanction.message}`,
+          data: {},
+          link: '/',
+          icon: 'gavel',
+        }).catch(() => {});
+      }
+
+      // Mark as approved
+      await tx.pendingSanction.update({
+        where: { id },
+        data: { status: 'APPROVED', adminNote: adminNote ?? null, reviewedById: req.user!.id },
+      });
+    });
+
+    // Emit warning to target if amende
+    if (sanction.type === 'AMENDE') {
+      io.to(`user:${sanction.targetUserId}`).emit('admin:warning', {
+        id: sanction.id,
+        type: 'AMENDE',
+        message: sanction.message,
+        severity: 'HIGH',
+        amount: sanction.amount,
+        issuedBy: req.user!.username,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    // Notify requester of approval
+    await createNotification({
+      userId: sanction.requestedById,
+      type: 'SYSTEM',
+      title: '✅ Sanction approuvée',
+      body: `Votre demande de sanction contre ${sanction.targetUser.username} a été approuvée par un administrateur.`,
+      data: {},
+      link: '/',
+      icon: 'check',
+    }).catch(() => {});
+
+    const updated = await prisma.pendingSanction.findUnique({ where: { id }, include: PENDING_SANCTION_INCLUDE });
+    res.json({ sanction: updated });
+  } catch (error) {
+    console.error('Approve sanction error:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'approbation de la sanction.' });
+  }
+});
+
+// Reject a pending sanction (admin only)
+router.patch('/pending-sanctions/:id/reject', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { adminNote } = req.body;
+
+    const sanction = await prisma.pendingSanction.findUnique({
+      where: { id },
+      include: { targetUser: { select: { username: true } }, requestedBy: { select: { id: true, username: true } } },
+    });
+
+    if (!sanction) return res.status(404).json({ error: 'Sanction introuvable.' });
+    if (sanction.status !== 'PENDING') return res.status(400).json({ error: 'Cette sanction a déjà été traitée.' });
+
+    await prisma.pendingSanction.update({
+      where: { id },
+      data: { status: 'REJECTED', adminNote: adminNote ?? null, reviewedById: req.user!.id },
+    });
+
+    // Notify requester
+    await createNotification({
+      userId: sanction.requestedById,
+      type: 'SYSTEM',
+      title: '❌ Sanction refusée',
+      body: `Votre demande de sanction contre ${sanction.targetUser.username} a été refusée${adminNote ? ` : ${adminNote}` : ''}.`,
+      data: {},
+      link: '/',
+      icon: 'x',
+    }).catch(() => {});
+
+    const updated = await prisma.pendingSanction.findUnique({ where: { id }, include: PENDING_SANCTION_INCLUDE });
+    res.json({ sanction: updated });
+  } catch (error) {
+    console.error('Reject sanction error:', error);
+    res.status(500).json({ error: 'Erreur lors du refus de la sanction.' });
   }
 });
 

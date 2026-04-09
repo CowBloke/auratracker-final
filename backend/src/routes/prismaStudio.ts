@@ -66,6 +66,7 @@ export const prismaStudioAccessMiddleware = (
     isSuperAdmin: false,
     isBetaTester: false,
     isFiscalInspector: false,
+    isJudge: false,
     referralCode: null,
   };
 

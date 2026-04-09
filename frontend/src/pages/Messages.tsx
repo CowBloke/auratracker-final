@@ -76,6 +76,7 @@ import {
   uploadUserImage,
   usersApi,
 } from '@/services/api';
+import SanctionModal from '@/components/sanctions/SanctionModal';
 
 const POLL_INTERVAL_MS = 15000;
 
@@ -347,6 +348,7 @@ export default function MessagesPage() {
   const [lawyerRating, setLawyerRating] = useState(0);
   const [lawyerRatingComment, setLawyerRatingComment] = useState('');
   const [lawyerRatingSubmitting, setLawyerRatingSubmitting] = useState(false);
+  const [showSanctionModal, setShowSanctionModal] = useState(false);
 
   const handledSearchRef = useRef<string | null>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -365,7 +367,9 @@ export default function MessagesPage() {
   const myCourtRole = myCourtParty?.courtRole ?? null;
   const myCourtSide = myCourtRole === 'PLAINTIFF' ? 'PLAINTIFF' : myCourtRole === 'DEFENDANT' ? 'DEFENDANT' : null;
   const isEligibleCourtClient = Boolean(myCourtSide && !isAdminViewer);
-  const isCourtJudge = Boolean(isCourtConversation && myCourtRole === 'JUDGE');
+  const isCourtJudge = Boolean(isCourtConversation && (myCourtRole === 'JUDGE' || isAdminViewer));
+  // Non-admin judge: has the JUDGE court role but is not an admin
+  const isNonAdminJudge = Boolean(isCourtConversation && myCourtRole === 'JUDGE' && !isAdminViewer);
   const canManageCourtGroup = Boolean(!isCourtConversation || isAdminViewer || isCourtJudge);
   const assignedLawFirm = myCourtSide === 'PLAINTIFF'
     ? courtCase?.plaintiffLawFirm ?? null
@@ -1702,6 +1706,29 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Judge sanction modal ── */}
+      {isNonAdminJudge && courtCase && (
+        <SanctionModal
+          open={showSanctionModal}
+          onClose={() => setShowSanctionModal(false)}
+          issuerRole="JUDGE"
+          caseId={courtCase.id}
+          parties={courtCase.parties
+            .filter((p) => p.courtRole !== 'JUDGE' && p.user)
+            .map((p) => ({ id: p.userId, username: p.user!.username }))}
+          onSubmit={async (data) => {
+            await justiceApi.proposeJudgeSanction(courtCase.id, {
+              type: data.type,
+              targetUserId: data.targetUserId,
+              beneficiaryUserId: data.beneficiaryUserId,
+              amount: data.amount,
+              message: data.message,
+            });
+            toast({ title: 'Sanction proposée', description: 'Votre proposition a été transmise aux administrateurs.' });
+          }}
+        />
+      )}
+
       {/* ── Verdict panel ── */}
       <Dialog open={showVerdictPanel} onOpenChange={setShowVerdictPanel}>
         <DialogContent className="max-w-lg gap-0 p-0 overflow-hidden">
@@ -2113,6 +2140,12 @@ export default function MessagesPage() {
                           Noter l'avocat
                         </Button>
                       ) : null}
+                      {isNonAdminJudge && courtCase && courtCase.status !== 'CLOSED' && (
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-amber-500/40 text-amber-600 hover:bg-amber-500/10" onClick={() => setShowSanctionModal(true)}>
+                          <Gavel className="h-3 w-3" />
+                          Sanction
+                        </Button>
+                      )}
                       {isAdminViewer && (
                         <>
                           <DropdownMenu>

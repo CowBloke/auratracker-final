@@ -264,11 +264,13 @@ router.patch('/plaintes/:id/accept', authMiddleware, async (req: AuthRequest, re
     if (plainte.status !== 'PENDING') return res.status(400).json({ error: 'Cette plainte a déjà été traitée.' });
     if (!plainte.defendantId) return res.status(400).json({ error: 'Une plainte doit avoir un coupable pour être acceptée.' });
 
-    // Get all admins to add as judges
-    const admins = await prisma.user.findMany({
-      where: { OR: [{ isAdmin: true }, { isSuperAdmin: true }] },
+    // Get all admins and judge-role users to add as judges
+    const judgeUsers = await prisma.user.findMany({
+      where: { OR: [{ isAdmin: true }, { isSuperAdmin: true }, { isJudge: true }] },
       select: USER_PREVIEW_SELECT,
     });
+    // Deduplicate by id
+    const admins = Array.from(new Map(judgeUsers.map((u) => [u.id, u])).values());
 
     const caseNumber = generateCaseNumber();
 
@@ -1068,6 +1070,95 @@ router.get('/law-firms', authMiddleware, async (req: AuthRequest, res: Response)
   } catch (error) {
     console.error('Get law firms error:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des cabinets.' });
+  }
+});
+
+// ─── JUDGE PROPOSES A SANCTION ────────────────────────────────────────────────
+router.post('/cases/:caseId/pending-sanction', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+
+    const { caseId } = req.params;
+    const { type, targetUserId, beneficiaryUserId, amount, message } = req.body;
+
+    if (!type || !targetUserId || !amount || !message) {
+      return res.status(400).json({ error: 'Champs requis manquants.' });
+    }
+    if (type !== 'AMENDE' && type !== 'PAYMENT') {
+      return res.status(400).json({ error: 'Type de sanction invalide.' });
+    }
+    if (typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ error: 'Montant invalide.' });
+    }
+    if (type === 'PAYMENT' && !beneficiaryUserId) {
+      return res.status(400).json({ error: 'Bénéficiaire requis pour un paiement forcé.' });
+    }
+
+    const courtCase = await prisma.courtCase.findUnique({
+      where: { id: caseId },
+      include: { parties: true },
+    });
+    if (!courtCase) return res.status(404).json({ error: 'Affaire introuvable.' });
+
+    // Verify caller is a judge in this case
+    const isAdmin = user.isAdmin || user.isSuperAdmin;
+    const isJudgeInCase = isAdmin || courtCase.parties.some((p) => p.userId === user.id && p.courtRole === 'JUDGE');
+    if (!isJudgeInCase) {
+      return res.status(403).json({ error: 'Seuls les juges peuvent proposer une sanction.' });
+    }
+
+    // Verify target is a party in this case
+    const isParty = courtCase.parties.some((p) => p.userId === targetUserId);
+    if (!isParty) {
+      return res.status(400).json({ error: 'La cible doit être une partie dans cette affaire.' });
+    }
+
+    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true, username: true } });
+    if (!targetUser) return res.status(404).json({ error: 'Joueur cible introuvable.' });
+
+    if (beneficiaryUserId) {
+      const bene = await prisma.user.findUnique({ where: { id: beneficiaryUserId }, select: { id: true } });
+      if (!bene) return res.status(404).json({ error: 'Bénéficiaire introuvable.' });
+    }
+
+    const sanction = await prisma.pendingSanction.create({
+      data: {
+        requestedById: user.id,
+        requestedByRole: 'JUDGE',
+        type,
+        targetUserId,
+        beneficiaryUserId: beneficiaryUserId ?? null,
+        amount,
+        message: message.trim(),
+        caseId,
+      },
+      include: {
+        requestedBy: { select: { id: true, username: true } },
+        targetUser: { select: { id: true, username: true } },
+        beneficiary: { select: { id: true, username: true } },
+        reviewedBy: { select: { id: true, username: true } },
+      },
+    });
+
+    // Notify all admins
+    const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { id: true } });
+    await Promise.all(admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: 'SYSTEM',
+        title: '⚖️ Proposition de sanction judiciaire',
+        body: `Le juge ${user.username} propose ${type === 'AMENDE' ? `une amende de ${amount}€ pour` : `un paiement forcé de ${amount}€ par`} ${targetUser.username} (${courtCase.caseNumber}).`,
+        data: { pendingSanctionId: sanction.id, courtCaseId: caseId },
+        link: `/admin?tab=inbox`,
+        icon: 'scale',
+      }).catch(() => {})
+    ));
+
+    res.status(201).json({ sanction });
+  } catch (error) {
+    console.error('Judge sanction proposal error:', error);
+    res.status(500).json({ error: 'Erreur lors de la proposition de sanction.' });
   }
 });
 

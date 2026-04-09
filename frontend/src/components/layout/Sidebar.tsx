@@ -54,6 +54,7 @@ const navItems = [
   { to: '/market', label: t('sidebar_nav_shop'), icon: Store },
   { to: '/inventory', label: t('sidebar_nav_inventory'), icon: Backpack },
   { to: '/marketplace', label: t('sidebar_nav_marketplace'), icon: BadgeDollarSign },
+  { to: '/loto', label: 'Loto', icon: Ticket },
   { to: '/auravision', label: t('sidebar_nav_auravision'), icon: Camera },
   { to: '/aura-scroll', label: 'Aura Scroll', icon: Sparkles },
   { to: '/pass', label: t('sidebar_nav_pass'), icon: Ticket },

@@ -2052,6 +2052,8 @@ export interface AdminUser {
   id: string;
   username: string;
   firstName: string | null;
+  usernameColor?: string | null;
+  profilePicture?: string | null;
   email: string;
   lastLoginIpAddress: string | null;
   aura: number;
@@ -2061,7 +2063,9 @@ export interface AdminUser {
   isSuperAdmin: boolean;
   isBetaTester: boolean;
   isFiscalInspector: boolean;
+  isJudge: boolean;
   isChatMuted: boolean;
+  isBraquageLegalOwner: boolean;
   dailyAuraGiven: number;
   dailyAuraLimit: number;
   lastDailyReset: string;
@@ -2072,6 +2076,66 @@ export interface AdminUser {
   sharedMoney: AdminSharedMoney | null;
 }
 
+export type BraquageLegalTier = 'BRONZE' | 'ARGENT' | 'OR' | 'PLATINE' | 'VIP';
+export type BraquageLegalStatus = 'ACTIVE' | 'DRAWN' | 'CANCELLED';
+
+export interface BraquageLegalOwner {
+  id: string;
+  username: string;
+  profilePicture: string | null;
+}
+
+export interface BraquageLegalUserParticipation {
+  tier: BraquageLegalTier;
+  participationCount: number;
+  ticketCount: number;
+  amount: number;
+}
+
+export interface BraquageLegalSession {
+  id: number;
+  status: BraquageLegalStatus;
+  startTime: string;
+  endTime: string;
+  isExpired: boolean;
+  totalPool: number;
+  participationsCount: number;
+  ticketPool: number;
+  owner: BraquageLegalOwner | null;
+  userParticipations: BraquageLegalUserParticipation[];
+}
+
+export interface BraquageLegalHistoryEntry {
+  id: number;
+  status: BraquageLegalStatus;
+  totalPool: number;
+  winnerPayout: number | null;
+  ownerPayout: number | null;
+  endTime: string;
+  winner: BraquageLegalOwner | null;
+}
+
+export interface BraquageLegalDrawResult {
+  session: BraquageLegalSession | null;
+  winner: BraquageLegalOwner | null;
+  owner: BraquageLegalOwner | null;
+  winnerId: string | null;
+  winnerPayout: number | null;
+  ownerPayout: number | null;
+  ticketPool: number;
+  cancelled: boolean;
+}
+
+// Loto API
+export const getBraquageLegalCurrent = () => api.get<{ session: BraquageLegalSession | null }>('/braquage-legal/current');
+export const getBraquageLegalHistory = () => api.get<{ sessions: BraquageLegalHistoryEntry[] }>('/braquage-legal/history');
+export const getBraquageLegalOwner = () => api.get<{ owner: BraquageLegalOwner | null }>('/braquage-legal/owner');
+export const participateBraquageLegal = (tier: BraquageLegalTier) => api.post<{ session: BraquageLegalSession | null }>('/braquage-legal/participate', { tier });
+
+export const adminCreateBraquageSession = (durationHours: number) => api.post<{ session: BraquageLegalSession }>('/braquage-legal/admin/create-session', { durationHours });
+export const adminDrawBraquage = (sessionId: number) => api.post<{ result: BraquageLegalDrawResult }>('/braquage-legal/admin/draw', { sessionId });
+export const adminSetBraquageOwner = (userId: string) => api.post<{ user: AdminUser }>('/braquage-legal/admin/set-owner', { userId });
+
 export interface AdminSharedMoney {
   relationshipId: string;
   coupleBalance: number;
@@ -2081,6 +2145,34 @@ export interface AdminSharedMoney {
     username: string;
     money: number;
   };
+}
+
+export interface FiscalUser {
+  id: string;
+  username: string;
+  firstName: string | null;
+  money: number;
+  aura: number;
+  sharedMoney: {
+    coupleBalance: number;
+    partner: { id: string; username: string; money: number };
+  } | null;
+}
+
+export interface PendingSanction {
+  id: string;
+  requestedByRole: 'JUDGE' | 'FISCAL_INSPECTOR';
+  type: 'AMENDE' | 'PAYMENT';
+  amount: number;
+  message: string;
+  caseId: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  adminNote: string | null;
+  createdAt: string;
+  requestedBy: { id: string; username: string };
+  targetUser: { id: string; username: string };
+  beneficiary: { id: string; username: string } | null;
+  reviewedBy: { id: string; username: string } | null;
 }
 
 export interface AdminUpdatePopup {
@@ -2494,6 +2586,13 @@ const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
 export const adminApi = {
   runRareAction,
   startPrismaStudio: () => api.post<{ ok: boolean; studioToken: string }>('/admin/prisma-studio/start'),
+  getBraquageLegalCurrent,
+  getBraquageLegalHistory,
+  getBraquageLegalOwner,
+  participateBraquageLegal,
+  adminCreateBraquageSession,
+  adminDrawBraquage,
+  adminSetBraquageOwner,
   getAllAds: () => api.get<{ ads: PendingAdReview[] }>('/admin/ads'),
   getPendingAds: () => api.get<{ pendingAds: PendingAdReview[] }>('/admin/ads/pending'),
   approveAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/approve`, {}),
@@ -2535,7 +2634,7 @@ export const adminApi = {
   transferClanLeadership: (id: string, targetUserId: string) =>
     api.post<{ success: boolean }>(`/admin/clans/${id}/transfer-leadership`, { targetUserId }),
   deleteClan: (id: string) => api.delete<{ success: boolean }>(`/admin/clans/${id}`),
-  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; role?: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' | 'FISCAL_INSPECTOR' }) =>
+  updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; role?: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' | 'FISCAL_INSPECTOR' | 'JUDGE' }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   forceDivorceUser: (id: string) => api.post<{ success: boolean; message: string }>(`/admin/users/${id}/force-divorce`),
   deleteUser: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/users/${id}`),
@@ -3556,6 +3655,21 @@ export const justiceApi = {
     api.get<{ lawFirms: LawFirmPreview[] }>('/justice/law-firms'),
   getCaseByCaseId: (id: string) =>
     api.get<{ courtCase: CourtCase }>(`/justice/cases/${id}`),
+  proposeJudgeSanction: (caseId: string, data: { type: 'AMENDE' | 'PAYMENT'; targetUserId: string; beneficiaryUserId?: string; amount: number; message: string }) =>
+    api.post<{ sanction: PendingSanction }>(`/justice/cases/${caseId}/pending-sanction`, data),
+};
+
+export const sanctionsApi = {
+  getFiscalUsers: () =>
+    api.get<{ users: FiscalUser[] }>('/admin/fiscal/users'),
+  submitFiscalSanction: (data: { type: 'AMENDE' | 'PAYMENT'; targetUserId: string; beneficiaryUserId?: string; amount: number; message: string }) =>
+    api.post<{ sanction: PendingSanction }>('/admin/fiscal-sanctions', data),
+  listPendingSanctions: (status?: string) =>
+    api.get<{ sanctions: PendingSanction[] }>(`/admin/pending-sanctions${status ? `?status=${status}` : ''}`),
+  approveSanction: (id: string, adminNote?: string) =>
+    api.patch<{ sanction: PendingSanction }>(`/admin/pending-sanctions/${id}/approve`, { adminNote }),
+  rejectSanction: (id: string, adminNote?: string) =>
+    api.patch<{ sanction: PendingSanction }>(`/admin/pending-sanctions/${id}/reject`, { adminNote }),
 };
 
 // ─── Aura Scroll ──────────────────────────────────────────────────────────────

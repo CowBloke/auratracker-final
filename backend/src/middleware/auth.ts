@@ -12,6 +12,7 @@ export interface AuthRequest extends Request {
     isSuperAdmin: boolean;
     isBetaTester: boolean;
     isFiscalInspector: boolean;
+    isJudge: boolean;
     referralCode?: string | null;
   };
 }
@@ -45,6 +46,7 @@ export const authMiddleware = async (
         isSuperAdmin: true,
         isBetaTester: true,
         isFiscalInspector: true,
+        isJudge: true,
         referralCode: true,
       },
     });

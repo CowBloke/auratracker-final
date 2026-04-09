@@ -12,6 +12,7 @@ export const ROLE_LABELS = {
   ADMIN: 'admin',
   SUPER_ADMIN: 'super admin',
   FISCAL_INSPECTOR: 'inspecteur du fisc',
+  JUDGE: 'juge',
 } as const;
 
 export type AdminRole = keyof typeof ROLE_LABELS;
@@ -22,10 +23,12 @@ export type AdminTab =
   | 'clubs'
   | 'logs'
   | 'bans'
+  | 'braquageLegal'
   | 'content'
   | 'ads'
   | 'aura-scroll'
   | 'taxes'
+  | 'fiscal'
   | 'settings'
   | 'referrals'
   | 'activity'
@@ -39,10 +42,12 @@ export const ADMIN_TABS: AdminTab[] = [
   'clubs',
   'logs',
   'bans',
+  'braquageLegal',
   'content',
   'ads',
   'aura-scroll',
   'taxes',
+  'fiscal',
   'settings',
   'referrals',
   'activity',

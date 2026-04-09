@@ -404,7 +404,7 @@ const buildCelebration = (
       cathyLines: [
         'Cathy: On le garde ou on le met en vitrine ce gain ?',
         'Cathy: Tout le casino te regarde, continue comme ca.',
-        'Cathy: Sirenes, jetons, flashs... c est un vrai braquage legal.',
+        'Cathy: Sirenes, jetons, flashs... c est un vrai loto.',
       ],
       popupBursts: ['Gain monstre', 'Table en fusion', 'Cathy en PLS', 'Jackpot x100'],
       accentClass: 'from-amber-200 via-yellow-300 to-orange-500',

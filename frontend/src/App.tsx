@@ -59,6 +59,7 @@ import StackTower from './pages/StackTower';
 import Snake from './pages/Snake';
 import Support from './pages/Support';
 import Changelog from './pages/Changelog';
+import BraquageLegal from './pages/BraquageLegal';
 import QSWatermelon from './pages/QSWatermelon';
 import Polytrack from './pages/Polytrack';
 import Eaglercraft from './pages/Eaglercraft';
@@ -294,6 +295,8 @@ function App() {
         <Route path="inbox" element={<Inbox />} />
         <Route path="support" element={<Support />} />
         <Route path="changelog" element={<Changelog />} />
+        <Route path="loto" element={<BraquageLegal />} />
+        <Route path="braquage-legal" element={<Navigate to="/loto" replace />} />
         <Route path="auravision" element={<AuraVision />} />
         <Route path="aura-scroll" element={<AuraScroll />} />
         <Route path="you" element={<You />} />
