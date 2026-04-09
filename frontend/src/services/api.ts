@@ -690,8 +690,8 @@ export const youApi = {
     api.patch<{ result: { supportAgent: BusinessSupportAgentSummary | null; supportEnabled: boolean } }>(`/you/businesses/${businessId}/support-agent`, { supportAgentId }),
   openBusinessSupportConversation: (businessId: string) =>
     api.post<{ result: { conversationId: string } }>(`/you/businesses/${businessId}/support/conversation`, {}),
-  updateLawFirmMemberMetadata: (businessId: string, memberId: string, data: { specialty?: string | null; isPrimaryLawyer?: boolean; displayOrder?: number }) =>
-    api.patch<{ result: { memberId: string; specialty: string | null; isPrimaryLawyer: boolean; displayOrder: number; user: Omit<YouPlayer, 'alreadyInRelationship'> } }>(`/you/businesses/${businessId}/members/${memberId}/lawyer-profile`, data),
+  updateLawFirmMemberMetadata: (businessId: string, memberId: string, data: { specialty?: string | null; isPrimaryLawyer?: boolean; displayOrder?: number; role?: string }) =>
+    api.patch<{ result: { memberId: string; role: string; specialty: string | null; isPrimaryLawyer: boolean; displayOrder: number; user: Omit<YouPlayer, 'alreadyInRelationship'> } }>(`/you/businesses/${businessId}/members/${memberId}/lawyer-profile`, data),
   updateMemberSalary: (businessId: string, memberId: string, salary: number) =>
     api.patch<{ result: { salary: number } }>(`/you/businesses/${businessId}/members/${memberId}/salary`, { salary }),
   updateMemberProfile: (businessId: string, memberId: string, title: string | null) =>

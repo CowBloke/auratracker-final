@@ -5308,7 +5308,7 @@ export async function updateLawFirmMemberMetadata(
   ownerId: string,
   businessId: string,
   memberId: string,
-  data: { specialty?: string | null; isPrimaryLawyer?: boolean; displayOrder?: number },
+  data: { specialty?: string | null; isPrimaryLawyer?: boolean; displayOrder?: number; role?: string },
 ) {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
@@ -5322,6 +5322,9 @@ export async function updateLawFirmMemberMetadata(
     include: { user: { select: USER_PREVIEW_SELECT } },
   });
   if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
+
+  const ALLOWED_LAW_ROLES = ['Associé', 'Associée', 'Collaborateur', 'Collaboratrice', 'Stagiaire', 'Of Counsel'];
+  const roleUpdate = data.role && ALLOWED_LAW_ROLES.includes(data.role) ? data.role : undefined;
 
   const displayOrder = data.displayOrder === undefined ? undefined : Math.max(0, Math.floor(data.displayOrder));
 
@@ -5338,12 +5341,14 @@ export async function updateLawFirmMemberMetadata(
         ...(data.specialty !== undefined ? { specialty: data.specialty?.trim() || null } : {}),
         ...(data.isPrimaryLawyer !== undefined ? { isPrimaryLawyer: data.isPrimaryLawyer } : {}),
         ...(displayOrder !== undefined ? { displayOrder } : {}),
+        ...(roleUpdate !== undefined ? { role: roleUpdate } : {}),
       },
     });
   });
 
   return {
     memberId,
+    role: roleUpdate ?? member.role,
     specialty: data.specialty?.trim() || null,
     isPrimaryLawyer: Boolean(data.isPrimaryLawyer),
     displayOrder: displayOrder ?? member.displayOrder ?? 0,

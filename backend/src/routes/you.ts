@@ -955,6 +955,7 @@ router.patch('/businesses/:businessId/members/:memberId/lawyer-profile', authMid
       specialty: typeof req.body?.specialty === 'string' ? req.body.specialty : null,
       ...(req.body?.isPrimaryLawyer !== undefined ? { isPrimaryLawyer: Boolean(req.body.isPrimaryLawyer) } : {}),
       ...(req.body?.displayOrder !== undefined ? { displayOrder: Number(req.body.displayOrder) } : {}),
+      ...(typeof req.body?.role === 'string' ? { role: req.body.role } : {}),
     });
     res.json({ result });
   } catch (error) {

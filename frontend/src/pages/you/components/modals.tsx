@@ -1683,6 +1683,15 @@ export function ManageTeamModal({
 
 // --- MemberEditModal ---
 
+const LAW_ROLES: { value: string; label: string; isManager: boolean }[] = [
+  { value: 'Associé', label: 'Associé', isManager: true },
+  { value: 'Associée', label: 'Associée', isManager: true },
+  { value: 'Collaborateur', label: 'Collaborateur', isManager: false },
+  { value: 'Collaboratrice', label: 'Collaboratrice', isManager: false },
+  { value: 'Stagiaire', label: 'Stagiaire', isManager: false },
+  { value: 'Of Counsel', label: 'Of Counsel', isManager: false },
+];
+
 export function MemberEditModal({
   open,
   onClose,
@@ -1699,6 +1708,7 @@ export function MemberEditModal({
   const [salary, setSalary] = useState('0');
   const [title, setTitle] = useState('');
   const [specialty, setSpecialty] = useState('');
+  const [lawRole, setLawRole] = useState('Collaborateur');
   const [displayOrder, setDisplayOrder] = useState('0');
   const [isPrimary, setIsPrimary] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1710,6 +1720,8 @@ export function MemberEditModal({
       setSalary(String(member.salary ?? 0));
       setTitle(isLawFirm ? '' : (member.specialty ?? ''));
       setSpecialty(isLawFirm ? (member.specialty ?? '') : '');
+      const knownRole = LAW_ROLES.find((r) => r.value === member.role);
+      setLawRole(knownRole ? member.role : 'Collaborateur');
       setDisplayOrder(String(member.displayOrder ?? 0));
       setIsPrimary(Boolean(member.isPrimaryLawyer));
     }
@@ -1730,6 +1742,7 @@ export function MemberEditModal({
             specialty: specialty.trim() || null,
             isPrimaryLawyer: isPrimary,
             displayOrder: Math.max(0, Math.floor(Number(displayOrder) || 0)),
+            role: lawRole,
           }),
           'Impossible de modifier le profil avocat.',
         );
@@ -1758,7 +1771,7 @@ export function MemberEditModal({
         <div>
           <p className="font-semibold">{member.user.username}</p>
           <p className="text-xs text-muted-foreground">{roleLabel}</p>
-          {member.specialty ? <p className="text-xs text-muted-foreground">{member.specialty}</p> : null}
+          {isLawFirm && member.specialty ? <p className="text-xs text-muted-foreground/70">{member.specialty}</p> : null}
         </div>
       </div>
 
@@ -1802,7 +1815,18 @@ export function MemberEditModal({
             <p className="text-xs font-semibold uppercase tracking-wide text-indigo-300">Profil avocat</p>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Spécialité</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Titre</p>
+            <SelectBox value={lawRole} onChange={setLawRole}>
+              {LAW_ROLES.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}{r.isManager ? ' ★' : ''}</option>
+              ))}
+            </SelectBox>
+            <p className="text-[11px] text-muted-foreground/60">
+              Les <span className="text-indigo-300">Associé(e)s ★</span> ont accès à la gestion du cabinet (invitations, trésorerie…).
+            </p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Expertise</p>
             <Input
               value={specialty}
               onChange={(e) => setSpecialty(e.target.value)}
@@ -1810,6 +1834,7 @@ export function MemberEditModal({
               placeholder="ex: Droit pénal, Droit des affaires…"
               maxLength={60}
             />
+            <p className="text-[11px] text-muted-foreground/60">Purement indicatif — affiché sur la fiche publique du cabinet.</p>
           </div>
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Ordre d'affichage</p>

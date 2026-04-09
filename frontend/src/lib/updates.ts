@@ -58,6 +58,12 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
           { id: '2026-04-09-epicerie-items-2', text: '**Inventaire achats** — Les articles achetés en boutique apparaissent dans l\'onglet **Achats** de votre inventaire, avec la quantité et la boutique d\'origine.' },
         ],
       },
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-04-09-lawfirm-roles', text: '**Cabinets d\'avocats — Titre & Expertise** — Le titre d\'un membre (Associé, Collaborateur, Stagiaire, Of Counsel…) est maintenant clairement affiché et modifiable depuis Gérer l\'équipe. Les Associé(e)s ont accès à la gestion du cabinet. L\'expertise (Droit pénal, etc.) est distincte et purement indicative.' },
+        ],
+      },
     ],
   },
   {
