@@ -1220,9 +1220,9 @@ router.post('/conversations/:conversationId/witness-requests', authMiddleware, a
           conversationId,
           senderId: user.id,
           type: 'COURT_SYSTEM',
-          body: anonymous
+          body: `${anonymous
             ? `${user.username} demande l'ajout d'un temoin anonyme.`
-            : `${user.username} demande l'ajout du temoin ${witnessUser.username}.`,
+            : `${user.username} demande l'ajout du temoin ${witnessUser.username}.`} [[WITNESS_REQUEST:${witnessUser.id}:${anonymous ? '1' : '0'}]]`,
         },
       });
 

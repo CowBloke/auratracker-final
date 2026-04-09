@@ -24,11 +24,11 @@ const SEED_ENTRIES = [
     id: '2026-04-09-inbox-group-chat-notifications',
     date: '2026-04-09',
     title: 'Inbox - Notifications de chat regroupees',
-    summary: 'Les notifications de chat ne s empilent plus message par message: elles sont regroupees par conversation et mises a jour avec le dernier message. Le modal admin de modification utilisateur permet aussi de saisir directement l aura finale cible. Les juges de dossier peuvent maintenant valider l ajout d un temoin depuis la messagerie.',
+    summary: 'Les notifications de chat ne s empilent plus message par message: elles sont regroupees par conversation et mises a jour avec le dernier message. Le modal admin de modification utilisateur permet aussi de saisir directement l aura finale cible. Les juges de dossier peuvent maintenant valider l ajout d un temoin directement dans le fil de discussion.',
     items: [
       { category: 'BUG_FIX', text: '**Inbox chat regroupee** — Pour une meme conversation (Messages prives) ou un meme chat de clan, les nouveaux messages mettent maintenant a jour une notification unique au lieu d en creer plusieurs.', order: 0 },
       { category: 'BUG_FIX', text: '**Admin utilisateurs · Aura finale directe** — Dans le modal de modification utilisateur, le champ aura attend maintenant directement le total cible (au lieu d un +/−), avec affichage de la variation calculee automatiquement.', order: 1 },
-      { category: 'BUG_FIX', text: '**Justice · Validation temoin** — Dans un dossier judiciaire, le juge du dossier peut maintenant renommer le groupe et ajouter le temoin demande, sans devoir passer par les droits admin globaux.', order: 2 },
+      { category: 'BUG_FIX', text: '**Justice · Validation temoin** — Dans un dossier judiciaire, le juge du dossier peut maintenant valider l ajout d un temoin directement au message de demande, sans devoir passer par les droits admin globaux.', order: 2 },
     ],
   },
   {

@@ -148,6 +148,17 @@ const getCourtRoleInitials = (role: string | null) => {
 const isAnonymousCourtRole = (role: string | null) =>
   role !== 'PLAINTIFF' && role !== 'DEFENDANT';
 
+const COURT_WITNESS_REQUEST_MARKER = /\s*\[\[WITNESS_REQUEST:([^:\]]+):(0|1)\]\]\s*$/;
+
+const parseCourtWitnessRequest = (body: string) => {
+  const match = body.match(COURT_WITNESS_REQUEST_MARKER);
+  if (!match) return { body, witnessUserId: null as string | null };
+  return {
+    body: body.replace(COURT_WITNESS_REQUEST_MARKER, '').trim(),
+    witnessUserId: match[1],
+  };
+};
+
 const formatTime = (value: string) => {
   const date = new Date(value);
   if (isToday(date)) return format(date, 'HH:mm');
@@ -1014,7 +1025,7 @@ export default function MessagesPage() {
   const handleAddMember = async (memberId: string) => {
     if (!selectedIdSafe) return;
     if (!canManageCourtGroup) {
-      toast({ title: 'Seuls les admins peuvent ajouter des personnes sur un dossier', variant: 'destructive' });
+      toast({ title: 'Seuls les admins ou le juge du dossier peuvent ajouter des personnes sur un dossier', variant: 'destructive' });
       return;
     }
     try {
@@ -2156,15 +2167,28 @@ export default function MessagesPage() {
                       ) : currentMessages.map((msg, index) => {
                         // System messages render as centered announcements.
                         if (msg.type === 'COURT_SYSTEM' || msg.type === 'SYSTEM') {
+                          const witnessRequest = msg.type === 'COURT_SYSTEM' ? parseCourtWitnessRequest(msg.body) : null;
+                          const witnessUserId = witnessRequest?.witnessUserId ?? null;
                           return (
                             <div key={msg.id} className="flex justify-center py-2">
-                              <span className={cn(
-                                'flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-[11px] font-medium text-foreground shadow-sm',
+                              <div className={cn(
+                                'flex max-w-[92vw] flex-wrap items-center justify-center gap-1.5 rounded-full border bg-background px-3 py-1 text-[11px] font-medium text-foreground shadow-sm',
                                 msg.type === 'COURT_SYSTEM' ? 'border-slate-300/40' : 'border-border/60',
                               )}>
                                 {msg.type === 'COURT_SYSTEM' ? <Scale className="h-3 w-3 shrink-0" /> : <Users className="h-3 w-3 shrink-0" />}
-                                {msg.body}
-                              </span>
+                                <span>{witnessRequest?.body ?? msg.body}</span>
+                                {witnessUserId && canManageCourtGroup && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="ml-1 h-6 rounded-full px-2 text-[10px]"
+                                    onClick={() => void handleAddMember(witnessUserId)}
+                                  >
+                                    Ajouter le témoin
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           );
                         }
