@@ -347,7 +347,6 @@ export default function MessagesPage() {
   const isAdminViewer = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const selectedConversation = detail?.conversation ?? conversations.find((c) => c.id === selectedId) ?? null;
   const isCourtConversation = Boolean(selectedConversation?.courtCaseId);
-  const canManageCourtGroup = Boolean(!isCourtConversation || isAdminViewer);
   const conversationDisplayTitle = isCourtConversation && courtCase?.plainte?.title
     ? courtCase.plainte.title
     : selectedConversation?.displayName ?? '';
@@ -355,6 +354,8 @@ export default function MessagesPage() {
   const myCourtRole = myCourtParty?.courtRole ?? null;
   const myCourtSide = myCourtRole === 'PLAINTIFF' ? 'PLAINTIFF' : myCourtRole === 'DEFENDANT' ? 'DEFENDANT' : null;
   const isEligibleCourtClient = Boolean(myCourtSide && !isAdminViewer);
+  const isCourtJudge = Boolean(isCourtConversation && myCourtRole === 'JUDGE');
+  const canManageCourtGroup = Boolean(!isCourtConversation || isAdminViewer || isCourtJudge);
   const assignedLawFirm = myCourtSide === 'PLAINTIFF'
     ? courtCase?.plaintiffLawFirm ?? null
     : myCourtSide === 'DEFENDANT'
@@ -1386,7 +1387,7 @@ export default function MessagesPage() {
             <DialogTitle className="text-sm font-semibold">Infos du groupe</DialogTitle>
             <DialogDescription className="text-xs">Gérez le nom, la description, l’icône et les membres du groupe depuis un seul endroit.</DialogDescription>
             {!canManageCourtGroup && (
-              <p className="mt-1 text-[11px] text-muted-foreground">Sur un dossier judiciaire, seuls les admins peuvent renommer le groupe et ajouter des membres.</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Sur un dossier judiciaire, seuls les admins ou le juge du dossier peuvent renommer le groupe et ajouter des membres.</p>
             )}
           </div>
           <ScrollArea className="max-h-[75vh]">

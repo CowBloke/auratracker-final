@@ -59,6 +59,26 @@ function isAdminUser(user: AdminFlagUser | null | undefined): boolean {
   return Boolean(user?.isAdmin || user?.isSuperAdmin);
 }
 
+type CourtConversationParticipant = {
+  userId: string;
+  courtRole: string | null;
+};
+
+function canManageCourtConversation(
+  user: (AdminFlagUser & { id: string }) | null | undefined,
+  conversation: { courtCaseId?: string | null; participants?: CourtConversationParticipant[] },
+): boolean {
+  if (!conversation.courtCaseId) {
+    return true;
+  }
+
+  if (isAdminUser(user)) {
+    return true;
+  }
+
+  return Boolean(conversation.participants?.some((entry) => entry.userId === user?.id && entry.courtRole === 'JUDGE'));
+}
+
 function normalizeSupportImages(input: unknown): string[] {
   if (!Array.isArray(input)) {
     return [];
@@ -986,7 +1006,18 @@ router.patch('/conversations/:conversationId', authMiddleware, async (req: AuthR
 
     const membership = await prisma.messageConversationParticipant.findFirst({
       where: { conversationId, userId: user.id },
-      include: { conversation: true },
+      include: {
+        conversation: {
+          include: {
+            participants: {
+              select: {
+                userId: true,
+                courtRole: true,
+              },
+            },
+          },
+        },
+      },
     });
     if (!membership) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -994,8 +1025,8 @@ router.patch('/conversations/:conversationId', authMiddleware, async (req: AuthR
     if (membership.conversation.type !== 'GROUP') {
       return res.status(400).json({ error: 'Only group conversations can be updated' });
     }
-    if ((membership.conversation as any).courtCaseId && !isAdminUser(user)) {
-      return res.status(403).json({ error: 'Only admins can rename court case groups' });
+    if (!canManageCourtConversation(user, membership.conversation)) {
+      return res.status(403).json({ error: 'Only judges or admins can rename court case groups' });
     }
 
     const title = normalizeConversationText(req.body?.title, 80);
@@ -1073,12 +1104,23 @@ router.post('/conversations/:conversationId/members', authMiddleware, async (req
 
     const membership = await prisma.messageConversationParticipant.findFirst({
       where: { conversationId, userId: user.id },
-      include: { conversation: true },
+      include: {
+        conversation: {
+          include: {
+            participants: {
+              select: {
+                userId: true,
+                courtRole: true,
+              },
+            },
+          },
+        },
+      },
     });
     if (!membership) return res.status(404).json({ error: 'Conversation not found' });
     if (membership.conversation.type !== 'GROUP') return res.status(400).json({ error: 'Not a group' });
-    if ((membership.conversation as any).courtCaseId && !isAdminUser(user)) {
-      return res.status(403).json({ error: 'Only admins can add people to a court case group' });
+    if (!canManageCourtConversation(user, membership.conversation)) {
+      return res.status(403).json({ error: 'Only judges or admins can add people to a court case group' });
     }
 
     const existing = await prisma.messageConversationParticipant.findFirst({
