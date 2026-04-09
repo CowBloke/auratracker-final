@@ -3,13 +3,8 @@
 - tutoriel
 - immobilier : acheter rues
 - pb pastille non lus chat main
-- mettre prix d'origine d'achat aussi (pas sur)
-- bouton archiver et non poubelle panel deroulant inbox
- - images ddj marketplace
- impot sur les societes
- - choix liste grille persistant sur toutes les pages et par dafaut greille et pouvoir resest admin
- - card polymarket hierarchie
- - aut scroll vers le bas quand pas de message non lus dans chat main
+- impot sur les societes : fisc
+- aut scroll vers le bas quand pas de message non lus dans chat main
 - racheterr part en tant que fondateur et transfert fondateur
 - historique solde
 - associer clan/entreprise

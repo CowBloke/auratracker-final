@@ -430,6 +430,7 @@ export default function Clans() {
   const [warListDialogOpen, setWarListDialogOpen] = useState(false);
   const [warGamesDialogOpen, setWarGamesDialogOpen] = useState(false);
   const [activeWarsDialogOpen, setActiveWarsDialogOpen] = useState(false);
+  const [clansPageTab, setClansPageTab] = useState<'current' | 'trophies'>('current');
 
   // Pump-up messages
   const [pumpUpMessages, setPumpUpMessages] = useState<ClanPumpUpMessage[]>([]);
@@ -567,6 +568,14 @@ export default function Clans() {
   const selectedClanSummary = useMemo(
     () => clans.find((clan) => clan.id === selectedClanId) ?? null,
     [clans, selectedClanId]
+  );
+  const clansByWarTrophies = useMemo(
+    () => [...clans].sort((a, b) => {
+      const trophyDelta = Number(b.warTrophies) - Number(a.warTrophies);
+      if (trophyDelta !== 0) return trophyDelta;
+      return Number(b.totalAura) - Number(a.totalAura);
+    }),
+    [clans]
   );
 
   const selectedWar = selectedClan?.warHub.currentWar ?? null;
@@ -1416,6 +1425,14 @@ export default function Clans() {
     <>
       <PageShell size="wide">
         <div className={SPACING.PAGE_CONTENT}>
+          <Tabs value={clansPageTab} onValueChange={(v) => setClansPageTab(v as 'current' | 'trophies')}>
+            <TabsList className="mb-4 grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="current">Actuel</TabsTrigger>
+              <TabsTrigger value="trophies">Classement trophées</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {clansPageTab === 'current' ? (
           <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
             <div className="space-y-4">
               <Card className={panelClassName}>
@@ -3322,6 +3339,64 @@ export default function Clans() {
               )}
             </div>
           </div>
+          ) : (
+            <Card className={panelClassName}>
+              <CardContent className="space-y-4 p-4">
+                <SectionTitle
+                  title="Classement des clans"
+                  description="Trié par trophées de guerre."
+                  action={<Badge variant="secondary">{clansByWarTrophies.length} clans</Badge>}
+                />
+                {loading ? (
+                  <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
+                    <ListSkeleton rows={8} />
+                  </div>
+                ) : clansByWarTrophies.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border/50 p-6 text-center text-sm text-muted-foreground">
+                    Aucun clan pour le moment.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {clansByWarTrophies.map((clan, index) => {
+                      const isMyClan = viewerClanId === clan.id;
+                      return (
+                        <button
+                          key={clan.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedClanId(clan.id);
+                            setClansPageTab('current');
+                          }}
+                          className={cn(
+                            'flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors',
+                            isMyClan ? 'border-primary/40 bg-primary/10' : 'border-border/50 bg-muted/15 hover:bg-muted/30'
+                          )}
+                        >
+                          <div className="w-10 shrink-0 text-center font-semibold tabular-nums">
+                            {index < 3 ? <Crown className={cn('mx-auto h-4 w-4', index === 0 ? 'text-amber-500' : 'text-muted-foreground')} /> : null}
+                            <div>#{index + 1}</div>
+                          </div>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
+                            <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium">{clan.name}</div>
+                            <div className="text-xs text-muted-foreground">{clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-semibold tabular-nums">{formatMoney(clan.warTrophies)}</div>
+                            <div className="text-xs text-muted-foreground">trophées</div>
+                          </div>
+                          {isMyClan ? <Badge>Mon clan</Badge> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </PageShell>
 

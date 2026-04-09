@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, BellRing, CheckCircle2, Loader2, Package, Search, Tag } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { marketplaceApi, type MarketplaceListing, type MarketplaceListingItem, type MarketplaceProductStats } from '../services/api';
@@ -14,6 +14,15 @@ import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from '@/hooks/use-toast';
 import { GridSkeleton } from '@/components/ui/loading-skeletons';
+
+const DJ_COLORS = {
+  background: '#0a0a0a',
+  platformNormal: '#e5e7eb',
+  platformBounce: '#7c3aed',
+  platformMoving: '#9ca3af',
+};
+const PW = 80;
+const PH = 15;
 
 interface InventoryItem {
   id: string;
@@ -55,6 +64,118 @@ function parseEffectLabel(effect?: string | null) {
     return null;
   }
   return null;
+}
+
+function getSkinImageUrl(effect?: string | null): string | null {
+  if (!effect) return null;
+  try {
+    const parsed = JSON.parse(effect) as { type?: string; skinImageUrl?: string };
+    if (parsed.type === 'DOODLE_JUMP_SKIN' && parsed.skinImageUrl) return parsed.skinImageUrl;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function drawPlatform(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+  const r = 5;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + PW - r, y);
+  ctx.arcTo(x + PW, y, x + PW, y + PH, r);
+  ctx.lineTo(x + PW, y + PH);
+  ctx.arcTo(x + PW, y + PH, x, y + PH, r);
+  ctx.lineTo(x + r, y + PH);
+  ctx.arcTo(x, y + PH, x, y, r);
+  ctx.arcTo(x, y, x + PW, y, r);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function DoodleJumpSkinPreview({ skinImageUrl, className, height }: { skinImageUrl: string; className?: string; height?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const CW = 400;
+  const CH = 220;
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    const draw = (skinImg: HTMLImageElement | null) => {
+      ctx.fillStyle = DJ_COLORS.background;
+      ctx.fillRect(0, 0, CW, CH);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < CW; x += 32) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, CH);
+        ctx.stroke();
+      }
+
+      const platY1 = CH - 28;
+      const platY2 = CH - 90;
+      const platY3 = CH - 152;
+      const p1x = 40;
+      const p2x = CW / 2 - PW / 2;
+      const p3x = CW - 40 - PW;
+
+      drawPlatform(ctx, p1x, platY1, DJ_COLORS.platformNormal);
+      drawPlatform(ctx, p2x, platY2, DJ_COLORS.platformBounce);
+      drawPlatform(ctx, p3x, platY3, DJ_COLORS.platformMoving);
+
+      ctx.setLineDash([4, 6]);
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      const arcStartX = p2x + PW / 2;
+      const arcEndX = p3x + PW / 2;
+      ctx.moveTo(arcStartX, platY2);
+      ctx.quadraticCurveTo((arcStartX + arcEndX) / 2, Math.min(platY2, platY3) - 50, arcEndX, platY3);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const charSize = 70;
+      const charX = p2x + PW / 2 - charSize / 2;
+      const charY = platY2 - charSize;
+      if (skinImg && skinImg.complete && skinImg.naturalWidth > 0) {
+        ctx.drawImage(skinImg, charX, charY, charSize, charSize);
+      } else {
+        ctx.fillStyle = '#374151';
+        ctx.beginPath();
+        ctx.arc(p2x + PW / 2, platY2 - charSize / 2, charSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.textAlign = 'right';
+      ctx.fillText('Doodle Jump', CW - 12, 18);
+      ctx.textAlign = 'left';
+    };
+
+    draw(null);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => draw(img);
+    img.src = resolveImageUrl(skinImageUrl);
+  }, [skinImageUrl]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={CW}
+      height={CH}
+      className={cn('w-full', className)}
+      style={{ display: 'block', height: height ?? '180px' }}
+    />
+  );
 }
 
 function getTypeLabel(type: string) {
@@ -165,6 +286,7 @@ function MarketplaceListingCard({
   const isOwner = currentUserId === listing.sellerId;
   const isActive = listing.status === 'ACTIVE';
   const effectLabel = parseEffectLabel(listing.item.effect);
+  const skinImageUrl = getSkinImageUrl(listing.item.effect);
   const imageUrl = listing.item.imageUrl ? resolveImageUrl(listing.item.imageUrl) : null;
 
   return (
@@ -172,7 +294,9 @@ function MarketplaceListingCard({
       <CardContent className="p-0">
         <div className="relative">
           <div className="aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-amber-50 via-background to-emerald-50 dark:from-amber-950/30 dark:via-card dark:to-emerald-950/20">
-            {imageUrl ? (
+            {skinImageUrl ? (
+              <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
+            ) : imageUrl ? (
               <img src={imageUrl} alt={listing.item.name} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full items-center justify-center">
@@ -238,6 +362,11 @@ function MarketplaceListingCard({
             <span className="font-medium text-foreground">{formatMoney(listing.totalPrice)}</span>
           </div>
 
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>Prix d'achat vendeur</span>
+            <span className="font-medium text-foreground">{formatMoney(listing.item.price)}</span>
+          </div>
+
           <div className="flex gap-2">
             {isActive ? (
               isOwner ? (
@@ -272,6 +401,7 @@ function InventoryListingCard({
 }) {
   const imageUrl = item.item.imageUrl ? resolveImageUrl(item.item.imageUrl) : null;
   const effectLabel = parseEffectLabel(item.item.effect);
+  const skinImageUrl = getSkinImageUrl(item.item.effect);
 
   return (
     <button
@@ -284,7 +414,9 @@ function InventoryListingCard({
     >
       <div className="flex gap-3">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/30">
-          {imageUrl ? (
+          {skinImageUrl ? (
+            <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
+          ) : imageUrl ? (
             <img src={imageUrl} alt={item.item.name} className="h-full w-full object-cover" />
           ) : (
             <Package className="h-6 w-6 text-muted-foreground/50" />
@@ -366,6 +498,7 @@ export default function Marketplace() {
     () => inventory.find((item) => item.id === selectedInventoryId) ?? null,
     [inventory, selectedInventoryId],
   );
+  const selectedInventorySkinImageUrl = getSkinImageUrl(selectedInventoryItem?.item.effect);
 
   useEffect(() => {
     if (!selectedInventoryItem) {
@@ -590,12 +723,15 @@ export default function Marketplace() {
                 ) : (
                   <div className="space-y-2">
                     {sortedSalesHistoryListings.map((listing) => {
+                      const skinImageUrl = getSkinImageUrl(listing.item.effect);
                       const imageUrl = listing.item.imageUrl ? resolveImageUrl(listing.item.imageUrl) : null;
                       return (
                         <Card key={listing.id} className="border-border/60 bg-card/80 shadow-none">
                           <CardContent className="flex items-center gap-3 py-3">
                             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
-                              {imageUrl ? (
+                              {skinImageUrl ? (
+                                <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
+                              ) : imageUrl ? (
                                 <img src={imageUrl} alt={listing.item.name} className="h-full w-full object-cover" />
                               ) : (
                                 <div className="h-full w-full bg-muted" />
@@ -608,6 +744,9 @@ export default function Marketplace() {
                                 <Badge variant="secondary">Vendue</Badge>
                                 <span className="text-xs text-muted-foreground">
                                   Vendeur: {listing.seller.username}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  Achat vendeur: {formatMoney(listing.item.price)}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
                                   {listing.soldAt
@@ -641,6 +780,7 @@ export default function Marketplace() {
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {marketStats.map((stat) => {
+                      const skinImageUrl = getSkinImageUrl((stat as { effect?: string | null }).effect ?? null);
                       const imageUrl = stat.imageUrl ? resolveImageUrl(stat.imageUrl) : null;
                       const isPositive = (stat.priceEvolutionPct30d ?? 0) > 0;
                       const isNegative = (stat.priceEvolutionPct30d ?? 0) < 0;
@@ -650,7 +790,9 @@ export default function Marketplace() {
                           <CardContent className="space-y-4 p-4">
                             <div className="flex items-start gap-3">
                               <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/30">
-                                {imageUrl ? (
+                                {skinImageUrl ? (
+                                  <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
+                                ) : imageUrl ? (
                                   <img src={imageUrl} alt={stat.itemName} className="h-full w-full object-cover" />
                                 ) : (
                                   <Package className="h-6 w-6 text-muted-foreground/50" />
@@ -754,7 +896,9 @@ export default function Marketplace() {
                           <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
                             <div className="flex items-start gap-3">
                               <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-background">
-                                {selectedInventoryItem.item.imageUrl ? (
+                                {selectedInventorySkinImageUrl ? (
+                                  <DoodleJumpSkinPreview skinImageUrl={selectedInventorySkinImageUrl} className="h-full" height="100%" />
+                                ) : selectedInventoryItem.item.imageUrl ? (
                                   <img
                                     src={resolveImageUrl(selectedInventoryItem.item.imageUrl)}
                                     alt={selectedInventoryItem.item.name}
