@@ -516,6 +516,7 @@ model Business {
   loanInterestRate      Float     @default(4.0)
   transferFeeRate       Float     @default(2.0)
   lastBankRevenueDate   String?
+  lastBusinessRevenueDate String?
   formationUrl          String?
   formationPrice        Int       @default(500)
   customData            String?   // JSON string of custom business data (menu, settings, etc.)

@@ -76,6 +76,7 @@ import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges
 import { ensureDefaultBadges } from './utils/seedBadges.js';
 import { recomputeOverallClassement, startOverallClassementScheduler, stopOverallClassementScheduler } from './utils/overallClassement.js';
 import { startDailyBankRevenueScheduler, stopDailyBankRevenueScheduler } from './utils/dailyBankRevenue.js';
+import { startDailyBusinessRevenueScheduler, stopDailyBusinessRevenueScheduler } from './utils/dailyBusinessRevenue.js';
 import { startDailyBusinessSalaryScheduler, stopDailyBusinessSalaryScheduler } from './utils/dailyBusinessSalaries.js';
 import { runDailyTax, startDailyTaxScheduler, stopDailyTaxScheduler } from './utils/dailyTax.js';
 import { advanceClanEventsState } from './utils/clanEvents.js';
@@ -135,8 +136,12 @@ app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Prisma Studio Proxy (Admin Only)
+// POST /start requires bearer-token auth; all other requests use studioToken query param
 const prismaStudioProxy = createPrismaStudioProxy();
-app.use('/api/admin/prisma-studio', authMiddleware, adminMiddleware, prismaStudioRouter);
+app.post('/api/admin/prisma-studio/start', authMiddleware, adminMiddleware, (req: any, res, next) => {
+  req.url = '/start'; // strip prefix so the router's POST /start handler matches
+  prismaStudioRouter(req, res, next);
+});
 app.use('/api/admin/prisma-studio', prismaStudioAccessMiddleware, prismaStudioProxy);
 
 httpServer.on('upgrade', (req, socket, head) => {
@@ -416,6 +421,7 @@ const start = async () => {
     await recomputeOverallClassement(prisma);
     startOverallClassementScheduler(prisma);
     startDailyBankRevenueScheduler(prisma);
+    startDailyBusinessRevenueScheduler(prisma);
     startDailyBusinessSalaryScheduler(prisma);
     await runDailyTax(prisma);
     startDailyTaxScheduler(prisma);
@@ -447,6 +453,7 @@ process.on('SIGINT', async () => {
   stopAutoBadgeScheduler();
   stopOverallClassementScheduler();
   stopDailyBankRevenueScheduler();
+  stopDailyBusinessRevenueScheduler();
   stopDailyBusinessSalaryScheduler();
   stopDailyTaxScheduler();
   stopDailyRacerRewardsScheduler();
@@ -461,6 +468,7 @@ process.on('SIGTERM', async () => {
   stopAutoBadgeScheduler();
   stopOverallClassementScheduler();
   stopDailyBankRevenueScheduler();
+  stopDailyBusinessRevenueScheduler();
   stopDailyBusinessSalaryScheduler();
   stopDailyTaxScheduler();
   stopDailyRacerRewardsScheduler();

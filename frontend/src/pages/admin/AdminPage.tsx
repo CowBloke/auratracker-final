@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -11,11 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet } from 'lucide-react';
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet, Inbox, Settings, BarChart2 } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
@@ -833,7 +833,7 @@ const renderNetGain = (net: number) => (
 
 const formatMilliseconds = (value: number) => `${(value / 1000).toFixed(3)}s`;
 
-const renderMetadataValue = (key: string, value: unknown): React.ReactNode => {
+const renderMetadataValue = (key: string, value: unknown): ReactNode => {
   if (key === 'netGain') {
     const n = toNumber(value);
     if (n !== null) return renderNetGain(n);
@@ -865,7 +865,7 @@ const renderMetadataValue = (key: string, value: unknown): React.ReactNode => {
   return String(value);
 };
 
-const renderLogSummary = (log: ActivityLog): React.ReactNode => {
+const renderLogSummary = (log: ActivityLog): ReactNode => {
   const actor = log.username || 'inconnu';
   const metadata = log.metadata || {};
   const { gameLabel, gameType } = getGameDisplayInfo(log);
@@ -1177,7 +1177,7 @@ export default function Admin() {
   const [supportReplyImages, setSupportReplyImages] = useState<string[]>([]);
   const [supportUploadingImage, setSupportUploadingImage] = useState(false);
   const [supportSending, setSupportSending] = useState(false);
-  const [, setSupportUnread] = useState(0);
+  const [supportUnread, setSupportUnread] = useState(0);
   const [supportReports, setSupportReports] = useState<MessagingReport[]>([]);
   const [supportReportsLoading, setSupportReportsLoading] = useState(false);
   const [reviewingSupportReportId, setReviewingSupportReportId] = useState<string | null>(null);
@@ -1448,6 +1448,19 @@ export default function Admin() {
     } catch (error: any) {
       console.error('Failed to delete ad forever:', error);
       showMessage('error', error.response?.data?.error || 'Erreur lors de la suppression definitive de la publicite');
+    } finally {
+      setReviewingAdId(null);
+    }
+  };
+
+  const handleToggleAdVisibility = async (adId: string, currentIsActive: boolean) => {
+    setReviewingAdId(adId);
+    try {
+      const res = await adminApi.toggleAdVisibility(adId);
+      setAllAds((prev) => prev.map((ad) => (ad.id === adId ? res.data.ad : ad)));
+      showMessage('success', currentIsActive ? 'Publicité masquée' : 'Publicité visible');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors du changement de visibilité');
     } finally {
       setReviewingAdId(null);
     }
@@ -4543,81 +4556,157 @@ export default function Admin() {
     <>
     <PageShell>
       <div className={SPACING.PAGE_CONTENT}>
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">Administration</h1>
-          {isAdminOrSuperAdmin && (
-            <Button onClick={openPrismaStudio} disabled={openingPrisma} variant="outline" size="sm">
-              {openingPrisma ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Terminal className="w-4 h-4 mr-2" />}
-              Ouvrir Prisma Studio
-            </Button>
-          )}
-        </div>
         {/* Tabs */}
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as AdminTab)}
           className={SPACING.SECTION_SPACING}
         >
-          <TabsList className="flex flex-wrap h-auto p-1">
-          <TabsTrigger value="inbox" onClick={() => { fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchAllAds(); }}>
-            Boîte de réception
-            {(pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length) > 0 && (
-              <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">
-                {pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="users">
-            Utilisateurs
-          </TabsTrigger>
-          <TabsTrigger value="clubs">
-            Clubs
-          </TabsTrigger>
-          <TabsTrigger value="logs">
-            Logs
-            {logStats && (
-              <span className={TYPOGRAPHY.XS}>
-                {logStats.total.toLocaleString()}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="bans">
-            Sanctions
-            {bans.filter(b => b.isActive).length > 0 && (
-              <span className={TYPOGRAPHY.XS}>
-                {bans.filter(b => b.isActive).length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="content">
-            Objets
-          </TabsTrigger>
-          <TabsTrigger value="taxes" onClick={fetchTaxSettings}>
-            Impôts
-          </TabsTrigger>
-          <TabsTrigger value="settings">
-            Paramètres
-          </TabsTrigger>
-          <TabsTrigger value="referrals" onClick={fetchReferralStats}>
-            Parrainage
-            {referralStats && (
-              <span className={TYPOGRAPHY.XS}>{referralStats.overview.approvedReferredUsers.toLocaleString('fr-FR')} validés</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="activity" onClick={() => { fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); fetchPlatformStats(); fetchGamesLeaderboard(); }}>
-            Statistiques
-            {onlineStats && (
-              <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="demographics">
-            Répartition
-            <span className={TYPOGRAPHY.XS}>{totalDemographicUsers.toLocaleString('fr-FR')} users</span>
-          </TabsTrigger>
-          <TabsTrigger value="badges" onClick={() => { fetchBadges(); }}>
-            Badges
-          </TabsTrigger>
-        </TabsList>
+          {/* ── Custom admin navigation with grouped dropdowns ── */}
+          {(() => {
+            const inboxCount = pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length;
+            const navBtn = (tabs: AdminTab | AdminTab[], label: string, icon: ReactNode, onClick: () => void, badge?: ReactNode) => {
+              const active = Array.isArray(tabs) ? (tabs as AdminTab[]).includes(activeTab) : activeTab === tabs;
+              return (
+                <button
+                  onClick={onClick}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                    active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                  )}
+                >
+                  {icon}
+                  {label}
+                  {badge}
+                </button>
+              );
+            };
+            const dropdownItemBtn = (tab: AdminTab, label: string, icon: ReactNode, onClick: () => void, badge?: ReactNode) => (
+              <button
+                key={tab}
+                onClick={onClick}
+                className={cn(
+                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-sm transition-colors',
+                  activeTab === tab ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                )}
+              >
+                {icon}
+                {label}
+                {badge && <span className="ml-auto">{badge}</span>}
+              </button>
+            );
+            const dropdownClass = 'absolute left-0 top-full mt-1 z-50 min-w-40 rounded-md border border-border/50 bg-popover shadow-lg p-1 hidden group-hover:flex flex-col gap-0.5';
+            return (
+              <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-lg border border-border/30 mb-6">
+                {/* Réception */}
+                {navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); },
+                  inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{inboxCount}</span> : undefined
+                )}
+
+                {/* Utilisateurs */}
+                {navBtn('users', 'Utilisateurs', <Users className="w-4 h-4 shrink-0" />, () => setActiveTab('users'))}
+
+                {/* Clubs */}
+                {navBtn('clubs', 'Clubs', <Shield className="w-4 h-4 shrink-0" />, () => setActiveTab('clubs'))}
+
+                {/* Logs */}
+                {navBtn('logs', 'Logs', <Activity className="w-4 h-4 shrink-0" />, () => setActiveTab('logs'),
+                  logStats ? <span className={TYPOGRAPHY.XS}>{logStats.total.toLocaleString()}</span> : undefined
+                )}
+
+                {/* Sanctions */}
+                {navBtn('bans', 'Sanctions', <Gavel className="w-4 h-4 shrink-0" />, () => setActiveTab('bans'),
+                  bans.filter(b => b.isActive).length > 0 ? <span className={TYPOGRAPHY.XS}>{bans.filter(b => b.isActive).length}</span> : undefined
+                )}
+
+                {/* Contenu dropdown */}
+                <div className="relative group">
+                  <button className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                    ['content', 'ads'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                  )}>
+                    <Package className="w-4 h-4 shrink-0" />
+                    Contenu
+                    <ChevronDown className="w-3 h-3 shrink-0" />
+                  </button>
+                  <div className={dropdownClass}>
+                    {dropdownItemBtn('content', 'Objets', <Package className="w-3.5 h-3.5" />, () => setActiveTab('content'))}
+                    {dropdownItemBtn('ads', 'Publicités', <Eye className="w-3.5 h-3.5" />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
+                      pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">{pendingAds.length}</span> : undefined
+                    )}
+                  </div>
+                </div>
+
+                {/* Finance dropdown */}
+                <div className="relative group">
+                  <button className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                    ['taxes', 'referrals'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                  )}>
+                    <Coins className="w-4 h-4 shrink-0" />
+                    Finance
+                    <ChevronDown className="w-3 h-3 shrink-0" />
+                  </button>
+                  <div className={dropdownClass}>
+                    {dropdownItemBtn('taxes', 'Impôts', <Landmark className="w-3.5 h-3.5" />, () => { setActiveTab('taxes'); fetchTaxSettings(); })}
+                    {dropdownItemBtn('referrals', 'Parrainage', <Users className="w-3.5 h-3.5" />, () => { setActiveTab('referrals'); fetchReferralStats(); },
+                      referralStats ? <span className="text-xs text-muted-foreground">{referralStats.overview.approvedReferredUsers.toLocaleString('fr-FR')} validés</span> : undefined
+                    )}
+                  </div>
+                </div>
+
+                {/* Statistiques dropdown */}
+                <div className="relative group">
+                  <button className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                    ['activity', 'demographics', 'badges'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                  )}>
+                    <TrendingUp className="w-4 h-4 shrink-0" />
+                    Statistiques
+                    {onlineStats && <span className={TYPOGRAPHY.XS}>{onlineStats.current} en ligne</span>}
+                    <ChevronDown className="w-3 h-3 shrink-0" />
+                  </button>
+                  <div className={dropdownClass}>
+                    {dropdownItemBtn('activity', 'Activité', <Activity className="w-3.5 h-3.5" />, () => { setActiveTab('activity'); fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); fetchPlatformStats(); fetchGamesLeaderboard(); })}
+                    {dropdownItemBtn('demographics', 'Répartition', <BarChart2 className="w-3.5 h-3.5" />, () => setActiveTab('demographics'),
+                      <span className="text-xs text-muted-foreground">{totalDemographicUsers.toLocaleString('fr-FR')} users</span>
+                    )}
+                    {dropdownItemBtn('badges', 'Badges', <Award className="w-3.5 h-3.5" />, () => { setActiveTab('badges'); fetchBadges(); })}
+                  </div>
+                </div>
+
+                {/* Paramètres dropdown */}
+                <div className="relative group">
+                  <button className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                    ['settings', 'communication'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                  )}>
+                    <Settings className="w-4 h-4 shrink-0" />
+                    Paramètres
+                    <ChevronDown className="w-3 h-3 shrink-0" />
+                  </button>
+                  <div className={cn(dropdownClass, 'left-auto right-0')}>
+                    {dropdownItemBtn('settings', 'Paramètres', <Settings className="w-3.5 h-3.5" />, () => setActiveTab('settings'))}
+                    {dropdownItemBtn('communication', 'Communication', <MessageCircle className="w-3.5 h-3.5" />, () => { setActiveTab('communication'); fetchSupportThreads(); },
+                      supportUnread > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{supportUnread}</span> : undefined
+                    )}
+                    {isAdminOrSuperAdmin && (
+                      <div className="border-t border-border/40 mt-1 pt-1">
+                        <button
+                          onClick={openPrismaStudio}
+                          disabled={openingPrisma}
+                          className="w-full flex items-center gap-2 px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/70 rounded-sm transition-colors disabled:opacity-50"
+                        >
+                          {openingPrisma ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Terminal className="w-3.5 h-3.5" />}
+                          Prisma Studio
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
         <InboxTab
           pendingUsers={pendingUsers}
@@ -4661,129 +4750,163 @@ export default function Admin() {
           reviewFormationProduct={handleReviewFormationProduct}
         />
 
-        {activeTab === 'inbox' && pendingAds.length > 0 ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Publicités à valider</h2>
-              <span className={TYPOGRAPHY.XS}>{pendingAds.length} en attente</span>
-            </div>
-            <div className="space-y-3">
-              {pendingAdsLoading ? (
-                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement des publicités...</CardContent></Card>
-              ) : pendingAds.map((ad) => (
-                <Card key={ad.id} className="overflow-hidden">
-                  <CardContent className="space-y-4 px-5 py-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-base font-semibold">{ad.title}</p>
-                          <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs text-violet-300">{ad.adType}</span>
-                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">En attente</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{ad.tagline}</p>
-                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{ad.business.name} · par {ad.business.owner.username}</p>
-                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <span>CTA: {ad.ctaText}</span>
-                          <span>·</span>
-                          <span className="break-all">{ad.ctaLink}</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="sm" onClick={() => void handleReviewAd(ad.id, 'approve')} disabled={reviewingAdId === ad.id}>
-                          Approuver
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => void handleReviewAd(ad.id, 'reject')} disabled={reviewingAdId === ad.id}>
-                          Rejeter
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => void handleDeleteAdForever(ad.id)} disabled={reviewingAdId === ad.id}>
-                          Supprimer
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
-                      <div className="overflow-hidden rounded-xl border border-border/40 bg-background/50">
-                        {ad.imageUrl ? (
-                          <img src={resolveImageUrl(ad.imageUrl)} alt={ad.title} className="h-40 w-full object-cover" />
-                        ) : (
-                          <div className="flex h-40 items-center justify-center bg-muted/30 text-xs text-muted-foreground">Pas d'image</div>
-                        )}
-                      </div>
-                      <div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-3">
-                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Aperçu joueur</p>
-                        <div className="space-y-1">
-                          <p className="text-sm font-semibold">{ad.title}</p>
-                          <p className="text-sm text-muted-foreground">{ad.tagline}</p>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>{ad.business.owner.username}</span>
-                          <span>·</span>
-                          <span>{ad.business.verified ? 'Entreprise vérifiée' : 'Entreprise non vérifiée'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {activeTab === 'inbox' ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Toutes les publicités</h2>
-              <span className={TYPOGRAPHY.XS}>{allAds.length} au total</span>
-            </div>
-            <div className="space-y-3">
-              {allAdsLoading ? (
-                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement de toutes les publicités...</CardContent></Card>
-              ) : allAds.length === 0 ? (
-                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Aucune publicité créée par les utilisateurs.</CardContent></Card>
-              ) : allAds.map((ad) => (
-                <Card key={`all-${ad.id}`} className="overflow-hidden">
-                  <CardContent className="space-y-4 px-5 py-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-base font-semibold">{ad.title}</p>
-                          <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs text-violet-300">{ad.adType}</span>
-                          <span className={ad.status === 'APPROVED' ? 'rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300' : ad.status === 'PENDING' ? 'rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300' : 'rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-300'}>
-                            {ad.status === 'APPROVED' ? 'Approuvée' : ad.status === 'PENDING' ? 'En attente' : ad.status === 'REJECTED' ? 'Rejetée' : ad.status}
-                          </span>
-                          <span className={ad.isActive ? 'rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300' : 'rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground'}>
-                            {ad.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{ad.tagline}</p>
-                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{ad.business.name} · par {ad.business.owner.username}</p>
-                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <span>Impressions: {ad.impressions.toLocaleString('fr-FR')}</span>
-                          <span>·</span>
-                          <span>Clics: {ad.clicks.toLocaleString('fr-FR')}</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {ad.status === 'PENDING' ? (
-                          <>
+        {/* ── ADS TAB ──────────────────────────────────────────────────────────── */}
+        <TabsContent value="ads" className={SPACING.SECTION_SPACING}>
+          <div className="space-y-8">
+            {/* Pending ads */}
+            {pendingAds.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-semibold">À valider</h2>
+                  <span className={TYPOGRAPHY.XS}>{pendingAds.length} en attente</span>
+                </div>
+                <div className="space-y-3">
+                  {pendingAdsLoading ? (
+                    <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement…</CardContent></Card>
+                  ) : pendingAds.map((ad) => (
+                    <Card key={ad.id} className="overflow-hidden">
+                      <CardContent className="space-y-4 px-5 py-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-base font-semibold">{ad.title}</p>
+                              <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs text-violet-300">{ad.adType}</span>
+                              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">En attente</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{ad.tagline}</p>
+                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{ad.business.name} · par {ad.business.owner.username}</p>
+                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              <span>CTA: {ad.ctaText}</span>
+                              <span>·</span>
+                              <span className="break-all">{ad.ctaLink}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
                             <Button size="sm" onClick={() => void handleReviewAd(ad.id, 'approve')} disabled={reviewingAdId === ad.id}>
                               Approuver
                             </Button>
                             <Button size="sm" variant="outline" onClick={() => void handleReviewAd(ad.id, 'reject')} disabled={reviewingAdId === ad.id}>
                               Rejeter
                             </Button>
-                          </>
-                        ) : null}
-                        <Button size="sm" variant="destructive" onClick={() => void handleDeleteAdForever(ad.id)} disabled={reviewingAdId === ad.id}>
-                          Supprimer définitivement
-                        </Button>
+                            <Button size="sm" variant="destructive" onClick={() => void handleDeleteAdForever(ad.id)} disabled={reviewingAdId === ad.id}>
+                              Supprimer
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="grid gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
+                          <div className="overflow-hidden rounded-xl border border-border/40 bg-background/50">
+                            {ad.imageUrl ? (
+                              <img src={resolveImageUrl(ad.imageUrl)} alt={ad.title} className="h-40 w-full object-cover" />
+                            ) : (
+                              <div className="flex h-40 items-center justify-center bg-muted/30 text-xs text-muted-foreground">Pas d'image</div>
+                            )}
+                          </div>
+                          <div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-3">
+                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Aperçu joueur</p>
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold">{ad.title}</p>
+                              <p className="text-sm text-muted-foreground">{ad.tagline}</p>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>{ad.business.owner.username}</span>
+                              <span>·</span>
+                              <span>{ad.business.verified ? 'Entreprise vérifiée' : 'Entreprise non vérifiée'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* All ads gallery */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold">Toutes les publicités</h2>
+                <span className={TYPOGRAPHY.XS}>{allAds.length} au total</span>
+              </div>
+              {allAdsLoading ? (
+                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement…</CardContent></Card>
+              ) : allAds.length === 0 ? (
+                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Aucune publicité créée par les utilisateurs.</CardContent></Card>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {allAds.map((ad) => (
+                    <Card key={`all-${ad.id}`} className="overflow-hidden flex flex-col">
+                      <div className="relative">
+                        {ad.imageUrl ? (
+                          <img src={resolveImageUrl(ad.imageUrl)} alt={ad.title} className="h-44 w-full object-cover" />
+                        ) : (
+                          <div className="flex h-44 items-center justify-center bg-muted/30 text-xs text-muted-foreground">Pas d'image</div>
+                        )}
+                        {/* Status badges overlay */}
+                        <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                          <span className={ad.status === 'APPROVED' ? 'rounded-full bg-emerald-600/90 px-2 py-0.5 text-[11px] text-white font-medium' : ad.status === 'PENDING' ? 'rounded-full bg-amber-600/90 px-2 py-0.5 text-[11px] text-white font-medium' : 'rounded-full bg-red-600/90 px-2 py-0.5 text-[11px] text-white font-medium'}>
+                            {ad.status === 'APPROVED' ? 'Approuvée' : ad.status === 'PENDING' ? 'En attente' : 'Rejetée'}
+                          </span>
+                          {!ad.isActive && (
+                            <span className="rounded-full bg-background/80 border border-border/50 px-2 py-0.5 text-[11px] text-muted-foreground font-medium">Masquée</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <CardContent className="flex flex-col gap-3 px-4 py-3 flex-1">
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm">{ad.title}</p>
+                            <span className="rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[11px] text-violet-300">{ad.adType}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{ad.tagline}</p>
+                          <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{ad.business.name} · {ad.business.owner.username}</p>
+                          <div className="flex gap-3 text-[11px] text-muted-foreground pt-0.5">
+                            <span>{ad.impressions.toLocaleString('fr-FR')} impressions</span>
+                            <span>·</span>
+                            <span>{ad.clicks.toLocaleString('fr-FR')} clics</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/30">
+                          {ad.status === 'PENDING' && (
+                            <>
+                              <Button size="sm" className="h-7 text-xs" onClick={() => void handleReviewAd(ad.id, 'approve')} disabled={reviewingAdId === ad.id}>
+                                Approuver
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void handleReviewAd(ad.id, 'reject')} disabled={reviewingAdId === ad.id}>
+                                Rejeter
+                              </Button>
+                            </>
+                          )}
+                          {ad.status === 'APPROVED' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => void handleToggleAdVisibility(ad.id, ad.isActive)}
+                              disabled={reviewingAdId === ad.id}
+                            >
+                              {reviewingAdId === ad.id ? <Loader2 className="w-3 h-3 animate-spin" /> : ad.isActive ? <Eye className="w-3 h-3" /> : <Eye className="w-3 h-3 opacity-40" />}
+                              {ad.isActive ? 'Masquer' : 'Afficher'}
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-7 text-xs ml-auto"
+                            onClick={() => void handleDeleteAdForever(ad.id)}
+                            disabled={reviewingAdId === ad.id}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Supprimer
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        ) : null}
+        </TabsContent>
 
         <UsersTab
           userSearchQuery={userSearchQuery}
@@ -9223,8 +9346,8 @@ export default function Admin() {
           </div>
         </TabsContent>
 
-        {/* ── SUPPORT TAB ──────────────────────────────────────────────────────── */}
-        <TabsContent value="support" className={SPACING.SECTION_SPACING}>
+        {/* ── COMMUNICATION TAB ────────────────────────────────────────────────── */}
+        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
           {/* New thread dialog */}
           <Dialog open={newThreadOpen} onOpenChange={(o) => { setNewThreadOpen(o); if (!o) { setNewThreadUserId(''); setNewThreadBody(''); setNewThreadSearch(''); } }}>
             <DialogContent>

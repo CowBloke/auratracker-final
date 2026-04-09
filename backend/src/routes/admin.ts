@@ -1257,6 +1257,28 @@ router.delete('/ads/:id', authMiddleware, requireAdmin, async (req: AuthRequest,
   }
 });
 
+router.patch('/ads/:id/toggle', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const ad = await prisma.ad.findUnique({ where: { id: req.params.id } });
+    if (!ad) return res.status(404).json({ error: 'AD_NOT_FOUND' });
+    const updated = await prisma.ad.update({
+      where: { id: ad.id },
+      data: { isActive: !ad.isActive },
+      include: {
+        business: {
+          include: {
+            owner: { select: { id: true, username: true } },
+          },
+        },
+      },
+    });
+    res.json({ ad: updated });
+  } catch (error) {
+    console.error('Admin toggle ad error:', error);
+    res.status(500).json({ error: 'Failed to toggle ad visibility' });
+  }
+});
+
 // Approve a user
 router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {

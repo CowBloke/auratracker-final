@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { AdCard } from '@/components/ads/AdCard';
-import { AdInterstitial } from '@/components/ads/AdInterstitial';
 import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -721,9 +720,6 @@ export default function Games() {
   const [savingCatalogTag, setSavingCatalogTag] = useState<string | null>(null);
   const [rewardDetailsGameId, setRewardDetailsGameId] = useState<string | null>(null);
   const [adPool, setAdPool] = useState<Ad[]>([]);
-  const [interstitialAd, setInterstitialAd] = useState<Ad | null>(null);
-  const [pendingGameLink, setPendingGameLink] = useState<string | null>(null);
-  const [interstitialOpen, setInterstitialOpen] = useState(false);
   const { maintenanceStatus, refreshFeatures } = useFeatures();
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -896,15 +892,6 @@ export default function Games() {
 
   const handleGameClick = (gameId: string) => {
     const link = getGameLink(gameId);
-    const ads = adPool.filter((ad) => ad.isActive);
-
-    if (ads.length > 0 && Math.random() > 0.5) {
-      setInterstitialAd(ads[Math.floor(Math.random() * ads.length)]!);
-      setPendingGameLink(link);
-      setInterstitialOpen(true);
-      return;
-    }
-
     navigate(link);
   };
 
@@ -1299,17 +1286,6 @@ export default function Games() {
         </DialogContent>
       </Dialog>
 
-      <AdInterstitial
-        ad={interstitialAd}
-        open={interstitialOpen}
-        onComplete={() => {
-          setInterstitialOpen(false);
-          if (pendingGameLink) {
-            navigate(pendingGameLink);
-            setPendingGameLink(null);
-          }
-        }}
-      />
     </PageShell>
   );
 }

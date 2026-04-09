@@ -489,6 +489,40 @@ function computeBusinessSuggestedShareAmount(business: {
   return Math.max(500, Math.round((valuationBase * safeSharePercent) / 100));
 }
 
+export function getBusinessRevenueSnapshot(business: {
+  typeKey: string;
+  treasuryMoney: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+  customData?: string | null;
+  startupProducts?: any[];
+  members?: any[];
+}) {
+  const startupProducts = business.typeKey === 'startup'
+    ? (business.startupProducts ?? []).map((product: any) => serializeStartupProduct(product))
+    : [];
+  const monthlyRevenue = business.typeKey === 'bank'
+    ? Math.max(0, Math.floor(business.treasuryMoney * 0.04))
+    : business.typeKey === 'startup'
+      ? startupProducts.reduce((total: number, product: any) => total + product.currentRevenue, 0)
+      : business.typeKey === 'youtube'
+        ? business.monthlyRevenue + Math.min(2200, Math.floor((safeJsonParse<{ totalViews?: number }>(business.customData, { totalViews: 0 }).totalViews ?? 0) / 200))
+        : business.typeKey === 'formation'
+          ? business.monthlyRevenue + (business.members?.length ?? 0) * 250
+          : business.monthlyRevenue;
+  const monthlyExpenses = business.typeKey === 'bank'
+    ? 0
+    : business.monthlyExpenses;
+  const dailyRevenue = monthlyRevenue > 0 ? Math.max(1, Math.round(monthlyRevenue / 30)) : 0;
+
+  return {
+    monthlyRevenue,
+    monthlyExpenses,
+    dailyRevenue,
+    startupProducts,
+  };
+}
+
 function serializeEmploymentInvitation(invitation: any, viewerId: string) {
   const viewerRole = invitation.employerId === viewerId ? 'EMPLOYER' : invitation.employeeId === viewerId ? 'EMPLOYEE' : null;
   const needsViewerAcceptance = viewerRole === 'EMPLOYER'
@@ -602,21 +636,10 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
   const viewerIsAdmin = Boolean(options?.viewerIsAdmin);
   const ownerKind = isBusinessManagerSync(business, viewerId) ? 'you' : 'player';
   const treasuryMoney = business.treasuryMoney;
-  const startupProducts = business.typeKey === 'startup'
-    ? business.startupProducts.map((product: any) => serializeStartupProduct(product))
-    : [];
-  const monthlyRevenue = business.typeKey === 'bank'
-    ? Math.max(0, Math.floor(treasuryMoney * 0.04))
-    : business.typeKey === 'startup'
-      ? startupProducts.reduce((total: number, product: any) => total + product.currentRevenue, 0)
-    : business.typeKey === 'youtube'
-      ? business.monthlyRevenue + Math.min(2200, Math.floor(((business.customData ? JSON.parse(business.customData) : { totalViews: 0 }).totalViews ?? 0) / 200))
-    : business.typeKey === 'formation'
-      ? business.monthlyRevenue + business.members.length * 250
-    : business.monthlyRevenue;
-  const monthlyExpenses = business.typeKey === 'bank'
-    ? 0
-    : business.monthlyExpenses;
+  const businessRevenue = getBusinessRevenueSnapshot(business);
+  const startupProducts = businessRevenue.startupProducts;
+  const monthlyRevenue = businessRevenue.monthlyRevenue;
+  const monthlyExpenses = businessRevenue.monthlyExpenses;
   const shareholders = (business.shareholders ?? []).map((shareholder: any) => serializeShareholder(shareholder));
   const soldSharePercent = shareholders.reduce((sum: number, shareholder: any) => sum + shareholder.sharePercent, 0);
   const ownerSharePercent = Math.max(0, Math.round((100 - soldSharePercent) * 100) / 100);
