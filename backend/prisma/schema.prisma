@@ -23,6 +23,7 @@ model User {
   isSuperAdmin            Boolean   @default(false)
   isBetaTester            Boolean   @default(false)
   isFiscalInspector       Boolean   @default(false)
+  isJudge                 Boolean   @default(false)
   isChatMuted             Boolean   @default(false)
   isApproved              Boolean   @default(false) // Account must be approved by admin before login
   dailyAuraGiven          Int       @default(0) // Aura given today
@@ -143,6 +144,12 @@ model User {
   warningsReceived AdminWarning[] @relation("WarningsReceived")
   warningsIssued   AdminWarning[] @relation("WarningsIssued")
 
+  // Pending Sanctions
+  pendingSanctionsRequested    PendingSanction[] @relation("PendingSanctionsRequested")
+  pendingSanctionsAsTarget     PendingSanction[] @relation("PendingSanctionsTarget")
+  pendingSanctionsAsBeneficiary PendingSanction[] @relation("PendingSanctionsBeneficiary")
+  pendingSanctionsReviewed     PendingSanction[] @relation("PendingSanctionsReviewed")
+
   // Support Messages
   supportMessages              SupportMessage[]                 @relation("UserSupportMessages")
   messagingConversationsCreated MessageConversation[]          @relation("MessageConversationCreator")
@@ -193,6 +200,10 @@ model User {
   reviewEligibilities       ReviewEligibility[]            @relation("ReviewEligibilityUser")
   lawyerReviewEligibilities ReviewEligibility[]            @relation("ReviewEligibilityLawyer")
   businessPurchasedItems    BusinessPurchasedItem[]
+  // Braquage Légal
+  isBraquageLegalOwner       Boolean                       @default(false)
+  braquageLegalWins          BraquageLegalSession[]        @relation("BraquageLegalWinner")
+  braquageLegalParticipations BraquageLegalParticipation[] @relation("BraquageLegalParticipant")
 
   @@index([aura])
   @@index([money])
@@ -910,6 +921,54 @@ model BusinessStartupProduct {
 
   @@unique([businessId, slotIndex])
   @@index([businessId, slotIndex])
+}
+
+model BraquageLegalSession {
+  id             Int                       @id @default(autoincrement())
+  status         BraquageLegalStatus       @default(ACTIVE)
+  startTime      DateTime                  @default(now())
+  endTime        DateTime
+  totalPool      Int                       @default(0)
+  winnerId       String?
+  winner         User?                     @relation("BraquageLegalWinner", fields: [winnerId], references: [id])
+  winnerPayout   Int?
+  ownerPayout    Int?
+  createdAt      DateTime                  @default(now())
+  participations BraquageLegalParticipation[]
+
+  @@index([status, endTime])
+  @@index([createdAt])
+  @@index([winnerId])
+}
+
+model BraquageLegalParticipation {
+  id          Int                   @id @default(autoincrement())
+  sessionId   Int
+  session     BraquageLegalSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User                  @relation("BraquageLegalParticipant", fields: [userId], references: [id], onDelete: Cascade)
+  tier        BraquageLegalTier
+  ticketCount Int
+  amount      Int
+  createdAt   DateTime              @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([userId, tier])
+  @@index([sessionId, userId, tier])
+}
+
+enum BraquageLegalStatus {
+  ACTIVE
+  DRAWN
+  CANCELLED
+}
+
+enum BraquageLegalTier {
+  BRONZE
+  ARGENT
+  OR
+  PLATINE
+  VIP
 }
 
 model UserSkill {
@@ -2209,6 +2268,31 @@ model AdminWarning {
 
   @@index([userId, isAcknowledged])
   @@index([createdAt])
+}
+
+// Pending Sanctions — proposed by judges or fiscal inspectors, approved/rejected by admins
+model PendingSanction {
+  id                String    @id @default(uuid())
+  requestedById     String
+  requestedByRole   String    // JUDGE | FISCAL_INSPECTOR
+  type              String    // AMENDE | PAYMENT
+  targetUserId      String
+  beneficiaryUserId String?   // For PAYMENT type: who receives the money
+  amount            Int
+  message           String
+  caseId            String?   // For judge sanctions: linked court case id
+  status            String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  adminNote         String?
+  reviewedById      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  requestedBy  User  @relation("PendingSanctionsRequested", fields: [requestedById], references: [id], onDelete: Cascade)
+  targetUser   User  @relation("PendingSanctionsTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  beneficiary  User? @relation("PendingSanctionsBeneficiary", fields: [beneficiaryUserId], references: [id], onDelete: SetNull)
+  reviewedBy   User? @relation("PendingSanctionsReviewed", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
 }
 
 // Custom Badge Requests (user-submitted, admin-reviewed)

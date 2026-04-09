@@ -17,6 +17,7 @@ interface User {
   isSuperAdmin: boolean;
   isBetaTester: boolean;
   isFiscalInspector: boolean;
+  isJudge: boolean;
   usernameColor?: string | null;
   profilePicture?: string | null;
   profileBanner?: string | null;

@@ -55,7 +55,7 @@ type UsersTabProps = {
   startEditing: (user: AdminUser) => void;
   openInventory: (user: AdminUser) => void;
   openSharedMoney: (user: AdminUser) => void;
-  getAdminRole: (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin' | 'isBetaTester' | 'isFiscalInspector'>) => 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' | 'FISCAL_INSPECTOR';
+  getAdminRole: (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin' | 'isBetaTester' | 'isFiscalInspector' | 'isJudge'>) => 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' | 'FISCAL_INSPECTOR' | 'JUDGE';
   toggleChatMute: (user: AdminUser) => void;
   mutingUser: string | null;
   openWarningDialog: (userId: string) => void;

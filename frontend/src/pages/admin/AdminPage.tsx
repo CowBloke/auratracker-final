@@ -2,7 +2,8 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, type PendingFormationReviewItem, type PendingAdReview } from '../../services/api';
+import { adminApi, sanctionsApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, type PendingFormationReviewItem, type PendingAdReview, type FiscalUser, type PendingSanction } from '../../services/api';
+import SanctionModal from '@/components/sanctions/SanctionModal';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet, Inbox, Settings, BarChart2, Briefcase } from 'lucide-react';
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet, Inbox, Settings, BarChart2, Briefcase, Ticket } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
@@ -64,6 +65,7 @@ import {
 } from './constants';
 import { InboxTab } from './tabs/InboxTab';
 import { BansTab } from './tabs/BansTab';
+import { BraquageLegalTab } from './tabs/BraquageLegalTab';
 import { ClubsTab } from './tabs/ClubsTab';
 import { LogsTab } from './tabs/LogsTab';
 import { TaxesTab } from './tabs/TaxesTab';
@@ -284,11 +286,12 @@ const mapRegistrationReviewToArchivedRegistration = (review: RegistrationReview)
   importedFromLegacy: review.importedFromLegacy,
 });
 
-const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin' | 'isBetaTester' | 'isFiscalInspector'>): AdminRole => {
+const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin' | 'isBetaTester' | 'isFiscalInspector' | 'isJudge'>): AdminRole => {
   if (user.isSuperAdmin) return 'SUPER_ADMIN';
   if (user.isAdmin) return 'ADMIN';
   if (user.isBetaTester) return 'BETA_TESTER';
   if (user.isFiscalInspector) return 'FISCAL_INSPECTOR';
+  if (user.isJudge) return 'JUDGE';
   return 'USER';
 };
 
@@ -1734,6 +1737,16 @@ export default function Admin() {
   const [creatingWarning, setCreatingWarning] = useState(false);
   const [deletingWarning, setDeletingWarning] = useState<string | null>(null);
 
+  // Fiscal / pending sanctions state
+  const [fiscalUsers, setFiscalUsers] = useState<FiscalUser[]>([]);
+  const [loadingFiscalUsers, setLoadingFiscalUsers] = useState(false);
+  const [pendingSanctions, setPendingSanctions] = useState<PendingSanction[]>([]);
+  const [loadingPendingSanctions, setLoadingPendingSanctions] = useState(false);
+  const [showFiscalSanctionModal, setShowFiscalSanctionModal] = useState(false);
+  const [approvingSanction, setApprovingSanction] = useState<string | null>(null);
+  const [rejectingSanction, setRejectingSanction] = useState<string | null>(null);
+  const [fiscalSanctionFilter, setFiscalSanctionFilter] = useState<'PENDING' | 'ALL'>('PENDING');
+
   // Logs state
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [logStats, setLogStats] = useState<LogStats | null>(null);
@@ -2048,6 +2061,7 @@ export default function Admin() {
     fetchRegistrationReviews();
     fetchBans();
     fetchWarnings();
+    fetchPendingSanctions();
     fetchBanAppeals();
     fetchNameChangeRequests();
     fetchBadges();
@@ -2076,15 +2090,17 @@ export default function Admin() {
     }
   }, [location.search]);
 
-  // Fiscal inspectors can only access logs and taxes tabs
-  const FISCAL_INSPECTOR_TABS: AdminTab[] = ['logs', 'taxes'];
+  // Fiscal inspectors can only access logs, taxes, and fiscal tabs
+  const FISCAL_INSPECTOR_TABS: AdminTab[] = ['logs', 'taxes', 'fiscal'];
   useEffect(() => {
     if (user?.isFiscalInspector && !user?.isAdmin) {
       if (!FISCAL_INSPECTOR_TABS.includes(activeTab)) {
-        setActiveTab('logs');
+        setActiveTab('fiscal');
       }
+      // Load fiscal data on mount for fiscal-only users
+      fetchFiscalUsers();
     }
-  }, [user, activeTab]);
+  }, [user?.isFiscalInspector, user?.isAdmin]);
 
   // Real-time support messages for admin
   useEffect(() => {
@@ -2636,6 +2652,58 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des avertissements');
     } finally {
       setLoadingWarnings(false);
+    }
+  };
+
+  const fetchFiscalUsers = async () => {
+    try {
+      setLoadingFiscalUsers(true);
+      const res = await sanctionsApi.getFiscalUsers();
+      setFiscalUsers(res.data.users);
+    } catch (error) {
+      console.error('Failed to fetch fiscal users:', error);
+    } finally {
+      setLoadingFiscalUsers(false);
+    }
+  };
+
+  const fetchPendingSanctions = async () => {
+    try {
+      setLoadingPendingSanctions(true);
+      const res = await sanctionsApi.listPendingSanctions(fiscalSanctionFilter === 'PENDING' ? 'PENDING' : undefined);
+      setPendingSanctions(res.data.sanctions);
+    } catch (error) {
+      console.error('Failed to fetch pending sanctions:', error);
+    } finally {
+      setLoadingPendingSanctions(false);
+    }
+  };
+
+  const approveSanction = async (id: string) => {
+    try {
+      setApprovingSanction(id);
+      await sanctionsApi.approveSanction(id);
+      setPendingSanctions((prev) => prev.filter((s) => s.id !== id));
+      showMessage('success', 'Sanction approuvée et exécutée');
+    } catch (error) {
+      console.error('Failed to approve sanction:', error);
+      showMessage('error', 'Erreur lors de l\'approbation');
+    } finally {
+      setApprovingSanction(null);
+    }
+  };
+
+  const rejectSanction = async (id: string) => {
+    try {
+      setRejectingSanction(id);
+      await sanctionsApi.rejectSanction(id);
+      setPendingSanctions((prev) => prev.filter((s) => s.id !== id));
+      showMessage('success', 'Sanction refusée');
+    } catch (error) {
+      console.error('Failed to reject sanction:', error);
+      showMessage('error', 'Erreur lors du refus');
+    } finally {
+      setRejectingSanction(null);
     }
   };
 
@@ -4679,7 +4747,7 @@ export default function Admin() {
         >
           {/* ── Custom admin navigation with grouped dropdowns ── */}
           {(() => {
-            const inboxCount = pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length;
+            const inboxCount = pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length + pendingSanctions.filter(s => s.status === 'PENDING').length;
             const navBtn = (tabs: AdminTab | AdminTab[], label: string, icon: ReactNode, onClick: () => void, badge?: ReactNode) => {
               const active = Array.isArray(tabs) ? (tabs as AdminTab[]).includes(activeTab) : activeTab === tabs;
               return (
@@ -4737,6 +4805,9 @@ export default function Admin() {
                   bans.filter(b => b.isActive).length > 0 ? <span className={TYPOGRAPHY.XS}>{bans.filter(b => b.isActive).length}</span> : undefined
                 )}
 
+                {/* Braquage Légal — admin only */}
+                {!isFiscalOnly && navBtn('braquageLegal', 'Braquage Légal', <Ticket className="w-4 h-4 shrink-0" />, () => setActiveTab('braquageLegal'))}
+
                 {/* Contenu dropdown — admin only */}
                 {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
@@ -4756,6 +4827,9 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>}
+
+                {/* Inspection fiscale — visible to fiscal inspectors */}
+                {isFiscalOnly && navBtn('fiscal', 'Inspection fiscale', <Landmark className="w-4 h-4 shrink-0" />, () => { setActiveTab('fiscal'); fetchFiscalUsers(); })}
 
                 {/* Finance — taxes visible to all, referrals admin only */}
                 {isFiscalOnly
@@ -4877,6 +4951,105 @@ export default function Admin() {
           rejectCustomBadgeRequest={handleRejectCustomBadge}
           reviewFormationProduct={handleReviewFormationProduct}
         />
+
+        {/* ── Pending Sanctions Section (within inbox tab) ── */}
+        <TabsContent value="inbox">
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Gavel className="w-4 h-4 text-amber-500" />
+                <p className="text-sm font-semibold">Sanctions en attente de validation</p>
+                {pendingSanctions.filter(s => s.status === 'PENDING').length > 0 && (
+                  <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">
+                    {pendingSanctions.filter(s => s.status === 'PENDING').length}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setFiscalSanctionFilter('PENDING'); fetchPendingSanctions(); }}
+                  className={cn('text-xs px-2 py-0.5 rounded-full transition-colors', fiscalSanctionFilter === 'PENDING' ? 'bg-muted font-medium' : 'text-muted-foreground hover:bg-muted/50')}
+                >
+                  En attente
+                </button>
+                <button
+                  onClick={() => { setFiscalSanctionFilter('ALL'); fetchPendingSanctions(); }}
+                  className={cn('text-xs px-2 py-0.5 rounded-full transition-colors', fiscalSanctionFilter === 'ALL' ? 'bg-muted font-medium' : 'text-muted-foreground hover:bg-muted/50')}
+                >
+                  Tout
+                </button>
+              </div>
+            </div>
+
+            {loadingPendingSanctions ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : pendingSanctions.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">Aucune sanction en attente.</p>
+            ) : (
+              <div className="space-y-3">
+                {pendingSanctions.map((s) => (
+                  <Card key={s.id} className={cn('overflow-hidden', s.status === 'PENDING' ? '' : 'opacity-60')}>
+                    <CardContent className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={cn('text-xs font-semibold px-1.5 py-0.5 rounded-full', s.type === 'AMENDE' ? 'bg-amber-500/15 text-amber-600' : 'bg-sky-500/15 text-sky-600')}>
+                              {s.type === 'AMENDE' ? 'Amende' : 'Paiement forcé'}
+                            </span>
+                            <span className={cn('text-xs px-1.5 py-0.5 rounded-full', s.requestedByRole === 'JUDGE' ? 'bg-purple-500/15 text-purple-600' : 'bg-emerald-500/15 text-emerald-600')}>
+                              {s.requestedByRole === 'JUDGE' ? '⚖️ Juge' : '🏛️ Agent du fisc'}
+                            </span>
+                            {s.status !== 'PENDING' && (
+                              <span className={cn('text-xs px-1.5 py-0.5 rounded-full', s.status === 'APPROVED' ? 'bg-green-500/15 text-green-600' : 'bg-red-500/15 text-red-600')}>
+                                {s.status === 'APPROVED' ? 'Approuvée' : 'Refusée'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm">
+                            <span className="font-medium">{s.requestedBy.username}</span>
+                            {s.type === 'AMENDE'
+                              ? <> souhaite infliger une amende de <span className="font-semibold text-amber-500">{s.amount.toLocaleString('fr-FR')}€</span> à <span className="font-medium">{s.targetUser.username}</span></>
+                              : <> souhaite forcer un paiement de <span className="font-semibold text-sky-500">{s.amount.toLocaleString('fr-FR')}€</span> de <span className="font-medium">{s.targetUser.username}</span> vers <span className="font-medium">{s.beneficiary?.username ?? '?'}</span></>
+                            }
+                          </p>
+                          {s.message && <p className="text-xs text-muted-foreground italic">"{s.message}"</p>}
+                          {s.caseId && <p className="text-xs text-muted-foreground">Affaire liée : {s.caseId}</p>}
+                          {s.adminNote && <p className="text-xs text-muted-foreground">Note admin : {s.adminNote}</p>}
+                          <p className="text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleString('fr-FR')}</p>
+                        </div>
+                        {s.status === 'PENDING' && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10"
+                              disabled={rejectingSanction === s.id || approvingSanction === s.id}
+                              onClick={() => rejectSanction(s.id)}
+                            >
+                              {rejectingSanction === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                              Refuser
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs gap-1"
+                              disabled={approvingSanction === s.id || rejectingSanction === s.id}
+                              onClick={() => approveSanction(s.id)}
+                            >
+                              {approvingSanction === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Gavel className="w-3 h-3" />}
+                              Exécuter
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         {/* ── ADS TAB ──────────────────────────────────────────────────────────── */}
         <TabsContent value="ads" className={SPACING.SECTION_SPACING}>
@@ -5096,6 +5269,8 @@ export default function Admin() {
           saveClanEvent={saveClanEvent}
           savingClanEvent={savingClanEvent}
         />
+
+        <BraquageLegalTab users={users} />
 
         <TabsContent value="content">
           <div className="flex gap-6 items-start">
@@ -5356,6 +5531,75 @@ export default function Admin() {
           runTaxNow={runTaxNow}
           runningTaxNow={runningTaxNow}
         />
+
+        {/* ── Fiscal Inspector Tab ── */}
+        <TabsContent value="fiscal" className={SPACING.SECTION_SPACING}>
+          <div className="space-y-6">
+            {/* Sanction modal for fiscal inspector */}
+            <SanctionModal
+              open={showFiscalSanctionModal}
+              onClose={() => setShowFiscalSanctionModal(false)}
+              issuerRole="FISCAL_INSPECTOR"
+              players={fiscalUsers.map((u) => ({ id: u.id, username: u.username }))}
+              onSubmit={async (data) => {
+                await sanctionsApi.submitFiscalSanction({
+                  type: data.type,
+                  targetUserId: data.targetUserId,
+                  beneficiaryUserId: data.beneficiaryUserId,
+                  amount: data.amount,
+                  message: data.message,
+                });
+                showMessage('success', 'Demande de sanction transmise à l\'administration');
+              }}
+            />
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Inspection fiscale — Patrimoine des joueurs</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Vue lecture seule. Utilisez le bouton ci-dessous pour soumettre une demande de récupération fiscale.</p>
+              </div>
+              <Button size="sm" onClick={() => setShowFiscalSanctionModal(true)} className="gap-1.5">
+                <Gavel className="w-3.5 h-3.5" />
+                Demande de sanction
+              </Button>
+            </div>
+
+            {loadingFiscalUsers ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : fiscalUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucun joueur trouvé.</p>
+            ) : (
+              <div className="rounded-lg border border-border/60 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 border-b border-border/60">
+                    <tr>
+                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Joueur</th>
+                      <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Compte (€)</th>
+                      <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Compte partagé (€)</th>
+                      <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Aura</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {fiscalUsers.map((u) => (
+                      <tr key={u.id} className="hover:bg-muted/20 transition-colors">
+                        <td className="px-3 py-2 font-medium">{u.username}{u.firstName ? ` (${u.firstName})` : ''}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{u.money.toLocaleString('fr-FR')}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {u.sharedMoney
+                            ? <span title={`Compte partagé avec ${u.sharedMoney.partner.username}`}>{u.sharedMoney.coupleBalance.toLocaleString('fr-FR')}</span>
+                            : <span className="text-muted-foreground/50">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-amber-500">{u.aura.toLocaleString('fr-FR')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
 
         <TabsContent value="game-limits" className={SPACING.SECTION_SPACING}>
           <div className="space-y-1.5">

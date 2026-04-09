@@ -1,11 +1,17 @@
 import type { PrismaClient } from '@prisma/client';
 import { getBusinessRevenueSnapshot } from '../modules/you/service.js';
 import { getParisDayKey } from './dailyAura.js';
+import { createNotification } from './notifications.js';
 
 let _timer: ReturnType<typeof setInterval> | null = null;
 
 export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<void> => {
   const todayKey = getParisDayKey(new Date());
+  const notificationsToSend: Array<{
+    userId: string;
+    amount: number;
+    businessName: string;
+  }> = [];
 
   const businesses = await prisma.business.findMany({
     where: {
@@ -40,6 +46,12 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
       members: {
         select: { id: true },
       },
+      shareholders: {
+        select: {
+          userId: true,
+          sharePercent: true,
+        },
+      },
     },
   });
 
@@ -54,6 +66,24 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
         continue;
       }
 
+      // Split daily revenue to shareholders first, then keep the remainder in treasury.
+      const payoutPlan: Array<{ userId: string; amount: number }> = [];
+      let remainingRevenue = revenueSnapshot.dailyRevenue;
+
+      const validShareholders = (business.shareholders ?? []).filter((shareholder) => shareholder.sharePercent > 0);
+      for (const shareholder of validShareholders) {
+        if (remainingRevenue <= 0) break;
+
+        const rawShareAmount = Math.floor((revenueSnapshot.dailyRevenue * shareholder.sharePercent) / 100);
+        const shareAmount = Math.min(remainingRevenue, Math.max(0, rawShareAmount));
+        if (shareAmount <= 0) {
+          continue;
+        }
+
+        payoutPlan.push({ userId: shareholder.userId, amount: shareAmount });
+        remainingRevenue -= shareAmount;
+      }
+
       const updateResult = await tx.business.updateMany({
         where: {
           id: business.id,
@@ -63,7 +93,7 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
           ],
         },
         data: {
-          treasuryMoney: { increment: revenueSnapshot.dailyRevenue },
+          treasuryMoney: { increment: remainingRevenue },
           lastBusinessRevenueDate: todayKey,
         },
       });
@@ -74,12 +104,29 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
 
       creditedBusinessIds.push(business.id);
 
+      for (const payout of payoutPlan) {
+        await tx.user.update({
+          where: { id: payout.userId },
+          data: { money: { increment: payout.amount } },
+        });
+
+        notificationsToSend.push({
+          userId: payout.userId,
+          amount: payout.amount,
+          businessName: business.name,
+        });
+      }
+
+      const totalShareholderPayout = payoutPlan.reduce((sum, payout) => sum + payout.amount, 0);
+
       await tx.businessTransaction.create({
         data: {
           businessId: business.id,
           type: 'DAILY_REVENUE',
-          amount: revenueSnapshot.dailyRevenue,
-          label: `Revenu quotidien de ${business.name}`,
+          amount: remainingRevenue,
+          label: totalShareholderPayout > 0
+            ? `Revenu quotidien de ${business.name} (actionnaires: ${totalShareholderPayout.toLocaleString('fr-FR')})`
+            : `Revenu quotidien de ${business.name}`,
           actorId: null,
         },
       });
@@ -89,6 +136,24 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
   });
 
   if (results.length === 0) return;
+
+  await Promise.allSettled(
+    notificationsToSend.map((entry) =>
+      createNotification({
+        userId: entry.userId,
+        type: 'MONEY_RECEIVED',
+        title: 'Dividende quotidien reçu',
+        body: `${entry.amount.toLocaleString('fr-FR')} money ont ete verses sur ton wallet pour tes parts de ${entry.businessName}.`,
+        link: '/you?tab=travail',
+        icon: 'briefcase-business',
+        data: {
+          source: 'business_shareholder_daily_revenue',
+          amount: entry.amount,
+          businessName: entry.businessName,
+        },
+      }),
+    ),
+  );
 
   console.log(`[daily-business-revenue] Credited ${results.length} business(es) for ${todayKey}`);
 };
