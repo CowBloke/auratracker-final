@@ -156,7 +156,7 @@ export default function Leaderboards() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
-    void adsApi.listPublic({ type: 'BANNER', limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
+    void adsApi.listPublic({ limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
   }, []);
 
   // Reset period when switching to a category that doesn't support it

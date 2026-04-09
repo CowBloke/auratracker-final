@@ -523,7 +523,7 @@ export default function Shop() {
       }
     };
     fetchData();
-    void adsApi.listPublic({ type: 'CARD' }).then((res) => setCardAds(res.data.ads)).catch(() => {});
+    void adsApi.listPublic().then((res) => setCardAds(res.data.ads)).catch(() => {});
   }, [user?.id]);
 
   const ownedSkinItemIds = useMemo(() => new Set(

@@ -60,7 +60,7 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
-    void adsApi.listPublic({ type: 'BANNER', limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
+    void adsApi.listPublic({ limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
   }, []);
 
   const cancelBuyoutOffer = async (offerId: string) => {

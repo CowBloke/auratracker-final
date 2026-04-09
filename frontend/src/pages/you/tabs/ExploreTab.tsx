@@ -1586,8 +1586,8 @@ export function ExploreTab({
   );
 
   useEffect(() => {
-    void adsApi.listPublic({ type: 'BANNER', limit: 1 }).then((res) => setExploreBannerAd(res.data.ads[0] ?? null)).catch(() => {});
-    void adsApi.listPublic({ type: 'INTERSTITIAL', limit: 1 }).then((res) => setExploreInterstitialAd(res.data.ads[0] ?? null)).catch(() => {});
+    void adsApi.listPublic({ limit: 1 }).then((res) => setExploreBannerAd(res.data.ads[0] ?? null)).catch(() => {});
+    void adsApi.listPublic({ limit: 1 }).then((res) => setExploreInterstitialAd(res.data.ads[0] ?? null)).catch(() => {});
   }, []);
 
   // Open business modal from URL param (e.g. when coming from an ad click)

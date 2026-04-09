@@ -175,7 +175,7 @@ export function OverviewTab({ data, userId, onReload }: { data: YouState; userId
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
-    void adsApi.listPublic({ type: 'BANNER', limit: 3 })
+    void adsApi.listPublic({ limit: 3 })
       .then((response) => {
         if (response.data.ads[0]) {
           setBannerAd(response.data.ads[0]);

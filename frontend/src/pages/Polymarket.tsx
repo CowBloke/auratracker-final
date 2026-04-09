@@ -417,7 +417,7 @@ export default function Polymarket() {
 
   useEffect(() => {
     fetchData();
-    void adsApi.listPublic({ type: 'CARD' }).then((res) => setCardAds(res.data.ads)).catch(() => {});
+    void adsApi.listPublic().then((res) => setCardAds(res.data.ads)).catch(() => {});
   }, []);
 
   useEffect(() => {

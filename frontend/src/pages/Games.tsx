@@ -896,7 +896,7 @@ export default function Games() {
 
   const handleGameClick = (gameId: string) => {
     const link = getGameLink(gameId);
-    const ads = adPool.filter((ad) => ad.adType === 'INTERSTITIAL' && ad.isActive);
+    const ads = adPool.filter((ad) => ad.isActive);
 
     if (ads.length > 0 && Math.random() > 0.5) {
       setInterstitialAd(ads[Math.floor(Math.random() * ads.length)]!);
@@ -909,7 +909,7 @@ export default function Games() {
   };
 
   const injectAdsIntoGrid = (nodes: JSX.Element[]): JSX.Element[] => {
-    const cardAds = adPool.filter((ad) => ad.adType === 'CARD' && ad.isActive);
+    const cardAds = adPool.filter((ad) => ad.isActive);
     if (cardAds.length === 0) return nodes;
 
     const result: JSX.Element[] = [];
