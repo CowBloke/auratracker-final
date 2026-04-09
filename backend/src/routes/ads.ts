@@ -5,9 +5,6 @@ import { prisma } from '../server.js';
 
 const router = Router();
 
-const AD_TYPES = ['CARD', 'BANNER', 'INTERSTITIAL'] as const;
-type AdType = (typeof AD_TYPES)[number];
-
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 20;
 const MAX_ADS_PER_BUSINESS = 2;
@@ -16,13 +13,8 @@ const ERROR_STATUS: Record<string, number> = {
   AD_NOT_FOUND: 404,
   AD_FORBIDDEN: 403,
   AD_LIMIT_REACHED: 400,
-  AD_INVALID_TYPE: 400,
   AD_TAGLINE_TOO_LONG: 400,
 };
-
-function isAdType(value: unknown): value is AdType {
-  return typeof value === 'string' && AD_TYPES.includes(value as AdType);
-}
 
 function parseLimit(value: unknown): number {
   const parsed = Number(value);
@@ -88,7 +80,6 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       imageUrl,
       ctaText,
       ctaLink,
-      adType,
     } = req.body as {
       businessId?: string;
       title?: string;
@@ -96,19 +87,14 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       imageUrl?: string | null;
       ctaText?: string;
       ctaLink?: string;
-      adType?: string;
     };
 
-    if (!businessId || !title || !tagline || !ctaLink || !adType) {
+    if (!businessId || !title || !tagline || !ctaLink) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     if (tagline.length > 100) {
       return routeError(res, 'AD_TAGLINE_TOO_LONG');
-    }
-
-    if (!isAdType(adType)) {
-      return routeError(res, 'AD_INVALID_TYPE');
     }
 
     const business = await prisma.business.findUnique({
@@ -137,7 +123,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         imageUrl: imageUrl?.trim() || null,
         ctaText: ctaText?.trim() || 'En savoir plus',
         ctaLink: ctaLink.trim(),
-        adType,
+        adType: 'CARD',
         status: 'PENDING',
         isActive: false,
       },
@@ -192,18 +178,12 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
 router.get('/public', async (req, res: Response) => {
   try {
-    const type = req.query.type;
     const limit = parseLimit(req.query.limit);
-
-    if (type !== undefined && !isAdType(type)) {
-      return routeError(res, 'AD_INVALID_TYPE');
-    }
 
     const ads = await prisma.ad.findMany({
       where: {
         isActive: true,
         status: 'APPROVED',
-        ...(type ? { adType: type } : {}),
       },
       include: {
         business: {
@@ -239,7 +219,6 @@ router.patch('/:id', authMiddleware, async (req: AuthRequest, res: Response) => 
       imageUrl,
       ctaText,
       ctaLink,
-      adType,
       isActive,
     } = req.body as {
       title?: string;
@@ -247,7 +226,6 @@ router.patch('/:id', authMiddleware, async (req: AuthRequest, res: Response) => 
       imageUrl?: string | null;
       ctaText?: string;
       ctaLink?: string;
-      adType?: string;
       isActive?: boolean;
     };
 
@@ -255,17 +233,12 @@ router.patch('/:id', authMiddleware, async (req: AuthRequest, res: Response) => 
       return routeError(res, 'AD_TAGLINE_TOO_LONG');
     }
 
-    if (adType !== undefined && !isAdType(adType)) {
-      return routeError(res, 'AD_INVALID_TYPE');
-    }
-
     const contentEdited =
       title !== undefined ||
       tagline !== undefined ||
       imageUrl !== undefined ||
       ctaText !== undefined ||
-      ctaLink !== undefined ||
-      adType !== undefined;
+      ctaLink !== undefined;
 
     const canToggleActive = ownership.ad.status === 'APPROVED';
 
@@ -277,7 +250,6 @@ router.patch('/:id', authMiddleware, async (req: AuthRequest, res: Response) => 
         ...(imageUrl !== undefined ? { imageUrl: imageUrl?.trim() || null } : {}),
         ...(ctaText !== undefined ? { ctaText: ctaText.trim() || 'En savoir plus' } : {}),
         ...(ctaLink !== undefined ? { ctaLink: ctaLink.trim() } : {}),
-        ...(adType !== undefined ? { adType } : {}),
         ...(isActive !== undefined && canToggleActive ? { isActive } : {}),
         ...(contentEdited
           ? {

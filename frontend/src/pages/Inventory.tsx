@@ -143,8 +143,8 @@ export default function Inventory() {
   }, [user]);
 
   useEffect(() => {
-    void adsApi.listPublic({ type: 'CARD' }).then((res) => setCardAds(res.data.ads)).catch(() => {});
-    void adsApi.listPublic({ type: 'BANNER', limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
+    void adsApi.listPublic().then((res) => setCardAds(res.data.ads)).catch(() => {});
+    void adsApi.listPublic({ limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
   }, []);
 
   useEffect(() => {

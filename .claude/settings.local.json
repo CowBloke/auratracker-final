@@ -118,7 +118,8 @@
       "Bash(PRISMA_MIGRATE_SKIP_GENERATE=1 npx prisma db push)",
       "Bash(grep -r \"business\\\\|you\" /c/Users/cowbl/source/repos/CRust/auratracker-final/backend/src/socket/*.ts)",
       "Bash(grep -n \"router\\\\.\\\\\\(post\\\\|put\\\\|patch\\\\|delete\\\\\\)\\\\s*\\(\" /Users/viktorabe/Documents/GitHub/auratracker-final/backend/src/routes/*.ts)",
-      "Bash(grep -i \"business\" /c/Users/cowbl/source/repos/CRust/auratracker-final/backend/src/routes/*.ts)"
+      "Bash(grep -i \"business\" /c/Users/cowbl/source/repos/CRust/auratracker-final/backend/src/routes/*.ts)",
+      "Bash(grep -l \"CREATE TABLE \\\\\"Ad\\\\\"\" /c/Users/cowbloke/Programming/Repositories/auratracker-final/backend/prisma/migrations/*/migration.sql)"
     ]
   },
   "outputStyle": "default"

@@ -485,7 +485,7 @@ export default function Clans() {
   useEffect(() => {
     void fetchClans();
     void fetchGlobalWarHistory();
-    void adsApi.listPublic({ type: 'INTERSTITIAL', limit: 1 }).then((res) => setWarGameAd(res.data.ads[0] ?? null)).catch(() => {});
+    void adsApi.listPublic({ limit: 1 }).then((res) => setWarGameAd(res.data.ads[0] ?? null)).catch(() => {});
   }, []);
 
   useEffect(() => {

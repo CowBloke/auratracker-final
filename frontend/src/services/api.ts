@@ -720,7 +720,7 @@ export interface Ad {
   imageUrl: string | null;
   ctaText: string;
   ctaLink: string;
-  adType: 'CARD' | 'BANNER' | 'INTERSTITIAL';
+  adType: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | string;
   isActive: boolean;
   impressions: number;
@@ -744,7 +744,6 @@ export interface AdCreateInput {
   imageUrl?: string | null;
   ctaText?: string;
   ctaLink: string;
-  adType: 'CARD' | 'BANNER' | 'INTERSTITIAL';
 }
 
 export interface PendingAdReview extends Ad {
@@ -760,7 +759,7 @@ export interface PendingAdReview extends Ad {
 export const adsApi = {
   create: (data: AdCreateInput) => api.post<{ ad: Ad }>('/ads', data),
   listOwn: () => api.get<{ ads: Ad[] }>('/ads'),
-  listPublic: (params?: { type?: 'CARD' | 'BANNER' | 'INTERSTITIAL'; limit?: number }) =>
+  listPublic: (params?: { limit?: number }) =>
     api.get<{ ads: Ad[] }>('/ads/public', { params }),
   update: (id: string, data: Partial<AdCreateInput & { isActive: boolean }>) =>
     api.patch<{ ad: Ad }>(`/ads/${id}`, data),

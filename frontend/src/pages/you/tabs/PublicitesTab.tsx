@@ -10,13 +10,6 @@ import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { type Ad, type AdCreateInput, type YouBusiness, adsApi, uploadUserImage } from '@/services/api';
 import { FieldRow, ModalWrap, SectionTitle, SelectBox } from '../components/ui';
 
-type AdType = 'CARD' | 'BANNER' | 'INTERSTITIAL';
-
-const AD_TYPE_LABEL: Record<AdType, string> = {
-  CARD: 'Carte',
-  BANNER: 'Banniere',
-  INTERSTITIAL: 'Interstitiel',
-};
 
 function EmptyState({ text }: { text: string }) {
   return (
@@ -46,7 +39,6 @@ export function PublicitesTab({
     imageUrl: '',
     ctaText: 'En savoir plus',
     ctaLink: '',
-    adType: 'CARD',
   });
 
   const activeAdsCount = useMemo(() => ads.filter((ad) => ad.isActive && ad.status === 'APPROVED').length, [ads]);
@@ -170,7 +162,7 @@ export function PublicitesTab({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="truncate text-base font-semibold">{ad.title}</p>
-                <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-300">{AD_TYPE_LABEL[ad.adType]}</span>
+
                 <span className={ad.status === 'APPROVED' ? 'rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300' : ad.status === 'PENDING' ? 'rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300' : 'rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-300'}>
                   {ad.status === 'APPROVED' ? 'Approuvee' : ad.status === 'PENDING' ? 'En attente' : 'Refusee'}
                 </span>
@@ -204,14 +196,6 @@ export function PublicitesTab({
             {ownedBusinesses.map((business) => (
               <option key={business.id} value={business.id}>{business.name}</option>
             ))}
-          </SelectBox>
-        </FieldRow>
-
-        <FieldRow label="Type de publicite">
-          <SelectBox value={form.adType} onChange={(value) => setForm((prev) => ({ ...prev, adType: value as AdType }))}>
-            <option value="CARD">Carte</option>
-            <option value="BANNER">Banniere</option>
-            <option value="INTERSTITIAL">Interstitiel</option>
           </SelectBox>
         </FieldRow>
 
