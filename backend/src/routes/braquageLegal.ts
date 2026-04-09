@@ -124,14 +124,14 @@ const getOwner = async (db: DbClient): Promise<BraquageLegalOwner | null> => {
 const buildSessionResponse = (
   session: {
     id: number;
-    status: BraquageLegalStatus;
+    status: string;
     startTime: Date;
     endTime: Date;
     totalPool: number;
     participations: Array<{
       id: number;
       userId: string;
-      tier: BraquageLegalTierKey;
+      tier: string;
       ticketCount: number;
       amount: number;
       createdAt: Date;
@@ -142,7 +142,7 @@ const buildSessionResponse = (
   userParticipations: BraquageLegalUserParticipationSummary[] = [],
 ): BraquageLegalCurrentSessionResponse => ({
   id: session.id,
-  status: session.status,
+  status: session.status as BraquageLegalStatusKey,
   startTime: session.startTime.toISOString(),
   endTime: session.endTime.toISOString(),
   isExpired: session.endTime.getTime() <= Date.now(),
@@ -155,7 +155,6 @@ const buildSessionResponse = (
 
 const getCurrentSession = async (db: DbClient, userId: string): Promise<BraquageLegalCurrentSessionResponse | null> => {
   const session = await db.braquageLegalSession.findFirst({
-    where: { status: BraquageLegalStatus.ACTIVE },
     where: { status: BRAQUAGE_LEGAL_STATUS.ACTIVE },
     orderBy: { createdAt: 'desc' },
     select: sessionSelect,
@@ -192,25 +191,22 @@ const getCurrentSession = async (db: DbClient, userId: string): Promise<Braquage
     grouped.set(entry.tier as BraquageLegalTierKey, current);
   }
 
-  return {
-    session: buildSessionResponse(session, owner, Object.entries(TIER_CONFIG).map(([tier]) => {
-      const key = tier as BraquageLegalTierKey;
-      const summary = grouped.get(key);
-      return {
-        tier: key,
-        participationCount: summary?.participationCount ?? 0,
-        ticketCount: summary?.ticketCount ?? 0,
-        amount: summary?.amount ?? 0,
-      };
-    }).filter((summary) => summary.participationCount > 0)),
-    winner: null,
+  return buildSessionResponse(
+    session,
     owner,
-    winnerId: null,
-    winnerPayout: null,
-    ownerPayout: null,
-    ticketPool: session.participations.reduce((sum, participation) => sum + participation.ticketCount, 0),
-    cancelled: false,
-  };
+    Object.entries(TIER_CONFIG)
+      .map(([tier]) => {
+        const key = tier as BraquageLegalTierKey;
+        const summary = grouped.get(key);
+        return {
+          tier: key,
+          participationCount: summary?.participationCount ?? 0,
+          ticketCount: summary?.ticketCount ?? 0,
+          amount: summary?.amount ?? 0,
+        };
+      })
+      .filter((summary) => summary.participationCount > 0),
+  );
 };
 
 export async function drawBraquageLegalSession(sessionId: number): Promise<BraquageLegalDrawResult> {
@@ -327,7 +323,7 @@ router.get('/current', authMiddleware, async (req: AuthRequest, res: Response) =
 router.get('/history', authMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     const sessions = await prisma.braquageLegalSession.findMany({
-      where: { status: BraquageLegalStatus.DRAWN },
+      where: { status: BRAQUAGE_LEGAL_STATUS.DRAWN },
       orderBy: { endTime: 'desc' },
       take: 10,
       select: {
@@ -345,7 +341,7 @@ router.get('/history', authMiddleware, async (_req: AuthRequest, res: Response) 
 
     const history: BraquageLegalHistoryEntry[] = sessions.map((session) => ({
       id: session.id,
-      status: session.status,
+      status: session.status as BraquageLegalStatusKey,
       totalPool: session.totalPool,
       winnerPayout: session.winnerPayout,
       ownerPayout: session.ownerPayout,
@@ -448,7 +444,7 @@ router.post('/admin/create-session', authMiddleware, adminMiddleware, async (req
     }
 
     const activeSession = await prisma.braquageLegalSession.findFirst({
-      where: { status: BraquageLegalStatus.ACTIVE },
+      where: { status: BRAQUAGE_LEGAL_STATUS.ACTIVE },
       select: { id: true },
     });
 

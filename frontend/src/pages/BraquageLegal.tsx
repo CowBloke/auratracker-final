@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { adminApi, type BraquageLegalDrawResult, type BraquageLegalHistoryEntry, type BraquageLegalSession, type BraquageLegalTier } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
-import { Clock3, Crown, Loader2, Ticket, Trophy, Users } from 'lucide-react';
+import { Clock3, Loader2, Ticket, Users } from 'lucide-react';
 
 const TIER_CONFIG: Record<BraquageLegalTier, { cost: number; tickets: number; maxParticipations: number; label: string; description: string; color: string }> = {
   BRONZE: { cost: 500, tickets: 1, maxParticipations: 10, label: 'Bronze', description: 'Entrée la plus accessible.', color: 'border-amber-500/25 bg-amber-500/10 text-amber-200' },
@@ -60,7 +60,6 @@ export default function BraquageLegal() {
   const { socket } = useSocketBase();
   const [session, setSession] = useState<BraquageLegalSession | null>(null);
   const [history, setHistory] = useState<BraquageLegalHistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [participatingTier, setParticipatingTier] = useState<BraquageLegalTier>('BRONZE');
   const [submitting, setSubmitting] = useState(false);
   const [timeNow, setTimeNow] = useState(Date.now());
@@ -77,8 +76,6 @@ export default function BraquageLegal() {
       setHistory(historyRes.data.sessions);
     } catch {
       toast.error('Impossible de charger Loto.');
-    } finally {
-      setLoading(false);
     }
   };
 

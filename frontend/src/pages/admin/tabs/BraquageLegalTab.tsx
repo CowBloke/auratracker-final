@@ -10,16 +10,8 @@ import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from '@/hooks/use-toast';
 import { useSocketBase } from '@/contexts/SocketContext';
-import { adminApi, type AdminUser, type BraquageLegalDrawResult, type BraquageLegalHistoryEntry, type BraquageLegalSession, type BraquageLegalTier } from '@/services/api';
+import { adminApi, type AdminUser, type BraquageLegalHistoryEntry, type BraquageLegalSession } from '@/services/api';
 import { Clock3, Loader2, Plus, Sparkles, Ticket, Trophy, UserRoundPlus } from 'lucide-react';
-
-const TIER_CONFIG: Record<BraquageLegalTier, { label: string; cost: number; tickets: number; maxParticipations: number }> = {
-  BRONZE: { label: 'Bronze', cost: 500, tickets: 1, maxParticipations: 10 },
-  ARGENT: { label: 'Argent', cost: 700, tickets: 4, maxParticipations: 8 },
-  OR: { label: 'Or', cost: 900, tickets: 10, maxParticipations: 6 },
-  PLATINE: { label: 'Platine', cost: 1200, tickets: 25, maxParticipations: 4 },
-  VIP: { label: 'VIP', cost: 1700, tickets: 60, maxParticipations: 2 },
-};
 
 const DEFAULT_DURATION = 24;
 
@@ -49,7 +41,6 @@ export function BraquageLegalTab({ users }: Props) {
   const [durationHours, setDurationHours] = useState(String(DEFAULT_DURATION));
   const [ownerSearch, setOwnerSearch] = useState('');
   const [selectedOwnerId, setSelectedOwnerId] = useState('');
-  const [timeNow, setTimeNow] = useState(Date.now());
 
   const loadData = async () => {
     setRefreshing(true);
@@ -71,11 +62,6 @@ export function BraquageLegalTab({ users }: Props) {
 
   useEffect(() => {
     void loadData();
-  }, []);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setTimeNow(Date.now()), 1000);
-    return () => window.clearInterval(interval);
   }, []);
 
   useEffect(() => {
