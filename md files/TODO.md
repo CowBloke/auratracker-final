@@ -66,6 +66,18 @@ Quand on est invité comme associé et qu’on accepte on a le rôle d’employ�
 - voir les gens qui ont acheté
 - illégal
 
+- bug roulette
+Nan mais en gros genre pendant un temps les 40K marchait je perdais et tt mais a un moment j'ai mise plein de fois mais genre ca perdait l'argent mais la roulette tournait pas et ducoup ca depensait l'argent dans le vide
+
+- pb quand on envoie argent on envoie aussi aura
+- voit historique des gens qui achetent tes biens et services
+- avocat de qui ?
+- pb aura vision
+- on peut pas enlever aura
+- ajouter enlever/ajoute aura
+- tutotiel cioomplet you
+- role pour ne que voir les logs
+
 ## PROJECTS
 
 - merch/qr code
