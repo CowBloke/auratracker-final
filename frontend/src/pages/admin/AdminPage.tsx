@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
@@ -1142,6 +1142,9 @@ export default function Admin() {
   const [loginCommOpen, setLoginCommOpen] = useState(false);
   const [updatesOpen, setUpdatesOpen] = useState(false);
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [openingPrisma, setOpeningPrisma] = useState(false);
+
+  const isAdminOrSuperAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
 
   // ── Badge tab state ────────────────────────────────────────────────────────
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -1191,6 +1194,27 @@ export default function Admin() {
   const [newThreadBody, setNewThreadBody] = useState('');
   const [newThreadSending, setNewThreadSending] = useState(false);
   const [newThreadSearch, setNewThreadSearch] = useState('');
+
+  const supportUnread = supportThreads.reduce((total, thread) => total + (thread.unreadCount ?? 0), 0);
+
+  const openPrismaStudio = async () => {
+    if (openingPrisma) {
+      return;
+    }
+
+    setOpeningPrisma(true);
+    try {
+      const res = await adminApi.startPrismaStudio();
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const origin = new URL(apiUrl, window.location.origin).origin;
+      const studioUrl = `${origin}/api/admin/prisma-studio?studioToken=${encodeURIComponent(res.data.studioToken)}`;
+      window.open(studioUrl, '_blank', 'noopener,noreferrer');
+    } catch {
+      toast.error('Impossible de lancer Prisma Studio.');
+    } finally {
+      setOpeningPrisma(false);
+    }
+  };
 
   const fetchSupportThreads = async () => {
     setSupportThreadsLoading(true);
