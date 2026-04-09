@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const SCROLL_THRESHOLD = 100; // pixels from bottom to consider as "at bottom"
 
@@ -14,6 +14,19 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const wasAtBottomRef = useRef(true);
+
+  const scrollToBottom = useCallback(() => {
+    const scrollArea = scrollAreaRef.current;
+
+    if (scrollArea) {
+      scrollArea.scrollTop = scrollArea.scrollHeight;
+      setHasNewMessage(false);
+      return;
+    }
+
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+    setHasNewMessage(false);
+  }, []);
 
   // Initialize scroll area ref
   useEffect(() => {
@@ -58,18 +71,12 @@ export function useSmartScroll({ dependency, scrollAreaSelector }: UseSmartScrol
   // Smart scroll effect - only scroll if was at bottom
   useEffect(() => {
     if (wasAtBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      setHasNewMessage(false);
+      scrollToBottom();
     } else {
       // Show new message indicator if user scrolled up
       setHasNewMessage(true);
     }
   }, dependency);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    setHasNewMessage(false);
-  };
 
   return {
     messagesEndRef,

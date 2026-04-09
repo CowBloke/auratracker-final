@@ -52,12 +52,17 @@ const TX_META: Record<string, { label: string; color: string; bg: string; Icon: 
   LOAN_REPAY:     { label: 'Remboursement prêt',    color: 'text-sky-400',     bg: 'bg-sky-400/15',     Icon: Landmark,            sign: '+' },
   NPC_COLLECT:    { label: 'Recettes clients',       color: 'text-lime-400',    bg: 'bg-lime-400/15',    Icon: BadgeDollarSign,     sign: '+' },
   ITEM_SALE:      { label: 'Vente article',          color: 'text-lime-400',    bg: 'bg-lime-400/15',    Icon: BadgeDollarSign,     sign: '+' },
+  DAILY_REVENUE:  { label: 'Revenu quotidien',       color: 'text-emerald-400', bg: 'bg-emerald-400/15', Icon: TrendingUp,          sign: '+' },
   BANK_DEPOSIT:   { label: 'Dépôt bancaire',         color: 'text-emerald-400', bg: 'bg-emerald-400/15', Icon: Landmark,            sign: '+' },
   BANK_WITHDRAW:  { label: 'Retrait bancaire',        color: 'text-rose-400',    bg: 'bg-rose-400/15',    Icon: Landmark,            sign: '-' },
   BANK_INTEREST:  { label: 'Intérêts bancaires',     color: 'text-sky-400',     bg: 'bg-sky-400/15',     Icon: TrendingUp,          sign: '+' },
   FORMATION_SALE: { label: 'Vente formation',        color: 'text-purple-400',  bg: 'bg-purple-400/15',  Icon: CircleDollarSign,    sign: '+' },
   SALARY_PAYMENT: { label: 'Salaire versé',          color: 'text-rose-400',    bg: 'bg-rose-400/15',    Icon: Users,               sign: '-' },
 };
+
+function getDailyBusinessRevenue(monthlyRevenue: number) {
+  return monthlyRevenue > 0 ? Math.max(1, Math.round(monthlyRevenue / 30)) : 0;
+}
 
 function getTxMeta(type: string) {
   return TX_META[type] ?? { label: type, color: 'text-muted-foreground', bg: 'bg-muted/20', Icon: Coins, sign: '~' as const };
@@ -393,7 +398,7 @@ export function FinanceTab({
   const marriedRel = data.relationships.find((r) => r.status === 'MARRIED');
   const totalBankBalance = Object.values(bankAccounts).flat().reduce((sum, a) => sum + a.balance, 0);
   const totalTreasury = data.ownedBusinesses.reduce((sum, b) => sum + b.treasuryMoney, 0);
-  const totalDailyRevenue = data.ownedBusinesses.reduce((sum, b) => sum + b.monthlyRevenue, 0);
+  const totalDailyRevenue = data.ownedBusinesses.reduce((sum, b) => sum + getDailyBusinessRevenue(b.monthlyRevenue), 0);
   const dailySalary = data.memberBusinesses.reduce((sum, b) => {
     const me = b.members.find((m) => m.user.id === userId);
     return sum + (me?.salary ?? 0);

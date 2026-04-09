@@ -39,7 +39,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { type Ad, adsApi, type JusticePlainte, type YouBusiness, type YouFormationProduct, type YouPlayer, type YouState, youApi, justiceApi } from '@/services/api';
 import { AdBanner } from '@/components/ads/AdBanner';
-import { AdInterstitial } from '@/components/ads/AdInterstitial';
 import {
   BankAccountModal,
   BuyoutOfferModal,
@@ -1541,11 +1540,8 @@ export function ExploreTab({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const handledBusinessParam = useRef(false);
-  const shownExploreAd = useRef(false);
   const [exploreBannerAd, setExploreBannerAd] = useState<Ad | null>(null);
   const [exploreBannerDismissed, setExploreBannerDismissed] = useState(false);
-  const [exploreInterstitialAd, setExploreInterstitialAd] = useState<Ad | null>(null);
-  const [showExploreAd, setShowExploreAd] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'you' | 'player'>('all');
@@ -1591,7 +1587,6 @@ export function ExploreTab({
 
   useEffect(() => {
     void adsApi.listPublic({ limit: 1 }).then((res) => setExploreBannerAd(res.data.ads[0] ?? null)).catch(() => {});
-    void adsApi.listPublic({ limit: 1 }).then((res) => setExploreInterstitialAd(res.data.ads[0] ?? null)).catch(() => {});
   }, []);
 
   // Open business modal from URL param (e.g. when coming from an ad click)
@@ -1985,10 +1980,6 @@ export function ExploreTab({
           isAdmin={isAdmin}
           onClose={() => {
             setDetailBusinessId(null);
-            if (exploreInterstitialAd && !shownExploreAd.current) {
-              shownExploreAd.current = true;
-              setTimeout(() => setShowExploreAd(true), 200);
-            }
           }}
           onAction={(action) => openAction(detailBusiness.id, action)}
           onManage={() => {
@@ -2085,12 +2076,6 @@ export function ExploreTab({
         userId={userId}
         players={players}
         onSubmitted={() => void onReload()}
-      />
-
-      <AdInterstitial
-        ad={exploreInterstitialAd}
-        open={showExploreAd}
-        onComplete={() => setShowExploreAd(false)}
       />
     </>
   );

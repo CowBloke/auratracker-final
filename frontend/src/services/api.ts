@@ -2498,6 +2498,7 @@ export const adminApi = {
   approveAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/approve`, {}),
   rejectAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/reject`, {}),
   deleteAdForever: (id: string) => api.delete<{ ok: boolean }>(`/admin/ads/${id}`),
+  toggleAdVisibility: (id: string) => api.patch<{ ad: PendingAdReview }>(`/admin/ads/${id}/toggle`, {}),
   getUsers: () => api.get<{ users: AdminUser[] }>('/admin/users'),
   getClans: () => api.get<{ clans: AdminClan[] }>('/admin/clans'),
   getClanEvents: () => api.get<{ events: AdminClanEvent[] }>('/admin/clan-events'),
