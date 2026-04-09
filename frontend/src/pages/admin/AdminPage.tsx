@@ -1693,7 +1693,7 @@ export default function Admin() {
   const [updatingBug, setUpdatingBug] = useState<string | null>(null);
   const [bugReply, setBugReply] = useState<Record<string, string>>({});
   const [selectedInboxItem, setSelectedInboxItem] = useState<string | null>(null);
-  const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'formations' | 'archived'>('all');
+  const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'formations' | 'sanctions' | 'archived'>('all');
 
   // Pending users state
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -1745,7 +1745,6 @@ export default function Admin() {
   const [showFiscalSanctionModal, setShowFiscalSanctionModal] = useState(false);
   const [approvingSanction, setApprovingSanction] = useState<string | null>(null);
   const [rejectingSanction, setRejectingSanction] = useState<string | null>(null);
-  const [fiscalSanctionFilter, setFiscalSanctionFilter] = useState<'PENDING' | 'ALL'>('PENDING');
 
   // Logs state
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -2667,10 +2666,10 @@ export default function Admin() {
     }
   };
 
-  const fetchPendingSanctions = async () => {
+  const fetchPendingSanctions = async (status: 'PENDING' | 'ALL' = 'PENDING') => {
     try {
       setLoadingPendingSanctions(true);
-      const res = await sanctionsApi.listPendingSanctions(fiscalSanctionFilter === 'PENDING' ? 'PENDING' : undefined);
+      const res = await sanctionsApi.listPendingSanctions(status === 'PENDING' ? 'PENDING' : undefined);
       setPendingSanctions(res.data.sanctions);
     } catch (error) {
       console.error('Failed to fetch pending sanctions:', error);
@@ -4785,7 +4784,7 @@ export default function Admin() {
             return (
               <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-lg border border-border/30 mb-6">
                 {/* Réception — admin only */}
-                {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); },
+                {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchPendingSanctions(); },
                   inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{inboxCount}</span> : undefined
                 )}
 
@@ -4917,6 +4916,7 @@ export default function Admin() {
           nameChangeRequests={nameChangeRequests}
           customBadgeRequests={customBadgeRequests}
           pendingFormationReviews={pendingFormationReviews}
+          pendingSanctions={pendingSanctions}
           archivedRegistrations={archivedRegistrations}
           inboxFilter={inboxFilter}
           selectedInboxItem={selectedInboxItem}
@@ -4928,12 +4928,15 @@ export default function Admin() {
           loadingNameChanges={loadingNameChanges}
           loadingCustomBadgeRequests={customBadgeRequestsLoading}
           loadingPendingFormationReviews={pendingFormationReviewsLoading}
+          loadingPendingSanctions={loadingPendingSanctions}
           approvingUser={approvingUser}
           rejectingUser={rejectingUser}
           updatingBug={updatingBug}
           reviewingAppeal={reviewingAppeal}
           reviewingNameChange={reviewingNameChange}
           reviewingFormationProductId={reviewingFormationProductId}
+          approvingSanction={approvingSanction}
+          rejectingSanction={rejectingSanction}
           bugReply={bugReply}
           rejectNotes={rejectNotes}
           importArchivedRegistrations={importArchivedRegistrations}
@@ -4950,106 +4953,9 @@ export default function Admin() {
           approveCustomBadgeRequest={handleApproveCustomBadge}
           rejectCustomBadgeRequest={handleRejectCustomBadge}
           reviewFormationProduct={handleReviewFormationProduct}
+          approveSanction={approveSanction}
+          rejectSanction={rejectSanction}
         />
-
-        {/* ── Pending Sanctions Section (within inbox tab) ── */}
-        <TabsContent value="inbox">
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Gavel className="w-4 h-4 text-amber-500" />
-                <p className="text-sm font-semibold">Sanctions en attente de validation</p>
-                {pendingSanctions.filter(s => s.status === 'PENDING').length > 0 && (
-                  <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">
-                    {pendingSanctions.filter(s => s.status === 'PENDING').length}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => { setFiscalSanctionFilter('PENDING'); fetchPendingSanctions(); }}
-                  className={cn('text-xs px-2 py-0.5 rounded-full transition-colors', fiscalSanctionFilter === 'PENDING' ? 'bg-muted font-medium' : 'text-muted-foreground hover:bg-muted/50')}
-                >
-                  En attente
-                </button>
-                <button
-                  onClick={() => { setFiscalSanctionFilter('ALL'); fetchPendingSanctions(); }}
-                  className={cn('text-xs px-2 py-0.5 rounded-full transition-colors', fiscalSanctionFilter === 'ALL' ? 'bg-muted font-medium' : 'text-muted-foreground hover:bg-muted/50')}
-                >
-                  Tout
-                </button>
-              </div>
-            </div>
-
-            {loadingPendingSanctions ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              </div>
-            ) : pendingSanctions.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">Aucune sanction en attente.</p>
-            ) : (
-              <div className="space-y-3">
-                {pendingSanctions.map((s) => (
-                  <Card key={s.id} className={cn('overflow-hidden', s.status === 'PENDING' ? '' : 'opacity-60')}>
-                    <CardContent className="px-4 py-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={cn('text-xs font-semibold px-1.5 py-0.5 rounded-full', s.type === 'AMENDE' ? 'bg-amber-500/15 text-amber-600' : 'bg-sky-500/15 text-sky-600')}>
-                              {s.type === 'AMENDE' ? 'Amende' : 'Paiement forcé'}
-                            </span>
-                            <span className={cn('text-xs px-1.5 py-0.5 rounded-full', s.requestedByRole === 'JUDGE' ? 'bg-purple-500/15 text-purple-600' : 'bg-emerald-500/15 text-emerald-600')}>
-                              {s.requestedByRole === 'JUDGE' ? '⚖️ Juge' : '🏛️ Agent du fisc'}
-                            </span>
-                            {s.status !== 'PENDING' && (
-                              <span className={cn('text-xs px-1.5 py-0.5 rounded-full', s.status === 'APPROVED' ? 'bg-green-500/15 text-green-600' : 'bg-red-500/15 text-red-600')}>
-                                {s.status === 'APPROVED' ? 'Approuvée' : 'Refusée'}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm">
-                            <span className="font-medium">{s.requestedBy.username}</span>
-                            {s.type === 'AMENDE'
-                              ? <> souhaite infliger une amende de <span className="font-semibold text-amber-500">{s.amount.toLocaleString('fr-FR')}€</span> à <span className="font-medium">{s.targetUser.username}</span></>
-                              : <> souhaite forcer un paiement de <span className="font-semibold text-sky-500">{s.amount.toLocaleString('fr-FR')}€</span> de <span className="font-medium">{s.targetUser.username}</span> vers <span className="font-medium">{s.beneficiary?.username ?? '?'}</span></>
-                            }
-                          </p>
-                          {s.message && <p className="text-xs text-muted-foreground italic">"{s.message}"</p>}
-                          {s.caseId && <p className="text-xs text-muted-foreground">Affaire liée : {s.caseId}</p>}
-                          {s.adminNote && <p className="text-xs text-muted-foreground">Note admin : {s.adminNote}</p>}
-                          <p className="text-xs text-muted-foreground">{new Date(s.createdAt).toLocaleString('fr-FR')}</p>
-                        </div>
-                        {s.status === 'PENDING' && (
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10"
-                              disabled={rejectingSanction === s.id || approvingSanction === s.id}
-                              onClick={() => rejectSanction(s.id)}
-                            >
-                              {rejectingSanction === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
-                              Refuser
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="h-7 text-xs gap-1"
-                              disabled={approvingSanction === s.id || rejectingSanction === s.id}
-                              onClick={() => approveSanction(s.id)}
-                            >
-                              {approvingSanction === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Gavel className="w-3 h-3" />}
-                              Exécuter
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        </TabsContent>
 
         {/* ── ADS TAB ──────────────────────────────────────────────────────────── */}
         <TabsContent value="ads" className={SPACING.SECTION_SPACING}>

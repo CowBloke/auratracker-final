@@ -33,7 +33,7 @@ import {
   X,
 } from 'lucide-react';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
-import type { BanAppeal, BugReport, CustomBadgeRequest, NameChangeRequest, PendingFormationReviewItem, PendingUser } from '../../../services/api';
+import type { BanAppeal, BugReport, CustomBadgeRequest, NameChangeRequest, PendingFormationReviewItem, PendingSanction, PendingUser } from '../../../services/api';
 
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
@@ -41,7 +41,7 @@ type ArchivedRegistration = PendingUser & {
   importedFromLegacy?: boolean;
 };
 
-type InboxFilter = 'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'formations' | 'archived';
+type InboxFilter = 'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'formations' | 'sanctions' | 'archived';
 
 type InboxTabProps = {
   pendingUsers: PendingUser[];
@@ -50,6 +50,7 @@ type InboxTabProps = {
   nameChangeRequests: NameChangeRequest[];
   customBadgeRequests: CustomBadgeRequest[];
   pendingFormationReviews: PendingFormationReviewItem[];
+  pendingSanctions: PendingSanction[];
   archivedRegistrations: ArchivedRegistration[];
   inboxFilter: InboxFilter;
   selectedInboxItem: string | null;
@@ -61,12 +62,15 @@ type InboxTabProps = {
   loadingNameChanges: boolean;
   loadingCustomBadgeRequests: boolean;
   loadingPendingFormationReviews: boolean;
+  loadingPendingSanctions: boolean;
   approvingUser: string | null;
   rejectingUser: string | null;
   updatingBug: string | null;
   reviewingAppeal: string | null;
   reviewingNameChange: string | null;
   reviewingFormationProductId: string | null;
+  approvingSanction: string | null;
+  rejectingSanction: string | null;
   bugReply: Record<string, string>;
   rejectNotes: Record<string, string>;
   importArchivedRegistrations: () => void;
@@ -83,6 +87,8 @@ type InboxTabProps = {
   approveCustomBadgeRequest: (requestId: string) => void;
   rejectCustomBadgeRequest: (requestId: string) => void;
   reviewFormationProduct: (businessId: string, productId: string, action: 'approve' | 'reject') => void;
+  approveSanction: (sanctionId: string) => void;
+  rejectSanction: (sanctionId: string) => void;
 };
 
 export function InboxTab(props: InboxTabProps) {
@@ -93,6 +99,7 @@ export function InboxTab(props: InboxTabProps) {
     nameChangeRequests,
     customBadgeRequests,
     pendingFormationReviews,
+    pendingSanctions,
     archivedRegistrations,
     inboxFilter,
     selectedInboxItem,
@@ -104,12 +111,15 @@ export function InboxTab(props: InboxTabProps) {
     loadingNameChanges,
     loadingCustomBadgeRequests,
     loadingPendingFormationReviews,
+    loadingPendingSanctions,
     approvingUser,
     rejectingUser,
     updatingBug,
     reviewingAppeal,
     reviewingNameChange,
     reviewingFormationProductId,
+    approvingSanction,
+    rejectingSanction,
     bugReply,
     rejectNotes,
     importArchivedRegistrations,
@@ -126,6 +136,8 @@ export function InboxTab(props: InboxTabProps) {
     approveCustomBadgeRequest,
     rejectCustomBadgeRequest,
     reviewFormationProduct,
+    approveSanction,
+    rejectSanction,
   } = props;
 
   return (
@@ -149,6 +161,9 @@ export function InboxTab(props: InboxTabProps) {
         const formationItems = pendingFormationReviews.map(p => ({
           id: `formation-${p.id}`, type: 'formation' as const, date: new Date(p.createdAt), data: p,
         }));
+        const sanctionItems = pendingSanctions.map(s => ({
+          id: `sanction-${s.id}`, type: 'sanction' as const, date: new Date(s.createdAt), data: s,
+        }));
 
         const pendingBugItems = allBugItems.filter(i => (i.data as BugReport).status === 'PENDING');
         const pendingAppealItems = allAppealItems.filter(i => (i.data as BanAppeal).status === 'PENDING');
@@ -165,7 +180,7 @@ export function InboxTab(props: InboxTabProps) {
           ...allNameChangeItems.filter(i => (i.data as NameChangeRequest).status !== 'PENDING'),
         ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
-        const allPending = pendingUsers.length + pendingBugItems.length + pendingAppealItems.length + pendingNameChangeItems.length + pendingBadgeItems.length + formationItems.length;
+        const allPending = pendingUsers.length + pendingBugItems.length + pendingAppealItems.length + pendingNameChangeItems.length + pendingBadgeItems.length + formationItems.length + sanctionItems.length;
 
         const activeItems = inboxFilter === 'registrations' ? registrationItems
           : inboxFilter === 'bugs' ? pendingBugItems
@@ -173,11 +188,12 @@ export function InboxTab(props: InboxTabProps) {
           : inboxFilter === 'namechanges' ? pendingNameChangeItems
           : inboxFilter === 'badges' ? pendingBadgeItems
           : inboxFilter === 'formations' ? formationItems
+          : inboxFilter === 'sanctions' ? sanctionItems
           : inboxFilter === 'archived' ? archivedItems
-          : [...registrationItems, ...pendingBugItems, ...pendingAppealItems, ...pendingNameChangeItems, ...pendingBadgeItems, ...formationItems]
+          : [...registrationItems, ...pendingBugItems, ...pendingAppealItems, ...pendingNameChangeItems, ...pendingBadgeItems, ...formationItems, ...sanctionItems]
               .sort((a, b) => b.date.getTime() - a.date.getTime());
 
-        const allItemsPool = [...registrationItems, ...archivedRegistrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems, ...pendingBadgeItems, ...formationItems];
+        const allItemsPool = [...registrationItems, ...archivedRegistrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems, ...pendingBadgeItems, ...formationItems, ...sanctionItems];
         const selectedItem = selectedInboxItem ? allItemsPool.find(i => i.id === selectedInboxItem) ?? null : null;
 
         const ADMIN_CATS = [
@@ -188,6 +204,7 @@ export function InboxTab(props: InboxTabProps) {
           { key: 'namechanges' as const, label: 'Pseudos', Icon: UserCog, count: pendingNameChangeItems.length },
           { key: 'badges' as const, label: 'Badges', Icon: Award, count: pendingBadgeItems.length },
           { key: 'formations' as const, label: 'Formations', Icon: FileText, count: formationItems.length },
+          { key: 'sanctions' as const, label: 'Sanctions', Icon: Gavel, count: sanctionItems.length },
           { key: 'archived' as const, label: 'Archivé', Icon: Archive, count: archivedItems.length },
         ];
 
@@ -241,7 +258,7 @@ export function InboxTab(props: InboxTabProps) {
               </div>
 
               <div className="w-72 shrink-0 border-r border-border/40 overflow-y-auto custom-scroll">
-                {(loadingPending || loadingBugs || loadingAppeals || loadingNameChanges || loadingCustomBadgeRequests || loadingPendingFormationReviews) ? (
+                {(loadingPending || loadingBugs || loadingAppeals || loadingNameChanges || loadingCustomBadgeRequests || loadingPendingFormationReviews || loadingPendingSanctions) ? (
                   <div className="flex justify-center py-12">
                     <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                   </div>
@@ -301,6 +318,13 @@ export function InboxTab(props: InboxTabProps) {
                         badgeLabel = 'Formation';
                         badgeColor = 'bg-sky-500/20 text-sky-400';
                         borderAccent = 'border-l-sky-500';
+                      } else if (item.type === 'sanction') {
+                        const s = item.data as PendingSanction;
+                        title = `${s.type === 'AMENDE' ? 'Amende' : 'Paiement forcé'} pour ${s.targetUser.username}`;
+                        subtitle = `par ${s.requestedBy.username}`;
+                        badgeLabel = s.status === 'PENDING' ? 'Sanction' : s.status === 'APPROVED' ? 'Approuvée' : 'Refusée';
+                        badgeColor = s.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' : s.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400';
+                        borderAccent = s.status === 'PENDING' ? 'border-l-amber-500' : s.status === 'APPROVED' ? 'border-l-green-500' : 'border-l-zinc-500';
                       } else {
                         const req = item.data as CustomBadgeRequest;
                         title = req.name;
@@ -653,6 +677,62 @@ export function InboxTab(props: InboxTabProps) {
                             Refuser
                           </Button>
                         </div>
+                      </div>
+                    );
+                  })()
+                ) : selectedItem.type === 'sanction' ? (
+                  (() => {
+                    const sanction = selectedItem.data as PendingSanction;
+                    const isPending = sanction.status === 'PENDING';
+                    return (
+                      <div className="p-6 space-y-5">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className={cn('text-xs px-2 py-0.5 rounded',
+                              sanction.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' :
+                              sanction.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
+                              'bg-zinc-500/20 text-zinc-400')}>
+                              {sanction.status === 'PENDING' ? 'Sanction en attente' : sanction.status === 'APPROVED' ? 'Approuvée' : 'Refusée'}
+                            </span>
+                            <span className={cn('text-xs px-2 py-0.5 rounded', sanction.requestedByRole === 'JUDGE' ? 'bg-purple-500/20 text-purple-400' : 'bg-sky-500/20 text-sky-400')}>
+                              {sanction.requestedByRole === 'JUDGE' ? '⚖️ Juge' : '🏛️ Agent du fisc'}
+                            </span>
+                            <span className="text-xs text-muted-foreground/60">
+                              {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-semibold">{sanction.type === 'AMENDE' ? 'Amende' : 'Paiement forcé'} pour {sanction.targetUser.username}</h3>
+                          <p className="text-sm text-muted-foreground">Demandé par {sanction.requestedBy.username}</p>
+                        </div>
+                        <div className="rounded-lg border border-border/40 bg-muted/20 p-4 space-y-2">
+                          <p className="text-sm font-medium">
+                            <span className="text-amber-400">{sanction.amount.toLocaleString('fr-FR')}€</span>
+                            {sanction.type === 'AMENDE'
+                              ? <> à prélever sur <span className="font-semibold">{sanction.targetUser.username}</span></>
+                              : <> à transférer de <span className="font-semibold">{sanction.targetUser.username}</span> vers <span className="font-semibold">{sanction.beneficiary?.username ?? '?'}</span></>}
+                          </p>
+                          {sanction.caseId && <p className="text-xs text-muted-foreground">Affaire liée : {sanction.caseId}</p>}
+                          {sanction.message && <p className="text-sm whitespace-pre-wrap break-words">{sanction.message}</p>}
+                        </div>
+                        {sanction.adminNote && (
+                          <div className="rounded-lg border border-border/40 bg-background/70 p-4">
+                            <p className="text-xs font-medium text-muted-foreground/70 mb-1">Note admin</p>
+                            <p className="text-sm whitespace-pre-wrap break-words">{sanction.adminNote}</p>
+                          </div>
+                        )}
+                        {sanction.reviewedBy && sanction.status !== 'PENDING' && (
+                          <p className="text-xs text-muted-foreground">Traité par {sanction.reviewedBy.username}</p>
+                        )}
+                        {isPending && (
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={() => approveSanction(sanction.id)} disabled={approvingSanction === sanction.id || rejectingSanction === sanction.id} className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10">
+                              {approvingSanction === sanction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4 mr-1" />Approuver</>}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => rejectSanction(sanction.id)} disabled={rejectingSanction === sanction.id || approvingSanction === sanction.id} className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10">
+                              {rejectingSanction === sanction.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <><X className="h-4 w-4 mr-1" />Refuser</>}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     );
                   })()
