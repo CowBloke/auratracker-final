@@ -1077,6 +1077,11 @@ const toDateTimeLocalValue = (value: string | Date): string => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const toSafeNumber = (value: unknown, fallback = 0): number => {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const getUpdatePopupPublishMode = (popup: Pick<AdminUpdatePopup, 'isPublished' | 'releaseDate'>): UpdatePopupFormData['publishMode'] => {
   if (!popup.isPublished) {
     return 'draft';
@@ -4224,8 +4229,8 @@ export default function Admin() {
     setEditValues({
       username: u.username,
       firstName: u.firstName || '',
-      aura: u.aura,
-      money: u.money,
+      aura: toSafeNumber(u.aura),
+      money: toSafeNumber(u.money),
       auraCoinBalance: u.auraCoinBalance,
       dailyAuraLimit: u.dailyAuraLimit,
     });
@@ -4249,8 +4254,8 @@ export default function Admin() {
   };
 
   const saveUser = async (id: string) => {
-    const baseAura = editModalUser?.aura ?? editValues.aura;
-    const baseMoney = editModalUser?.money ?? editValues.money;
+    const baseAura = toSafeNumber(editModalUser?.aura ?? editValues.aura);
+    const baseMoney = toSafeNumber(editModalUser?.money ?? editValues.money);
     const nextAura = baseAura + editAuraAddAmount - editAuraRemoveAmount;
     const nextMoney = baseMoney + editMoneyAddAmount - editMoneyRemoveAmount;
     if (nextAura < 0) {
@@ -4656,8 +4661,8 @@ export default function Admin() {
     : users;
   const selectableUsers = filteredUsers.filter((entry) => !entry.isSuperAdmin && entry.id !== user?.id);
   const allSelected = selectableUsers.length > 0 && selectableUsers.every((entry) => selectedUserIds.includes(entry.id));
-  const baseEditAura = editModalUser?.aura ?? editValues.aura;
-  const baseEditMoney = editModalUser?.money ?? editValues.money;
+  const baseEditAura = toSafeNumber(editModalUser?.aura ?? editValues.aura);
+  const baseEditMoney = toSafeNumber(editModalUser?.money ?? editValues.money);
   const nextEditAura = baseEditAura + editAuraAddAmount - editAuraRemoveAmount;
   const nextEditMoney = baseEditMoney + editMoneyAddAmount - editMoneyRemoveAmount;
 
