@@ -24,11 +24,17 @@ const SEED_ENTRIES = [
     id: '2026-04-09-inbox-group-chat-notifications',
     date: '2026-04-09',
     title: 'Inbox - Notifications de chat regroupees',
-    summary: 'Les notifications de chat ne s empilent plus message par message: elles sont regroupees par conversation et mises a jour avec le dernier message. Le modal admin de modification utilisateur permet aussi de saisir directement l aura finale cible. Les juges de dossier peuvent maintenant valider l ajout d un temoin directement dans le fil de discussion.',
+    summary: 'Les notifications de chat ne s empilent plus message par message: elles sont regroupees par conversation et mises a jour avec le dernier message. Le modal admin de modification utilisateur permet aussi de saisir directement l aura finale cible. Les juges de dossier peuvent maintenant valider l ajout d un temoin directement dans le fil de discussion. Cette journee ajoute aussi des statistiques de parrainage dans l admin, une gestion pub simplifiee et plus complete, ainsi que des items de boutique personnalises avec suivi dans l inventaire.',
     items: [
       { category: 'BUG_FIX', text: '**Inbox chat regroupee** — Pour une meme conversation (Messages prives) ou un meme chat de clan, les nouveaux messages mettent maintenant a jour une notification unique au lieu d en creer plusieurs.', order: 0 },
       { category: 'BUG_FIX', text: '**Admin utilisateurs · Aura finale directe** — Dans le modal de modification utilisateur, le champ aura attend maintenant directement le total cible (au lieu d un +/−), avec affichage de la variation calculee automatiquement.', order: 1 },
       { category: 'BUG_FIX', text: '**Justice · Validation temoin** — Dans un dossier judiciaire, le juge du dossier peut maintenant valider l ajout d un temoin directement au message de demande, sans devoir passer par les droits admin globaux.', order: 2 },
+      { category: 'BIG_FEATURE', text: '**Admin · Statistiques de parrainage** — Un nouvel ecran `Referrals` a ete ajoute au panel admin avec funnel complet (codes, invites approuves/en attente, conversions, recompenses versees) et classement des meilleurs parrains.', order: 3 },
+      { category: 'SMALL_FEATURE', text: '**Publicites simplifiees** — La creation de pub utilise maintenant un format unique (plus de selection CARD/BANNER/INTERSTITIAL), puis la diffusion publique reutilise les pubs actives sur les placements du site.', order: 4 },
+      { category: 'SMALL_FEATURE', text: '**Admin · Moderation pubs et suppression definitive** — La boite de reception admin affiche maintenant toutes les pubs (pas seulement en attente), avec action de suppression definitive et notification au proprietaire.', order: 5 },
+      { category: 'BIG_FEATURE', text: '**Epiceries/Restaurants · Articles personnalises + inventaire achats** — Les menus peuvent inclure image/emoji par article, et chaque achat est maintenant enregistre dans un onglet `Achats` de l inventaire du joueur.', order: 6 },
+      { category: 'SMALL_FEATURE', text: '**Cabinets d avocats · Roles metier** — Le profil avocat permet maintenant de choisir un vrai titre (Associe, Collaborateur, Stagiaire, Of Counsel...), avec gestion et tri plus lisibles cote equipe.', order: 7 },
+      { category: 'BUG_FIX', text: '**Justice · Groupes dossier securises** — Les conversations de dossier limitent maintenant le renommage/ajout de membres aux admins, et les demandes de temoin des parties passent par un flux dedie.', order: 8 },
     ],
   },
   {

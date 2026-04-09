@@ -2,10 +2,9 @@
 
 - tutoriel
 - immobilier : acheter rues
- - pb pastille non lus chat main
- - historique couleur enlever gris polymarket juste card classique 
- - mettre prix d'origine d'achat aussi (pas sur)
- - bouton archiver et non poubelle panel deroulant inbox
+- pb pastille non lus chat main
+- mettre prix d'origine d'achat aussi (pas sur)
+- bouton archiver et non poubelle panel deroulant inbox
  - images ddj marketplace
  impot sur les societes
  - choix liste grille persistant sur toutes les pages et par dafaut greille et pouvoir resest admin
