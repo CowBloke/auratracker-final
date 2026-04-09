@@ -1025,6 +1025,34 @@ router.get('/ads/pending', authMiddleware, requireAdmin, async (_req: AuthReques
   }
 });
 
+router.get('/ads', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const ads = await prisma.ad.findMany({
+      include: {
+        business: {
+          include: {
+            owner: {
+              select: {
+                id: true,
+                username: true,
+                profilePicture: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { createdAt: 'desc' },
+      ],
+    });
+
+    res.json({ ads });
+  } catch (error) {
+    console.error('Admin get all ads error:', error);
+    res.status(500).json({ error: 'Failed to get all ads' });
+  }
+});
+
 router.post('/ads/:id/approve', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const ad = await prisma.ad.findUnique({

@@ -2465,6 +2465,7 @@ const runRareAction = (data: AdminRareAction) => api.post('/admin/rare', data);
 export const adminApi = {
   runRareAction,
   startPrismaStudio: () => api.post<{ ok: boolean; studioToken: string }>('/admin/prisma-studio/start'),
+  getAllAds: () => api.get<{ ads: PendingAdReview[] }>('/admin/ads'),
   getPendingAds: () => api.get<{ pendingAds: PendingAdReview[] }>('/admin/ads/pending'),
   approveAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/approve`, {}),
   rejectAd: (id: string) => api.post<{ ad: PendingAdReview }>(`/admin/ads/${id}/reject`, {}),
