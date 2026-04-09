@@ -48,6 +48,8 @@
 - ajouter tri business, avis, recent, carte, etc
 - reaction pop up chat main
 - forcer avis avec popp up sur you pour tous les business quon a acheté
+- tous les jeux limite
+- max gain par jour jeux a/a
 
 ## PROJECTS
 

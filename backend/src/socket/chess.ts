@@ -97,26 +97,26 @@ function calculateTimers(game: ChessGame) {
   const elapsed = Date.now() - game.lastMoveTimestamp;
   const turn = game.engine.turn();
   return {
-      const cappedDrawRewards = await Promise.all(
-        humanPlayers.map(async (player) => {
-          const capped = await applyDailyGameRewardCaps(prisma, player.userId, {
-            aura: drawReward.aura,
-            money: resolveMoneyReward(player.userId, drawReward.money),
-          });
+    timeWhite: turn === 'w' ? Math.max(0, game.timeWhite - elapsed) : game.timeWhite,
+    timeBlack: turn === 'b' ? Math.max(0, game.timeBlack - elapsed) : game.timeBlack,
+  };
+}
 
-          return {
-            userId: player.userId,
-            reward: {
-              aura: capped?.appliedAura ?? 0,
-              money: capped?.appliedMoney ?? 0,
-            },
-          };
-        })
-      );
-      await emitSharedBalanceUpdatesForUserIds(
-        prisma,
-        cappedDrawRewards.filter(({ reward }) => reward.aura > 0 || reward.money > 0).map(({ userId }) => userId)
-      );
+function serializeBoard(engine: Chess) {
+  return engine.board().map((row) =>
+    row.map((piece) =>
+      piece
+        ? {
+            type: piece.type,
+            color: piece.color,
+          }
+        : null
+    )
+  );
+}
+
+function getCurrentPlayer(game: ChessGame) {
+  return game.players.find((player) => player.color === game.engine.turn()) ?? null;
 }
 
 function getLegalMoves(game: ChessGame, userId?: string) {
@@ -373,20 +373,27 @@ async function endGame(game: ChessGame, io: Server, winnerId: string | null, res
         isMultiplayer: true, partyId: game.partyId,
       });
     } else {
-      const updatedPlayers = await Promise.all(
-        humanPlayers.map((player) =>
-          prisma.user.update({
-            where: { id: player.userId },
-            data: {
-              aura: { increment: drawReward.aura },
-              money: { increment: resolveMoneyReward(player.userId, drawReward.money) },
+      const cappedDrawRewards = await Promise.all(
+        humanPlayers.map(async (player) => {
+          const capped = await applyDailyGameRewardCaps(prisma, player.userId, {
+            aura: drawReward.aura,
+            money: resolveMoneyReward(player.userId, drawReward.money),
+          });
+
+          return {
+            userId: player.userId,
+            reward: {
+              aura: capped?.appliedAura ?? 0,
+              money: capped?.appliedMoney ?? 0,
             },
-            select: { id: true, aura: true, money: true },
-          })
-        )
+          };
+        })
       );
 
-      await emitSharedBalanceUpdatesForUserIds(prisma, updatedPlayers.map((player) => player.id));
+      await emitSharedBalanceUpdatesForUserIds(
+        prisma,
+        cappedDrawRewards.filter(({ reward }) => reward.aura > 0 || reward.money > 0).map(({ userId }) => userId)
+      );
 
       for (const player of humanPlayers) {
         await checkQuestProgress(player.userId, 'PLAY_GAMES', 1);
