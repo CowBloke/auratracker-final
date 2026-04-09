@@ -2126,7 +2126,7 @@ export interface BraquageLegalDrawResult {
   cancelled: boolean;
 }
 
-// Braquage Legal API
+// Loto API
 export const getBraquageLegalCurrent = () => api.get<{ session: BraquageLegalSession | null }>('/braquage-legal/current');
 export const getBraquageLegalHistory = () => api.get<{ sessions: BraquageLegalHistoryEntry[] }>('/braquage-legal/history');
 export const getBraquageLegalOwner = () => api.get<{ owner: BraquageLegalOwner | null }>('/braquage-legal/owner');

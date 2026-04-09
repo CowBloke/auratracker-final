@@ -53,7 +53,7 @@ const navItems = [
   { to: '/market', label: t('sidebar_nav_shop'), icon: Store },
   { to: '/inventory', label: t('sidebar_nav_inventory'), icon: Backpack },
   { to: '/marketplace', label: t('sidebar_nav_marketplace'), icon: BadgeDollarSign },
-  { to: '/braquage-legal', label: 'Loto', icon: Ticket },
+  { to: '/loto', label: 'Loto', icon: Ticket },
   { to: '/auravision', label: t('sidebar_nav_auravision'), icon: Camera },
   { to: '/pass', label: t('sidebar_nav_pass'), icon: Ticket },
   { to: '/quests', label: t('sidebar_nav_quests'), icon: Target },

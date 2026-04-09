@@ -18,7 +18,7 @@ const TIER_CONFIG: Record<BraquageLegalTier, { cost: number; tickets: number; ma
   ARGENT: { cost: 700, tickets: 4, maxParticipations: 8, label: 'Argent', description: 'Plus de tickets pour une mise moyenne.', color: 'border-slate-300/25 bg-slate-300/10 text-slate-100' },
   OR: { cost: 900, tickets: 10, maxParticipations: 6, label: 'Or', description: 'Un ticket plus dense pour viser gros.', color: 'border-yellow-500/25 bg-yellow-500/10 text-yellow-100' },
   PLATINE: { cost: 1200, tickets: 25, maxParticipations: 4, label: 'Platine', description: 'Entrée premium.', color: 'border-cyan-500/25 bg-cyan-500/10 text-cyan-100' },
-  VIP: { cost: 1700, tickets: 60, maxParticipations: 2, label: 'VIP', description: 'Le ticket lourd du Braquage.', color: 'border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-100' },
+  VIP: { cost: 1700, tickets: 60, maxParticipations: 2, label: 'VIP', description: 'Le ticket lourd du loto.', color: 'border-fuchsia-500/25 bg-fuchsia-500/10 text-fuchsia-100' },
 };
 
 const CONFETTI_COLORS = ['#f59e0b', '#f97316', '#eab308', '#38bdf8', '#22c55e', '#fb7185'];

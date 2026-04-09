@@ -4805,7 +4805,7 @@ export default function Admin() {
                   bans.filter(b => b.isActive).length > 0 ? <span className={TYPOGRAPHY.XS}>{bans.filter(b => b.isActive).length}</span> : undefined
                 )}
 
-                {/* Braquage Légal — admin only */}
+                {/* Loto — admin only */}
                 {!isFiscalOnly && navBtn('braquageLegal', 'Loto', <Ticket className="w-4 h-4 shrink-0" />, () => setActiveTab('braquageLegal'))}
 
                 {/* Contenu dropdown — admin only */}

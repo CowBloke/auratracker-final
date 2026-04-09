@@ -294,7 +294,8 @@ function App() {
         <Route path="inbox" element={<Inbox />} />
         <Route path="support" element={<Support />} />
         <Route path="changelog" element={<Changelog />} />
-        <Route path="braquage-legal" element={<BraquageLegal />} />
+        <Route path="loto" element={<BraquageLegal />} />
+        <Route path="braquage-legal" element={<Navigate to="/loto" replace />} />
         <Route path="auravision" element={<AuraVision />} />
         <Route path="you" element={<You />} />
       </Route>
