@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { auraScrollApi, type AuraScrollPost, type AuraScrollComment } from '@/services/api';
 import { resolveImageUrl } from '@/lib/images';
@@ -45,6 +45,31 @@ const timeAgo = (dateStr: string) => {
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
   return `${Math.floor(diff / 86400)}j`;
+};
+
+const shuffleIds = (ids: string[]): string[] => {
+  const copy = [...ids];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
+const buildRandomCycle = (ids: string[], previousLastId: string | null): string[] => {
+  if (ids.length <= 1) return [...ids];
+
+  const shuffled = shuffleIds(ids);
+
+  // Avoid repeating the same post between cycle boundaries when possible.
+  if (previousLastId && shuffled[0] === previousLastId) {
+    const swapIndex = shuffled.findIndex((id) => id !== previousLastId);
+    if (swapIndex > 0) {
+      [shuffled[0], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[0]];
+    }
+  }
+
+  return shuffled;
 };
 
 // ─── Upload Modal ──────────────────────────────────────────────────────────────
@@ -662,6 +687,7 @@ function PostCard({
 export default function AuraScroll() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<AuraScrollPost[]>([]);
+  const [sequence, setSequence] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -671,12 +697,46 @@ export default function AuraScroll() {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  const postsById = useMemo(() => {
+    const map = new Map<string, AuraScrollPost>();
+    for (const post of posts) {
+      map.set(post.id, post);
+    }
+    return map;
+  }, [posts]);
+
+  const appendRandomCycle = useCallback(() => {
+    setSequence((prev) => {
+      if (posts.length === 0) return prev;
+      const ids = posts.map((post) => post.id);
+      const previousLastId = prev.length > 0 ? prev[prev.length - 1] : null;
+      const nextCycle = buildRandomCycle(ids, previousLastId);
+      return [...prev, ...nextCycle];
+    });
+  }, [posts]);
+
   const fetchFeed = useCallback(async (cursor?: string) => {
     if (cursor) setLoadingMore(true);
     else setLoading(true);
     try {
       const { data } = await auraScrollApi.getFeed(cursor);
-      setPosts((prev) => cursor ? [...prev, ...data.posts] : data.posts);
+
+      setPosts((prev) => {
+        if (!cursor) return data.posts;
+
+        const merged = new Map(prev.map((post) => [post.id, post]));
+        for (const post of data.posts) {
+          merged.set(post.id, post);
+        }
+        return Array.from(merged.values());
+      });
+
+      if (!cursor) {
+        const initialIds = data.posts.map((post) => post.id);
+        setSequence(buildRandomCycle(initialIds, null));
+        setActiveIndex(0);
+      }
+
       setNextCursor(data.nextCursor);
     } catch {
       toast({ title: 'Erreur', description: 'Impossible de charger le feed.', variant: 'destructive' });
@@ -705,21 +765,32 @@ export default function AuraScroll() {
 
     cardRefs.current.forEach((el) => { if (el) observerRef.current?.observe(el); });
     return () => observerRef.current?.disconnect();
-  }, [posts.length]);
+  }, [sequence.length]);
 
-  // Load more when last post is active
+  // Keep the queue filled. Fetch more from backend when available,
+  // otherwise append another randomized cycle for endless scrolling.
   useEffect(() => {
-    if (activeIndex === posts.length - 2 && nextCursor && !loadingMore) {
+    if (posts.length === 0 || sequence.length === 0) return;
+
+    const remaining = sequence.length - activeIndex - 1;
+    if (remaining > 2) return;
+
+    if (nextCursor && !loadingMore) {
       fetchFeed(nextCursor);
+      return;
     }
-  }, [activeIndex, posts.length, nextCursor, loadingMore, fetchFeed]);
+
+    if (!nextCursor && !loadingMore) {
+      appendRandomCycle();
+    }
+  }, [activeIndex, posts.length, sequence.length, nextCursor, loadingMore, fetchFeed, appendRandomCycle]);
 
   // Keyboard navigation
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        const next = Math.min(activeIndex + 1, posts.length - 1);
+        const next = activeIndex + 1;
         cardRefs.current[next]?.scrollIntoView({ behavior: 'smooth' });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
@@ -729,14 +800,14 @@ export default function AuraScroll() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [activeIndex, posts.length]);
+  }, [activeIndex]);
 
-  const handlePostUpdate = (index: number, updated: AuraScrollPost) => {
-    setPosts((prev) => prev.map((p, i) => i === index ? updated : p));
+  const handlePostUpdate = (postId: string, updated: AuraScrollPost) => {
+    setPosts((prev) => prev.map((post) => (post.id === postId ? updated : post)));
   };
 
-  const handleLike = (index: number, liked: boolean, likeCount: number) => {
-    setPosts((prev) => prev.map((p, i) => i === index ? { ...p, liked, likeCount } : p));
+  const handleLike = (postId: string, liked: boolean, likeCount: number) => {
+    setPosts((prev) => prev.map((post) => (post.id === postId ? { ...post, liked, likeCount } : post)));
   };
 
   const handleBack = () => {
@@ -799,21 +870,26 @@ export default function AuraScroll() {
         className="h-full overflow-y-scroll snap-y snap-mandatory"
         style={{ scrollbarWidth: 'none' }}
       >
-        {posts.map((post, index) => (
-          <div
-            key={post.id}
-            ref={(el) => { cardRefs.current[index] = el; }}
-            className="snap-start snap-always relative w-full"
-            style={{ height: '100dvh' }}
-          >
-            <PostCard
-              post={post}
-              isActive={activeIndex === index}
-              onLike={(liked, likeCount) => handleLike(index, liked, likeCount)}
-              onPostUpdate={(updated) => handlePostUpdate(index, updated)}
-            />
-          </div>
-        ))}
+        {sequence.map((postId, index) => {
+          const post = postsById.get(postId);
+          if (!post) return null;
+
+          return (
+            <div
+              key={`${postId}-${index}`}
+              ref={(el) => { cardRefs.current[index] = el; }}
+              className="snap-start snap-always relative w-full"
+              style={{ height: '100dvh' }}
+            >
+              <PostCard
+                post={post}
+                isActive={activeIndex === index}
+                onLike={(liked, likeCount) => handleLike(post.id, liked, likeCount)}
+                onPostUpdate={(updated) => handlePostUpdate(post.id, updated)}
+              />
+            </div>
+          );
+        })}
 
         {/* Loading more spinner */}
         {loadingMore && (
@@ -822,19 +898,6 @@ export default function AuraScroll() {
           </div>
         )}
 
-        {/* End of feed */}
-        {!nextCursor && !loadingMore && posts.length > 0 && (
-          <div className="snap-start flex flex-col items-center justify-center gap-4" style={{ height: '100dvh' }}>
-            <div className="text-4xl">✨</div>
-            <p className="text-zinc-400 text-sm">Tu as tout vu !</p>
-            <button
-              onClick={() => { setActiveIndex(0); cardRefs.current[0]?.scrollIntoView({ behavior: 'smooth' }); }}
-              className="text-pink-400 text-sm hover:text-pink-300 transition-colors"
-            >
-              Retour au début
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Top header */}
@@ -867,11 +930,11 @@ export default function AuraScroll() {
           </button>
           <button
             onClick={() => {
-              const next = Math.min(activeIndex + 1, posts.length - 1);
+              const next = activeIndex + 1;
               cardRefs.current[next]?.scrollIntoView({ behavior: 'smooth' });
             }}
             className="bg-black/40 backdrop-blur-md rounded-full p-2 border border-white/10 disabled:opacity-30 hover:bg-black/60 transition-colors"
-            disabled={activeIndex === posts.length - 1}
+            disabled={sequence.length === 0}
           >
             <ChevronDown className="h-4 w-4 text-white" />
           </button>
@@ -888,9 +951,9 @@ export default function AuraScroll() {
       </button>
 
       {/* Progress dots */}
-      {posts.length > 1 && posts.length <= 20 && (
+      {sequence.length > 1 && sequence.length <= 20 && (
         <div className="absolute left-3 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-1">
-          {posts.map((_, i) => (
+          {sequence.map((_, i) => (
             <button
               key={i}
               onClick={() => cardRefs.current[i]?.scrollIntoView({ behavior: 'smooth' })}

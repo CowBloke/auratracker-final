@@ -33,7 +33,7 @@ const SEED_ENTRIES = [
     id: '2026-04-10-bug-fixes-race-condition-notifs',
     date: '2026-04-10',
     title: 'Corrections de bugs — double claim, defis duels, notifications',
-    summary: 'Correction d une race condition sur le pass quotidien, fuite de defis en duel quand la cible se deconnecte, journalisation des echecs de notifications, et ajouts de confort dans la messagerie judiciaire et Messages.',
+    summary: 'Correction d une race condition sur le pass quotidien, fuite de defis en duel quand la cible se deconnecte, journalisation des echecs de notifications, ajouts de confort dans la messagerie judiciaire et Messages, et Aura Scroll devient infini avec ordre melange.',
     items: [
       { category: 'BUG_FIX', text: '**Pass quotidien · Double claim impossible** — La verification "deja reclamé aujourd\'hui" est maintenant effectuee a l interieur de la transaction Prisma, ce qui empeche deux requetes simultanees d accorder deux fois les recompenses.', order: 0 },
       { category: 'BUG_FIX', text: '**Duels · Defi annule quand la cible se deconnecte** — Quand le joueur cible d un defi se deconnecte, le defi est maintenant annule immediatement (timer stoppe, challenger notifie), au lieu de rester en attente jusqu a expiration.', order: 1 },
@@ -42,6 +42,7 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Justice · Pseudos visibles pour les juges** — Dans les dossiers judiciaires, les juges voient maintenant les pseudos des participants affiches entre parentheses a cote de leur role.', order: 4 },
       { category: 'SMALL_FEATURE', text: '**Justice · Apercu image plein ecran** — Les images envoyees dans un dossier judiciaire s ouvrent maintenant en plein ecran au clic, comme dans le reste de la messagerie.', order: 5 },
       { category: 'SMALL_FEATURE', text: '**Messages · Corbeille au survol** — Dans les conversations, le bouton de suppression admin se place maintenant au bord du message et n apparait qu au survol, pour rester plus discret tout en restant accessible.', order: 6 },
+      { category: 'SMALL_FEATURE', text: '**Aura Scroll · Feed infini melange** — Le scroll continue maintenant en boucle sans ecran de fin, avec un ordre aleatoire par cycle pour eviter de revoir toujours les videos dans la meme sequence.', order: 7 },
     ],
   },
   {
