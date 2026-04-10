@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bot, Eye, EyeOff, LogOut, Swords, Trophy } from 'lucide-react';
+import { ArrowLeft, Bot, ChevronLeft, ChevronRight, Eye, EyeOff, LogOut, SkipBack, SkipForward, Swords, Trophy } from 'lucide-react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
@@ -51,6 +51,7 @@ interface ChessMoveSummary {
   color: ChessColor;
   promotion?: string;
   captured?: string;
+  ply?: number;
 }
 
 interface ChessState {
@@ -64,6 +65,7 @@ interface ChessState {
   inCheck: boolean;
   isDraw: boolean;
   lastMove: ChessMoveSummary | null;
+  moveHistory: ChessMoveSummary[];
   legalMoves: Record<string, string[]>;
   capturedPieces: { byWhite: string[]; byBlack: string[] };
   timeWhite: number;
@@ -136,6 +138,7 @@ export default function Echecs() {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(null);
+  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
   const [spectatingPartyId, setSpectatingPartyId] = useState<string | null>(null);
   const [spectatorCount, setSpectatorCount] = useState(0);
   const [spectateMessages, setSpectateMessages] = useState<SpectateFloatingMessage[]>([]);
@@ -157,6 +160,7 @@ export default function Echecs() {
 
   const routeSpectatePartyId = ((location.state as { spectatePartyId?: string } | null)?.spectatePartyId) ?? null;
   const isSpectating = spectatingPartyId !== null;
+  const isReviewMode = historyIndex !== null;
   const activePartyId = isSpectating ? spectatingPartyId : (currentParty?.id ?? gameState?.partyId ?? null);
 
   useEffect(() => {
@@ -168,11 +172,116 @@ export default function Echecs() {
   const opponent = gameState?.players.find((p) => p.userId !== user?.id) ?? null;
   const isMyTurn = !isSpectating && gameState?.phase === 'playing' && gameState.turn === myPlayer?.color;
 
+  const totalHistoryPlies = gameState?.moveHistory.length ?? 0;
+  const currentHistoryPly = historyIndex ?? totalHistoryPlies;
+
+  const replayPositions = useMemo(() => {
+    if (!gameState) return [] as string[];
+    const engine = new Chess();
+    const positions = [engine.fen()];
+    for (const move of gameState.moveHistory ?? []) {
+      try {
+        engine.move({ from: move.from as Square, to: move.to as Square, promotion: (move.promotion as PromotionPiece | undefined) ?? undefined });
+      } catch {
+        break;
+      }
+      positions.push(engine.fen());
+    }
+    return positions;
+  }, [gameState]);
+
+  const displayFen = useMemo(() => {
+    if (!gameState) return 'start';
+    return replayPositions[currentHistoryPly] ?? gameState.fen;
+  }, [replayPositions, currentHistoryPly, gameState]);
+
+  const displayLastMove = useMemo(() => {
+    if (!gameState || currentHistoryPly === 0) return null;
+    return gameState.moveHistory[currentHistoryPly - 1] ?? null;
+  }, [gameState, currentHistoryPly]);
+
+  const replayChess = useMemo(() => {
+    try {
+      return new Chess(displayFen);
+    } catch {
+      return null;
+    }
+  }, [displayFen]);
+
   // chess.js instance for piece queries (memoized from FEN)
   const chess = useMemo(() => {
     if (!gameState?.fen) return null;
     try { return new Chess(gameState.fen); } catch { return null; }
   }, [gameState?.fen]);
+
+  useEffect(() => {
+    if (!gameState) {
+      setHistoryIndex(null);
+      return;
+    }
+    setHistoryIndex((prev) => {
+      if (prev === null) return null;
+      const maxPly = gameState.moveHistory.length;
+      if (prev >= maxPly) return null;
+      return prev;
+    });
+  }, [gameState]);
+
+  const goToFirstMove = useCallback(() => {
+    if (!gameState) return;
+    setHistoryIndex(0);
+    setSelectedSquare(null);
+    setPremove(null);
+    setPremoveSource(null);
+  }, [gameState]);
+
+  const goToPreviousMove = useCallback(() => {
+    if (!gameState || totalHistoryPlies === 0) return;
+    setHistoryIndex((prev) => {
+      const current = prev ?? totalHistoryPlies;
+      return Math.max(0, current - 1);
+    });
+    setSelectedSquare(null);
+    setPremove(null);
+    setPremoveSource(null);
+  }, [gameState, totalHistoryPlies]);
+
+  const goToNextMove = useCallback(() => {
+    if (!gameState || totalHistoryPlies === 0) return;
+    setHistoryIndex((prev) => {
+      const current = prev ?? totalHistoryPlies;
+      const next = Math.min(totalHistoryPlies, current + 1);
+      return next === totalHistoryPlies ? null : next;
+    });
+  }, [gameState, totalHistoryPlies]);
+
+  const goToLivePosition = useCallback(() => {
+    setHistoryIndex(null);
+  }, []);
+
+  useEffect(() => {
+    if (!gameState) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goToPreviousMove();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goToNextMove();
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        goToFirstMove();
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        goToLivePosition();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameState, goToFirstMove, goToNextMove, goToPreviousMove, goToLivePosition]);
 
   // Order players: opponent first, me second (opponent at top like a chess board)
   const orderedPlayers = useMemo(() => {
@@ -365,7 +474,7 @@ export default function Echecs() {
 
   // Drag & drop handler
   const onPieceDrop = useCallback((source: string, target: string, piece: string): boolean => {
-    if (!gameState || !myPlayer || isSpectating) return false;
+    if (!gameState || !myPlayer || isSpectating || isReviewMode) return false;
 
     // After promotion dialog, library calls back with promoted piece — move already sent
     if (promotionSentRef.current) {
@@ -394,11 +503,11 @@ export default function Echecs() {
     }
     sendMove(source, target);
     return true;
-  }, [gameState, myPlayer, isMyTurn, sendMove, isSpectating]);
+  }, [gameState, myPlayer, isMyTurn, sendMove, isSpectating, isReviewMode]);
 
   // Click-to-move handler
   const onSquareClick = useCallback((square: string) => {
-    if (!gameState || !myPlayer || isSpectating) return;
+    if (!gameState || !myPlayer || isSpectating || isReviewMode) return;
 
     if (!isMyTurn) {
       // Premove selection
@@ -448,7 +557,7 @@ export default function Echecs() {
     } else {
       setSelectedSquare(null);
     }
-  }, [gameState, myPlayer, isMyTurn, selectedSquare, chess, sendMove, premoveSource, isSpectating]);
+  }, [gameState, myPlayer, isMyTurn, selectedSquare, chess, sendMove, premoveSource, isSpectating, isReviewMode]);
 
   // Promotion piece selected from built-in dialog
   const onPromotionPieceSelect = useCallback((piece?: string, promoteFromSquare?: string, promoteToSquare?: string): boolean => {
@@ -466,15 +575,15 @@ export default function Echecs() {
   const customSquareStyles = useMemo((): Record<string, Record<string, string | number>> => {
     const styles: Record<string, Record<string, string | number>> = {};
 
-    if (gameState?.lastMove) {
-      styles[gameState.lastMove.from] = { backgroundColor: 'rgba(155, 199, 0, 0.41)' };
-      styles[gameState.lastMove.to] = { backgroundColor: 'rgba(155, 199, 0, 0.41)' };
+    if (displayLastMove) {
+      styles[displayLastMove.from] = { backgroundColor: 'rgba(155, 199, 0, 0.41)' };
+      styles[displayLastMove.to] = { backgroundColor: 'rgba(155, 199, 0, 0.41)' };
     }
 
     if (selectedSquare) {
       styles[selectedSquare] = { backgroundColor: 'rgba(20, 85, 255, 0.35)' };
       for (const sq of (gameState?.legalMoves[selectedSquare] ?? [])) {
-        const hasPiece = !!chess?.get(sq as Square);
+        const hasPiece = !!replayChess?.get(sq as Square);
         styles[sq] = hasPiece
           ? { boxShadow: 'inset 0 0 0 4px rgba(20, 85, 255, 0.5)' }
           : { background: 'radial-gradient(circle, rgba(0,0,0,0.22) 36%, transparent 36%)' };
@@ -490,13 +599,13 @@ export default function Echecs() {
       styles[premove.to] = { backgroundColor: 'rgba(0, 180, 200, 0.4)' };
     }
 
-    if (gameState?.inCheck && gameState.phase === 'playing' && chess) {
+    if (replayChess?.inCheck()) {
       const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
       for (let rank = 1; rank <= 8; rank++) {
         for (const file of files) {
           const sq = `${file}${rank}` as Square;
-          const p = chess.get(sq);
-          if (p?.type === 'k' && p.color === gameState.turn) {
+          const p = replayChess.get(sq);
+          if (p?.type === 'k' && p.color === replayChess.turn()) {
             styles[sq] = { backgroundColor: 'rgba(220, 38, 38, 0.55)' };
           }
         }
@@ -504,7 +613,7 @@ export default function Echecs() {
     }
 
     return styles;
-  }, [selectedSquare, gameState, chess, premove, premoveSource]);
+  }, [selectedSquare, gameState, replayChess, premove, premoveSource, displayLastMove]);
 
   const handleStart = () => {
     if (!socket || !currentParty || isSpectating) return;
@@ -561,6 +670,9 @@ export default function Echecs() {
 
   const statusText = (() => {
     if (!gameState) return null;
+    if (isReviewMode) {
+      return `Navigation coups: ${currentHistoryPly}/${totalHistoryPlies}`;
+    }
     if (gameState.phase === 'finished' && gameState.result) return RESULT_LABELS[gameState.result];
     if (isSpectating) return 'Mode spectateur';
     if (isMyTurn && gameState.inCheck) return 'À toi — tu es en échec !';
@@ -720,13 +832,13 @@ export default function Echecs() {
             <div ref={boardContainerRef} className="w-full flex justify-center lg:justify-start">
               <Chessboard
                 boardWidth={boardWidth}
-                position={gameState.fen}
+                position={displayFen}
                 boardOrientation={myPlayer?.color === 'b' ? 'black' : 'white'}
                 onPieceDrop={onPieceDrop as any}
                 onSquareClick={onSquareClick as any}
                 customSquareStyles={customSquareStyles as any}
                 isDraggablePiece={({ piece }: { piece: string }) => {
-                  if (isSpectating) return false;
+                  if (isSpectating || isReviewMode) return false;
                   if (!myPlayer) return false;
                   return piece[0] === myPlayer.color;
                 }}
@@ -825,16 +937,69 @@ export default function Echecs() {
             <Card>
               <CardContent className="p-4 space-y-2">
                 <h2 className="text-sm text-muted-foreground">Dernier coup</h2>
-                {gameState.lastMove ? (
+                {displayLastMove ? (
                   <div className="space-y-0.5">
-                    <p className="text-lg font-medium">{gameState.lastMove.san}</p>
+                    <p className="text-lg font-medium">{displayLastMove.san}</p>
                     <p className="text-xs text-muted-foreground">
-                      {gameState.lastMove.from} → {gameState.lastMove.to}
+                      {displayLastMove.from} → {displayLastMove.to}
                     </p>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Partie non commencée.</p>
                 )}
+                <div className="rounded-lg border border-border/40 px-3 py-2 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Historique des coups</span>
+                    <span>{currentHistoryPly}/{totalHistoryPlies}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={goToFirstMove}
+                      disabled={totalHistoryPlies === 0 || currentHistoryPly === 0}
+                      title="Premier coup (Home)"
+                    >
+                      <SkipBack className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={goToPreviousMove}
+                      disabled={totalHistoryPlies === 0 || currentHistoryPly === 0}
+                      title="Coup précédent (←)"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={goToNextMove}
+                      disabled={totalHistoryPlies === 0 || currentHistoryPly >= totalHistoryPlies}
+                      title="Coup suivant (→)"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={goToLivePosition}
+                      disabled={currentHistoryPly >= totalHistoryPlies && !isReviewMode}
+                      title="Revenir au direct (End)"
+                    >
+                      <SkipForward className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Raccourcis: ← / →, Home, End</p>
+                </div>
                 {myPlayer && !isSpectating && (
                   <div className="rounded-lg border border-border/40 px-3 py-2 text-sm text-muted-foreground">
                     Tu joues les {myPlayer.color === 'w' ? 'blancs' : 'noirs'}.

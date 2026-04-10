@@ -141,6 +141,17 @@ function getLegalMoves(game: ChessGame, userId?: string) {
 
 function serializeState(game: ChessGame, userId?: string) {
   const { timeWhite, timeBlack } = calculateTimers(game);
+  const moveHistory = game.engine.history({ verbose: true }).map((move, index) => ({
+    from: move.from,
+    to: move.to,
+    san: move.san,
+    piece: move.piece,
+    color: move.color,
+    promotion: move.promotion,
+    captured: move.captured,
+    ply: index + 1,
+  }));
+
   return {
     partyId: game.partyId,
     board: serializeBoard(game.engine),
@@ -152,6 +163,7 @@ function serializeState(game: ChessGame, userId?: string) {
     inCheck: game.engine.inCheck(),
     isDraw: game.result !== null && game.winnerId === null,
     lastMove: game.lastMove,
+    moveHistory,
     legalMoves: getLegalMoves(game, userId),
     capturedPieces: getCapturedPieces(game.engine),
     timeWhite,

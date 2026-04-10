@@ -43,6 +43,7 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Justice · Apercu image plein ecran** — Les images envoyees dans un dossier judiciaire s ouvrent maintenant en plein ecran au clic, comme dans le reste de la messagerie.', order: 5 },
       { category: 'SMALL_FEATURE', text: '**Messages · Corbeille au survol** — Dans les conversations, le bouton de suppression admin se place maintenant au bord du message et n apparait qu au survol, pour rester plus discret tout en restant accessible.', order: 6 },
       { category: 'SMALL_FEATURE', text: '**Aura Scroll · Feed infini melange** — Le scroll continue maintenant en boucle sans ecran de fin, avec un ordre aleatoire par cycle pour eviter de revoir toujours les videos dans la meme sequence.', order: 7 },
+      { category: 'SMALL_FEATURE', text: '**Echecs · Navigation historique des coups** — Pendant une partie ou en spectateur, vous pouvez maintenant revisiter les coups precedents avec les boutons de navigation (debut/precedent/suivant/direct) ou le clavier (`←`, `→`, `Home`, `End`) comme sur chess.com.', order: 8 },
     ],
   },
   {
