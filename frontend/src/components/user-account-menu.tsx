@@ -113,12 +113,12 @@ export function UserAccountMenu({ className, showLabel = true }: UserAccountMenu
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          {(user.isAdmin || user.isSuperAdmin || user.isFiscalInspector) && (
+          {(user.isAdmin || user.isSuperAdmin || user.isFiscalInspector || user.isJudge) && (
             <DropdownMenuItem asChild>
               <Link to="/admin">
-                <Shield className={user.isFiscalInspector && !user.isAdmin ? 'text-emerald-500' : 'text-amber-500'} />
-                <span className={user.isFiscalInspector && !user.isAdmin ? 'text-emerald-500' : 'text-amber-500'}>
-                  {user.isFiscalInspector && !user.isAdmin ? 'Inspection fiscale' : 'Administration'}
+                <Shield className={user.isAdmin || user.isSuperAdmin ? 'text-amber-500' : 'text-emerald-500'} />
+                <span className={user.isAdmin || user.isSuperAdmin ? 'text-amber-500' : 'text-emerald-500'}>
+                  {user.isAdmin || user.isSuperAdmin ? 'Administration' : 'Inspection fiscale'}
                 </span>
               </Link>
             </DropdownMenuItem>

@@ -21,15 +21,26 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-10-judge-fiscal-panel-access',
+    date: '2026-04-10',
+    title: 'Administration — Acces inspection fiscale pour les juges',
+    summary: 'Les juges peuvent maintenant ouvrir le panel admin en mode lecture seule et consulter la meme vue inspection fiscale que les inspecteurs du fisc.',
+    items: [
+      { category: 'SMALL_FEATURE', text: '**Admin · Vue inspection fiscale partagée** — Les juges disposent maintenant du meme acces lecture seule que les inspecteurs du fisc dans le panel admin, avec les onglets logs, impots et inspection fiscale.', order: 0 },
+    ],
+  },
+  {
     id: '2026-04-10-bug-fixes-race-condition-notifs',
     date: '2026-04-10',
     title: 'Corrections de bugs — double claim, defis duels, notifications',
-    summary: 'Correction d une race condition sur le pass quotidien, fuite de defis en duel quand la cible se deconnecte, et journalisation des echecs de notifications.',
+    summary: 'Correction d une race condition sur le pass quotidien, fuite de defis en duel quand la cible se deconnecte, journalisation des echecs de notifications, et ajouts de confort dans la messagerie judiciaire.',
     items: [
       { category: 'BUG_FIX', text: '**Pass quotidien · Double claim impossible** — La verification "deja reclamé aujourd\'hui" est maintenant effectuee a l interieur de la transaction Prisma, ce qui empeche deux requetes simultanees d accorder deux fois les recompenses.', order: 0 },
       { category: 'BUG_FIX', text: '**Duels · Defi annule quand la cible se deconnecte** — Quand le joueur cible d un defi se deconnecte, le defi est maintenant annule immediatement (timer stoppe, challenger notifie), au lieu de rester en attente jusqu a expiration.', order: 1 },
       { category: 'BUG_FIX', text: '**Notifications · Echecs journalises** — Les erreurs de creation de notification ne sont plus silencieusement ignorees ; elles apparaissent maintenant dans les logs serveur pour faciliter le debug.', order: 2 },
       { category: 'BUG_FIX', text: '**Jeux · Plafond argent applique par jeu** — Le plafond journalier d argent des jeux est maintenant calcule par type de jeu (et non plus globalement sur tous les jeux), pour eviter qu un jeu bloque les gains des autres.', order: 3 },
+      { category: 'SMALL_FEATURE', text: '**Justice · Pseudos visibles pour les juges** — Dans les dossiers judiciaires, les juges voient maintenant les pseudos des participants affiches entre parentheses a cote de leur role.', order: 4 },
+      { category: 'SMALL_FEATURE', text: '**Justice · Apercu image plein ecran** — Les images envoyees dans un dossier judiciaire s ouvrent maintenant en plein ecran au clic, comme dans le reste de la messagerie.', order: 5 },
     ],
   },
   {

@@ -841,9 +841,9 @@ const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   next();
 };
 
-// Middleware for routes accessible by admins OR fiscal inspectors (read-only access)
+// Middleware for routes accessible by admins, fiscal inspectors, or judges (read-only access)
 const requireAdminOrFiscal = (req: AuthRequest, res: Response, next: Function) => {
-  if (!req.user?.isAdmin && !req.user?.isFiscalInspector) {
+  if (!req.user?.isAdmin && !req.user?.isFiscalInspector && !req.user?.isJudge) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();
@@ -5948,7 +5948,7 @@ router.get('/pending-sanctions', authMiddleware, requireAdmin, async (req: AuthR
 router.post('/fiscal-sanctions', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
-    if (!user?.isFiscalInspector && !user?.isAdmin) {
+    if (!user?.isFiscalInspector && !user?.isJudge && !user?.isAdmin) {
       return res.status(403).json({ error: 'Accès refusé.' });
     }
 

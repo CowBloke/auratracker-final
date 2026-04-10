@@ -2106,12 +2106,24 @@ export default function Admin() {
     };
   }, [logFilter.username]);
 
-  // Redirect non-admin users (fiscal inspectors also allowed for read-only access)
-  if (!user?.isAdmin && !user?.isFiscalInspector) {
+  // Redirect non-admin users (fiscal inspectors and judges are allowed for read-only access)
+  if (!user?.isAdmin && !user?.isFiscalInspector && !user?.isJudge) {
     return <Navigate to="/" replace />;
   }
 
+  // Fiscal inspectors and judges can only access logs, taxes, and fiscal tabs
+  const FISCAL_INSPECTOR_TABS: AdminTab[] = ['logs', 'taxes', 'fiscal'];
+  const isReadOnlyInspectionUser = Boolean((user?.isFiscalInspector || user?.isJudge) && !user?.isAdmin);
+
   useEffect(() => {
+    if (isReadOnlyInspectionUser) {
+      fetchLogs();
+      fetchLogStats();
+      fetchTaxSettings();
+      fetchFiscalUsers();
+      return;
+    }
+
     fetchUsers();
     fetchClans();
     fetchClanEvents();
@@ -2143,7 +2155,7 @@ export default function Admin() {
     fetchGamesLeaderboard();
     fetchSupportThreads();
     fetchSupportReports();
-  }, []);
+  }, [isReadOnlyInspectionUser]);
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get('tab');
@@ -2152,17 +2164,11 @@ export default function Admin() {
     }
   }, [location.search]);
 
-  // Fiscal inspectors can only access logs, taxes, and fiscal tabs
-  const FISCAL_INSPECTOR_TABS: AdminTab[] = ['logs', 'taxes', 'fiscal'];
   useEffect(() => {
-    if (user?.isFiscalInspector && !user?.isAdmin) {
-      if (!FISCAL_INSPECTOR_TABS.includes(activeTab)) {
-        setActiveTab('fiscal');
-      }
-      // Load fiscal data on mount for fiscal-only users
-      fetchFiscalUsers();
+    if (isReadOnlyInspectionUser && !FISCAL_INSPECTOR_TABS.includes(activeTab)) {
+      setActiveTab('fiscal');
     }
-  }, [user?.isFiscalInspector, user?.isAdmin]);
+  }, [isReadOnlyInspectionUser, activeTab]);
 
   // Real-time support messages for admin
   useEffect(() => {
@@ -4262,34 +4268,29 @@ export default function Admin() {
       imageUrl: item.imageUrl || '',
       effectType,
       effectValue,
-      bonusAura: bonusAura || 0,
-      bonusMoney: bonusMoney || 0,
-      skinImageUrl: skinImageUrl || '',
-      skinShopType: skinShopType || 'none',
-      badgeId: badgeId || '',
+      bonusAura,
+      bonusMoney,
+      skinImageUrl,
+      skinShopType,
+      badgeId,
     });
-    if (badges.length === 0) fetchBadges();
     setItemDialogOpen(true);
   };
 
-  // Save item (create or update)
   const saveItem = async () => {
-    if (!itemForm.name.trim() || !itemForm.description.trim()) {
-      showMessage('error', 'Nom et description requis');
-      return;
-    }
-
     setSavingItem(true);
     try {
-      // Build effect JSON based on effect type
-      let effect: string | undefined;
+      let effect: string;
       if (itemForm.effectType === 'BONUS_AURA') {
-        effect = JSON.stringify({ bonusAura: itemForm.bonusAura || 0 });
+        effect = JSON.stringify({ type: 'BONUS_AURA', bonusAura: Math.max(0, parseInt(String(itemForm.bonusAura || 0), 10) || 0) });
       } else if (itemForm.effectType === 'BONUS_MONEY') {
-        effect = JSON.stringify({ bonusMoney: itemForm.bonusMoney || 0 });
+        effect = JSON.stringify({ type: 'BONUS_MONEY', bonusMoney: Math.max(0, parseInt(String(itemForm.bonusMoney || 0), 10) || 0) });
       } else if (itemForm.effectType === 'DOODLE_JUMP_SKIN') {
-        const shopType = itemForm.skinShopType && itemForm.skinShopType !== 'none' ? itemForm.skinShopType : undefined;
-        effect = JSON.stringify({ type: 'DOODLE_JUMP_SKIN', skinImageUrl: itemForm.skinImageUrl || '', ...(shopType ? { shopType } : {}) });
+        effect = JSON.stringify({
+          type: 'DOODLE_JUMP_SKIN',
+          skinImageUrl: itemForm.skinImageUrl || '',
+          shopType: itemForm.skinShopType || 'none',
+        });
       } else if (itemForm.effectType === 'AWARD_BADGE') {
         effect = JSON.stringify({ type: 'AWARD_BADGE', badgeId: itemForm.badgeId || '' });
       } else if (
@@ -4307,7 +4308,7 @@ export default function Admin() {
       // For badge items, auto-generate the shop image from the badge if none set
       let resolvedImageUrl = itemForm.imageUrl.trim();
       if (itemForm.effectType === 'AWARD_BADGE' && itemForm.badgeId && !resolvedImageUrl) {
-        const selectedBadge = badges.find(b => b.id === itemForm.badgeId);
+        const selectedBadge = badges.find((b) => b.id === itemForm.badgeId);
         if (selectedBadge) resolvedImageUrl = generateBadgeSvgDataUrl(selectedBadge);
       }
 
@@ -4324,11 +4325,11 @@ export default function Admin() {
 
       if (editingItem) {
         const res = await adminApi.updateItem(editingItem.id, data);
-        setItems(prev => prev.map(i => i.id === editingItem.id ? res.data.item : i));
+        setItems((prev) => prev.map((i) => (i.id === editingItem.id ? res.data.item : i)));
         showMessage('success', 'Objet modifié');
       } else {
         const res = await adminApi.createItem(data);
-        setItems(prev => [res.data.item, ...prev]);
+        setItems((prev) => [res.data.item, ...prev]);
         showMessage('success', 'Objet créé');
       }
       setItemDialogOpen(false);
@@ -4843,7 +4844,7 @@ export default function Admin() {
             // Outer: transparent padding bridges the gap so hover state persists when moving into the dropdown
             const dropdownOuter = 'absolute left-0 top-full pt-1 z-50 hidden group-hover:block';
             const dropdownInner = 'min-w-40 rounded-md border border-border/50 bg-popover shadow-lg p-1 flex flex-col gap-0.5';
-            const isFiscalOnly = Boolean(user?.isFiscalInspector && !user?.isAdmin);
+            const isFiscalOnly = isReadOnlyInspectionUser;
             return (
               <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-lg border border-border/30 mb-6">
                 {/* Réception — admin only */}
@@ -4894,7 +4895,7 @@ export default function Admin() {
                   </div>
                 </div>}
 
-                {/* Inspection fiscale — visible to fiscal inspectors */}
+                {/* Inspection fiscale — visible to fiscal inspectors and judges */}
                 {isFiscalOnly && navBtn('fiscal', 'Inspection fiscale', <Landmark className="w-4 h-4 shrink-0" />, () => { setActiveTab('fiscal'); fetchFiscalUsers(); })}
 
                 {/* Finance — taxes visible to all, referrals admin only */}

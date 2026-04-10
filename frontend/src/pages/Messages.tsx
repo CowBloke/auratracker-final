@@ -134,6 +134,12 @@ const getCourtSenderLabel = (role: string | null, courtCase: CourtCase | null) =
   return getCourtAnonymousSenderLabel(role);
 };
 
+const getCourtVisibleLabel = (role: string | null, username: string | null, revealUsername: boolean, fallbackLabel: string) => {
+  if (!revealUsername || !username) return fallbackLabel;
+  const baseLabel = role ? getCourtAnonymousSenderLabel(role) : fallbackLabel;
+  return baseLabel === username ? baseLabel : `${baseLabel} (${username})`;
+};
+
 const getCourtRoleInitials = (role: string | null) => {
   const label = getCourtAnonymousSenderLabel(role);
   if (!label) return '?';
@@ -349,6 +355,7 @@ export default function MessagesPage() {
   const [lawyerRatingComment, setLawyerRatingComment] = useState('');
   const [lawyerRatingSubmitting, setLawyerRatingSubmitting] = useState(false);
   const [showSanctionModal, setShowSanctionModal] = useState(false);
+  const [courtImagePreviewUrl, setCourtImagePreviewUrl] = useState<string | null>(null);
 
   const handledSearchRef = useRef<string | null>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -688,6 +695,7 @@ export default function MessagesPage() {
       setSelectedCourtRole(null);
       setShowRepresentationDialog(false);
       setShowLawyerRatingDialog(false);
+      setCourtImagePreviewUrl(null);
       return;
     }
     let cancelled = false;
@@ -1504,14 +1512,16 @@ export default function MessagesPage() {
                       const isPlaintiffMember = Boolean(courtCase?.plaintifId && entry.user.id === courtCase.plaintifId);
                       const isDefendantMember = Boolean(courtCase?.defendantId && entry.user.id === courtCase.defendantId);
                       const shouldMaskCourtMember = isCourtMemberEntry && !isPlaintiffMember && !isDefendantMember;
-                      const memberDisplayName = shouldMaskCourtMember
-                        ? getCourtAnonymousSenderLabel(entry.courtRole ?? null)
-                        : entry.user.username;
+                      const memberDisplayName = isCourtJudge && isCourtMemberEntry
+                        ? getCourtVisibleLabel(entry.courtRole ?? null, entry.user.username, true, entry.user.username)
+                        : shouldMaskCourtMember
+                          ? getCourtAnonymousSenderLabel(entry.courtRole ?? null)
+                          : entry.user.username;
                       return (
                         <div key={entry.user.id} className="flex items-center gap-2.5 px-3 py-2">
                           <Avatar className="h-7 w-7 shrink-0">
                             {!shouldMaskCourtMember && entry.user.profilePicture ? <AvatarImage src={resolveImageUrl(entry.user.profilePicture)} /> : null}
-                            <AvatarFallback className="text-[10px]">{getInitials(memberDisplayName)}</AvatarFallback>
+                            <AvatarFallback className="text-[10px]">{getInitials(isCourtJudge ? entry.user.username : memberDisplayName)}</AvatarFallback>
                           </Avatar>
                           <span className="flex-1 truncate text-sm font-medium" style={!shouldMaskCourtMember && entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}>
                             {memberDisplayName}
@@ -2256,6 +2266,15 @@ export default function MessagesPage() {
                         const supportImages = msg.images ? JSON.parse(msg.images) as string[] : [];
                         if (msg.imageUrl) supportImages.push(msg.imageUrl);
                         const isBlocked = dmOtherUser && blockedIds.has(dmOtherUser.id);
+                        const senderFallbackLabel = isAnonymousCourtMessage
+                          ? getCourtSenderLabel(msgCourtRole, courtCase)
+                          : (msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système'));
+                        const senderDisplayLabel = getCourtVisibleLabel(
+                          msgCourtRole,
+                          msg.sender?.username ?? null,
+                          isCourtJudge,
+                          senderFallbackLabel,
+                        );
                         return (
                           <div key={msg.id} className="flex flex-col gap-2">
                             {showDaySeparator && (
@@ -2283,7 +2302,7 @@ export default function MessagesPage() {
                                 {showAvatar && (
                                   <Avatar className="h-6 w-6">
                                     {!isAnonymousCourtMessage && msg.sender?.profilePicture ? <AvatarImage src={resolveImageUrl(msg.sender.profilePicture)} /> : null}
-                                    <AvatarFallback className="text-[9px]">{isAnonymousCourtMessage ? getCourtRoleInitials(msgCourtRole) : getInitials(msg.sender?.username)}</AvatarFallback>
+                                    <AvatarFallback className="text-[9px]">{isCourtJudge && msg.sender?.username ? getInitials(msg.sender.username) : isAnonymousCourtMessage ? getCourtRoleInitials(msgCourtRole) : getInitials(msg.sender?.username)}</AvatarFallback>
                                   </Avatar>
                                 )}
                               </div>
@@ -2292,7 +2311,7 @@ export default function MessagesPage() {
                               {showSender && (
                                 <div className="mb-0.5 px-1 flex items-center gap-1.5">
                                   <p className={cn('text-[11px] font-semibold', courtColors ? courtColors.sender : undefined)} style={!courtColors && msg.sender?.usernameColor ? { color: msg.sender.usernameColor } : undefined}>
-                                    {isAnonymousCourtMessage ? getCourtSenderLabel(msgCourtRole, courtCase) : (msg.sender?.username ?? (msg.fromAdmin ? 'Support' : 'Système'))}
+                                    {senderDisplayLabel}
                                   </p>
                                   {msgCourtRole && courtColors && !isAnonymousCourtMessage && (
                                     <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', courtColors.badge)}>
@@ -2315,7 +2334,23 @@ export default function MessagesPage() {
                                     )}>
                                       {supportImages.length > 0 && (
                                         <div className="mb-1.5 flex flex-wrap gap-1">
-                                          {supportImages.map((img, i) => <img key={i} src={resolveImageUrl(img)} alt="" className="h-16 w-16 rounded-lg object-cover" />)}
+                                          {supportImages.map((img, i) => {
+                                            const resolvedImageUrl = resolveImageUrl(img);
+                                            return (
+                                              <button
+                                                key={i}
+                                                type="button"
+                                                aria-label="Aperçu de l'image"
+                                                onClick={(event) => {
+                                                  event.stopPropagation();
+                                                  setCourtImagePreviewUrl(resolvedImageUrl);
+                                                }}
+                                                className="overflow-hidden rounded-lg"
+                                              >
+                                                <img src={resolvedImageUrl} alt="" className="h-16 w-16 rounded-lg object-cover transition-transform hover:scale-105" />
+                                              </button>
+                                            );
+                                          })}
                                         </div>
                                       )}
                                       <p className="whitespace-pre-wrap break-words">{msg.body}</p>
@@ -2348,7 +2383,23 @@ export default function MessagesPage() {
                                 )}>
                                   {supportImages.length > 0 && (
                                     <div className="mb-1.5 flex flex-wrap gap-1">
-                                      {supportImages.map((img, i) => <img key={i} src={resolveImageUrl(img)} alt="" className="h-16 w-16 rounded-lg object-cover" />)}
+                                      {supportImages.map((img, i) => {
+                                        const resolvedImageUrl = resolveImageUrl(img);
+                                        return (
+                                          <button
+                                            key={i}
+                                            type="button"
+                                            aria-label="Aperçu de l'image"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              setCourtImagePreviewUrl(resolvedImageUrl);
+                                            }}
+                                            className="overflow-hidden rounded-lg"
+                                          >
+                                            <img src={resolvedImageUrl} alt="" className="h-16 w-16 rounded-lg object-cover transition-transform hover:scale-105" />
+                                          </button>
+                                        );
+                                      })}
                                     </div>
                                   )}
                                   <p className="whitespace-pre-wrap break-words">{msg.body}</p>
@@ -2528,6 +2579,17 @@ export default function MessagesPage() {
           </section>
         </div>
       </div>
+
+      <Dialog open={Boolean(courtImagePreviewUrl)} onOpenChange={(open) => { if (!open) setCourtImagePreviewUrl(null); }}>
+        <DialogContent className="h-[95vh] w-[95vw] max-w-none overflow-hidden border-0 bg-black/95 p-0 text-white sm:rounded-2xl">
+          {courtImagePreviewUrl && (
+            <div className="flex h-full w-full items-center justify-center p-4">
+              <img src={courtImagePreviewUrl} alt="Aperçu du message" className="max-h-full max-w-full object-contain" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </PageShell>
   );
 }
