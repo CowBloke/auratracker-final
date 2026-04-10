@@ -131,6 +131,7 @@ model User {
 
   // Notifications
   notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
   dailyRacerRuns      DailyRacerRun[]
   polytrackRecords    PolytrackRecord[]
   goyaveSave          GoyaveSave?
@@ -2180,6 +2181,23 @@ model Notification {
   @@index([userId, isArchived])
   @@index([userId, createdAt])
   @@index([createdAt])
+}
+
+model PushSubscription {
+  id         String   @id @default(uuid())
+  userId     String
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([updatedAt])
 }
 
 // ============================================

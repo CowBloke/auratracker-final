@@ -38,4 +38,7 @@ export const config = {
   corsOrigin,
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   adminEmail: process.env.ADMIN_EMAIL || 'admin@auratracker.com',
+  webPushPublicKey: process.env.WEB_PUSH_PUBLIC_KEY || '',
+  webPushPrivateKey: process.env.WEB_PUSH_PRIVATE_KEY || '',
+  webPushSubject: process.env.WEB_PUSH_SUBJECT || 'mailto:admin@auratracker.com',
 };

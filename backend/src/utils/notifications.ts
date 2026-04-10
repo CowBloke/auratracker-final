@@ -1,4 +1,5 @@
 import { prisma, io } from '../server.js';
+import { sendWebPushForNotification } from './webPush.js';
 
 export type NotificationType =
   | 'AURA_RECEIVED'
@@ -113,6 +114,17 @@ export async function createNotification(opts: CreateNotificationOptions) {
   });
 
   emitNotificationCreated(notification);
+
+  const serialized = serializeNotification(notification);
+  void sendWebPushForNotification({
+    id: serialized.id,
+    userId: serialized.userId,
+    title: serialized.title,
+    body: serialized.body,
+    link: serialized.link,
+    icon: serialized.icon,
+    data: serialized.data,
+  }).catch(() => {});
 
   return notification;
 }

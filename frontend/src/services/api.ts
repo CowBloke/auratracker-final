@@ -3203,6 +3203,14 @@ export interface NotificationsResponse {
   totalPages: number;
 }
 
+export interface BrowserPushSubscription {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
 export const notificationsApi = {
   getAll: (params?: { page?: number; limit?: number; unreadOnly?: boolean; archived?: boolean }) =>
     api.get<NotificationsResponse>('/notifications', { params }),
@@ -3212,6 +3220,11 @@ export const notificationsApi = {
   archive: (id: string) => api.post<{ notification: Notification }>(`/notifications/${id}/archive`),
   remove: (id: string) => api.delete<{ success: boolean }>(`/notifications/${id}`),
   archiveAllRead: () => api.post<{ success: boolean }>('/notifications/archive-all-read'),
+  getPushPublicKey: () => api.get<{ enabled: boolean; publicKey: string | null }>('/notifications/push/public-key'),
+  subscribePush: (subscription: BrowserPushSubscription) =>
+    api.post<{ success: boolean }>('/notifications/push/subscribe', { subscription }),
+  unsubscribePush: (endpoint: string) =>
+    api.post<{ success: boolean }>('/notifications/push/unsubscribe', { endpoint }),
   /** Admin only */
   broadcast: (data: { title: string; body: string; link?: string; icon?: string }) =>
     api.post<{ success: boolean; sent: number }>('/notifications/broadcast', data),

@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
-import { notificationsApi, type Notification } from '@/services/api';
+import { notificationsApi, type BrowserPushSubscription, type Notification } from '@/services/api';
 import { playNotification } from '@/lib/sound-engine';
 
 interface NotificationContextValue {
@@ -59,6 +59,44 @@ function canUseBrowserNotifications() {
   return typeof window !== 'undefined' && 'Notification' in window;
 }
 
+function canUseWebPush() {
+  return (
+    typeof window !== 'undefined'
+    && 'serviceWorker' in navigator
+    && 'PushManager' in window
+    && canUseBrowserNotifications()
+  );
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+
+  return outputArray;
+}
+
+function toBrowserPushSubscription(subscription: PushSubscription): BrowserPushSubscription | null {
+  const subscriptionJson = subscription.toJSON();
+  const p256dh = subscriptionJson.keys?.p256dh;
+  const auth = subscriptionJson.keys?.auth;
+
+  if (!subscription.endpoint || !p256dh || !auth) return null;
+
+  return {
+    endpoint: subscription.endpoint,
+    keys: {
+      p256dh,
+      auth,
+    },
+  };
+}
+
 async function handleToastNotificationClick(notification: Notification) {
   if (!notification.link) return;
   if (!notification.isRead) {
@@ -86,6 +124,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [hasMore, setHasMore] = useState(true);
   const [hasMoreArchived, setHasMoreArchived] = useState(true);
   const socketRef = useRef<ReturnType<typeof import('../services/socket').initSocket> | null>(null);
+  const serviceWorkerRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const notificationsRef = useRef<Notification[]>([]);
   const archivedNotificationsRef = useRef<Notification[]>([]);
   const knownNotificationIdsRef = useRef<Set<string>>(new Set());
@@ -116,27 +155,37 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         : {}),
     });
     playNotification();
-
-    if (document.hidden && canUseBrowserNotifications() && Notification.permission === 'granted') {
-      const browserNotification = new Notification(notification.title, {
-        body: notification.body,
-        tag: `aura-notification-${notification.id}`,
-        icon: '/aura-icon.svg',
-        data: {
-          link: notification.link,
-          id: notification.id,
-        },
-      });
-
-      browserNotification.onclick = () => {
-        window.focus();
-        if (notification.link) {
-          void handleToastNotificationClick(notification);
-        }
-        browserNotification.close();
-      };
-    }
   }, []);
+
+  const syncWebPushSubscription = useCallback(async () => {
+    if (!user || !canUseWebPush()) return;
+    if (Notification.permission !== 'granted') return;
+
+    try {
+      const keyResponse = await notificationsApi.getPushPublicKey();
+      if (!keyResponse.data.enabled || !keyResponse.data.publicKey) return;
+
+      const registration = await navigator.serviceWorker.register('/push-sw.js');
+      serviceWorkerRegistrationRef.current = registration;
+
+      const readyRegistration = await navigator.serviceWorker.ready;
+      const existingSubscription = await readyRegistration.pushManager.getSubscription();
+
+      let activeSubscription = existingSubscription;
+      if (!activeSubscription) {
+        activeSubscription = await readyRegistration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(keyResponse.data.publicKey) as unknown as BufferSource,
+        });
+      }
+
+      const payload = toBrowserPushSubscription(activeSubscription);
+      if (!payload) return;
+      await notificationsApi.subscribePush(payload);
+    } catch (error) {
+      console.error('Failed to sync web push subscription:', error);
+    }
+  }, [user]);
 
   const applyNotificationUpdate = useCallback((notification: Notification) => {
     setNotifications((prev) => (
@@ -186,12 +235,24 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     if (permission === 'granted') {
       toast.success('Notifications activees.');
+      void syncWebPushSubscription();
     } else if (permission === 'denied') {
       toast.error('Notifications bloquees par le navigateur.');
+
+      try {
+        const registration = serviceWorkerRegistrationRef.current ?? await navigator.serviceWorker.getRegistration('/push-sw.js');
+        const activeSubscription = await registration?.pushManager.getSubscription();
+        if (activeSubscription?.endpoint) {
+          await notificationsApi.unsubscribePush(activeSubscription.endpoint);
+          await activeSubscription.unsubscribe();
+        }
+      } catch {
+        // Ignore cleanup failures.
+      }
     }
 
     return permission;
-  }, []);
+  }, [syncWebPushSubscription]);
 
   const fetchNotifications = useCallback(
     async (opts: { reset?: boolean } = {}) => {
@@ -266,7 +327,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     setBrowserNotificationSupported(true);
     setBrowserNotificationPermission(Notification.permission);
-  }, [user?.id]);
+
+    if (Notification.permission === 'granted') {
+      void syncWebPushSubscription();
+    }
+  }, [syncWebPushSubscription, user?.id]);
 
   useEffect(() => {
     if (!user) return;

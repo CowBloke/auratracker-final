@@ -6,6 +6,7 @@ import {
   emitNotificationUpdated,
   serializeNotification,
 } from '../utils/notifications.js';
+import { getWebPushPublicKey, isWebPushConfigured } from '../utils/webPush.js';
 
 const router = Router();
 
@@ -14,6 +15,104 @@ const PAGE_SIZE = 20;
 function serialize(n: any) {
   return serializeNotification(n);
 }
+
+interface PushSubscriptionPayload {
+  endpoint?: string;
+  keys?: {
+    p256dh?: string;
+    auth?: string;
+  };
+}
+
+function isValidSubscriptionPayload(subscription: PushSubscriptionPayload | null | undefined) {
+  if (!subscription || typeof subscription.endpoint !== 'string') return false;
+  if (!subscription.endpoint.trim()) return false;
+  if (!subscription.keys || typeof subscription.keys !== 'object') return false;
+  if (typeof subscription.keys.p256dh !== 'string' || !subscription.keys.p256dh.trim()) return false;
+  if (typeof subscription.keys.auth !== 'string' || !subscription.keys.auth.trim()) return false;
+  return true;
+}
+
+interface ValidPushSubscriptionPayload {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
+router.get('/push/public-key', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    if (!isWebPushConfigured()) {
+      return res.json({ enabled: false, publicKey: null });
+    }
+
+    return res.json({ enabled: true, publicKey: getWebPushPublicKey() });
+  } catch (error) {
+    console.error('Get web push public key error:', error);
+    return res.status(500).json({ error: 'Failed to get public key' });
+  }
+});
+
+router.post('/push/subscribe', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    if (!isWebPushConfigured()) {
+      return res.status(503).json({ error: 'WEB_PUSH_NOT_CONFIGURED' });
+    }
+
+    const subscription = (req.body as { subscription?: PushSubscriptionPayload })?.subscription;
+    if (!isValidSubscriptionPayload(subscription)) {
+      return res.status(400).json({ error: 'INVALID_SUBSCRIPTION' });
+    }
+    const validSubscription = subscription as ValidPushSubscriptionPayload;
+
+    await prisma.pushSubscription.upsert({
+      where: { endpoint: validSubscription.endpoint },
+      create: {
+        userId: req.user.id,
+        endpoint: validSubscription.endpoint,
+        p256dh: validSubscription.keys.p256dh,
+        auth: validSubscription.keys.auth,
+        userAgent: req.get('user-agent') ?? null,
+      },
+      update: {
+        userId: req.user.id,
+        p256dh: validSubscription.keys.p256dh,
+        auth: validSubscription.keys.auth,
+        userAgent: req.get('user-agent') ?? null,
+      },
+    });
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Subscribe web push error:', error);
+    return res.status(500).json({ error: 'Failed to save subscription' });
+  }
+});
+
+router.post('/push/unsubscribe', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const endpoint = typeof (req.body as { endpoint?: unknown })?.endpoint === 'string'
+      ? (req.body as { endpoint?: string }).endpoint
+      : null;
+
+    if (endpoint && endpoint.trim()) {
+      await prisma.pushSubscription.deleteMany({
+        where: { userId: req.user.id, endpoint: endpoint.trim() },
+      });
+      return res.json({ success: true });
+    }
+
+    return res.status(400).json({ error: 'ENDPOINT_REQUIRED' });
+  } catch (error) {
+    console.error('Unsubscribe web push error:', error);
+    return res.status(500).json({ error: 'Failed to delete subscription' });
+  }
+});
 
 // ─── GET /notifications ───────────────────────────────────────────────────────
 // ?page=1&limit=20&unreadOnly=false&archived=false
