@@ -1,6 +1,11 @@
 import dotenv from 'dotenv';
 
+const currentNodeEnv = process.env.NODE_ENV || 'development';
+
+// Load base .env first (commonly used in local dev), then merge env-specific values
+// without overriding already-defined keys.
 dotenv.config();
+dotenv.config({ path: `.env.${currentNodeEnv}` });
 
 const rawCorsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
@@ -32,7 +37,7 @@ const corsOrigin = expandAuratrackerOrigins(rawCorsOrigins);
 
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv: currentNodeEnv,
   jwtSecret: process.env.JWT_SECRET || 'fallback-secret',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   corsOrigin,

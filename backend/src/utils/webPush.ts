@@ -20,6 +20,8 @@ if (webPushConfigured) {
     config.webPushPublicKey,
     config.webPushPrivateKey,
   );
+} else {
+  console.warn('[web-push] Disabled: WEB_PUSH_PUBLIC_KEY / WEB_PUSH_PRIVATE_KEY are missing.');
 }
 
 export function isWebPushConfigured() {
