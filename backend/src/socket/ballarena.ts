@@ -334,10 +334,10 @@ async function endGame(
       const losers = game.players.filter((p) => p.userId !== winnerId);
       const resolvedWinnerReward = { ...winnerReward, money: resolveMoneyReward(winner.userId, winnerReward.money) };
       const resolvedLoserRewards = new Map(losers.map((loser) => [loser.userId, { ...loserReward, money: resolveMoneyReward(loser.userId, loserReward.money) }]));
-      const cappedWinnerReward = await applyDailyGameRewardCaps(prisma, winner.userId, resolvedWinnerReward);
+      const cappedWinnerReward = await applyDailyGameRewardCaps(prisma, winner.userId, 'ball_arena', resolvedWinnerReward);
       const cappedLoserRewards = new Map(await Promise.all(
         losers.map(async (loser) => {
-          const capped = await applyDailyGameRewardCaps(prisma, loser.userId, resolvedLoserRewards.get(loser.userId) ?? loserReward);
+          const capped = await applyDailyGameRewardCaps(prisma, loser.userId, 'ball_arena', resolvedLoserRewards.get(loser.userId) ?? loserReward);
           return [loser.userId, {
             aura: capped?.appliedAura ?? 0,
             money: capped?.appliedMoney ?? 0,
@@ -408,7 +408,7 @@ async function endGame(
       const cappedDrawRewards = await Promise.all(
         game.players.map(async (p) => {
           const baseReward = { aura: drawReward.aura, money: resolveMoneyReward(p.userId, drawReward.money) };
-          const capped = await applyDailyGameRewardCaps(prisma, p.userId, baseReward);
+          const capped = await applyDailyGameRewardCaps(prisma, p.userId, 'ball_arena', baseReward);
           return {
             userId: p.userId,
             reward: {

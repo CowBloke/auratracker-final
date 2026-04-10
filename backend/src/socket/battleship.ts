@@ -182,8 +182,8 @@ async function endGame(game: BattleshipGame, io: Server, winnerId: string) {
 
   // Update user balances and stats
   try {
-    const cappedWinnerReward = await applyDailyGameRewardCaps(prisma, winnerId, resolvedWinnerReward);
-    const cappedLoserReward = await applyDailyGameRewardCaps(prisma, loser.userId, resolvedLoserReward);
+    const cappedWinnerReward = await applyDailyGameRewardCaps(prisma, winnerId, 'battleship', resolvedWinnerReward);
+    const cappedLoserReward = await applyDailyGameRewardCaps(prisma, loser.userId, 'battleship', resolvedLoserReward);
     finalWinnerReward = {
       aura: cappedWinnerReward?.appliedAura ?? 0,
       money: cappedWinnerReward?.appliedMoney ?? 0,

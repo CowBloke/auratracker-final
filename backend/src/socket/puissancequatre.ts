@@ -272,8 +272,8 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
       const loserIsHuman = loser.userId !== AI_PLAYER_ID;
       const resolvedWinnerReward = { ...winnerReward, money: winnerIsHuman ? resolveMoneyReward(winner.userId, winnerReward.money) : winnerReward.money };
       const resolvedLoserReward = { ...loserReward, money: loserIsHuman ? resolveMoneyReward(loser.userId, loserReward.money) : loserReward.money };
-      const cappedWinnerReward = winnerIsHuman ? await applyDailyGameRewardCaps(prisma, winnerId, resolvedWinnerReward) : null;
-      const cappedLoserReward = loserIsHuman ? await applyDailyGameRewardCaps(prisma, loser.userId, resolvedLoserReward) : null;
+      const cappedWinnerReward = winnerIsHuman ? await applyDailyGameRewardCaps(prisma, winnerId, 'puissance_4', resolvedWinnerReward) : null;
+      const cappedLoserReward = loserIsHuman ? await applyDailyGameRewardCaps(prisma, loser.userId, 'puissance_4', resolvedLoserReward) : null;
       const finalWinnerReward = {
         aura: cappedWinnerReward?.appliedAura ?? 0,
         money: cappedWinnerReward?.appliedMoney ?? 0,
@@ -329,7 +329,7 @@ async function endGame(game: P4Game, io: Server, winnerId: string | null) {
     } else {
       const cappedDrawRewards = await Promise.all(
         humanPlayers.map(async (p) => {
-          const capped = await applyDailyGameRewardCaps(prisma, p.userId, {
+          const capped = await applyDailyGameRewardCaps(prisma, p.userId, 'puissance_4', {
             aura: drawReward.aura,
             money: resolveMoneyReward(p.userId, drawReward.money),
           });

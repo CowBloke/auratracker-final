@@ -909,7 +909,7 @@ async function endGame(game: BombPartyGame, io: Server) {
 
       // Update user balance
       const reward = rewards[player.userId] ?? { aura: 0, money: 0 };
-      const cappedReward = await applyDailyGameRewardCaps(prisma, player.userId, reward);
+      const cappedReward = await applyDailyGameRewardCaps(prisma, player.userId, 'bombparty', reward);
       const resolvedReward = {
         aura: cappedReward?.appliedAura ?? 0,
         money: cappedReward?.appliedMoney ?? 0,

@@ -204,8 +204,8 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
       const loserIsHuman = loser.userId !== AI_PLAYER_ID;
       const resolvedWinnerReward = { ...winnerReward, money: winnerIsHuman ? winnerMoneyReward(winner.userId, winnerReward.money) : winnerReward.money };
       const resolvedLoserReward = { ...loserReward, money: loserIsHuman ? winnerMoneyReward(loser.userId, loserReward.money) : loserReward.money };
-      const cappedWinnerReward = winnerIsHuman ? await applyDailyGameRewardCaps(prisma, winnerId, resolvedWinnerReward) : null;
-      const cappedLoserReward = loserIsHuman ? await applyDailyGameRewardCaps(prisma, loser.userId, resolvedLoserReward) : null;
+      const cappedWinnerReward = winnerIsHuman ? await applyDailyGameRewardCaps(prisma, winnerId, 'morpion', resolvedWinnerReward) : null;
+      const cappedLoserReward = loserIsHuman ? await applyDailyGameRewardCaps(prisma, loser.userId, 'morpion', resolvedLoserReward) : null;
       const finalWinnerReward = {
         aura: cappedWinnerReward?.appliedAura ?? 0,
         money: cappedWinnerReward?.appliedMoney ?? 0,
@@ -260,7 +260,7 @@ async function endGame(game: MorpionGame, io: Server, winnerId: string | null) {
     } else {
       const cappedDrawRewards = await Promise.all(
         humanPlayers.map(async (player) => {
-          const capped = await applyDailyGameRewardCaps(prisma, player.userId, {
+          const capped = await applyDailyGameRewardCaps(prisma, player.userId, 'morpion', {
             aura: drawReward.aura,
             money: winnerMoneyReward(player.userId, drawReward.money),
           });

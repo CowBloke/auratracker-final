@@ -354,11 +354,11 @@ async function endGame(game: UnoGame, io: Server, winnerId: string) {
     const boostPercents = await getActiveClanMoneyBoostPercentsForUsers(game.players.map((player) => player.userId));
     const resolveMoneyReward = (userId: string, base: number) => base + Math.floor(base * ((boostPercents.get(userId) ?? 0) / 100));
     const resolvedWinReward = { ...winReward, money: resolveMoneyReward(winner.userId, winReward.money) };
-    const cappedWinReward = await applyDailyGameRewardCaps(prisma, winnerId, resolvedWinReward);
+    const cappedWinReward = await applyDailyGameRewardCaps(prisma, winnerId, 'uno', resolvedWinReward);
     const cappedLossRewards = await Promise.all(
       others.map(async (other) => {
         const resolvedLossReward = { ...lossReward, money: resolveMoneyReward(other.userId, lossReward.money) };
-        const capped = await applyDailyGameRewardCaps(prisma, other.userId, resolvedLossReward);
+        const capped = await applyDailyGameRewardCaps(prisma, other.userId, 'uno', resolvedLossReward);
         return {
           userId: other.userId,
           reward: {
