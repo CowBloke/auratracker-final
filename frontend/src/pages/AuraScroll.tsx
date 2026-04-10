@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import {
+  ArrowLeft,
   Heart,
   MessageCircle,
   Share2,
@@ -26,7 +27,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -659,6 +660,7 @@ function PostCard({
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AuraScroll() {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<AuraScrollPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -737,6 +739,14 @@ export default function AuraScroll() {
     setPosts((prev) => prev.map((p, i) => i === index ? { ...p, liked, likeCount } : p));
   };
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate('/dashboard');
+  };
+
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
@@ -752,6 +762,13 @@ export default function AuraScroll() {
   if (posts.length === 0) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-6 z-50">
+        <button
+          onClick={handleBack}
+          className="absolute top-4 left-4 bg-black/40 backdrop-blur-md rounded-full px-3 py-2 border border-white/10 text-white text-sm font-medium hover:bg-black/60 transition-colors flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Retour
+        </button>
         <div className="text-6xl">🎬</div>
         <div className="text-center space-y-2">
           <h2 className="text-white text-2xl font-bold">Aura Scroll</h2>
@@ -823,6 +840,13 @@ export default function AuraScroll() {
       {/* Top header */}
       <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-4 z-40 pointer-events-none">
         <div className="flex items-center gap-2 pointer-events-auto">
+          <button
+            onClick={handleBack}
+            className="bg-black/40 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10 text-white text-sm font-medium hover:bg-black/60 transition-colors flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Retour
+          </button>
           <div className="bg-black/40 backdrop-blur-md rounded-full px-4 py-1.5 border border-white/10">
             <span className="text-white font-black text-sm tracking-tight">Aura Scroll</span>
             <span className="text-pink-400 text-sm font-black"> ✨</span>
