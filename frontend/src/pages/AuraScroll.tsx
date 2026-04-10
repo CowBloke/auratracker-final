@@ -183,7 +183,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
                       {mediaType === 'VIDEO' ? 'Clique pour upload une vidéo (MP4, WebM, MOV)' : 'Clique pour upload des photos'}
                     </p>
                     <p className="text-zinc-600 text-xs">
-                      {mediaType === 'VIDEO' ? 'Max 100 MB' : 'Max 10 MB par image · jusqu\'à 10'}
+                      {mediaType === 'VIDEO' ? 'Max 10 Mo' : 'Max 10 Mo par image · jusqu\'à 10'}
                     </p>
                   </>
                 )}

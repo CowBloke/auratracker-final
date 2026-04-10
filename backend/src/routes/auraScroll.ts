@@ -10,7 +10,7 @@ const router = Router();
 const UPLOAD_DIR_IMAGES = path.resolve('uploads', 'aura-scroll-images');
 const UPLOAD_DIR_VIDEOS = path.resolve('uploads', 'aura-scroll-videos');
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+const MAX_VIDEO_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGES_PER_POST = 10;
 const POSTS_PER_PAGE = 10;
 
