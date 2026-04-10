@@ -6930,6 +6930,7 @@ export default function Admin() {
                   <SelectItem value="USER">{ROLE_LABELS.USER}</SelectItem>
                   <SelectItem value="BETA_TESTER">{ROLE_LABELS.BETA_TESTER}</SelectItem>
                   <SelectItem value="FISCAL_INSPECTOR">{ROLE_LABELS.FISCAL_INSPECTOR}</SelectItem>
+                  <SelectItem value="JUDGE">{ROLE_LABELS.JUDGE}</SelectItem>
                   <SelectItem value="ADMIN">{ROLE_LABELS.ADMIN}</SelectItem>
                   <SelectItem value="SUPER_ADMIN">{ROLE_LABELS.SUPER_ADMIN}</SelectItem>
                 </SelectContent>
