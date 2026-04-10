@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 interface SocketWarning {
   id: string;
   type: 'AVERTISSEMENT' | 'AMENDE';
+  title?: string;
   message: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH';
   amount?: number | null;
@@ -16,9 +17,13 @@ interface SocketWarning {
   createdAt: string;
 }
 
+type WarningQueueItem = UserPendingWarning & {
+  customTitle?: string | null;
+};
+
 export default function AdminWarningModal() {
   const [loading, setLoading] = useState(true);
-  const [warnings, setWarnings] = useState<UserPendingWarning[]>([]);
+  const [warnings, setWarnings] = useState<WarningQueueItem[]>([]);
   const [index, setIndex] = useState(0);
   const [acknowledging, setAcknowledging] = useState(false);
   const { socket } = useSocketBase();
@@ -26,7 +31,7 @@ export default function AdminWarningModal() {
   const loadPendingWarnings = useCallback(async () => {
     try {
       const res = await usersApi.getPendingWarnings();
-      setWarnings(res.data.warnings || []);
+      setWarnings((res.data.warnings || []).map((warning) => ({ ...warning, customTitle: null })));
       setIndex(0);
     } catch {
       // Ignore errors to avoid blocking UI
@@ -44,9 +49,10 @@ export default function AdminWarningModal() {
     if (!socket) return;
 
     const handleNewWarning = (warning: SocketWarning) => {
-      const newWarning: UserPendingWarning = {
+      const newWarning: WarningQueueItem = {
         id: warning.id,
         type: warning.type,
+        customTitle: warning.title || null,
         message: warning.message,
         severity: warning.severity,
         amount: warning.amount,
@@ -166,7 +172,7 @@ export default function AdminWarningModal() {
             </div>
             <div>
               <DialogTitle className={config.color}>
-                {config.label}
+                {currentWarning.customTitle || config.label}
                 {isAmende && currentWarning.amount && (
                   <span className="block text-xl font-bold text-red-500">
                     {currentWarning.amount}

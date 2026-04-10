@@ -32,6 +32,7 @@ import {
   Users,
   X,
   Zap,
+  BellRing,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -232,8 +233,12 @@ export function InboxDropdown() {
   const {
     notifications,
     unreadCount,
+    browserNotificationSupported,
+    browserNotificationPermission,
+    isIosBrowser,
     loading,
     hasMore,
+    requestBrowserNotificationPermission,
     fetchNotifications,
     markRead,
     markAllRead,
@@ -366,6 +371,31 @@ export function InboxDropdown() {
 
           {/* List */}
           <div className="max-h-[min(28rem,65vh)] overflow-y-auto px-2 py-2" onScroll={handleScroll}>
+            {browserNotificationSupported && browserNotificationPermission !== 'granted' ? (
+              <div className="mb-2 rounded-xl border border-border/50 bg-muted/25 px-3 py-2">
+                <div className="flex items-start gap-2">
+                  <BellRing className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium text-foreground">Activer les notifications systeme</p>
+                    <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">
+                      {isIosBrowser
+                        ? "Sur iOS: ajoute l'app a l'ecran d'accueil, puis active les notifications."
+                        : 'Active les notifications du navigateur pour recevoir les alertes meme en arriere-plan.'}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-6 rounded-full px-2.5 text-[10px]"
+                    onClick={() => void requestBrowserNotificationPermission()}
+                  >
+                    Activer
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             {loading && notifications.length === 0 ? (
               <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
                 {t('common_loading')}

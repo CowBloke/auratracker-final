@@ -816,9 +816,17 @@ export default function MessagesPage() {
     () => sortedLawFirms.find((entry) => entry.id === selectedLawFirmId) ?? null,
     [selectedLawFirmId, sortedLawFirms],
   );
+  const unavailableLawyerIds = useMemo(() => {
+    if (!courtCase) return new Set<string>();
+    return new Set(
+      (courtCase.parties ?? [])
+        .filter((party) => party.userId !== assignedLawyer?.id)
+        .map((party) => party.userId),
+    );
+  }, [assignedLawyer?.id, courtCase]);
   const selectedLawFirmLawyers = useMemo(
-    () => selectedLawFirm?.lawyers ?? [],
-    [selectedLawFirm],
+    () => (selectedLawFirm?.lawyers ?? []).filter((lawyer) => !unavailableLawyerIds.has(lawyer.userId)),
+    [selectedLawFirm, unavailableLawyerIds],
   );
   const assignedLawyerProfile = useMemo(() => {
     if (!assignedLawyer) return null;
@@ -1197,10 +1205,11 @@ export default function MessagesPage() {
         : { type: 'PUBLIC_DEFENDER' });
       setCourtCase(response.data.courtCase);
       setShowRepresentationDialog(false);
-      await Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false, false) : Promise.resolve()]);
+      void Promise.all([refreshConversations(), selectedIdSafe ? loadConversation(selectedIdSafe, false, false) : Promise.resolve()]).catch(() => {});
       toast({ title: representationType === 'PRIVATE_LAWYER' ? 'Representation mise a jour' : 'Defenseur public demande' });
-    } catch {
-      toast({ title: 'Representation impossible', variant: 'destructive' });
+    } catch (error: any) {
+      const apiError = typeof error?.response?.data?.error === 'string' ? error.response.data.error : null;
+      toast({ title: 'Representation impossible', description: apiError ?? undefined, variant: 'destructive' });
     } finally {
       setRepresentationSubmitting(false);
     }
@@ -1861,7 +1870,11 @@ export default function MessagesPage() {
                           <p className="mt-1 text-xs text-muted-foreground">{selectedLawFirm.description || 'Cabinet disponible pour cette affaire.'}</p>
                         </div>
                         <div className="space-y-2">
-                          {selectedLawFirmLawyers.map((lawyer) => (
+                          {selectedLawFirmLawyers.length === 0 ? (
+                            <div className="rounded-xl border border-border/40 bg-background/70 px-3 py-3 text-xs text-muted-foreground">
+                              Aucun avocat disponible dans ce cabinet pour ce dossier.
+                            </div>
+                          ) : selectedLawFirmLawyers.map((lawyer) => (
                             <button
                               key={lawyer.userId}
                               type="button"

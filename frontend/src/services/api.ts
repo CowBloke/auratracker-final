@@ -2159,6 +2159,12 @@ export interface FiscalUser {
   } | null;
 }
 
+export interface FiscalInspectorSettings {
+  fundBalance: number;
+  paymentSource: 'ACCOUNT' | 'FONDS_DU_FISC';
+  fundRatePercent: number;
+}
+
 export interface PendingSanction {
   id: string;
   requestedByRole: 'JUDGE' | 'FISCAL_INSPECTOR';
@@ -3661,7 +3667,9 @@ export const justiceApi = {
 
 export const sanctionsApi = {
   getFiscalUsers: () =>
-    api.get<{ users: FiscalUser[] }>('/admin/fiscal/users'),
+    api.get<{ users: FiscalUser[]; fiscalInspectorSettings: FiscalInspectorSettings | null }>('/admin/fiscal/users'),
+  updateFiscalSettings: (data: { paymentSource: 'ACCOUNT' | 'FONDS_DU_FISC' }) =>
+    api.patch<{ settings: FiscalInspectorSettings }>('/admin/fiscal/settings', data),
   submitFiscalSanction: (data: { type: 'AMENDE' | 'PAYMENT'; targetUserId: string; beneficiaryUserId?: string; amount: number; message: string }) =>
     api.post<{ sanction: PendingSanction }>('/admin/fiscal-sanctions', data),
   listPendingSanctions: (status?: string) =>

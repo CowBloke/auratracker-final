@@ -83,6 +83,7 @@ const MAX_ITEM_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const ADMIN_CLAN_MAX_MEMBERS_LIMIT = 12;
 const LOG_EXPORT_BATCH_SIZE = 5000;
 const MAX_TAX_BRACKETS = 25;
+const FISC_FUND_RATE = 0.1;
 const SITE_RELOAD_TRIGGER_KEYS = new Set([
   'maintenance_enabled',
   'maintenance_message',
@@ -5869,6 +5870,13 @@ router.post('/businesses/creation-enabled', authMiddleware, async (req: AuthRequ
 
 router.get('/fiscal/users', authMiddleware, requireAdminOrFiscal, async (req: AuthRequest, res: Response) => {
   try {
+    const fiscalInspectorSettings = req.user?.isFiscalInspector
+      ? await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { fiscFundBalance: true, fiscalPaymentSource: true },
+        })
+      : null;
+
     const users = await prisma.user.findMany({
       where: { isApproved: true },
       select: {
@@ -5911,10 +5919,50 @@ router.get('/fiscal/users', authMiddleware, requireAdminOrFiscal, async (req: Au
       };
     });
 
-    res.json({ users: result });
+    res.json({
+      users: result,
+      fiscalInspectorSettings: fiscalInspectorSettings
+        ? {
+            fundBalance: fiscalInspectorSettings.fiscFundBalance,
+            paymentSource: fiscalInspectorSettings.fiscalPaymentSource,
+            fundRatePercent: FISC_FUND_RATE * 100,
+          }
+        : null,
+    });
   } catch (error) {
     console.error('Fiscal users list error:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des joueurs.' });
+  }
+});
+
+router.patch('/fiscal/settings', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user?.isFiscalInspector && !user?.isAdmin) {
+      return res.status(403).json({ error: 'Accès refusé.' });
+    }
+
+    const paymentSource = String(req.body?.paymentSource ?? '').trim().toUpperCase();
+    if (paymentSource !== 'ACCOUNT' && paymentSource !== 'FONDS_DU_FISC') {
+      return res.status(400).json({ error: 'Source de paiement invalide.' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { fiscalPaymentSource: paymentSource },
+      select: { fiscFundBalance: true, fiscalPaymentSource: true },
+    });
+
+    return res.json({
+      settings: {
+        fundBalance: updated.fiscFundBalance,
+        paymentSource: updated.fiscalPaymentSource,
+        fundRatePercent: FISC_FUND_RATE * 100,
+      },
+    });
+  } catch (error) {
+    console.error('Update fiscal settings error:', error);
+    return res.status(500).json({ error: 'Erreur lors de la mise à jour des paramètres fiscaux.' });
   }
 });
 
@@ -5926,6 +5974,22 @@ const PENDING_SANCTION_INCLUDE = {
   beneficiary: { select: { id: true, username: true } },
   reviewedBy: { select: { id: true, username: true } },
 } as const;
+
+const parseSanctionAmount = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Number.isInteger(value) ? value : null;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/[\s\u00A0\u202F']/g, '').replace(',', '.');
+    if (!normalized) return null;
+
+    const parsed = Number(normalized);
+    return Number.isInteger(parsed) ? parsed : null;
+  }
+
+  return null;
+};
 
 // List pending sanctions (admin only)
 router.get('/pending-sanctions', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
@@ -5953,14 +6017,15 @@ router.post('/fiscal-sanctions', authMiddleware, async (req: AuthRequest, res: R
     }
 
     const { type, targetUserId, beneficiaryUserId, amount, message } = req.body;
+    const parsedAmount = parseSanctionAmount(amount);
 
-    if (!type || !targetUserId || !amount || !message) {
+    if (!type || !targetUserId || parsedAmount == null || !message) {
       return res.status(400).json({ error: 'Champs requis manquants.' });
     }
     if (type !== 'AMENDE' && type !== 'PAYMENT') {
       return res.status(400).json({ error: 'Type de sanction invalide.' });
     }
-    if (typeof amount !== 'number' || amount <= 0) {
+    if (parsedAmount <= 0) {
       return res.status(400).json({ error: 'Montant invalide.' });
     }
     if (type === 'PAYMENT' && !beneficiaryUserId) {
@@ -5982,7 +6047,7 @@ router.post('/fiscal-sanctions', authMiddleware, async (req: AuthRequest, res: R
         type,
         targetUserId,
         beneficiaryUserId: beneficiaryUserId ?? null,
-        amount,
+        amount: parsedAmount,
         message: message.trim(),
       },
       include: PENDING_SANCTION_INCLUDE,
@@ -5995,7 +6060,7 @@ router.post('/fiscal-sanctions', authMiddleware, async (req: AuthRequest, res: R
         userId: admin.id,
         type: 'SYSTEM',
         title: '🏛️ Demande de sanction fiscale',
-        body: `L'agent du fisc ${user.username} souhaite ${type === 'AMENDE' ? `infliger une amende de ${amount}€ à` : `forcer un paiement de ${amount}€ de`} ${targetUser.username}.`,
+        body: `L'agent du fisc ${user.username} souhaite ${type === 'AMENDE' ? `infliger une amende de ${parsedAmount}€ à` : `forcer un paiement de ${parsedAmount}€ de`} ${targetUser.username}.`,
         data: { pendingSanctionId: sanction.id },
         link: `/admin?tab=inbox`,
         icon: 'landmark',
@@ -6020,41 +6085,49 @@ router.patch('/pending-sanctions/:id/approve', authMiddleware, requireAdmin, asy
       include: {
         targetUser: { select: { id: true, username: true, money: true } },
         beneficiary: { select: { id: true, username: true, money: true } },
-        requestedBy: { select: { id: true, username: true } },
+        requestedBy: { select: { id: true, username: true, fiscalPaymentSource: true } },
       },
     });
 
     if (!sanction) return res.status(404).json({ error: 'Sanction introuvable.' });
     if (sanction.status !== 'PENDING') return res.status(400).json({ error: 'Cette sanction a déjà été traitée.' });
 
+    const isFiscalInspectorSanction = sanction.requestedByRole === 'FISCAL_INSPECTOR';
+    const fiscFundGain = isFiscalInspectorSanction ? Math.floor(sanction.amount * FISC_FUND_RATE) : 0;
+    const fiscPopupMessage = `Motif : ${sanction.message}\nMontant prélevé : ${sanction.amount.toLocaleString('fr-FR')}€`;
+
     await prisma.$transaction(async (tx) => {
       // Execute the financial action
       if (sanction.type === 'AMENDE') {
-        // Deduct from target, create an AdminWarning record
+        // Deduct from target.
         await tx.user.update({
           where: { id: sanction.targetUserId },
           data: { money: { decrement: sanction.amount } },
-        });
-        await tx.adminWarning.create({
-          data: {
-            userId: sanction.targetUserId,
-            issuedById: req.user!.id,
-            type: 'AMENDE',
-            message: sanction.message,
-            severity: 'HIGH',
-            amount: sanction.amount,
-          },
         });
       } else if (sanction.type === 'PAYMENT' && sanction.beneficiaryUserId) {
-        // Transfer from target to beneficiary
+        // Transfer from target to beneficiary account (or fisc fund when configured).
         await tx.user.update({
           where: { id: sanction.targetUserId },
           data: { money: { decrement: sanction.amount } },
         });
-        await tx.user.update({
-          where: { id: sanction.beneficiaryUserId },
-          data: { money: { increment: sanction.amount } },
-        });
+
+        const shouldCreditFiscFund =
+          isFiscalInspectorSanction
+          && sanction.beneficiaryUserId === sanction.requestedById
+          && sanction.requestedBy.fiscalPaymentSource === 'FONDS_DU_FISC';
+
+        if (shouldCreditFiscFund) {
+          await tx.user.update({
+            where: { id: sanction.beneficiaryUserId },
+            data: { fiscFundBalance: { increment: sanction.amount } },
+          });
+        } else {
+          await tx.user.update({
+            where: { id: sanction.beneficiaryUserId },
+            data: { money: { increment: sanction.amount } },
+          });
+        }
+
         // Notify target
         await createNotification({
           userId: sanction.targetUserId,
@@ -6067,6 +6140,26 @@ router.patch('/pending-sanctions/:id/approve', authMiddleware, requireAdmin, asy
         }).catch(() => {});
       }
 
+      if (fiscFundGain > 0) {
+        await tx.user.update({
+          where: { id: sanction.requestedById },
+          data: { fiscFundBalance: { increment: fiscFundGain } },
+        });
+      }
+
+      if (sanction.type === 'AMENDE' || isFiscalInspectorSanction) {
+        await tx.adminWarning.create({
+          data: {
+            userId: sanction.targetUserId,
+            issuedById: req.user!.id,
+            type: 'AMENDE',
+            message: isFiscalInspectorSanction ? fiscPopupMessage : sanction.message,
+            severity: 'HIGH',
+            amount: sanction.amount,
+          },
+        });
+      }
+
       // Mark as approved
       await tx.pendingSanction.update({
         where: { id },
@@ -6074,12 +6167,13 @@ router.patch('/pending-sanctions/:id/approve', authMiddleware, requireAdmin, asy
       });
     });
 
-    // Emit warning to target if amende
-    if (sanction.type === 'AMENDE') {
+    // Emit warning popup to target.
+    if (sanction.type === 'AMENDE' || isFiscalInspectorSanction) {
       io.to(`user:${sanction.targetUserId}`).emit('admin:warning', {
         id: sanction.id,
         type: 'AMENDE',
-        message: sanction.message,
+        title: isFiscalInspectorSanction ? "l'inspecteur du fisc est passé" : undefined,
+        message: isFiscalInspectorSanction ? fiscPopupMessage : sanction.message,
         severity: 'HIGH',
         amount: sanction.amount,
         issuedBy: req.user!.username,

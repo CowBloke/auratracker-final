@@ -8,10 +8,14 @@ interface NotificationContextValue {
   notifications: Notification[];
   archivedNotifications: Notification[];
   unreadCount: number;
+  browserNotificationSupported: boolean;
+  browserNotificationPermission: NotificationPermission | 'unsupported';
+  isIosBrowser: boolean;
   loading: boolean;
   loadingArchived: boolean;
   hasMore: boolean;
   hasMoreArchived: boolean;
+  requestBrowserNotificationPermission: () => Promise<NotificationPermission | 'unsupported'>;
   fetchNotifications: (opts?: { reset?: boolean }) => Promise<void>;
   fetchArchived: (opts?: { reset?: boolean }) => Promise<void>;
   markRead: (id: string) => Promise<void>;
@@ -39,6 +43,22 @@ function mergeNotifications(list: Notification[], incoming: Notification[]) {
   return incoming.reduce((current, notification) => upsertNotification(current, notification), list);
 }
 
+function isIosDevice() {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const isiPhoneOrIPad = /iphone|ipad|ipod/.test(userAgent);
+  const isModernIPad = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return isiPhoneOrIPad || isModernIPad;
+}
+
+function isRunningStandalone() {
+  const nav = navigator as Navigator & { standalone?: boolean };
+  return window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
+}
+
+function canUseBrowserNotifications() {
+  return typeof window !== 'undefined' && 'Notification' in window;
+}
+
 async function handleToastNotificationClick(notification: Notification) {
   if (!notification.link) return;
   if (!notification.isRead) {
@@ -56,6 +76,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [archivedNotifications, setArchivedNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [browserNotificationSupported, setBrowserNotificationSupported] = useState(false);
+  const [browserNotificationPermission, setBrowserNotificationPermission] = useState<NotificationPermission | 'unsupported'>('unsupported');
+  const [isIosBrowser, setIsIosBrowser] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingArchived, setLoadingArchived] = useState(false);
   const [page, setPage] = useState(1);
@@ -100,6 +123,34 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setUnreadCount(res.data.count);
     } catch { /* silent */ }
   }, [user]);
+
+  const requestBrowserNotificationPermission = useCallback(async () => {
+    if (!canUseBrowserNotifications()) {
+      setBrowserNotificationSupported(false);
+      setBrowserNotificationPermission('unsupported');
+      return 'unsupported';
+    }
+
+    const ios = isIosDevice();
+    if (ios && !isRunningStandalone()) {
+      toast.error('Sur iOS, ajoute Aura Tracker a l\'ecran d\'accueil pour activer les notifications.');
+      setBrowserNotificationSupported(true);
+      setBrowserNotificationPermission(Notification.permission);
+      return Notification.permission;
+    }
+
+    const permission = await Notification.requestPermission();
+    setBrowserNotificationSupported(true);
+    setBrowserNotificationPermission(permission);
+
+    if (permission === 'granted') {
+      toast.success('Notifications activees.');
+    } else if (permission === 'denied') {
+      toast.error('Notifications bloquees par le navigateur.');
+    }
+
+    return permission;
+  }, []);
 
   const fetchNotifications = useCallback(
     async (opts: { reset?: boolean } = {}) => {
@@ -151,11 +202,30 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     setNotifications([]);
     setArchivedNotifications([]);
     setUnreadCount(0);
+    setBrowserNotificationSupported(false);
+    setBrowserNotificationPermission('unsupported');
+    setIsIosBrowser(false);
     setPage(1);
     setArchivedPage(1);
     setHasMore(true);
     setHasMoreArchived(true);
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const ios = isIosDevice();
+    setIsIosBrowser(ios);
+
+    if (!canUseBrowserNotifications()) {
+      setBrowserNotificationSupported(false);
+      setBrowserNotificationPermission('unsupported');
+      return;
+    }
+
+    setBrowserNotificationSupported(true);
+    setBrowserNotificationPermission(Notification.permission);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
@@ -190,6 +260,26 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               : {}),
           });
           playNotification();
+
+          if (document.hidden && canUseBrowserNotifications() && Notification.permission === 'granted') {
+            const browserNotification = new Notification(n.title, {
+              body: n.body,
+              tag: `aura-notification-${n.id}`,
+              icon: '/aura-icon.svg',
+              data: {
+                link: n.link,
+                id: n.id,
+              },
+            });
+
+            browserNotification.onclick = () => {
+              window.focus();
+              if (n.link) {
+                void handleToastNotificationClick(n);
+              }
+              browserNotification.close();
+            };
+          }
         }
       });
 
@@ -378,10 +468,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         notifications,
         archivedNotifications,
         unreadCount,
+        browserNotificationSupported,
+        browserNotificationPermission,
+        isIosBrowser,
         loading,
         loadingArchived,
         hasMore,
         hasMoreArchived,
+        requestBrowserNotificationPermission,
         fetchNotifications,
         fetchArchived,
         markRead,

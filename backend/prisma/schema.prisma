@@ -23,6 +23,8 @@ model User {
   isSuperAdmin            Boolean   @default(false)
   isBetaTester            Boolean   @default(false)
   isFiscalInspector       Boolean   @default(false)
+  fiscFundBalance         Int       @default(0)
+  fiscalPaymentSource     String    @default("ACCOUNT") // ACCOUNT | FONDS_DU_FISC
   isJudge                 Boolean   @default(false)
   isChatMuted             Boolean   @default(false)
   isApproved              Boolean   @default(false) // Account must be approved by admin before login

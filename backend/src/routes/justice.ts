@@ -567,6 +567,11 @@ router.post('/cases/:id/representation', authMiddleware, async (req: AuthRequest
       }
       const lawyerUserId = selectedLawyer.userId;
 
+      const conflictingParty = courtCase.parties.find((party) => party.userId === lawyerUserId && party.courtRole !== lawyerRole);
+      if (conflictingParty) {
+        return res.status(400).json({ error: 'Cet avocat participe déjà à cette affaire avec un autre rôle.' });
+      }
+
       // Check if already has a lawyer
       const existingLawyer = courtCase.parties.find((p) => p.courtRole === lawyerRole);
 
@@ -1081,14 +1086,29 @@ router.post('/cases/:caseId/pending-sanction', authMiddleware, async (req: AuthR
 
     const { caseId } = req.params;
     const { type, targetUserId, beneficiaryUserId, amount, message } = req.body;
+    const parsedAmount = (() => {
+      if (typeof amount === 'number' && Number.isFinite(amount)) {
+        return Number.isInteger(amount) ? amount : null;
+      }
 
-    if (!type || !targetUserId || !amount || !message) {
+      if (typeof amount === 'string') {
+        const normalized = amount.replace(/[\s\u00A0\u202F']/g, '').replace(',', '.');
+        if (!normalized) return null;
+
+        const parsed = Number(normalized);
+        return Number.isInteger(parsed) ? parsed : null;
+      }
+
+      return null;
+    })();
+
+    if (!type || !targetUserId || parsedAmount == null || !message) {
       return res.status(400).json({ error: 'Champs requis manquants.' });
     }
     if (type !== 'AMENDE' && type !== 'PAYMENT') {
       return res.status(400).json({ error: 'Type de sanction invalide.' });
     }
-    if (typeof amount !== 'number' || amount <= 0) {
+    if (parsedAmount <= 0) {
       return res.status(400).json({ error: 'Montant invalide.' });
     }
     if (type === 'PAYMENT' && !beneficiaryUserId) {
@@ -1129,7 +1149,7 @@ router.post('/cases/:caseId/pending-sanction', authMiddleware, async (req: AuthR
         type,
         targetUserId,
         beneficiaryUserId: beneficiaryUserId ?? null,
-        amount,
+        amount: parsedAmount,
         message: message.trim(),
         caseId,
       },

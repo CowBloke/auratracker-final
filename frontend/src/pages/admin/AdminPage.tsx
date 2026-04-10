@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, auraScrollApi, sanctionsApi, type AuraScrollPost, type FiscalUser, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, auraScrollApi, sanctionsApi, type AuraScrollPost, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -1808,6 +1808,10 @@ export default function Admin() {
   const [showFiscalSanctionModal, setShowFiscalSanctionModal] = useState(false);
   const [approvingSanction, setApprovingSanction] = useState<string | null>(null);
   const [rejectingSanction, setRejectingSanction] = useState<string | null>(null);
+  const [fiscalFundBalance, setFiscalFundBalance] = useState(0);
+  const [fiscalFundRatePercent, setFiscalFundRatePercent] = useState(10);
+  const [fiscalPaymentSource, setFiscalPaymentSource] = useState<FiscalInspectorSettings['paymentSource']>('ACCOUNT');
+  const [savingFiscalPaymentSource, setSavingFiscalPaymentSource] = useState(false);
 
   // Logs state
   const [logs, setLogs] = useState<ActivityLog[]>([]);
@@ -2728,10 +2732,32 @@ export default function Admin() {
       setLoadingFiscalUsers(true);
       const res = await sanctionsApi.getFiscalUsers();
       setFiscalUsers(res.data.users);
+      const settings = res.data.fiscalInspectorSettings;
+      if (settings) {
+        setFiscalFundBalance(settings.fundBalance);
+        setFiscalFundRatePercent(settings.fundRatePercent);
+        setFiscalPaymentSource(settings.paymentSource);
+      }
     } catch (error) {
       console.error('Failed to fetch fiscal users:', error);
     } finally {
       setLoadingFiscalUsers(false);
+    }
+  };
+
+  const saveFiscalPaymentSource = async (paymentSource: FiscalInspectorSettings['paymentSource']) => {
+    try {
+      setSavingFiscalPaymentSource(true);
+      const res = await sanctionsApi.updateFiscalSettings({ paymentSource });
+      setFiscalPaymentSource(res.data.settings.paymentSource);
+      setFiscalFundBalance(res.data.settings.fundBalance);
+      setFiscalFundRatePercent(res.data.settings.fundRatePercent);
+      showMessage('success', 'Source de paiement fiscale mise à jour');
+    } catch (error) {
+      console.error('Failed to update fiscal settings:', error);
+      showMessage('error', 'Erreur lors de la mise à jour de la source de paiement');
+    } finally {
+      setSavingFiscalPaymentSource(false);
     }
   };
 
@@ -5563,6 +5589,39 @@ export default function Admin() {
                 Demande de sanction
               </Button>
             </div>
+
+            {user?.isFiscalInspector && (
+              <div className="rounded-lg border border-border/60 p-4 bg-muted/20">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">Fonds du fisc</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{fiscalFundRatePercent}% de chaque sanction fiscale approuvée sont ajoutés à cette cagnotte.</p>
+                    <p className="text-lg font-semibold mt-2 tabular-nums">{fiscalFundBalance.toLocaleString('fr-FR')}€</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Source de paiement</p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant={fiscalPaymentSource === 'ACCOUNT' ? 'default' : 'outline'}
+                        disabled={savingFiscalPaymentSource}
+                        onClick={() => saveFiscalPaymentSource('ACCOUNT')}
+                      >
+                        Compte principal
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={fiscalPaymentSource === 'FONDS_DU_FISC' ? 'default' : 'outline'}
+                        disabled={savingFiscalPaymentSource}
+                        onClick={() => saveFiscalPaymentSource('FONDS_DU_FISC')}
+                      >
+                        Fonds du fisc
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {loadingFiscalUsers ? (
               <div className="flex items-center justify-center py-12">
