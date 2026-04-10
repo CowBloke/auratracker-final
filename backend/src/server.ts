@@ -51,6 +51,8 @@ import adsRoutes from './routes/ads.js';
 import messagesRoutes from './routes/messages.js';
 import justiceRoutes from './routes/justice.js';
 import auraVisionRoutes from './routes/auravision.js';
+import braquageLegalRoutes, { drawBraquageLegalSession } from './routes/braquageLegal.js';
+import auraScrollRoutes from './routes/auraScroll.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
