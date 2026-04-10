@@ -2320,94 +2320,112 @@ export default function MessagesPage() {
                                   )}
                                 </div>
                               )}
-                              {conversationReactionsEnabled ? (
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <div className={cn(
-                                      'group cursor-pointer select-text px-3 py-1.5 text-sm leading-5',
-                                      courtColors
-                                        ? cn(courtColors.bubble, 'rounded-2xl')
-                                        : isOwn
-                                          ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
-                                          : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
-                                      isBlocked && !isOwn && 'opacity-50'
-                                    )}>
-                                      {supportImages.length > 0 && (
-                                        <div className="mb-1.5 flex flex-wrap gap-1">
-                                          {supportImages.map((img, i) => {
-                                            const resolvedImageUrl = resolveImageUrl(img);
-                                            return (
-                                              <button
-                                                key={i}
-                                                type="button"
-                                                aria-label="Aperçu de l'image"
-                                                onClick={(event) => {
-                                                  event.stopPropagation();
-                                                  setCourtImagePreviewUrl(resolvedImageUrl);
-                                                }}
-                                                className="overflow-hidden rounded-lg"
-                                              >
-                                                <img src={resolvedImageUrl} alt="" className="h-16 w-16 rounded-lg object-cover transition-transform hover:scale-105" />
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
-                                      <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                                      <p className={cn('mt-0.5 text-right text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
-                                        {formatTime(msg.createdAt)}
-                                      </p>
-                                    </div>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-1.5" side={isOwn ? 'left' : 'right'} align="center">
-                                    <div className="flex items-center gap-0.5">
-                                      {REACTION_OPTIONS.map((emoji) => (
-                                        <button key={emoji} type="button"
-                                          onClick={() => handleReact(msg.id, emoji)}
-                                          className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors hover:bg-muted/60', reactions.find((r) => r.emoji === emoji)?.myReaction && 'bg-primary/15')}>
-                                          {emoji}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              ) : (
-                                <div className={cn(
-                                  'group select-text px-3 py-1.5 text-sm leading-5',
-                                  courtColors
-                                    ? cn(courtColors.bubble, 'rounded-2xl')
-                                    : isOwn
-                                      ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
-                                      : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
-                                  isBlocked && !isOwn && 'opacity-50'
-                                )}>
-                                  {supportImages.length > 0 && (
-                                    <div className="mb-1.5 flex flex-wrap gap-1">
-                                      {supportImages.map((img, i) => {
-                                        const resolvedImageUrl = resolveImageUrl(img);
-                                        return (
-                                          <button
-                                            key={i}
-                                            type="button"
-                                            aria-label="Aperçu de l'image"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              setCourtImagePreviewUrl(resolvedImageUrl);
-                                            }}
-                                            className="overflow-hidden rounded-lg"
-                                          >
-                                            <img src={resolvedImageUrl} alt="" className="h-16 w-16 rounded-lg object-cover transition-transform hover:scale-105" />
+                              <div className="relative">
+                                {conversationReactionsEnabled ? (
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <div className={cn(
+                                        'group cursor-pointer select-text px-3 py-1.5 text-sm leading-5',
+                                        courtColors
+                                          ? cn(courtColors.bubble, 'rounded-2xl')
+                                          : isOwn
+                                            ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
+                                            : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
+                                        isBlocked && !isOwn && 'opacity-50'
+                                      )}>
+                                        {supportImages.length > 0 && (
+                                          <div className="mb-1.5 flex flex-wrap gap-1">
+                                            {supportImages.map((img, i) => {
+                                              const resolvedImageUrl = resolveImageUrl(img);
+                                              return (
+                                                <button
+                                                  key={i}
+                                                  type="button"
+                                                  aria-label="Aperçu de l'image"
+                                                  onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    setCourtImagePreviewUrl(resolvedImageUrl);
+                                                  }}
+                                                  className="overflow-hidden rounded-lg"
+                                                >
+                                                  <img src={resolvedImageUrl} alt="" className="h-16 w-16 rounded-lg object-cover transition-transform hover:scale-105" />
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                        <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                                        <p className={cn('mt-0.5 text-right text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                          {formatTime(msg.createdAt)}
+                                        </p>
+                                      </div>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-1.5" side={isOwn ? 'left' : 'right'} align="center">
+                                      <div className="flex items-center gap-0.5">
+                                        {REACTION_OPTIONS.map((emoji) => (
+                                          <button key={emoji} type="button"
+                                            onClick={() => handleReact(msg.id, emoji)}
+                                            className={cn('flex h-8 w-8 items-center justify-center rounded-lg text-base transition-colors hover:bg-muted/60', reactions.find((r) => r.emoji === emoji)?.myReaction && 'bg-primary/15')}>
+                                            {emoji}
                                           </button>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                  <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                                  <p className={cn('mt-0.5 text-right text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
-                                    {formatTime(msg.createdAt)}
-                                  </p>
-                                </div>
-                              )}
+                                        ))}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                ) : (
+                                  <div className={cn(
+                                    'group select-text px-3 py-1.5 text-sm leading-5',
+                                    courtColors
+                                      ? cn(courtColors.bubble, 'rounded-2xl')
+                                      : isOwn
+                                        ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
+                                        : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
+                                    isBlocked && !isOwn && 'opacity-50'
+                                  )}>
+                                    {supportImages.length > 0 && (
+                                      <div className="mb-1.5 flex flex-wrap gap-1">
+                                        {supportImages.map((img, i) => {
+                                          const resolvedImageUrl = resolveImageUrl(img);
+                                          return (
+                                            <button
+                                              key={i}
+                                              type="button"
+                                              aria-label="Aperçu de l'image"
+                                              onClick={(event) => {
+                                                event.stopPropagation();
+                                                setCourtImagePreviewUrl(resolvedImageUrl);
+                                              }}
+                                              className="overflow-hidden rounded-lg"
+                                            >
+                                              <img src={resolvedImageUrl} alt="" className="h-16 w-16 rounded-lg object-cover transition-transform hover:scale-105" />
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                    <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                                    <p className={cn('mt-0.5 text-right text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                      {formatTime(msg.createdAt)}
+                                    </p>
+                                  </div>
+                                )}
+                                {canDeleteMessage && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (!window.confirm('Supprimer ce message ?')) return;
+                                      void handleDeleteMessage(msg.id);
+                                    }}
+                                    className={cn(
+                                      'absolute top-1/2 z-10 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-background/95 text-destructive/80 opacity-0 shadow-sm transition-all pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive',
+                                      isOwn ? 'right-full mr-2' : 'left-full ml-2',
+                                    )}
+                                    title="Supprimer le message"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
                               {conversationReactionsEnabled && reactions.length > 0 && (
                                 <div className={cn('mt-0.5 flex flex-wrap gap-1 px-1', isOwn ? 'justify-end' : 'justify-start')}>
                                   {reactions.map((r) => (
@@ -2419,26 +2437,6 @@ export default function MessagesPage() {
                                       <span className="font-medium">{r.count}</span>
                                     </button>
                                   ))}
-                                </div>
-                              )}
-                              {canDeleteMessage && (
-                                <div
-                                  className={cn(
-                                    'mt-0.5 px-1 opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto',
-                                    isOwn ? 'text-right' : 'text-left',
-                                  )}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (!window.confirm('Supprimer ce message ?')) return;
-                                      void handleDeleteMessage(msg.id);
-                                    }}
-                                    className="inline-flex h-6 w-6 items-center justify-center rounded-md text-destructive/80 transition-colors hover:bg-destructive/10 hover:text-destructive"
-                                    title="Supprimer le message"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
                                 </div>
                               )}
                             </div>
