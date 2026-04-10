@@ -88,14 +88,55 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const socketRef = useRef<ReturnType<typeof import('../services/socket').initSocket> | null>(null);
   const notificationsRef = useRef<Notification[]>([]);
   const archivedNotificationsRef = useRef<Notification[]>([]);
+  const knownNotificationIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     notificationsRef.current = notifications;
+    notifications.forEach((notification) => knownNotificationIdsRef.current.add(notification.id));
   }, [notifications]);
 
   useEffect(() => {
     archivedNotificationsRef.current = archivedNotifications;
+    archivedNotifications.forEach((notification) => knownNotificationIdsRef.current.add(notification.id));
   }, [archivedNotifications]);
+
+  const notifyIncomingNotification = useCallback((notification: Notification) => {
+    if (notification.data?.silent) return;
+
+    toast(notification.title, {
+      description: notification.body,
+      duration: 5000,
+      ...(notification.link
+        ? {
+            className: 'cursor-pointer',
+            onClick: () => {
+              void handleToastNotificationClick(notification);
+            },
+          }
+        : {}),
+    });
+    playNotification();
+
+    if (document.hidden && canUseBrowserNotifications() && Notification.permission === 'granted') {
+      const browserNotification = new Notification(notification.title, {
+        body: notification.body,
+        tag: `aura-notification-${notification.id}`,
+        icon: '/aura-icon.svg',
+        data: {
+          link: notification.link,
+          id: notification.id,
+        },
+      });
+
+      browserNotification.onclick = () => {
+        window.focus();
+        if (notification.link) {
+          void handleToastNotificationClick(notification);
+        }
+        browserNotification.close();
+      };
+    }
+  }, []);
 
   const applyNotificationUpdate = useCallback((notification: Notification) => {
     setNotifications((prev) => (
@@ -240,47 +281,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       socket.on('notification:new', (n: Notification) => {
         applyNotificationUpdate(n);
+        knownNotificationIdsRef.current.add(n.id);
         setUnreadCount((current) => {
           const alreadyTracked = notificationsRef.current.some((item) => item.id === n.id)
             || archivedNotificationsRef.current.some((item) => item.id === n.id);
           if (alreadyTracked) return current;
           return n.isRead || n.isArchived ? current : current + 1;
         });
-        if (!n.data?.silent) {
-          toast(n.title, {
-            description: n.body,
-            duration: 5000,
-            ...(n.link
-              ? {
-                  className: 'cursor-pointer',
-                  onClick: () => {
-                    void handleToastNotificationClick(n);
-                  },
-                }
-              : {}),
-          });
-          playNotification();
-
-          if (document.hidden && canUseBrowserNotifications() && Notification.permission === 'granted') {
-            const browserNotification = new Notification(n.title, {
-              body: n.body,
-              tag: `aura-notification-${n.id}`,
-              icon: '/aura-icon.svg',
-              data: {
-                link: n.link,
-                id: n.id,
-              },
-            });
-
-            browserNotification.onclick = () => {
-              window.focus();
-              if (n.link) {
-                void handleToastNotificationClick(n);
-              }
-              browserNotification.close();
-            };
-          }
-        }
+        notifyIncomingNotification(n);
       });
 
       socket.on('notification:updated', (n: Notification) => {
@@ -370,7 +378,62 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       socketRef.current?.off('notification:broadcast');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyNotificationUpdate, refreshCount, removeNotificationById, user?.id]);
+  }, [applyNotificationUpdate, notifyIncomingNotification, refreshCount, removeNotificationById, user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
+
+    const pollLatestNotifications = async () => {
+      try {
+        const res = await notificationsApi.getAll({ page: 1, limit: 20, archived: false });
+        if (cancelled) return;
+
+        const fetched = res.data.notifications;
+        if (fetched.length === 0) return;
+
+        const newNotifications = fetched.filter((notification) => !knownNotificationIdsRef.current.has(notification.id));
+
+        if (newNotifications.length > 0) {
+          setNotifications((prev) => mergeNotifications(prev, fetched));
+
+          for (const notification of newNotifications) {
+            knownNotificationIdsRef.current.add(notification.id);
+
+            // Avoid replaying very old notifications on reconnect/reload.
+            const createdAtMs = new Date(notification.createdAt).getTime();
+            const isRecent = Number.isFinite(createdAtMs) && createdAtMs > Date.now() - (5 * 60 * 1000);
+            if (isRecent && !notification.isRead && !notification.isArchived) {
+              notifyIncomingNotification(notification);
+            }
+          }
+
+          void refreshCount();
+        }
+      } catch {
+        // Silent fallback polling.
+      }
+    };
+
+    const interval = window.setInterval(() => {
+      void pollLatestNotifications();
+    }, 30000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void pollLatestNotifications();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [notifyIncomingNotification, refreshCount, user?.id]);
 
   const markRead = useCallback(async (id: string) => {
     try {
