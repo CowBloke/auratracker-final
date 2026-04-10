@@ -29,6 +29,7 @@ const SEED_ENTRIES = [
       { category: 'BUG_FIX', text: '**Pass quotidien · Double claim impossible** — La verification "deja reclamé aujourd\'hui" est maintenant effectuee a l interieur de la transaction Prisma, ce qui empeche deux requetes simultanees d accorder deux fois les recompenses.', order: 0 },
       { category: 'BUG_FIX', text: '**Duels · Defi annule quand la cible se deconnecte** — Quand le joueur cible d un defi se deconnecte, le defi est maintenant annule immediatement (timer stoppe, challenger notifie), au lieu de rester en attente jusqu a expiration.', order: 1 },
       { category: 'BUG_FIX', text: '**Notifications · Echecs journalises** — Les erreurs de creation de notification ne sont plus silencieusement ignorees ; elles apparaissent maintenant dans les logs serveur pour faciliter le debug.', order: 2 },
+      { category: 'BUG_FIX', text: '**Jeux · Plafond argent applique par jeu** — Le plafond journalier d argent des jeux est maintenant calcule par type de jeu (et non plus globalement sur tous les jeux), pour eviter qu un jeu bloque les gains des autres.', order: 3 },
     ],
   },
   {

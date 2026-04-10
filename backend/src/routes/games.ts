@@ -937,7 +937,7 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
       (isFirstRunToday ? bonusConfig.dailyFirstRunReward.aura : 0) +
       (isNewDailyBest ? bonusConfig.dailyBestBonus.aura : 0);
 
-    const cappedDailyRewards = await applyDailyGameRewardCaps(prisma, req.user.id, {
+    const cappedDailyRewards = await applyDailyGameRewardCaps(prisma, req.user.id, 'racer_daily', {
       aura: dailyAuraReward,
       money: dailyMoneyReward,
     });
@@ -1310,7 +1310,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       : 0;
 
     moneyReward += clanMoneyBoostBonus;
-    const cappedRewards = await applyDailyGameRewardCaps(prisma, req.user.id, {
+    const cappedRewards = await applyDailyGameRewardCaps(prisma, req.user.id, gameType, {
       aura: auraReward,
       money: moneyReward,
     });

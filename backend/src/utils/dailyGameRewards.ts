@@ -34,6 +34,34 @@ export type DailyGameRewardApplication = {
   nextResetAt: Date;
 };
 
+const DAILY_GAME_MONEY_TRACKER_KEY_PREFIX = 'daily_game_money_tracker';
+
+const buildDailyGameMoneyTrackerKey = (userId: string, gameType: string) => {
+  const normalizedGameType = gameType.trim().toLowerCase() || 'unknown';
+  return `${DAILY_GAME_MONEY_TRACKER_KEY_PREFIX}:${userId}:${normalizedGameType}`;
+};
+
+const parseDailyGameMoneyTrackerValue = (value: string | null): { dayKey: string; moneyGiven: number } | null => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as { dayKey?: unknown; moneyGiven?: unknown };
+    if (typeof parsed.dayKey !== 'string') {
+      return null;
+    }
+
+    const parsedMoney = Number.parseInt(String(parsed.moneyGiven ?? 0), 10);
+    return {
+      dayKey: parsed.dayKey,
+      moneyGiven: Number.isInteger(parsedMoney) && parsedMoney >= 0 ? parsedMoney : 0,
+    };
+  } catch {
+    return null;
+  }
+};
+
 const normalizeRewardAmount = (value?: number) => {
   if (!Number.isFinite(value ?? 0)) {
     return 0;
@@ -129,6 +157,7 @@ export const syncUserDailyGameRewardState = async (client: DailyGameRewardDbClie
 export const applyDailyGameRewardCaps = async (
   client: PrismaClient,
   userId: string,
+  gameType: string,
   reward: DailyGameRewardRequest,
 ): Promise<DailyGameRewardApplication | null> => {
   return client.$transaction(async (tx) => {
@@ -140,11 +169,22 @@ export const applyDailyGameRewardCaps = async (
 
     const requestedAura = normalizeRewardAmount(reward.aura);
     const requestedMoney = normalizeRewardAmount(reward.money);
+    const now = new Date();
+    const todayKey = getParisDayKey(now);
+    const trackerKey = buildDailyGameMoneyTrackerKey(userId, gameType);
+    const trackerSetting = await tx.gameSettings.findUnique({
+      where: { key: trackerKey },
+      select: { value: true },
+    });
+    const tracker = parseDailyGameMoneyTrackerValue(trackerSetting?.value ?? null);
+    const moneyGivenForGameToday = tracker?.dayKey === todayKey ? tracker.moneyGiven : 0;
+    const remainingMoneyForGame = Math.max(0, state.dailyGameMoneyLimit - moneyGivenForGameToday);
     const appliedAura = Math.min(requestedAura, state.remainingAura);
-    const appliedMoney = Math.min(requestedMoney, state.remainingMoney);
+    const appliedMoney = Math.min(requestedMoney, remainingMoneyForGame);
 
     if (appliedAura > 0 || appliedMoney > 0) {
-      await tx.user.update({
+      await Promise.all([
+        tx.user.update({
         where: { id: userId },
         data: {
           ...(appliedAura > 0
@@ -160,7 +200,24 @@ export const applyDailyGameRewardCaps = async (
               }
             : {}),
         },
-      });
+      }),
+        tx.gameSettings.upsert({
+          where: { key: trackerKey },
+          create: {
+            key: trackerKey,
+            value: JSON.stringify({
+              dayKey: todayKey,
+              moneyGiven: appliedMoney,
+            }),
+          },
+          update: {
+            value: JSON.stringify({
+              dayKey: todayKey,
+              moneyGiven: moneyGivenForGameToday + appliedMoney,
+            }),
+          },
+        }),
+      ]);
     }
 
     return {
@@ -168,7 +225,7 @@ export const applyDailyGameRewardCaps = async (
       appliedAura,
       appliedMoney,
       remainingAura: Math.max(0, state.remainingAura - appliedAura),
-      remainingMoney: Math.max(0, state.remainingMoney - appliedMoney),
+      remainingMoney: Math.max(0, remainingMoneyForGame - appliedMoney),
       nextResetAt: state.nextResetAt,
     };
   });

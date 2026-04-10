@@ -71,9 +71,13 @@ export function GameFullscreenToolbar({
             </span>
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <Coins className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Argent aujourd&apos;hui</span>
+              <span>Argent jeux aujourd&apos;hui</span>
               <span className="font-semibold tabular-nums text-foreground">
-                {dailyGameRewardState.dailyGameMoneyGiven}/{dailyGameRewardState.dailyGameMoneyLimit}
+                {dailyGameRewardState.dailyGameMoneyGiven}
+              </span>
+              <span>• cap/jeu</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {dailyGameRewardState.dailyGameMoneyLimit}
               </span>
             </span>
           </div>

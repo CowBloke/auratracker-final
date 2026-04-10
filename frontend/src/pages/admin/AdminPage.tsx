@@ -1178,6 +1178,8 @@ export default function Admin() {
   const [auraScrollFilter, setAuraScrollFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL'>('PENDING');
   const [auraScrollRejectReason, setAuraScrollRejectReason] = useState<Record<string, string>>({});
   const [auraScrollReviewingId, setAuraScrollReviewingId] = useState<string | null>(null);
+  const [auraScrollModalOpen, setAuraScrollModalOpen] = useState(false);
+  const [auraScrollModalPost, setAuraScrollModalPost] = useState<AuraScrollPost | null>(null);
   const [badgeForm, setBadgeForm] = useState<Partial<Badge>>({
     name: '', description: '', howToObtain: '',
     backgroundType: 'solid', backgroundColor: '#374151',
@@ -1436,11 +1438,25 @@ export default function Admin() {
       showMessage('success', status === 'APPROVED' ? 'Post approuvé !' : 'Post refusé.');
       setAuraScrollPendingPosts((prev) => prev.filter((p) => p.id !== id));
       setAuraScrollAllPosts((prev) => prev.map((p) => p.id === id ? { ...p, status } : p));
+      setAuraScrollModalPost((prev) => {
+        if (!prev || prev.id !== id) return prev;
+        return {
+          ...prev,
+          status,
+          rejectReason: status === 'REJECTED' ? (reason || null) : null,
+        };
+      });
+      setAuraScrollModalOpen(false);
     } catch {
       showMessage('error', 'Erreur lors de la modération.');
     } finally {
       setAuraScrollReviewingId(null);
     }
+  };
+
+  const openAuraScrollModerationModal = (post: AuraScrollPost) => {
+    setAuraScrollModalPost(post);
+    setAuraScrollModalOpen(true);
   };
 
   const handleApproveCustomBadge = async (id: string) => {
@@ -5575,8 +5591,8 @@ export default function Admin() {
               </div>
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
-                  <div className="text-sm font-medium">Plafond d'argent journalier</div>
-                  <div className="text-xs text-muted-foreground">Total maximum d'argent gagnable via les jeux avant le reset de minuit. Valeur par défaut: 1000.</div>
+                  <div className="text-sm font-medium">Plafond d'argent journalier (par jeu)</div>
+                  <div className="text-xs text-muted-foreground">Maximum d'argent gagnable par jeu avant le reset de minuit. Valeur par défaut: 1000.</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Input
@@ -9873,48 +9889,13 @@ export default function Admin() {
 
                         {/* Actions */}
                         <div className="flex gap-2 pt-1">
-                          {post.status === 'PENDING' && (
-                            <>
-                              <Button
-                                size="sm"
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-7"
-                                disabled={auraScrollReviewingId === post.id}
-                                onClick={() => handleAuraScrollStatus(post.id, 'APPROVED')}
-                              >
-                                {auraScrollReviewingId === post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approuver'}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="flex-1 text-xs h-7"
-                                disabled={auraScrollReviewingId === post.id}
-                                onClick={() => handleAuraScrollStatus(post.id, 'REJECTED')}
-                              >
-                                {auraScrollReviewingId === post.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Refuser'}
-                              </Button>
-                            </>
-                          )}
-                          {post.status === 'APPROVED' && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="flex-1 text-xs h-7"
-                              disabled={auraScrollReviewingId === post.id}
-                              onClick={() => handleAuraScrollStatus(post.id, 'REJECTED')}
-                            >
-                              Révoquer
-                            </Button>
-                          )}
-                          {post.status === 'REJECTED' && (
-                            <Button
-                              size="sm"
-                              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-7"
-                              disabled={auraScrollReviewingId === post.id}
-                              onClick={() => handleAuraScrollStatus(post.id, 'APPROVED')}
-                            >
-                              Approuver quand même
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            className="flex-1 text-xs h-7"
+                            onClick={() => openAuraScrollModerationModal(post)}
+                          >
+                            {post.status === 'PENDING' ? 'Modérer' : 'Voir la modération'}
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -9922,6 +9903,122 @@ export default function Admin() {
                 </div>
               );
             })()}
+
+            <Dialog
+              open={auraScrollModalOpen}
+              onOpenChange={(open) => {
+                setAuraScrollModalOpen(open);
+                if (!open) setAuraScrollModalPost(null);
+              }}
+            >
+              <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Modération Aura Scroll</DialogTitle>
+                  <DialogDescription>
+                    Vérifie le contenu puis valide ou refuse la publication.
+                  </DialogDescription>
+                </DialogHeader>
+
+                {auraScrollModalPost && (
+                  <div className="space-y-4">
+                    <div className="rounded-lg border border-border bg-muted/20 overflow-hidden">
+                      <div className="relative aspect-[9/16] max-h-[60vh] mx-auto bg-black">
+                        {auraScrollModalPost.mediaType === 'VIDEO' ? (
+                          <video
+                            src={`${(import.meta.env.VITE_API_URL || 'http://localhost:3000')}${auraScrollModalPost.mediaUrls[0]}`}
+                            className="h-full w-full object-contain"
+                            controls
+                            preload="metadata"
+                          />
+                        ) : (
+                          <img
+                            src={`${(import.meta.env.VITE_API_URL || 'http://localhost:3000')}${auraScrollModalPost.mediaUrls[0]}`}
+                            className="h-full w-full object-contain"
+                            alt="Aperçu du post"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground">{auraScrollModalPost.user.username}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(auraScrollModalPost.createdAt).toLocaleString('fr-FR')}</span>
+                        <span className={cn(
+                          'rounded-full px-2 py-0.5 text-[10px] font-semibold border',
+                          auraScrollModalPost.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                          auraScrollModalPost.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                          'bg-red-500/20 text-red-400 border-red-500/30'
+                        )}>
+                          {auraScrollModalPost.status === 'PENDING' ? 'En attente' : auraScrollModalPost.status === 'APPROVED' ? 'Approuvé' : 'Refusé'}
+                        </span>
+                      </div>
+
+                      {auraScrollModalPost.title && (
+                        <p className="text-sm font-medium text-foreground">{auraScrollModalPost.title}</p>
+                      )}
+                      {auraScrollModalPost.description && (
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{auraScrollModalPost.description}</p>
+                      )}
+                      {auraScrollModalPost.status === 'REJECTED' && auraScrollModalPost.rejectReason && (
+                        <p className="text-xs text-red-400 italic">Raison : {auraScrollModalPost.rejectReason}</p>
+                      )}
+                    </div>
+
+                    {auraScrollModalPost.status === 'PENDING' && (
+                      <Input
+                        placeholder="Raison de refus (optionnel)"
+                        value={auraScrollRejectReason[auraScrollModalPost.id] || ''}
+                        onChange={(e) => setAuraScrollRejectReason((prev) => ({ ...prev, [auraScrollModalPost.id]: e.target.value }))}
+                        className="text-sm"
+                      />
+                    )}
+
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setAuraScrollModalOpen(false)}>
+                        Fermer
+                      </Button>
+                      {auraScrollModalPost.status === 'PENDING' && (
+                        <>
+                          <Button
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            disabled={auraScrollReviewingId === auraScrollModalPost.id}
+                            onClick={() => handleAuraScrollStatus(auraScrollModalPost.id, 'APPROVED')}
+                          >
+                            {auraScrollReviewingId === auraScrollModalPost.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Approuver'}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            disabled={auraScrollReviewingId === auraScrollModalPost.id}
+                            onClick={() => handleAuraScrollStatus(auraScrollModalPost.id, 'REJECTED')}
+                          >
+                            {auraScrollReviewingId === auraScrollModalPost.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refuser'}
+                          </Button>
+                        </>
+                      )}
+                      {auraScrollModalPost.status === 'APPROVED' && (
+                        <Button
+                          variant="destructive"
+                          disabled={auraScrollReviewingId === auraScrollModalPost.id}
+                          onClick={() => handleAuraScrollStatus(auraScrollModalPost.id, 'REJECTED')}
+                        >
+                          Révoquer
+                        </Button>
+                      )}
+                      {auraScrollModalPost.status === 'REJECTED' && (
+                        <Button
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                          disabled={auraScrollReviewingId === auraScrollModalPost.id}
+                          onClick={() => handleAuraScrollStatus(auraScrollModalPost.id, 'APPROVED')}
+                        >
+                          Approuver quand même
+                        </Button>
+                      )}
+                    </DialogFooter>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         </TabsContent>
 

@@ -66,7 +66,7 @@ export const runDailyRacerRewards = async (
 
   for (const [index, winner] of winners.entries()) {
     const reward = DAILY_RACER_RANK_REWARDS[index];
-    const cappedReward = await applyDailyGameRewardCaps(prisma, winner.userId, reward);
+    const cappedReward = await applyDailyGameRewardCaps(prisma, winner.userId, 'racer_daily', reward);
     const appliedReward = {
       money: cappedReward?.appliedMoney ?? 0,
       aura: cappedReward?.appliedAura ?? 0,
