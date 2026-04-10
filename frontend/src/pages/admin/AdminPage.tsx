@@ -4871,7 +4871,7 @@ export default function Admin() {
                 {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['content', 'ads'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                    ['content', 'ads', 'aura-scroll'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                   )}>
                     <Package className="w-4 h-4 shrink-0" />
                     Contenu
@@ -4880,6 +4880,13 @@ export default function Admin() {
                   <div className={dropdownOuter}>
                     <div className={dropdownInner}>
                       {dropdownItemBtn('content', 'Objets', <Package className="w-3.5 h-3.5" />, () => setActiveTab('content'))}
+                      {dropdownItemBtn('aura-scroll', 'Aura Scroll', <Sparkles className="w-3.5 h-3.5" />, () => {
+                        setAuraScrollFilter('PENDING');
+                        setActiveTab('aura-scroll');
+                        fetchAuraScrollPending();
+                      },
+                        auraScrollPendingPosts.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">{auraScrollPendingPosts.length}</span> : undefined
+                      )}
                       {dropdownItemBtn('ads', 'Publicités', <Eye className="w-3.5 h-3.5" />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
                         pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-amber-600 text-white text-[11px] font-semibold leading-none">{pendingAds.length}</span> : undefined
                       )}
@@ -5243,6 +5250,32 @@ export default function Admin() {
 
             {/* ── Sidebar ── */}
             <div className="w-72 shrink-0 space-y-4 sticky top-4">
+
+              <Card className="border-amber-500/20 bg-gradient-to-b from-amber-950/20 to-transparent">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                    <CardDescription className="text-amber-300">Modération vidéo Aura Scroll</CardDescription>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Accepte ou refuse les posts photos/vidéos avant publication.
+                  </p>
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      setAuraScrollFilter('PENDING');
+                      setActiveTab('aura-scroll');
+                      fetchAuraScrollPending();
+                    }}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                    Ouvrir Aura Scroll{auraScrollPendingPosts.length > 0 ? ` (${auraScrollPendingPosts.length})` : ''}
+                  </Button>
+                </CardContent>
+              </Card>
 
               {/* Categories */}
               <Card>
