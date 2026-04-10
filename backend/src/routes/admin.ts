@@ -1140,7 +1140,12 @@ router.post('/ads/:id/approve', authMiddleware, requireAdmin, async (req: AuthRe
       type: 'SYSTEM',
       title: 'Publicite approuvee',
       body: `Ta publicite "${ad.title}" a ete approuvee et peut maintenant apparaitre sur le site.`,
-      data: { adId: ad.id, businessId: ad.businessId, status: 'APPROVED' },
+      data: {
+        adId: ad.id,
+        businessId: ad.businessId,
+        status: 'APPROVED',
+        pushIconUrl: ad.business.logoUrl ?? undefined,
+      },
       link: '/you?tab=publicites',
       icon: 'megaphone',
     }).catch(() => {});
@@ -1213,7 +1218,12 @@ router.post('/ads/:id/reject', authMiddleware, requireAdmin, async (req: AuthReq
       type: 'SYSTEM',
       title: 'Publicite rejetee',
       body: `Ta publicite "${ad.title}" a ete rejetee par l'administration.`,
-      data: { adId: ad.id, businessId: ad.businessId, status: 'REJECTED' },
+      data: {
+        adId: ad.id,
+        businessId: ad.businessId,
+        status: 'REJECTED',
+        pushIconUrl: ad.business.logoUrl ?? undefined,
+      },
       link: '/you?tab=publicites',
       icon: 'megaphone',
     }).catch(() => {});
@@ -1263,7 +1273,12 @@ router.delete('/ads/:id', authMiddleware, requireAdmin, async (req: AuthRequest,
       type: 'SYSTEM',
       title: 'Publicite supprimee',
       body: `Ta publicite "${ad.title}" a ete supprimee definitivement par l'administration.`,
-      data: { adId: ad.id, businessId: ad.businessId, status: 'DELETED' },
+      data: {
+        adId: ad.id,
+        businessId: ad.businessId,
+        status: 'DELETED',
+        pushIconUrl: ad.business.logoUrl ?? undefined,
+      },
       link: '/you?tab=publicites',
       icon: 'megaphone',
     }).catch(() => {});

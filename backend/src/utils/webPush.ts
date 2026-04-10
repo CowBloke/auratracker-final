@@ -43,12 +43,23 @@ function toPushSubscription(endpoint: string, p256dh: string, auth: string): Pus
 }
 
 function buildPayload(notification: PushNotificationPayload) {
+  const customIcon = typeof notification.data?.pushIconUrl === 'string'
+    ? notification.data.pushIconUrl
+    : null;
+  const customBadge = typeof notification.data?.pushBadgeUrl === 'string'
+    ? notification.data.pushBadgeUrl
+    : null;
+  const customImage = typeof notification.data?.pushImageUrl === 'string'
+    ? notification.data.pushImageUrl
+    : null;
+
   return JSON.stringify({
     title: notification.title,
     body: notification.body,
     link: notification.link,
-    icon: '/aura-icon.svg',
-    badge: '/aura-icon-white.svg',
+    icon: customIcon || '/aura-icon.svg',
+    badge: customBadge || '/aura-icon-white.svg',
+    image: customImage || undefined,
     tag: `aura-notification-${notification.id}`,
     data: {
       notificationId: notification.id,

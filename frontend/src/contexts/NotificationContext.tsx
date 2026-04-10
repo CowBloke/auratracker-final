@@ -3,6 +3,15 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
 import { notificationsApi, type BrowserPushSubscription, type Notification } from '@/services/api';
 import { playNotification } from '@/lib/sound-engine';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface NotificationContextValue {
   notifications: Notification[];
@@ -27,6 +36,8 @@ interface NotificationContextValue {
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
+const INSTALL_PROMPT_DECISION_KEY = 'aura.notifications.installPromptDecision';
+const INSTALL_PROMPT_PENDING_KEY = 'aura.notifications.installPromptPending';
 
 function sortNotifications(notifications: Notification[]) {
   return [...notifications].sort(
@@ -123,6 +134,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [archivedPage, setArchivedPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [hasMoreArchived, setHasMoreArchived] = useState(true);
+  const [showInstallPromptModal, setShowInstallPromptModal] = useState(false);
   const socketRef = useRef<ReturnType<typeof import('../services/socket').initSocket> | null>(null);
   const serviceWorkerRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const notificationsRef = useRef<Notification[]>([]);
@@ -254,6 +266,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return permission;
   }, [syncWebPushSubscription]);
 
+  const dismissInstallPromptModal = useCallback((decision: 'yes' | 'no') => {
+    localStorage.setItem(INSTALL_PROMPT_DECISION_KEY, decision);
+    localStorage.removeItem(INSTALL_PROMPT_PENDING_KEY);
+    setShowInstallPromptModal(false);
+  }, []);
+
+  const handleInstallPromptYes = useCallback(async () => {
+    await requestBrowserNotificationPermission();
+    dismissInstallPromptModal('yes');
+  }, [dismissInstallPromptModal, requestBrowserNotificationPermission]);
+
+  const handleInstallPromptNo = useCallback(() => {
+    dismissInstallPromptModal('no');
+  }, [dismissInstallPromptModal]);
+
   const fetchNotifications = useCallback(
     async (opts: { reset?: boolean } = {}) => {
       if (!user) return;
@@ -332,6 +359,46 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       void syncWebPushSubscription();
     }
   }, [syncWebPushSubscription, user?.id]);
+
+  useEffect(() => {
+    if (!user) {
+      setShowInstallPromptModal(false);
+      return;
+    }
+
+    if (!canUseBrowserNotifications()) {
+      setShowInstallPromptModal(false);
+      return;
+    }
+
+    if (Notification.permission !== 'default') {
+      setShowInstallPromptModal(false);
+      return;
+    }
+
+    const hasDecision = Boolean(localStorage.getItem(INSTALL_PROMPT_DECISION_KEY));
+    const pendingInstallPrompt = localStorage.getItem(INSTALL_PROMPT_PENDING_KEY) === '1';
+    const launchedAsInstalledApp = isRunningStandalone();
+
+    if (!hasDecision && (pendingInstallPrompt || launchedAsInstalledApp)) {
+      setShowInstallPromptModal(true);
+    }
+  }, [browserNotificationPermission, user?.id]);
+
+  useEffect(() => {
+    const handleAppInstalled = () => {
+      localStorage.setItem(INSTALL_PROMPT_PENDING_KEY, '1');
+      const hasDecision = Boolean(localStorage.getItem(INSTALL_PROMPT_DECISION_KEY));
+      if (!hasDecision && Notification.permission === 'default') {
+        setShowInstallPromptModal(true);
+      }
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -615,6 +682,24 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }}
     >
       {children}
+      <Dialog open={showInstallPromptModal} onOpenChange={(open) => { if (!open) handleInstallPromptNo(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Activer les notifications ?</DialogTitle>
+            <DialogDescription>
+              Tu viens d'installer l'app. Veux-tu recevoir les notifications importantes (publicites approuvees, messages systeme, etc.) ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleInstallPromptNo}>
+              Non
+            </Button>
+            <Button type="button" onClick={() => { void handleInstallPromptYes(); }}>
+              Oui
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </NotificationContext.Provider>
   );
 }
