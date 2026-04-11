@@ -40,7 +40,7 @@ export default function You() {
   }, [loadState]);
 
   const tab = params.get('tab');
-  const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' || tab === 'banques' ? tab : 'overview';
+  const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' || tab === 'banques' || tab === 'overview' ? tab : 'carte';
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
 
   if (maintenanceStatus.youLogoAdminOnly && !canBypassMaintenance) {

@@ -102,12 +102,12 @@ const gameItems = [
 ];
 
 const youNavItems = [
-  { tab: null,       label: t('sidebar_you_overview'), icon: LayoutDashboard },
+  { tab: 'carte',    label: t('sidebar_you_map'),      icon: Map            },
+  { tab: 'overview', label: t('sidebar_you_overview'), icon: LayoutDashboard },
   { tab: 'travail',  label: t('sidebar_you_work'),     icon: Briefcase      },
   { tab: 'social',   label: t('sidebar_you_social'),   icon: Users          },
   { tab: 'explore',  label: t('sidebar_you_explore'),  icon: BarChart3      },
   { tab: 'banques',  label: t('sidebar_you_banks'),    icon: Landmark       },
-  { tab: 'carte',    label: t('sidebar_you_map'),      icon: Map            },
   { tab: 'finance',  label: t('sidebar_you_finance'),  icon: Landmark       },
 ];
 
@@ -177,12 +177,10 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
             {/* You section nav */}
             {isOnYou && youNavItems.map(({ tab, label, icon: Icon }) => {
-              const href = tab ? `/you?tab=${tab}` : '/you';
+              const href = `/you?tab=${tab}`;
               const params = new URLSearchParams(location.search);
-              const currentTab = params.get('tab') ?? 'overview';
-              const isActive = tab === null
-                ? currentTab === 'overview' && location.pathname === '/you'
-                : currentTab === tab;
+              const currentTab = params.get('tab') ?? 'carte';
+              const isActive = currentTab === tab;
               return (
                 <SidebarMenuItem key={label}>
                   <SidebarMenuButton

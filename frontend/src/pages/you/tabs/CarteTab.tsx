@@ -157,10 +157,8 @@ function formatCoordinates(lon: number, lat: number): string {
 function BusinessInfoPanel({
   business,
   userId,
-  isAdmin,
   onClose,
   onPlace,
-  onOpenExplore,
   placementMode,
 }: {
   business: YouBusiness;
@@ -168,30 +166,22 @@ function BusinessInfoPanel({
   isAdmin: boolean;
   onClose: () => void;
   onPlace: () => void;
-  onOpenExplore: () => void;
   placementMode: boolean;
 }) {
   const navigate = useNavigate();
-  const editable = business.ownerId === userId || isAdmin;
+  const isOwner = business.ownerId === userId;
   const isPlaced = business.mapX != null && business.mapY != null;
-  const color = getBusinessPinColor(business.typeKey);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/30 bg-background/98 shadow-xl backdrop-blur-sm">
-      {/* Color band */}
-      <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${color}, ${color}88)` }} />
-
+    <div className="overflow-hidden rounded-xl border border-border bg-background shadow-xl">
       {/* Header */}
       <div className="flex items-start gap-3 p-4 pb-3">
-        <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl"
-          style={{ background: color + '18', color }}
-        >
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
           {TYPE_EMOJI[business.typeKey] ?? '📍'}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-tight text-foreground">{business.name}</p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{business.type?.label ?? business.typeKey}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{business.name}</p>
+          <p className="truncate text-xs text-muted-foreground">{business.type?.label ?? business.typeKey}</p>
           <p className="truncate text-xs text-muted-foreground">@{business.owner.username}</p>
         </div>
         <button
@@ -207,56 +197,53 @@ function BusinessInfoPanel({
         {business.verified && (
           <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[11px] text-emerald-600">Vérifié</Badge>
         )}
-        {business.ownerId === userId && (
+        {isOwner && (
           <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[11px] text-amber-700">À vous</Badge>
         )}
         {!isPlaced && (
-          <Badge variant="outline" className="border-orange-500/30 bg-orange-500/10 text-[11px] text-orange-600">À placer</Badge>
+          <Badge variant="secondary" className="text-[11px]">À placer</Badge>
         )}
       </div>
 
-      {/* Info grid */}
-      <div className="grid grid-cols-1 gap-px border-t border-border/40 bg-border/20">
-        <div className="bg-background px-4 py-2.5">
+      {/* Info rows */}
+      <div className="divide-y divide-border border-t border-border">
+        <div className="px-4 py-2.5">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Position</p>
-          <p className="mt-0.5 font-mono text-xs font-medium text-foreground">
+          <p className="mt-0.5 font-mono text-xs text-foreground">
             {isPlaced ? formatCoordinates(business.mapX!, business.mapY!) : '—'}
           </p>
         </div>
         {business.location && (
-          <div className="bg-background px-4 py-2.5">
+          <div className="px-4 py-2.5">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Repère</p>
-            <p className="mt-0.5 text-xs font-medium text-foreground">{business.location}</p>
+            <p className="mt-0.5 text-xs text-foreground">{business.location}</p>
           </div>
         )}
         {business.avgRating != null && business.ratingCount > 0 && (
-          <div className="bg-background px-4 py-2.5">
+          <div className="px-4 py-2.5">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Note</p>
-            <p className="mt-0.5 text-xs font-medium">
+            <p className="mt-0.5 text-xs">
               <span className="text-amber-500">★ {business.avgRating.toFixed(1)}</span>
-              <span className="ml-1 text-muted-foreground">({business.ratingCount} avis)</span>
+              <span className="ml-1.5 text-muted-foreground">{business.ratingCount} avis</span>
             </p>
           </div>
         )}
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-2 border-t border-border/40 p-3">
-        {editable && (
+      <div className="flex flex-wrap gap-2 border-t border-border p-3">
+        {isOwner && (
           <Button size="sm" className="flex-1" onClick={onPlace}>
-            {placementMode ? 'Annuler le placement' : isPlaced ? 'Déplacer' : 'Placer sur la carte'}
+            {placementMode ? 'Annuler' : isPlaced ? 'Déplacer' : 'Placer sur la carte'}
           </Button>
         )}
-        <Button size="sm" variant="outline" className="flex-1" onClick={onOpenExplore}>
-          <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-          Explorer
-        </Button>
         <Button
           size="sm"
-          variant="ghost"
-          className="w-full text-muted-foreground hover:text-foreground"
-          onClick={() => navigate('/you?tab=explore')}
+          variant="outline"
+          className="flex-1"
+          onClick={() => navigate(`/you?tab=explore&business=${business.id}`)}
         >
+          <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
           Voir le détail
         </Button>
       </div>
@@ -584,8 +571,7 @@ export function CarteTab({
                   </div>
                   {unplacedBusinesses.map((business) => {
                     const isSelected = selectedBusinessId === business.id;
-                    const canPlace = business.ownerId === userId || isAdmin;
-                    const color = getBusinessPinColor(business.typeKey);
+                    const isOwner = business.ownerId === userId;
                     const isBeingPlaced = placingBusinessId === business.id;
 
                     return (
@@ -595,28 +581,30 @@ export function CarteTab({
                         onClick={() => handleSelectBusiness(business)}
                         className={cn(
                           'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors',
-                          isSelected ? 'bg-primary/10' : 'hover:bg-muted/50',
+                          isSelected ? 'bg-accent' : 'hover:bg-muted/50',
                         )}
                       >
-                        <div
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm"
-                          style={{ background: color + '20', color }}
-                        >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-sm">
                           {TYPE_EMOJI[business.typeKey] ?? '📍'}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-[12px] font-medium text-foreground">{business.name}</div>
-                          <div className="truncate text-[10px] text-muted-foreground">{business.type?.label ?? business.typeKey}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-[10px] text-muted-foreground">{business.type?.label ?? business.typeKey}</span>
+                            {business.avgRating != null && business.ratingCount > 0 && (
+                              <span className="shrink-0 text-[10px] text-amber-500">★ {business.avgRating.toFixed(1)}</span>
+                            )}
+                          </div>
                         </div>
-                        {canPlace && (
+                        {isOwner && (
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleStartPlacement(business.id); }}
                             className={cn(
                               'shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors',
                               isBeingPlaced
-                                ? 'bg-sky-500/15 text-sky-600 hover:bg-sky-500/25'
-                                : 'bg-amber-500/10 text-amber-700 hover:bg-amber-500/20',
+                                ? 'bg-primary/15 text-primary hover:bg-primary/25'
+                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
                             )}
                           >
                             {isBeingPlaced ? 'Annuler' : 'Placer'}
@@ -639,7 +627,6 @@ export function CarteTab({
                   </div>
                   {placedBusinesses.map((business) => {
                     const isSelected = selectedBusinessId === business.id;
-                    const color = getBusinessPinColor(business.typeKey);
 
                     return (
                       <button
@@ -648,25 +635,22 @@ export function CarteTab({
                         onClick={() => handleSelectBusiness(business)}
                         className={cn(
                           'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors',
-                          isSelected ? 'bg-primary/10' : 'hover:bg-muted/50',
+                          isSelected ? 'bg-accent' : 'hover:bg-muted/50',
                         )}
                       >
-                        <div
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm"
-                          style={{ background: color + '20', color }}
-                        >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-sm">
                           {TYPE_EMOJI[business.typeKey] ?? '📍'}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-[12px] font-medium text-foreground">{business.name}</div>
-                          <div className="truncate text-[10px] text-muted-foreground">@{business.owner.username}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-[10px] text-muted-foreground">@{business.owner.username}</span>
+                            {business.avgRating != null && business.ratingCount > 0 && (
+                              <span className="shrink-0 text-[10px] text-amber-500">★ {business.avgRating.toFixed(1)}</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="shrink-0 text-right">
-                          {isSelected && <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />}
-                          {business.avgRating != null && business.ratingCount > 0 && (
-                            <div className="text-[10px] text-amber-500">★ {business.avgRating.toFixed(1)}</div>
-                          )}
-                        </div>
+                        {isSelected && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
                       </button>
                     );
                   })}
@@ -691,7 +675,6 @@ export function CarteTab({
             placementMode={placingBusinessId === selectedBusiness.id}
             onClose={() => { setSelectedBusinessId(null); setPlacingBusinessId(null); }}
             onPlace={() => handleStartPlacement(selectedBusiness.id)}
-            onOpenExplore={() => navigate('/you?tab=explore')}
           />
         </div>
       )}

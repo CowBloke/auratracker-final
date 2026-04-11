@@ -124,7 +124,8 @@
       "Bash(curl -s https://api.github.com/repos/Open-GD/OpenGD/releases)",
       "Read(//private/tmp/SubwaySurfers_check/**)",
       "Read(//private/tmp/SubwaySurfers_check/src/**)",
-      "Read(//private/tmp/SubwaySurfers_check/static/**)"
+      "Read(//private/tmp/SubwaySurfers_check/static/**)",
+      "Bash(grep -v \"api\\\\|comment\\\\|CarteTab\\\\|presence\\\\|//\")"
     ]
   },
   "outputStyle": "default"
