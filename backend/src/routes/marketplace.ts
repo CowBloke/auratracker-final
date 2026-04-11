@@ -657,7 +657,11 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       let activatedYouAdblockUntil: Date | null = null;
 
       if (isYouAdblock) {
-        const rawDuration = Number.parseInt(String(effect.durationMinutes ?? effect.durationMins ?? effect.durationHours * 60 ?? DEFAULT_YOU_ADBLOCK_DURATION_MINUTES), 10);
+        const durationMinutesValue =
+          effect.durationMinutes ??
+          effect.durationMins ??
+          (effect.durationHours != null ? effect.durationHours * 60 : DEFAULT_YOU_ADBLOCK_DURATION_MINUTES);
+        const rawDuration = Number.parseInt(String(durationMinutesValue), 10);
         const durationMinutes = Number.isFinite(rawDuration)
           ? Math.min(Math.max(rawDuration, 1), MAX_YOU_ADBLOCK_DURATION_MINUTES)
           : DEFAULT_YOU_ADBLOCK_DURATION_MINUTES;
