@@ -496,7 +496,7 @@ export function CarteTab({
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
+            <div className="grid min-h-0 gap-3 overflow-hidden lg:grid-rows-[auto_minmax(0,1fr)]">
               <div className="rounded-3xl border border-border/60 bg-muted/30 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Sélection</p>
@@ -524,7 +524,7 @@ export function CarteTab({
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/60 bg-muted/30 p-4">
+              <div className="flex min-h-0 flex-col rounded-3xl border border-border/60 bg-muted/30 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Résultats</p>
@@ -535,7 +535,7 @@ export function CarteTab({
                   </Badge>
                 </div>
 
-                <ScrollArea className="mt-3 flex-1 pr-1">
+                <ScrollArea className="mt-3 min-h-0 flex-1 pr-1">
                   <div className="space-y-2 pr-2">
                     {visibleBusinesses.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
