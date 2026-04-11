@@ -52,7 +52,8 @@ export default function Layout() {
   const keyboardShortcuts = useKeyboardShortcuts();
   const isMessagesPage = location.pathname === '/messages';
   const isAuraScrollPage = location.pathname.startsWith('/aura-scroll');
-  const isCartePage = location.pathname === '/you' && new URLSearchParams(location.search).get('tab') === 'carte';
+  const youTab = new URLSearchParams(location.search).get('tab');
+  const isCartePage = location.pathname === '/you' && (youTab === 'carte' || youTab === null);
 
   useEffect(() => {
     if (connected) {

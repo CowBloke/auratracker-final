@@ -48,7 +48,9 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
 const SOURCE_ID = 'you-businesses-source';
 const LAYER_ID = 'you-businesses-layer';
+const CLUSTER_LAYER_ID = 'you-businesses-cluster';
 const PIN_SIZE = 40;
+const CLUSTER_SIZE = 44;
 
 function uniqueBusinesses(data: YouState): YouBusiness[] {
   const map = new Map<string, YouBusiness>();
@@ -144,6 +146,46 @@ function createPinImageData(emoji: string, color: string, size: number, selected
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(emoji, cx, cy + 1);
+
+  return ctx.getImageData(0, 0, size, size);
+}
+
+function createClusterImageData(count: number, size: number): ImageData {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size * 0.4;
+
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetY = 2;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#6366f1';
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const label = count >= 1000 ? `${Math.floor(count / 1000)}k` : String(count);
+  const fontSize = label.length > 2 ? Math.floor(r * 0.7) : Math.floor(r * 0.85);
+  ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'white';
+  ctx.fillText(label, cx, cy + 1);
 
   return ctx.getImageData(0, 0, size, size);
 }
@@ -316,8 +358,13 @@ export function CarteTab({
 
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
-    // Fallback for missing images: use a grey pin
+    // Generate cluster or fallback images on demand
     map.on('styleimagemissing', (e: any) => {
+      if (e.id.startsWith('cluster-')) {
+        const count = parseInt(e.id.slice('cluster-'.length), 10);
+        if (!map.hasImage(e.id)) map.addImage(e.id, createClusterImageData(count, CLUSTER_SIZE));
+        return;
+      }
       const fallbackData = createPinImageData('📍', '#64748b', PIN_SIZE, false);
       if (!map.hasImage(e.id)) map.addImage(e.id, fallbackData);
     });
@@ -338,13 +385,35 @@ export function CarteTab({
       });
 
       if (!map.getSource(SOURCE_ID)) {
-        map.addSource(SOURCE_ID, { type: 'geojson', data: sourceData });
+        map.addSource(SOURCE_ID, {
+          type: 'geojson',
+          data: sourceData,
+          cluster: true,
+          clusterMaxZoom: 9,
+          clusterRadius: 50,
+        });
 
-        // Soft glow halo (circle layer, rendered behind the symbol)
+        // Cluster bubble (icon generated on demand via styleimagemissing)
+        map.addLayer({
+          id: CLUSTER_LAYER_ID,
+          type: 'symbol',
+          source: SOURCE_ID,
+          filter: ['has', 'point_count'],
+          layout: {
+            'icon-image': ['concat', 'cluster-', ['get', 'point_count']],
+            'icon-size': ['step', ['get', 'point_count'], 1, 10, 1.15, 50, 1.3],
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+            'icon-anchor': 'center',
+          },
+        });
+
+        // Soft glow halo — individual pins only
         map.addLayer({
           id: `${LAYER_ID}-glow`,
           type: 'circle',
           source: SOURCE_ID,
+          filter: ['!', ['has', 'point_count']],
           paint: {
             'circle-radius': ['case', ['boolean', ['get', 'selected'], false], 22, 16],
             'circle-color': ['get', 'pinColor'],
@@ -353,11 +422,12 @@ export function CarteTab({
           },
         });
 
-        // Emoji pin icons
+        // Emoji pin icons — individual pins only
         map.addLayer({
           id: LAYER_ID,
           type: 'symbol',
           source: SOURCE_ID,
+          filter: ['!', ['has', 'point_count']],
           layout: {
             'icon-image': [
               'case',
@@ -399,7 +469,7 @@ export function CarteTab({
 
     const handleMapClick = async (event: maplibregl.MapMouseEvent) => {
       if (!placingBusinessId) return;
-      if (map.queryRenderedFeatures(event.point, { layers: [LAYER_ID] }).length > 0) return;
+      if (map.queryRenderedFeatures(event.point, { layers: [LAYER_ID, CLUSTER_LAYER_ID] }).length > 0) return;
 
       const target = allBusinesses.find((b) => b.id === placingBusinessId);
       if (!target || (!isAdmin && target.ownerId !== userId)) {
@@ -448,16 +518,33 @@ export function CarteTab({
       if (pin) map.flyTo({ center: [pin.longitude, pin.latitude], zoom: Math.max(map.getZoom(), 2.4), speed: 0.9 });
     };
 
+    const handleClusterClick = async (event: maplibregl.MapLayerMouseEvent) => {
+      if (placingBusinessId) return;
+      const features = map.queryRenderedFeatures(event.point, { layers: [CLUSTER_LAYER_ID] });
+      if (!features.length) return;
+      const clusterId = features[0].properties?.cluster_id;
+      const source = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource;
+      const zoom = await source.getClusterExpansionZoom(clusterId);
+      const coords = (features[0].geometry as GeoJSON.Point).coordinates as [number, number];
+      map.easeTo({ center: coords, zoom, duration: 500 });
+    };
+
     const handleMouseEnter = () => { map.getCanvas().style.cursor = 'pointer'; };
     const handleMouseLeave = () => { map.getCanvas().style.cursor = placingBusinessId ? 'crosshair' : ''; };
 
     map.on('click', LAYER_ID, handlePinClick);
+    map.on('click', CLUSTER_LAYER_ID, handleClusterClick);
     map.on('mouseenter', LAYER_ID, handleMouseEnter);
     map.on('mouseleave', LAYER_ID, handleMouseLeave);
+    map.on('mouseenter', CLUSTER_LAYER_ID, handleMouseEnter);
+    map.on('mouseleave', CLUSTER_LAYER_ID, handleMouseLeave);
     return () => {
       map.off('click', LAYER_ID, handlePinClick);
+      map.off('click', CLUSTER_LAYER_ID, handleClusterClick);
       map.off('mouseenter', LAYER_ID, handleMouseEnter);
       map.off('mouseleave', LAYER_ID, handleMouseLeave);
+      map.off('mouseenter', CLUSTER_LAYER_ID, handleMouseEnter);
+      map.off('mouseleave', CLUSTER_LAYER_ID, handleMouseLeave);
     };
   }, [mapReady, pins, placingBusinessId]);
 
