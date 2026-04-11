@@ -276,6 +276,7 @@ export interface YouBusinessShareProposal {
   createdAt: string;
   updatedAt: string;
   decidedAt: string | null;
+  cancelAvailableAt: string;
   direction: 'sent' | 'received';
   investor: Omit<YouPlayer, 'alreadyInRelationship'>;
   owner: Omit<YouPlayer, 'alreadyInRelationship'>;
@@ -394,6 +395,8 @@ export interface YouBusiness {
   description: string | null;
   logoUrl: string | null;
   location: string | null;
+  mapX: number | null;
+  mapY: number | null;
   foundedAt: string;
   foundedLabel: string;
   hiring: boolean;
@@ -610,6 +613,8 @@ export const youApi = {
     api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/buyout-offers/${offerId}/respond`, { decision }),
   respondToShareholderProposal: (proposalId: string, decision: 'accept' | 'reject') =>
     api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/shareholder-proposals/${proposalId}/respond`, { decision }),
+  cancelShareholderProposal: (proposalId: string) =>
+    api.delete<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/shareholder-proposals/${proposalId}`),
   cancelBuyoutOffer: (offerId: string) =>
     api.delete<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/buyout-offers/${offerId}`),
   createRelationship: (targetUserId: string, type: 'FRIEND' | 'DATING' = 'DATING') =>
@@ -636,8 +641,8 @@ export const youApi = {
     api.post<{ decision: string }>(`/you/cheating-accusations/${accusationId}/respond`, { decision }),
   deleteBusiness: (businessId: string) =>
     api.delete<{ result: { id: string } }>(`/you/businesses/${businessId}`),
-  updateBusinessProfile: (businessId: string, data: { name?: string; description?: string | null; logoUrl?: string | null }) =>
-    api.patch<{ result: { name: string; description: string | null; logoUrl: string | null } }>(`/you/businesses/${businessId}/profile`, data),
+  updateBusinessProfile: (businessId: string, data: { name?: string; description?: string | null; logoUrl?: string | null; mapX?: number | null; mapY?: number | null }) =>
+    api.patch<{ result: { name: string; description: string | null; logoUrl: string | null; mapX: number | null; mapY: number | null } }>(`/you/businesses/${businessId}/profile`, data),
   buyLivretEpargneUpgrade: (businessId: string) =>
     api.post<{ result: { livretEpargneUnlocked: boolean } }>(`/you/businesses/${businessId}/upgrades/livret-epargne`, {}),
   setLoanRate: (businessId: string, rate: number) =>

@@ -39,6 +39,12 @@ const safeJsonParse = <T>(value: string | null | undefined, fallback: T): T => {
   }
 };
 
+const BUSINESS_SHARE_PROPOSAL_CANCEL_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
+
+function getBusinessShareProposalCancelAvailableAt(createdAt: Date) {
+  return new Date(createdAt.getTime() + BUSINESS_SHARE_PROPOSAL_CANCEL_DELAY_MS);
+}
+
 const USER_PREVIEW_SELECT = {
   id: true,
   username: true,
@@ -440,6 +446,7 @@ function serializeShareholder(shareholder: any) {
 }
 
 function serializeShareProposal(proposal: any, viewerId: string) {
+  const cancelAvailableAt = getBusinessShareProposalCancelAvailableAt(proposal.createdAt);
   return {
     id: proposal.id,
     businessId: proposal.businessId,
@@ -451,6 +458,7 @@ function serializeShareProposal(proposal: any, viewerId: string) {
     createdAt: proposal.createdAt.toISOString(),
     updatedAt: proposal.updatedAt.toISOString(),
     decidedAt: proposal.decidedAt ? proposal.decidedAt.toISOString() : null,
+    cancelAvailableAt: cancelAvailableAt.toISOString(),
     direction: proposal.investorId === viewerId ? 'sent' : 'received',
     investor: proposal.investor,
     owner: proposal.owner,
@@ -670,6 +678,8 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     description: business.description,
     logoUrl: business.logoUrl ?? null,
     location: business.location,
+    mapX: business.mapX ?? null,
+    mapY: business.mapY ?? null,
     foundedAt: business.createdAt.toISOString(),
     foundedLabel: business.createdAt.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
     hiring: business.hiring,
@@ -3396,6 +3406,95 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
   };
 }
 
+export async function cancelBusinessShareProposal(userId: string, proposalId: string) {
+  const proposal = await prisma.businessShareProposal.findUnique({
+    where: { id: proposalId },
+    include: {
+      business: {
+        select: {
+          id: true,
+          name: true,
+          typeKey: true,
+          ownerId: true,
+        },
+      },
+      investor: { select: USER_PREVIEW_SELECT },
+      owner: { select: USER_PREVIEW_SELECT },
+    },
+  });
+
+  if (!proposal) {
+    throw new Error('SHARE_PROPOSAL_NOT_FOUND');
+  }
+
+  if (proposal.investorId !== userId) {
+    throw new Error('SHARE_PROPOSAL_CANCEL_FORBIDDEN');
+  }
+
+  if (proposal.status !== 'PENDING') {
+    throw new Error('SHARE_PROPOSAL_ALREADY_RESOLVED');
+  }
+
+  const cancelAvailableAt = getBusinessShareProposalCancelAvailableAt(proposal.createdAt);
+  if (Date.now() < cancelAvailableAt.getTime()) {
+    throw new Error('SHARE_PROPOSAL_CANCEL_TOO_EARLY');
+  }
+
+  const cancelledAt = new Date();
+  const cancelled = await prisma.$transaction(async (tx) => {
+    const updated = await tx.businessShareProposal.update({
+      where: { id: proposal.id },
+      data: {
+        status: 'CANCELLED',
+        decidedAt: cancelledAt,
+      },
+    });
+
+    await tx.user.update({
+      where: { id: userId },
+      data: { money: { increment: proposal.amount } },
+    });
+
+    return updated;
+  });
+
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  io.to(`user:${userId}`).emit('you:business-share-proposal-updated', { businessId: proposal.businessId, proposalId: proposal.id, status: cancelled.status });
+  io.to(`user:${proposal.ownerId}`).emit('you:business-share-proposal-updated', { businessId: proposal.businessId, proposalId: proposal.id, status: cancelled.status });
+
+  await Promise.allSettled([
+    createNotification({
+      userId,
+      type: 'MONEY_RECEIVED',
+      title: 'Proposition annulee',
+      body: `Ta proposition pour ${proposal.business.name} a ete annulee et ${proposal.amount.toLocaleString('fr-FR')} money t a ete rendu.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+    createNotification({
+      userId: proposal.ownerId,
+      type: 'SYSTEM',
+      title: 'Proposition actionnaire annulee',
+      body: `${proposal.investor.username} a annule sa proposition pour ${proposal.business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+  ]);
+
+  logYouAdmin('business_share_proposal_cancel', userId, undefined, proposal.businessId, proposal.business.name, {
+    proposalId,
+    amount: proposal.amount,
+    ownerId: proposal.ownerId,
+  });
+
+  return {
+    id: cancelled.id,
+    status: cancelled.status,
+    decidedAt: cancelled.decidedAt?.toISOString() ?? null,
+  };
+}
+
 export async function cancelBusinessBuyoutOffer(userId: string, offerId: string) {
   const offer = await prisma.businessBuyoutOffer.findUnique({
     where: { id: offerId },
@@ -4849,16 +4948,25 @@ export async function buyFormation(userId: string, businessId: string) {
 export async function updateBusinessProfile(
   userId: string,
   businessId: string,
-  data: { name?: string; description?: string | null; logoUrl?: string | null },
+  data: { name?: string; description?: string | null; logoUrl?: string | null; mapX?: number | null; mapY?: number | null },
 ) {
   if (data.name !== undefined && !data.name.trim()) throw new Error('INVALID_BUSINESS_NAME');
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, ownerId: true, name: true, description: true, logoUrl: true },
+    select: { id: true, ownerId: true, name: true, description: true, logoUrl: true, mapX: true, mapY: true },
   });
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
   if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  const nextMapX = data.mapX === undefined ? undefined : (data.mapX === null ? null : Math.round(Number(data.mapX)));
+  const nextMapY = data.mapY === undefined ? undefined : (data.mapY === null ? null : Math.round(Number(data.mapY)));
+  if (nextMapX != null && (!Number.isFinite(nextMapX) || nextMapX < 0 || nextMapX > 1000)) {
+    throw new Error('INVALID_BUSINESS_MAP_POSITION');
+  }
+  if (nextMapY != null && (!Number.isFinite(nextMapY) || nextMapY < 0 || nextMapY > 700)) {
+    throw new Error('INVALID_BUSINESS_MAP_POSITION');
+  }
 
   const updated = await prisma.business.update({
     where: { id: businessId },
@@ -4866,6 +4974,8 @@ export async function updateBusinessProfile(
       ...(data.name !== undefined ? { name: data.name.trim() } : {}),
       ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
       ...(data.logoUrl !== undefined ? { logoUrl: data.logoUrl?.trim() || null } : {}),
+      ...(nextMapX !== undefined ? { mapX: nextMapX } : {}),
+      ...(nextMapY !== undefined ? { mapY: nextMapY } : {}),
     },
   });
 
@@ -4873,12 +4983,16 @@ export async function updateBusinessProfile(
     previousName: business.name,
     previousDescription: business.description,
     previousLogoUrl: business.logoUrl,
+    previousMapX: business.mapX,
+    previousMapY: business.mapY,
     name: updated.name,
     description: updated.description,
     logoUrl: updated.logoUrl,
+    mapX: updated.mapX,
+    mapY: updated.mapY,
   });
 
-  return { name: updated.name, description: updated.description, logoUrl: updated.logoUrl };
+  return { name: updated.name, description: updated.description, logoUrl: updated.logoUrl, mapX: updated.mapX, mapY: updated.mapY };
 }
 
 // --- Formation Product System (multi-formation) ---

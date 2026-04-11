@@ -62,6 +62,7 @@ import {
   rateBusiness,
   createBusinessShareProposal,
   createBusinessShareBuybackOffer,
+  cancelBusinessShareProposal,
   respondToBusinessShareProposal,
   getUserBusinessPurchases,
 } from '../modules/you/service.js';
@@ -194,6 +195,8 @@ const ERROR_STATUS: Record<string, number> = {
   SHARE_PROPOSAL_NOT_FOUND: 404,
   SHARE_PROPOSAL_REVIEW_FORBIDDEN: 403,
   SHARE_PROPOSAL_ALREADY_RESOLVED: 400,
+  SHARE_PROPOSAL_CANCEL_FORBIDDEN: 403,
+  SHARE_PROPOSAL_CANCEL_TOO_EARLY: 400,
   BUSINESS_SHARE_CAP_EXCEEDED: 400,
   SHARE_BUYBACK_FORBIDDEN: 403,
   SHARE_BUYBACK_TARGET_INVALID: 400,
@@ -315,6 +318,8 @@ const ERROR_MESSAGE: Record<string, string> = {
   SHARE_PROPOSAL_NOT_FOUND: 'Proposition d actionnariat introuvable.',
   SHARE_PROPOSAL_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette proposition d actionnariat.',
   SHARE_PROPOSAL_ALREADY_RESOLVED: 'Cette proposition d actionnariat a deja ete traitee.',
+  SHARE_PROPOSAL_CANCEL_FORBIDDEN: 'Tu ne peux pas annuler cette proposition.',
+  SHARE_PROPOSAL_CANCEL_TOO_EARLY: 'Tu pourras annuler cette proposition apres un mois in game.',
   BUSINESS_SHARE_CAP_EXCEEDED: 'La repartition du capital depasse 100%.',
   SHARE_BUYBACK_FORBIDDEN: 'Seul le fondateur peut demander le rachat des parts.',
   SHARE_BUYBACK_TARGET_INVALID: 'Actionnaire cible invalide.',
@@ -478,6 +483,15 @@ router.post('/shareholder-proposals/:proposalId/respond', authMiddleware, requir
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Respond shareholder proposal error');
+  }
+});
+
+router.delete('/shareholder-proposals/:proposalId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await cancelBusinessShareProposal(req.user!.id, req.params.proposalId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Cancel shareholder proposal error');
   }
 });
 
@@ -765,8 +779,8 @@ router.post('/businesses/:businessId/buy-formation', authMiddleware, requireYouA
 // Business profile update (name, description, logo)
 router.patch('/businesses/:businessId/profile', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, description, logoUrl } = req.body;
-    const result = await updateBusinessProfile(req.user!.id, req.params.businessId, { name, description, logoUrl });
+    const { name, description, logoUrl, mapX, mapY } = req.body;
+    const result = await updateBusinessProfile(req.user!.id, req.params.businessId, { name, description, logoUrl, mapX, mapY });
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Update business profile error');

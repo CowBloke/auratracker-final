@@ -4,12 +4,14 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { type Ad, adsApi, type YouBusiness, type YouPlayer, type YouState, youApi } from '@/services/api';
+import { type Ad, adsApi, type YouBusiness, type YouBusinessShareProposal, type YouPlayer, type YouState, youApi } from '@/services/api';
 import { AdBanner } from '@/components/ads/AdBanner';
 import { BUSINESS_ICON_MAP } from '../constants';
 import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '../components/modals';
 import { ActionCard, ActionRow, Pill, SectionTitle } from '../components/ui';
 import { formatMoney, withRouteError } from '../utils';
+
+const SHARE_PROPOSAL_CANCEL_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 
 function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b: YouBusiness) => void }) {
   const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
@@ -42,6 +44,8 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
   const [inviteBusinessId, setInviteBusinessId] = useState<string | null>(null);
   const [managedBusinessId, setManagedBusinessId] = useState<string | null>(null);
   const [cancellingOfferId, setCancellingOfferId] = useState<string | null>(null);
+  const [cancellingProposalId, setCancellingProposalId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const canCreateBusiness = isAdmin || data.ownedBusinesses.length < data.businessSlots;
   const unlockedLevel = data.unlockedBusinessLevel ?? 0;
@@ -63,6 +67,11 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
     void adsApi.listPublic({ limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const cancelBuyoutOffer = async (offerId: string) => {
     setCancellingOfferId(offerId);
     try {
@@ -75,6 +84,21 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
       setCancellingOfferId(null);
     }
   };
+
+  const cancelShareholderProposal = async (proposalId: string) => {
+    setCancellingProposalId(proposalId);
+    try {
+      await youApi.cancelShareholderProposal(proposalId);
+      toast.success('Proposition annulee');
+      await onReload(true);
+    } catch {
+      toast.error('Impossible d annuler cette proposition.');
+    } finally {
+      setCancellingProposalId(null);
+    }
+  };
+
+  const canCancelShareProposal = (proposal: YouBusinessShareProposal) => now >= new Date(proposal.createdAt).getTime() + SHARE_PROPOSAL_CANCEL_DELAY_MS;
 
   return (
     <>
@@ -233,8 +257,16 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
                     <div className="text-xs text-muted-foreground sm:text-right">
                       <p>Suggestion: {formatMoney(proposal.suggestedAmount)}</p>
                       <p>Proprio: {proposal.owner.username}</p>
+                      {proposal.status === 'PENDING' && !canCancelShareProposal(proposal) ? <p className="mt-1">Annulable apres 1 mois in game</p> : null}
                     </div>
                   </CardContent>
+                  {proposal.status === 'PENDING' && canCancelShareProposal(proposal) ? (
+                    <div className="flex justify-end px-5 pb-4">
+                      <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => void cancelShareholderProposal(proposal.id)} disabled={cancellingProposalId !== null}>
+                        Annuler et recuperer l argent
+                      </Button>
+                    </div>
+                  ) : null}
                 </Card>
               ))}
             </div>

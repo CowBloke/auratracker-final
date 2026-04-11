@@ -47,6 +47,35 @@ const timeAgo = (dateStr: string) => {
   return `${Math.floor(diff / 86400)}j`;
 };
 
+const getCreatedAtMs = (dateStr: string) => new Date(dateStr).getTime();
+
+const buildPrioritizedCycle = (posts: AuraScrollPost[], seenIds: Set<string>, previousLastId: string | null): string[] => {
+  const ranked = [...posts].sort((left, right) => {
+    const leftSeen = seenIds.has(left.id);
+    const rightSeen = seenIds.has(right.id);
+
+    if (leftSeen !== rightSeen) {
+      return leftSeen ? 1 : -1;
+    }
+
+    const createdAtDiff = getCreatedAtMs(right.createdAt) - getCreatedAtMs(left.createdAt);
+    if (createdAtDiff !== 0) return createdAtDiff;
+
+    return left.id.localeCompare(right.id);
+  });
+
+  const ids = ranked.map((post) => post.id);
+
+  if (previousLastId && ids[0] === previousLastId) {
+    const swapIndex = ids.findIndex((id) => id !== previousLastId);
+    if (swapIndex > 0) {
+      [ids[0], ids[swapIndex]] = [ids[swapIndex], ids[0]];
+    }
+  }
+
+  return ids;
+};
+
 // ─── Upload Modal ──────────────────────────────────────────────────────────────
 
 function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded: (post: AuraScrollPost) => void }) {
@@ -665,6 +694,7 @@ export default function AuraScroll() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<AuraScrollPost[]>([]);
   const [sequence, setSequence] = useState<string[]>([]);
+  const [seenPostIds, setSeenPostIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -681,6 +711,16 @@ export default function AuraScroll() {
     }
     return map;
   }, [posts]);
+
+  const appendPrioritizedCycle = useCallback(() => {
+    setSequence((prev) => {
+      if (posts.length === 0) return prev;
+
+      const previousLastId = prev.length > 0 ? prev[prev.length - 1] : null;
+      const nextCycle = buildPrioritizedCycle(posts, seenPostIds, previousLastId);
+      return nextCycle.length === 0 ? prev : [...prev, ...nextCycle];
+    });
+  }, [posts, seenPostIds]);
 
   const fetchFeed = useCallback(async (cursor?: string) => {
     if (cursor) setLoadingMore(true);
@@ -699,16 +739,17 @@ export default function AuraScroll() {
       });
 
       if (!cursor) {
-        setSequence(data.posts.map((post) => post.id));
+        setSequence(buildPrioritizedCycle(data.posts, new Set(), null));
+        setSeenPostIds(new Set());
         setActiveIndex(0);
       } else if (data.posts.length > 0) {
         setSequence((prev) => {
           const existingIds = new Set(prev);
-          const newIds = data.posts
-            .map((post) => post.id)
-            .filter((id) => !existingIds.has(id));
+          const newPosts = data.posts.filter((post) => !existingIds.has(post.id));
 
-          return newIds.length === 0 ? prev : [...prev, ...newIds];
+          if (newPosts.length === 0) return prev;
+
+          return [...prev, ...newPosts.map((post) => post.id)];
         });
       }
 
@@ -742,7 +783,20 @@ export default function AuraScroll() {
     return () => observerRef.current?.disconnect();
   }, [sequence.length]);
 
-  // Keep the queue filled by fetching the next backend page when we near the end.
+  useEffect(() => {
+    const activePostId = sequence[activeIndex];
+    if (!activePostId) return;
+
+    setSeenPostIds((prev) => {
+      if (prev.has(activePostId)) return prev;
+      const next = new Set(prev);
+      next.add(activePostId);
+      return next;
+    });
+  }, [activeIndex, sequence]);
+
+  // Keep the queue filled by fetching the next backend page when we near the end,
+  // then recycle the loaded posts in a preference order when the API runs out.
   useEffect(() => {
     if (posts.length === 0 || sequence.length === 0) return;
 
@@ -751,8 +805,13 @@ export default function AuraScroll() {
 
     if (nextCursor && !loadingMore) {
       fetchFeed(nextCursor);
+      return;
     }
-  }, [activeIndex, posts.length, sequence.length, nextCursor, loadingMore, fetchFeed]);
+
+    if (!nextCursor && !loadingMore) {
+      appendPrioritizedCycle();
+    }
+  }, [activeIndex, posts.length, sequence.length, nextCursor, loadingMore, fetchFeed, appendPrioritizedCycle]);
 
   // Keyboard navigation
   useEffect(() => {

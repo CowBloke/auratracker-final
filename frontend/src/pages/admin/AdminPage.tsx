@@ -376,6 +376,7 @@ const ACTION_LABELS: Record<string, string> = {
   business_buyout_offer_respond: 'Offre de rachat traitée',
   business_buyout_offer_cancel: 'Offre de rachat annulée',
   business_research_start: 'Recherche business lancée',
+  business_share_proposal_cancel: 'Proposition actionnaire annulée',
   business_product_deploy: 'Produit startup déployé',
   business_collect: 'Recette business collectée',
   business_sale: 'Vente business enregistrée',
