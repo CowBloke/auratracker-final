@@ -281,17 +281,6 @@ const games: Game[] = [
     hasRewards: true,
   },
   {
-    id: 'mines',
-    pageKey: 'game-mines',
-    name: 'Mines',
-    description: 'Le classique: revele les cases sures, fais grimper le multiplicateur et cashout a temps.',
-    type: 'Chance',
-    image: getGameImage('mines'),
-    statsKeys: ['casino'],
-    releaseRank: 40,
-    hasRewards: true,
-  },
-  {
     id: 'market-room',
     pageKey: 'game-market-room',
     name: 'Salle de marché',
@@ -841,9 +830,6 @@ export default function Games() {
     }
     if (gameId === 'minesweeper') {
       return '/games/minesweeper';
-    }
-    if (gameId === 'mines') {
-      return '/games/casino?table=mines';
     }
     if (gameId === 'crash') {
       return '/games/casino?table=crash';
