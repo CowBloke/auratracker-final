@@ -572,6 +572,7 @@ export interface YouState {
   skills: YouSkill[];
   businessSlots: number;
   unlockedBusinessLevel: number;
+  temporaryEffects: YouTemporaryEffect[];
   businessTypes: YouBusinessType[];
   players: YouPlayer[];
   jobOffers: YouJobOffer[];
@@ -586,8 +587,17 @@ export interface YouState {
   sentShareholderProposals: YouBusinessShareProposal[];
 }
 
+export interface YouTemporaryEffect {
+  key: 'YOU_ADBLOCK' | string;
+  label: string;
+  description: string;
+  expiresAt: string;
+  remainingMs: number;
+}
+
 export const youApi = {
   getState: () => api.get<YouState>('/you/state'),
+  getTemporaryEffects: () => api.get<{ effects: YouTemporaryEffect[] }>('/you/temporary-effects'),
   getSkills: () => api.get<{ skills: YouSkill[] }>('/you/skills'),
   trainSkill: (skillKey: string) =>
     api.post<{ skill: YouSkill }>(`/you/skills/${skillKey}/train`),
@@ -2969,6 +2979,12 @@ export interface NameChangeRequest {
 export const publicApi = {
   submitBanAppeal: (data: { banId: string; userId: string; message: string }) =>
     api.post<{ appeal: BanAppeal }>('/admin/ban-appeals', data),
+};
+
+// Info API (public)
+export const infoApi = {
+  getTaxBrackets: () =>
+    api.get<{ brackets: Array<{ id: string; threshold: number; rate: number }>; isDefault: boolean }>('/info/tax-brackets'),
 };
 
 // Bomb Party API

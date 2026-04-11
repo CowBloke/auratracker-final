@@ -23,6 +23,8 @@ const DEFAULT_SHOP_CATEGORIES = [
 
 const CLAN_BASE_MAX_MEMBERS = 5;
 const CLAN_SLOT_UPGRADE_MAX_MEMBERS = CLAN_BASE_MAX_MEMBERS + 2;
+const DEFAULT_YOU_ADBLOCK_DURATION_MINUTES = 60;
+const MAX_YOU_ADBLOCK_DURATION_MINUTES = 60 * 24 * 30;
 
 const parseItemEffect = parseClanEffectPayload;
 
@@ -651,6 +653,30 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
 
     // Consumable items
     if (userItem.item.type === 'CONSUMABLE') {
+      const isYouAdblock = effect?.type === 'YOU_ADBLOCK' || effect?.type === 'ADBLOCK_YOU';
+      let activatedYouAdblockUntil: Date | null = null;
+
+      if (isYouAdblock) {
+        const rawDuration = Number.parseInt(String(effect.durationMinutes ?? effect.durationMins ?? effect.durationHours * 60 ?? DEFAULT_YOU_ADBLOCK_DURATION_MINUTES), 10);
+        const durationMinutes = Number.isFinite(rawDuration)
+          ? Math.min(Math.max(rawDuration, 1), MAX_YOU_ADBLOCK_DURATION_MINUTES)
+          : DEFAULT_YOU_ADBLOCK_DURATION_MINUTES;
+
+        const currentUser = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { youAdblockExpiresAt: true },
+        });
+        const now = Date.now();
+        const existingExpiry = currentUser?.youAdblockExpiresAt ? new Date(currentUser.youAdblockExpiresAt).getTime() : 0;
+        const baseTs = existingExpiry > now ? existingExpiry : now;
+        activatedYouAdblockUntil = new Date(baseTs + durationMinutes * 60 * 1000);
+
+        await prisma.user.update({
+          where: { id: req.user.id },
+          data: { youAdblockExpiresAt: activatedYouAdblockUntil },
+        });
+      }
+
       // Decrement quantity or delete if last one
       if (userItem.quantity > 1) {
         await prisma.userItem.update({
@@ -665,13 +691,13 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       
       // Apply effects like bonus aura, money, etc.
       if (effect) {
-        if (effect.bonusAura) {
+        if (!isYouAdblock && effect.bonusAura) {
           await prisma.user.update({
             where: { id: req.user.id },
             data: { aura: { increment: effect.bonusAura } },
           });
         }
-        if (effect.bonusMoney) {
+        if (!isYouAdblock && effect.bonusMoney) {
           await prisma.user.update({
             where: { id: req.user.id },
             data: { money: { increment: effect.bonusMoney } },
@@ -693,7 +719,12 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
 
       return res.json({
         success: true,
-        effect,
+        effect: isYouAdblock
+          ? {
+              type: 'YOU_ADBLOCK',
+              expiresAt: activatedYouAdblockUntil?.toISOString() ?? null,
+            }
+          : effect,
       });
     }
     

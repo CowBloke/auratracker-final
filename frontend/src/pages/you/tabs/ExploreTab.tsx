@@ -1529,12 +1529,14 @@ export function ExploreTab({
   players,
   userId,
   isAdmin,
+  adblockActive,
   onReload,
 }: {
   data: YouState;
   players: YouPlayer[];
   userId: string;
   isAdmin: boolean;
+  adblockActive: boolean;
   onReload: (refreshBalance?: boolean) => Promise<void>;
 }) {
   const navigate = useNavigate();
@@ -1586,8 +1588,12 @@ export function ExploreTab({
   );
 
   useEffect(() => {
+    if (adblockActive) {
+      setExploreBannerAd(null);
+      return;
+    }
     void adsApi.listPublic({ limit: 1 }).then((res) => setExploreBannerAd(res.data.ads[0] ?? null)).catch(() => {});
-  }, []);
+  }, [adblockActive]);
 
   // Open business modal from URL param (e.g. when coming from an ad click)
   useEffect(() => {
@@ -1954,7 +1960,7 @@ export function ExploreTab({
                       </div>
                     );
                     const nodes: ReactNode[] = [sectionEl];
-                    if ((sectionIdx + 1) % 3 === 0 && exploreBannerAd && !exploreBannerDismissed) {
+                    if (!adblockActive && (sectionIdx + 1) % 3 === 0 && exploreBannerAd && !exploreBannerDismissed) {
                       nodes.push(
                         <AdBanner key={`explore-banner-${sectionIdx}`} ad={exploreBannerAd} onDismiss={() => setExploreBannerDismissed(true)} />
                       );

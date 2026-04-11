@@ -119,7 +119,12 @@
       "Bash(grep -r \"business\\\\|you\" /c/Users/cowbl/source/repos/CRust/auratracker-final/backend/src/socket/*.ts)",
       "Bash(grep -n \"router\\\\.\\\\\\(post\\\\|put\\\\|patch\\\\|delete\\\\\\)\\\\s*\\(\" /Users/viktorabe/Documents/GitHub/auratracker-final/backend/src/routes/*.ts)",
       "Bash(grep -i \"business\" /c/Users/cowbl/source/repos/CRust/auratracker-final/backend/src/routes/*.ts)",
-      "Bash(grep -l \"CREATE TABLE \\\\\"Ad\\\\\"\" /c/Users/cowbloke/Programming/Repositories/auratracker-final/backend/prisma/migrations/*/migration.sql)"
+      "Bash(grep -l \"CREATE TABLE \\\\\"Ad\\\\\"\" /c/Users/cowbloke/Programming/Repositories/auratracker-final/backend/prisma/migrations/*/migration.sql)",
+      "Bash(curl -s https://api.github.com/repos/Open-GD/OpenGD/releases/latest)",
+      "Bash(curl -s https://api.github.com/repos/Open-GD/OpenGD/releases)",
+      "Read(//private/tmp/SubwaySurfers_check/**)",
+      "Read(//private/tmp/SubwaySurfers_check/src/**)",
+      "Read(//private/tmp/SubwaySurfers_check/static/**)"
     ]
   },
   "outputStyle": "default"

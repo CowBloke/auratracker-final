@@ -21,6 +21,25 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-11-subway-opengd-playable',
+    date: '2026-04-11',
+    title: 'Subway Surfers Clone & OpenGD maintenant jouables',
+    summary: 'Les deux jeux étaient bloqués sur une page "build manquant" — remplacés par des implémentations HTML5 canvas jouables directement dans le navigateur.',
+    items: [
+      { category: 'BIG_FEATURE', text: '**Subway Surfers Clone** — Runner 3 voies pseudo-3D jouable : changement de voie (←→), saut (↑), glissade (↓), pièces, obstacles variés et vitesse progressive.', order: 0 },
+      { category: 'BIG_FEATURE', text: '**OpenGD** — Platformer Geometry Dash-style jouable : sauts, double saut, orbes, obstacles procéduraux, thèmes de couleur qui changent et score persistant.', order: 1 },
+    ],
+  },
+  {
+    id: '2026-04-11-page-informations',
+    date: '2026-04-11',
+    title: 'Nouvelle page Informations',
+    summary: 'Ajout d\'une page Informations avec les paliers d\'imposition en temps réel et une structure de tutoriels.',
+    items: [
+      { category: 'SMALL_FEATURE', text: '**Page Informations** — Nouvelle page accessible depuis la barre latérale avec deux onglets : Informations (paliers fiscaux mis à jour dynamiquement depuis l\'admin) et Tutoriels (structure en place, contenu à venir).', order: 0 },
+    ],
+  },
+  {
     id: '2026-04-10-judge-fiscal-panel-access',
     date: '2026-04-10',
     title: 'Administration — Acces inspection fiscale pour les juges',

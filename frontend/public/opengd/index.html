@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenGD</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx    = canvas.getContext('2d');
+
+const W = 1280, H = 720;
+canvas.width = W; canvas.height = H;
+
+function resize() {
+  const r = W/H, ww = window.innerWidth, wh = window.innerHeight;
+  if (ww/wh > r) { canvas.style.height = wh+'px'; canvas.style.width = (wh*r)+'px'; }
+  else           { canvas.style.width = ww+'px'; canvas.style.height = (ww/r)+'px'; }
+}
+window.addEventListener('resize', resize); resize();
+
+// ── Constants ──────────────────────────────────────────────────────────────
+const TILE       = 46;
+const GROUND_Y   = H - 110;
+const PLAYER_X   = 200;
+const GRAVITY    = 2800;
+const JUMP_VY    = -860;
+const ORB_BOOST  = -820;
+const BASE_SPEED = 340;
+
+const SECTION_THEMES = [
+  { sky1:'#0a0a2a', sky2:'#1a0a4a', ground:'#1122aa', glow:'#4488ff', player:'#ffd700', accent:'#ff9900', obs:'#8844ff', spike:'#ff2266' },
+  { sky1:'#1a0a0a', sky2:'#3a0a1a', ground:'#aa2211', glow:'#ff6644', player:'#00ffcc', accent:'#00aaff', obs:'#ff4422', spike:'#ffcc00' },
+  { sky1:'#0a1a0a', sky2:'#0a3a0a', ground:'#118822', glow:'#44ff88', player:'#ff44aa', accent:'#ff00ff', obs:'#22aa44', spike:'#ff8800' },
+  { sky1:'#1a1a0a', sky2:'#3a2a00', ground:'#886600', glow:'#ffcc22', player:'#00aaff', accent:'#00ffff', obs:'#cc8800', spike:'#ff2200' },
+];
+
+// ── State ──────────────────────────────────────────────────────────────────
+let state    = 'idle';
+let camX     = 0;
+let playerY  = GROUND_Y - TILE;
+let velY     = 0;
+let onGround = false;
+let canDbl   = false;
+let rotation = 0;
+let attempts = 0;
+let score    = 0;
+let bestScore= 0;
+let frame    = 0;
+let particles= [];
+let stars    = [];
+let section  = 0;
+let theme    = SECTION_THEMES[0];
+
+let obstacles    = [];
+let nextObsX     = 700;
+let totalGenX    = 0;
+
+let bgLayers = [
+  { scroll:0, speed:0.15, items:[] },
+  { scroll:0, speed:0.35, items:[] },
+];
+
+for (let i=0; i<20; i++) bgLayers[0].items.push({ x: i*240, h: 60+(i%5)*30, w:80 });
+for (let i=0; i<15; i++) bgLayers[1].items.push({ x: i*180, h: 40+(i%4)*20, w:60 });
+for (let i=0; i<100; i++) stars.push({ x:Math.random()*W, y:Math.random()*GROUND_Y*0.9, r:Math.random()*1.5+0.5 });
+
+// ── Input ──────────────────────────────────────────────────────────────────
+let jumpPressed = false;
+function tryJump() {
+  if (state === 'idle') { startGame(); return; }
+  if (state === 'dead') { startGame(); return; }
+  if (state !== 'playing') return;
+  jumpPressed = true;
+}
+document.addEventListener('keydown', e => {
+  if (e.code==='Space'||e.code==='ArrowUp'||e.code==='KeyW') { e.preventDefault(); tryJump(); }
+});
+canvas.addEventListener('click',      () => tryJump());
+canvas.addEventListener('touchstart', e => { e.preventDefault(); tryJump(); }, {passive:false});
+
+// ── Level generation ───────────────────────────────────────────────────────
+function generateChunk(startX) {
+  const chunk = [];
+  let x = startX;
+  const end = startX + 1400;
+
+  while (x < end) {
+    const r = Math.random();
+    const speed_factor = Math.min(1 + camX/8000, 2.2);
+
+    if (r < 0.30) {
+      chunk.push({ type:'spike', x, y:GROUND_Y-TILE, w:TILE, h:TILE });
+      x += TILE + 10 + Math.random()*20;
+    } else if (r < 0.50) {
+      chunk.push({ type:'spike', x,       y:GROUND_Y-TILE, w:TILE, h:TILE });
+      chunk.push({ type:'spike', x:x+TILE, y:GROUND_Y-TILE, w:TILE, h:TILE });
+      x += TILE*2 + 15 + Math.random()*20;
+    } else if (r < 0.60) {
+      for (let i=0;i<3;i++) chunk.push({ type:'spike', x:x+TILE*i, y:GROUND_Y-TILE, w:TILE, h:TILE });
+      x += TILE*3 + 20 + Math.random()*30;
+    } else if (r < 0.72) {
+      chunk.push({ type:'block', x, y:GROUND_Y-TILE, w:TILE, h:TILE });
+      x += TILE + 20 + Math.random()*30;
+    } else if (r < 0.80) {
+      chunk.push({ type:'block', x, y:GROUND_Y-TILE,   w:TILE, h:TILE });
+      chunk.push({ type:'block', x, y:GROUND_Y-TILE*2, w:TILE, h:TILE });
+      x += TILE + 30 + Math.random()*30;
+    } else if (r < 0.86) {
+      chunk.push({ type:'block', x, y:GROUND_Y-TILE,   w:TILE, h:TILE });
+      chunk.push({ type:'spike', x, y:GROUND_Y-TILE*2, w:TILE, h:TILE });
+      x += TILE + 20 + Math.random()*40;
+    } else if (r < 0.91) {
+      chunk.push({ type:'orb', x:x+20, y:GROUND_Y-TILE*2.5, w:TILE*0.8, h:TILE*0.8 });
+      x += TILE + 60 + Math.random()*60;
+    } else {
+      x += 40 + Math.random()*20;
+    }
+
+    x += 80 + Math.random() * (180 / speed_factor);
+  }
+  return chunk;
+}
+
+// ── Core ───────────────────────────────────────────────────────────────────
+function startGame() {
+  if (state === 'dead' && score > bestScore) bestScore = score;
+  state    = 'playing';
+  camX     = 0;
+  playerY  = GROUND_Y - TILE;
+  velY     = 0;
+  onGround = false;
+  canDbl   = false;
+  rotation = 0;
+  score    = 0;
+  obstacles= [];
+  nextObsX = 700; totalGenX = 0;
+  particles= [];
+  jumpPressed = false;
+  section  = 0;
+  theme    = SECTION_THEMES[0];
+  attempts++;
+  obstacles.push(...generateChunk(700));
+  totalGenX = 700 + 1400;
+}
+
+function emitParticles(x, y) {
+  for (let i=0; i<28; i++) {
+    const a = Math.PI*2*i/28 + Math.random()*0.2;
+    const s = 80 + Math.random()*240;
+    particles.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s-60, life:1, col:`hsl(${Math.random()*60+10},100%,60%)`, r:3+Math.random()*5 });
+  }
+}
+
+function update(dt) {
+  if (state !== 'playing') return;
+  frame++;
+
+  const speed = BASE_SPEED * Math.min(1 + camX/6000, 2.0);
+  section = Math.floor(camX / 1200) % SECTION_THEMES.length;
+  theme   = SECTION_THEMES[section];
+
+  if (jumpPressed) {
+    jumpPressed = false;
+    if (onGround) {
+      velY = JUMP_VY; onGround = false; canDbl = true;
+    } else if (canDbl) {
+      velY = JUMP_VY * 0.88; canDbl = false;
+    } else {
+      for (const o of obstacles) {
+        if (o.type !== 'orb' || o.used) continue;
+        const ox = o.x - camX;
+        if (Math.abs(PLAYER_X - ox - o.w/2) < TILE && Math.abs(playerY - o.y) < TILE*1.5) {
+          velY = ORB_BOOST; canDbl = false; o.used = true;
+          emitParticles(PLAYER_X, playerY);
+          break;
+        }
+      }
+    }
+  }
+
+  velY    += GRAVITY * dt;
+  playerY += velY * dt;
+
+  if (playerY >= GROUND_Y - TILE) {
+    playerY  = GROUND_Y - TILE;
+    velY     = 0;
+    onGround = true;
+    canDbl   = false;
+    rotation = Math.round(rotation / 90) * 90;
+  } else {
+    onGround = false;
+  }
+
+  rotation += (onGround ? speed * 0.9 : 400) * dt;
+  camX += speed * dt;
+  score = Math.floor(camX / 80);
+
+  while (totalGenX < camX + W + 400) {
+    obstacles.push(...generateChunk(totalGenX));
+    totalGenX += 1400;
+  }
+  obstacles = obstacles.filter(o => o.x - camX > -200);
+
+  for (const o of obstacles) {
+    if (o.used) continue;
+    const ox = o.x - camX;
+    const shrink = 5;
+    const px = PLAYER_X + shrink, py = playerY + shrink;
+    const pw = TILE - shrink*2,   ph = TILE - shrink*2;
+
+    if (o.type === 'spike') {
+      if (px < ox+o.w-4 && px+pw > ox+4 && py < o.y+o.h && py+ph > o.y+8) {
+        const pcx = px + pw/2;
+        const scx = ox + o.w/2;
+        const dist = Math.abs(pcx - scx);
+        const prog = Math.max(0, (py+ph - o.y - 8) / (o.h - 8));
+        if (dist < (o.w/2)*prog - 4) { die(); return; }
+      }
+    } else if (o.type === 'block') {
+      if (px < ox+o.w && px+pw > ox && py < o.y+o.h && py+ph > o.y) { die(); return; }
+    }
+  }
+
+  if (playerY > H + 100) { die(); return; }
+
+  for (const layer of bgLayers) layer.scroll -= speed * layer.speed * dt;
+  for (const s of stars) { s.x -= speed * 0.05 * dt; if (s.x < 0) s.x += W; }
+
+  for (const p of particles) {
+    p.x  += p.vx * dt; p.y  += p.vy * dt;
+    p.vy += 600 * dt;
+    p.life -= dt * 1.8;
+  }
+  particles = particles.filter(p => p.life > 0);
+}
+
+function die() {
+  state = 'dead';
+  emitParticles(PLAYER_X, playerY + TILE/2);
+}
+
+// ── Drawing ────────────────────────────────────────────────────────────────
+function adjustBrightness(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.max(0, (n>>16)+amt));
+  const g = Math.min(255, Math.max(0, ((n>>8)&0xff)+amt));
+  const b = Math.min(255, Math.max(0, (n&0xff)+amt));
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawBG() {
+  const g = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  g.addColorStop(0, theme.sky1);
+  g.addColorStop(1, theme.sky2);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, GROUND_Y + 2);
+
+  ctx.fillStyle = '#fff';
+  for (const s of stars) {
+    ctx.globalAlpha = 0.5 + Math.sin(frame*0.02 + s.x)*0.4;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  const glow = ctx.createLinearGradient(0, GROUND_Y - 40, 0, GROUND_Y + 10);
+  glow.addColorStop(0, theme.glow + '00');
+  glow.addColorStop(0.5, theme.glow + '55');
+  glow.addColorStop(1, theme.glow + '00');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, GROUND_Y - 40, W, 50);
+}
+
+function drawGround() {
+  const gg = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+  gg.addColorStop(0, theme.ground);
+  gg.addColorStop(0.15, '#111');
+  gg.addColorStop(1, '#000');
+  ctx.fillStyle = gg;
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+  ctx.strokeStyle = theme.glow;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(W, GROUND_Y); ctx.stroke();
+
+  const tileW = TILE;
+  const off   = -(camX % tileW);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 1;
+  for (let x = off; x < W; x += tileW) {
+    ctx.beginPath(); ctx.moveTo(x, GROUND_Y); ctx.lineTo(x, H); ctx.stroke();
+  }
+}
+
+function drawObstacle(o) {
+  const sx = o.x - camX;
+  if (sx > W+100 || sx < -100) return;
+
+  if (o.type === 'spike') {
+    ctx.fillStyle = theme.spike;
+    ctx.beginPath();
+    ctx.moveTo(sx + o.w/2, o.y);
+    ctx.lineTo(sx + o.w,   o.y + o.h);
+    ctx.lineTo(sx,          o.y + o.h);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1.5; ctx.stroke();
+  } else if (o.type === 'block') {
+    const col = theme.obs;
+    ctx.fillStyle = col;
+    ctx.fillRect(sx, o.y, o.w, o.h);
+    ctx.fillStyle = adjustBrightness(col, 40);
+    ctx.fillRect(sx, o.y, o.w, 5);
+    ctx.fillStyle = adjustBrightness(col, -40);
+    ctx.fillRect(sx + o.w - 5, o.y + 5, 5, o.h - 5);
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1; ctx.strokeRect(sx, o.y, o.w, o.h);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath(); ctx.moveTo(sx+2, o.y+2); ctx.lineTo(sx+o.w-2, o.y+o.h-2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx+o.w-2, o.y+2); ctx.lineTo(sx+2, o.y+o.h-2); ctx.stroke();
+  } else if (o.type === 'orb' && !o.used) {
+    const ox = sx + o.w/2, oy = o.y + o.h/2, r = o.w/2;
+    const pulse = Math.sin(frame*0.1)*3;
+    const og = ctx.createRadialGradient(ox,oy,0, ox,oy, r*2.5+pulse);
+    og.addColorStop(0, 'rgba(255,230,0,0.7)');
+    og.addColorStop(1, 'rgba(255,230,0,0)');
+    ctx.fillStyle = og;
+    ctx.beginPath(); ctx.arc(ox, oy, r*2.5+pulse, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.arc(ox, oy, r+pulse, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff8';
+    ctx.beginPath(); ctx.arc(ox-r*0.25, oy-r*0.25, r*0.35, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(ox, oy, r*1.3+pulse, 0, Math.PI*2); ctx.stroke();
+  }
+}
+
+function drawPlayer() {
+  if (state === 'dead' && particles.length > 0) return;
+
+  ctx.save();
+  ctx.translate(PLAYER_X + TILE/2, playerY + TILE/2);
+  ctx.rotate((rotation * Math.PI) / 180);
+  const s = TILE/2;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(-s+3, -s+3, TILE, TILE);
+
+  const bg = ctx.createLinearGradient(-s, -s, s, s);
+  bg.addColorStop(0, theme.accent);
+  bg.addColorStop(1, theme.player);
+  ctx.fillStyle = bg;
+  ctx.fillRect(-s, -s, TILE, TILE);
+
+  ctx.fillStyle = theme.player;
+  ctx.fillRect(-s+6, -s+6, TILE-12, TILE-12);
+
+  ctx.fillStyle = theme.accent;
+  ctx.beginPath();
+  ctx.moveTo(0, -10); ctx.lineTo(10, 0); ctx.lineTo(0, 10); ctx.lineTo(-10, 0);
+  ctx.closePath(); ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-s, -s, TILE, TILE);
+  ctx.restore();
+
+  if (state === 'playing') {
+    for (let i=1; i<=4; i++) {
+      const tx = PLAYER_X - i * 16;
+      ctx.globalAlpha = (0.4 - i*0.08) * Math.abs(velY/JUMP_VY) + 0.1;
+      ctx.fillStyle = theme.player;
+      const ts = TILE - i*4;
+      ctx.save();
+      ctx.translate(tx + TILE/2, playerY + TILE/2);
+      ctx.rotate(((rotation - i*15) * Math.PI) / 180);
+      ctx.fillRect(-ts/2, -ts/2, ts, ts);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = Math.max(0, p.life * 0.9);
+    ctx.fillStyle   = p.col;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawHUD() {
+  const pct = Math.min(score / 800, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(40, 16, W-80, 10);
+  const barG = ctx.createLinearGradient(40, 0, W-40, 0);
+  barG.addColorStop(0, theme.glow);
+  barG.addColorStop(1, theme.player);
+  ctx.fillStyle = barG;
+  ctx.fillRect(40, 16, (W-80)*pct, 10);
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1; ctx.strokeRect(40, 16, W-80, 10);
+  ctx.fillStyle = '#fff'; ctx.font = '14px Arial'; ctx.textAlign = 'center';
+  ctx.fillText(`${Math.floor(pct*100)}%`, W/2, 13);
+
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 24px Arial'; ctx.textAlign = 'left';
+  ctx.fillText(`Score: ${score}`, 30, 52);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '18px Arial';
+  ctx.fillText(`Meilleur: ${bestScore}`, 30, 78);
+  ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; ctx.font = '18px Arial';
+  ctx.fillText(`Essai ${attempts}`, W-30, 52);
+
+  if (camX < 500) {
+    ctx.globalAlpha = Math.max(0, 1 - camX/500);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(W/2-200, H-80, 400, 44);
+    ctx.fillStyle = '#fff'; ctx.font = '18px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('Clic / Espace = Sauter   Double = Double saut', W/2, H-50);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function drawOverlay(line1, col1, line2, line3) {
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = col1; ctx.font = 'bold 72px Arial'; ctx.textAlign = 'center';
+  ctx.fillText(line1, W/2, H/2 - 60);
+  ctx.fillStyle = '#fff'; ctx.font = '30px Arial';
+  ctx.fillText(line2, W/2, H/2 + 10);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '22px Arial';
+  ctx.fillText(line3, W/2, H/2 + 56);
+}
+
+// ── Main loop ──────────────────────────────────────────────────────────────
+let last = 0;
+function loop(ts) {
+  const dt = Math.min((ts - last) / 1000, 0.05);
+  last = ts;
+  update(dt);
+
+  ctx.clearRect(0, 0, W, H);
+  drawBG();
+  drawGround();
+  for (const o of obstacles) drawObstacle(o);
+
+  if (state === 'playing') {
+    drawPlayer();
+    drawParticles();
+    drawHUD();
+  } else if (state === 'dead') {
+    drawParticles();
+    if (particles.length === 0) {
+      drawOverlay('Mort !', '#ff4444',
+        `Score: ${score}   Meilleur: ${bestScore}`,
+        `Essai ${attempts} — Cliquer ou Espace pour réessayer`);
+    } else {
+      drawHUD();
+    }
+  } else {
+    drawPlayer();
+    drawOverlay('OpenGD', '#ffd700',
+      'Cliquer ou appuyer sur Espace pour commencer',
+      'Clic / Espace = Sauter   Double = Double saut   Orbe jaune = Boost');
+  }
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(ts => { last = ts; requestAnimationFrame(loop); });
+</script>
+</body>
+</html>

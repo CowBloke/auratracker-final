@@ -243,6 +243,9 @@ export default function Inventory() {
         if (response.data.effect.type === 'AWARD_BADGE' && response.data.effect.badgeName) {
           effectText += ` • Badge "${response.data.effect.badgeName}" obtenu`;
         }
+        if (response.data.effect.type === 'YOU_ADBLOCK' && response.data.effect.expiresAt) {
+          effectText += ` • You sans pubs jusqu'à ${new Date(response.data.effect.expiresAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+        }
       }
       
       toast.success(effectText);

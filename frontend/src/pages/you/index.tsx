@@ -60,6 +60,7 @@ export default function You() {
     );
   }
   if (!data || !user) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Impossible de charger les donnees YOU.</CardContent></Card></div>;
+  const hasYouAdblock = data.temporaryEffects.some((effect) => effect.key === 'YOU_ADBLOCK');
 
   return (
     <div className={currentTab === 'carte' ? 'flex min-h-0 flex-1 flex-col' : 'animate-in space-y-6 fade-in pb-8 duration-300'}>
@@ -73,10 +74,10 @@ export default function You() {
           </Card>
         ))}
       </div> : null}
-      {currentTab === 'overview' ? <OverviewTab data={data} userId={user.id} onReload={loadState} /> : null}
-      {currentTab === 'travail' ? <TravailTab data={data} players={data.players} currentUserId={user.id} onReload={loadState} /> : null}
+      {currentTab === 'overview' ? <OverviewTab data={data} userId={user.id} adblockActive={hasYouAdblock} onReload={loadState} /> : null}
+      {currentTab === 'travail' ? <TravailTab data={data} players={data.players} currentUserId={user.id} adblockActive={hasYouAdblock} onReload={loadState} /> : null}
       {currentTab === 'social' ? <SocialTab data={data} onReload={() => loadState()} /> : null}
-      {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
+      {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} adblockActive={hasYouAdblock} onReload={loadState} /> : null}
       {currentTab === 'banques' ? <BanquesTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'finance' ? <FinanceTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'carte' ? <CarteTab data={data} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}

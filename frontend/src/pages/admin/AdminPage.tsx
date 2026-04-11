@@ -88,6 +88,7 @@ const EFFECT_TYPES = [
   { value: 'CLAN_BANNER', label: 'Bannière de clan', description: 'Objet de clan: acheté avec la banque du clan, puis le chef téléverse une image pour l\'afficher en haut de la page clan.' },
   { value: 'AWARD_BADGE', label: 'Badge', description: 'Donne un badge spécifique au joueur lors de l\'utilisation. L\'image boutique est générée automatiquement.' },
   { value: 'CUSTOM_BADGE', label: 'Badge personnalisé', description: 'Permet au joueur de concevoir son propre badge. La demande est envoyée aux admins pour validation. Remboursement automatique si refusée.' },
+  { value: 'YOU_ADBLOCK', label: 'Adblock You (temporaire)', description: 'Masque les interfaces publicitaires dans la page You pendant une durée configurable.' },
 ];
 
 const EFFECT_TYPES_WITHOUT_VALUE = new Set([
@@ -100,6 +101,7 @@ const EFFECT_TYPES_WITHOUT_VALUE = new Set([
   'CLAN_BANNER',
   'AWARD_BADGE',
   'CUSTOM_BADGE',
+  'YOU_ADBLOCK',
 ]);
 
 const generateBadgeSvgDataUrl = (badge: Badge): string => {
@@ -1035,6 +1037,7 @@ interface ItemFormData {
   skinImageUrl?: string;
   skinShopType?: 'none' | 'static' | 'rotating';
   badgeId?: string;
+  durationMinutes?: number;
 }
 
 const defaultItemForm: ItemFormData = {
@@ -1050,6 +1053,7 @@ const defaultItemForm: ItemFormData = {
   skinImageUrl: '',
   skinShopType: 'none',
   badgeId: '',
+  durationMinutes: 60,
 };
 
 const SHOP_ITEMS_FILE_FORMAT = 'auratracker-shop-items';
@@ -4161,7 +4165,7 @@ export default function Admin() {
   };
 
   // Parse effect string to get type and value
-  const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number; skinImageUrl?: string; skinShopType?: 'none' | 'static' | 'rotating'; badgeId?: string } => {
+  const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number; skinImageUrl?: string; skinShopType?: 'none' | 'static' | 'rotating'; badgeId?: string; durationMinutes?: number } => {
     if (!effectStr) return { type: 'USERNAME_COLOR', value: '' };
     try {
       const effect = JSON.parse(effectStr);
@@ -4169,6 +4173,7 @@ export default function Admin() {
       let effectType = effect.type || 'USERNAME_COLOR';
       if (effect.bonusAura !== undefined) effectType = 'BONUS_AURA';
       if (effect.bonusMoney !== undefined) effectType = 'BONUS_MONEY';
+      if (effectType === 'ADBLOCK_YOU') effectType = 'YOU_ADBLOCK';
 
       return {
         type: effectType,
@@ -4178,6 +4183,7 @@ export default function Admin() {
         skinImageUrl: effect.skinImageUrl || '',
         skinShopType: (effect.shopType as 'none' | 'static' | 'rotating') || 'none',
         badgeId: effect.badgeId || '',
+        durationMinutes: Number.parseInt(String(effect.durationMinutes ?? effect.durationMins ?? (effect.durationHours != null ? Number(effect.durationHours) * 60 : 60)), 10) || 60,
       };
     } catch {
       return { type: 'USERNAME_COLOR', value: '' };
@@ -4286,7 +4292,7 @@ export default function Admin() {
   // Open dialog for editing item
   const openEditItemDialog = (item: ShopItem) => {
     setEditingItem(item);
-    const { type: effectType, value: effectValue, bonusAura, bonusMoney, skinImageUrl, skinShopType, badgeId } = parseEffect(item.effect);
+    const { type: effectType, value: effectValue, bonusAura, bonusMoney, skinImageUrl, skinShopType, badgeId, durationMinutes } = parseEffect(item.effect);
     setItemForm({
       name: item.name,
       description: item.description,
@@ -4300,6 +4306,7 @@ export default function Admin() {
       skinImageUrl,
       skinShopType,
       badgeId,
+      durationMinutes,
     });
     setItemDialogOpen(true);
   };
@@ -4320,6 +4327,11 @@ export default function Admin() {
         });
       } else if (itemForm.effectType === 'AWARD_BADGE') {
         effect = JSON.stringify({ type: 'AWARD_BADGE', badgeId: itemForm.badgeId || '' });
+      } else if (itemForm.effectType === 'YOU_ADBLOCK') {
+        effect = JSON.stringify({
+          type: 'YOU_ADBLOCK',
+          durationMinutes: Math.max(1, parseInt(String(itemForm.durationMinutes || 60), 10) || 60),
+        });
       } else if (
         itemForm.effectType === 'CLAN_TAG_UNLOCK' ||
         itemForm.effectType === 'CLAN_SLOT_UPGRADE' ||
@@ -7544,6 +7556,7 @@ export default function Admin() {
                         skinImageUrl: '',
                         skinShopType: 'none',
                         badgeId: '',
+                        durationMinutes: 60,
                       }));
                     }}
                   >
@@ -7654,6 +7667,19 @@ export default function Admin() {
                         Sélectionné : {badges.find(b => b.id === itemForm.badgeId)?.name ?? itemForm.badgeId}
                       </p>
                     )}
+                  </div>
+                )}
+
+                {itemForm.effectType === 'YOU_ADBLOCK' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Durée de l'effet (minutes)</label>
+                    <Input
+                      type="number"
+                      value={itemForm.durationMinutes || 60}
+                      onChange={(e) => setItemForm((prev) => ({ ...prev, durationMinutes: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
+                      className="bg-transparent"
+                      min="1"
+                    />
                   </div>
                 )}
 

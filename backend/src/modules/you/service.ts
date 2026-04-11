@@ -1074,7 +1074,7 @@ export async function getYouState(userId: string) {
     }),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { unlockedBusinessLevel: true, isAdmin: true, isSuperAdmin: true },
+      select: { unlockedBusinessLevel: true, isAdmin: true, isSuperAdmin: true, youAdblockExpiresAt: true },
     }),
   ]);
 
@@ -1120,6 +1120,7 @@ export async function getYouState(userId: string) {
     ? Math.max(baseBusinessSlots, ownedBusinessesWithProducts.length + 1)
     : baseBusinessSlots;
   const unlockedBusinessLevel = viewerUser?.unlockedBusinessLevel ?? 0;
+  const temporaryEffects = serializeYouTemporaryEffects(viewerUser?.youAdblockExpiresAt ?? null);
 
   return {
     businessTypes: BUSINESS_TYPES,
@@ -1162,7 +1163,37 @@ export async function getYouState(userId: string) {
     exploreBusinesses: exploreBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
     memberBusinesses: memberBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
     shareholderBusinesses: shareholderBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
+    temporaryEffects,
   };
+}
+
+function serializeYouTemporaryEffects(youAdblockExpiresAt: Date | null) {
+  const now = Date.now();
+  const effects: Array<{ key: string; label: string; description: string; expiresAt: string; remainingMs: number }> = [];
+
+  if (youAdblockExpiresAt) {
+    const remainingMs = youAdblockExpiresAt.getTime() - now;
+    if (remainingMs > 0) {
+      effects.push({
+        key: 'YOU_ADBLOCK',
+        label: 'Adblock You',
+        description: 'Masque les interfaces publicitaires dans la page You.',
+        expiresAt: youAdblockExpiresAt.toISOString(),
+        remainingMs,
+      });
+    }
+  }
+
+  return effects;
+}
+
+export async function getYouTemporaryEffects(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { youAdblockExpiresAt: true },
+  });
+
+  return serializeYouTemporaryEffects(user?.youAdblockExpiresAt ?? null);
 }
 
 export async function getYouSkills(userId: string) {

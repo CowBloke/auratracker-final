@@ -38,7 +38,7 @@ function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b:
   );
 }
 
-export function TravailTab({ data, players, currentUserId, onReload }: { data: YouState; players: YouPlayer[]; currentUserId: string; onReload: (refreshBalance?: boolean) => Promise<void> }) {
+export function TravailTab({ data, players, currentUserId, adblockActive, onReload }: { data: YouState; players: YouPlayer[]; currentUserId: string; adblockActive: boolean; onReload: (refreshBalance?: boolean) => Promise<void> }) {
   const { user } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteBusinessId, setInviteBusinessId] = useState<string | null>(null);
@@ -64,8 +64,12 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
+    if (adblockActive) {
+      setBannerAd(null);
+      return;
+    }
     void adsApi.listPublic({ limit: 1 }).then((res) => setBannerAd(res.data.ads[0] ?? null)).catch(() => {});
-  }, []);
+  }, [adblockActive]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 60_000);
@@ -125,7 +129,7 @@ export function TravailTab({ data, players, currentUserId, onReload }: { data: Y
               : data.ownedBusinesses.map((business) => <BusinessCard key={business.id} business={business} onOpen={(entry) => setManagedBusinessId(entry.id)} />)
             }
           </div>
-          {bannerAd && !bannerDismissed ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
+          {!adblockActive && bannerAd && !bannerDismissed ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
 
           {data.jobOffers.length > 0 && (
             <div className="space-y-4">

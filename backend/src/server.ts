@@ -53,6 +53,7 @@ import justiceRoutes from './routes/justice.js';
 import auraVisionRoutes from './routes/auravision.js';
 import braquageLegalRoutes, { drawBraquageLegalSession } from './routes/braquageLegal.js';
 import auraScrollRoutes from './routes/auraScroll.js';
+import infoRoutes from './routes/info.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -186,6 +187,7 @@ app.use('/api/ads', adsRoutes);
 app.use('/api/justice', justiceRoutes);
 app.use('/api/auravision', auraVisionRoutes);
 app.use('/api/aura-scroll', auraScrollRoutes);
+app.use('/api/info', infoRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

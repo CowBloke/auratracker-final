@@ -168,13 +168,17 @@ function YouTutorial() {
   );
 }
 
-export function OverviewTab({ data, userId, onReload }: { data: YouState; userId: string; onReload: (refreshBalance?: boolean) => Promise<void> }) {
+export function OverviewTab({ data, userId, adblockActive, onReload }: { data: YouState; userId: string; adblockActive: boolean; onReload: (refreshBalance?: boolean) => Promise<void> }) {
   const { notifications } = useNotifications();
   const youNotifications = useMemo(() => notifications.filter(isYouNotification).slice(0, 8), [notifications]);
   const [bannerAd, setBannerAd] = useState<Ad | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
+    if (adblockActive) {
+      setBannerAd(null);
+      return;
+    }
     void adsApi.listPublic({ limit: 3 })
       .then((response) => {
         if (response.data.ads[0]) {
@@ -182,7 +186,7 @@ export function OverviewTab({ data, userId, onReload }: { data: YouState; userId
         }
       })
       .catch(() => {});
-  }, []);
+  }, [adblockActive]);
 
   const feedItems = useMemo<FeedItem[]>(() => {
     const items: FeedItem[] = [];
@@ -248,7 +252,7 @@ export function OverviewTab({ data, userId, onReload }: { data: YouState; userId
         </CardContent>
       </Card>
 
-      {bannerAd && !bannerDismissed ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
+      {!adblockActive && bannerAd && !bannerDismissed ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
 
       <DashboardCard
         title={feedItems.length > 0 ? `Fil d'actualite (${feedItems.length})` : "Fil d'actualite"}

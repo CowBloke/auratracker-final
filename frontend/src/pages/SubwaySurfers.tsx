@@ -55,7 +55,9 @@ export default function SubwaySurfers() {
         const isUnityWebBuild =
           html.includes('createUnityInstance') ||
           html.includes('UnityLoader') ||
-          html.includes('unity-canvas');
+          html.includes('unity-canvas') ||
+          html.includes('<canvas') ||
+          html.includes('WebAssembly');
 
         setBuildDetected(isUnityWebBuild);
       } catch {

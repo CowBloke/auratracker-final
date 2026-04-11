@@ -41,6 +41,7 @@ model User {
   usernameColor           String? // Custom username color for chat (hex)
   profilePicture          String? // Custom profile picture URL for chat
   profileBanner           String? // Custom profile banner URL for player profile
+  youAdblockExpiresAt     DateTime? // If set and in the future, hides ad interfaces on You pages
   bio                     String? // User bio/description
   motivationMessage       String? // Registration motivation shown to admins before approval
   referralCode            String?   @unique

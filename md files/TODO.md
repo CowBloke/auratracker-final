@@ -1,23 +1,15 @@
 ## TODO
 
-- chat buggé
 - casino bug : roulette (Nan mais en gros genre pendant un temps les 40K marchait je perdais et tt mais a un moment j'ai mise plein de fois mais genre ca perdait l'argent mais la roulette tournait pas et ducoup ca depensait l'argent dans le vide)
 - tutoriel
     - expliciter changement de business
 - immobilier : acheter rues
 - impot sur les societes : fisc
-- aut scroll vers le bas quand pas de message non lus dans chat main
-- racheterr part en tant que fondateur et transfert fondateur
 - historique solde
 - marché noir
     - entreprise coca
-- syteme d'amende qu'ils doivent payer eux memes
-- Quand on est invité comme associé et qu’on accepte on a le rôle d’employé.
 - revendre action
-- adblock objet
-- revenus journaliers
 - message pour demander de relancer
-- monnaie reele api
 - pb compteur en ligne auravision
 - reaction et reply et ticks vus dm
 - fix auto maintenace desactivation
@@ -64,11 +56,11 @@
 - actualisation notif demande emploi
 - guere inter classe/niveau/école
 - remettre entrée modififcation aura/argent utilisateur
-- bug pas investir
+- bug pas investir dans entreprise
 - badge plus de badge
 - support image/video aura scroll
-- coin API
-- salaire verif
+- suggestions: demander à revoir
+- modifier limite arehnt aura jeu admin
 
 ## PROJECTS
 
