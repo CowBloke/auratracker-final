@@ -1,6 +1,5 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { PageShell } from '@/components/layout/page-shell';
@@ -1704,80 +1703,11 @@ const tutorialGuides: TutorialGuide[] = [
   })),
 ];
 
-function GuideNavItem({
-  guide,
-  selected,
-  onSelect,
-}: {
-  guide: TutorialGuide;
-  selected: boolean;
-  onSelect: (guideId: string) => void;
-}) {
-  const Icon = guide.icon;
-
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(guide.id)}
-      className={cn(
-        'flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors',
-        selected
-          ? 'border-primary/30 bg-primary/5 shadow-sm'
-          : 'border-border/50 bg-background/70 hover:border-border hover:bg-muted/40',
-      )}
-      aria-pressed={selected}
-    >
-      <span
-        className={cn(
-          'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-muted-foreground',
-          selected ? 'border-primary/20 bg-primary/10' : 'border-border/40 bg-muted/30',
-        )}
-      >
-        <Icon className="h-4 w-4" />
-      </span>
-
-      <span className="min-w-0 flex-1 space-y-0.5">
-        <span className="block truncate text-sm font-medium leading-5 text-foreground">
-          {guide.title}
-        </span>
-        <span className="block truncate text-xs leading-4 text-muted-foreground">
-          {guide.description}
-        </span>
-      </span>
-
-      <Badge
-        variant="outline"
-        className={cn(
-          'ml-2 shrink-0 self-center text-[10px] uppercase tracking-wide',
-          selected && 'border-primary/30 bg-primary/10 text-foreground',
-        )}
-      >
-        {guide.tag}
-      </Badge>
-    </button>
-  );
-}
-
 function GuideDetail({ guide }: { guide: TutorialGuide }) {
-  const Icon = guide.icon;
-
   return (
     <Card className="border-border/60 bg-card shadow-sm">
-      <CardHeader className="space-y-3 border-b border-border/30 pb-4">
-        <div className="flex items-start gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-400/15">
-            <Icon className="h-5 w-5 text-sky-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <CardTitle className={TYPOGRAPHY.H2}>{guide.title}</CardTitle>
-            <CardDescription className={cn(TYPOGRAPHY.PAGE_DESCRIPTION, 'mt-1')}>
-              {guide.description}
-            </CardDescription>
-          </div>
-          <Badge variant="outline" className="mt-1 shrink-0 text-xs">
-            {guide.tag}
-          </Badge>
-        </div>
+      <CardHeader className="border-b border-border/30 pb-4">
+        <CardTitle className={TYPOGRAPHY.H2}>{guide.title}</CardTitle>
       </CardHeader>
       <CardContent className="px-6 py-6">
         {guide.content ? (
@@ -1799,23 +1729,45 @@ function TutorialsTab() {
     tutorialGuides.find((guide) => guide.id === selectedGuideId) ?? tutorialGuides[0];
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+    <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       <Card className="border-border/60 bg-card/80 shadow-sm lg:sticky lg:top-6 lg:self-start">
-        <CardHeader className="space-y-1 border-b border-border/30 pb-4">
-          <CardTitle className={TYPOGRAPHY.H3}>Guides</CardTitle>
-          <CardDescription className={TYPOGRAPHY.PAGE_DESCRIPTION}>
-            Choisis un guide à lire dans le panneau de droite.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 p-3 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto">
-          {tutorialGuides.map((guide) => (
-            <GuideNavItem
-              key={guide.id}
-              guide={guide}
-              selected={guide.id === selectedGuide.id}
-              onSelect={setSelectedGuideId}
-            />
-          ))}
+        <CardContent className="p-2">
+          <Accordion type="single" collapsible value={selectedGuide.id} onValueChange={setSelectedGuideId} className="space-y-2">
+            {tutorialGuides.map((guide) => {
+              const Icon = guide.icon;
+
+              return (
+                <AccordionItem
+                  key={guide.id}
+                  value={guide.id}
+                  className={cn(
+                    'overflow-hidden rounded-xl border bg-background/70',
+                    selectedGuide.id === guide.id ? 'border-primary/30' : 'border-border/50',
+                  )}
+                >
+                  <AccordionTrigger className={cn(
+                    'px-3 py-2 text-left hover:no-underline',
+                    selectedGuide.id === guide.id && 'bg-primary/5',
+                  )}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className={cn(
+                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border',
+                        selectedGuide.id === guide.id ? 'border-primary/20 bg-primary/10' : 'border-border/40 bg-muted/30',
+                      )}>
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium leading-5">{guide.title}</p>
+                      </div>
+                      <Badge variant="outline" className="ml-2 shrink-0 text-[10px] uppercase tracking-wide">
+                        {guide.tag}
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
         </CardContent>
       </Card>
 
@@ -1829,20 +1781,10 @@ function TutorialsTab() {
 export default function Information() {
   return (
     <PageShell>
-      <Tabs defaultValue="informations">
-        <TabsList className="mb-6">
-          <TabsTrigger value="informations">Informations</TabsTrigger>
-          <TabsTrigger value="tutoriels">Tutoriels</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="informations" className={SPACING.SECTION_SPACING}>
-          <TaxBracketsSection />
-        </TabsContent>
-
-        <TabsContent value="tutoriels">
-          <TutorialsTab />
-        </TabsContent>
-      </Tabs>
+      <div className="space-y-6">
+        <TaxBracketsSection />
+        <TutorialsTab />
+      </div>
     </PageShell>
   );
 }
