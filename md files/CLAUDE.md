@@ -1,131 +1,65 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
-## Project Overview
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-Aura Tracker is a full-stack TypeScript social gaming platform for a private community (~40 users). It features real-time chat, mini-games, a dual-currency economy (Aura prestige + Money), marketplace, and leaderboards.
+## 1. Think Before Coding
 
-## Development Commands
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-### Backend (from `/backend`)
-```bash
-npm run dev           # Start dev server with hot reload (tsx watch)
-npm run build         # Compile TypeScript
-npm run start         # Run production build
-npm run db:generate   # Generate Prisma client after schema changes
-npm run db:push       # Sync schema to database
-npm run db:migrate    # Run database migrations
-npm run db:studio     # Open Prisma visual database admin
-npm run db:seed       # Seed database with test data
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
 ```
 
-### Frontend (from `/frontend`)
-```bash
-npm run dev           # Start Vite dev server on :5173
-npm run build         # Type-check and build for production
-npm run lint          # Run ESLint
-npm run preview       # Preview production build
-```
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-### Running Both Servers
-Both servers must run simultaneously for development:
-- Backend: `cd backend && npm run dev` (runs on :3000)
-- Frontend: `cd frontend && npm run dev` (runs on :5173, proxies API to backend)
+---
 
-## Architecture
-
-### Tech Stack
-- **Frontend:** React 18 + Vite + TypeScript + Tailwind CSS + Radix UI + Socket.io Client
-- **Backend:** Express.js + TypeScript + Prisma ORM + Socket.io + JWT auth
-- **Database:** SQLite (dev) / PostgreSQL (production)
-
-### Key Directories
-```
-backend/
-├── src/server.ts          # Entry point (Express + Socket.io setup)
-├── src/routes/            # REST API endpoints (auth, economy, games, etc.)
-├── src/socket/            # Real-time event handlers (chat, party, games)
-├── src/middleware/        # Auth (JWT) and validation middleware
-├── src/config/            # Configuration (JWT, CORS, etc.)
-└── prisma/schema.prisma   # Database schema (14 models)
-
-frontend/
-├── src/App.tsx            # Route definitions with ProtectedRoute
-├── src/pages/             # Page components (17 routes)
-├── src/components/ui/     # Radix UI component library (30+ components)
-├── src/contexts/          # Auth, Socket, Theme contexts
-├── src/services/api.ts    # Axios HTTP client
-└── src/services/socket.ts # Socket.io utilities
-```
-
-### Communication Pattern
-- REST API for CRUD operations (auth, marketplace, user data)
-- Socket.io for real-time features (chat, party system, live balance updates)
-- Frontend proxies `/api` to backend via Vite config in development
-
-### Authentication
-- JWT-based auth with bcrypt password hashing
-- Protected routes use auth middleware
-- Admin privileges determined by ADMIN_EMAIL env var match
-- Tokens stored client-side, refreshed via `/api/auth/refresh`
-
-### Database Models (Prisma)
-Core models: User, Item, UserItem (inventory), Transfer, GameStats, Party, PartyMember, ChatMessage, AuraCoinPrice, AuraCoinTransaction, Suggestion, SuggestionVote, BugReport
-
-### Path Aliases
-Frontend uses `@/*` to resolve to `src/*` (configured in tsconfig and vite.config)
-
-## Environment Variables
-
-### Backend Configuration
-The backend uses environment-specific configuration files:
-- `.env.development` - Development environment (localhost)
-- `.env.production` - Production environment (auratracker.xyz)
-- `.env` - Active configuration (gitignored, copy from `.env.example`)
-
-Required variables:
-```
-DATABASE_URL="postgresql://..." (or file:./dev.db for SQLite)
-JWT_SECRET="..."
-JWT_EXPIRES_IN="7d"
-REDIS_URL="redis://localhost:6379"
-PORT=3000
-NODE_ENV="development" (or "production")
-CORS_ORIGIN="http://localhost:5173" (dev) or "https://auratracker.xyz" (prod)
-ADMIN_EMAIL="admin@auratracker.com"
-```
-
-### Frontend Configuration
-The frontend automatically uses environment-based URLs:
-- `.env.development` - Points to `http://localhost:3000`
-- `.env.production` - Points to `https://auratracker.xyz`
-
-Variables:
-```
-VITE_API_URL - Backend API URL (auto-set by environment)
-VITE_SOCKET_URL - Socket.io URL (auto-set by environment)
-```
-
-## Game Reward Logic
-- Doodle Jump: 1 money per 10 score (min 100 score), 50 aura for new high score
-
-## Changelog Rule
-
-Add an entry to `SEED_ENTRIES` in `backend/src/routes/changelog.ts` only when you want to publish a product update card. Entries are automatically synced to the DB on next server start via `ensureSeeded()`. Structure:
-
-```ts
-{
-  id: 'YYYY-MM-DD-short-slug',   // unique, kebab-case
-  date: 'YYYY-MM-DD',
-  title: 'Titre court',
-  summary: 'Une phrase résumant les changements.',
-  items: [
-    { category: 'BIG_FEATURE', text: '**Titre** — Description.', order: 0 },
-    { category: 'SMALL_FEATURE', text: '**Titre** — Description.', order: 0 },
-    { category: 'BUG_FIX', text: '**Titre** — Description.', order: 0 },
-  ],
-},
-```
-
-Categories: `BIG_FEATURE` (grandes fonctionnalités), `SMALL_FEATURE` (petites améliorations), `BUG_FIX` (correctifs). Add the new entry at the top of the array. File: `backend/src/routes/changelog.ts`.
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

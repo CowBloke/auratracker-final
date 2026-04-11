@@ -66,6 +66,9 @@
 - remettre entrée modififcation aura/argent utilisateur
 - bug pas investir
 - badge plus de badge
+- support image/video aura scroll
+- coin API
+- salaire verif
 
 ## PROJECTS
 
