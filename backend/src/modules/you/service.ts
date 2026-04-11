@@ -4961,10 +4961,10 @@ export async function updateBusinessProfile(
 
   const nextMapX = data.mapX === undefined ? undefined : (data.mapX === null ? null : Math.round(Number(data.mapX)));
   const nextMapY = data.mapY === undefined ? undefined : (data.mapY === null ? null : Math.round(Number(data.mapY)));
-  if (nextMapX != null && (!Number.isFinite(nextMapX) || nextMapX < 0 || nextMapX > 1000)) {
+  if (nextMapX != null && (!Number.isFinite(nextMapX) || nextMapX < -180 || nextMapX > 180)) {
     throw new Error('INVALID_BUSINESS_MAP_POSITION');
   }
-  if (nextMapY != null && (!Number.isFinite(nextMapY) || nextMapY < 0 || nextMapY > 700)) {
+  if (nextMapY != null && (!Number.isFinite(nextMapY) || nextMapY < -85.05112878 || nextMapY > 85.05112878)) {
     throw new Error('INVALID_BUSINESS_MAP_POSITION');
   }
 
