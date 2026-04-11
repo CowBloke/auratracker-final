@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -1660,114 +1660,167 @@ const placeholderSections: TutorialSection[] = [
   },
 ];
 
-function TutorialsTab() {
+interface TutorialGuide {
+  id: string;
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  tag: string;
+  content: ReactNode | null;
+}
+
+const tutorialGuides: TutorialGuide[] = [
+  {
+    id: 'guide-you',
+    icon: Building2,
+    title: 'Guide du jeu You',
+    description: 'Entreprises, compétences, investissements, relations — tout le système économique.',
+    tag: 'Complet',
+    content: <YouGameGuideContent />,
+  },
+  {
+    id: 'guide-newcomer',
+    icon: Star,
+    title: 'Guide du nouvel arrivant',
+    description: 'Monnaies, jeux, systèmes quotidiens, social, boutique et impôts — tout pour bien démarrer.',
+    tag: 'Complet',
+    content: <NewcomerGuideContent />,
+  },
+  {
+    id: 'guide-clans',
+    icon: Flag,
+    title: 'Clans',
+    description: 'Créer, rejoindre, guerres de clans, Nation, banque, événements et items.',
+    tag: 'Complet',
+    content: <ClanGuideContent />,
+  },
+  ...placeholderSections.map((section) => ({
+    id: `coming-soon-${section.title}`,
+    icon: section.icon,
+    title: section.title,
+    description: section.description,
+    tag: section.tag ?? 'Bientôt',
+    content: null,
+  })),
+];
+
+function GuideNavItem({
+  guide,
+  selected,
+  onSelect,
+}: {
+  guide: TutorialGuide;
+  selected: boolean;
+  onSelect: (guideId: string) => void;
+}) {
+  const Icon = guide.icon;
+
   return (
-    <Card className="border-border/60 bg-card">
-      <CardContent className="p-0">
-        <Accordion type="multiple">
+    <button
+      type="button"
+      onClick={() => onSelect(guide.id)}
+      className={cn(
+        'flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors',
+        selected
+          ? 'border-primary/30 bg-primary/5 shadow-sm'
+          : 'border-border/50 bg-background/70 hover:border-border hover:bg-muted/40',
+      )}
+      aria-pressed={selected}
+    >
+      <span
+        className={cn(
+          'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-muted-foreground',
+          selected ? 'border-primary/20 bg-primary/10' : 'border-border/40 bg-muted/30',
+        )}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
 
-          {/* ── Guide du jeu You ── */}
-          <AccordionItem value="guide-you" className="px-5 py-1 sm:px-6">
-            <AccordionTrigger className="py-5 hover:no-underline">
-              <div className="flex items-center gap-3 text-left flex-1 pr-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-400/15">
-                  <Building2 className="h-4 w-4 text-sky-400" />
-                </div>
-                <div>
-                  <p className="text-base font-semibold tracking-tight">Guide du jeu You</p>
-                  <p className={cn(TYPOGRAPHY.PAGE_DESCRIPTION, 'mt-0.5')}>
-                    Entreprises, compétences, investissements, relations — tout le système économique.
-                  </p>
-                </div>
-                <Badge variant="outline" className="ml-auto mr-3 shrink-0 text-xs hidden sm:inline-flex">
-                  Complet
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <YouGameGuideContent />
-            </AccordionContent>
-          </AccordionItem>
+      <span className="min-w-0 flex-1 space-y-0.5">
+        <span className="block truncate text-sm font-medium leading-5 text-foreground">
+          {guide.title}
+        </span>
+        <span className="block truncate text-xs leading-4 text-muted-foreground">
+          {guide.description}
+        </span>
+      </span>
 
-          {/* ── Guide du nouvel arrivant ── */}
-          <AccordionItem value="guide-newcomer" className="px-5 py-1 sm:px-6">
-            <AccordionTrigger className="py-5 hover:no-underline">
-              <div className="flex items-center gap-3 text-left flex-1 pr-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-400/15">
-                  <Star className="h-4 w-4 text-emerald-400" />
-                </div>
-                <div>
-                  <p className="text-base font-semibold tracking-tight">Guide du nouvel arrivant</p>
-                  <p className={cn(TYPOGRAPHY.PAGE_DESCRIPTION, 'mt-0.5')}>
-                    Monnaies, jeux, systèmes quotidiens, social, boutique et impôts — tout pour bien démarrer.
-                  </p>
-                </div>
-                <Badge variant="outline" className="ml-auto mr-3 shrink-0 text-xs hidden sm:inline-flex">
-                  Complet
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <NewcomerGuideContent />
-            </AccordionContent>
-          </AccordionItem>
+      <Badge
+        variant="outline"
+        className={cn(
+          'ml-2 shrink-0 self-center text-[10px] uppercase tracking-wide',
+          selected && 'border-primary/30 bg-primary/10 text-foreground',
+        )}
+      >
+        {guide.tag}
+      </Badge>
+    </button>
+  );
+}
 
-          {/* ── Guide des Clans ── */}
-          <AccordionItem value="guide-clans" className="px-5 py-1 sm:px-6">
-            <AccordionTrigger className="py-5 hover:no-underline">
-              <div className="flex items-center gap-3 text-left flex-1 pr-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-400/15">
-                  <Flag className="h-4 w-4 text-sky-400" />
-                </div>
-                <div>
-                  <p className="text-base font-semibold tracking-tight">Clans</p>
-                  <p className={cn(TYPOGRAPHY.PAGE_DESCRIPTION, 'mt-0.5')}>
-                    Créer, rejoindre, guerres de clans, Nation, banque, événements et items.
-                  </p>
-                </div>
-                <Badge variant="outline" className="ml-auto mr-3 shrink-0 text-xs hidden sm:inline-flex">
-                  Complet
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <ClanGuideContent />
-            </AccordionContent>
-          </AccordionItem>
+function GuideDetail({ guide }: { guide: TutorialGuide }) {
+  const Icon = guide.icon;
 
-          {/* ── Guides à venir ── */}
-          {placeholderSections.map((section) => {
-            const Icon = section.icon;
-            return (
-              <AccordionItem
-                key={section.title}
-                value={section.title}
-                className="px-5 py-1 sm:px-6 opacity-50 pointer-events-none"
-              >
-                <AccordionTrigger className="py-5 hover:no-underline">
-                  <div className="flex items-center gap-3 text-left flex-1 pr-2">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30">
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-base font-semibold tracking-tight">{section.title}</p>
-                      <p className={cn(TYPOGRAPHY.PAGE_DESCRIPTION, 'mt-0.5')}>{section.description}</p>
-                    </div>
-                    {section.tag && (
-                      <div className="ml-auto mr-3 shrink-0 flex flex-col items-end gap-1">
-                        <Badge variant="outline" className="text-xs">{section.tag}</Badge>
-                        <span className="text-[10px] text-muted-foreground/50">Bientôt</span>
-                      </div>
-                    )}
-                  </div>
-                </AccordionTrigger>
-              </AccordionItem>
-            );
-          })}
-
-        </Accordion>
+  return (
+    <Card className="border-border/60 bg-card shadow-sm">
+      <CardHeader className="space-y-3 border-b border-border/30 pb-4">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-400/15">
+            <Icon className="h-5 w-5 text-sky-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <CardTitle className={TYPOGRAPHY.H2}>{guide.title}</CardTitle>
+            <CardDescription className={cn(TYPOGRAPHY.PAGE_DESCRIPTION, 'mt-1')}>
+              {guide.description}
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="mt-1 shrink-0 text-xs">
+            {guide.tag}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="px-6 py-6">
+        {guide.content ? (
+          guide.content
+        ) : (
+          <div className="rounded-xl border border-dashed border-border/40 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+            Ce guide arrive bientôt. Le contenu sera ajouté dans une prochaine mise à jour.
+          </div>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+function TutorialsTab() {
+  const [selectedGuideId, setSelectedGuideId] = useState(tutorialGuides[0].id);
+
+  const selectedGuide =
+    tutorialGuides.find((guide) => guide.id === selectedGuideId) ?? tutorialGuides[0];
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <Card className="border-border/60 bg-card/80 shadow-sm lg:sticky lg:top-6 lg:self-start">
+        <CardHeader className="space-y-1 border-b border-border/30 pb-4">
+          <CardTitle className={TYPOGRAPHY.H3}>Guides</CardTitle>
+          <CardDescription className={TYPOGRAPHY.PAGE_DESCRIPTION}>
+            Choisis un guide à lire dans le panneau de droite.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 p-3 lg:max-h-[calc(100vh-14rem)] lg:overflow-y-auto">
+          {tutorialGuides.map((guide) => (
+            <GuideNavItem
+              key={guide.id}
+              guide={guide}
+              selected={guide.id === selectedGuide.id}
+              onSelect={setSelectedGuideId}
+            />
+          ))}
+        </CardContent>
+      </Card>
+
+      <GuideDetail guide={selectedGuide} />
+    </div>
   );
 }
 
