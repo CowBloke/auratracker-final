@@ -2050,13 +2050,8 @@ function TutorialsTab() {
   );
 }
 
-// ─── Page ──────────────────────────────────────────────────────────────────────
-      </Card>
-
-      <GuideDetail guide={selectedGuide} />
-    </div>
-  );
-}
+void TaxBracketsSection;
+void YouGameGuideContent;
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
