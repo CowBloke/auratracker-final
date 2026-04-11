@@ -1659,14 +1659,259 @@ const placeholderSections: TutorialSection[] = [
   },
 ];
 
+interface TutorialSubsection {
+  id: string;
+  title: string;
+  content: ReactNode;
+}
+
 interface TutorialGuide {
   id: string;
   icon: ComponentType<{ className?: string }>;
   title: string;
   description: string;
-  tag: string;
-  content: ReactNode | null;
+  subsections?: TutorialSubsection[];
+  content?: ReactNode | null;
 }
+
+const youGuideSubsections: TutorialSubsection[] = [
+  {
+    id: 'presentation',
+    title: 'Présentation',
+    content: (
+      <div className="space-y-5">
+        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          <strong>You</strong> est une simulation économique multijoueur intégrée à AuraTracker.
+          Tu y construis un empire d'entreprises, investis dans celles des autres joueurs, formes des alliances,
+          crées des relations, et tentes de t'enrichir sans te faire imposer toute ta fortune.
+        </p>
+        <GuideSection title="Les 8 onglets du jeu">
+          <div className="divide-y divide-border/20 rounded-xl border border-border/40 overflow-hidden">
+            {[
+              { icon: Star, label: 'Vue d\'ensemble', desc: 'Dashboard : statistiques, fil d\'activité, notifications, guide de démarrage.' },
+              { icon: Briefcase, label: 'Travail', desc: 'Créer et gérer tes entreprises, consulter les offres d\'emploi reçues, voir tes participations.' },
+              { icon: TrendingUp, label: 'Explorer', desc: 'Parcourir tous les businesses des autres joueurs. Investir, emprunter, transférer, acheter des formations.' },
+              { icon: Heart, label: 'Social', desc: 'Gérer tes relations avec les autres joueurs (amitié, amour, mariage, liaison).' },
+              { icon: Wallet, label: 'Finance', desc: 'Vue financière globale : comptes bancaires, transactions, AuraCoin, historique.' },
+              { icon: Landmark, label: 'Banques', desc: 'Résumé de tous tes comptes courants et livrets d\'épargne dans les banques du jeu.' },
+              { icon: Map, label: 'Carte', desc: 'Carte de la ville avec les entreprises réparties par quartier (Commerce, Finance, Tech, Formation, Justice).' },
+              { icon: Star, label: 'Publicités', desc: 'Créer et gérer des annonces publicitaires pour tes propres entreprises.' },
+            ].map(({ icon: Icon, label, desc }) => (
+              <div key={label} className="flex items-start gap-3 px-4 py-3 bg-card/30">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold">{label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GuideSection>
+      </div>
+    ),
+  },
+  {
+    id: 'premiers-pas',
+    title: 'Premiers pas — créer son business',
+    content: (
+      <div className="space-y-5">
+        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          Au départ tu disposes d'<strong>1 slot business</strong>. Pour en débloquer d'autres, monte le skill <strong>Affaires</strong>.
+        </p>
+        <GuideSection title="Étapes pour créer sa première entreprise">
+          <div className="divide-y divide-border/20">
+            {[
+              { n: '1', t: 'Va dans l\'onglet Travail', d: 'Clique sur "Créer une entreprise".' },
+              { n: '2', t: 'Choisis un type de niveau 1', d: 'Limonade, Épicerie ou Restaurant.' },
+              { n: '3', t: 'Donne-lui un nom', d: 'Le nom doit être unique sur tout le jeu.' },
+              { n: '4', t: 'Commence à collecter', d: 'Les clients NPC visitent ton business toutes les 6 heures.' },
+              { n: '5', t: 'Gère la trésorerie', d: 'Déposer ou retirer n\'affecte que toi en tant que propriétaire.' },
+            ].map(({ n, t, d }) => (
+              <div key={n} className="grid grid-cols-[auto_1fr] items-start gap-x-3 py-3">
+                <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums leading-5 pt-0.5')}>{n}.</span>
+                <div>
+                  <p className="text-sm font-medium">{t}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{d}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GuideSection>
+        <GuideSection title="Slots business et compétence Affaires">
+          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+            Le niveau de compétence <strong>Affaires</strong> détermine ton nombre de slots. Chaque niveau débloque un slot supplémentaire.
+          </p>
+        </GuideSection>
+      </div>
+    ),
+  },
+  {
+    id: 'types-entreprises',
+    title: "Types d'entreprises",
+    content: (
+      <div className="space-y-5">
+        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          Les entreprises sont réparties en <strong>3 niveaux</strong>. Les niveaux supérieurs demandent un capital minimum et une progression adaptée.
+        </p>
+        <GuideSection title="Niveau 1 — Commerce de base">
+          <div className="space-y-2">
+            {BUSINESS_TYPES_DATA.filter((b) => b.level === 1).map((b) => (
+              <div key={b.key} className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold">{b.key}</p>
+                </div>
+                <div className="grid grid-cols-3 gap-x-4 text-xs text-muted-foreground">
+                  <span>Frais : <strong className="text-foreground">{b.fee.toLocaleString('fr-FR')} $</strong></span>
+                  <span>Revenu/mois : <strong className="text-emerald-400">{b.revenue.toLocaleString('fr-FR')} $</strong></span>
+                  {b.npc ? <span>Collect NPC : <strong className="text-lime-400">{b.npc} $ / 6 h</strong></span> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </GuideSection>
+        <GuideSection title="Niveau 2 — Entreprises intermédiaires">
+          <div className="space-y-2">
+            {BUSINESS_TYPES_DATA.filter((b) => b.level === 2).map((b) => (
+              <div key={b.key} className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 space-y-1">
+                <p className="text-sm font-semibold">{b.key}</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                  <span>Frais : <strong className="text-foreground">{b.fee.toLocaleString('fr-FR')} $</strong></span>
+                  <span>Capital min : <strong className="text-amber-400">{b.minCap.toLocaleString('fr-FR')} $</strong></span>
+                  {b.revenue > 0 ? <span>Revenu/mois : <strong className="text-emerald-400">{b.revenue.toLocaleString('fr-FR')} $</strong></span> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </GuideSection>
+        <GuideSection title="Niveau 3 — Banque">
+          <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/5 px-4 py-3 space-y-2">
+            <p className="text-sm font-semibold">Banque</p>
+            <p className="text-xs text-muted-foreground">Les bénéfices viennent des intérêts sur les prêts accordés et des dépôts des clients.</p>
+          </div>
+        </GuideSection>
+      </div>
+    ),
+  },
+  {
+    id: 'recettes-revenus',
+    title: 'Recettes et revenus',
+    content: (
+      <div className="space-y-5">
+        <GuideSection title="Revenu mensuel → quotidien">
+          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+            Le revenu mensuel d'une entreprise est divisé par 30 pour calculer le revenu journalier, versé automatiquement à minuit.
+          </p>
+        </GuideSection>
+        <GuideSection title="Collecte NPC (clients virtuels)">
+          <div className="rounded-xl border border-border/40 overflow-hidden mt-2">
+            <Row label="Limonade" value="150 $ / 6 h" />
+            <Row label="Épicerie" value="300 $ / 6 h" />
+            <Row label="Restaurant" value="350 $ / 6 h" />
+            <Row label="YouTube" value="220 $ / 6 h" />
+          </div>
+        </GuideSection>
+        <GuideSection title="Trésorerie">
+          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+            Tous les revenus arrivent dans la trésorerie du business, puis tu peux les retirer vers ton argent personnel.
+          </p>
+        </GuideSection>
+      </div>
+    ),
+  },
+  {
+    id: 'skills',
+    title: 'Compétences (Skills)',
+    content: (
+      <div className="space-y-5">
+        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          Il existe <strong>6 compétences</strong>, chacune allant de niveau 1 à 10.
+        </p>
+        <div className="space-y-2">
+          {SKILLS_DATA.map((skill) => (
+            <div key={skill.label} className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold', skill.color)}>
+                  {skill.label}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                <strong className="text-foreground/80">XP auto :</strong> {skill.how}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <strong className="text-foreground/80">Débloque :</strong> {skill.unlocks}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'investir-explorer',
+    title: 'Investir et Explorer',
+    content: (
+      <div className="space-y-5">
+        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          L'onglet Explorer liste les businesses des autres joueurs. Tu peux investir, emprunter, transférer de l'argent, acheter des formations ou postuler.
+        </p>
+        <GuideSection title="Investir dans un business">
+          <div className="rounded-xl border border-border/40 overflow-hidden">
+            <Row label="Risque faible" value="2 % – 5 % de rendement" />
+            <Row label="Risque moyen" value="5 % – 15 % de rendement" />
+            <Row label="Risque élevé" value="10 % – 40 % de rendement" />
+          </div>
+        </GuideSection>
+        <GuideSection title="Postuler comme employé">
+          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+            Si le recrutement est ouvert, tu peux postuler depuis la fiche d'un business et recevoir un salaire journalier si tu es accepté.
+          </p>
+        </GuideSection>
+      </div>
+    ),
+  },
+  {
+    id: 'banques-epargne',
+    title: 'Banques et épargne',
+    content: (
+      <div className="space-y-5">
+        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          Les banques sont des businesses de niveau 3. Elles proposent des comptes courants et des livrets d'épargne.
+        </p>
+        <GuideSection title="Types de comptes">
+          <div className="rounded-xl border border-border/40 overflow-hidden">
+            <div className="px-4 py-3 space-y-1 border-b border-border/30">
+              <p className="text-xs font-semibold text-sky-400">Compte courant</p>
+              <p className="text-xs text-muted-foreground">Dépôt et retrait libres.</p>
+            </div>
+            <div className="px-4 py-3 space-y-1">
+              <p className="text-xs font-semibold text-amber-400">Livret épargne</p>
+              <p className="text-xs text-muted-foreground">Fonctionne comme un compte courant avec un taux différent.</p>
+            </div>
+          </div>
+        </GuideSection>
+      </div>
+    ),
+  },
+  {
+    id: 'relations-sociales',
+    title: 'Relations sociales',
+    content: (
+      <div className="space-y-5">
+        <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
+          L'onglet Social te permet de tisser des liens avec d'autres joueurs.
+        </p>
+        <GuideSection title="Statuts de relation">
+          <div className="rounded-xl border border-border/40 overflow-hidden">
+            <Row label="Ami(e)" value="Relation de base" />
+            <Row label="En couple" value="Lien amoureux" />
+            <Row label="Marié(e)" value="Compte commun partagé" />
+            <Row label="Liaison" value="Relation parallèle risquée" />
+          </div>
+        </GuideSection>
+      </div>
+    ),
+  },
+];
 
 const tutorialGuides: TutorialGuide[] = [
   {
@@ -1674,15 +1919,13 @@ const tutorialGuides: TutorialGuide[] = [
     icon: Building2,
     title: 'Guide du jeu You',
     description: 'Entreprises, compétences, investissements, relations — tout le système économique.',
-    tag: 'Complet',
-    content: <YouGameGuideContent />,
+    subsections: youGuideSubsections,
   },
   {
     id: 'guide-newcomer',
     icon: Star,
     title: 'Guide du nouvel arrivant',
     description: 'Monnaies, jeux, systèmes quotidiens, social, boutique et impôts — tout pour bien démarrer.',
-    tag: 'Complet',
     content: <NewcomerGuideContent />,
   },
   {
@@ -1690,7 +1933,6 @@ const tutorialGuides: TutorialGuide[] = [
     icon: Flag,
     title: 'Clans',
     description: 'Créer, rejoindre, guerres de clans, Nation, banque, événements et items.',
-    tag: 'Complet',
     content: <ClanGuideContent />,
   },
   ...placeholderSections.map((section) => ({
@@ -1698,19 +1940,22 @@ const tutorialGuides: TutorialGuide[] = [
     icon: section.icon,
     title: section.title,
     description: section.description,
-    tag: section.tag ?? 'Bientôt',
     content: null,
   })),
 ];
 
-function GuideDetail({ guide }: { guide: TutorialGuide }) {
+function GuideDetail({ guide, subsectionId }: { guide: TutorialGuide; subsectionId?: string }) {
+  const subsection = guide.subsections?.find((item) => item.id === subsectionId) ?? guide.subsections?.[0];
+
   return (
     <Card className="border-border/60 bg-card shadow-sm">
       <CardHeader className="border-b border-border/30 pb-4">
-        <CardTitle className={TYPOGRAPHY.H2}>{guide.title}</CardTitle>
+        <CardTitle className={TYPOGRAPHY.H2}>{subsection?.title ?? guide.title}</CardTitle>
       </CardHeader>
       <CardContent className="px-6 py-6">
-        {guide.content ? (
+        {subsection ? (
+          subsection.content
+        ) : guide.content ? (
           guide.content
         ) : (
           <div className="rounded-xl border border-dashed border-border/40 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
@@ -1724,15 +1969,28 @@ function GuideDetail({ guide }: { guide: TutorialGuide }) {
 
 function TutorialsTab() {
   const [selectedGuideId, setSelectedGuideId] = useState(tutorialGuides[0].id);
+  const [selectedSubsectionId, setSelectedSubsectionId] = useState(youGuideSubsections[0].id);
 
-  const selectedGuide =
-    tutorialGuides.find((guide) => guide.id === selectedGuideId) ?? tutorialGuides[0];
+  const selectedGuide = tutorialGuides.find((guide) => guide.id === selectedGuideId) ?? tutorialGuides[0];
+
+  const selectGuide = (guideId: string) => {
+    const guide = tutorialGuides.find((item) => item.id === guideId);
+    setSelectedGuideId(guideId);
+    if (guide?.subsections?.length) {
+      setSelectedSubsectionId(guide.subsections[0].id);
+    }
+  };
+
+  const selectSubsection = (guideId: string, subsectionId: string) => {
+    setSelectedGuideId(guideId);
+    setSelectedSubsectionId(subsectionId);
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       <Card className="border-border/60 bg-card/80 shadow-sm lg:sticky lg:top-6 lg:self-start">
         <CardContent className="p-2">
-          <Accordion type="single" collapsible value={selectedGuide.id} onValueChange={setSelectedGuideId} className="space-y-2">
+          <Accordion type="single" collapsible value={selectedGuide.id} onValueChange={selectGuide} className="space-y-2">
             {tutorialGuides.map((guide) => {
               const Icon = guide.icon;
 
@@ -1745,10 +2003,7 @@ function TutorialsTab() {
                     selectedGuide.id === guide.id ? 'border-primary/30' : 'border-border/50',
                   )}
                 >
-                  <AccordionTrigger className={cn(
-                    'px-3 py-2 text-left hover:no-underline',
-                    selectedGuide.id === guide.id && 'bg-primary/5',
-                  )}>
+                  <AccordionTrigger className={cn('px-3 py-2 text-left hover:no-underline', selectedGuide.id === guide.id && 'bg-primary/5')}>
                     <div className="flex min-w-0 items-center gap-3">
                       <span className={cn(
                         'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border',
@@ -1759,16 +2014,43 @@ function TutorialsTab() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium leading-5">{guide.title}</p>
                       </div>
-                      <Badge variant="outline" className="ml-2 shrink-0 text-[10px] uppercase tracking-wide">
-                        {guide.tag}
-                      </Badge>
                     </div>
                   </AccordionTrigger>
+
+                  {guide.subsections?.length ? (
+                    <AccordionContent className="px-2 pb-2 pt-0">
+                      <div className="space-y-1">
+                        {guide.subsections.map((subsection) => (
+                          <button
+                            key={subsection.id}
+                            type="button"
+                            onClick={() => selectSubsection(guide.id, subsection.id)}
+                            className={cn(
+                              'flex w-full items-center rounded-lg border px-3 py-2 text-left text-xs transition-colors',
+                              selectedGuide.id === guide.id && selectedSubsectionId === subsection.id
+                                ? 'border-primary/30 bg-primary/5 text-foreground'
+                                : 'border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-muted/40',
+                            )}
+                          >
+                            <span className="truncate font-medium">{subsection.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  ) : null}
                 </AccordionItem>
               );
             })}
           </Accordion>
         </CardContent>
+      </Card>
+
+      <GuideDetail guide={selectedGuide} subsectionId={selectedSubsectionId} />
+    </div>
+  );
+}
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
       </Card>
 
       <GuideDetail guide={selectedGuide} />
@@ -1781,10 +2063,7 @@ function TutorialsTab() {
 export default function Information() {
   return (
     <PageShell>
-      <div className="space-y-6">
-        <TaxBracketsSection />
-        <TutorialsTab />
-      </div>
+      <TutorialsTab />
     </PageShell>
   );
 }

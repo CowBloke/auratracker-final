@@ -2,10 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { ExternalLink, LocateFixed, Minus, Plus, Search, X } from 'lucide-react';
+import { ExternalLink, LocateFixed, MapPin, Minus, Plus, Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -18,7 +17,6 @@ import {
   TYPE_EMOJI,
   clamp,
   getBusinessPinColor,
-  getFallbackBusinessPosition,
 } from '../mapConstants';
 
 interface MapPin {
@@ -27,7 +25,6 @@ interface MapPin {
   latitude: number;
   isOwned: boolean;
   canPlace: boolean;
-  hasSavedPosition: boolean;
   pinColor: string;
 }
 
@@ -38,11 +35,11 @@ type BusinessFeatureProperties = {
   ownerUsername: string;
   typeKey: string;
   typeLabel: string;
+  emoji: string;
   pinColor: string;
   selected: boolean;
   isOwned: boolean;
   canPlace: boolean;
-  hasSavedPosition: boolean;
 };
 
 const DEFAULT_CENTER: [number, number] = [0, 20];
@@ -51,39 +48,39 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
 const SOURCE_ID = 'you-businesses-source';
 const LAYER_ID = 'you-businesses-layer';
+const PIN_SIZE = 40;
 
-function uniqueBusinesses(data: YouState) {
+function uniqueBusinesses(data: YouState): YouBusiness[] {
   const map = new Map<string, YouBusiness>();
   [data.ownedBusinesses, data.exploreBusinesses, data.memberBusinesses, data.shareholderBusinesses].forEach((group) => {
-    group.forEach((business) => map.set(business.id, business));
+    group.forEach((b) => map.set(b.id, b));
   });
   return Array.from(map.values());
 }
 
+// Only placed businesses appear on the map
 function buildPins(businesses: YouBusiness[], userId: string, isAdmin: boolean): MapPin[] {
-  return businesses.map((business, index) => {
-    const fallbackPosition = getFallbackBusinessPosition(business.id, index);
-    return {
-      business,
-      longitude: business.mapX ?? fallbackPosition.longitude,
-      latitude: business.mapY ?? fallbackPosition.latitude,
-      isOwned: business.ownerId === userId,
-      canPlace: business.ownerId === userId || isAdmin,
-      hasSavedPosition: business.mapX != null && business.mapY != null,
-      pinColor: getBusinessPinColor(business.typeKey),
-    };
-  });
+  return businesses
+    .filter((b) => b.mapX != null && b.mapY != null)
+    .map((b) => ({
+      business: b,
+      longitude: b.mapX!,
+      latitude: b.mapY!,
+      isOwned: b.ownerId === userId,
+      canPlace: b.ownerId === userId || isAdmin,
+      pinColor: getBusinessPinColor(b.typeKey),
+    }));
 }
 
-function buildSourceData(pins: MapPin[], selectedBusinessId: string | null): GeoJSON.FeatureCollection<GeoJSON.Point, BusinessFeatureProperties> {
+function buildSourceData(
+  pins: MapPin[],
+  selectedId: string | null,
+): GeoJSON.FeatureCollection<GeoJSON.Point, BusinessFeatureProperties> {
   return {
     type: 'FeatureCollection',
     features: pins.map((pin) => ({
       type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [pin.longitude, pin.latitude],
-      },
+      geometry: { type: 'Point', coordinates: [pin.longitude, pin.latitude] },
       properties: {
         id: pin.business.id,
         name: pin.business.name,
@@ -91,18 +88,70 @@ function buildSourceData(pins: MapPin[], selectedBusinessId: string | null): Geo
         ownerUsername: pin.business.owner.username,
         typeKey: pin.business.typeKey,
         typeLabel: pin.business.type?.label ?? pin.business.typeKey,
+        emoji: TYPE_EMOJI[pin.business.typeKey] ?? '📍',
         pinColor: pin.pinColor,
-        selected: selectedBusinessId === pin.business.id,
+        selected: selectedId === pin.business.id,
         isOwned: pin.isOwned,
         canPlace: pin.canPlace,
-        hasSavedPosition: pin.hasSavedPosition,
       },
     })),
   };
 }
 
-function formatCoordinates(longitude: number, latitude: number) {
-  return `${longitude.toFixed(2)}, ${latitude.toFixed(2)}`;
+function createPinImageData(emoji: string, color: string, size: number, selected: boolean): ImageData {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = selected ? size * 0.43 : size * 0.37;
+
+  // Outer glow ring for selected
+  if (selected) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.47, 0, Math.PI * 2);
+    ctx.fillStyle = color + '35';
+    ctx.fill();
+  }
+
+  // Drop shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.28)';
+  ctx.shadowBlur = selected ? 8 : 5;
+  ctx.shadowOffsetY = selected ? 3 : 2;
+
+  // Main circle
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  // White border
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = selected ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = selected ? 2.5 : 1.8;
+  ctx.stroke();
+
+  // Emoji
+  const fontSize = Math.floor(r * 1.05);
+  ctx.font = `${fontSize}px 'Segoe UI Emoji', 'Apple Color Emoji', Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, cx, cy + 1);
+
+  return ctx.getImageData(0, 0, size, size);
+}
+
+function formatCoordinates(lon: number, lat: number): string {
+  const latDir = lat >= 0 ? 'N' : 'S';
+  const lonDir = lon >= 0 ? 'E' : 'O';
+  return `${Math.abs(lat).toFixed(2)}°${latDir}, ${Math.abs(lon).toFixed(2)}°${lonDir}`;
 }
 
 function BusinessInfoCard({
@@ -124,64 +173,77 @@ function BusinessInfoCard({
 }) {
   const navigate = useNavigate();
   const editable = business.ownerId === userId || isAdmin;
+  const isPlaced = business.mapX != null && business.mapY != null;
+  const color = getBusinessPinColor(business.typeKey);
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-foreground shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-sm font-semibold text-primary">
-            {TYPE_EMOJI[business.typeKey] ?? 'B'}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">{business.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {business.type?.label ?? business.typeKey} · {business.owner.username}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {business.verified ? <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600">Vérifié</Badge> : null}
-              {business.ownerId === userId ? <Badge variant="outline" className="border-amber-500/20 bg-amber-500/10 text-amber-700">À vous</Badge> : null}
-              {business.mapX == null || business.mapY == null ? <Badge variant="outline" className="border-border/60 bg-muted/40 text-muted-foreground">À placer</Badge> : null}
+    <div className="border-t border-border/40 p-3">
+      <div className="flex items-start gap-2.5">
+        <div
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-base"
+          style={{ background: color + '20', color }}
+        >
+          {TYPE_EMOJI[business.typeKey] ?? '📍'}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-1">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-foreground">{business.name}</p>
+              <p className="truncate text-[10px] text-muted-foreground">
+                {business.type?.label ?? business.typeKey} · @{business.owner.username}
+              </p>
             </div>
+            <button
+              onClick={onClose}
+              className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {business.verified && (
+              <Badge variant="outline" className="h-4 border-emerald-500/30 bg-emerald-500/10 px-1.5 text-[10px] text-emerald-600">
+                Vérifié
+              </Badge>
+            )}
+            {business.ownerId === userId && (
+              <Badge variant="outline" className="h-4 border-amber-500/30 bg-amber-500/10 px-1.5 text-[10px] text-amber-700">
+                À vous
+              </Badge>
+            )}
+            {!isPlaced ? (
+              <Badge variant="outline" className="h-4 border-orange-500/30 bg-orange-500/10 px-1.5 text-[10px] text-orange-600">
+                À placer
+              </Badge>
+            ) : (
+              <span className="text-[10px] text-muted-foreground">{formatCoordinates(business.mapX!, business.mapY!)}</span>
+            )}
+            {business.avgRating != null && business.ratingCount > 0 && (
+              <span className="text-[10px] text-amber-500">★ {business.avgRating.toFixed(1)}</span>
+            )}
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {editable && (
+              <Button size="sm" className="h-6 px-2 text-[11px]" onClick={onPlace}>
+                {placementMode ? 'Annuler' : isPlaced ? 'Déplacer' : 'Placer sur la carte'}
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" onClick={onOpenExplore}>
+              <ExternalLink className="mr-1 h-3 w-3" />
+              Explorer
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[11px] text-muted-foreground"
+              onClick={() => navigate('/you?tab=explore')}
+            >
+              Détail
+            </Button>
           </div>
         </div>
-        <button onClick={onClose} className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      <div className="mt-4 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-        <div className="rounded-xl border border-border/60 bg-muted/40 px-3 py-2">
-          <p className="uppercase tracking-[0.18em] text-muted-foreground">Position</p>
-          <p className="mt-1 font-medium text-foreground">
-            {business.mapX != null && business.mapY != null ? formatCoordinates(business.mapX, business.mapY) : 'Libre sur la carte'}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-muted/40 px-3 py-2">
-          <p className="uppercase tracking-[0.18em] text-muted-foreground">Repère</p>
-          <p className="mt-1 font-medium text-foreground">{business.location ?? 'Carte du monde'}</p>
-        </div>
-      </div>
-
-      {business.avgRating != null && business.ratingCount > 0 ? (
-        <p className="mt-3 text-xs text-muted-foreground">
-          <span className="mr-1 text-amber-500">★</span>
-          {business.avgRating.toFixed(1)} sur {business.ratingCount} avis
-        </p>
-      ) : null}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        {editable ? (
-          <Button size="sm" className="gap-1.5" onClick={onPlace}>
-            {placementMode ? 'Annuler le placement' : business.mapX == null || business.mapY == null ? 'Placer ici' : 'Déplacer'}
-          </Button>
-        ) : null}
-        <Button size="sm" variant="outline" className="gap-1.5" onClick={onOpenExplore}>
-          <ExternalLink className="h-3.5 w-3.5" />
-          Explorer
-        </Button>
-        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => navigate('/you?tab=explore')}>
-          Ouvrir le détail
-        </Button>
       </div>
     </div>
   );
@@ -209,41 +271,33 @@ export function CarteTab({
   const navigate = useNavigate();
 
   const allBusinesses = useMemo(() => uniqueBusinesses(data), [data]);
+
   const visibleBusinesses = useMemo(() => {
-    const filteredByOwnership = filter === 'mine' ? allBusinesses.filter((business) => business.ownerId === userId) : allBusinesses;
-
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return filteredByOwnership;
-    }
-
-    return filteredByOwnership.filter((business) => {
-      const haystack = [
-        business.name,
-        business.owner.username,
-        business.type?.label ?? business.typeKey,
-        business.typeKey,
-        business.location ?? '',
-      ].join(' ').toLowerCase();
-      return haystack.includes(normalizedQuery);
-    });
+    const filtered = filter === 'mine' ? allBusinesses.filter((b) => b.ownerId === userId) : allBusinesses;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return filtered;
+    return filtered.filter((b) =>
+      [b.name, b.owner.username, b.type?.label ?? b.typeKey, b.typeKey, b.location ?? ''].join(' ').toLowerCase().includes(q),
+    );
   }, [allBusinesses, filter, searchQuery, userId]);
+
+  const placedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX != null && b.mapY != null), [visibleBusinesses]);
+  const unplacedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX == null || b.mapY == null), [visibleBusinesses]);
 
   const pins = useMemo(() => buildPins(visibleBusinesses, userId, isAdmin), [visibleBusinesses, userId, isAdmin]);
   const sourceData = useMemo(() => buildSourceData(pins, selectedBusinessId), [pins, selectedBusinessId]);
-  const selectedBusiness = allBusinesses.find((business) => business.id === selectedBusinessId) ?? null;
 
-  const ownedVisibleCount = visibleBusinesses.filter((business) => business.ownerId === userId).length;
-  const unplacedVisibleCount = visibleBusinesses.filter((business) => business.mapX == null || business.mapY == null).length;
-  const placeableVisibleCount = visibleBusinesses.filter((business) => business.ownerId === userId || isAdmin).length;
+  const selectedBusiness = allBusinesses.find((b) => b.id === selectedBusinessId) ?? null;
+  const placingBusiness = allBusinesses.find((b) => b.id === placingBusinessId) ?? null;
 
   useEffect(() => {
-    if (selectedBusinessId && !visibleBusinesses.some((business) => business.id === selectedBusinessId)) {
+    if (selectedBusinessId && !visibleBusinesses.some((b) => b.id === selectedBusinessId)) {
       setSelectedBusinessId(null);
       setPlacingBusinessId(null);
     }
   }, [selectedBusinessId, visibleBusinesses]);
 
+  // Map init
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -261,35 +315,58 @@ export function CarteTab({
 
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
-    map.on('load', () => {
-      if (!map.getSource(SOURCE_ID)) {
-        map.addSource(SOURCE_ID, {
-          type: 'geojson',
-          data: sourceData,
-        });
+    // Fallback for missing images: use a grey pin
+    map.on('styleimagemissing', (e: any) => {
+      const fallbackData = createPinImageData('📍', '#64748b', PIN_SIZE, false);
+      if (!map.hasImage(e.id)) map.addImage(e.id, fallbackData);
+    });
 
+    map.on('load', () => {
+      // Generate emoji canvas images for each type (normal + selected)
+      [...Object.keys(TYPE_EMOJI), '__default__'].forEach((typeKey) => {
+        const emoji = TYPE_EMOJI[typeKey] ?? '📍';
+        const color = getBusinessPinColor(typeKey === '__default__' ? '' : typeKey);
+
+        if (!map.hasImage(`pin-${typeKey}`)) {
+          map.addImage(`pin-${typeKey}`, createPinImageData(emoji, color, PIN_SIZE, false));
+        }
+        if (!map.hasImage(`pin-${typeKey}-sel`)) {
+          map.addImage(`pin-${typeKey}-sel`, createPinImageData(emoji, color, PIN_SIZE, true));
+        }
+      });
+
+      if (!map.getSource(SOURCE_ID)) {
+        map.addSource(SOURCE_ID, { type: 'geojson', data: sourceData });
+
+        // Soft glow halo (circle layer, rendered behind the symbol)
         map.addLayer({
           id: `${LAYER_ID}-glow`,
           type: 'circle',
           source: SOURCE_ID,
           paint: {
-            'circle-radius': ['case', ['boolean', ['get', 'selected'], false], 18, 13],
+            'circle-radius': ['case', ['boolean', ['get', 'selected'], false], 22, 16],
             'circle-color': ['get', 'pinColor'],
-            'circle-opacity': ['case', ['boolean', ['get', 'selected'], false], 0.16, 0.1],
-            'circle-blur': 0.7,
+            'circle-opacity': ['case', ['boolean', ['get', 'selected'], false], 0.22, 0.1],
+            'circle-blur': 0.9,
           },
         });
 
+        // Emoji pin icons
         map.addLayer({
           id: LAYER_ID,
-          type: 'circle',
+          type: 'symbol',
           source: SOURCE_ID,
-          paint: {
-            'circle-radius': ['case', ['boolean', ['get', 'selected'], false], 13, 9],
-            'circle-color': ['get', 'pinColor'],
-            'circle-stroke-color': ['case', ['boolean', ['get', 'selected'], false], '#ffffff', 'rgba(255,255,255,0.75)'],
-            'circle-stroke-width': ['case', ['boolean', ['get', 'selected'], false], 3, 1.5],
-            'circle-opacity': 0.96,
+          layout: {
+            'icon-image': [
+              'case',
+              ['boolean', ['get', 'selected'], false],
+              ['concat', 'pin-', ['get', 'typeKey'], '-sel'],
+              ['concat', 'pin-', ['get', 'typeKey']],
+            ],
+            'icon-size': 1,
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+            'icon-anchor': 'center',
           },
         });
       }
@@ -298,7 +375,6 @@ export function CarteTab({
     });
 
     mapRef.current = map;
-
     return () => {
       map.remove();
       mapRef.current = null;
@@ -306,40 +382,39 @@ export function CarteTab({
     };
   }, []);
 
+  // Sync source data
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-
     const source = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
     source?.setData(sourceData);
   }, [mapReady, sourceData]);
 
+  // Map click for placement
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
     const handleMapClick = async (event: maplibregl.MapMouseEvent) => {
       if (!placingBusinessId) return;
-      if (map.queryRenderedFeatures(event.point, { layers: [LAYER_ID, `${LAYER_ID}-glow`] }).length > 0) return;
-      const targetBusiness = allBusinesses.find((business) => business.id === placingBusinessId);
-      if (!targetBusiness || (!isAdmin && targetBusiness.ownerId !== userId)) {
+      if (map.queryRenderedFeatures(event.point, { layers: [LAYER_ID] }).length > 0) return;
+
+      const target = allBusinesses.find((b) => b.id === placingBusinessId);
+      if (!target || (!isAdmin && target.ownerId !== userId)) {
         setPlacingBusinessId(null);
         return;
       }
 
-      const nextLongitude = clamp(event.lngLat.lng, WORLD_LONGITUDE_LIMITS.min, WORLD_LONGITUDE_LIMITS.max);
-      const nextLatitude = clamp(event.lngLat.lat, WORLD_LATITUDE_LIMITS.min, WORLD_LATITUDE_LIMITS.max);
+      const lon = clamp(event.lngLat.lng, WORLD_LONGITUDE_LIMITS.min, WORLD_LONGITUDE_LIMITS.max);
+      const lat = clamp(event.lngLat.lat, WORLD_LATITUDE_LIMITS.min, WORLD_LATITUDE_LIMITS.max);
 
-      setSavingPlacementBusinessId(targetBusiness.id);
+      setSavingPlacementBusinessId(target.id);
       try {
-        await youApi.updateBusinessProfile(targetBusiness.id, { mapX: nextLongitude, mapY: nextLatitude });
+        await youApi.updateBusinessProfile(target.id, { mapX: lon, mapY: lat });
         await onReload();
-        setSelectedBusinessId(targetBusiness.id);
+        setSelectedBusinessId(target.id);
         setPlacingBusinessId(null);
-        toast({
-          title: 'Emplacement mis à jour',
-          description: `${targetBusiness.name} est maintenant placé sur la carte du monde.`,
-        });
+        toast({ title: 'Emplacement mis à jour', description: `${target.name} est maintenant placé sur la carte.` });
       } catch (error: any) {
         toast({
           title: 'Impossible de placer le business',
@@ -352,44 +427,54 @@ export function CarteTab({
     };
 
     map.on('click', handleMapClick);
-    return () => {
-      map.off('click', handleMapClick);
-    };
+    return () => { map.off('click', handleMapClick); };
   }, [allBusinesses, isAdmin, mapReady, onReload, placingBusinessId, userId]);
 
+  // Pin click & hover
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
-    const handleBusinessClick = (event: maplibregl.MapLayerMouseEvent) => {
-      const feature = event.features?.[0];
-      const businessId = feature?.properties && 'id' in feature.properties ? String(feature.properties.id) : null;
-      if (!businessId || placingBusinessId) return;
-      setPlacingBusinessId(null);
-      setSelectedBusinessId(businessId);
-      const pin = pins.find((entry) => entry.business.id === businessId);
-      if (!pin) return;
-      map.flyTo({ center: [pin.longitude, pin.latitude], zoom: Math.max(map.getZoom(), 2.4), speed: 0.9 });
+    const handlePinClick = (event: maplibregl.MapLayerMouseEvent) => {
+      if (placingBusinessId) return;
+      const id = event.features?.[0]?.properties && 'id' in event.features[0].properties
+        ? String(event.features[0].properties.id)
+        : null;
+      if (!id) return;
+      setSelectedBusinessId(id);
+      const pin = pins.find((p) => p.business.id === id);
+      if (pin) map.flyTo({ center: [pin.longitude, pin.latitude], zoom: Math.max(map.getZoom(), 2.4), speed: 0.9 });
     };
 
-    map.on('click', LAYER_ID, handleBusinessClick);
+    const handleMouseEnter = () => { map.getCanvas().style.cursor = 'pointer'; };
+    const handleMouseLeave = () => { map.getCanvas().style.cursor = placingBusinessId ? 'crosshair' : ''; };
+
+    map.on('click', LAYER_ID, handlePinClick);
+    map.on('mouseenter', LAYER_ID, handleMouseEnter);
+    map.on('mouseleave', LAYER_ID, handleMouseLeave);
     return () => {
-      map.off('click', LAYER_ID, handleBusinessClick);
+      map.off('click', LAYER_ID, handlePinClick);
+      map.off('mouseenter', LAYER_ID, handleMouseEnter);
+      map.off('mouseleave', LAYER_ID, handleMouseLeave);
     };
   }, [mapReady, pins, placingBusinessId]);
 
+  // Resize observer
   useEffect(() => {
     const map = mapRef.current;
     const container = mapContainerRef.current;
     if (!map || !mapReady || !container || typeof ResizeObserver === 'undefined') return;
-
-    const observer = new ResizeObserver(() => {
-      map.resize();
-    });
-
+    const observer = new ResizeObserver(() => map.resize());
     observer.observe(container);
     return () => observer.disconnect();
   }, [mapReady]);
+
+  // Cursor style
+  useEffect(() => {
+    const canvas = mapRef.current?.getCanvas();
+    if (!canvas) return;
+    canvas.style.cursor = placingBusinessId ? 'crosshair' : '';
+  }, [placingBusinessId]);
 
   function centerMap() {
     mapRef.current?.easeTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 700 });
@@ -401,15 +486,17 @@ export function CarteTab({
     map.easeTo({ zoom: clamp(map.getZoom() * factor, MIN_ZOOM, MAX_ZOOM), duration: 400 });
   }
 
-  function focusBusiness(business: YouBusiness) {
-    const pin = pins.find((entry) => entry.business.id === business.id);
-    if (!pin) return;
+  function handleSelectBusiness(business: YouBusiness) {
+    setPlacingBusinessId(null);
     setSelectedBusinessId(business.id);
-    mapRef.current?.flyTo({ center: [pin.longitude, pin.latitude], zoom: 2.6, speed: 0.9 });
+    // Only fly to it if it's already placed on the map
+    if (business.mapX != null && business.mapY != null) {
+      mapRef.current?.flyTo({ center: [business.mapX, business.mapY], zoom: Math.max(mapRef.current.getZoom(), 2.4), speed: 0.9 });
+    }
   }
 
   function handleStartPlacement(businessId: string) {
-    const business = allBusinesses.find((entry) => entry.id === businessId);
+    const business = allBusinesses.find((b) => b.id === businessId);
     if (!business || (!isAdmin && business.ownerId !== userId)) return;
     if (placingBusinessId === businessId) {
       setPlacingBusinessId(null);
@@ -417,176 +504,232 @@ export function CarteTab({
     }
     setSelectedBusinessId(businessId);
     setPlacingBusinessId(businessId);
-    focusBusiness(business);
-  }
-
-  function handleSelectBusiness(business: YouBusiness) {
-    setPlacingBusinessId(null);
-    setSelectedBusinessId(business.id);
-    focusBusiness(business);
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-1">
-      <Card className="flex h-full min-h-0 flex-1 flex-col overflow-hidden border-border/60 bg-background/95 text-foreground shadow-xl">
-        <CardHeader className="shrink-0 border-b border-border/60 px-3 py-3 lg:px-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <CardTitle className="text-sm font-semibold text-foreground lg:text-base">Carte du monde</CardTitle>
-              <p className="mt-1 max-w-xl text-xs text-muted-foreground lg:text-sm">Placez les business librement, sans adresse ni géocodage.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" className="h-8 px-3 text-xs" variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
-                Tous
-              </Button>
-              <Button size="sm" className="h-8 px-3 text-xs" variant={filter === 'mine' ? 'default' : 'outline'} onClick={() => setFilter('mine')}>
-                Miens
-              </Button>
-            </div>
+    <div className="relative flex h-full min-h-0 w-full flex-1 overflow-hidden rounded-2xl border border-border/60 shadow-xl">
+      {/* Map fills everything */}
+      <div ref={mapContainerRef} className="absolute inset-0" />
+
+      {/* Left floating panel */}
+      <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[264px] flex-col gap-2">
+
+        {/* Search + filters */}
+        <div className="pointer-events-auto rounded-xl border border-border/30 bg-background/95 p-2.5 shadow-lg backdrop-blur-sm">
+          <label className="flex items-center gap-2 rounded-lg border border-input/80 bg-background px-2.5 py-1.5">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher..."
+              className="h-5 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="text-muted-foreground hover:text-foreground">
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </label>
+          <div className="mt-2 flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant={filter === 'all' ? 'default' : 'ghost'}
+              className="h-6 px-2.5 text-[11px]"
+              onClick={() => setFilter('all')}
+            >
+              Tous
+            </Button>
+            <Button
+              size="sm"
+              variant={filter === 'mine' ? 'default' : 'ghost'}
+              className="h-6 px-2.5 text-[11px]"
+              onClick={() => setFilter('mine')}
+            >
+              Miens
+            </Button>
+            <span className="ml-auto text-[10px] text-muted-foreground">
+              {placedBusinesses.length} placés · {unplacedBusinesses.length} à placer
+            </span>
           </div>
+        </div>
 
-          <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <label className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-xs shadow-sm lg:text-sm">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Rechercher un business, un propriétaire ou un type"
-                className="h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-              />
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
-                <span>Visibles</span>
-                <span className="ml-3 text-foreground">{visibleBusinesses.length}</span>
-              </Badge>
-              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
-                <span>À vous</span>
-                <span className="ml-3 text-foreground">{ownedVisibleCount}</span>
-              </Badge>
-              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
-                <span>À placer</span>
-                <span className="ml-3 text-foreground">{unplacedVisibleCount}</span>
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
+        {/* Business list + info card */}
+        <div className="pointer-events-auto flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/30 bg-background/95 shadow-lg backdrop-blur-sm">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="py-1">
 
-        <CardContent className="flex min-h-0 flex-1 p-3 lg:p-4">
-          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1.7fr)_280px]">
-            <div className="relative min-h-0 overflow-hidden rounded-3xl border border-border/60 bg-slate-950 shadow-inner">
-              <div ref={mapContainerRef} className="absolute inset-0" style={{ cursor: placingBusinessId ? 'crosshair' : 'grab' }} />
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(56,189,248,0.12),transparent_24%),radial-gradient(circle_at_80%_22%,rgba(245,158,11,0.12),transparent_20%),radial-gradient(circle_at_50%_82%,rgba(129,140,248,0.1),transparent_26%)]" />
-              {placingBusinessId ? (
-                <Badge className="absolute left-4 top-4 z-10 border-sky-500/20 bg-sky-500/10 text-sky-200">
-                  Placement actif
-                  {savingPlacementBusinessId === placingBusinessId ? ' · enregistrement…' : ''}
-                </Badge>
-              ) : null}
-              <div className="absolute right-4 top-4 z-10 flex flex-col gap-2">
-                <Button size="icon" variant="outline" className="h-9 w-9 border-border/60 bg-background/90 shadow-sm" onClick={() => zoomBy(1.15)}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <Button size="icon" variant="outline" className="h-9 w-9 border-border/60 bg-background/90 shadow-sm" onClick={() => zoomBy(1 / 1.15)}>
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <Button size="icon" variant="outline" className="h-9 w-9 border-border/60 bg-background/90 shadow-sm" onClick={centerMap}>
-                  <LocateFixed className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid min-h-0 gap-2 overflow-hidden lg:grid-rows-[auto_minmax(0,1fr)]">
-              <div className="rounded-3xl border border-border/60 bg-muted/30 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Sélection</p>
-                  {selectedBusiness ? <Badge variant="outline" className="border-border/60 bg-background/80 text-muted-foreground">{selectedBusiness.ownerId === userId ? 'À vous' : 'Visible'}</Badge> : null}
-                </div>
-                <div className="mt-2">
-                  {selectedBusiness ? (
-                    <BusinessInfoCard
-                      business={selectedBusiness}
-                      userId={userId}
-                      isAdmin={isAdmin}
-                      placementMode={placingBusinessId === selectedBusiness.id}
-                      onClose={() => {
-                        setSelectedBusinessId(null);
-                        setPlacingBusinessId(null);
-                      }}
-                      onPlace={() => handleStartPlacement(selectedBusiness.id)}
-                      onOpenExplore={() => navigate('/you?tab=explore')}
-                    />
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-3 py-4 text-sm text-muted-foreground">
-                      Sélectionnez un business sur la carte.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex min-h-0 flex-col rounded-3xl border border-border/60 bg-muted/30 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Résultats</p>
-                    <p className="text-xs text-muted-foreground">{placeableVisibleCount} déplaçables</p>
+              {/* Unplaced section */}
+              {unplacedBusinesses.length > 0 && (
+                <>
+                  <div className="flex items-center gap-1.5 px-3 pb-1 pt-2.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      À placer ({unplacedBusinesses.length})
+                    </span>
                   </div>
-                  <Badge variant="outline" className="border-border/60 bg-background/80 text-[11px] text-muted-foreground">
-                    {visibleBusinesses.length}
-                  </Badge>
-                </div>
+                  {unplacedBusinesses.map((business) => {
+                    const isSelected = selectedBusinessId === business.id;
+                    const canPlace = business.ownerId === userId || isAdmin;
+                    const color = getBusinessPinColor(business.typeKey);
+                    const isBeingPlaced = placingBusinessId === business.id;
 
-                <ScrollArea className="mt-2 min-h-0 flex-1 pr-1">
-                  <div className="space-y-1.5 pr-2">
-                    {visibleBusinesses.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-3 py-4 text-sm text-muted-foreground">
-                        Aucun business ne correspond à la recherche.
-                      </div>
-                    ) : visibleBusinesses.map((business) => {
-                      const isSelected = selectedBusinessId === business.id;
-                      const canPlace = business.ownerId === userId || isAdmin;
-                      const hasSavedPosition = business.mapX != null && business.mapY != null;
-
-                      return (
-                        <button
-                          key={business.id}
-                          type="button"
-                          onClick={() => handleSelectBusiness(business)}
-                          className={cn(
-                            'flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors',
-                            isSelected ? 'border-primary/30 bg-primary/10' : 'border-border/60 bg-background/60 hover:bg-background/80',
-                          )}
+                    return (
+                      <button
+                        key={business.id}
+                        type="button"
+                        onClick={() => handleSelectBusiness(business)}
+                        className={cn(
+                          'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors',
+                          isSelected ? 'bg-primary/10' : 'hover:bg-muted/50',
+                        )}
+                      >
+                        <div
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm"
+                          style={{ background: color + '20', color }}
                         >
-                          <div className="flex min-w-0 items-center gap-3">
-                            <div
-                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-muted text-sm font-semibold text-foreground"
-                              style={{ boxShadow: `0 0 0 1px ${getBusinessPinColor(business.typeKey)}33 inset` }}
-                            >
-                              {TYPE_EMOJI[business.typeKey] ?? 'B'}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium text-foreground">{business.name}</div>
-                              <div className="truncate text-[11px] text-muted-foreground">
-                                {business.type?.label ?? business.typeKey} · {business.owner.username}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 flex-col items-end gap-0.5 text-right text-[10px] text-muted-foreground">
-                            <span className={cn('rounded-full px-2 py-0.5 font-medium', business.ownerId === userId ? 'bg-amber-500/10 text-amber-700' : 'bg-muted/60 text-muted-foreground')}>
-                              {business.ownerId === userId ? 'À vous' : 'Visible'}
-                            </span>
-                            <span>{hasSavedPosition ? 'Placé' : 'À placer'}</span>
-                            {canPlace ? <span className="text-sky-600">Déplaçable</span> : null}
-                          </div>
-                        </button>
-                      );
-                    })}
+                          {TYPE_EMOJI[business.typeKey] ?? '📍'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[12px] font-medium text-foreground">{business.name}</div>
+                          <div className="truncate text-[10px] text-muted-foreground">{business.type?.label ?? business.typeKey}</div>
+                        </div>
+                        {canPlace && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleStartPlacement(business.id); }}
+                            className={cn(
+                              'shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors',
+                              isBeingPlaced
+                                ? 'bg-sky-500/15 text-sky-600 hover:bg-sky-500/25'
+                                : 'bg-amber-500/10 text-amber-700 hover:bg-amber-500/20',
+                            )}
+                          >
+                            {isBeingPlaced ? 'Annuler' : 'Placer'}
+                          </button>
+                        )}
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Placed section */}
+              {placedBusinesses.length > 0 && (
+                <>
+                  <div className="flex items-center gap-1.5 px-3 pb-1 pt-2.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Sur la carte ({placedBusinesses.length})
+                    </span>
                   </div>
-                </ScrollArea>
-              </div>
+                  {placedBusinesses.map((business) => {
+                    const isSelected = selectedBusinessId === business.id;
+                    const color = getBusinessPinColor(business.typeKey);
+
+                    return (
+                      <button
+                        key={business.id}
+                        type="button"
+                        onClick={() => handleSelectBusiness(business)}
+                        className={cn(
+                          'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors',
+                          isSelected ? 'bg-primary/10' : 'hover:bg-muted/50',
+                        )}
+                      >
+                        <div
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm"
+                          style={{ background: color + '20', color }}
+                        >
+                          {TYPE_EMOJI[business.typeKey] ?? '📍'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[12px] font-medium text-foreground">{business.name}</div>
+                          <div className="truncate text-[10px] text-muted-foreground">@{business.owner.username}</div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          {isSelected && <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />}
+                          {business.avgRating != null && business.ratingCount > 0 && (
+                            <div className="text-[10px] text-amber-500">★ {business.avgRating.toFixed(1)}</div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+
+              {visibleBusinesses.length === 0 && (
+                <div className="px-3 py-6 text-center text-xs text-muted-foreground">Aucun résultat</div>
+              )}
             </div>
+          </ScrollArea>
+
+          {/* Info card for selected business */}
+          {selectedBusiness && (
+            <BusinessInfoCard
+              business={selectedBusiness}
+              userId={userId}
+              isAdmin={isAdmin}
+              placementMode={placingBusinessId === selectedBusiness.id}
+              onClose={() => { setSelectedBusinessId(null); setPlacingBusinessId(null); }}
+              onPlace={() => handleStartPlacement(selectedBusiness.id)}
+              onOpenExplore={() => navigate('/you?tab=explore')}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Placement banner — top center */}
+      {placingBusinessId && (
+        <div className="absolute left-1/2 top-3 z-20 -translate-x-1/2">
+          <div className="flex items-center gap-3 rounded-xl border border-sky-500/30 bg-background/95 px-4 py-2.5 shadow-lg backdrop-blur-sm">
+            <MapPin className="h-4 w-4 shrink-0 text-sky-500" />
+            <div>
+              <p className="text-xs font-semibold text-foreground">
+                {savingPlacementBusinessId ? 'Enregistrement…' : 'Cliquez sur la carte pour placer'}
+              </p>
+              {placingBusiness && !savingPlacementBusinessId && (
+                <p className="text-[10px] text-muted-foreground">{placingBusiness.name}</p>
+              )}
+            </div>
+            <button
+              onClick={() => setPlacingBusinessId(null)}
+              className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
+
+      {/* Zoom controls — top right */}
+      <div className="absolute right-3 top-3 z-10 flex flex-col gap-1.5">
+        <Button
+          size="icon"
+          variant="outline"
+          className="h-8 w-8 border-border/40 bg-background/95 shadow-md backdrop-blur-sm"
+          onClick={() => zoomBy(1.5)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          size="icon"
+          variant="outline"
+          className="h-8 w-8 border-border/40 bg-background/95 shadow-md backdrop-blur-sm"
+          onClick={() => zoomBy(1 / 1.5)}
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </Button>
+        <div className="my-0.5 border-t border-border/30" />
+        <Button
+          size="icon"
+          variant="outline"
+          className="h-8 w-8 border-border/40 bg-background/95 shadow-md backdrop-blur-sm"
+          onClick={centerMap}
+        >
+          <LocateFixed className="h-3.5 w-3.5" />
+        </Button>
+      </div>
     </div>
   );
 }
