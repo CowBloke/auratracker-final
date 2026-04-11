@@ -47,33 +47,6 @@ const timeAgo = (dateStr: string) => {
   return `${Math.floor(diff / 86400)}j`;
 };
 
-const shuffleIds = (ids: string[]): string[] => {
-  const copy = [...ids];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-};
-
-const buildPrioritizedCycle = (ids: string[], seenIds: Set<string>, previousLastId: string | null): string[] => {
-  if (ids.length <= 1) return [...ids];
-
-  const unseen = ids.filter((id) => !seenIds.has(id));
-  const alreadySeen = ids.filter((id) => seenIds.has(id));
-  const prioritized = [...shuffleIds(unseen), ...shuffleIds(alreadySeen)];
-
-  // Avoid repeating the same post between cycle boundaries when possible.
-  if (previousLastId && prioritized[0] === previousLastId) {
-    const swapIndex = prioritized.findIndex((id) => id !== previousLastId);
-    if (swapIndex > 0) {
-      [prioritized[0], prioritized[swapIndex]] = [prioritized[swapIndex], prioritized[0]];
-    }
-  }
-
-  return prioritized;
-};
-
 // ─── Upload Modal ──────────────────────────────────────────────────────────────
 
 function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded: (post: AuraScrollPost) => void }) {
@@ -505,6 +478,8 @@ function PostCard({
             loop
             muted={muted}
             playsInline
+            preload={isActive ? 'auto' : 'metadata'}
+            poster={post.thumbnailUrl ? resolveImageUrl(post.thumbnailUrl) : undefined}
           />
         ) : (
           <img
@@ -690,7 +665,6 @@ export default function AuraScroll() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<AuraScrollPost[]>([]);
   const [sequence, setSequence] = useState<string[]>([]);
-  const [seenPostIds, setSeenPostIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -707,16 +681,6 @@ export default function AuraScroll() {
     }
     return map;
   }, [posts]);
-
-  const appendPrioritizedCycle = useCallback(() => {
-    setSequence((prev) => {
-      if (posts.length === 0) return prev;
-      const ids = posts.map((post) => post.id);
-      const previousLastId = prev.length > 0 ? prev[prev.length - 1] : null;
-      const nextCycle = buildPrioritizedCycle(ids, seenPostIds, previousLastId);
-      return [...prev, ...nextCycle];
-    });
-  }, [posts, seenPostIds]);
 
   const fetchFeed = useCallback(async (cursor?: string) => {
     if (cursor) setLoadingMore(true);
@@ -735,9 +699,7 @@ export default function AuraScroll() {
       });
 
       if (!cursor) {
-        const initialIds = data.posts.map((post) => post.id);
-        setSequence(buildPrioritizedCycle(initialIds, new Set(), null));
-        setSeenPostIds(new Set());
+        setSequence(data.posts.map((post) => post.id));
         setActiveIndex(0);
       } else if (data.posts.length > 0) {
         setSequence((prev) => {
@@ -746,11 +708,7 @@ export default function AuraScroll() {
             .map((post) => post.id)
             .filter((id) => !existingIds.has(id));
 
-          if (newIds.length === 0) return prev;
-
-          const previousLastId = prev.length > 0 ? prev[prev.length - 1] : null;
-          const prioritizedNewIds = buildPrioritizedCycle(newIds, seenPostIds, previousLastId);
-          return [...prev, ...prioritizedNewIds];
+          return newIds.length === 0 ? prev : [...prev, ...newIds];
         });
       }
 
@@ -761,7 +719,7 @@ export default function AuraScroll() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [seenPostIds]);
+  }, []);
 
   useEffect(() => { fetchFeed(); }, [fetchFeed]);
 
@@ -784,22 +742,7 @@ export default function AuraScroll() {
     return () => observerRef.current?.disconnect();
   }, [sequence.length]);
 
-  // Track what the user has already seen in this session so unseen posts
-  // can be prioritized when building the next sequence batch.
-  useEffect(() => {
-    const activePostId = sequence[activeIndex];
-    if (!activePostId) return;
-
-    setSeenPostIds((prev) => {
-      if (prev.has(activePostId)) return prev;
-      const next = new Set(prev);
-      next.add(activePostId);
-      return next;
-    });
-  }, [activeIndex, sequence]);
-
-  // Keep the queue filled. Fetch more from backend when available,
-  // otherwise append another unseen-first cycle for endless scrolling.
+  // Keep the queue filled by fetching the next backend page when we near the end.
   useEffect(() => {
     if (posts.length === 0 || sequence.length === 0) return;
 
@@ -808,13 +751,8 @@ export default function AuraScroll() {
 
     if (nextCursor && !loadingMore) {
       fetchFeed(nextCursor);
-      return;
     }
-
-    if (!nextCursor && !loadingMore) {
-      appendPrioritizedCycle();
-    }
-  }, [activeIndex, posts.length, sequence.length, nextCursor, loadingMore, fetchFeed, appendPrioritizedCycle]);
+  }, [activeIndex, posts.length, sequence.length, nextCursor, loadingMore, fetchFeed]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -980,22 +918,6 @@ export default function AuraScroll() {
         <Plus className="h-5 w-5" />
         Poster
       </button>
-
-      {/* Progress dots */}
-      {sequence.length > 1 && sequence.length <= 20 && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-1">
-          {sequence.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => cardRefs.current[i]?.scrollIntoView({ behavior: 'smooth' })}
-              className={cn(
-                'rounded-full transition-all',
-                i === activeIndex ? 'bg-white h-4 w-1.5' : 'bg-white/30 h-1.5 w-1.5'
-              )}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Upload modal */}
       {showUpload && (
