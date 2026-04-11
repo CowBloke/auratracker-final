@@ -56,20 +56,22 @@ const shuffleIds = (ids: string[]): string[] => {
   return copy;
 };
 
-const buildRandomCycle = (ids: string[], previousLastId: string | null): string[] => {
+const buildPrioritizedCycle = (ids: string[], seenIds: Set<string>, previousLastId: string | null): string[] => {
   if (ids.length <= 1) return [...ids];
 
-  const shuffled = shuffleIds(ids);
+  const unseen = ids.filter((id) => !seenIds.has(id));
+  const alreadySeen = ids.filter((id) => seenIds.has(id));
+  const prioritized = [...shuffleIds(unseen), ...shuffleIds(alreadySeen)];
 
   // Avoid repeating the same post between cycle boundaries when possible.
-  if (previousLastId && shuffled[0] === previousLastId) {
-    const swapIndex = shuffled.findIndex((id) => id !== previousLastId);
+  if (previousLastId && prioritized[0] === previousLastId) {
+    const swapIndex = prioritized.findIndex((id) => id !== previousLastId);
     if (swapIndex > 0) {
-      [shuffled[0], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[0]];
+      [prioritized[0], prioritized[swapIndex]] = [prioritized[swapIndex], prioritized[0]];
     }
   }
 
-  return shuffled;
+  return prioritized;
 };
 
 // ─── Upload Modal ──────────────────────────────────────────────────────────────
@@ -688,6 +690,7 @@ export default function AuraScroll() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<AuraScrollPost[]>([]);
   const [sequence, setSequence] = useState<string[]>([]);
+  const [seenPostIds, setSeenPostIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -705,15 +708,15 @@ export default function AuraScroll() {
     return map;
   }, [posts]);
 
-  const appendRandomCycle = useCallback(() => {
+  const appendPrioritizedCycle = useCallback(() => {
     setSequence((prev) => {
       if (posts.length === 0) return prev;
       const ids = posts.map((post) => post.id);
       const previousLastId = prev.length > 0 ? prev[prev.length - 1] : null;
-      const nextCycle = buildRandomCycle(ids, previousLastId);
+      const nextCycle = buildPrioritizedCycle(ids, seenPostIds, previousLastId);
       return [...prev, ...nextCycle];
     });
-  }, [posts]);
+  }, [posts, seenPostIds]);
 
   const fetchFeed = useCallback(async (cursor?: string) => {
     if (cursor) setLoadingMore(true);
@@ -733,8 +736,22 @@ export default function AuraScroll() {
 
       if (!cursor) {
         const initialIds = data.posts.map((post) => post.id);
-        setSequence(buildRandomCycle(initialIds, null));
+        setSequence(buildPrioritizedCycle(initialIds, new Set(), null));
+        setSeenPostIds(new Set());
         setActiveIndex(0);
+      } else if (data.posts.length > 0) {
+        setSequence((prev) => {
+          const existingIds = new Set(prev);
+          const newIds = data.posts
+            .map((post) => post.id)
+            .filter((id) => !existingIds.has(id));
+
+          if (newIds.length === 0) return prev;
+
+          const previousLastId = prev.length > 0 ? prev[prev.length - 1] : null;
+          const prioritizedNewIds = buildPrioritizedCycle(newIds, seenPostIds, previousLastId);
+          return [...prev, ...prioritizedNewIds];
+        });
       }
 
       setNextCursor(data.nextCursor);
@@ -744,7 +761,7 @@ export default function AuraScroll() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [seenPostIds]);
 
   useEffect(() => { fetchFeed(); }, [fetchFeed]);
 
@@ -767,8 +784,22 @@ export default function AuraScroll() {
     return () => observerRef.current?.disconnect();
   }, [sequence.length]);
 
+  // Track what the user has already seen in this session so unseen posts
+  // can be prioritized when building the next sequence batch.
+  useEffect(() => {
+    const activePostId = sequence[activeIndex];
+    if (!activePostId) return;
+
+    setSeenPostIds((prev) => {
+      if (prev.has(activePostId)) return prev;
+      const next = new Set(prev);
+      next.add(activePostId);
+      return next;
+    });
+  }, [activeIndex, sequence]);
+
   // Keep the queue filled. Fetch more from backend when available,
-  // otherwise append another randomized cycle for endless scrolling.
+  // otherwise append another unseen-first cycle for endless scrolling.
   useEffect(() => {
     if (posts.length === 0 || sequence.length === 0) return;
 
@@ -781,9 +812,9 @@ export default function AuraScroll() {
     }
 
     if (!nextCursor && !loadingMore) {
-      appendRandomCycle();
+      appendPrioritizedCycle();
     }
-  }, [activeIndex, posts.length, sequence.length, nextCursor, loadingMore, fetchFeed, appendRandomCycle]);
+  }, [activeIndex, posts.length, sequence.length, nextCursor, loadingMore, fetchFeed, appendPrioritizedCycle]);
 
   // Keyboard navigation
   useEffect(() => {

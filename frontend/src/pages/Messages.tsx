@@ -356,6 +356,9 @@ export default function MessagesPage() {
   const [lawyerRatingSubmitting, setLawyerRatingSubmitting] = useState(false);
   const [showSanctionModal, setShowSanctionModal] = useState(false);
   const [courtImagePreviewUrl, setCourtImagePreviewUrl] = useState<string | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false,
+  );
 
   const handledSearchRef = useRef<string | null>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
@@ -410,6 +413,18 @@ export default function MessagesPage() {
     if (!viewport) return;
     viewport.scrollTop = viewport.scrollHeight;
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(max-width: 1023px)');
+    const updateViewport = (event: MediaQueryListEvent) => {
+      setIsMobileViewport(event.matches);
+    };
+
+    setIsMobileViewport(mediaQuery.matches);
+    mediaQuery.addEventListener('change', updateViewport);
+    return () => mediaQuery.removeEventListener('change', updateViewport);
+  }, []);
 
 
   // ── Data Loading ─────────────────────────────────────────────────────────
@@ -505,7 +520,11 @@ export default function MessagesPage() {
         setConversations(sortedConversations);
         setPlayers(playersRes.data.users ?? []);
         setBlockedIds(new Set(blockedRes.data.blockedUsers.map((b) => b.id)));
-        setSelectedId((cur) => cur ?? sortedConversations[0]?.id ?? null);
+        setSelectedId((cur) => {
+          if (cur) return cur;
+          if (isMobileViewport) return null;
+          return sortedConversations[0]?.id ?? null;
+        });
       } catch {
         toast({ title: 'Messagerie indisponible', variant: 'destructive' });
       } finally {
@@ -513,7 +532,7 @@ export default function MessagesPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [isAdminViewer]);
+  }, [isAdminViewer, isMobileViewport]);
 
   useEffect(() => {
     if (!selectedId) { setDetail(null); return; }
