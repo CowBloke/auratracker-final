@@ -427,7 +427,7 @@ export function CarteTab({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1">
+    <div className="flex min-h-0 flex-1" style={{ height: 'calc(100dvh - 11rem)' }}>
       <Card className="flex h-full min-h-0 flex-1 flex-col overflow-hidden border-border/60 bg-background/95 text-foreground shadow-xl">
         <CardHeader className="shrink-0 border-b border-border/60 px-4 py-4 lg:px-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
