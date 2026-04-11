@@ -323,6 +323,7 @@ export function CarteTab({
     });
 
     map.on('load', () => {
+      map.resize();
       // Generate emoji canvas images for each type (normal + selected)
       [...Object.keys(TYPE_EMOJI), '__default__'].forEach((typeKey) => {
         const emoji = TYPE_EMOJI[typeKey] ?? '📍';

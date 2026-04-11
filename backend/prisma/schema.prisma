@@ -532,8 +532,8 @@ model Business {
   description           String?
   logoUrl               String?
   location              String?
-  mapX                  Int?
-  mapY                  Int?
+  mapX                  Float?
+  mapY                  Float?
   verified              Boolean   @default(false)
   hiring                Boolean   @default(true)
   startingCapital       Int

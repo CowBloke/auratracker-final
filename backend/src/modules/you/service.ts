@@ -4990,8 +4990,8 @@ export async function updateBusinessProfile(
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
   if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
 
-  const nextMapX = data.mapX === undefined ? undefined : (data.mapX === null ? null : Math.round(Number(data.mapX)));
-  const nextMapY = data.mapY === undefined ? undefined : (data.mapY === null ? null : Math.round(Number(data.mapY)));
+  const nextMapX = data.mapX === undefined ? undefined : (data.mapX === null ? null : Number(data.mapX));
+  const nextMapY = data.mapY === undefined ? undefined : (data.mapY === null ? null : Number(data.mapY));
   if (nextMapX != null && (!Number.isFinite(nextMapX) || nextMapX < -180 || nextMapX > 180)) {
     throw new Error('INVALID_BUSINESS_MAP_POSITION');
   }
