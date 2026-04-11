@@ -60,6 +60,14 @@ function uniqueBusinesses(data: YouState): YouBusiness[] {
   return Array.from(map.values());
 }
 
+const ASSOCIATE_ROLES = ['associé', 'associée', 'associe', 'associee', 'partner'];
+
+function isBusinessAssociate(business: YouBusiness, userId: string): boolean {
+  return business.members.some(
+    (m) => m.user.id === userId && ASSOCIATE_ROLES.includes((m.role ?? '').toLowerCase()),
+  );
+}
+
 // Only placed businesses appear on the map
 function buildPins(businesses: YouBusiness[], userId: string, isAdmin: boolean): MapPin[] {
   return businesses
@@ -69,7 +77,7 @@ function buildPins(businesses: YouBusiness[], userId: string, isAdmin: boolean):
       longitude: b.mapX!,
       latitude: b.mapY!,
       isOwned: b.ownerId === userId,
-      canPlace: b.ownerId === userId || isAdmin,
+      canPlace: b.ownerId === userId || isAdmin || isBusinessAssociate(b, userId),
       pinColor: getBusinessPinColor(b.typeKey),
     }));
 }
@@ -308,21 +316,45 @@ export function CarteTab({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'mine'>('all');
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [placingBusinessId, setPlacingBusinessId] = useState<string | null>(null);
   const [savingPlacementBusinessId, setSavingPlacementBusinessId] = useState<string | null>(null);
 
   const allBusinesses = useMemo(() => uniqueBusinesses(data), [data]);
+  const memberBusinessIds = useMemo(() => new Set(data.memberBusinesses.map((b) => b.id)), [data.memberBusinesses]);
+
+  const typeChips = useMemo(() => {
+    const seen = new Set<string>();
+    const chips: Array<{ key: string; emoji: string; label: string }> = [];
+    allBusinesses.forEach((b) => {
+      if (!seen.has(b.typeKey)) {
+        seen.add(b.typeKey);
+        chips.push({
+          key: b.typeKey,
+          emoji: TYPE_EMOJI[b.typeKey] ?? '📍',
+          label: b.type?.label ?? b.typeKey,
+        });
+      }
+    });
+    return chips;
+  }, [allBusinesses]);
+
+  const hasMemberBusinesses = memberBusinessIds.size > 0;
 
   const visibleBusinesses = useMemo(() => {
-    const filtered = filter === 'mine' ? allBusinesses.filter((b) => b.ownerId === userId) : allBusinesses;
+    let filtered = allBusinesses;
+    if (typeFilter === '__membre__') {
+      filtered = filtered.filter((b) => memberBusinessIds.has(b.id));
+    } else if (typeFilter) {
+      filtered = filtered.filter((b) => b.typeKey === typeFilter);
+    }
     const q = searchQuery.trim().toLowerCase();
     if (!q) return filtered;
     return filtered.filter((b) =>
       [b.name, b.owner.username, b.type?.label ?? b.typeKey, b.typeKey, b.location ?? ''].join(' ').toLowerCase().includes(q),
     );
-  }, [allBusinesses, filter, searchQuery, userId]);
+  }, [allBusinesses, memberBusinessIds, typeFilter, searchQuery]);
 
   const placedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX != null && b.mapY != null), [visibleBusinesses]);
   const unplacedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX == null || b.mapY == null), [visibleBusinesses]);
@@ -390,7 +422,7 @@ export function CarteTab({
           data: sourceData,
           cluster: true,
           clusterMaxZoom: 9,
-          clusterRadius: 50,
+          clusterRadius: 25,
         });
 
         // Cluster bubble (icon generated on demand via styleimagemissing)
@@ -472,7 +504,7 @@ export function CarteTab({
       if (map.queryRenderedFeatures(event.point, { layers: [LAYER_ID, CLUSTER_LAYER_ID] }).length > 0) return;
 
       const target = allBusinesses.find((b) => b.id === placingBusinessId);
-      if (!target || (!isAdmin && target.ownerId !== userId)) {
+      if (!target || (!isAdmin && target.ownerId !== userId && !isBusinessAssociate(target, userId))) {
         setPlacingBusinessId(null);
         return;
       }
@@ -586,7 +618,7 @@ export function CarteTab({
 
   function handleStartPlacement(businessId: string) {
     const business = allBusinesses.find((b) => b.id === businessId);
-    if (!business || (!isAdmin && business.ownerId !== userId)) return;
+    if (!business || (!isAdmin && business.ownerId !== userId && !isBusinessAssociate(business, userId))) return;
     if (placingBusinessId === businessId) {
       setPlacingBusinessId(null);
       return;
@@ -619,26 +651,39 @@ export function CarteTab({
               </button>
             )}
           </label>
-          <div className="mt-2 flex items-center gap-1.5">
-            <Button
-              size="sm"
-              variant={filter === 'all' ? 'default' : 'ghost'}
-              className="h-6 px-2.5 text-[11px]"
-              onClick={() => setFilter('all')}
-            >
-              Tous
-            </Button>
-            <Button
-              size="sm"
-              variant={filter === 'mine' ? 'default' : 'ghost'}
-              className="h-6 px-2.5 text-[11px]"
-              onClick={() => setFilter('mine')}
-            >
-              Miens
-            </Button>
-            <span className="ml-auto text-[10px] text-muted-foreground">
-              {placedBusinesses.length} placés · {unplacedBusinesses.length} à placer
-            </span>
+          {/* Type filter chips */}
+          <div className="mt-2 flex flex-wrap gap-1">
+            {typeChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => setTypeFilter(typeFilter === chip.key ? null : chip.key)}
+                className={cn(
+                  'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors',
+                  typeFilter === chip.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+                )}
+              >
+                <span>{chip.emoji}</span>
+                <span>{chip.label}</span>
+              </button>
+            ))}
+            {hasMemberBusinesses && (
+              <button
+                type="button"
+                onClick={() => setTypeFilter(typeFilter === '__membre__' ? null : '__membre__')}
+                className={cn(
+                  'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors',
+                  typeFilter === '__membre__'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+                )}
+              >
+                <span>👥</span>
+                <span>Clan</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -658,7 +703,7 @@ export function CarteTab({
                   </div>
                   {unplacedBusinesses.map((business) => {
                     const isSelected = selectedBusinessId === business.id;
-                    const isOwner = business.ownerId === userId;
+                    const canPlace = business.ownerId === userId || isAdmin || isBusinessAssociate(business, userId);
                     const isBeingPlaced = placingBusinessId === business.id;
 
                     return (
@@ -683,7 +728,7 @@ export function CarteTab({
                             )}
                           </div>
                         </div>
-                        {isOwner && (
+                        {canPlace && (
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleStartPlacement(business.id); }}
