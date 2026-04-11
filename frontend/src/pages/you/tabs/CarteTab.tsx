@@ -427,44 +427,44 @@ export function CarteTab({
   }
 
   return (
-    <div className="flex min-h-0 flex-1" style={{ height: 'calc(100dvh - 11rem)' }}>
+    <div className="flex h-full min-h-0 w-full flex-1">
       <Card className="flex h-full min-h-0 flex-1 flex-col overflow-hidden border-border/60 bg-background/95 text-foreground shadow-xl">
-        <CardHeader className="shrink-0 border-b border-border/60 px-4 py-4 lg:px-5">
+        <CardHeader className="shrink-0 border-b border-border/60 px-3 py-3 lg:px-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <CardTitle className="text-base font-semibold text-foreground">Carte du monde</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">Placez les business librement, sans adresse ni géocodage.</p>
+              <CardTitle className="text-sm font-semibold text-foreground lg:text-base">Carte du monde</CardTitle>
+              <p className="mt-1 max-w-xl text-xs text-muted-foreground lg:text-sm">Placez les business librement, sans adresse ni géocodage.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
+              <Button size="sm" className="h-8 px-3 text-xs" variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
                 Tous
               </Button>
-              <Button size="sm" variant={filter === 'mine' ? 'default' : 'outline'} onClick={() => setFilter('mine')}>
+              <Button size="sm" className="h-8 px-3 text-xs" variant={filter === 'mine' ? 'default' : 'outline'} onClick={() => setFilter('mine')}>
                 Miens
               </Button>
             </div>
           </div>
 
-          <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-            <label className="flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+          <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <label className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-xs shadow-sm lg:text-sm">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Rechercher un business, un propriétaire ou un type"
-                className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                className="h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
               />
             </label>
             <div className="grid grid-cols-3 gap-2">
-              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
                 <span>Visibles</span>
                 <span className="ml-3 text-foreground">{visibleBusinesses.length}</span>
               </Badge>
-              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
                 <span>À vous</span>
                 <span className="ml-3 text-foreground">{ownedVisibleCount}</span>
               </Badge>
-              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground">
                 <span>À placer</span>
                 <span className="ml-3 text-foreground">{unplacedVisibleCount}</span>
               </Badge>
@@ -472,8 +472,8 @@ export function CarteTab({
           </div>
         </CardHeader>
 
-        <CardContent className="flex min-h-0 flex-1 p-4 lg:p-5">
-          <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_320px]">
+        <CardContent className="flex min-h-0 flex-1 p-3 lg:p-4">
+          <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1.7fr)_280px]">
             <div className="relative min-h-0 overflow-hidden rounded-3xl border border-border/60 bg-slate-950 shadow-inner">
               <div ref={mapContainerRef} className="absolute inset-0" style={{ cursor: placingBusinessId ? 'crosshair' : 'grab' }} />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(56,189,248,0.12),transparent_24%),radial-gradient(circle_at_80%_22%,rgba(245,158,11,0.12),transparent_20%),radial-gradient(circle_at_50%_82%,rgba(129,140,248,0.1),transparent_26%)]" />
@@ -496,13 +496,13 @@ export function CarteTab({
               </div>
             </div>
 
-            <div className="grid min-h-0 gap-3 overflow-hidden lg:grid-rows-[auto_minmax(0,1fr)]">
-              <div className="rounded-3xl border border-border/60 bg-muted/30 p-4">
+            <div className="grid min-h-0 gap-2 overflow-hidden lg:grid-rows-[auto_minmax(0,1fr)]">
+              <div className="rounded-3xl border border-border/60 bg-muted/30 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Sélection</p>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Sélection</p>
                   {selectedBusiness ? <Badge variant="outline" className="border-border/60 bg-background/80 text-muted-foreground">{selectedBusiness.ownerId === userId ? 'À vous' : 'Visible'}</Badge> : null}
                 </div>
-                <div className="mt-3">
+                <div className="mt-2">
                   {selectedBusiness ? (
                     <BusinessInfoCard
                       business={selectedBusiness}
@@ -517,28 +517,28 @@ export function CarteTab({
                       onOpenExplore={() => navigate('/you?tab=explore')}
                     />
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+                    <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-3 py-4 text-sm text-muted-foreground">
                       Sélectionnez un business sur la carte.
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="flex min-h-0 flex-col rounded-3xl border border-border/60 bg-muted/30 p-4">
+              <div className="flex min-h-0 flex-col rounded-3xl border border-border/60 bg-muted/30 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Résultats</p>
-                    <p className="text-sm text-muted-foreground">{placeableVisibleCount} déplaçables</p>
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Résultats</p>
+                    <p className="text-xs text-muted-foreground">{placeableVisibleCount} déplaçables</p>
                   </div>
-                  <Badge variant="outline" className="border-border/60 bg-background/80 text-muted-foreground">
+                  <Badge variant="outline" className="border-border/60 bg-background/80 text-[11px] text-muted-foreground">
                     {visibleBusinesses.length}
                   </Badge>
                 </div>
 
-                <ScrollArea className="mt-3 min-h-0 flex-1 pr-1">
-                  <div className="space-y-2 pr-2">
+                <ScrollArea className="mt-2 min-h-0 flex-1 pr-1">
+                  <div className="space-y-1.5 pr-2">
                     {visibleBusinesses.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+                      <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-3 py-4 text-sm text-muted-foreground">
                         Aucun business ne correspond à la recherche.
                       </div>
                     ) : visibleBusinesses.map((business) => {
@@ -552,25 +552,25 @@ export function CarteTab({
                           type="button"
                           onClick={() => handleSelectBusiness(business)}
                           className={cn(
-                            'flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left transition-colors',
+                            'flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-2.5 text-left transition-colors',
                             isSelected ? 'border-primary/30 bg-primary/10' : 'border-border/60 bg-background/60 hover:bg-background/80',
                           )}
                         >
                           <div className="flex min-w-0 items-center gap-3">
                             <div
-                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-sm font-semibold text-foreground"
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-muted text-sm font-semibold text-foreground"
                               style={{ boxShadow: `0 0 0 1px ${getBusinessPinColor(business.typeKey)}33 inset` }}
                             >
                               {TYPE_EMOJI[business.typeKey] ?? 'B'}
                             </div>
                             <div className="min-w-0">
                               <div className="truncate text-sm font-medium text-foreground">{business.name}</div>
-                              <div className="truncate text-xs text-muted-foreground">
+                              <div className="truncate text-[11px] text-muted-foreground">
                                 {business.type?.label ?? business.typeKey} · {business.owner.username}
                               </div>
                             </div>
                           </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1 text-right text-[11px] text-muted-foreground">
+                          <div className="flex shrink-0 flex-col items-end gap-0.5 text-right text-[10px] text-muted-foreground">
                             <span className={cn('rounded-full px-2 py-0.5 font-medium', business.ownerId === userId ? 'bg-amber-500/10 text-amber-700' : 'bg-muted/60 text-muted-foreground')}>
                               {business.ownerId === userId ? 'À vous' : 'Visible'}
                             </span>

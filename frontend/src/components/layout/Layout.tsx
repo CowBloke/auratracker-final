@@ -52,6 +52,7 @@ export default function Layout() {
   const keyboardShortcuts = useKeyboardShortcuts();
   const isMessagesPage = location.pathname === '/messages';
   const isAuraScrollPage = location.pathname.startsWith('/aura-scroll');
+  const isCartePage = location.pathname === '/you' && new URLSearchParams(location.search).get('tab') === 'carte';
 
   useEffect(() => {
     if (connected) {
@@ -139,8 +140,8 @@ export default function Layout() {
           <SidebarInset className="min-h-0 overflow-hidden">
             {!isAuraScrollPage && <SiteHeader />}
             <div className="@container/main flex min-h-0 flex-1 flex-col">
-              <div ref={mainRef} className={cn('min-h-0 flex-1', isMessagesPage ? 'overflow-hidden' : 'overflow-auto')}>
-                <div className={cn('mx-auto flex w-full flex-1 flex-col', isMessagesPage ? 'h-full pt-0' : 'pt-6 lg:pt-8', CONTAINER.DEFAULT)}>
+              <div ref={mainRef} className={cn('min-h-0 flex-1', isMessagesPage || isCartePage ? 'overflow-hidden' : 'overflow-auto')}>
+                <div className={cn('mx-auto flex w-full flex-1 flex-col', isMessagesPage || isCartePage ? 'h-full pt-0' : 'pt-6 lg:pt-8', isCartePage ? CONTAINER.FULL : CONTAINER.DEFAULT)}>
                   <Outlet />
                 </div>
               </div>
