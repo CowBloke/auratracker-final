@@ -270,7 +270,6 @@ export function CarteTab({
   const [searchQuery, setSearchQuery] = useState('');
   const [placingBusinessId, setPlacingBusinessId] = useState<string | null>(null);
   const [savingPlacementBusinessId, setSavingPlacementBusinessId] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   const allBusinesses = useMemo(() => uniqueBusinesses(data), [data]);
 
