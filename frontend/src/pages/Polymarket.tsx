@@ -830,7 +830,7 @@ export default function Polymarket() {
             ) : (
               <div className={cn(viewMode === 'grid' ? 'grid grid-cols-1 gap-4 xl:grid-cols-3' : 'space-y-4')}>
                 {sortedOpenEvents.flatMap((event, i) => {
-                  const adRow = viewMode === 'grid' && (i + 1) % 6 === 0 && cardAds.length > 0
+                  const adRow = viewMode === 'grid' && (i + 1) % 6 === 0 && cardAds.length > 0 && !user?.hasAdblock
                     ? [0, 1, 2].map((offset) => <AdCard key={`poly-ad-${i}-${offset}`} ad={cardAds[(Math.floor(i / 6) * 3 + offset) % cardAds.length]!} />)
                     : [];
                   // original event render below — use IIFE to preserve the original map body

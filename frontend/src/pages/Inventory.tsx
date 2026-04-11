@@ -683,7 +683,7 @@ export default function Inventory() {
                       <CardContent className="p-0">
                         <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
                           <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
-                            {viewMode === 'grid' && cardAds.length > 0
+                            {viewMode === 'grid' && cardAds.length > 0 && !user?.hasAdblock
                               ? section.items.flatMap((item, i) => {
                                   const el = renderInventoryItem(item);
                                   if ((i + 1) % 6 === 0) {
@@ -699,7 +699,7 @@ export default function Inventory() {
                     </Card>
                   </div>
                 );
-                if (sectionIdx === 0 && bannerAd && !bannerDismissed) {
+                if (sectionIdx === 0 && bannerAd && !bannerDismissed && !user?.hasAdblock) {
                   return [sectionEl, <AdBanner key="inv-banner" ad={bannerAd} onDismiss={() => setBannerDismissed(true)} />];
                 }
                 return [sectionEl];

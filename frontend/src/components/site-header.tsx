@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getPageMeta } from '@/components/chat/presence';
 import { resolveImageUrl } from '@/lib/images';
-import { usersApi, supportApi, changelogApi } from '@/services/api';
+import { usersApi, supportApi, changelogApi, youApi, type YouTemporaryEffect } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { getPageMetaForPath } from '@/lib/page-meta';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
@@ -49,6 +49,7 @@ import {
   Search,
   SendHorizonal,
   Megaphone,
+  ShieldOff,
 } from 'lucide-react';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -98,11 +99,28 @@ export function SiteHeader() {
   const [hasFetchedSearchUsers, setHasFetchedSearchUsers] = useState(false);
   const [messagesUnread, setMessagesUnread] = useState(0);
   const [updatesUnread, setUpdatesUnread] = useState(0);
+  const [temporaryEffects, setTemporaryEffects] = useState<YouTemporaryEffect[]>([]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const load = async () => {
+      try {
+        const res = await youApi.getTemporaryEffects();
+        if (active) setTemporaryEffects(res.data.effects ?? []);
+      } catch {
+        // silently ignore
+      }
+    };
+    void load();
+    const interval = window.setInterval(() => void load(), 30000);
+    return () => { active = false; window.clearInterval(interval); };
+  }, [user?.id, user?.hasAdblock]);
 
   useEffect(() => {
     if (!socket || !user) return;
@@ -620,6 +638,12 @@ export function SiteHeader() {
       </div>
 
         <div className="flex items-center gap-2">
+          {user?.hasAdblock && (
+            <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1">
+              <ShieldOff className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-400">Adblock actif</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-sm">
           {!currentParty && (
             <DropdownMenu
@@ -1026,6 +1050,32 @@ export function SiteHeader() {
               </Collapsible>
             </div>
           </div>
+
+          {temporaryEffects.filter((e) => new Date(e.expiresAt).getTime() > now).length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 text-xs">
+                  Temporaires
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums">
+                    {temporaryEffects.filter((e) => new Date(e.expiresAt).getTime() > now).length}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <DropdownMenuLabel>Objets temporaires actifs</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {temporaryEffects.filter((e) => new Date(e.expiresAt).getTime() > now).map((effect) => (
+                  <DropdownMenuItem key={`${effect.key}-${effect.expiresAt}`} className="flex items-start justify-between gap-3 py-2" onSelect={(e) => e.preventDefault()}>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold">{effect.label}</p>
+                      <p className="line-clamp-2 text-[11px] text-muted-foreground">{effect.description}</p>
+                    </div>
+                    <span className="shrink-0 text-[11px] font-semibold tabular-nums text-amber-400">{formatRemaining(effect.expiresAt)}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {searchSheet}
           {messagesButton}

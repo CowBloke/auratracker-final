@@ -62,6 +62,10 @@
 - suggestions: demander à revoir
 - modifier limite arehnt aura jeu admin
 - TOC guide
+- guide infos impot comme avant
+- 1 point carte you
+- claim 10km 1p=1pays
+- event fin d'année
 
 ## PROJECTS
 

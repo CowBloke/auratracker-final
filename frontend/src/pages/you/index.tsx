@@ -60,7 +60,7 @@ export default function You() {
     );
   }
   if (!data || !user) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Impossible de charger les donnees YOU.</CardContent></Card></div>;
-  const hasYouAdblock = data.temporaryEffects.some((effect) => effect.key === 'YOU_ADBLOCK');
+  const hasYouAdblock = Boolean(user.hasAdblock) || data.temporaryEffects.some((effect) => effect.key === 'YOU_ADBLOCK');
 
   return (
     <div className={currentTab === 'carte' ? 'flex min-h-0 flex-1 flex-col' : 'animate-in space-y-6 fade-in pb-8 duration-300'}>

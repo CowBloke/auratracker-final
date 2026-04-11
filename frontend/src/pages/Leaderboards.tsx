@@ -489,7 +489,7 @@ export default function Leaderboards() {
           <div className="space-y-4">
             <h2 className={TYPOGRAPHY.H3}>{activeTitle}</h2>
 
-            {bannerAd && !bannerDismissed ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
+            {bannerAd && !bannerDismissed && !user?.hasAdblock ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
 
             {activeView === 'overall' && (
               <div className="rounded-lg border border-border/40 bg-muted/20">

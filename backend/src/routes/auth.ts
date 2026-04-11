@@ -308,6 +308,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         referralCode: true,
         referredById: true,
         createdAt: true,
+        youAdblockExpiresAt: true,
       },
     });
 
@@ -325,6 +326,8 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
             aura: sharedBalance ? Number(sharedBalance.aura) : user.aura,
             money: sharedBalance?.money ?? user.money,
             clanEffects,
+            hasAdblock: user.youAdblockExpiresAt != null && user.youAdblockExpiresAt > new Date(),
+            youAdblockExpiresAt: undefined,
           }
         : null,
     });

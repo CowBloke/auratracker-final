@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Brain, Building2, ShieldAlert, Star, TrendingUp, Users } from 'lucide-react';
+import { Brain, Building2, ShieldAlert, ShieldOff, Star, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -179,6 +179,12 @@ export function YouHeaderBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {user?.hasAdblock && (
+            <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1">
+              <ShieldOff className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-400">Adblock actif</span>
+            </div>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 text-xs">

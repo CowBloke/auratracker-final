@@ -487,6 +487,7 @@ export default function Shop() {
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
   const [clanStatus, setClanStatus] = useState<{ inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; maxMembers: number; clanBankMoney: number } | null>(null);
   const [cardAds, setCardAds] = useState<Ad[]>([]);
+  const effectiveCardAds = user?.hasAdblock ? [] : cardAds;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -672,7 +673,7 @@ export default function Shop() {
                 buyingItemId={buyingItemId}
                 ownedSkinItemIds={ownedSkinItemIds}
                 onPurchase={handlePurchase}
-                cardAds={cardAds}
+                cardAds={effectiveCardAds}
               />
 
               {sections.map(section => {
@@ -690,8 +691,8 @@ export default function Shop() {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {section.items.flatMap((item, i) => {
                         const el = <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} clanStatus={clanStatus} onPurchase={handlePurchase} />;
-                        if ((i + 1) % 6 === 0 && cardAds.length > 0) {
-                          return [el, <AdCard key={`shop-ad-${section.id}-${i}`} ad={cardAds[Math.floor(i / 6) % cardAds.length]!} />];
+                        if ((i + 1) % 6 === 0 && effectiveCardAds.length > 0) {
+                          return [el, <AdCard key={`shop-ad-${section.id}-${i}`} ad={effectiveCardAds[Math.floor(i / 6) % effectiveCardAds.length]!} />];
                         }
                         return [el];
                       })}
@@ -707,7 +708,7 @@ export default function Shop() {
                 buyingItemId={buyingItemId}
                 ownedSkinItemIds={ownedSkinItemIds}
                 onPurchase={handlePurchase}
-                cardAds={cardAds}
+                cardAds={effectiveCardAds}
               />
             </TabsContent>
 
@@ -722,8 +723,8 @@ export default function Shop() {
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                       {categoryItems.flatMap((item, i) => {
                         const el = <ShopCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} clanStatus={clanStatus} onPurchase={handlePurchase} />;
-                        if ((i + 1) % 6 === 0 && cardAds.length > 0) {
-                          return [el, <AdCard key={`cat-ad-${category.id}-${i}`} ad={cardAds[Math.floor(i / 6) % cardAds.length]!} />];
+                        if ((i + 1) % 6 === 0 && effectiveCardAds.length > 0) {
+                          return [el, <AdCard key={`cat-ad-${category.id}-${i}`} ad={effectiveCardAds[Math.floor(i / 6) % effectiveCardAds.length]!} />];
                         }
                         return [el];
                       })}

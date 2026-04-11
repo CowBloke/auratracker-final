@@ -883,7 +883,7 @@ export default function Games() {
 
   const injectAdsIntoGrid = (nodes: JSX.Element[]): JSX.Element[] => {
     const cardAds = adPool.filter((ad) => ad.isActive);
-    if (cardAds.length === 0) return nodes;
+    if (cardAds.length === 0 || user?.hasAdblock) return nodes;
 
     const result: JSX.Element[] = [];
     let adIdx = 0;

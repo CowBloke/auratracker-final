@@ -21,6 +21,16 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-11-adblock-global',
+    date: '2026-04-11',
+    title: 'Adblock — Effet étendu à tout le site',
+    summary: 'L\'effet Adblock supprime maintenant les publicités sur toutes les pages du site, et l\'indicateur est visible dans la barre de navigation globale.',
+    items: [
+      { category: 'BUG_FIX', text: '**Adblock global** — Les publicités (bannières et cartes) sont maintenant masquées sur toutes les pages (Inventaire, Jeux, Shop, Polymarket, Classements) quand l\'effet Adblock est actif, plus uniquement sur You.', order: 0 },
+      { category: 'SMALL_FEATURE', text: '**Indicateur Adblock** — Un badge "Adblock actif" s\'affiche dans la barre de navigation sur toutes les pages tant que l\'effet est en cours.', order: 1 },
+    ],
+  },
+  {
     id: '2026-04-11-subway-opengd-playable',
     date: '2026-04-11',
     title: 'Subway Surfers Clone & OpenGD maintenant jouables',

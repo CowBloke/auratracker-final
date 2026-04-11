@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSocketBase } from '../../contexts/SocketContext';
-import { User, LogOut, Wifi, WifiOff, Search, Sparkles } from 'lucide-react';
+import { User, LogOut, Wifi, WifiOff, Search, Sparkles, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -161,6 +161,14 @@ export default function Header() {
               </div>
             </SheetContent>
           </Sheet>
+
+          {/* Adblock indicator */}
+          {user?.hasAdblock ? (
+            <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1">
+              <ShieldOff className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-400">Adblock actif</span>
+            </div>
+          ) : null}
 
           {/* Connection Status */}
           <div className="flex items-center gap-2">

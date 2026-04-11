@@ -25,6 +25,7 @@ interface User {
   referredById?: string | null;
   createdAt: string;
   clanEffects: ClanActiveEffect[];
+  hasAdblock: boolean;
 }
 
 interface AuthContextType {
