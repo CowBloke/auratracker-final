@@ -47,31 +47,6 @@ const timeAgo = (dateStr: string) => {
   return `${Math.floor(diff / 86400)}j`;
 };
 
-const shuffleIds = (ids: string[]): string[] => {
-  const copy = [...ids];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-};
-
-const buildRandomCycle = (ids: string[], previousLastId: string | null): string[] => {
-  if (ids.length <= 1) return [...ids];
-
-  const shuffled = shuffleIds(ids);
-
-  // Avoid repeating the same post between cycle boundaries when possible.
-  if (previousLastId && shuffled[0] === previousLastId) {
-    const swapIndex = shuffled.findIndex((id) => id !== previousLastId);
-    if (swapIndex > 0) {
-      [shuffled[0], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[0]];
-    }
-  }
-
-  return shuffled;
-};
-
 // ─── Upload Modal ──────────────────────────────────────────────────────────────
 
 function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded: (post: AuraScrollPost) => void }) {
@@ -503,6 +478,8 @@ function PostCard({
             loop
             muted={muted}
             playsInline
+            preload={isActive ? 'auto' : 'metadata'}
+            poster={post.thumbnailUrl ? resolveImageUrl(post.thumbnailUrl) : undefined}
           />
         ) : (
           <img
@@ -705,16 +682,6 @@ export default function AuraScroll() {
     return map;
   }, [posts]);
 
-  const appendRandomCycle = useCallback(() => {
-    setSequence((prev) => {
-      if (posts.length === 0) return prev;
-      const ids = posts.map((post) => post.id);
-      const previousLastId = prev.length > 0 ? prev[prev.length - 1] : null;
-      const nextCycle = buildRandomCycle(ids, previousLastId);
-      return [...prev, ...nextCycle];
-    });
-  }, [posts]);
-
   const fetchFeed = useCallback(async (cursor?: string) => {
     if (cursor) setLoadingMore(true);
     else setLoading(true);
@@ -732,9 +699,17 @@ export default function AuraScroll() {
       });
 
       if (!cursor) {
-        const initialIds = data.posts.map((post) => post.id);
-        setSequence(buildRandomCycle(initialIds, null));
+        setSequence(data.posts.map((post) => post.id));
         setActiveIndex(0);
+      } else if (data.posts.length > 0) {
+        setSequence((prev) => {
+          const existingIds = new Set(prev);
+          const newIds = data.posts
+            .map((post) => post.id)
+            .filter((id) => !existingIds.has(id));
+
+          return newIds.length === 0 ? prev : [...prev, ...newIds];
+        });
       }
 
       setNextCursor(data.nextCursor);
@@ -767,8 +742,7 @@ export default function AuraScroll() {
     return () => observerRef.current?.disconnect();
   }, [sequence.length]);
 
-  // Keep the queue filled. Fetch more from backend when available,
-  // otherwise append another randomized cycle for endless scrolling.
+  // Keep the queue filled by fetching the next backend page when we near the end.
   useEffect(() => {
     if (posts.length === 0 || sequence.length === 0) return;
 
@@ -777,13 +751,8 @@ export default function AuraScroll() {
 
     if (nextCursor && !loadingMore) {
       fetchFeed(nextCursor);
-      return;
     }
-
-    if (!nextCursor && !loadingMore) {
-      appendRandomCycle();
-    }
-  }, [activeIndex, posts.length, sequence.length, nextCursor, loadingMore, fetchFeed, appendRandomCycle]);
+  }, [activeIndex, posts.length, sequence.length, nextCursor, loadingMore, fetchFeed]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -949,22 +918,6 @@ export default function AuraScroll() {
         <Plus className="h-5 w-5" />
         Poster
       </button>
-
-      {/* Progress dots */}
-      {sequence.length > 1 && sequence.length <= 20 && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-1">
-          {sequence.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => cardRefs.current[i]?.scrollIntoView({ behavior: 'smooth' })}
-              className={cn(
-                'rounded-full transition-all',
-                i === activeIndex ? 'bg-white h-4 w-1.5' : 'bg-white/30 h-1.5 w-1.5'
-              )}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Upload modal */}
       {showUpload && (
