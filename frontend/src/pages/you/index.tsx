@@ -62,7 +62,7 @@ export default function You() {
   if (!data || !user) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Impossible de charger les donnees YOU.</CardContent></Card></div>;
 
   return (
-    <div className="animate-in space-y-6 fade-in pb-8 duration-300">
+    <div className={currentTab === 'carte' ? 'flex h-full min-h-0 flex-col' : 'animate-in space-y-6 fade-in pb-8 duration-300'}>
       {currentTab === 'overview' ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[{ label: 'Money personnel', value: user.money.toLocaleString('fr-FR') }, { label: 'Aura partagee', value: user.aura.toLocaleString('fr-FR') }, { label: 'Businesses', value: String(data.ownedBusinesses.length) }, { label: 'Relations', value: String(data.relationships.length) }].map((entry) => (
           <Card key={entry.label} className="min-w-0 overflow-hidden">

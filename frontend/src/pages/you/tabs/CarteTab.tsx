@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { ExternalLink, LocateFixed, Minus, Plus, Search, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { type YouBusiness, type YouState, youApi } from '@/services/api';
@@ -28,10 +31,26 @@ interface MapPin {
   pinColor: string;
 }
 
+type BusinessFeatureProperties = {
+  id: string;
+  name: string;
+  ownerId: string;
+  ownerUsername: string;
+  typeKey: string;
+  typeLabel: string;
+  pinColor: string;
+  selected: boolean;
+  isOwned: boolean;
+  canPlace: boolean;
+  hasSavedPosition: boolean;
+};
+
 const DEFAULT_CENTER: [number, number] = [0, 20];
 const DEFAULT_ZOOM = 1.25;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
+const SOURCE_ID = 'you-businesses-source';
+const LAYER_ID = 'you-businesses-layer';
 
 function uniqueBusinesses(data: YouState) {
   const map = new Map<string, YouBusiness>();
@@ -56,27 +75,30 @@ function buildPins(businesses: YouBusiness[], userId: string, isAdmin: boolean):
   });
 }
 
-function createPinElement(pin: MapPin, selected: boolean, placementMode: boolean) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = cn(
-    'group relative flex h-12 w-12 items-center justify-center rounded-full border transition-transform duration-200',
-    placementMode ? 'pointer-events-none' : 'pointer-events-auto hover:scale-105',
-  );
-  button.style.borderColor = pin.pinColor;
-  button.style.background = pin.isOwned ? 'rgba(248, 250, 252, 0.96)' : 'rgba(15, 23, 42, 0.96)';
-  button.style.boxShadow = selected
-    ? '0 0 0 10px rgba(125, 211, 252, 0.18), 0 10px 35px rgba(0, 0, 0, 0.28)'
-    : pin.isOwned
-      ? '0 0 0 8px rgba(245, 158, 11, 0.16), 0 10px 35px rgba(0, 0, 0, 0.22)'
-      : '0 10px 35px rgba(0, 0, 0, 0.22)';
-  button.setAttribute('aria-label', pin.business.name);
-  button.innerHTML = `
-    <span style="display:flex;height:34px;width:34px;align-items:center;justify-content:center;border-radius:9999px;background:${pin.pinColor};color:#08111d;font-size:11px;font-weight:800;letter-spacing:0.02em;">${TYPE_EMOJI[pin.business.typeKey] ?? 'B'}</span>
-    ${pin.isOwned ? '<span style="position:absolute;right:-2px;top:-2px;height:10px;width:10px;border-radius:9999px;background:#f59e0b;border:1.5px solid #fff7ed;"></span>' : ''}
-    ${!pin.hasSavedPosition ? '<span style="position:absolute;inset:-6px;border-radius:9999px;border:1px dashed rgba(255,255,255,0.25);"></span>' : ''}
-  `;
-  return button;
+function buildSourceData(pins: MapPin[], selectedBusinessId: string | null): GeoJSON.FeatureCollection<GeoJSON.Point, BusinessFeatureProperties> {
+  return {
+    type: 'FeatureCollection',
+    features: pins.map((pin) => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [pin.longitude, pin.latitude],
+      },
+      properties: {
+        id: pin.business.id,
+        name: pin.business.name,
+        ownerId: pin.business.ownerId,
+        ownerUsername: pin.business.owner.username,
+        typeKey: pin.business.typeKey,
+        typeLabel: pin.business.type?.label ?? pin.business.typeKey,
+        pinColor: pin.pinColor,
+        selected: selectedBusinessId === pin.business.id,
+        isOwned: pin.isOwned,
+        canPlace: pin.canPlace,
+        hasSavedPosition: pin.hasSavedPosition,
+      },
+    })),
+  };
 }
 
 function formatCoordinates(longitude: number, latitude: number) {
@@ -102,80 +124,63 @@ function BusinessInfoCard({
 }) {
   const navigate = useNavigate();
   const editable = business.ownerId === userId || isAdmin;
-  const profit = business.monthlyRevenue - business.monthlyExpenses;
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4 text-white shadow-[0_18px_55px_rgba(0,0,0,0.22)]">
+    <div className="rounded-2xl border border-border/60 bg-background/80 p-4 text-foreground shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white">
-              {TYPE_EMOJI[business.typeKey] ?? 'B'}
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{business.name}</p>
-              <p className="text-xs text-slate-400">{business.type?.label ?? business.typeKey} • {business.owner.username}</p>
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-sm font-semibold text-primary">
+            {TYPE_EMOJI[business.typeKey] ?? 'B'}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">{business.name}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {business.type?.label ?? business.typeKey} · {business.owner.username}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {business.verified ? <Badge variant="outline" className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600">Vérifié</Badge> : null}
+              {business.ownerId === userId ? <Badge variant="outline" className="border-amber-500/20 bg-amber-500/10 text-amber-700">À vous</Badge> : null}
+              {business.mapX == null || business.mapY == null ? <Badge variant="outline" className="border-border/60 bg-muted/40 text-muted-foreground">À placer</Badge> : null}
             </div>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            {business.verified ? <span className="rounded-full bg-sky-500/10 px-2 py-1 text-[11px] font-medium text-sky-300">Vérifié</span> : null}
-            {business.ownerId === userId ? <span className="rounded-full bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-200">À vous</span> : null}
-            {business.mapX == null || business.mapY == null ? <span className="rounded-full bg-white/5 px-2 py-1 text-[11px] font-medium text-slate-300">À placer</span> : null}
-          </div>
         </div>
-        <button onClick={onClose} className="text-slate-400 transition-colors hover:text-white">
+        <button onClick={onClose} className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-center">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Trésorerie</p>
-          <p className="mt-1 text-sm font-semibold tabular-nums">{business.treasuryMoney.toLocaleString('fr-FR')}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-center">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Profit</p>
-          <p className={cn('mt-1 text-sm font-semibold tabular-nums', profit >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
-            {profit >= 0 ? '+' : ''}
-            {profit.toLocaleString('fr-FR')}
+      <div className="mt-4 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+        <div className="rounded-xl border border-border/60 bg-muted/40 px-3 py-2">
+          <p className="uppercase tracking-[0.18em] text-muted-foreground">Position</p>
+          <p className="mt-1 font-medium text-foreground">
+            {business.mapX != null && business.mapY != null ? formatCoordinates(business.mapX, business.mapY) : 'Libre sur la carte'}
           </p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-center">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">Satisf.</p>
-          <p className="mt-1 text-sm font-semibold tabular-nums">{business.satisfaction}%</p>
-        </div>
-      </div>
-
-      <div className="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-          <p className="uppercase tracking-[0.18em] text-slate-400">Position</p>
-          <p className="mt-1 font-medium text-white">{business.mapX != null && business.mapY != null ? formatCoordinates(business.mapX, business.mapY) : 'Libre sur la carte'}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-          <p className="uppercase tracking-[0.18em] text-slate-400">Repère</p>
-          <p className="mt-1 font-medium text-white">{business.location ?? 'Carte du monde'}</p>
+        <div className="rounded-xl border border-border/60 bg-muted/40 px-3 py-2">
+          <p className="uppercase tracking-[0.18em] text-muted-foreground">Repère</p>
+          <p className="mt-1 font-medium text-foreground">{business.location ?? 'Carte du monde'}</p>
         </div>
       </div>
 
       {business.avgRating != null && business.ratingCount > 0 ? (
-        <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-300">
-          <span className="text-amber-300">★</span>
+        <p className="mt-3 text-xs text-muted-foreground">
+          <span className="mr-1 text-amber-500">★</span>
           {business.avgRating.toFixed(1)} sur {business.ratingCount} avis
-        </div>
+        </p>
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
         {editable ? (
-          <Button size="sm" className="gap-1.5 bg-white/10 text-white hover:bg-white/15" onClick={onPlace}>
+          <Button size="sm" className="gap-1.5" onClick={onPlace}>
             {placementMode ? 'Annuler le placement' : business.mapX == null || business.mapY == null ? 'Placer ici' : 'Déplacer'}
           </Button>
         ) : null}
-        <Button size="sm" variant="outline" className="gap-1.5 border-white/15 bg-white/5 text-white hover:bg-white/10" onClick={onOpenExplore}>
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={onOpenExplore}>
           <ExternalLink className="h-3.5 w-3.5" />
-          Ouvrir dans Explore
+          Explorer
         </Button>
-        <Button size="sm" variant="ghost" className="text-slate-300 hover:bg-white/5 hover:text-white" onClick={() => navigate('/you?tab=explore')}>
-          Aller au détail
+        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => navigate('/you?tab=explore')}>
+          Ouvrir le détail
         </Button>
       </div>
     </div>
@@ -195,7 +200,6 @@ export function CarteTab({
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
   const [mapReady, setMapReady] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'mine'>('all');
@@ -206,9 +210,7 @@ export function CarteTab({
 
   const allBusinesses = useMemo(() => uniqueBusinesses(data), [data]);
   const visibleBusinesses = useMemo(() => {
-    const filteredByOwnership = filter === 'mine'
-      ? allBusinesses.filter((business) => business.ownerId === userId)
-      : allBusinesses;
+    const filteredByOwnership = filter === 'mine' ? allBusinesses.filter((business) => business.ownerId === userId) : allBusinesses;
 
     const normalizedQuery = searchQuery.trim().toLowerCase();
     if (!normalizedQuery) {
@@ -228,11 +230,19 @@ export function CarteTab({
   }, [allBusinesses, filter, searchQuery, userId]);
 
   const pins = useMemo(() => buildPins(visibleBusinesses, userId, isAdmin), [visibleBusinesses, userId, isAdmin]);
+  const sourceData = useMemo(() => buildSourceData(pins, selectedBusinessId), [pins, selectedBusinessId]);
   const selectedBusiness = allBusinesses.find((business) => business.id === selectedBusinessId) ?? null;
 
   const ownedVisibleCount = visibleBusinesses.filter((business) => business.ownerId === userId).length;
   const unplacedVisibleCount = visibleBusinesses.filter((business) => business.mapX == null || business.mapY == null).length;
   const placeableVisibleCount = visibleBusinesses.filter((business) => business.ownerId === userId || isAdmin).length;
+
+  useEffect(() => {
+    if (selectedBusinessId && !visibleBusinesses.some((business) => business.id === selectedBusinessId)) {
+      setSelectedBusinessId(null);
+      setPlacingBusinessId(null);
+    }
+  }, [selectedBusinessId, visibleBusinesses]);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -249,14 +259,47 @@ export function CarteTab({
       renderWorldCopies: true,
     });
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-    map.on('load', () => setMapReady(true));
+
+    map.on('load', () => {
+      if (!map.getSource(SOURCE_ID)) {
+        map.addSource(SOURCE_ID, {
+          type: 'geojson',
+          data: sourceData,
+        });
+
+        map.addLayer({
+          id: `${LAYER_ID}-glow`,
+          type: 'circle',
+          source: SOURCE_ID,
+          paint: {
+            'circle-radius': ['case', ['boolean', ['get', 'selected'], false], 18, 13],
+            'circle-color': ['get', 'pinColor'],
+            'circle-opacity': ['case', ['boolean', ['get', 'selected'], false], 0.16, 0.1],
+            'circle-blur': 0.7,
+          },
+        });
+
+        map.addLayer({
+          id: LAYER_ID,
+          type: 'circle',
+          source: SOURCE_ID,
+          paint: {
+            'circle-radius': ['case', ['boolean', ['get', 'selected'], false], 13, 9],
+            'circle-color': ['get', 'pinColor'],
+            'circle-stroke-color': ['case', ['boolean', ['get', 'selected'], false], '#ffffff', 'rgba(255,255,255,0.75)'],
+            'circle-stroke-width': ['case', ['boolean', ['get', 'selected'], false], 3, 1.5],
+            'circle-opacity': 0.96,
+          },
+        });
+      }
+
+      setMapReady(true);
+    });
+
     mapRef.current = map;
 
     return () => {
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
       map.remove();
       mapRef.current = null;
       setMapReady(false);
@@ -267,8 +310,17 @@ export function CarteTab({
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
+    const source = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+    source?.setData(sourceData);
+  }, [mapReady, sourceData]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
     const handleMapClick = async (event: maplibregl.MapMouseEvent) => {
       if (!placingBusinessId) return;
+      if (map.queryRenderedFeatures(event.point, { layers: [LAYER_ID, `${LAYER_ID}-glow`] }).length > 0) return;
       const targetBusiness = allBusinesses.find((business) => business.id === placingBusinessId);
       if (!targetBusiness || (!isAdmin && targetBusiness.ownerId !== userId)) {
         setPlacingBusinessId(null);
@@ -309,25 +361,35 @@ export function CarteTab({
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
+    const handleBusinessClick = (event: maplibregl.MapLayerMouseEvent) => {
+      const feature = event.features?.[0];
+      const businessId = feature?.properties && 'id' in feature.properties ? String(feature.properties.id) : null;
+      if (!businessId || placingBusinessId) return;
+      setPlacingBusinessId(null);
+      setSelectedBusinessId(businessId);
+      const pin = pins.find((entry) => entry.business.id === businessId);
+      if (!pin) return;
+      map.flyTo({ center: [pin.longitude, pin.latitude], zoom: Math.max(map.getZoom(), 2.4), speed: 0.9 });
+    };
 
-    pins.forEach((pin) => {
-      const isSelected = selectedBusinessId === pin.business.id;
-      const element = createPinElement(pin, isSelected, Boolean(placingBusinessId));
-      element.addEventListener('click', (event) => {
-        event.stopPropagation();
-        if (placingBusinessId) return;
-        setSelectedBusinessId(pin.business.id);
-        map.flyTo({ center: [pin.longitude, pin.latitude], zoom: Math.max(map.getZoom(), 2.4), speed: 0.9 });
-      });
+    map.on('click', LAYER_ID, handleBusinessClick);
+    return () => {
+      map.off('click', LAYER_ID, handleBusinessClick);
+    };
+  }, [mapReady, pins, placingBusinessId]);
 
-      const marker = new maplibregl.Marker({ element, anchor: 'bottom' })
-        .setLngLat([pin.longitude, pin.latitude])
-        .addTo(map);
-      markersRef.current.push(marker);
+  useEffect(() => {
+    const map = mapRef.current;
+    const container = mapContainerRef.current;
+    if (!map || !mapReady || !container || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(() => {
+      map.resize();
     });
-  }, [mapReady, pins, placingBusinessId, selectedBusinessId]);
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [mapReady]);
 
   function centerMap() {
     mapRef.current?.easeTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 700 });
@@ -359,118 +421,88 @@ export function CarteTab({
   }
 
   function handleSelectBusiness(business: YouBusiness) {
+    setPlacingBusinessId(null);
     setSelectedBusinessId(business.id);
     focusBusiness(business);
   }
 
   return (
-    <div className="space-y-4 pb-8">
-      <Card className="overflow-hidden border border-border/60 bg-[linear-gradient(180deg,rgba(7,17,31,0.98),rgba(12,28,44,0.94))] text-white shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
-        <CardHeader className="border-b border-white/10 px-5 pb-4 pt-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1">
-              <CardTitle className="text-base font-semibold text-white">Carte du monde des entreprises</CardTitle>
-              <p className="max-w-2xl text-sm text-slate-300">
-                Une vraie carte du monde. Les business se placent librement n’importe où, sans adresse ni géocodage.
-              </p>
+    <div className="flex h-full min-h-0 flex-1">
+      <Card className="flex h-full min-h-0 flex-1 flex-col overflow-hidden border-border/60 bg-background/95 text-foreground shadow-xl">
+        <CardHeader className="shrink-0 border-b border-border/60 px-4 py-4 lg:px-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <CardTitle className="text-base font-semibold text-foreground">Carte du monde</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">Placez les business librement, sans adresse ni géocodage.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button size="sm" variant={filter === 'all' ? 'default' : 'outline'} className="h-8 border-white/15 bg-white/10 text-white hover:bg-white/15" onClick={() => setFilter('all')}>
-                Toute la carte
+              <Button size="sm" variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
+                Tous
               </Button>
-              <Button size="sm" variant={filter === 'mine' ? 'default' : 'outline'} className="h-8 border-white/15 bg-white/10 text-white hover:bg-white/15" onClick={() => setFilter('mine')}>
-                Mes business
+              <Button size="sm" variant={filter === 'mine' ? 'default' : 'outline'} onClick={() => setFilter('mine')}>
+                Miens
               </Button>
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
-            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-              <Search className="h-4 w-4 text-slate-400" />
-              <input
+          <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <label className="flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-sm">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Rechercher un business, un propriétaire ou un type"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-500"
+                className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
               />
             </label>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400">Visibles</div>
-                <div className="mt-1 text-2xl font-semibold text-white">{visibleBusinesses.length}</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400">À vous</div>
-                <div className="mt-1 text-2xl font-semibold text-amber-300">{ownedVisibleCount}</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400">À placer</div>
-                <div className="mt-1 text-2xl font-semibold text-sky-300">{unplacedVisibleCount}</div>
-              </div>
+            <div className="grid grid-cols-3 gap-2">
+              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+                <span>Visibles</span>
+                <span className="ml-3 text-foreground">{visibleBusinesses.length}</span>
+              </Badge>
+              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+                <span>À vous</span>
+                <span className="ml-3 text-foreground">{ownedVisibleCount}</span>
+              </Badge>
+              <Badge variant="outline" className="justify-between border-border/60 bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+                <span>À placer</span>
+                <span className="ml-3 text-foreground">{unplacedVisibleCount}</span>
+              </Badge>
             </div>
           </div>
         </CardHeader>
 
-        <CardContent className="px-5 py-5">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="space-y-3">
-              <div
-                ref={mapContainerRef}
-                className={cn(
-                  'relative overflow-hidden rounded-[28px] border border-white/10 bg-[#07111d] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
-                  placingBusinessId ? 'ring-1 ring-sky-300/20' : '',
-                )}
-                style={{ aspectRatio: '16 / 10', cursor: placingBusinessId ? 'crosshair' : 'grab' }}
-              >
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(56,189,248,0.18),transparent_24%),radial-gradient(circle_at_80%_22%,rgba(245,158,11,0.18),transparent_20%),radial-gradient(circle_at_50%_82%,rgba(129,140,248,0.16),transparent_26%)]" />
-                {placingBusinessId ? (
-                  <div className="absolute left-3 top-3 z-10 max-w-sm rounded-2xl border border-sky-300/20 bg-slate-950/80 px-4 py-3 text-sm text-slate-200 shadow-lg backdrop-blur">
-                    <p className="font-medium text-white">Mode placement actif</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-400">
-                      Cliquez n’importe où sur la carte du monde pour enregistrer la position du business sélectionné.
-                    </p>
-                    {savingPlacementBusinessId === placingBusinessId ? (
-                      <p className="mt-2 text-xs font-medium text-sky-300">Enregistrement en cours…</p>
-                    ) : null}
-                  </div>
-                ) : null}
-                <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">
-                  <Button size="icon" variant="outline" className="h-9 w-9 border-white/15 bg-slate-950/70 text-white hover:bg-slate-900" onClick={() => zoomBy(1.15)}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="outline" className="h-9 w-9 border-white/15 bg-slate-950/70 text-white hover:bg-slate-900" onClick={() => zoomBy(1 / 1.15)}>
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="outline" className="h-9 w-9 border-white/15 bg-slate-950/70 text-white hover:bg-slate-900" onClick={centerMap}>
-                    <LocateFixed className="h-4 w-4" />
-                  </Button>
-                </div>
+        <CardContent className="flex min-h-0 flex-1 p-4 lg:p-5">
+          <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.55fr)_320px]">
+            <div className="relative min-h-0 overflow-hidden rounded-3xl border border-border/60 bg-slate-950 shadow-inner">
+              <div ref={mapContainerRef} className="absolute inset-0" style={{ cursor: placingBusinessId ? 'crosshair' : 'grab' }} />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(56,189,248,0.12),transparent_24%),radial-gradient(circle_at_80%_22%,rgba(245,158,11,0.12),transparent_20%),radial-gradient(circle_at_50%_82%,rgba(129,140,248,0.1),transparent_26%)]" />
+              {placingBusinessId ? (
+                <Badge className="absolute left-4 top-4 z-10 border-sky-500/20 bg-sky-500/10 text-sky-200">
+                  Placement actif
+                  {savingPlacementBusinessId === placingBusinessId ? ' · enregistrement…' : ''}
+                </Badge>
+              ) : null}
+              <div className="absolute right-4 top-4 z-10 flex flex-col gap-2">
+                <Button size="icon" variant="outline" className="h-9 w-9 border-border/60 bg-background/90 shadow-sm" onClick={() => zoomBy(1.15)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="outline" className="h-9 w-9 border-border/60 bg-background/90 shadow-sm" onClick={() => zoomBy(1 / 1.15)}>
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="outline" className="h-9 w-9 border-border/60 bg-background/90 shadow-sm" onClick={centerMap}>
+                  <LocateFixed className="h-4 w-4" />
+                </Button>
               </div>
-
-              <div className="flex flex-wrap gap-2">
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-                  <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-amber-300" />
-                  Vos business
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-                  <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-sky-300" />
-                  Carte réelle
-                </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
-                  <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-white/70" />
-                  Placement libre
-                </div>
-              </div>
-
-              <p className="text-xs text-slate-400">
-                Molette pour zoomer • glisser pour naviguer • cliquer un business pour l’ouvrir • aucune adresse requise
-              </p>
             </div>
 
-            <div className="space-y-4">
-              <Card className="border-white/10 bg-white/5 text-white">
-                <CardContent className="space-y-3 px-4 py-4">
-                  <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Sélection</div>
+            <div className="flex min-h-0 flex-col gap-3 overflow-hidden">
+              <div className="rounded-3xl border border-border/60 bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Sélection</p>
+                  {selectedBusiness ? <Badge variant="outline" className="border-border/60 bg-background/80 text-muted-foreground">{selectedBusiness.ownerId === userId ? 'À vous' : 'Visible'}</Badge> : null}
+                </div>
+                <div className="mt-3">
                   {selectedBusiness ? (
                     <BusinessInfoCard
                       business={selectedBusiness}
@@ -485,26 +517,28 @@ export function CarteTab({
                       onOpenExplore={() => navigate('/you?tab=explore')}
                     />
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-sm text-slate-400">
-                      Sélectionnez un business sur la carte pour afficher ses données détaillées.
+                    <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
+                      Sélectionnez un business sur la carte.
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card className="border-white/10 bg-white/5 text-white">
-                <CardContent className="space-y-3 px-4 py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Liste</div>
-                      <div className="text-sm text-slate-300">{placeableVisibleCount} business déplaçables</div>
-                    </div>
-                    <div className="text-xs text-slate-400">{visibleBusinesses.length} résultats</div>
+              <div className="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/60 bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Résultats</p>
+                    <p className="text-sm text-muted-foreground">{placeableVisibleCount} déplaçables</p>
                   </div>
+                  <Badge variant="outline" className="border-border/60 bg-background/80 text-muted-foreground">
+                    {visibleBusinesses.length}
+                  </Badge>
+                </div>
 
-                  <div className="max-h-[460px] space-y-2 overflow-auto pr-1">
+                <ScrollArea className="mt-3 flex-1 pr-1">
+                  <div className="space-y-2 pr-2">
                     {visibleBusinesses.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-sm text-slate-400">
+                      <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 px-4 py-6 text-sm text-muted-foreground">
                         Aucun business ne correspond à la recherche.
                       </div>
                     ) : visibleBusinesses.map((business) => {
@@ -519,35 +553,36 @@ export function CarteTab({
                           onClick={() => handleSelectBusiness(business)}
                           className={cn(
                             'flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left transition-colors',
-                            isSelected
-                              ? 'border-sky-300/30 bg-sky-400/10'
-                              : 'border-white/10 bg-slate-950/35 hover:bg-white/5',
+                            isSelected ? 'border-primary/30 bg-primary/10' : 'border-border/60 bg-background/60 hover:bg-background/80',
                           )}
                         >
                           <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-sm font-semibold text-white" style={{ boxShadow: `0 0 0 1px ${getBusinessPinColor(business.typeKey)}33 inset` }}>
+                            <div
+                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-muted text-sm font-semibold text-foreground"
+                              style={{ boxShadow: `0 0 0 1px ${getBusinessPinColor(business.typeKey)}33 inset` }}
+                            >
                               {TYPE_EMOJI[business.typeKey] ?? 'B'}
                             </div>
                             <div className="min-w-0">
-                              <div className="truncate text-sm font-medium text-white">{business.name}</div>
-                              <div className="truncate text-xs text-slate-400">
-                                {business.type?.label ?? business.typeKey} • {business.owner.username}
+                              <div className="truncate text-sm font-medium text-foreground">{business.name}</div>
+                              <div className="truncate text-xs text-muted-foreground">
+                                {business.type?.label ?? business.typeKey} · {business.owner.username}
                               </div>
                             </div>
                           </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1 text-right text-[11px] text-slate-400">
-                            <span className={cn('rounded-full px-2 py-0.5 font-medium', business.ownerId === userId ? 'bg-amber-400/10 text-amber-200' : 'bg-white/5 text-slate-300')}>
+                          <div className="flex shrink-0 flex-col items-end gap-1 text-right text-[11px] text-muted-foreground">
+                            <span className={cn('rounded-full px-2 py-0.5 font-medium', business.ownerId === userId ? 'bg-amber-500/10 text-amber-700' : 'bg-muted/60 text-muted-foreground')}>
                               {business.ownerId === userId ? 'À vous' : 'Visible'}
                             </span>
                             <span>{hasSavedPosition ? 'Placé' : 'À placer'}</span>
-                            {canPlace ? <span className="text-sky-300">Déplaçable</span> : null}
+                            {canPlace ? <span className="text-sky-600">Déplaçable</span> : null}
                           </div>
                         </button>
                       );
                     })}
                   </div>
-                </CardContent>
-              </Card>
+                </ScrollArea>
+              </div>
             </div>
           </div>
         </CardContent>
