@@ -61,6 +61,7 @@
 - support image/video aura scroll
 - suggestions: demander à revoir
 - modifier limite arehnt aura jeu admin
+- TOC guide
 
 ## PROJECTS
 
