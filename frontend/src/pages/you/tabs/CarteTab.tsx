@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { ExternalLink, LocateFixed, MapPin, Minus, Plus, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ExternalLink, LocateFixed, MapPin, Minus, Plus, Search, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,12 +61,8 @@ function uniqueBusinesses(data: YouState): YouBusiness[] {
   return Array.from(map.values());
 }
 
-const ASSOCIATE_ROLES = ['associé', 'associée', 'associe', 'associee', 'partner'];
-
-function isBusinessAssociate(business: YouBusiness, userId: string): boolean {
-  return business.members.some(
-    (m) => m.user.id === userId && ASSOCIATE_ROLES.includes((m.role ?? '').toLowerCase()),
-  );
+function canUserPlaceBusiness(business: YouBusiness, userId: string, isAdmin: boolean): boolean {
+  return isAdmin || business.ownerId === userId;
 }
 
 // Only placed businesses appear on the map
@@ -78,7 +74,7 @@ function buildPins(businesses: YouBusiness[], userId: string, isAdmin: boolean):
       longitude: b.mapX!,
       latitude: b.mapY!,
       isOwned: b.ownerId === userId,
-      canPlace: b.ownerId === userId || isAdmin || isBusinessAssociate(b, userId),
+      canPlace: canUserPlaceBusiness(b, userId, isAdmin),
       pinColor: getBusinessPinColor(b.typeKey),
     }));
 }
@@ -319,7 +315,8 @@ export function CarteTab({
   const hoverPopupRef = useRef<maplibregl.Popup | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>([]);
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [placingBusinessId, setPlacingBusinessId] = useState<string | null>(null);
   const [savingPlacementBusinessId, setSavingPlacementBusinessId] = useState<string | null>(null);
@@ -344,20 +341,22 @@ export function CarteTab({
   }, [allBusinesses]);
 
   const hasMemberBusinesses = memberBusinessIds.size > 0;
+  const selectedTypeSet = useMemo(() => new Set(selectedTypeFilters), [selectedTypeFilters]);
 
   const visibleBusinesses = useMemo(() => {
     let filtered = allBusinesses;
-    if (typeFilter === '__membre__') {
-      filtered = filtered.filter((b) => memberBusinessIds.has(b.id));
-    } else if (typeFilter) {
-      filtered = filtered.filter((b) => b.typeKey === typeFilter);
+    if (selectedTypeSet.size > 0) {
+      filtered = filtered.filter((b) => {
+        if (selectedTypeSet.has('__membre__') && memberBusinessIds.has(b.id)) return true;
+        return selectedTypeSet.has(b.typeKey);
+      });
     }
     const q = searchQuery.trim().toLowerCase();
     if (!q) return filtered;
     return filtered.filter((b) =>
       [b.name, b.owner.username, b.type?.label ?? b.typeKey, b.typeKey, b.location ?? ''].join(' ').toLowerCase().includes(q),
     );
-  }, [allBusinesses, memberBusinessIds, typeFilter, searchQuery]);
+  }, [allBusinesses, memberBusinessIds, searchQuery, selectedTypeSet]);
 
   const placedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX != null && b.mapY != null), [visibleBusinesses]);
   const unplacedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX == null || b.mapY == null), [visibleBusinesses]);
@@ -367,6 +366,15 @@ export function CarteTab({
 
   const selectedBusiness = allBusinesses.find((b) => b.id === selectedBusinessId) ?? null;
   const placingBusiness = allBusinesses.find((b) => b.id === placingBusinessId) ?? null;
+  const selectedTypeLabels = useMemo(() => {
+    if (selectedTypeFilters.length === 0) return 'Tous les types';
+    const labels = selectedTypeFilters.map((key) => {
+      if (key === '__membre__') return 'Clan';
+      const chip = typeChips.find((entry) => entry.key === key);
+      return chip ? `${chip.emoji} ${chip.label}` : key;
+    });
+    return labels.join(', ');
+  }, [selectedTypeFilters, typeChips]);
 
   function closeHoverPopup() {
     hoverPopupRef.current?.remove();
@@ -512,7 +520,7 @@ export function CarteTab({
       if (map.queryRenderedFeatures(event.point, { layers: [LAYER_ID, CLUSTER_LAYER_ID] }).length > 0) return;
 
       const target = allBusinesses.find((b) => b.id === placingBusinessId);
-      if (!target || (!isAdmin && target.ownerId !== userId && !isBusinessAssociate(target, userId))) {
+      if (!target || !canUserPlaceBusiness(target, userId, isAdmin)) {
         setPlacingBusinessId(null);
         return;
       }
@@ -672,7 +680,7 @@ export function CarteTab({
 
   function handleStartPlacement(businessId: string) {
     const business = allBusinesses.find((b) => b.id === businessId);
-    if (!business || (!isAdmin && business.ownerId !== userId && !isBusinessAssociate(business, userId))) return;
+    if (!business || !canUserPlaceBusiness(business, userId, isAdmin)) return;
     if (placingBusinessId === businessId) {
       setPlacingBusinessId(null);
       return;
@@ -705,38 +713,76 @@ export function CarteTab({
               </button>
             )}
           </label>
-          {/* Type filter chips */}
-          <div className="mt-2 flex flex-wrap gap-1">
-            {typeChips.map((chip) => (
-              <button
-                key={chip.key}
-                type="button"
-                onClick={() => setTypeFilter(typeFilter === chip.key ? null : chip.key)}
-                className={cn(
-                  'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors',
-                  typeFilter === chip.key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+          <div
+            className="relative mt-2"
+            onMouseEnter={() => setShowTypeDropdown(true)}
+            onMouseLeave={() => setShowTypeDropdown(false)}
+          >
+            <button
+              type="button"
+              onClick={() => setShowTypeDropdown((prev) => !prev)}
+              className="flex w-full items-center justify-between rounded-lg border border-input/80 bg-background px-2.5 py-1.5 text-left"
+            >
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Types de business</p>
+                <p className="truncate text-xs font-medium text-foreground">{selectedTypeLabels}</p>
+              </div>
+              <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', showTypeDropdown && 'rotate-180')} />
+            </button>
+
+            {showTypeDropdown && (
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-56 overflow-auto rounded-lg border border-border/40 bg-background/98 p-1.5 shadow-xl backdrop-blur-sm">
+                {hasMemberBusinesses && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTypeFilters((prev) => prev.includes('__membre__') ? prev.filter((key) => key !== '__membre__') : [...prev, '__membre__']);
+                    }}
+                    className={cn(
+                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                      selectedTypeSet.has('__membre__') ? 'bg-accent text-foreground' : 'hover:bg-muted/70 text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    <span className={cn('inline-flex h-3.5 w-3.5 items-center justify-center rounded border', selectedTypeSet.has('__membre__') ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')}>
+                      {selectedTypeSet.has('__membre__') ? <Check className="h-2.5 w-2.5" /> : null}
+                    </span>
+                    <span>👥 Clan</span>
+                  </button>
                 )}
-              >
-                <span>{chip.emoji}</span>
-                <span>{chip.label}</span>
-              </button>
-            ))}
-            {hasMemberBusinesses && (
-              <button
-                type="button"
-                onClick={() => setTypeFilter(typeFilter === '__membre__' ? null : '__membre__')}
-                className={cn(
-                  'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors',
-                  typeFilter === '__membre__'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground',
-                )}
-              >
-                <span>👥</span>
-                <span>Clan</span>
-              </button>
+
+                {typeChips.map((chip) => {
+                  const isActive = selectedTypeSet.has(chip.key);
+                  return (
+                    <button
+                      key={chip.key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTypeFilters((prev) => prev.includes(chip.key) ? prev.filter((key) => key !== chip.key) : [...prev, chip.key]);
+                      }}
+                      className={cn(
+                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
+                        isActive ? 'bg-accent text-foreground' : 'hover:bg-muted/70 text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      <span className={cn('inline-flex h-3.5 w-3.5 items-center justify-center rounded border', isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')}>
+                        {isActive ? <Check className="h-2.5 w-2.5" /> : null}
+                      </span>
+                      <span>{chip.emoji}</span>
+                      <span className="truncate">{chip.label}</span>
+                    </button>
+                  );
+                })}
+
+                <div className="mt-1 border-t border-border/40 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTypeFilters([])}
+                    className="w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+                  >
+                    Tout réinitialiser
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -757,7 +803,7 @@ export function CarteTab({
                   </div>
                   {unplacedBusinesses.map((business) => {
                     const isSelected = selectedBusinessId === business.id;
-                    const canPlace = business.ownerId === userId || isAdmin || isBusinessAssociate(business, userId);
+                    const canPlace = canUserPlaceBusiness(business, userId, isAdmin);
                     const isBeingPlaced = placingBusinessId === business.id;
 
                     return (

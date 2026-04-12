@@ -478,7 +478,7 @@ const DEFAULT_CATEGORIES: ShopCategory[] = [
 ];
 
 export default function Shop() {
-  const { user, hasTemporaryAdblock, updateBalance } = useAuth();
+  const { user, updateBalance } = useAuth();
   const [filter, setFilter] = useState<string>('ALL');
   const [items, setItems] = useState<ShopItem[]>([]);
   const [inventoryItems, setInventoryItems] = useState<AdminInventoryItem[]>([]);
@@ -487,7 +487,7 @@ export default function Shop() {
   const [buyingItemId, setBuyingItemId] = useState<string | null>(null);
   const [clanStatus, setClanStatus] = useState<{ inClan: boolean; tagUnlocked: boolean; slotUpgraded: boolean; maxMembers: number; clanBankMoney: number } | null>(null);
   const [cardAds, setCardAds] = useState<Ad[]>([]);
-  const effectiveCardAds = user?.hasAdblock || hasTemporaryAdblock ? [] : cardAds;
+  const effectiveCardAds = user?.hasAdblock ? [] : cardAds;
 
   useEffect(() => {
     const fetchData = async () => {

@@ -135,7 +135,7 @@ const formatNumber = (value: number, digits = 0) =>
 const formatMoney = (value: number, digits = 0) => `$${formatNumber(value, digits)}`;
 
 export default function Leaderboards() {
-  const { user, hasTemporaryAdblock } = useAuth();
+  const { user } = useAuth();
   const [activeView, setActiveView] = useState<View>('overall');
   const [period, setPeriod] = useState<Period>('all');
   const category: Category = activeView === 'nombres' ? 'aura' : activeView as Category;
@@ -489,7 +489,7 @@ export default function Leaderboards() {
           <div className="space-y-4">
             <h2 className={TYPOGRAPHY.H3}>{activeTitle}</h2>
 
-            {bannerAd && !bannerDismissed && !user?.hasAdblock && !hasTemporaryAdblock ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
+            {bannerAd && !bannerDismissed && !user?.hasAdblock ? <AdBanner ad={bannerAd} onDismiss={() => setBannerDismissed(true)} /> : null}
 
             {activeView === 'overall' && (
               <div className="rounded-lg border border-border/40 bg-muted/20">

@@ -1176,8 +1176,8 @@ function serializeYouTemporaryEffects(youAdblockExpiresAt: Date | null) {
     if (remainingMs > 0) {
       effects.push({
         key: 'YOU_ADBLOCK',
-        label: 'Adblock You',
-        description: 'Masque les interfaces publicitaires dans la page You.',
+        label: 'Adblock actif',
+        description: 'Masque les interfaces publicitaires sur tout le site.',
         expiresAt: youAdblockExpiresAt.toISOString(),
         remainingMs,
       });

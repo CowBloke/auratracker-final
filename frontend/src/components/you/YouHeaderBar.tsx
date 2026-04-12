@@ -83,7 +83,7 @@ function SkillBadge({ icon: Icon, label, level, xp, maxXp, color, desc, unlocks 
 }
 
 export function YouHeaderBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
-  const { user, hasTemporaryAdblock } = useAuth();
+  const { user } = useAuth();
   const [skills, setSkills] = useState<HeaderSkill[]>([]);
   const [temporaryEffects, setTemporaryEffects] = useState<YouTemporaryEffect[]>([]);
   const [nowTs, setNowTs] = useState(Date.now());
@@ -156,7 +156,7 @@ export function YouHeaderBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {Boolean(user?.hasAdblock || hasTemporaryAdblock) && (
+          {user?.hasAdblock && (
             <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1">
               <ShieldOff className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs font-medium text-emerald-400">Adblock actif</span>

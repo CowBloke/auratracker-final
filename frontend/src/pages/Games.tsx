@@ -711,7 +711,7 @@ export default function Games() {
   const [adPool, setAdPool] = useState<Ad[]>([]);
   const { maintenanceStatus, refreshFeatures } = useFeatures();
   const { theme } = useTheme();
-  const { user, hasTemporaryAdblock } = useAuth();
+  const { user } = useAuth();
   const disabledPages = maintenanceStatus.disabledPages;
   const isAdmin = Boolean(user?.isAdmin);
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
@@ -883,7 +883,7 @@ export default function Games() {
 
   const injectAdsIntoGrid = (nodes: JSX.Element[]): JSX.Element[] => {
     const cardAds = adPool.filter((ad) => ad.isActive);
-    if (cardAds.length === 0 || user?.hasAdblock || hasTemporaryAdblock) return nodes;
+    if (cardAds.length === 0 || user?.hasAdblock) return nodes;
 
     const result: JSX.Element[] = [];
     let adIdx = 0;

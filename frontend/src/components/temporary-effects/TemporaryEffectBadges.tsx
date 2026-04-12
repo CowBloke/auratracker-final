@@ -33,6 +33,14 @@ function getEffectBadgeClass(effect: YouTemporaryEffect) {
   return 'border-border/60 bg-background/80 text-foreground';
 }
 
+function getEffectTypeLabel(effect: YouTemporaryEffect) {
+  if (effect.key === 'YOU_ADBLOCK') {
+    return 'Adblock';
+  }
+
+  return effect.key;
+}
+
 export function TemporaryEffectBadges({
   effects,
   nowTs,
@@ -60,17 +68,16 @@ export function TemporaryEffectBadges({
                 <Badge
                   variant="outline"
                   className={cn(
-                    'h-7 gap-1.5 rounded-full px-2.5 text-[11px] font-medium shadow-sm',
+                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full p-0 shadow-sm',
                     getEffectBadgeClass(effect)
                   )}
                 >
-                  <Icon className="h-3 w-3 shrink-0" />
-                  <span className="max-w-28 truncate">{effect.label}</span>
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
                 </Badge>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-64 space-y-1.5 text-center">
                 <p className="font-medium">{effect.label}</p>
-                <p className="text-xs text-muted-foreground">{effect.description}</p>
+                <p className="text-xs text-muted-foreground">Type : {getEffectTypeLabel(effect)}</p>
                 <p className="text-xs text-muted-foreground/80">Restant : {formatRemaining(effect.expiresAt, nowTs)}</p>
               </TooltipContent>
             </Tooltip>

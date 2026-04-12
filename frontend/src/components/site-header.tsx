@@ -76,7 +76,7 @@ interface SearchUser {
 }
 
 export function SiteHeader() {
-  const { user, hasTemporaryAdblock, refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { connected, socket } = useSocketBase();
   const { onlineUsers, onlineCount, requestOnlineUsers, doodleSpectateSessions, requestDoodleSpectateSessions, chessSpectateSessions, requestChessSpectateSessions, sendMessage } = useChatSocket();
   const { currentParty, partyMembers, publicParties, createParty, leaveParty, deleteParty, joinParty, fetchPublicParties } = usePartySocket();
@@ -639,7 +639,7 @@ export function SiteHeader() {
       </div>
 
         <div className="flex items-center gap-2">
-          {Boolean(user?.hasAdblock || hasTemporaryAdblock) && (
+          {user?.hasAdblock && (
             <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1">
               <ShieldOff className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs font-medium text-emerald-400">Adblock actif</span>
