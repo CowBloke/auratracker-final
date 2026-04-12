@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
 import UpdatePopupModal from './UpdatePopupModal';
@@ -49,6 +49,7 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const mainRef = useRef<HTMLDivElement>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const keyboardShortcuts = useKeyboardShortcuts();
   const isMessagesPage = location.pathname === '/messages';
   const isAuraScrollPage = location.pathname.startsWith('/aura-scroll');
@@ -129,6 +130,8 @@ export default function Layout() {
       <div className="flex h-svh w-full overflow-hidden bg-background">
         <SidebarProvider
           defaultOpen={false}
+          open={isSidebarOpen}
+          onOpenChange={setIsSidebarOpen}
           className="!w-auto flex-1"
           style={
             {
@@ -137,7 +140,13 @@ export default function Layout() {
             } as CSSProperties
           }
         >
-          {!isAuraScrollPage && <AppSidebar variant="inset" />}
+          {!isAuraScrollPage && (
+            <AppSidebar
+              variant="inset"
+              onMouseEnter={() => setIsSidebarOpen(true)}
+              onMouseLeave={() => setIsSidebarOpen(false)}
+            />
+          )}
           <SidebarInset className="min-h-0 overflow-hidden">
             {!isAuraScrollPage && <SiteHeader />}
             <div className="@container/main flex min-h-0 flex-1 flex-col">

@@ -49,19 +49,32 @@ import { getGameImage } from '@/lib/game-images';
 import BugReportPanel from './BugReportPanel';
 import { t } from '@/lib/i18n';
 
-const navItems = [
-  { to: '/leaderboards', label: t('sidebar_nav_leaderboard'), icon: Trophy },
-  { to: '/party', label: t('sidebar_nav_party'), icon: Users },
-  { to: '/clans', label: t('sidebar_nav_clans'), icon: Flag },
+type SidebarRouteItem = {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+const economyItems: SidebarRouteItem[] = [
   { to: '/market', label: t('sidebar_nav_shop'), icon: Store },
   { to: '/inventory', label: t('sidebar_nav_inventory'), icon: Backpack },
   { to: '/marketplace', label: t('sidebar_nav_marketplace'), icon: BadgeDollarSign },
-  { to: '/loto', label: 'Loto', icon: Ticket },
-  { to: '/auravision', label: t('sidebar_nav_auravision'), icon: Camera },
-  { to: '/aura-scroll', label: 'Aura Scroll', icon: Sparkles },
+  { to: '/polymarket', label: t('sidebar_polymarket'), icon: BarChart3 },
   { to: '/pass', label: t('sidebar_nav_pass'), icon: Ticket },
   { to: '/quests', label: t('sidebar_nav_quests'), icon: Target },
+];
+
+const communityItems: SidebarRouteItem[] = [
+  { to: '/leaderboards', label: t('sidebar_nav_leaderboard'), icon: Trophy },
+  { to: '/party', label: t('sidebar_nav_party'), icon: Users },
+  { to: '/clans', label: t('sidebar_nav_clans'), icon: Flag },
+  { to: '/loto', label: 'Loto', icon: Ticket },
+  { to: '/auravision', label: t('sidebar_nav_auravision'), icon: Camera },
   { to: '/suggestions', label: t('sidebar_nav_suggestions'), icon: Lightbulb },
+];
+
+const infoItems: SidebarRouteItem[] = [
+  { to: '/aura-scroll', label: 'Aura Scroll', icon: Sparkles },
   { to: '/rules', label: t('sidebar_nav_info'), icon: BookOpen },
   { to: '/tutoriels', label: 'Tutoriels', icon: Info },
 ];
@@ -126,6 +139,10 @@ function GameSidebarIcon({ src, alt }: { src: string; alt: string }) {
 export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
   const [isBugReportOpen, setIsBugReportOpen] = useState(false);
+  const [gamesExpanded, setGamesExpanded] = useState(false);
+  const [economyExpanded, setEconomyExpanded] = useState(false);
+  const [communityExpanded, setCommunityExpanded] = useState(false);
+  const [infoExpanded, setInfoExpanded] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { maintenanceStatus } = useFeatures();
@@ -141,6 +158,20 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const isOnGames = location.pathname.startsWith('/games');
   const isOnYou = location.pathname.startsWith('/you');
+
+  const isPathActive = (path: string) =>
+    location.pathname === path || (path !== '/' && location.pathname.startsWith(`${path}/`));
+
+  const enabledGameItems = gameItems.filter((game) => !isDisabled(game.to));
+  const enabledEconomyItems = economyItems.filter((item) => !isDisabled(item.to));
+  const enabledCommunityItems = communityItems.filter((item) => !isDisabled(item.to));
+  const enabledInfoItems = infoItems.filter((item) => !isDisabled(item.to));
+
+  const isGamesSectionActive = isOnGames;
+  const isEconomySectionActive = enabledEconomyItems.some((item) => isPathActive(item.to));
+  const isCommunitySectionActive = enabledCommunityItems.some((item) => isPathActive(item.to));
+  const isInfoSectionActive = enabledInfoItems.some((item) => isPathActive(item.to));
+
   const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
   const shouldNudgeYouLogo = !isOnYou && canOpenYouFromLogo;
 
@@ -236,36 +267,55 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
             {!isOnYou && (<>
 
-            {/* Games with accordion */}
-            {!isDisabled('/games') && (
-              <Collapsible asChild open={isOnGames} className="group/collapsible">
+            {/* Games */}
+            {(!isDisabled('/games') || enabledGameItems.length > 0) && (
+              <Collapsible asChild open={gamesExpanded} onOpenChange={setGamesExpanded} className="group/collapsible">
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton
-                      asChild
-                      isActive={isOnGames}
+                      type="button"
+                      isActive={isGamesSectionActive}
                       tooltip={t('sidebar_games')}
                       className={cn(
                         'h-9 px-3 text-sm font-normal',
-                        isOnGames
+                        isGamesSectionActive
                           ? 'text-foreground bg-muted/50'
                           : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
                       )}
                     >
-                      <NavLink to="/games">
+                      <>
                         <Gamepad2 className="h-4 w-4" />
                         <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_games')}</span>
                         <ChevronRight className={cn(
                           'ml-auto h-4 w-4 transition-transform duration-200',
-                          isOnGames && 'rotate-90',
+                          gamesExpanded && 'rotate-90',
                           'group-data-[collapsible=icon]:hidden'
                         )} />
-                      </NavLink>
+                      </>
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarMenuSub>
-                      {gameItems.filter((game) => !isDisabled(game.to)).map((game) => {
+                      {!isDisabled('/games') && (
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={location.pathname === '/games'}
+                            className={cn(
+                              'text-sm font-normal',
+                              location.pathname === '/games'
+                                ? 'text-foreground'
+                                : 'text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            <NavLink to="/games">
+                              <Gamepad2 className="h-4 w-4" />
+                              <span>Hub jeux</span>
+                            </NavLink>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      )}
+                      {enabledGameItems.map((game) => {
                         const isGameActive = location.pathname === game.to;
                         return (
                           <SidebarMenuSubItem key={game.to}>
@@ -293,65 +343,188 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               </Collapsible>
             )}
 
-            {/* Polymarket */}
-            {!isDisabled('/polymarket') && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')}
-                  tooltip={t('sidebar_polymarket')}
-                  className={cn(
-                    'h-9 px-3 text-sm font-normal',
-                    location.pathname === '/polymarket' || location.pathname.startsWith('/polymarket')
-                      ? 'text-foreground bg-muted/50'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                  )}
-                >
-                  <NavLink to="/polymarket">
-                    <BarChart3 className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_polymarket')}</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+            {/* Economy */}
+            {enabledEconomyItems.length > 0 && (
+              <Collapsible asChild open={economyExpanded} onOpenChange={setEconomyExpanded} className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton
+                      type="button"
+                      isActive={isEconomySectionActive}
+                      tooltip="Economie"
+                      className={cn(
+                        'h-9 px-3 text-sm font-normal',
+                        isEconomySectionActive
+                          ? 'text-foreground bg-muted/50'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                      )}
+                    >
+                      <>
+                        <Landmark className="h-4 w-4" />
+                        <span className="group-data-[collapsible=icon]:hidden">Economie</span>
+                        <ChevronRight className={cn(
+                          'ml-auto h-4 w-4 transition-transform duration-200',
+                          economyExpanded && 'rotate-90',
+                          'group-data-[collapsible=icon]:hidden'
+                        )} />
+                      </>
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {enabledEconomyItems.map((item) => {
+                        const ItemIcon = item.icon;
+                        const isItemActive = isPathActive(item.to);
+                        return (
+                          <SidebarMenuSubItem key={item.to}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isItemActive}
+                              className={cn(
+                                'text-sm font-normal',
+                                isItemActive
+                                  ? 'text-foreground'
+                                  : 'text-muted-foreground hover:text-foreground'
+                              )}
+                            >
+                              <NavLink to={item.to} end={item.to === '/'}>
+                                <ItemIcon className="h-4 w-4" />
+                                <span>{item.label}</span>
+                              </NavLink>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        );
+                      })}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
             )}
 
-            {/* Other nav items */}
-            {navItems.filter((item) => !isDisabled(item.to)).map((item) => {
-              const isActive = location.pathname === item.to ||
-                (item.to !== '/' && location.pathname.startsWith(`${item.to}/`));
-              const ItemIcon = item.icon;
-              return (
-                <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    tooltip={item.label}
-                    className={cn(
-                      'h-9 px-3 text-sm font-normal',
-                      isActive
-                        ? 'text-foreground bg-muted/50'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                    )}
-                  >
-                    <NavLink to={item.to} end={item.to === '/'}>
-                      <ItemIcon className="h-4 w-4" />
-                      <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
+            {/* Community */}
+            {enabledCommunityItems.length > 0 && (
+              <Collapsible asChild open={communityExpanded} onOpenChange={setCommunityExpanded} className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton
+                      type="button"
+                      isActive={isCommunitySectionActive}
+                      tooltip="Communaute"
+                      className={cn(
+                        'h-9 px-3 text-sm font-normal',
+                        isCommunitySectionActive
+                          ? 'text-foreground bg-muted/50'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                      )}
+                    >
+                      <>
+                        <Users className="h-4 w-4" />
+                        <span className="group-data-[collapsible=icon]:hidden">Communaute</span>
+                        <ChevronRight className={cn(
+                          'ml-auto h-4 w-4 transition-transform duration-200',
+                          communityExpanded && 'rotate-90',
+                          'group-data-[collapsible=icon]:hidden'
+                        )} />
+                      </>
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {enabledCommunityItems.map((item) => {
+                        const ItemIcon = item.icon;
+                        const isItemActive = isPathActive(item.to);
+                        return (
+                          <SidebarMenuSubItem key={item.to}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isItemActive}
+                              className={cn(
+                                'text-sm font-normal',
+                                isItemActive
+                                  ? 'text-foreground'
+                                  : 'text-muted-foreground hover:text-foreground'
+                              )}
+                            >
+                              <NavLink to={item.to} end={item.to === '/'}>
+                                <ItemIcon className="h-4 w-4" />
+                                <span>{item.label}</span>
+                              </NavLink>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        );
+                      })}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
                 </SidebarMenuItem>
-              );
-            })}
+              </Collapsible>
+            )}
 
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={() => setIsBugReportOpen(true)}
-                tooltip={t('sidebar_report_bug')}
-                className="h-9 px-3 text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
-              >
-                <Bug className="h-4 w-4" />
-                <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_report_bug')}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {/* Infos */}
+            {
+              <Collapsible asChild open={infoExpanded} onOpenChange={setInfoExpanded} className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton
+                      type="button"
+                      isActive={isInfoSectionActive}
+                      tooltip="Infos"
+                      className={cn(
+                        'h-9 px-3 text-sm font-normal',
+                        isInfoSectionActive
+                          ? 'text-foreground bg-muted/50'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                      )}
+                    >
+                      <>
+                        <Info className="h-4 w-4" />
+                        <span className="group-data-[collapsible=icon]:hidden">Infos</span>
+                        <ChevronRight className={cn(
+                          'ml-auto h-4 w-4 transition-transform duration-200',
+                          infoExpanded && 'rotate-90',
+                          'group-data-[collapsible=icon]:hidden'
+                        )} />
+                      </>
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {enabledInfoItems.map((item) => {
+                        const ItemIcon = item.icon;
+                        const isItemActive = isPathActive(item.to);
+                        return (
+                          <SidebarMenuSubItem key={item.to}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={isItemActive}
+                              className={cn(
+                                'text-sm font-normal',
+                                isItemActive
+                                  ? 'text-foreground'
+                                  : 'text-muted-foreground hover:text-foreground'
+                              )}
+                            >
+                              <NavLink to={item.to} end={item.to === '/'}>
+                                <ItemIcon className="h-4 w-4" />
+                                <span>{item.label}</span>
+                              </NavLink>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        );
+                      })}
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton
+                          onClick={() => setIsBugReportOpen(true)}
+                          className="text-sm font-normal text-muted-foreground hover:text-foreground"
+                        >
+                          <Bug className="h-4 w-4" />
+                          <span>{t('sidebar_report_bug')}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            }
             </>)}
 
           </SidebarMenu>
