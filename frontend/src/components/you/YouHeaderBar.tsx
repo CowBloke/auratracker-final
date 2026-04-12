@@ -7,7 +7,6 @@ import { type YouSkill, type YouTemporaryEffect, youApi } from '@/services/api';
 import { UserAccountMenu } from '@/components/user-account-menu';
 import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
-import { Button } from '@/components/ui/button';
 import { TemporaryEffectBadges } from '@/components/temporary-effects/TemporaryEffectBadges';
 
 type HeaderSkill = {
