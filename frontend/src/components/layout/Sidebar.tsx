@@ -62,7 +62,7 @@ const navItems = [
   { to: '/quests', label: t('sidebar_nav_quests'), icon: Target },
   { to: '/suggestions', label: t('sidebar_nav_suggestions'), icon: Lightbulb },
   { to: '/rules', label: t('sidebar_nav_info'), icon: BookOpen },
-  { to: '/information', label: 'Informations', icon: Info },
+  { to: '/tutoriels', label: 'Tutoriels', icon: Info },
 ];
 
 const gameItems = [

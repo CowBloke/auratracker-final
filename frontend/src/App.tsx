@@ -29,7 +29,7 @@ import BatailleNavale from './pages/BatailleNavale';
 import Polymarket from './pages/Polymarket';
 import Admin from './pages/Admin';
 import Rules from './pages/Rules';
-import Information from './pages/Information';
+import Tutoriels from './pages/Tutoriels';
 import Suggestions from './pages/Suggestions';
 import Pass from './pages/Pass';
 import Maintenance from './pages/Maintenance';
@@ -289,7 +289,7 @@ function App() {
         <Route path="profile/:userId?" element={<Profile />} />
         <Route path="admin" element={<Admin />} />
         <Route path="rules" element={<Rules />} />
-        <Route path="information" element={<Information />} />
+        <Route path="tutoriels" element={<Tutoriels />} />
         <Route path="pass" element={<Pass />} />
         <Route path="quests" element={<Quests />} />
         <Route path="suggestions" element={<Suggestions />} />

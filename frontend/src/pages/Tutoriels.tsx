@@ -968,7 +968,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
             {[
               { t: 'Sous le seuil',      d: "Aucun impôt prélevé. Tu accumules librement." },
               { t: 'Au-dessus du seuil', d: "Un pourcentage est déduit chaque jour sur la totalité de ton solde. Plus tu es riche, plus les montants sont significatifs." },
-              { t: 'Stratégie',          d: "Beaucoup de joueurs investissent en banque, dépensent en boutique ou dans You pour éviter de dépasser le seuil. Garde un œil sur les paliers en vigueur dans l'onglet Informations." },
+              { t: 'Stratégie',          d: "Beaucoup de joueurs investissent en banque, dépensent en boutique ou dans You pour éviter de dépasser le seuil. Garde un œil sur les paliers en vigueur dans la page Tutoriels." },
             ].map(({ t, d }) => (
               <div key={t} className="py-3">
                 <p className="text-sm font-medium">{t}</p>
@@ -1509,7 +1509,7 @@ function TutorialsTab() {
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
-export default function Information() {
+export default function Tutoriels() {
   return (
     <PageShell>
       <TutorialsTab />
