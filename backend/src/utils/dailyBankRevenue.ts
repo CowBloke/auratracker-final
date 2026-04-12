@@ -67,19 +67,33 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
       for (const account of accounts) {
         const interest = Math.max(1, Math.floor(account.balance * BANK_ACCOUNT_EPARGNE_DAILY_RATE));
         accountInterestPaid += interest;
-        await tx.bankAccount.update({
-          where: { id: account.id },
-          data: { balance: { increment: interest } },
-        });
       }
 
-      await tx.business.update({
-        where: { id: bank.id },
+      const claimed = await tx.business.updateMany({
+        where: {
+          id: bank.id,
+          OR: [
+            { lastBankRevenueDate: null },
+            { lastBankRevenueDate: { not: todayKey } },
+          ],
+        },
         data: {
           treasuryMoney: { increment: bankRevenue + accountInterestPaid },
           lastBankRevenueDate: todayKey,
         },
       });
+
+      if (claimed.count !== 1) {
+        continue;
+      }
+
+      for (const account of accounts) {
+        const interest = Math.max(1, Math.floor(account.balance * BANK_ACCOUNT_EPARGNE_DAILY_RATE));
+        await tx.bankAccount.update({
+          where: { id: account.id },
+          data: { balance: { increment: interest } },
+        });
+      }
 
       dailySummary.push({
         id: bank.id,

@@ -6397,35 +6397,57 @@ export async function runDailyBusinessSalaryPayments(db = prisma) {
   const paidUserIds = new Set<string>();
 
   for (const member of members) {
-    if (member.business.treasuryMoney < member.salary) {
-      continue;
+    let paymentApplied = false;
+
+    try {
+      paymentApplied = await db.$transaction(async (tx: any) => {
+        const memberUpdate = await tx.businessMember.updateMany({
+          where: {
+            id: member.id,
+            OR: [
+              { lastSalaryPaymentDate: null },
+              { lastSalaryPaymentDate: { not: todayKey } },
+            ],
+          },
+          data: { lastSalaryPaymentDate: todayKey },
+        });
+
+        if (memberUpdate.count !== 1) {
+          throw new Error('SALARY_ALREADY_PAID');
+        }
+
+        const businessUpdate = await tx.business.updateMany({
+          where: {
+            id: member.businessId,
+            treasuryMoney: { gte: member.salary },
+          },
+          data: {
+            treasuryMoney: { decrement: member.salary },
+          },
+        });
+
+        if (businessUpdate.count !== 1) {
+          throw new Error('BUSINESS_TREASURY_TOO_LOW');
+        }
+
+        await tx.user.update({
+          where: { id: member.userId },
+          data: { money: { increment: member.salary } },
+        });
+
+        return true;
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message !== 'SALARY_ALREADY_PAID' && message !== 'BUSINESS_TREASURY_TOO_LOW') {
+        console.error('Daily salary payment error:', error);
+      }
+      paymentApplied = false;
     }
 
-    await db.$transaction(async (tx: any) => {
-      const businessUpdate = await tx.business.updateMany({
-        where: {
-          id: member.businessId,
-          treasuryMoney: { gte: member.salary },
-        },
-        data: {
-          treasuryMoney: { decrement: member.salary },
-        },
-      });
-
-      if (businessUpdate.count !== 1) {
-        return;
-      }
-
-      await tx.user.update({
-        where: { id: member.userId },
-        data: { money: { increment: member.salary } },
-      });
-
-      await tx.businessMember.update({
-        where: { id: member.id },
-        data: { lastSalaryPaymentDate: todayKey },
-      });
-    });
+    if (!paymentApplied) {
+      continue;
+    }
 
     await Promise.allSettled([
       createNotification({

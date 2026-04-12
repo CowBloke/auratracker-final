@@ -4823,6 +4823,22 @@ export default function Admin() {
       }))
       .sort((a, b) => b.users.length - a.users.length || a.level.localeCompare(b.level, 'fr-FR'));
   })();
+  const usersByClass = (() => {
+    const grouped = new Map<string, AdminUser[]>();
+    for (const entry of usersForDemographics) {
+      const classLabel = normalizeClassLabel(entry);
+      const bucket = grouped.get(classLabel) || [];
+      bucket.push(entry);
+      grouped.set(classLabel, bucket);
+    }
+
+    return [...grouped.entries()]
+      .map(([classLabel, classUsers]) => ({
+        classLabel,
+        users: [...classUsers].sort((a, b) => b.aura - a.aura || a.username.localeCompare(b.username, 'fr-FR')),
+      }))
+      .sort((a, b) => b.users.length - a.users.length || a.classLabel.localeCompare(b.classLabel, 'fr-FR'));
+  })();
   const normalizedUserSearchQuery = userSearchQuery.trim().toLowerCase();
   const filteredUsers = normalizedUserSearchQuery
     ? users.filter((entry) => (
@@ -9519,6 +9535,55 @@ export default function Admin() {
               </CardContent>
             </Card>
           </div>
+
+          <Card className="border-border/40">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold text-sm">Utilisateurs par classe (Aura)</span>
+              </div>
+              <CardDescription>
+                Un tableau par classe avec tous les utilisateurs et leur aura.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {usersByClass.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  {usersByClass.map((entry) => (
+                    <div key={entry.classLabel} className="rounded-lg border border-border/40 bg-muted/10 overflow-hidden">
+                      <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
+                        <p className="text-sm font-semibold truncate">{entry.classLabel}</p>
+                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>{entry.users.length} utilisateur{entry.users.length > 1 ? 's' : ''}</p>
+                      </div>
+                      <div className="max-h-72 overflow-y-auto">
+                        <table className="w-full text-xs">
+                          <thead className="sticky top-0 bg-muted/30 backdrop-blur">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-medium text-muted-foreground">Utilisateur</th>
+                              <th className="px-3 py-2 text-right font-medium text-muted-foreground">Aura</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {entry.users.map((member) => (
+                              <tr key={member.id} className="border-t border-border/30">
+                                <td className="px-3 py-2">
+                                  <span className="font-medium">{member.username}</span>
+                                  {member.firstName ? <span className="text-muted-foreground"> ({member.firstName})</span> : null}
+                                </td>
+                                <td className="px-3 py-2 text-right tabular-nums font-medium">{member.aura.toLocaleString('fr-FR')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
+              )}
+            </CardContent>
+          </Card>
 
         </TabsContent>
 

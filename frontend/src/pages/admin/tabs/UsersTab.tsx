@@ -35,6 +35,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AdminUser } from '../../../services/api';
+import { ROLE_LABELS } from '../constants';
 
 type UsersTabProps = {
   userSearchQuery: string;
@@ -179,6 +180,22 @@ export function UsersTab(props: UsersTabProps) {
                   key={u.id}
                   className={cn('py-3', u.isSuperAdmin ? 'bg-amber-500/10' : u.isAdmin ? 'bg-muted/20' : undefined)}
                 >
+                  {(() => {
+                    const adminRole = getAdminRole(u);
+                    const roleBadgeClassName =
+                      adminRole === 'SUPER_ADMIN'
+                        ? 'bg-amber-500/20 text-amber-300 font-medium'
+                        : adminRole === 'ADMIN'
+                          ? 'bg-amber-500/15 text-amber-400'
+                          : adminRole === 'BETA_TESTER'
+                            ? 'bg-sky-500/15 text-sky-400'
+                            : adminRole === 'FISCAL_INSPECTOR'
+                              ? 'bg-emerald-500/15 text-emerald-400'
+                              : adminRole === 'JUDGE'
+                                ? 'bg-indigo-500/15 text-indigo-400'
+                                : 'bg-muted text-muted-foreground';
+
+                    return (
                   <div className="flex items-center gap-3">
                     <div className="w-4 shrink-0">
                       {!u.isSuperAdmin && u.id !== user?.id && (
@@ -198,19 +215,10 @@ export function UsersTab(props: UsersTabProps) {
                         {u.firstName && <span className="text-xs text-muted-foreground/70">({u.firstName})</span>}
                         <span className="text-muted-foreground/30 text-xs select-none">·</span>
                         <span className="text-xs text-muted-foreground/60 truncate">{u.email}</span>
-                        {u.isSuperAdmin ? (
-                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-medium shrink-0">
-                            <Crown className="h-2.5 w-2.5" />super admin
-                          </span>
-                        ) : u.isAdmin ? (
-                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 shrink-0">
-                            <Shield className="h-2.5 w-2.5" />admin
-                          </span>
-                        ) : u.isBetaTester ? (
-                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-400 shrink-0">
-                            <Shield className="h-2.5 w-2.5" />beta tester
-                          </span>
-                        ) : null}
+                        <span className={cn('inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full shrink-0', roleBadgeClassName)}>
+                          {adminRole === 'SUPER_ADMIN' ? <Crown className="h-2.5 w-2.5" /> : <Shield className="h-2.5 w-2.5" />}
+                          {ROLE_LABELS[adminRole]}
+                        </span>
                         {u.isChatMuted && <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 shrink-0">muet</span>}
                         {u.schoolLevel && (
                           <span
@@ -374,6 +382,8 @@ export function UsersTab(props: UsersTabProps) {
                       )}
                     </div>
                   </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
