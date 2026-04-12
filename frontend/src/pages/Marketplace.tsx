@@ -1,7 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, BellRing, CheckCircle2, Loader2, Package, Search, Tag } from 'lucide-react';
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  BellRing,
+  CheckCircle2,
+  ChevronRight,
+  Loader2,
+  Package,
+  Search,
+  Tag,
+  TrendingUp,
+  Users,
+  X,
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { marketplaceApi, type MarketplaceListing, type MarketplaceListingItem, type MarketplaceProductStats } from '../services/api';
+import {
+  marketplaceApi,
+  type MarketplaceListing,
+  type MarketplaceListingItem,
+  type MarketplaceProductStats,
+  type MarketplaceProductStatsPoint,
+} from '../services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +29,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from '@/hooks/use-toast';
@@ -29,6 +50,16 @@ interface InventoryItem {
   quantity: number;
   acquiredAt: string;
   item: MarketplaceListingItem;
+}
+
+interface GroupedItem {
+  itemId: string;
+  item: MarketplaceListingItem;
+  listings: MarketplaceListing[];
+  lowestPrice: number;
+  totalQty: number;
+  sellerCount: number;
+  newestAt: string;
 }
 
 type MarketplaceTab = 'market' | 'history' | 'stats' | 'sell' | 'mine';
@@ -196,26 +227,152 @@ function getStatusLabel(status: MarketplaceListing['status']) {
 }
 
 function formatEvolution(value: number | null) {
-  if (value === null) {
-    return 'N/A';
-  }
+  if (value === null) return 'N/A';
   const sign = value > 0 ? '+' : '';
   return `${sign}${value.toFixed(1)}%`;
 }
 
 function evolutionTone(value: number | null) {
-  if (value === null) {
-    return 'text-muted-foreground';
-  }
-  if (value > 0) {
-    return 'text-emerald-600 dark:text-emerald-400';
-  }
-  if (value < 0) {
-    return 'text-rose-600 dark:text-rose-400';
-  }
+  if (value === null) return 'text-muted-foreground';
+  if (value > 0) return 'text-emerald-600 dark:text-emerald-400';
+  if (value < 0) return 'text-rose-600 dark:text-rose-400';
   return 'text-muted-foreground';
 }
 
+function formatRelativeDate(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffH = Math.floor(diffMs / 3_600_000);
+  if (diffH < 1) return "À l'instant";
+  if (diffH < 24) return `Il y a ${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 30) return `Il y a ${diffD}j`;
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+// ──────────────────────────────────────────────
+// Price history chart (SVG)
+// ──────────────────────────────────────────────
+function PriceHistoryChart({ timeline }: { timeline: MarketplaceProductStatsPoint[] }) {
+  const values = timeline.map((p) => p.averageUnitPrice).filter((v): v is number => v !== null);
+
+  if (values.length === 0) {
+    return (
+      <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground">
+        Pas de ventes enregistrées sur 30 jours
+      </div>
+    );
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+
+  const W = 500;
+  const H = 140;
+  const PAD = { top: 16, right: 16, bottom: 28, left: 54 };
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - PAD.top - PAD.bottom;
+
+  const pts = timeline.map((point, i) => {
+    const x = PAD.left + (i / Math.max(timeline.length - 1, 1)) * plotW;
+    const fallback = values[values.length - 1] ?? 0;
+    const v = point.averageUnitPrice ?? fallback;
+    const y = PAD.top + (1 - (v - min) / range) * plotH;
+    return { x, y, v, date: point.date, hasData: point.averageUnitPrice !== null };
+  });
+
+  const linePoints = pts.map((p) => `${p.x},${p.y}`).join(' ');
+  const areaPoints = `${pts[0].x},${H - PAD.bottom} ${linePoints} ${pts[pts.length - 1].x},${H - PAD.bottom}`;
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1];
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: '140px' }}>
+      <defs>
+        <linearGradient id="chart-area-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+
+      {/* Y axis grid lines + labels */}
+      {yTicks.map((t) => {
+        const y = PAD.top + t * plotH;
+        const price = max - t * range;
+        return (
+          <g key={t}>
+            <line
+              x1={PAD.left}
+              y1={y}
+              x2={PAD.left + plotW}
+              y2={y}
+              stroke="currentColor"
+              strokeOpacity="0.08"
+              strokeWidth="1"
+            />
+            <text
+              x={PAD.left - 6}
+              y={y + 4}
+              textAnchor="end"
+              fontSize="9"
+              fill="currentColor"
+              fillOpacity="0.45"
+              fontFamily="monospace"
+            >
+              {formatMoney(Math.round(price))}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* Area fill */}
+      <polygon points={areaPoints} fill="url(#chart-area-fill)" />
+
+      {/* Line */}
+      <polyline fill="none" stroke="#f59e0b" strokeWidth="1.75" strokeLinejoin="round" points={linePoints} />
+
+      {/* Dots for data points */}
+      {pts
+        .filter((p) => p.hasData)
+        .map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#f59e0b" />
+        ))}
+
+      {/* X axis date labels */}
+      {timeline.length > 1 && (
+        <>
+          <text
+            x={PAD.left}
+            y={H - 6}
+            fontSize="9"
+            fill="currentColor"
+            fillOpacity="0.45"
+            fontFamily="monospace"
+          >
+            {new Date(timeline[0].date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+          </text>
+          <text
+            x={PAD.left + plotW}
+            y={H - 6}
+            textAnchor="end"
+            fontSize="9"
+            fill="currentColor"
+            fillOpacity="0.45"
+            fontFamily="monospace"
+          >
+            {new Date(timeline[timeline.length - 1].date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+          </text>
+        </>
+      )}
+    </svg>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Sparkline for stats tab (existing behaviour, kept small)
+// ──────────────────────────────────────────────
 function MarketplaceTrendSparkline({ timeline }: { timeline: MarketplaceProductStats['timeline'] }) {
   const values = timeline.map((point) => point.averageUnitPrice).filter((value): value is number => value !== null);
 
@@ -268,128 +425,273 @@ function statusTone(status: MarketplaceListing['status']) {
   }
 }
 
-function MarketplaceListingCard({
-  listing,
+// ──────────────────────────────────────────────
+// Item Detail Modal
+// ──────────────────────────────────────────────
+function ItemDetailModal({
+  group,
+  stat,
   currentUserId,
-  busy,
+  buyingListingId,
   onBuy,
-  onCancel,
-  showSeller = true,
+  onClose,
 }: {
-  listing: MarketplaceListing;
+  group: GroupedItem;
+  stat: MarketplaceProductStats | null;
   currentUserId?: string;
-  busy?: boolean;
+  buyingListingId: string | null;
   onBuy: (listing: MarketplaceListing) => void;
-  onCancel: (listing: MarketplaceListing) => void;
-  showSeller?: boolean;
+  onClose: () => void;
 }) {
-  const isOwner = currentUserId === listing.sellerId;
-  const isActive = listing.status === 'ACTIVE';
-  const effectLabel = parseEffectLabel(listing.item.effect);
-  const skinImageUrl = getSkinImageUrl(listing.item.effect);
-  const imageUrl = listing.item.imageUrl ? resolveImageUrl(listing.item.imageUrl) : null;
+  const skinImageUrl = getSkinImageUrl(group.item.effect);
+  const imageUrl = group.item.imageUrl ? resolveImageUrl(group.item.imageUrl) : null;
+  const effectLabel = parseEffectLabel(group.item.effect);
+  const isPositive = (stat?.priceEvolutionPct30d ?? 0) > 0;
+  const isNegative = (stat?.priceEvolutionPct30d ?? 0) < 0;
 
   return (
-    <Card className="overflow-hidden border-border/60 bg-card/90 shadow-none backdrop-blur-sm">
-      <CardContent className="p-0">
-        <div className="relative">
-          <div className="aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-amber-50 via-background to-emerald-50 dark:from-amber-950/30 dark:via-card dark:to-emerald-950/20">
-            {skinImageUrl ? (
-              <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
-            ) : imageUrl ? (
-              <img src={imageUrl} alt={listing.item.name} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <Package className="h-12 w-12 text-muted-foreground/40" />
-              </div>
-            )}
-          </div>
-          <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-            <Badge className={cn('border px-2 py-1 text-[11px] font-medium', statusTone(listing.status))}>
-              {getStatusLabel(listing.status)}
-            </Badge>
-            <Badge variant="secondary" className="border-border/60 bg-background/90 text-[11px] font-medium backdrop-blur-sm">
-              {getTypeLabel(listing.item.type)}
-            </Badge>
-          </div>
-        </div>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden p-0">
+        <ScrollArea className="max-h-[90vh]">
+          <div className="p-6 space-y-6">
 
-        <div className="space-y-4 p-4">
-          <div className="space-y-1">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-base font-semibold tracking-tight">{listing.item.name}</h3>
-                <p className="text-xs text-muted-foreground line-clamp-2">{listing.item.description}</p>
+            {/* Header: image + identity */}
+            <div className="flex gap-5">
+              {/* Image */}
+              <div className="h-36 w-36 shrink-0 overflow-hidden rounded-xl border border-border/60 bg-muted/30">
+                {skinImageUrl ? (
+                  <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
+                ) : imageUrl ? (
+                  <img src={imageUrl} alt={group.item.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <Package className="h-10 w-10 text-muted-foreground/40" />
+                  </div>
+                )}
               </div>
-              <div className="text-right">
-                <div className="text-lg font-semibold">{formatMoney(listing.unitPrice)}</div>
-                <div className="text-xs text-muted-foreground">par unité</div>
+
+              {/* Identity */}
+              <div className="min-w-0 flex-1 space-y-2 pt-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="border-border/60 bg-background text-[11px]">
+                    {getTypeLabel(group.item.type)}
+                  </Badge>
+                  <Badge variant="outline" className="gap-1 text-[11px]">
+                    <Users className="h-3 w-3" />
+                    {group.sellerCount} vendeur{group.sellerCount > 1 ? 's' : ''}
+                  </Badge>
+                </div>
+                <h2 className="text-xl font-bold tracking-tight">{group.item.name}</h2>
+                <p className="text-sm text-muted-foreground leading-relaxed">{group.item.description}</p>
+                {effectLabel ? (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Tag className="h-3.5 w-3.5" />
+                    {effectLabel}
+                  </div>
+                ) : null}
+                <div className="flex items-baseline gap-2 pt-1">
+                  <span className="text-2xl font-bold tabular-nums">{formatMoney(group.lowestPrice)}</span>
+                  <span className="text-sm text-muted-foreground">meilleure offre</span>
+                </div>
               </div>
             </div>
-            {effectLabel ? (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Tag className="h-3.5 w-3.5" />
-                {effectLabel}
+
+            {/* Stats grid */}
+            {stat ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Prix moyen 30j</p>
+                  <p className="mt-1 text-sm font-semibold tabular-nums">
+                    {stat.averageUnitPrice30d === null ? 'N/A' : formatMoney(Math.round(stat.averageUnitPrice30d))}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Évolution 30j</p>
+                  <p className={cn('mt-1 flex items-center gap-1 text-sm font-semibold', evolutionTone(stat.priceEvolutionPct30d))}>
+                    {isPositive ? <ArrowUpRight className="h-3.5 w-3.5" /> : null}
+                    {isNegative ? <ArrowDownRight className="h-3.5 w-3.5" /> : null}
+                    {formatEvolution(stat.priceEvolutionPct30d)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Ventes 30j</p>
+                  <p className="mt-1 text-sm font-semibold tabular-nums">
+                    {stat.soldUnits30d.toLocaleString('fr-FR')} u.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <p className="text-xs text-muted-foreground">Prix de base</p>
+                  <p className="mt-1 text-sm font-semibold tabular-nums">{formatMoney(group.item.price)}</p>
+                </div>
               </div>
             ) : null}
-          </div>
 
-          {showSeller ? (
-            <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
-              <Avatar className="h-8 w-8">
-                {listing.seller.profilePicture ? (
-                  <AvatarImage src={resolveImageUrl(listing.seller.profilePicture)} alt={listing.seller.username} />
-                ) : null}
-                <AvatarFallback className="bg-background text-xs font-medium text-foreground">
-                  {listing.seller.username.slice(0, 1).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-muted-foreground">Vendeur</p>
-                <p className="truncate text-sm font-medium" style={listing.seller.usernameColor ? { color: listing.seller.usernameColor } : undefined}>
-                  {listing.seller.username}
-                </p>
+            {/* Price chart */}
+            {stat && stat.timeline.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-amber-500" />
+                  <h3 className="text-sm font-semibold">Historique de prix (30 jours)</h3>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2">
+                  <PriceHistoryChart timeline={stat.timeline} />
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Quantité</p>
-                <p className="text-sm font-medium">x{listing.quantity}</p>
+            ) : null}
+
+            {/* Active offers */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">
+                Offres disponibles
+                <span className="ml-2 font-normal text-muted-foreground">({group.listings.length})</span>
+              </h3>
+              <div className="rounded-lg border border-border/60 overflow-hidden">
+                {group.listings.map((listing, idx) => {
+                  const isOwner = currentUserId === listing.sellerId;
+                  const busy = buyingListingId === listing.id;
+                  return (
+                    <div
+                      key={listing.id}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3 text-sm',
+                        idx !== 0 && 'border-t border-border/60',
+                        idx === 0 && 'bg-amber-500/5',
+                      )}
+                    >
+                      {/* Seller */}
+                      <Avatar className="h-7 w-7 shrink-0">
+                        {listing.seller.profilePicture ? (
+                          <AvatarImage src={resolveImageUrl(listing.seller.profilePicture)} alt={listing.seller.username} />
+                        ) : null}
+                        <AvatarFallback className="bg-background text-xs font-medium">
+                          {listing.seller.username.slice(0, 1).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span
+                        className="min-w-0 flex-1 truncate font-medium"
+                        style={listing.seller.usernameColor ? { color: listing.seller.usernameColor } : undefined}
+                      >
+                        {listing.seller.username}
+                      </span>
+
+                      {/* Qty */}
+                      <span className="shrink-0 text-muted-foreground">
+                        x<span className="font-medium text-foreground">{listing.quantity}</span>
+                      </span>
+
+                      {/* Unit price */}
+                      <span className="shrink-0 w-24 text-right font-semibold tabular-nums">
+                        {formatMoney(listing.unitPrice)}
+                        {idx === 0 ? (
+                          <span className="ml-1 text-[10px] font-normal text-amber-500">★ Best</span>
+                        ) : null}
+                      </span>
+
+                      {/* Action */}
+                      {!isOwner ? (
+                        <Button
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() => onBuy(listing)}
+                          disabled={busy || !!buyingListingId}
+                        >
+                          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Acheter'}
+                        </Button>
+                      ) : (
+                        <Badge variant="outline" className="shrink-0 text-[11px]">
+                          Votre annonce
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          ) : null}
 
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Valeur totale</span>
-            <span className="font-medium text-foreground">{formatMoney(listing.totalPrice)}</span>
           </div>
-
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Prix d'achat vendeur</span>
-            <span className="font-medium text-foreground">{formatMoney(listing.item.price)}</span>
-          </div>
-
-          <div className="flex gap-2">
-            {isActive ? (
-              isOwner ? (
-                <Button variant="outline" className="flex-1" onClick={() => onCancel(listing)} disabled={busy}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Annuler'}
-                </Button>
-              ) : (
-                <Button className="flex-1" onClick={() => onBuy(listing)} disabled={busy}>
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Acheter'}
-                </Button>
-              )
-            ) : (
-              <Button variant="outline" className="flex-1" disabled>
-                {getStatusLabel(listing.status)}
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }
 
+// ──────────────────────────────────────────────
+// Market list row
+// ──────────────────────────────────────────────
+function MarketListRow({
+  group,
+  onClick,
+}: {
+  group: GroupedItem;
+  onClick: () => void;
+}) {
+  const skinImageUrl = getSkinImageUrl(group.item.effect);
+  const imageUrl = group.item.imageUrl ? resolveImageUrl(group.item.imageUrl) : null;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-center gap-4 border-b border-border/50 px-4 py-3 text-left last:border-0 hover:bg-muted/30 transition-colors"
+    >
+      {/* Thumbnail */}
+      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted/30">
+        {skinImageUrl ? (
+          <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
+        ) : imageUrl ? (
+          <img src={imageUrl} alt={group.item.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <Package className="h-4 w-4 text-muted-foreground/40" />
+          </div>
+        )}
+      </div>
+
+      {/* Name + type */}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold leading-snug">{group.item.name}</p>
+        <div className="mt-0.5 flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{getTypeLabel(group.item.type)}</span>
+        </div>
+      </div>
+
+      {/* Best price */}
+      <div className="hidden w-28 shrink-0 text-right sm:block">
+        <p className="text-sm font-bold tabular-nums">{formatMoney(group.lowestPrice)}</p>
+        <p className="text-xs text-muted-foreground">meilleur prix</p>
+      </div>
+
+      {/* Sellers */}
+      <div className="hidden w-20 shrink-0 text-right lg:block">
+        <p className="text-sm font-medium tabular-nums">{group.sellerCount}</p>
+        <p className="text-xs text-muted-foreground">vendeur{group.sellerCount > 1 ? 's' : ''}</p>
+      </div>
+
+      {/* Qty */}
+      <div className="hidden w-20 shrink-0 text-right md:block">
+        <p className="text-sm font-medium tabular-nums">{group.totalQty.toLocaleString('fr-FR')}</p>
+        <p className="text-xs text-muted-foreground">disponible</p>
+      </div>
+
+      {/* Date */}
+      <div className="hidden w-24 shrink-0 text-right xl:block">
+        <p className="text-xs text-muted-foreground">{formatRelativeDate(group.newestAt)}</p>
+      </div>
+
+      {/* Price on mobile */}
+      <div className="shrink-0 text-right sm:hidden">
+        <p className="text-sm font-bold tabular-nums">{formatMoney(group.lowestPrice)}</p>
+      </div>
+
+      {/* Arrow */}
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" />
+    </button>
+  );
+}
+
+// ──────────────────────────────────────────────
+// Inventory listing card (sell tab, unchanged)
+// ──────────────────────────────────────────────
 function InventoryListingCard({
   item,
   selected,
@@ -445,6 +747,9 @@ function InventoryListingCard({
   );
 }
 
+// ──────────────────────────────────────────────
+// Main page
+// ──────────────────────────────────────────────
 export default function Marketplace() {
   const { user, updateBalance } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -463,10 +768,10 @@ export default function Marketplace() {
   const [submittingListing, setSubmittingListing] = useState(false);
   const [buyingListingId, setBuyingListingId] = useState<string | null>(null);
   const [cancellingListingId, setCancellingListingId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const loadData = async () => {
     if (!user) return;
-
     try {
       setLoading(true);
       const [inventoryRes, marketRes, salesHistoryRes, myListingsRes, marketStatsRes] = await Promise.all([
@@ -476,7 +781,6 @@ export default function Marketplace() {
         marketplaceApi.getListings({ sellerId: user.id, status: 'ALL' }),
         marketplaceApi.getListingStats(30),
       ]);
-
       setInventory((inventoryRes.data.items || []).filter((entry: InventoryItem) => entry.item.type !== 'GIFT'));
       setMarketListings(marketRes.data.listings || []);
       setSalesHistoryListings(salesHistoryRes.data.listings || []);
@@ -506,118 +810,142 @@ export default function Marketplace() {
       setSellPrice('');
       return;
     }
-
     setSellQuantity('1');
     setSellPrice(String(selectedInventoryItem.item.price));
   }, [selectedInventoryItem]);
 
-  const activeListings = useMemo(() => marketListings.filter((listing) => listing.status === 'ACTIVE'), [marketListings]);
-  const sortedSalesHistoryListings = useMemo(
-    () => [...salesHistoryListings].sort((a, b) => {
-      const aTime = a.soldAt ? new Date(a.soldAt).getTime() : new Date(a.createdAt).getTime();
-      const bTime = b.soldAt ? new Date(b.soldAt).getTime() : new Date(b.createdAt).getTime();
-      return bTime - aTime;
-    }),
-    [salesHistoryListings],
-  );
-  const myActiveListings = useMemo(() => myListings.filter((listing) => listing.status === 'ACTIVE'), [myListings]);
-  const myHistoryListings = useMemo(() => myListings.filter((listing) => listing.status !== 'ACTIVE'), [myListings]);
+  const activeListings = useMemo(() => marketListings.filter((l) => l.status === 'ACTIVE'), [marketListings]);
 
-  const filteredMarketListings = useMemo(() => {
+  // Group active listings by item
+  const groupedItems = useMemo<GroupedItem[]>(() => {
+    const map = new Map<string, GroupedItem>();
+    for (const listing of activeListings) {
+      const existing = map.get(listing.item.id);
+      if (!existing) {
+        map.set(listing.item.id, {
+          itemId: listing.item.id,
+          item: listing.item,
+          listings: [listing],
+          lowestPrice: listing.unitPrice,
+          totalQty: listing.quantity,
+          sellerCount: 0,
+          newestAt: listing.createdAt,
+        });
+      } else {
+        existing.listings.push(listing);
+        existing.lowestPrice = Math.min(existing.lowestPrice, listing.unitPrice);
+        existing.totalQty += listing.quantity;
+        if (new Date(listing.createdAt) > new Date(existing.newestAt)) {
+          existing.newestAt = listing.createdAt;
+        }
+      }
+    }
+    for (const group of map.values()) {
+      group.listings.sort((a, b) => a.unitPrice - b.unitPrice);
+      group.sellerCount = new Set(group.listings.map((l) => l.sellerId)).size;
+    }
+    return Array.from(map.values());
+  }, [activeListings]);
+
+  const filteredGroupedItems = useMemo(() => {
     const term = search.trim().toLowerCase();
-
-    return activeListings
-      .filter((listing) => typeFilter === 'ALL' || listing.item.type === typeFilter)
-      .filter((listing) => {
+    return groupedItems
+      .filter((g) => typeFilter === 'ALL' || g.item.type === typeFilter)
+      .filter((g) => {
         if (!term) return true;
-        return [listing.item.name, listing.item.description, listing.seller.username].join(' ').toLowerCase().includes(term);
+        return [g.item.name, g.item.description].join(' ').toLowerCase().includes(term);
       })
       .sort((a, b) => {
         switch (sortMode) {
           case 'price-asc':
-            return a.unitPrice - b.unitPrice;
+            return a.lowestPrice - b.lowestPrice;
           case 'price-desc':
-            return b.unitPrice - a.unitPrice;
+            return b.lowestPrice - a.lowestPrice;
           case 'quantity-desc':
-            return b.quantity - a.quantity;
+            return b.totalQty - a.totalQty;
           case 'newest':
           default:
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            return new Date(b.newestAt).getTime() - new Date(a.newestAt).getTime();
         }
       });
-  }, [activeListings, search, sortMode, typeFilter]);
+  }, [groupedItems, search, typeFilter, sortMode]);
+
+  // Keep modal in sync with live data
+  const selectedGroup = useMemo(
+    () => groupedItems.find((g) => g.itemId === selectedItemId) ?? null,
+    [groupedItems, selectedItemId],
+  );
+  useEffect(() => {
+    if (selectedItemId && !selectedGroup) {
+      setSelectedItemId(null);
+    }
+  }, [selectedItemId, selectedGroup]);
+  const selectedStat = useMemo(
+    () => marketStats.find((s) => s.itemId === selectedItemId) ?? null,
+    [marketStats, selectedItemId],
+  );
+
+  const sortedSalesHistoryListings = useMemo(
+    () =>
+      [...salesHistoryListings].sort((a, b) => {
+        const aTime = a.soldAt ? new Date(a.soldAt).getTime() : new Date(a.createdAt).getTime();
+        const bTime = b.soldAt ? new Date(b.soldAt).getTime() : new Date(b.createdAt).getTime();
+        return bTime - aTime;
+      }),
+    [salesHistoryListings],
+  );
+  const myActiveListings = useMemo(() => myListings.filter((l) => l.status === 'ACTIVE'), [myListings]);
+  const myHistoryListings = useMemo(() => myListings.filter((l) => l.status !== 'ACTIVE'), [myListings]);
 
   const handleCreateListing = async () => {
-    if (!user || !selectedInventoryItem || submittingListing) {
-      return;
-    }
-
+    if (!user || !selectedInventoryItem || submittingListing) return;
     const quantity = Number.parseInt(sellQuantity, 10);
     const unitPrice = Number.parseInt(sellPrice, 10);
-
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > selectedInventoryItem.quantity) {
       toast.error('Quantité invalide.');
       return;
     }
-
     if (!Number.isInteger(unitPrice) || unitPrice < 1) {
       toast.error('Prix invalide.');
       return;
     }
-
     try {
       setSubmittingListing(true);
-      await marketplaceApi.createListing({
-        userItemId: selectedInventoryItem.id,
-        quantity,
-        unitPrice,
-      });
-      toast.success('Annonce créée', {
-        description: `${selectedInventoryItem.item.name} est maintenant en vente.`,
-      });
+      await marketplaceApi.createListing({ userItemId: selectedInventoryItem.id, quantity, unitPrice });
+      toast.success('Annonce créée', { description: `${selectedInventoryItem.item.name} est maintenant en vente.` });
       await loadData();
       setActiveTab('market');
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Impossible de créer l’annonce.');
+      toast.error(error.response?.data?.error || "Impossible de créer l'annonce.");
     } finally {
       setSubmittingListing(false);
     }
   };
 
   const handleBuyListing = async (listing: MarketplaceListing) => {
-    if (!user || buyingListingId) {
-      return;
-    }
-
+    if (!user || buyingListingId) return;
     try {
       setBuyingListingId(listing.id);
       const response = await marketplaceApi.buyListing(listing.id);
       updateBalance(response.data.newBalance.aura, response.data.newBalance.money);
-      toast.success('Achat confirmé', {
-        description: `${listing.item.name} a été ajouté à ton inventaire.`,
-      });
+      toast.success('Achat confirmé', { description: `${listing.item.name} a été ajouté à ton inventaire.` });
       await loadData();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Impossible d’acheter cette annonce.');
+      toast.error(error.response?.data?.error || "Impossible d'acheter cette annonce.");
     } finally {
       setBuyingListingId(null);
     }
   };
 
   const handleCancelListing = async (listing: MarketplaceListing) => {
-    if (!user || cancellingListingId) {
-      return;
-    }
-
+    if (!user || cancellingListingId) return;
     try {
       setCancellingListingId(listing.id);
       await marketplaceApi.cancelListing(listing.id);
-      toast.success('Annonce annulée', {
-        description: `${listing.item.name} est retourné dans ton inventaire.`,
-      });
+      toast.success('Annonce annulée', { description: `${listing.item.name} est retourné dans ton inventaire.` });
       await loadData();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Impossible d’annuler cette annonce.');
+      toast.error(error.response?.data?.error || "Impossible d'annuler cette annonce.");
     } finally {
       setCancellingListingId(null);
     }
@@ -653,38 +981,49 @@ export default function Marketplace() {
             </div>
           ) : (
             <>
-              <TabsContent value="market" className="space-y-6">
+              {/* ── MARKET TAB ────────────────────────── */}
+              <TabsContent value="market" className="space-y-4">
+
+                {/* Filters */}
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="relative w-full lg:max-w-md">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      placeholder="Rechercher un objet ou un vendeur..."
-                      className="pl-9"
-                    />
+                  {/* Type pills */}
+                  <div className="flex flex-wrap gap-2">
+                    {(Object.keys(TYPE_LABELS) as ItemTypeFilter[]).map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setTypeFilter(value)}
+                        className={cn(
+                          'rounded-full border px-3 py-1 text-sm transition-colors',
+                          typeFilter === value
+                            ? 'border-primary/60 bg-primary/10 text-primary'
+                            : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground',
+                        )}
+                      >
+                        {TYPE_LABELS[value]}
+                      </button>
+                    ))}
                   </div>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as ItemTypeFilter)}>
-                      <SelectTrigger className="w-full sm:w-44">
-                        <SelectValue placeholder="Catégorie" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={sortMode} onValueChange={(value) => setSortMode(value as MarketplaceSortMode)}>
+
+                  {/* Search + sort */}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Rechercher un objet..."
+                        className="pl-9 sm:w-56"
+                      />
+                    </div>
+                    <Select value={sortMode} onValueChange={(v) => setSortMode(v as MarketplaceSortMode)}>
                       <SelectTrigger className="w-full sm:w-44">
                         <SelectValue placeholder="Trier" />
                       </SelectTrigger>
                       <SelectContent>
-                        {SORT_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
+                        {SORT_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -692,27 +1031,48 @@ export default function Marketplace() {
                   </div>
                 </div>
 
-                {filteredMarketListings.length === 0 ? (
+                {/* Results */}
+                {filteredGroupedItems.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 p-10 text-center">
                     <BellRing className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
-                    <p className="text-sm text-muted-foreground">Aucune annonce ne correspond à ces filtres.</p>
+                    <p className="text-sm text-muted-foreground">Aucun article ne correspond à ces filtres.</p>
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    {filteredMarketListings.map((listing) => (
-                      <MarketplaceListingCard
-                        key={listing.id}
-                        listing={listing}
-                        currentUserId={user?.id}
-                        busy={buyingListingId === listing.id || cancellingListingId === listing.id}
-                        onBuy={handleBuyListing}
-                        onCancel={handleCancelListing}
+                  <div className="overflow-hidden rounded-xl border border-border/60 bg-card/80">
+                    {/* Table header */}
+                    <div className="hidden border-b border-border/60 bg-muted/30 px-4 py-2 sm:grid"
+                      style={{ gridTemplateColumns: '44px 1fr 112px 80px 80px 96px 28px' }}>
+                      <div />
+                      <div className="text-xs font-medium text-muted-foreground">Objet</div>
+                      <div className="text-right text-xs font-medium text-muted-foreground">Meilleur prix</div>
+                      <div className="hidden text-right text-xs font-medium text-muted-foreground lg:block">Vendeurs</div>
+                      <div className="hidden text-right text-xs font-medium text-muted-foreground md:block">Disponible</div>
+                      <div className="hidden text-right text-xs font-medium text-muted-foreground xl:block">Publié</div>
+                      <div />
+                    </div>
+
+                    {/* Rows */}
+                    {filteredGroupedItems.map((group) => (
+                      <MarketListRow
+                        key={group.itemId}
+                        group={group}
+                        onClick={() => setSelectedItemId(group.itemId)}
                       />
                     ))}
                   </div>
                 )}
+
+                {/* Item count */}
+                {filteredGroupedItems.length > 0 ? (
+                  <p className="text-right text-xs text-muted-foreground">
+                    {filteredGroupedItems.length} article{filteredGroupedItems.length > 1 ? 's' : ''} ·{' '}
+                    {filteredGroupedItems.reduce((acc, g) => acc + g.listings.length, 0)} annonce
+                    {filteredGroupedItems.reduce((acc, g) => acc + g.listings.length, 0) > 1 ? 's' : ''}
+                  </p>
+                ) : null}
               </TabsContent>
 
+              {/* ── HISTORY TAB ───────────────────────── */}
               <TabsContent value="history" className="space-y-6">
                 {sortedSalesHistoryListings.length === 0 ? (
                   <Card>
@@ -737,17 +1097,12 @@ export default function Marketplace() {
                                 <div className="h-full w-full bg-muted" />
                               )}
                             </div>
-
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-sm font-semibold leading-snug">{listing.item.name}</div>
                               <div className="mt-1 flex flex-wrap items-center gap-2">
                                 <Badge variant="secondary">Vendue</Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  Vendeur: {listing.seller.username}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  Achat vendeur: {formatMoney(listing.item.price)}
-                                </span>
+                                <span className="text-xs text-muted-foreground">Vendeur: {listing.seller.username}</span>
+                                <span className="text-xs text-muted-foreground">Achat vendeur: {formatMoney(listing.item.price)}</span>
                                 <span className="text-xs text-muted-foreground">
                                   {listing.soldAt
                                     ? `Vendue le ${new Date(listing.soldAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -755,7 +1110,6 @@ export default function Marketplace() {
                                 </span>
                               </div>
                             </div>
-
                             <div className="shrink-0 text-right">
                               <div className="text-xs text-muted-foreground">Quantité</div>
                               <div className="text-lg font-bold tabular-nums">{listing.quantity.toLocaleString('fr-FR')}</div>
@@ -770,6 +1124,7 @@ export default function Marketplace() {
                 )}
               </TabsContent>
 
+              {/* ── STATS TAB ─────────────────────────── */}
               <TabsContent value="stats" className="space-y-6">
                 {marketStats.length === 0 ? (
                   <Card>
@@ -783,7 +1138,6 @@ export default function Marketplace() {
                       const imageUrl = stat.imageUrl ? resolveImageUrl(stat.imageUrl) : null;
                       const isPositive = (stat.priceEvolutionPct30d ?? 0) > 0;
                       const isNegative = (stat.priceEvolutionPct30d ?? 0) < 0;
-
                       return (
                         <Card key={stat.itemId} className="border-border/60 bg-card/85 shadow-none">
                           <CardContent className="space-y-4 p-4">
@@ -807,7 +1161,6 @@ export default function Marketplace() {
                                 </div>
                               </div>
                             </div>
-
                             <div className="grid grid-cols-2 gap-3 text-sm">
                               <div className="rounded-lg border border-border/60 bg-background p-2">
                                 <p className="text-xs text-muted-foreground">Prix moyen 30j</p>
@@ -836,7 +1189,6 @@ export default function Marketplace() {
                                 </p>
                               </div>
                             </div>
-
                             <MarketplaceTrendSparkline timeline={stat.timeline} />
                           </CardContent>
                         </Card>
@@ -846,6 +1198,7 @@ export default function Marketplace() {
                 )}
               </TabsContent>
 
+              {/* ── SELL TAB ──────────────────────────── */}
               <TabsContent value="sell" className="space-y-6">
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
                   <Card className="border-border/60 bg-card/80 shadow-none">
@@ -853,13 +1206,12 @@ export default function Marketplace() {
                       <div className="flex items-center justify-between gap-2">
                         <div>
                           <h2 className="text-lg font-semibold tracking-tight">Ton inventaire</h2>
-                          <p className="text-sm text-muted-foreground">Sélectionne l’objet à vendre.</p>
+                          <p className="text-sm text-muted-foreground">Sélectionne l'objet à vendre.</p>
                         </div>
                         <Badge variant="secondary" className="border-border/60 bg-background">
                           {inventory.length} objet{inventory.length > 1 ? 's' : ''}
                         </Badge>
                       </div>
-
                       {inventory.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
                           Aucun objet vendable dans ton inventaire.
@@ -884,10 +1236,9 @@ export default function Marketplace() {
                       <div className="space-y-1">
                         <h2 className="text-lg font-semibold tracking-tight">Créer une annonce</h2>
                         <p className="text-sm text-muted-foreground">
-                          Ton objet sera retiré de l’inventaire tant que l’annonce reste active.
+                          Ton objet sera retiré de l'inventaire tant que l'annonce reste active.
                         </p>
                       </div>
-
                       {selectedInventoryItem ? (
                         <div className="space-y-4">
                           <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
@@ -917,7 +1268,6 @@ export default function Marketplace() {
                               </div>
                             </div>
                           </div>
-
                           <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-2">
                               <label className="text-sm font-medium">Quantité</label>
@@ -926,7 +1276,7 @@ export default function Marketplace() {
                                 min="1"
                                 max={selectedMaxQuantity}
                                 value={sellQuantity}
-                                onChange={(event) => setSellQuantity(event.target.value)}
+                                onChange={(e) => setSellQuantity(e.target.value)}
                               />
                               <p className="text-xs text-muted-foreground">Maximum disponible: {selectedMaxQuantity}</p>
                             </div>
@@ -936,18 +1286,18 @@ export default function Marketplace() {
                                 type="number"
                                 min="1"
                                 value={sellPrice}
-                                onChange={(event) => setSellPrice(event.target.value)}
+                                onChange={(e) => setSellPrice(e.target.value)}
                               />
-                              <p className="text-xs text-muted-foreground">Montant reçu: {selectedInventoryItem ? formatMoney(Number.parseInt(sellPrice || '0', 10) * Number.parseInt(sellQuantity || '1', 10)) : '$0'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Montant reçu: {selectedInventoryItem ? formatMoney(Number.parseInt(sellPrice || '0', 10) * Number.parseInt(sellQuantity || '1', 10)) : '$0'}
+                              </p>
                             </div>
                           </div>
-
                           <div className="rounded-xl border border-border/60 bg-background p-4 text-sm text-muted-foreground">
                             {selectedInventoryItem.quantity > 1
                               ? 'Tu peux vendre une partie de ta pile ou la totalité.'
                               : 'Cet objet sera retiré de ton inventaire dès la mise en vente.'}
                           </div>
-
                           <Button className="w-full" onClick={handleCreateListing} disabled={submittingListing}>
                             {submittingListing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                             Mettre en vente
@@ -963,6 +1313,7 @@ export default function Marketplace() {
                 </div>
               </TabsContent>
 
+              {/* ── MINE TAB ──────────────────────────── */}
               <TabsContent value="mine" className="space-y-6">
                 <div className="grid gap-6 xl:grid-cols-2">
                   <Card className="border-border/60 bg-card/80 shadow-none">
@@ -976,24 +1327,51 @@ export default function Marketplace() {
                           {myActiveListings.length}
                         </Badge>
                       </div>
-
                       {myActiveListings.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
                           Aucune annonce active pour le moment.
                         </div>
                       ) : (
-                        <div className="grid gap-4 md:grid-cols-2">
-                          {myActiveListings.map((listing) => (
-                            <MarketplaceListingCard
-                              key={listing.id}
-                              listing={listing}
-                              currentUserId={user?.id}
-                              busy={cancellingListingId === listing.id}
-                              onBuy={handleBuyListing}
-                              onCancel={handleCancelListing}
-                              showSeller={false}
-                            />
-                          ))}
+                        <div className="overflow-hidden rounded-lg border border-border/60">
+                          {myActiveListings.map((listing, idx) => {
+                            const skinImageUrl = getSkinImageUrl(listing.item.effect);
+                            const imageUrl = listing.item.imageUrl ? resolveImageUrl(listing.item.imageUrl) : null;
+                            const busy = cancellingListingId === listing.id;
+                            return (
+                              <div
+                                key={listing.id}
+                                className={cn(
+                                  'flex items-center gap-3 px-4 py-3',
+                                  idx !== 0 && 'border-t border-border/60',
+                                )}
+                              >
+                                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted/30">
+                                  {skinImageUrl ? (
+                                    <DoodleJumpSkinPreview skinImageUrl={skinImageUrl} className="h-full" height="100%" />
+                                  ) : imageUrl ? (
+                                    <img src={imageUrl} alt={listing.item.name} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className="flex h-full items-center justify-center">
+                                      <Package className="h-4 w-4 text-muted-foreground/40" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-medium">{listing.item.name}</p>
+                                  <p className="text-xs text-muted-foreground">x{listing.quantity} · {formatMoney(listing.unitPrice)} / u.</p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="shrink-0"
+                                  onClick={() => handleCancelListing(listing)}
+                                  disabled={busy}
+                                >
+                                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                                </Button>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </CardContent>
@@ -1010,7 +1388,6 @@ export default function Marketplace() {
                           {myHistoryListings.length}
                         </Badge>
                       </div>
-
                       {myHistoryListings.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">
                           Tes annonces soldées ou annulées apparaîtront ici.
@@ -1040,6 +1417,18 @@ export default function Marketplace() {
           )}
         </Tabs>
       </div>
+
+      {/* Item detail modal */}
+      {selectedGroup ? (
+        <ItemDetailModal
+          group={selectedGroup}
+          stat={selectedStat}
+          currentUserId={user?.id}
+          buyingListingId={buyingListingId}
+          onBuy={handleBuyListing}
+          onClose={() => setSelectedItemId(null)}
+        />
+      ) : null}
     </PageShell>
   );
 }
