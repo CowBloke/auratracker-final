@@ -85,6 +85,8 @@ export const usersApi = {
   getPendingUpdatePopups: () => api.get<{ popups: UserUpdatePopup[] }>('/users/update-popups/pending'),
   markUpdatePopupViewed: (id: string) => api.post<{ success: boolean }>(`/users/update-popups/${id}/viewed`),
   getById: (id: string) => api.get(`/users/${id}`),
+  getEconomyHistory: (id: string, days = 30) =>
+    api.get<UserEconomyHistoryResponse>(`/users/${id}/economy-history`, { params: { days } }),
   update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
   requestNameChange: (data: { requestedUsername: string; reason?: string }) =>
     api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
@@ -139,6 +141,17 @@ export interface SocialUser {
   bio?: string | null;
   createdAt: string;
   social?: SocialRelationship & Partial<SocialStats>;
+}
+
+export interface UserEconomyHistoryPoint {
+  date: string;
+  aura: number;
+  money: number;
+}
+
+export interface UserEconomyHistoryResponse {
+  days: number;
+  history: UserEconomyHistoryPoint[];
 }
 
 export interface YouPlayer {
@@ -305,6 +318,27 @@ export interface YouBusinessBuyoutOffer {
   };
 }
 
+export interface YouShareMarketListing {
+  id: string;
+  businessId: string;
+  sharePercent: number;
+  price: number;
+  status: 'ACTIVE' | 'SOLD' | 'CANCELLED' | string;
+  createdAt: string;
+  soldAt: string | null;
+  cancelledAt: string | null;
+  direction: 'selling' | 'bought' | 'market';
+  seller: Omit<YouPlayer, 'alreadyInRelationship'>;
+  buyer: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+  business: {
+    id: string;
+    name: string;
+    typeKey: string;
+    ownerId: string;
+    owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  };
+}
+
 export interface YouBusinessTransferHistoryEntry {
   id: string;
   amount: number;
@@ -383,6 +417,17 @@ export interface YouBusinessRating {
   user: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
+export interface YouIllegalBusinessUpgrade {
+  key: string;
+  label: string;
+  description: string;
+  cost: number;
+  revenueBonus: number;
+  satisfactionBonus: number;
+  purchased: boolean;
+  purchasedAt: string | null;
+}
+
 export interface YouBusiness {
   id: string;
   name: string;
@@ -429,6 +474,7 @@ export interface YouBusiness {
   formationPrice?: number;
   formationProducts?: YouFormationProduct[];
   customData?: Array<{ key: string; label: string; price: number; emoji?: string; xpHint?: string }>;
+  illegalUpgrades?: YouIllegalBusinessUpgrade[];
   npcLastCollectedAt?: string | null;
   avgRating: number | null;
   ratingCount: number;
@@ -585,6 +631,8 @@ export interface YouState {
   pendingBuyoutOffers: YouBusinessBuyoutOffer[];
   sentBuyoutOffers: YouBusinessBuyoutOffer[];
   sentShareholderProposals: YouBusinessShareProposal[];
+  shareMarketListings: YouShareMarketListing[];
+  myShareMarketListings: YouShareMarketListing[];
 }
 
 export interface YouTemporaryEffect {
@@ -619,6 +667,12 @@ export const youApi = {
     api.post<{ offer: YouBusinessBuyoutOffer }>(`/you/businesses/${businessId}/share-buyback-offers`, data),
   createShareholderProposal: (businessId: string, data: { sharePercent: number; amount: number; message?: string }) =>
     api.post<{ proposal: YouBusinessShareProposal }>(`/you/businesses/${businessId}/shareholder-proposals`, data),
+  createShareMarketListing: (data: { businessId: string; sharePercent: number; price: number }) =>
+    api.post<{ listing: YouShareMarketListing }>('/you/share-market/listings', data),
+  buyShareMarketListing: (listingId: string) =>
+    api.post<{ result: { id: string; status: string; soldAt: string | null } }>(`/you/share-market/listings/${listingId}/buy`, {}),
+  cancelShareMarketListing: (listingId: string) =>
+    api.delete<{ result: { id: string; status: string; cancelledAt: string | null } }>(`/you/share-market/listings/${listingId}`),
   respondToBuyoutOffer: (offerId: string, decision: 'accept' | 'reject') =>
     api.post<{ result: { id: string; status: string; decidedAt: string | null } }>(`/you/buyout-offers/${offerId}/respond`, { decision }),
   respondToShareholderProposal: (proposalId: string, decision: 'accept' | 'reject') =>
@@ -655,6 +709,8 @@ export const youApi = {
     api.patch<{ result: { name: string; description: string | null; logoUrl: string | null; mapX: number | null; mapY: number | null } }>(`/you/businesses/${businessId}/profile`, data),
   buyLivretEpargneUpgrade: (businessId: string) =>
     api.post<{ result: { livretEpargneUnlocked: boolean } }>(`/you/businesses/${businessId}/upgrades/livret-epargne`, {}),
+  buyIllegalBusinessUpgrade: (businessId: string, upgradeKey: string) =>
+    api.post<{ result: { upgradeKey: string; unlockedUpgradeKeys: string[] } }>(`/you/businesses/${businessId}/upgrades/illegal/${upgradeKey}`, {}),
   setLoanRate: (businessId: string, rate: number) =>
     api.post<{ result: { loanInterestRate: number } }>(`/you/businesses/${businessId}/set-loan-rate`, { rate }),
   setTransferFeeRate: (businessId: string, rate: number) =>

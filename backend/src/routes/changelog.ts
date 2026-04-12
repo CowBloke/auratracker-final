@@ -24,7 +24,7 @@ const SEED_ENTRIES = [
     id: '2026-04-12-modules-fixes-admin-chat-auravision',
     date: '2026-04-12',
     title: 'Maintenance auto, modération chat, roulette et AuraVision',
-    summary: 'Grosse passe de correctifs et d améliorations sur la modération (ban/mute), la maintenance automatique du week-end, la robustesse roulette/casino, la visio AuraVision, l admin utilisateur et l onglet You/Explore.',
+    summary: 'Grosse passe de correctifs et d améliorations sur la modération (ban/mute), la maintenance automatique du week-end, la robustesse roulette/casino, la visio AuraVision, l admin utilisateur et l onglet You/Explore, avec en plus un marche d actions, un nouveau business illegal et des stats economiques profil.',
     items: [
       { category: 'BUG_FIX', text: '**Bans enrichis partout** — Les payloads de ban HTTP/Socket incluent maintenant `userId` et `ban.id` (middleware auth, server socket, chat socket, action admin), et le frontend stocke ces identifiants meme quand ils arrivent via `ban.userId`.', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Maintenance automatique week-end** — Nouveau flag `maintenance_auto_weekend_enabled` exposé en API maintenance et dans l admin: la maintenance peut s activer automatiquement le samedi et dimanche, en plus du mode manuel.', order: 1 },
@@ -41,6 +41,14 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**You/Explore: tri et pubs multiples** — Nouveau tri (avis, nombre d avis, recents, anciens, revenus) et rotation de plusieurs bannières pub dedupliquees au lieu d une seule.', order: 12 },
       { category: 'SMALL_FEATURE', text: '**Sidebar: logo You plus visible** — Le bouton logo recoit un nudge visuel (bounce/shadow) quand on peut ouvrir You pour rendre ce point d entree plus evident.', order: 13 },
       { category: 'BIG_FEATURE', text: '**AuraVision WebRTC plus robuste** — Ajout d une logique de negotiation parfaite (collision d offers), gestion prudente des ICE candidates et recovery automatique (ICE restart + timeout disconnect) pour limiter les decrochages.', order: 14 },
+      { category: 'BIG_FEATURE', text: '**You: marche secondaire des actions** — Nouveau systeme complet de revente de parts de business: creation d annonce, achat, annulation, endpoints API dedies, serialisation dans l etat You, et persistance Prisma via `BusinessShareMarketListing`.', order: 15 },
+      { category: 'BIG_FEATURE', text: '**Nouveau business illegal** — Ajout du type `illegal_market` (creation, balancing, menu, icone/couleurs/carte/explore) avec achats dedies et progression XP Illegalite cote vendeur et acheteur.', order: 16 },
+      { category: 'SMALL_FEATURE', text: '**Ameliorations business illegales** — Le business illegal gagne des upgrades achetables sur tresorerie (revenu, satisfaction, XP), exposes dans l UI de gestion et sauvegardes dans `customData`.', order: 17 },
+      { category: 'SMALL_FEATURE', text: '**Profil: courbe aura/argent 30 jours** — Nouvelle API `/users/:id/economy-history` et nouveau graphique sur le profil pour suivre l evolution quotidienne de l aura et de l argent.', order: 18 },
+      { category: 'SMALL_FEATURE', text: '**Messagerie DM: ticks lu/non lu** — La liste des conversations affiche maintenant l etat de lecture du dernier message sortant (`check` / `double check`) selon `lastReadAt` des participants.', order: 19 },
+      { category: 'SMALL_FEATURE', text: '**Navigation You enrichie** — Nouvel onglet `Marche actions` dans la sidebar + presence chat + i18n, et rendu de l onglet dans la page You.', order: 20 },
+      { category: 'BUG_FIX', text: '**Business invites: droits manager** — L invitation de membres ne repose plus sur un simple participant, mais sur la verification manager, pour eviter les invitations non autorisees.', order: 21 },
+      { category: 'SMALL_FEATURE', text: '**Banque: visibilite remboursement client** — L interface de gestion des prets affiche maintenant les finances du client (money/aura), indique s il peut solder immediatement, et clarifie le bouton de remboursement integral cote emprunteur.', order: 22 },
     ],
   },
   {

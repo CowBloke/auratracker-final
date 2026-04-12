@@ -73,6 +73,8 @@ model User {
   buyoutOffersPlaced           BusinessBuyoutOffer[]         @relation("BuyoutBidder")
   buyoutOffersReceived         BusinessBuyoutOffer[]         @relation("BusinessBuyoutOwner")
   businessShareholdings        BusinessShareholder[]
+  shareMarketListingsCreated   BusinessShareMarketListing[] @relation("BusinessShareMarketSeller")
+  shareMarketListingsBought    BusinessShareMarketListing[] @relation("BusinessShareMarketBuyer")
   sentShareholderProposals     BusinessShareProposal[]       @relation("BusinessShareProposalInvestor")
   receivedShareholderProposals BusinessShareProposal[]       @relation("BusinessShareProposalOwner")
   sentBusinessTransfers        BusinessTransferTransaction[] @relation("BusinessTransferSender")
@@ -561,6 +563,7 @@ model Business {
   loans                BusinessLoan[]
   investments          BusinessInvestment[]
   shareholders         BusinessShareholder[]
+  shareMarketListings  BusinessShareMarketListing[]
   shareholderProposals BusinessShareProposal[]
   buyoutOffers         BusinessBuyoutOffer[]
   transferHistory      BusinessTransferTransaction[]
@@ -875,6 +878,27 @@ model BusinessShareProposal {
   @@index([businessId, status])
   @@index([investorId, status])
   @@index([ownerId, status])
+}
+
+model BusinessShareMarketListing {
+  id            String    @id @default(uuid())
+  businessId    String
+  sellerId      String
+  buyerId       String?
+  sharePercent  Float
+  price         Int
+  status        String    @default("ACTIVE")
+  createdAt     DateTime  @default(now())
+  soldAt        DateTime?
+  cancelledAt   DateTime?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  seller   User     @relation("BusinessShareMarketSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyer    User?    @relation("BusinessShareMarketBuyer", fields: [buyerId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, status, createdAt])
+  @@index([sellerId, status, createdAt])
+  @@index([buyerId, createdAt])
 }
 
 model BusinessBuyoutOffer {

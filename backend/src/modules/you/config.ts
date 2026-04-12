@@ -22,6 +22,16 @@ export interface StartupProductDefinition {
   name: string;
 }
 
+export interface IllegalBusinessUpgradeDefinition {
+  key: string;
+  label: string;
+  description: string;
+  cost: number;
+  revenueBonus: number;
+  satisfactionBonus: number;
+  xpReward: number;
+}
+
 export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
   // --- Level 1 ---
   {
@@ -169,6 +179,19 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     level: 3,
     actions: ['loan', 'invest', 'invite', 'deposit', 'withdraw'],
   },
+  {
+    key: 'illegal_market',
+    label: 'Point de vente illegal',
+    category: 'Marche noir',
+    description: 'Vente de drogue et de puff. Activite risquee mais rentable pour les joueurs experimentes.',
+    minCapital: 4000,
+    creationFee: 7000,
+    monthlyRevenue: 1200,
+    monthlyExpenses: 450,
+    satisfaction: 62,
+    level: 3,
+    actions: ['invite', 'deposit', 'withdraw', 'purchase_item'],
+  },
   // --- Justice ---
   {
     key: 'law_firm',
@@ -217,6 +240,38 @@ export const STARTUP_PRODUCTS: StartupProductDefinition[] = [
 
 export const STARTUP_PRODUCT_MAX_LEVEL = 10;
 export const STARTUP_RESEARCH_MINUTES_CAP = 8 * 60;
+
+export const ILLEGAL_BUSINESS_UPGRADES: IllegalBusinessUpgradeDefinition[] = [
+  {
+    key: 'supply_network',
+    label: 'Reseau de fournisseurs',
+    description: 'Ameliore l approvisionnement pour augmenter les volumes de vente.',
+    cost: 5000,
+    revenueBonus: 350,
+    satisfactionBonus: 4,
+    xpReward: 18,
+  },
+  {
+    key: 'hidden_storage',
+    label: 'Cache securisee',
+    description: 'Stockage discret et mieux organise pour eviter les pertes.',
+    cost: 7500,
+    revenueBonus: 500,
+    satisfactionBonus: 5,
+    xpReward: 24,
+  },
+  {
+    key: 'street_marketing',
+    label: 'Marketing de rue',
+    description: 'Rend le point de vente plus visible dans les circuits informels.',
+    cost: 9000,
+    revenueBonus: 650,
+    satisfactionBonus: 6,
+    xpReward: 30,
+  },
+];
+
+export const ILLEGAL_BUSINESS_UPGRADE_MAP = new Map(ILLEGAL_BUSINESS_UPGRADES.map((upgrade) => [upgrade.key, upgrade]));
 
 export function getStartupResearchDurationMinutes(nextLevel: number) {
   return Math.min(30 * (2 ** Math.max(0, nextLevel - 1)), STARTUP_RESEARCH_MINUTES_CAP);

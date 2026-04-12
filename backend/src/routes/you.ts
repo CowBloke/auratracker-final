@@ -5,6 +5,7 @@ import { prisma } from '../server.js';
 import {
   accessFormationProduct,
   buyLivretEpargneUpgrade,
+  buyIllegalBusinessUpgrade,
   cancelBusinessBuyoutOffer,
   setLoanRate,
   setTransferFeeRate,
@@ -61,7 +62,10 @@ import {
   repayLoanByBorrower,
   rateBusiness,
   createBusinessShareProposal,
+  createShareMarketListing,
   createBusinessShareBuybackOffer,
+  buyShareMarketListing,
+  cancelShareMarketListing,
   cancelBusinessShareProposal,
   respondToBusinessShareProposal,
   getUserBusinessPurchases,
@@ -203,6 +207,18 @@ const ERROR_STATUS: Record<string, number> = {
   SHARE_BUYBACK_TARGET_INVALID: 400,
   SHARE_BUYBACK_TARGET_NOT_FOUND: 404,
   SHARE_BUYBACK_ALREADY_PENDING: 400,
+  BUSINESS_UPGRADE_FORBIDDEN: 403,
+  BUSINESS_UPGRADE_UNAVAILABLE: 400,
+  UPGRADE_ALREADY_OWNED: 400,
+  UPGRADE_INSUFFICIENT_FUNDS: 400,
+  SHARE_MARKET_LISTING_NOT_FOUND: 404,
+  SHARE_MARKET_LISTING_FORBIDDEN: 403,
+  SHARE_MARKET_INVALID_SHARE_PERCENT: 400,
+  SHARE_MARKET_INVALID_PRICE: 400,
+  SHARE_MARKET_INSUFFICIENT_SHARES: 400,
+  SHARE_MARKET_BUY_OWN_LISTING: 400,
+  SHARE_MARKET_ALREADY_RESOLVED: 400,
+  SHARE_MARKET_SELLER_NO_LONGER_HAS_SHARES: 400,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -326,6 +342,18 @@ const ERROR_MESSAGE: Record<string, string> = {
   SHARE_BUYBACK_TARGET_INVALID: 'Actionnaire cible invalide.',
   SHARE_BUYBACK_TARGET_NOT_FOUND: 'Cet utilisateur ne detient pas de parts sur ce business.',
   SHARE_BUYBACK_ALREADY_PENDING: 'Une demande de rachat est deja en attente pour cet actionnaire.',
+  BUSINESS_UPGRADE_FORBIDDEN: 'Tu ne peux pas acheter cette amelioration.',
+  BUSINESS_UPGRADE_UNAVAILABLE: 'Cette amelioration n est pas disponible pour ce business.',
+  UPGRADE_ALREADY_OWNED: 'Cette amelioration est deja debloquee.',
+  UPGRADE_INSUFFICIENT_FUNDS: 'La tresorerie du business est insuffisante pour cette amelioration.',
+  SHARE_MARKET_LISTING_NOT_FOUND: 'Annonce introuvable.',
+  SHARE_MARKET_LISTING_FORBIDDEN: 'Tu ne peux pas modifier cette annonce.',
+  SHARE_MARKET_INVALID_SHARE_PERCENT: 'La part a revendre doit etre comprise entre 0 et 100.',
+  SHARE_MARKET_INVALID_PRICE: 'Le prix de vente est invalide.',
+  SHARE_MARKET_INSUFFICIENT_SHARES: 'Tu ne possedes pas assez de parts pour cette vente.',
+  SHARE_MARKET_BUY_OWN_LISTING: 'Tu ne peux pas acheter ta propre annonce.',
+  SHARE_MARKET_ALREADY_RESOLVED: 'Cette annonce n est plus disponible.',
+  SHARE_MARKET_SELLER_NO_LONGER_HAS_SHARES: 'Le vendeur ne detient plus suffisamment de parts.',
 };
 
 async function requireYouAccess(req: AuthRequest, res: Response, next: () => void) {
@@ -483,6 +511,37 @@ router.post('/businesses/:businessId/share-buyback-offers', authMiddleware, requ
     res.status(201).json({ offer });
   } catch (error) {
     handleRouteError(error, res, 'Create share buyback offer error');
+  }
+});
+
+router.post('/share-market/listings', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const listing = await createShareMarketListing(req.user!.id, {
+      businessId: String(req.body?.businessId ?? ''),
+      sharePercent: Number(req.body?.sharePercent ?? 0),
+      price: Number(req.body?.price ?? 0),
+    });
+    res.status(201).json({ listing });
+  } catch (error) {
+    handleRouteError(error, res, 'Create share market listing error');
+  }
+});
+
+router.post('/share-market/listings/:listingId/buy', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await buyShareMarketListing(req.user!.id, req.params.listingId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Buy share market listing error');
+  }
+});
+
+router.delete('/share-market/listings/:listingId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await cancelShareMarketListing(req.user!.id, req.params.listingId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Cancel share market listing error');
   }
 });
 
@@ -698,6 +757,15 @@ router.post('/businesses/:businessId/upgrades/livret-epargne', authMiddleware, r
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Buy livret epargne error');
+  }
+});
+
+router.post('/businesses/:businessId/upgrades/illegal/:upgradeKey', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await buyIllegalBusinessUpgrade(req.user!.id, req.params.businessId, String(req.params.upgradeKey ?? ''));
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Buy illegal business upgrade error');
   }
 });
 

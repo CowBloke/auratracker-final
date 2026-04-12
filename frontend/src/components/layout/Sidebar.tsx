@@ -21,6 +21,7 @@ import {
   Target,
   Briefcase,
   Landmark,
+  Coins,
   Camera,
   Sparkles,
   Info,
@@ -108,6 +109,7 @@ const youNavItems = [
   { tab: 'social',   label: t('sidebar_you_social'),   icon: Users          },
   { tab: 'explore',  label: t('sidebar_you_explore'),  icon: BarChart3      },
   { tab: 'finance',  label: t('sidebar_you_finance'),  icon: Landmark       },
+  { tab: 'marche-actions', label: t('sidebar_you_share_market'), icon: Coins },
 ];
 
 function GameSidebarIcon({ src, alt }: { src: string; alt: string }) {

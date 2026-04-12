@@ -8,6 +8,7 @@ import {
   getRelationshipWithViewer,
   getUserSocialStats,
 } from '../utils/social.js';
+import { getParisDayKey, getParisDayStart } from '../utils/dailyAura.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
@@ -26,6 +27,80 @@ const parseStoredTargetUserIds = (value: string | null | undefined): string[] =>
   } catch {
     return [];
   }
+};
+
+const toNumericValue = (value: unknown): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return 0;
+};
+
+const parseLogMetadata = (raw: string | null): Record<string, unknown> => {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+};
+
+const extractEconomyDeltaForUser = (
+  log: { type: string; action: string; userId: string | null; targetId: string | null; metadata: string | null },
+  userId: string,
+) => {
+  const metadata = parseLogMetadata(log.metadata);
+  let auraDelta = 0;
+  let moneyDelta = 0;
+
+  if (log.type === 'GAME' && log.userId === userId) {
+    if (log.action === 'game_complete') {
+      auraDelta += toNumericValue(metadata.auraReward);
+      moneyDelta += toNumericValue(metadata.moneyReward);
+    } else if (log.action === 'casino_start') {
+      moneyDelta -= toNumericValue(metadata.bet);
+    }
+  }
+
+  if (log.type === 'ECONOMY') {
+    if ((log.action === 'quest_reward' || log.action === 'pass_reward') && log.userId === userId) {
+      auraDelta += toNumericValue(metadata.auraReward);
+      moneyDelta += toNumericValue(metadata.moneyReward);
+    }
+
+    if (log.action === 'transfer' && log.targetId === userId) {
+      auraDelta += toNumericValue(metadata.auraAmount);
+    }
+
+    if (log.action === 'balance_change' && log.userId === userId) {
+      auraDelta += toNumericValue(metadata.auraDelta ?? metadata.deltaAura);
+      moneyDelta += toNumericValue(metadata.moneyDelta ?? metadata.deltaMoney);
+    }
+  }
+
+  if (log.type === 'AURACOIN' && log.userId === userId) {
+    if (log.action === 'auracoin_buy') {
+      moneyDelta -= toNumericValue(metadata.moneySpent);
+    } else if (log.action === 'auracoin_sell') {
+      moneyDelta += toNumericValue(metadata.moneyReceived);
+    }
+  }
+
+  return {
+    auraDelta,
+    moneyDelta,
+  };
 };
 
 // Get all users (for the 40-user community)
@@ -344,6 +419,102 @@ router.post('/update-popups/:id/viewed', authMiddleware, async (req: AuthRequest
   } catch (error) {
     console.error('Mark update popup viewed error:', error);
     res.status(500).json({ error: 'Failed to mark popup as viewed' });
+  }
+});
+
+router.get('/:id/economy-history', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const daysParam = Number.parseInt(String(req.query.days ?? '30'), 10);
+    const days = Number.isInteger(daysParam) ? Math.min(90, Math.max(7, daysParam)) : 30;
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, aura: true, money: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const todayStart = getParisDayStart(new Date());
+    const startDate = new Date(todayStart);
+    startDate.setUTCDate(startDate.getUTCDate() - (days - 1));
+
+    const logs = await prisma.log.findMany({
+      where: {
+        createdAt: { gte: startDate },
+        type: { in: ['GAME', 'ECONOMY', 'AURACOIN'] },
+        OR: [
+          { userId: id },
+          { targetId: id },
+        ],
+      },
+      select: {
+        type: true,
+        action: true,
+        userId: true,
+        targetId: true,
+        metadata: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const dayKeysDescending: string[] = [];
+    for (let offset = 0; offset < days; offset += 1) {
+      const day = new Date(todayStart);
+      day.setUTCDate(day.getUTCDate() - offset);
+      dayKeysDescending.push(getParisDayKey(day));
+    }
+
+    const deltasByDay = new Map<string, { aura: number; money: number }>();
+    for (const key of dayKeysDescending) {
+      deltasByDay.set(key, { aura: 0, money: 0 });
+    }
+
+    for (const log of logs) {
+      const dayKey = getParisDayKey(log.createdAt);
+      const dayDelta = deltasByDay.get(dayKey);
+      if (!dayDelta) continue;
+
+      const { auraDelta, moneyDelta } = extractEconomyDeltaForUser(log, id);
+      dayDelta.aura += auraDelta;
+      dayDelta.money += moneyDelta;
+    }
+
+    let runningAura = Number(user.aura);
+    let runningMoney = user.money;
+    const historyByDay = new Map<string, { aura: number; money: number }>();
+
+    for (const dayKey of dayKeysDescending) {
+      historyByDay.set(dayKey, {
+        aura: Math.round(runningAura),
+        money: Math.round(runningMoney),
+      });
+
+      const dayDelta = deltasByDay.get(dayKey);
+      if (!dayDelta) continue;
+
+      runningAura -= dayDelta.aura;
+      runningMoney -= dayDelta.money;
+    }
+
+    const history = [...dayKeysDescending]
+      .reverse()
+      .map((date) => ({
+        date,
+        aura: historyByDay.get(date)?.aura ?? 0,
+        money: historyByDay.get(date)?.money ?? 0,
+      }));
+
+    res.json({
+      days,
+      history,
+    });
+  } catch (error) {
+    console.error('Get user economy history error:', error);
+    res.status(500).json({ error: 'Failed to get user economy history' });
   }
 });
 

@@ -3,6 +3,8 @@ import { createNotification } from '../../utils/notifications.js';
 import {
   BUSINESS_TYPES,
   BUSINESS_TYPE_MAP,
+  ILLEGAL_BUSINESS_UPGRADE_MAP,
+  ILLEGAL_BUSINESS_UPGRADES,
   INVESTMENT_RISK_RANGES,
   STARTUP_PRODUCTS,
   STARTUP_PRODUCT_MAX_LEVEL,
@@ -26,6 +28,7 @@ import {
 } from '../../utils/sharedBalance.js';
 import { logAdmin } from '../../utils/logger.js';
 import { writeBase64UploadFile } from '../../utils/uploads.js';
+import { getBusinessBalancing } from '../../config/balancing.js';
 
 const FORMATION_FILE_UPLOAD_DIR = 'uploads/formation-files';
 const MAX_FORMATION_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -38,6 +41,80 @@ const safeJsonParse = <T>(value: string | null | undefined, fallback: T): T => {
     return fallback;
   }
 };
+
+interface YouMenuItem {
+  key: string;
+  label: string;
+  price: number;
+  emoji?: string;
+  imageUrl?: string;
+  section?: string;
+}
+
+interface IllegalBusinessCustomData {
+  items: YouMenuItem[];
+  unlockedUpgradeKeys: string[];
+  upgradedAtByKey?: Record<string, string>;
+}
+
+function getDefaultIllegalBusinessCustomData(): IllegalBusinessCustomData {
+  return {
+    items: [
+      { key: 'puff', label: 'Puff', price: 45 },
+      { key: 'weed_pack', label: 'Pack de weed', price: 110 },
+      { key: 'resine', label: 'Resine', price: 160 },
+      { key: 'pilules', label: 'Pilules', price: 220 },
+    ],
+    unlockedUpgradeKeys: [],
+    upgradedAtByKey: {},
+  };
+}
+
+function getIllegalBusinessCustomData(customData: string | null | undefined): IllegalBusinessCustomData {
+  const fallback = getDefaultIllegalBusinessCustomData();
+  if (!customData) return fallback;
+
+  const parsed = safeJsonParse<any>(customData, fallback);
+  if (Array.isArray(parsed)) {
+    return {
+      ...fallback,
+      items: parsed,
+    };
+  }
+
+  const parsedItems = Array.isArray(parsed?.items) ? parsed.items : fallback.items;
+  const parsedUpgradeKeys = Array.isArray(parsed?.unlockedUpgradeKeys)
+    ? parsed.unlockedUpgradeKeys.filter((entry: unknown): entry is string => typeof entry === 'string')
+    : [];
+  const parsedUpgradedAtByKey = parsed?.upgradedAtByKey && typeof parsed.upgradedAtByKey === 'object'
+    ? parsed.upgradedAtByKey as Record<string, string>
+    : {};
+
+  return {
+    items: parsedItems,
+    unlockedUpgradeKeys: parsedUpgradeKeys,
+    upgradedAtByKey: parsedUpgradedAtByKey,
+  };
+}
+
+function getBusinessSaleItems(business: { typeKey: string; customData?: string | null }) {
+  const balancing = getBusinessBalancing(business.typeKey);
+  if (!balancing || !('items' in balancing)) {
+    return [] as YouMenuItem[];
+  }
+
+  const fallbackItems = balancing.items as unknown as YouMenuItem[];
+  if (!business.customData) {
+    return fallbackItems;
+  }
+
+  if (business.typeKey === 'illegal_market') {
+    return getIllegalBusinessCustomData(business.customData).items;
+  }
+
+  const parsed = safeJsonParse<any>(business.customData, fallbackItems);
+  return Array.isArray(parsed) ? parsed : fallbackItems;
+}
 
 const BUSINESS_SHARE_PROPOSAL_CANCEL_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -465,6 +542,23 @@ function serializeShareProposal(proposal: any, viewerId: string) {
   };
 }
 
+function serializeShareMarketListing(listing: any, viewerId: string) {
+  return {
+    id: listing.id,
+    businessId: listing.businessId,
+    sharePercent: listing.sharePercent,
+    price: listing.price,
+    status: listing.status,
+    createdAt: listing.createdAt.toISOString(),
+    soldAt: listing.soldAt ? listing.soldAt.toISOString() : null,
+    cancelledAt: listing.cancelledAt ? listing.cancelledAt.toISOString() : null,
+    direction: listing.sellerId === viewerId ? 'selling' : listing.buyerId === viewerId ? 'bought' : 'market',
+    seller: listing.seller,
+    buyer: listing.buyer ?? null,
+    business: listing.business,
+  };
+}
+
 function serializeBusinessLoan(loan: any) {
   return {
     id: loan.id,
@@ -665,6 +759,9 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     monthlyRevenue,
     monthlyExpenses,
   }, 10);
+  const illegalData = business.typeKey === 'illegal_market'
+    ? getIllegalBusinessCustomData(business.customData)
+    : null;
 
   return {
     id: business.id,
@@ -732,7 +829,24 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     transferFeeRate: business.typeKey === 'transfer' ? (business.transferFeeRate ?? 2) : undefined,
     formationUrl: business.typeKey === 'formation' ? (business.formationUrl ?? null) : undefined,
     formationPrice: business.typeKey === 'formation' ? (business.formationPrice ?? 500) : undefined,
-    customData: business.customData ? JSON.parse(business.customData) : undefined,
+    customData: business.typeKey === 'illegal_market'
+      ? illegalData?.items
+      : business.customData ? JSON.parse(business.customData) : undefined,
+    illegalUpgrades: business.typeKey === 'illegal_market'
+      ? ILLEGAL_BUSINESS_UPGRADES.map((upgrade) => {
+          const purchased = illegalData?.unlockedUpgradeKeys.includes(upgrade.key) ?? false;
+          return {
+            key: upgrade.key,
+            label: upgrade.label,
+            description: upgrade.description,
+            cost: upgrade.cost,
+            revenueBonus: upgrade.revenueBonus,
+            satisfactionBonus: upgrade.satisfactionBonus,
+            purchased,
+            purchasedAt: purchased ? (illegalData?.upgradedAtByKey?.[upgrade.key] ?? null) : null,
+          };
+        })
+      : undefined,
     formationProducts: business.typeKey === 'formation' ? formationProducts : undefined,
     npcLastCollectedAt: (business.typeKey === 'lemonade' || business.typeKey === 'epicerie' || business.typeKey === 'restaurant')
       ? (business.npcLastCollectedAt ? new Date(business.npcLastCollectedAt).toISOString() : null)
@@ -956,7 +1070,21 @@ export async function getYouState(userId: string) {
     }
   });
 
-  const [players, ownedBusinesses, exploreBusinesses, memberBusinesses, shareholderBusinesses, pendingInvitations, pendingBuyoutOffers, sentBuyoutOffers, sentShareholderProposals, skills, viewerUser] = await Promise.all([
+  const [
+    players,
+    ownedBusinesses,
+    exploreBusinesses,
+    memberBusinesses,
+    shareholderBusinesses,
+    pendingInvitations,
+    pendingBuyoutOffers,
+    sentBuyoutOffers,
+    sentShareholderProposals,
+    shareMarketListings,
+    myShareMarketListings,
+    skills,
+    viewerUser,
+  ] = await Promise.all([
     prisma.user.findMany({
       where: {
         isApproved: true,
@@ -1068,6 +1196,46 @@ export async function getYouState(userId: string) {
         },
       },
     }),
+    prisma.businessShareMarketListing.findMany({
+      where: {
+        status: 'ACTIVE',
+        sellerId: { not: userId },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        seller: { select: USER_PREVIEW_SELECT },
+        buyer: { select: USER_PREVIEW_SELECT },
+        business: {
+          select: {
+            id: true,
+            name: true,
+            typeKey: true,
+            ownerId: true,
+            owner: { select: USER_PREVIEW_SELECT },
+          },
+        },
+      },
+    }),
+    prisma.businessShareMarketListing.findMany({
+      where: {
+        status: 'ACTIVE',
+        sellerId: userId,
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        seller: { select: USER_PREVIEW_SELECT },
+        buyer: { select: USER_PREVIEW_SELECT },
+        business: {
+          select: {
+            id: true,
+            name: true,
+            typeKey: true,
+            ownerId: true,
+            owner: { select: USER_PREVIEW_SELECT },
+          },
+        },
+      },
+    }),
     prisma.userSkill.findMany({
       where: { userId },
       orderBy: { createdAt: 'asc' },
@@ -1152,6 +1320,8 @@ export async function getYouState(userId: string) {
       ...serializeShareProposal(proposal, userId),
       business: proposal.business,
     })),
+    shareMarketListings: shareMarketListings.map((listing) => serializeShareMarketListing(listing, userId)),
+    myShareMarketListings: myShareMarketListings.map((listing) => serializeShareMarketListing(listing, userId)),
     relationships: relationships.map((relationship) => serializeRelationship(relationship, userId, { viewerIsMarried, pendingCourtCaseIds })),
     courtCases: pendingCourtCases.map((c: any) => ({
       id: c.id,
@@ -1371,6 +1541,8 @@ export async function createBusiness(userId: string, input: { name: string; type
         isStateOwned: type.isStateOwned ?? false,
         customData: type.key === 'youtube'
           ? JSON.stringify({ videos: [], totalViews: 0, sponsors: [] })
+          : type.key === 'illegal_market'
+            ? JSON.stringify(getDefaultIllegalBusinessCustomData())
           : null,
       },
     });
@@ -1413,12 +1585,15 @@ export async function createBusiness(userId: string, input: { name: string; type
 
   // Affaires XP: créer une entreprise (proportionnel aux frais de création, min 2)
   void grantSkillXp(userId, 'affaires', Math.max(2, Math.floor(creationCost / 500)));
+  if (type.key === 'illegal_market') {
+    void grantSkillXp(userId, 'illegalite', 20);
+  }
 
   return serializeBusiness(business, userId);
 }
 
 async function handleInviteAction(userId: string, business: any, input: { inviteeIds: string[]; role: string; salary?: number; message?: string }) {
-  if (!isBusinessParticipant(userId, business)) {
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) {
     throw new Error('BUSINESS_INVITE_FORBIDDEN');
   }
 
@@ -2583,6 +2758,314 @@ export async function createBusinessShareProposal(
   return serializeShareProposal(proposal, userId);
 }
 
+export async function createShareMarketListing(
+  userId: string,
+  input: { businessId: string; sharePercent: number; price: number },
+) {
+  const businessId = String(input.businessId ?? '').trim();
+  const sharePercent = Math.round(Number(input.sharePercent) * 100) / 100;
+  const price = Math.round(Number(input.price));
+
+  if (!businessId) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
+
+  if (!Number.isFinite(sharePercent) || sharePercent <= 0 || sharePercent >= 100) {
+    throw new Error('SHARE_MARKET_INVALID_SHARE_PERCENT');
+  }
+
+  if (!Number.isFinite(price) || price <= 0) {
+    throw new Error('SHARE_MARKET_INVALID_PRICE');
+  }
+
+  const [shareholding, business, existingActiveListings] = await Promise.all([
+    prisma.businessShareholder.findUnique({
+      where: {
+        businessId_userId: {
+          businessId,
+          userId,
+        },
+      },
+    }),
+    prisma.business.findUnique({
+      where: { id: businessId },
+      select: {
+        id: true,
+        name: true,
+        typeKey: true,
+        ownerId: true,
+        owner: { select: USER_PREVIEW_SELECT },
+      },
+    }),
+    prisma.businessShareMarketListing.findMany({
+      where: {
+        businessId,
+        sellerId: userId,
+        status: 'ACTIVE',
+      },
+      select: {
+        sharePercent: true,
+      },
+    }),
+  ]);
+
+  const alreadyListedSharePercent = existingActiveListings.reduce((sum, listing) => sum + listing.sharePercent, 0);
+
+  if (!shareholding || shareholding.sharePercent < sharePercent + alreadyListedSharePercent) {
+    throw new Error('SHARE_MARKET_INSUFFICIENT_SHARES');
+  }
+
+  if (!business) {
+    throw new Error('BUSINESS_NOT_FOUND');
+  }
+
+  const listing = await prisma.businessShareMarketListing.create({
+    data: {
+      businessId,
+      sellerId: userId,
+      sharePercent,
+      price,
+    },
+    include: {
+      seller: { select: USER_PREVIEW_SELECT },
+      buyer: { select: USER_PREVIEW_SELECT },
+      business: {
+        select: {
+          id: true,
+          name: true,
+          typeKey: true,
+          ownerId: true,
+          owner: { select: USER_PREVIEW_SELECT },
+        },
+      },
+    },
+  });
+
+  return serializeShareMarketListing(listing, userId);
+}
+
+export async function buyShareMarketListing(userId: string, listingId: string) {
+  const listing = await prisma.businessShareMarketListing.findUnique({
+    where: { id: listingId },
+    include: {
+      seller: { select: USER_PREVIEW_SELECT },
+      buyer: { select: USER_PREVIEW_SELECT },
+      business: {
+        select: {
+          id: true,
+          name: true,
+          typeKey: true,
+          ownerId: true,
+          owner: { select: USER_PREVIEW_SELECT },
+        },
+      },
+    },
+  });
+
+  if (!listing) {
+    throw new Error('SHARE_MARKET_LISTING_NOT_FOUND');
+  }
+
+  if (listing.status !== 'ACTIVE') {
+    throw new Error('SHARE_MARKET_ALREADY_RESOLVED');
+  }
+
+  if (listing.sellerId === userId) {
+    throw new Error('SHARE_MARKET_BUY_OWN_LISTING');
+  }
+
+  const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, listing.price);
+  if (!hasSharedMoney) {
+    throw new Error('INSUFFICIENT_MONEY');
+  }
+
+  const soldAt = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    const freshListing = await tx.businessShareMarketListing.findUnique({
+      where: { id: listing.id },
+      select: {
+        id: true,
+        status: true,
+        businessId: true,
+        sellerId: true,
+        sharePercent: true,
+        price: true,
+      },
+    });
+
+    if (!freshListing) {
+      throw new Error('SHARE_MARKET_LISTING_NOT_FOUND');
+    }
+
+    if (freshListing.status !== 'ACTIVE') {
+      throw new Error('SHARE_MARKET_ALREADY_RESOLVED');
+    }
+
+    const sellerShareholding = await tx.businessShareholder.findUnique({
+      where: {
+        businessId_userId: {
+          businessId: freshListing.businessId,
+          userId: freshListing.sellerId,
+        },
+      },
+    });
+
+    if (!sellerShareholding || sellerShareholding.sharePercent < freshListing.sharePercent) {
+      throw new Error('SHARE_MARKET_SELLER_NO_LONGER_HAS_SHARES');
+    }
+
+    await debitSharedMoney(tx, userId, freshListing.price);
+
+    await tx.user.update({
+      where: { id: freshListing.sellerId },
+      data: { money: { increment: freshListing.price } },
+    });
+
+    const soldCostBasis = Math.round(sellerShareholding.averagePrice * freshListing.sharePercent);
+    const nextSellerShare = Math.max(0, sellerShareholding.sharePercent - freshListing.sharePercent);
+    const nextSellerInvestedAmount = Math.max(0, sellerShareholding.investedAmount - soldCostBasis);
+
+    if (nextSellerShare <= 0.0001) {
+      await tx.businessShareholder.delete({
+        where: {
+          businessId_userId: {
+            businessId: freshListing.businessId,
+            userId: freshListing.sellerId,
+          },
+        },
+      });
+    } else {
+      await tx.businessShareholder.update({
+        where: {
+          businessId_userId: {
+            businessId: freshListing.businessId,
+            userId: freshListing.sellerId,
+          },
+        },
+        data: {
+          sharePercent: nextSellerShare,
+          investedAmount: nextSellerInvestedAmount,
+        },
+      });
+    }
+
+    if (userId !== listing.business.ownerId) {
+      const existingBuyerShareholding = await tx.businessShareholder.findUnique({
+        where: {
+          businessId_userId: {
+            businessId: freshListing.businessId,
+            userId,
+          },
+        },
+      });
+
+      await tx.businessShareholder.upsert({
+        where: {
+          businessId_userId: {
+            businessId: freshListing.businessId,
+            userId,
+          },
+        },
+        update: {
+          sharePercent: { increment: freshListing.sharePercent },
+          investedAmount: { increment: freshListing.price },
+          averagePrice: existingBuyerShareholding
+            ? ((existingBuyerShareholding.averagePrice * existingBuyerShareholding.sharePercent) + freshListing.price)
+              / Math.max(0.01, existingBuyerShareholding.sharePercent + freshListing.sharePercent)
+            : freshListing.price / freshListing.sharePercent,
+        },
+        create: {
+          businessId: freshListing.businessId,
+          userId,
+          sharePercent: freshListing.sharePercent,
+          investedAmount: freshListing.price,
+          averagePrice: freshListing.price / freshListing.sharePercent,
+        },
+      });
+    }
+
+    await tx.businessShareMarketListing.update({
+      where: { id: freshListing.id },
+      data: {
+        status: 'SOLD',
+        buyerId: userId,
+        soldAt,
+      },
+    });
+  });
+
+  await emitSharedBalanceUpdatesForUserIds(prisma, [userId, listing.sellerId]);
+
+  await Promise.allSettled([
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Achat d actions confirme',
+      body: `Tu as achete ${listing.sharePercent.toLocaleString('fr-FR')} % de ${listing.business.name} pour ${listing.price.toLocaleString('fr-FR')} money.`,
+      link: '/you?tab=marche-actions',
+      icon: 'briefcase-business',
+    }),
+    createNotification({
+      userId: listing.sellerId,
+      type: 'MONEY_RECEIVED',
+      title: 'Actions revendues',
+      body: `${listing.sharePercent.toLocaleString('fr-FR')} % de ${listing.business.name} vendu pour ${listing.price.toLocaleString('fr-FR')} money.`,
+      link: '/you?tab=marche-actions',
+      icon: 'briefcase-business',
+    }),
+  ]);
+
+  return {
+    id: listing.id,
+    status: 'SOLD',
+    soldAt: soldAt.toISOString(),
+  };
+}
+
+export async function cancelShareMarketListing(userId: string, listingId: string) {
+  const listing = await prisma.businessShareMarketListing.findUnique({
+    where: { id: listingId },
+    include: {
+      seller: { select: USER_PREVIEW_SELECT },
+      business: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!listing) {
+    throw new Error('SHARE_MARKET_LISTING_NOT_FOUND');
+  }
+
+  if (listing.sellerId !== userId) {
+    throw new Error('SHARE_MARKET_LISTING_FORBIDDEN');
+  }
+
+  if (listing.status !== 'ACTIVE') {
+    throw new Error('SHARE_MARKET_ALREADY_RESOLVED');
+  }
+
+  const cancelledAt = new Date();
+
+  await prisma.businessShareMarketListing.update({
+    where: { id: listing.id },
+    data: {
+      status: 'CANCELLED',
+      cancelledAt,
+    },
+  });
+
+  return {
+    id: listing.id,
+    status: 'CANCELLED',
+    cancelledAt: cancelledAt.toISOString(),
+  };
+}
+
 export async function respondToBusinessShareProposal(userId: string, proposalId: string, decision: 'accept' | 'reject') {
   const proposal = await prisma.businessShareProposal.findUnique({
     where: { id: proposalId },
@@ -2841,20 +3324,12 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
     throw new Error('PURCHASE_SELF_FORBIDDEN');
   }
 
-  const { getBusinessBalancing } = await import('../../config/balancing.js');
   const balancing = getBusinessBalancing(business.typeKey);
   if (!balancing || !('items' in balancing)) {
     throw new Error('BUSINESS_ACTION_UNAVAILABLE');
   }
 
-  let items = balancing.items as unknown as Array<{ key: string; label: string; price: number; emoji?: string; imageUrl?: string }>;
-  if (business.customData) {
-    try {
-      items = JSON.parse(business.customData);
-    } catch (e) {
-      // Fallback
-    }
-  }
+  const items = getBusinessSaleItems(business);
   const item = items.find((i) => i.key === input.itemKey);
   if (!item) {
     throw new Error('ITEM_NOT_FOUND');
@@ -2970,6 +3445,12 @@ async function handlePurchaseItemAction(userId: string, business: any, input: { 
     // Social XP: acheter dans une business locale = participation à l'économie sociale (proportionnel, min 1)
     void grantSkillXp(userId, 'social', Math.max(1, Math.floor(item.price / 200)));
   }
+
+  if (business.typeKey === 'illegal_market') {
+    void grantSkillXp(userId, 'illegalite', Math.max(2, Math.floor(item.price / 120)));
+    void grantSkillXp(business.ownerId, 'illegalite', Math.max(3, Math.floor(item.price / 90)));
+  }
+
   // Affaires XP pour le vendeur: réaliser une vente = activité commerciale
   void grantSkillXp(business.ownerId, 'affaires', 1);
 
@@ -4456,6 +4937,73 @@ export async function deleteBusiness(requestUserId: string, businessId: string) 
 
 export const LIVRET_EPARGNE_COST = 5000;
 
+export async function buyIllegalBusinessUpgrade(userId: string, businessId: string, upgradeKey: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      id: true,
+      ownerId: true,
+      typeKey: true,
+      name: true,
+      treasuryMoney: true,
+      monthlyRevenue: true,
+      satisfaction: true,
+      customData: true,
+    },
+  });
+
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_UPGRADE_FORBIDDEN');
+  if (business.typeKey !== 'illegal_market') throw new Error('BUSINESS_UPGRADE_UNAVAILABLE');
+
+  const upgrade = ILLEGAL_BUSINESS_UPGRADE_MAP.get(upgradeKey);
+  if (!upgrade) throw new Error('BUSINESS_UPGRADE_UNAVAILABLE');
+
+  const customData = getIllegalBusinessCustomData(business.customData);
+  if (customData.unlockedUpgradeKeys.includes(upgradeKey)) {
+    throw new Error('UPGRADE_ALREADY_OWNED');
+  }
+  if (business.treasuryMoney < upgrade.cost) {
+    throw new Error('UPGRADE_INSUFFICIENT_FUNDS');
+  }
+
+  const nowIso = new Date().toISOString();
+  const nextCustomData: IllegalBusinessCustomData = {
+    ...customData,
+    unlockedUpgradeKeys: [...customData.unlockedUpgradeKeys, upgradeKey],
+    upgradedAtByKey: {
+      ...(customData.upgradedAtByKey ?? {}),
+      [upgradeKey]: nowIso,
+    },
+  };
+
+  await prisma.business.update({
+    where: { id: business.id },
+    data: {
+      treasuryMoney: { decrement: upgrade.cost },
+      monthlyRevenue: { increment: upgrade.revenueBonus },
+      satisfaction: Math.max(1, Math.min(100, business.satisfaction + upgrade.satisfactionBonus)),
+      customData: JSON.stringify(nextCustomData),
+    },
+  });
+
+  await logBusinessTransaction(business.id, 'UPGRADE_PURCHASE', -upgrade.cost, `Amelioration: ${upgrade.label}`, userId);
+
+  logYouAdmin('bank_upgrade_purchase', userId, undefined, business.id, business.name, {
+    upgradeKey: upgrade.key,
+    cost: upgrade.cost,
+    revenueBonus: upgrade.revenueBonus,
+    satisfactionBonus: upgrade.satisfactionBonus,
+  });
+
+  void grantSkillXp(userId, 'illegalite', upgrade.xpReward);
+
+  return {
+    upgradeKey: upgrade.key,
+    unlockedUpgradeKeys: nextCustomData.unlockedUpgradeKeys,
+  };
+}
+
 export async function buyLivretEpargneUpgrade(userId: string, businessId: string) {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
@@ -4525,18 +5073,25 @@ export async function updateBusinessMenu(userId: string, businessId: string, men
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, ownerId: true, typeKey: true },
+    select: { id: true, ownerId: true, typeKey: true, customData: true },
   });
 
   if (!business) throw new Error('BUSINESS_NOT_FOUND');
   if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('UPDATE_MENU_FORBIDDEN');
-  if (business.typeKey !== 'restaurant' && business.typeKey !== 'lemonade' && business.typeKey !== 'epicerie') {
+  if (business.typeKey !== 'restaurant' && business.typeKey !== 'lemonade' && business.typeKey !== 'epicerie' && business.typeKey !== 'illegal_market') {
     throw new Error('BUSINESS_CANNOT_HAVE_MENU');
   }
 
+  const nextCustomData = business.typeKey === 'illegal_market'
+    ? JSON.stringify({
+        ...getIllegalBusinessCustomData(business.customData),
+        items: menu,
+      })
+    : JSON.stringify(menu);
+
   await prisma.business.update({
     where: { id: businessId },
-    data: { customData: JSON.stringify(menu) },
+    data: { customData: nextCustomData },
   });
 
   return { success: true };

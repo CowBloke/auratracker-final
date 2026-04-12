@@ -37,6 +37,7 @@ export const TYPE_EMOJI: Record<string, string> = {
   startup: '🚀',
   agency: '💼',
   formation: '🎓',
+  illegal_market: '🚬',
   law_firm: '⚖',
   supreme_court: '🏛',
 };
@@ -51,6 +52,7 @@ export const TYPE_COLORS: Record<string, string> = {
   startup: '#a855f7',
   agency: '#ec4899',
   formation: '#14b8a6',
+  illegal_market: '#d946ef',
   law_firm: '#64748b',
   supreme_court: '#f97316',
 };

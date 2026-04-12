@@ -3,6 +3,7 @@ import {
   ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
   CreditCard, Download, Edit2, ExternalLink, GraduationCap, Image, Landmark, Loader2, Percent,
   Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X, Utensils,
+  ShieldAlert,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -819,7 +820,7 @@ export function ManageBusinessModal({
   onInviteRequested: (business: YouBusiness) => void;
   onSubmitted: (refreshBalance?: boolean) => Promise<void>;
 }) {
-  const [activeSection, setActiveSection] = useState<'deposit' | 'withdraw' | 'loanRate' | 'transferFee' | null>(null);
+  const [activeSection, setActiveSection] = useState<'deposit' | 'withdraw' | 'loanRate' | 'transferFee' | 'illegalUpgrades' | null>(null);
   const [depositAmount, setDepositAmount] = useState('1000');
   const [withdrawAmount, setWithdrawAmount] = useState('1000');
   const [activeTreasuryAction, setActiveTreasuryAction] = useState<'deposit' | 'withdraw' | null>(null);
@@ -899,6 +900,7 @@ export function ManageBusinessModal({
   const isStartup = business?.typeKey === 'startup';
   const isTransfer = business?.typeKey === 'transfer';
   const isFormation = business?.typeKey === 'formation';
+  const isIllegalMarket = business?.typeKey === 'illegal_market';
   const isNpcCommerce = business?.typeKey === 'lemonade' || business?.typeKey === 'epicerie';
   const npcCooldownHours = isNpcCommerce ? (business?.typeKey === 'lemonade' ? 6 : 6) : 0;
   const npcOnCooldown = Boolean(business?.npcLastCollectedAt && (Date.now() - new Date(business.npcLastCollectedAt).getTime()) < npcCooldownHours * 3600 * 1000);
@@ -999,6 +1001,17 @@ export function ManageBusinessModal({
       await onSubmitted(true);
     } catch {
       // error already toasted by withRouteError
+    }
+  };
+
+  const buyIllegalUpgrade = async (upgradeKey: string) => {
+    if (!business) return;
+    try {
+      await withRouteError(() => youApi.buyIllegalBusinessUpgrade(business.id, upgradeKey), "Impossible d'acheter cette amelioration.");
+      toast.success('Amelioration illegale debloquee');
+      await onSubmitted(true);
+    } catch {
+      // withRouteError already shows a message
     }
   };
 
@@ -1138,8 +1151,53 @@ export function ManageBusinessModal({
               ) : null}
 
               {/* Gérer le menu */}
-              {business.ownerKind === 'you' && (business.typeKey === 'restaurant' || business.typeKey === 'lemonade' || business.typeKey === 'epicerie') ? (
+              {business.ownerKind === 'you' && (business.typeKey === 'restaurant' || business.typeKey === 'lemonade' || business.typeKey === 'epicerie' || business.typeKey === 'illegal_market') ? (
                 <ActionRow icon={Utensils} label="Gérer le menu" sub="Modifier les articles et prix" iconBg="bg-orange-400/15" iconColor="text-orange-400" onClick={() => setManageMenuOpen(true)} />
+              ) : null}
+
+              {business.ownerKind === 'you' && isIllegalMarket ? (
+                <>
+                  <ActionRow
+                    icon={ShieldAlert}
+                    label="Ameliorations illegales"
+                    sub="Augmente revenus, satisfaction et XP Illegalite"
+                    iconBg="bg-fuchsia-400/15"
+                    iconColor="text-fuchsia-300"
+                    onClick={() => toggleSection('illegalUpgrades')}
+                  />
+                  <InlineSection open={activeSection === 'illegalUpgrades'}>
+                    <div className="space-y-2">
+                      {(business.illegalUpgrades ?? []).map((upgrade) => (
+                        <div key={upgrade.key} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold">{upgrade.label}</p>
+                              <p className="text-xs text-muted-foreground">{upgrade.description}</p>
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                +{upgrade.revenueBonus.toLocaleString('fr-FR')} EUR/mois · +{upgrade.satisfactionBonus} satisfaction
+                              </p>
+                            </div>
+                            {upgrade.purchased ? (
+                              <Pill label="Debloquee" color="bg-emerald-400/15 text-emerald-300" />
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => void buyIllegalUpgrade(upgrade.key)}
+                                disabled={business.treasuryMoney < upgrade.cost}
+                              >
+                                {formatMoney(upgrade.cost)}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {(business.illegalUpgrades ?? []).length === 0 ? (
+                        <p className="text-xs text-muted-foreground">Aucune amelioration disponible.</p>
+                      ) : null}
+                    </div>
+                  </InlineSection>
+                </>
               ) : null}
 
               {/* Modifier le profil */}
@@ -1412,6 +1470,9 @@ export function ManageBusinessModal({
                         const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
                         const repaid = loan.repaidAmount ?? 0;
                         const remaining = Math.max(0, totalOwed - repaid);
+                        const borrowerMoney = Number(loan.borrower.money ?? 0);
+                        const borrowerAura = Number(loan.borrower.aura ?? 0);
+                        const canBorrowerRepayNow = borrowerMoney >= remaining;
                         const pct = totalOwed > 0 ? Math.round((repaid / totalOwed) * 100) : 0;
                         const dueDate = getLoanDueDate(loan);
                         const isPastDue = loan.status === 'ACTIVE' && new Date() >= dueDate;
@@ -1432,6 +1493,11 @@ export function ManageBusinessModal({
                                     <p className="mt-1 text-sm font-semibold text-foreground">{remaining.toLocaleString('fr-FR')} €</p>
                                   </div>
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
+                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Finance client</p>
+                                    <p className="mt-1 text-sm font-semibold text-foreground">{borrowerMoney.toLocaleString('fr-FR')} €</p>
+                                    <p className="text-[11px] text-amber-300/90">Aura: {borrowerAura.toLocaleString('fr-FR')}</p>
+                                  </div>
+                                  <div className="rounded-lg bg-background/50 px-3 py-2">
                                     <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Echeance</p>
                                     <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-rose-400' : 'text-foreground'}`}>{formatLoanDate(dueDate)}</p>
                                   </div>
@@ -1449,6 +1515,11 @@ export function ManageBusinessModal({
                                 ) : null}
                                 {loan.motivationMessage ? <p className="mt-2 text-xs text-muted-foreground">Motivation: "{loan.motivationMessage}"</p> : null}
                                 <p className="mt-2 text-xs text-muted-foreground">{repaid.toLocaleString('fr-FR')} / {totalOwed.toLocaleString('fr-FR')} € rembourses</p>
+                                <p className={`mt-1 text-xs ${canBorrowerRepayNow ? 'text-emerald-300' : 'text-muted-foreground'}`}>
+                                  {canBorrowerRepayNow
+                                    ? 'Le client peut rembourser integralement maintenant.'
+                                    : `Le client ne peut pas encore solder le pret (manque ${(remaining - borrowerMoney).toLocaleString('fr-FR')} €).`}
+                                </p>
                                 <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted/40">
                                   <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${pct}%` }} />
                                 </div>
@@ -2865,6 +2936,12 @@ export function ManageMenuModal({
         { key: 'pizza', label: 'Pizza', price: 18, emoji: '🍕' },
         { key: 'fried_chicken', label: 'Poulet Frit', price: 12, emoji: '🍗' },
         { key: 'soda', label: 'Soda', price: 5, emoji: '🥤' },
+      ];
+      case 'illegal_market': return [
+        { key: 'puff', label: 'Puff', price: 45, emoji: '🚬' },
+        { key: 'weed_pack', label: 'Pack de weed', price: 110, emoji: '🌿' },
+        { key: 'resine', label: 'Resine', price: 160, emoji: '🧪' },
+        { key: 'pilules', label: 'Pilules', price: 220, emoji: '💊' },
       ];
       default: return [];
     }

@@ -239,7 +239,7 @@ export function OverviewTab({ data, userId, adblockActive, onReload }: { data: Y
 
   const repayLoan = async (loanId: string, percentage: number) => {
     await withRouteError(() => youApi.borrowerRepayLoan(loanId, percentage), 'Impossible de rembourser ce pret. Verifie que tu as assez de money.');
-    toast.success(percentage === 100 ? 'Remboursement effectue' : `${percentage} % rembourse`);
+    toast.success(percentage === 100 ? 'Tentative de remboursement integral effectuee' : `${percentage} % rembourse`);
     await onReload();
   };
 

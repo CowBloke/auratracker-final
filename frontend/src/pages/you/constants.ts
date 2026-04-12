@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, BarChart3, Briefcase, Building2, Coffee, CreditCard, GraduationCap, Landmark, Scale, ShoppingBasket, Stethoscope, Store, TrendingUp, UserPlus, Utensils, Video } from 'lucide-react';
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, BarChart3, Briefcase, Building2, Coffee, CreditCard, GraduationCap, Landmark, Scale, ShieldAlert, ShoppingBasket, Stethoscope, Store, TrendingUp, UserPlus, Utensils, Video } from 'lucide-react';
 import { type BusinessAction } from './types';
 
 export const BUSINESS_ICON_MAP = {
@@ -13,6 +13,7 @@ export const BUSINESS_ICON_MAP = {
   coffee_shop: Coffee,
   youtube: Video,
   medecins: Stethoscope,
+  illegal_market: ShieldAlert,
   supreme_court: Scale,
   law_firm: Briefcase,
 } as const;
@@ -29,6 +30,7 @@ export const BUSINESS_STYLE_MAP = {
   coffee_shop: { card: 'border-orange-400/30 bg-orange-400/10', badge: 'bg-orange-400/15 text-orange-400', iconWrap: 'bg-orange-400/15', icon: 'text-orange-400' },
   youtube: { card: 'border-rose-400/30 bg-rose-400/10', badge: 'bg-rose-400/15 text-rose-400', iconWrap: 'bg-rose-400/15', icon: 'text-rose-400' },
   medecins: { card: 'border-teal-400/30 bg-teal-400/10', badge: 'bg-teal-400/15 text-teal-400', iconWrap: 'bg-teal-400/15', icon: 'text-teal-400' },
+  illegal_market: { card: 'border-fuchsia-400/30 bg-fuchsia-400/10', badge: 'bg-fuchsia-400/15 text-fuchsia-300', iconWrap: 'bg-fuchsia-400/15', icon: 'text-fuchsia-300' },
   supreme_court: { card: 'border-indigo-400/30 bg-indigo-400/10', badge: 'bg-indigo-400/15 text-indigo-300', iconWrap: 'bg-indigo-400/15', icon: 'text-indigo-300' },
   law_firm: { card: 'border-purple-400/30 bg-purple-400/10', badge: 'bg-purple-400/15 text-purple-400', iconWrap: 'bg-purple-400/15', icon: 'text-purple-400' },
 } as const;

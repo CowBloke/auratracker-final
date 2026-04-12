@@ -39,6 +39,7 @@ const pageMatchers: Array<{ test: (path: string) => boolean; label: string; icon
   { test: (path) => path.startsWith('/you?tab=social'), label: 'Moi - Relations', icon: Users },
   { test: (path) => path.startsWith('/you?tab=explore'), label: 'Moi - Explore business', icon: BarChart3 },
   { test: (path) => path.startsWith('/you?tab=finance'), label: 'Moi - Finance', icon: Landmark },
+  { test: (path) => path.startsWith('/you?tab=marche-actions'), label: 'Moi - Marche actions', icon: Coins },
   { test: (path) => path.startsWith('/you'), label: 'Moi', icon: User },
   { test: (path) => path.startsWith('/games/bomb-party'), label: 'Bombe de mots', icon: Bomb },
   { test: (path) => path.startsWith('/games/poker'), label: 'Poker', icon: Dice5 },

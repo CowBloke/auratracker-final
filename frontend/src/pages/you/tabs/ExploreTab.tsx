@@ -142,7 +142,7 @@ function PlainteReviewModal({
   );
 }
 
-const BUSINESS_TYPE_ORDER = ['supreme_court', 'law_firm', 'bank', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'restaurant', 'epicerie', 'coffee_shop', 'youtube', 'medecins'] as const;
+const BUSINESS_TYPE_ORDER = ['supreme_court', 'law_firm', 'bank', 'illegal_market', 'transfer', 'formation', 'startup', 'agency', 'lemonade', 'restaurant', 'epicerie', 'coffee_shop', 'youtube', 'medecins'] as const;
 
 const SECTION_META: Record<
   (typeof BUSINESS_TYPE_ORDER)[number],
@@ -151,6 +151,7 @@ const SECTION_META: Record<
   supreme_court: { label: 'Cour Suprême', icon: Scale, pillColor: 'bg-indigo-400/15 text-indigo-300' },
   law_firm: { label: "Cabinets d'avocats", icon: Briefcase, pillColor: 'bg-purple-400/15 text-purple-400' },
   bank: { label: 'Banks', icon: Landmark, pillColor: 'bg-emerald-400/15 text-emerald-400' },
+  illegal_market: { label: 'Business illegaux', icon: ShieldAlert, pillColor: 'bg-fuchsia-400/15 text-fuchsia-300' },
   transfer: { label: 'Transfer', icon: ArrowLeftRight, pillColor: 'bg-cyan-400/15 text-cyan-300' },
   formation: { label: 'Formations', icon: GraduationCap, pillColor: 'bg-amber-400/15 text-amber-400' },
   startup: { label: 'Tech startups', icon: TrendingUp, pillColor: 'bg-sky-400/15 text-sky-400' },
@@ -678,6 +679,16 @@ function BusinessInteractionModal({
                   onClick={() => onAction('purchase')}
                   disabled={isOwned}
                 />
+              ) : business.typeKey === 'illegal_market' ? (
+                <ActionButton
+                  icon={ShieldAlert}
+                  label={isOwned ? 'Achat indisponible' : 'Acheter au point de vente'}
+                  sub={isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Vente de drogue et puff · boost Illegalite.'}
+                  tone="bg-fuchsia-400/15 text-fuchsia-300"
+                  primary
+                  onClick={() => onAction('purchase')}
+                  disabled={isOwned}
+                />
               ) : business.typeKey === 'coffee_shop' ? (
                 <ActionButton
                   icon={Coffee}
@@ -906,6 +917,12 @@ const ITEMS_CONFIG: Record<string, Array<{ key: string; label: string; price: nu
     { key: 'appartement', label: 'Appartement T3', price: 3000, emoji: '🏢', xpHint: '+6 XP Social' },
     { key: 'maison', label: 'Maison avec jardin', price: 8000, emoji: '🏡', xpHint: '+16 XP Social' },
     { key: 'villa', label: 'Villa de luxe', price: 25000, emoji: '🏰', xpHint: '+50 XP Social' },
+  ],
+  illegal_market: [
+    { key: 'puff', label: 'Puff', price: 45, emoji: '🚬', xpHint: '+XP Illegalite' },
+    { key: 'weed_pack', label: 'Pack de weed', price: 110, emoji: '🌿', xpHint: '+XP Illegalite' },
+    { key: 'resine', label: 'Resine', price: 160, emoji: '🧪', xpHint: '+XP Illegalite' },
+    { key: 'pilules', label: 'Pilules', price: 220, emoji: '💊', xpHint: '+XP Illegalite' },
   ],
 };
 

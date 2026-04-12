@@ -13,6 +13,7 @@ import {
   UserBadgeEntry,
   SocialRelationship,
   SocialStats,
+  UserEconomyHistoryPoint,
 } from '../services/api';
 import { AlertTriangle, Ban as BanIcon, Building2, CalendarDays, Edit2, Heart, Loader2, MessageCircle, Save, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { toast } from '@/hooks/use-toast';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
@@ -30,6 +32,7 @@ import { BadgeCatalog } from '@/components/badges/BadgeSelector';
 import { ProfileBadgeSlots } from '@/components/badges/ProfileBadgeSlots';
 import { BadgeData } from '@/components/badges/BadgeIcon';
 import { OverallClassementBadge } from '@/components/profile/OverallClassementBadge';
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 
 const PROFILE_GAME_CATALOG = [
   { gameType: 'russian_roulette', label: 'Roulette russe' },
@@ -70,6 +73,17 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   bank: 'Banque',
   agency: 'Agence',
 };
+
+const profileEconomyChartConfig = {
+  aura: {
+    label: 'Aura',
+    color: '#eab308',
+  },
+  money: {
+    label: 'Argent',
+    color: '#22c55e',
+  },
+} satisfies ChartConfig;
 
 interface ProfileUser {
   id: string;
@@ -145,6 +159,8 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [auraCoinPrice, setAuraCoinPrice] = useState<number | null>(null);
   const [bombPartyStats, setBombPartyStats] = useState<BombPartyStats | null>(null);
+  const [economyHistory, setEconomyHistory] = useState<UserEconomyHistoryPoint[]>([]);
+  const [economyHistoryLoading, setEconomyHistoryLoading] = useState(false);
 
   const [editingBio, setEditingBio] = useState(false);
   const [bioText, setBioText] = useState('');
@@ -181,6 +197,7 @@ export default function Profile() {
     try {
       setLoading(true);
       setBombPartyStats(null);
+      setEconomyHistoryLoading(true);
       const [userRes, rankingsRes] = await Promise.all([
         usersApi.getById(targetUserId!),
         leaderboardsApi.getUserRankings(targetUserId!),
@@ -189,6 +206,16 @@ export default function Profile() {
       setRankings(rankingsRes.data.rankings);
       setBioText(userRes.data.user.bio || '');
       setShowAllGameStats(false);
+
+      try {
+        const historyRes = await usersApi.getEconomyHistory(targetUserId!, 30);
+        setEconomyHistory(historyRes.data.history);
+      } catch (error) {
+        console.error('Failed to fetch economy history:', error);
+        setEconomyHistory([]);
+      } finally {
+        setEconomyHistoryLoading(false);
+      }
 
       try {
         const [badgesRes, allBadgesRes] = await Promise.all([
@@ -221,6 +248,8 @@ export default function Profile() {
       }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
+      setEconomyHistory([]);
+      setEconomyHistoryLoading(false);
     } finally {
       setLoading(false);
     }
@@ -740,6 +769,58 @@ export default function Profile() {
                   />
                 ))}
               </div>
+            </SectionBlock>
+
+            <SectionBlock title="Evolution aura / argent (30 jours)">
+              {economyHistoryLoading ? (
+                <div className="h-[260px] animate-pulse rounded-3xl border border-border/60 bg-muted/40" />
+              ) : economyHistory.length > 0 ? (
+                <div className="rounded-3xl border border-border/60 bg-background/35 p-3 sm:p-4">
+                  <ChartContainer config={profileEconomyChartConfig} className="!aspect-auto h-[240px] w-full sm:h-[280px]">
+                    <LineChart data={economyHistory} margin={{ top: 12, right: 12, bottom: 6, left: 0 }}>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        minTickGap={24}
+                        tickFormatter={(value: string) => new Date(`${value}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+                      />
+                      <YAxis yAxisId="aura" orientation="left" tickLine={false} axisLine={false} width={64} />
+                      <YAxis yAxisId="money" orientation="right" tickLine={false} axisLine={false} width={72} />
+                      <ChartTooltip
+                        cursor={false}
+                        content={
+                          <ChartTooltipContent
+                            indicator="line"
+                            labelFormatter={(value) => new Date(`${String(value)}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' })}
+                          />
+                        }
+                      />
+                      <Line
+                        yAxisId="aura"
+                        dataKey="aura"
+                        type="monotone"
+                        stroke="var(--color-aura)"
+                        strokeWidth={2.2}
+                        dot={false}
+                        activeDot={{ r: 4, fill: 'var(--color-aura)' }}
+                      />
+                      <Line
+                        yAxisId="money"
+                        dataKey="money"
+                        type="monotone"
+                        stroke="var(--color-money)"
+                        strokeWidth={2.2}
+                        dot={false}
+                        activeDot={{ r: 4, fill: 'var(--color-money)' }}
+                      />
+                    </LineChart>
+                  </ChartContainer>
+                </div>
+              ) : (
+                <p className={TYPOGRAPHY.MUTED}>Historique indisponible pour le moment.</p>
+              )}
             </SectionBlock>
 
             <SectionBlock title="Statistiques par jeu">

@@ -299,7 +299,7 @@ export function FeedCard({
                   50 %
                 </Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRepayLoan(item.loan.id, 100)}>
-                  Tout ce que j'ai
+                  Rembourser 100% (si possible)
                 </Button>
               </div>
             ) : null}

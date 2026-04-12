@@ -13,6 +13,7 @@ import { SocialTab } from './tabs/SocialTab';
 import { TravailTab } from './tabs/TravailTab';
 import { CarteTab } from './tabs/CarteTab';
 import { PublicitesTab } from './tabs/PublicitesTab';
+import { ShareMarketTab } from './tabs/ShareMarketTab';
 
 export default function You() {
   const [params] = useSearchParams();
@@ -41,7 +42,7 @@ export default function You() {
   const tab = params.get('tab');
   const currentTab = tab === 'banques'
     ? 'finance'
-    : tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' || tab === 'overview'
+    : tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' || tab === 'overview' || tab === 'marche-actions'
       ? tab
       : 'carte';
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
@@ -82,6 +83,7 @@ export default function You() {
       {currentTab === 'social' ? <SocialTab data={data} onReload={() => loadState()} /> : null}
       {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} adblockActive={hasAdblock} onReload={loadState} /> : null}
       {currentTab === 'finance' ? <FinanceTab data={data} userId={user.id} onReload={loadState} /> : null}
+      {currentTab === 'marche-actions' ? <ShareMarketTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'carte' ? <CarteTab data={data} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
       {currentTab === 'publicites' ? <PublicitesTab ownedBusinesses={data.ownedBusinesses} onReload={loadState} /> : null}
     </div>

@@ -9,6 +9,8 @@ import {
   Briefcase,
   Building2,
   Camera,
+  Check,
+  CheckCheck,
   ChevronDown,
   FileText,
   Gavel,
@@ -192,6 +194,30 @@ const isSameCalendarDay = (left: string, right: string) => {
 
 const getInitials = (name?: string | null) => ((name ?? '?').trim().slice(0, 2) || '?').toUpperCase();
 const getPreview = (c: MessagingConversationSummary) => c.lastMessage?.body || 'Commence la discussion.';
+const getLastOutgoingMessageReadState = (
+  conversation: MessagingConversationSummary,
+  currentUserId: string | null | undefined,
+): 'READ' | 'UNREAD' | null => {
+  const lastMessage = conversation.lastMessage;
+  if (!currentUserId || !lastMessage?.createdAt || lastMessage.senderId !== currentUserId) {
+    return null;
+  }
+
+  const messageCreatedAt = Date.parse(lastMessage.createdAt);
+  if (Number.isNaN(messageCreatedAt)) return 'UNREAD';
+
+  const recipients = conversation.participants.filter(
+    (entry) => entry.user.id !== currentUserId && entry.user.id !== 'support',
+  );
+  if (recipients.length === 0) return 'UNREAD';
+
+  const everyoneRead = recipients.every((entry) => {
+    const readAt = entry.lastReadAt ? Date.parse(entry.lastReadAt) : Number.NaN;
+    return !Number.isNaN(readAt) && readAt >= messageCreatedAt;
+  });
+
+  return everyoneRead ? 'READ' : 'UNREAD';
+};
 const getConversationActivityAt = (conversation: MessagingConversationSummary) => {
   const timestamp = conversation.lastMessage?.createdAt;
   const parsed = timestamp ? Date.parse(timestamp) : Number.NaN;
@@ -2034,12 +2060,12 @@ export default function MessagesPage() {
                 {pinnedDms.length > 0 && (
                   <>
                     <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">DM épinglés</p>
-                    {pinnedDms.map((c) => <ConvRow key={c.id} conversation={c} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
+                    {pinnedDms.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
                     {(dms.length > 0 || others.length > 0) && <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Conversations</p>}
                   </>
                 )}
-                {dms.map((c) => <ConvRow key={c.id} conversation={c} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
-                {others.map((c) => <ConvRow key={c.id} conversation={c} isActive={c.id === selectedIdSafe} isPinnedDm={false} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
+                {dms.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
+                {others.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={false} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
                 {pinnedDms.length === 0 && dms.length === 0 && others.length === 0 && (
                   <p className="px-3 py-6 text-center text-xs text-muted-foreground">Aucune conversation.</p>
                 )}
@@ -2641,6 +2667,7 @@ export default function MessagesPage() {
 // ── Sidebar conversation row ──────────────────────────────────────────────────
 function ConvRow({
   conversation,
+  currentUserId,
   isActive,
   isPinnedDm,
   onSelect,
@@ -2648,6 +2675,7 @@ function ConvRow({
   onToggleDmPin,
 }: {
   conversation: MessagingConversationSummary;
+  currentUserId?: string | null;
   isActive: boolean;
   isPinnedDm: boolean;
   onSelect: () => void;
@@ -2657,6 +2685,7 @@ function ConvRow({
   const dmParticipant = conversation.type === 'DM'
     ? conversation.participants.find((entry) => entry.user.id !== 'support')?.user ?? null
     : null;
+  const lastOutgoingMessageReadState = getLastOutgoingMessageReadState(conversation, currentUserId);
 
   return (
     <button
@@ -2696,6 +2725,22 @@ function ConvRow({
           <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{conversation.lastMessage?.createdAt ? formatTime(conversation.lastMessage.createdAt) : ''}</span>
         </div>
         <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+          {lastOutgoingMessageReadState && (
+            <span
+              className={cn(
+                'inline-flex shrink-0 items-center justify-center',
+                lastOutgoingMessageReadState === 'READ' ? 'text-sky-500' : 'text-muted-foreground/70',
+              )}
+              title={lastOutgoingMessageReadState === 'READ' ? 'Lu' : 'Non lu'}
+              aria-label={lastOutgoingMessageReadState === 'READ' ? 'Dernier message lu' : 'Dernier message non lu'}
+            >
+              {lastOutgoingMessageReadState === 'READ' ? (
+                <CheckCheck className="h-3.5 w-3.5" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+            </span>
+          )}
           <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-muted-foreground">{getPreview(conversation)}</p>
           {conversation.unreadCount > 0 && (
             <span

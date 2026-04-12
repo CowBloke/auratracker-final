@@ -105,6 +105,18 @@ export const BALANCING = {
       monthlyRevenue: 0,
       level: 3,
     },
+    illegal_market: {
+      key: 'illegal_market',
+      creationCost: 7000,
+      monthlyRevenue: 1200,
+      level: 3,
+      items: [
+        { key: 'puff', label: 'Puff', price: 45 },
+        { key: 'weed_pack', label: 'Pack de weed', price: 110 },
+        { key: 'resine', label: 'Resine', price: 160 },
+        { key: 'pilules', label: 'Pilules', price: 220 },
+      ],
+    },
   },
 
   loans: {
