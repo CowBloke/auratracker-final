@@ -1,6 +1,5 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { PageShell } from '@/components/layout/page-shell';
@@ -1336,18 +1335,31 @@ const clanGuideSubsections: TutorialSubsection[] = [
 
 const tutorialGuides: TutorialGuide[] = [
   {
-    id: 'guide-you',
-    icon: Building2,
-    title: 'Guide du jeu You',
-    description: "Entreprises, compétences, investissements, relations — tout le système économique.",
-    subsections: youGuideSubsections,
-  },
-  {
     id: 'guide-newcomer',
     icon: Star,
     title: 'Guide du nouvel arrivant',
     description: "Monnaies, jeux, systèmes quotidiens, social, boutique et impôts — tout pour bien démarrer.",
     subsections: newcomerGuideSubsections,
+  },
+  {
+    id: 'guide-taxes',
+    icon: Landmark,
+    title: 'Guide impôt',
+    description: 'Paliers en vigueur, méthode de calcul et impact des impôts journaliers.',
+    subsections: [
+      {
+        id: 'taxes-daily',
+        title: 'Impôts journaliers',
+        content: <TaxBracketsSection />,
+      },
+    ],
+  },
+  {
+    id: 'guide-you',
+    icon: Building2,
+    title: 'Guide du jeu You',
+    description: "Entreprises, compétences, investissements, relations — tout le système économique.",
+    subsections: youGuideSubsections,
   },
   {
     id: 'guide-clans',
@@ -1500,20 +1512,7 @@ function TutorialsTab() {
 export default function Information() {
   return (
     <PageShell>
-      <Tabs defaultValue="informations">
-        <TabsList className="mb-6">
-          <TabsTrigger value="informations">Informations</TabsTrigger>
-          <TabsTrigger value="tutoriels">Tutoriels</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="informations" className={SPACING.SECTION_SPACING}>
-          <TaxBracketsSection />
-        </TabsContent>
-
-        <TabsContent value="tutoriels">
-          <TutorialsTab />
-        </TabsContent>
-      </Tabs>
+      <TutorialsTab />
     </PageShell>
   );
 }
