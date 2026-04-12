@@ -125,6 +125,27 @@ function isBusinessInvitation(notification: Notification) {
   return actionType === 'BUSINESS_INVITATION' || Boolean(getBusinessInvitationId(notification));
 }
 
+function isBusinessInvitationActionable(notification: Notification) {
+  if (!isBusinessInvitation(notification)) return false;
+
+  const invitationStatus = typeof notification.data?.invitationStatus === 'string'
+    ? notification.data.invitationStatus
+    : null;
+  const invitationNeedsViewerAcceptance = typeof notification.data?.invitationNeedsViewerAcceptance === 'boolean'
+    ? notification.data.invitationNeedsViewerAcceptance
+    : null;
+
+  if (invitationStatus !== null && invitationStatus !== 'PENDING') {
+    return false;
+  }
+
+  if (invitationNeedsViewerAcceptance === false) {
+    return false;
+  }
+
+  return true;
+}
+
 async function withNotificationFallback<T>(fn: () => Promise<T>, errorMessage: string) {
   try {
     return await fn();
@@ -154,7 +175,7 @@ function NotificationCard({
   const ResolvedIcon = (notification.icon && ICON_NAME_MAP[notification.icon]) || TYPE_ICON[notification.type] || Bell;
   const color = TYPE_COLOR[notification.type] ?? { bg: 'bg-muted/30', text: 'text-muted-foreground' };
   const isUnread = !notification.isRead;
-  const isInvite = isBusinessInvitation(notification);
+  const isInviteActionable = isBusinessInvitationActionable(notification);
 
   return (
     <article
@@ -182,7 +203,7 @@ function NotificationCard({
         </div>
         <p className="mt-0.5 line-clamp-1 text-[11px] leading-4 text-muted-foreground">{notification.body}</p>
 
-        {isInvite && (
+        {isInviteActionable && (
           <div className="mt-2 flex gap-1.5" onClick={(e) => e.stopPropagation()}>
             <Button
               type="button"

@@ -39,6 +39,57 @@ const readFileAsBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
+const MAX_AURA_SCROLL_IMAGE_BYTES = 12 * 1024 * 1024;
+const MAX_AURA_SCROLL_VIDEO_BYTES = 15 * 1024 * 1024;
+
+const normalizeMimeType = (mimeType?: string | null) =>
+  (typeof mimeType === 'string' ? mimeType.trim().toLowerCase().split(';')[0]?.trim() : '') || '';
+
+const isRetriableUploadError = (error: unknown) => {
+  if (!error || typeof error !== 'object') return false;
+
+  const maybeAxiosError = error as {
+    code?: string;
+    message?: string;
+    response?: { status?: number };
+  };
+
+  if (maybeAxiosError.code === 'ERR_NETWORK' || maybeAxiosError.code === 'ECONNABORTED') {
+    return true;
+  }
+
+  const status = maybeAxiosError.response?.status;
+  if (typeof status === 'number' && status >= 500) {
+    return true;
+  }
+
+  return typeof maybeAxiosError.message === 'string' && maybeAxiosError.message.toLowerCase().includes('network');
+};
+
+const getUploadErrorMessage = (error: unknown) => {
+  if (error && typeof error === 'object') {
+    const maybeAxiosError = error as {
+      response?: { data?: { error?: string } };
+      message?: string;
+    };
+    const serverMessage = maybeAxiosError.response?.data?.error;
+    if (serverMessage) return serverMessage;
+    if (maybeAxiosError.message) return maybeAxiosError.message;
+  }
+  return 'Upload echoue';
+};
+
+const uploadWithRetry = async <T,>(uploadFn: () => Promise<T>, retries = 1): Promise<T> => {
+  try {
+    return await uploadFn();
+  } catch (error) {
+    if (retries > 0 && isRetriableUploadError(error)) {
+      return uploadWithRetry(uploadFn, retries - 1);
+    }
+    throw error;
+  }
+};
+
 const timeAgo = (dateStr: string) => {
   const diff = (Date.now() - new Date(dateStr).getTime()) / 1000;
   if (diff < 60) return 'maintenant';
@@ -90,25 +141,36 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+
+    if (mediaType === 'VIDEO' && files.length > 1) {
+      toast({ title: 'Erreur', description: 'Une seule video est autorisee par post.', variant: 'destructive' });
+      return;
+    }
+
     setUploading(true);
     try {
       const urls: string[] = [];
       for (const file of Array.from(files)) {
         if (mediaType === 'VIDEO') {
-          if (!file.type.startsWith('video/')) throw new Error('Fichier vidéo requis.');
+          const normalizedType = normalizeMimeType(file.type);
+          if (!normalizedType.startsWith('video/')) throw new Error('Fichier video requis.');
+          if (file.size > MAX_AURA_SCROLL_VIDEO_BYTES) throw new Error('Video trop lourde (max 15 Mo).');
           const base64Data = await readFileAsBase64(file);
-          const { data } = await auraScrollApi.uploadVideo(base64Data, file.type);
+          const { data } = await uploadWithRetry(() => auraScrollApi.uploadVideo(base64Data, normalizedType), 1);
           urls.push(data.url);
         } else {
+          const normalizedType = normalizeMimeType(file.type);
+          if (!normalizedType.startsWith('image/')) throw new Error('Seules les images sont autorisees.');
+          if (file.size > MAX_AURA_SCROLL_IMAGE_BYTES) throw new Error('Image trop lourde (max 12 Mo).');
           const payload = await prepareImageUploadPayload(file);
-          const { data } = await auraScrollApi.uploadImage(payload.base64Data, payload.mimeType);
+          const { data } = await uploadWithRetry(() => auraScrollApi.uploadImage(payload.base64Data, payload.mimeType), 1);
           urls.push(data.url);
         }
       }
       setMediaUrls((prev) => [...prev, ...urls].slice(0, 10));
       setStep('details');
     } catch (err: unknown) {
-      toast({ title: 'Erreur', description: err instanceof Error ? err.message : 'Upload échoué', variant: 'destructive' });
+      toast({ title: 'Erreur', description: getUploadErrorMessage(err), variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -187,7 +249,7 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
                       {mediaType === 'VIDEO' ? 'Clique pour upload une vidéo (MP4, WebM, MOV)' : 'Clique pour upload des photos'}
                     </p>
                     <p className="text-zinc-600 text-xs">
-                      {mediaType === 'VIDEO' ? 'Max 10 Mo' : 'Max 10 Mo par image · jusqu\'à 10'}
+                      {mediaType === 'VIDEO' ? 'Max 15 Mo' : 'Max 12 Mo par image · jusqu\'a 10'}
                     </p>
                   </>
                 )}
@@ -198,7 +260,10 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
                 className="hidden"
                 accept={mediaType === 'VIDEO' ? 'video/mp4,video/webm,video/quicktime' : 'image/*'}
                 multiple={mediaType === 'PHOTOS'}
-                onChange={(e) => handleFiles(e.target.files)}
+                onChange={(e) => {
+                  void handleFiles(e.target.files);
+                  e.currentTarget.value = '';
+                }}
               />
               <button onClick={() => setStep('type')} className="text-zinc-500 text-xs hover:text-zinc-300 transition-colors w-full text-center">
                 ← Changer le type
@@ -239,7 +304,10 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
                   className="hidden"
                   accept="image/*"
                   multiple
-                  onChange={(e) => handleFiles(e.target.files)}
+                  onChange={(e) => {
+                    void handleFiles(e.target.files);
+                    e.currentTarget.value = '';
+                  }}
                 />
               </div>
 

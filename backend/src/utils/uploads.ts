@@ -80,7 +80,7 @@ type WrittenUploadFileResult = {
 
 export const normalizeUploadImageMimeType = (mimeType?: string | null) => {
   if (typeof mimeType !== 'string') return null;
-  const normalized = mimeType.trim().toLowerCase();
+  const normalized = mimeType.trim().toLowerCase().split(';')[0]?.trim() ?? '';
   if (!normalized) return null;
   if ((SUPPORTED_UPLOAD_IMAGE_MIME_TYPES as readonly string[]).includes(normalized)) {
     return normalized as (typeof SUPPORTED_UPLOAD_IMAGE_MIME_TYPES)[number];
@@ -108,7 +108,7 @@ export const inferUploadImageExtension = (mimeType?: string | null) => {
 
 export const normalizeUploadFileMimeType = (mimeType?: string | null) => {
   if (typeof mimeType !== 'string') return null;
-  const normalized = mimeType.trim().toLowerCase();
+  const normalized = mimeType.trim().toLowerCase().split(';')[0]?.trim() ?? '';
   if (!normalized) return null;
   if ((SUPPORTED_UPLOAD_FILE_MIME_TYPES as readonly string[]).includes(normalized)) {
     return normalized as (typeof SUPPORTED_UPLOAD_FILE_MIME_TYPES)[number];
@@ -342,7 +342,7 @@ const UPLOAD_VIDEO_MIME_TYPE_ALIASES: Record<string, (typeof SUPPORTED_UPLOAD_VI
 
 export const normalizeUploadVideoMimeType = (mimeType?: string | null) => {
   if (typeof mimeType !== 'string') return null;
-  const normalized = mimeType.trim().toLowerCase();
+  const normalized = mimeType.trim().toLowerCase().split(';')[0]?.trim() ?? '';
   if (!normalized) return null;
   if ((SUPPORTED_UPLOAD_VIDEO_MIME_TYPES as readonly string[]).includes(normalized)) {
     return normalized as (typeof SUPPORTED_UPLOAD_VIDEO_MIME_TYPES)[number];

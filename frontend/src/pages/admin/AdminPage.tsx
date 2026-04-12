@@ -5002,7 +5002,7 @@ export default function Admin() {
                 {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['settings', 'communication'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                    ['settings', 'game-limits', 'communication'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                   )}>
                     <Settings className="w-4 h-4 shrink-0" />
                     Paramètres
@@ -5011,6 +5011,7 @@ export default function Admin() {
                   <div className={cn(dropdownOuter, 'left-auto right-0')}>
                     <div className={dropdownInner}>
                     {dropdownItemBtn('settings', 'Paramètres', <Settings className="w-3.5 h-3.5" />, () => setActiveTab('settings'))}
+                    {dropdownItemBtn('game-limits', 'Limites jeux', <Gamepad2 className="w-3.5 h-3.5" />, () => setActiveTab('game-limits'))}
                     {dropdownItemBtn('communication', 'Communication', <MessageCircle className="w-3.5 h-3.5" />, () => { setActiveTab('communication'); fetchSupportThreads(); },
                       supportUnread > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{supportUnread}</span> : undefined
                     )}

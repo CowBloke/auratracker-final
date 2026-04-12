@@ -1,5 +1,5 @@
 import { io, prisma } from '../../server.js';
-import { createNotification } from '../../utils/notifications.js';
+import { createNotification, emitNotificationUpdated } from '../../utils/notifications.js';
 import {
   BUSINESS_TYPES,
   BUSINESS_TYPE_MAP,
@@ -2438,6 +2438,16 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
       },
     });
 
+    await syncBusinessInvitationNotificationState({
+      invitationId: invitation.id,
+      employerId: invitation.employerId,
+      employeeId: invitation.employeeId,
+      status: rejectedInvitation.status,
+      employerAcceptedAt: invitation.employerAcceptedAt,
+      employeeAcceptedAt: invitation.employeeAcceptedAt,
+      respondedAt: rejectedInvitation.respondedAt,
+    });
+
     const targetUserId = actingRole === 'EMPLOYER' ? invitation.employeeId : invitation.employerId;
     const actorUser = actingRole === 'EMPLOYER' ? invitation.business.owner : invitation.inviterId === invitation.employeeId ? invitation.inviter : invitation.invitee;
 
@@ -2515,6 +2525,16 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
     return updatedInvitation;
   });
 
+  await syncBusinessInvitationNotificationState({
+    invitationId: invitation.id,
+    employerId: invitation.employerId,
+    employeeId: invitation.employeeId,
+    status: acceptedInvitation.status,
+    employerAcceptedAt: acceptedInvitation.employerAcceptedAt,
+    employeeAcceptedAt: acceptedInvitation.employeeAcceptedAt,
+    respondedAt: acceptedInvitation.respondedAt,
+  });
+
   await Promise.allSettled([
     createNotification({
       userId: invitation.employerId,
@@ -2553,6 +2573,62 @@ export async function respondToBusinessInvitation(userId: string, invitationId: 
     status: acceptedInvitation.status,
     respondedAt: acceptedInvitation.respondedAt?.toISOString() ?? null,
   };
+}
+
+async function syncBusinessInvitationNotificationState(input: {
+  invitationId: string;
+  employerId: string;
+  employeeId: string;
+  status: string;
+  employerAcceptedAt: Date | null;
+  employeeAcceptedAt: Date | null;
+  respondedAt: Date | null;
+}) {
+  const {
+    invitationId,
+    employerId,
+    employeeId,
+    status,
+    employerAcceptedAt,
+    employeeAcceptedAt,
+    respondedAt,
+  } = input;
+
+  const notificationCandidates = await prisma.notification.findMany({
+    where: {
+      userId: { in: [employerId, employeeId] },
+      data: { contains: `\"invitationId\":\"${invitationId}\"` },
+    },
+  });
+
+  if (notificationCandidates.length === 0) return;
+
+  const respondedAtIso = respondedAt ? respondedAt.toISOString() : null;
+
+  for (const notification of notificationCandidates) {
+    const currentData = safeJsonParse<Record<string, unknown>>(notification.data, {});
+    const needsViewerAcceptance = status === 'PENDING'
+      && (
+        (notification.userId === employerId && !employerAcceptedAt)
+        || (notification.userId === employeeId && !employeeAcceptedAt)
+      );
+
+    const updated = await prisma.notification.update({
+      where: { id: notification.id },
+      data: {
+        data: JSON.stringify({
+          ...currentData,
+          actionType: 'BUSINESS_INVITATION',
+          invitationId,
+          invitationStatus: status,
+          invitationRespondedAt: respondedAtIso,
+          invitationNeedsViewerAcceptance: needsViewerAcceptance,
+        }),
+      },
+    });
+
+    emitNotificationUpdated(updated);
+  }
 }
 
 async function handleInvestAction(userId: string, business: any, input: { amount: number; riskLevel: InvestmentRiskLevel }) {

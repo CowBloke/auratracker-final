@@ -29,7 +29,7 @@ const extractBase64Payload = (dataUrl: string) => {
 
 const normalizeUploadImageMimeType = (mimeType?: string | null) => {
   if (typeof mimeType !== 'string') return null;
-  const normalized = mimeType.trim().toLowerCase();
+  const normalized = mimeType.trim().toLowerCase().split(';')[0]?.trim() ?? '';
   if (!normalized) return null;
   if ((SUPPORTED_UPLOAD_IMAGE_MIME_TYPES as readonly string[]).includes(normalized)) {
     return normalized as (typeof SUPPORTED_UPLOAD_IMAGE_MIME_TYPES)[number];

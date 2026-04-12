@@ -1178,11 +1178,9 @@ export const advanceClanWarsState = async () => {
       status: {
         in: ['PREPARING', 'ACTIVE'],
       },
-      OR: [
-        { endsAt: { lte: now } },
-        { attackerScore: { gte: CLAN_WAR_TARGET_SCORE } },
-        { defenderScore: { gte: CLAN_WAR_TARGET_SCORE } },
-      ],
+      endsAt: {
+        lte: now,
+      },
     },
     select: {
       id: true,
