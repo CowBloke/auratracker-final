@@ -8,14 +8,7 @@ import { UserAccountMenu } from '@/components/user-account-menu';
 import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { TemporaryEffectBadges } from '@/components/temporary-effects/TemporaryEffectBadges';
 
 type HeaderSkill = {
   key: string;
@@ -91,25 +84,10 @@ function SkillBadge({ icon: Icon, label, level, xp, maxXp, color, desc, unlocks 
 }
 
 export function YouHeaderBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, hasTemporaryAdblock } = useAuth();
   const [skills, setSkills] = useState<HeaderSkill[]>([]);
   const [temporaryEffects, setTemporaryEffects] = useState<YouTemporaryEffect[]>([]);
   const [nowTs, setNowTs] = useState(Date.now());
-
-  const formatRemaining = (expiresAt: string) => {
-    const remainingMs = new Date(expiresAt).getTime() - nowTs;
-    if (remainingMs <= 0) return 'Expiré';
-
-    const totalSeconds = Math.floor(remainingMs / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
-    }
-    return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
-  };
 
   const visibleTemporaryEffects = temporaryEffects.filter((effect) => new Date(effect.expiresAt).getTime() > nowTs);
 
@@ -179,37 +157,13 @@ export function YouHeaderBar({ rightSlot }: { rightSlot?: React.ReactNode }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {user?.hasAdblock && (
+          {Boolean(user?.hasAdblock || hasTemporaryAdblock) && (
             <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1">
               <ShieldOff className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs font-medium text-emerald-400">Adblock actif</span>
             </div>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 text-xs">
-                Temporaires
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums">{visibleTemporaryEffects.length}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72">
-              <DropdownMenuLabel>Objets temporaires actifs</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {visibleTemporaryEffects.length === 0 ? (
-                <DropdownMenuItem disabled>Aucun objet temporaire en cours</DropdownMenuItem>
-              ) : (
-                visibleTemporaryEffects.map((effect) => (
-                  <DropdownMenuItem key={`${effect.key}-${effect.expiresAt}`} className="flex items-start justify-between gap-3 py-2" onSelect={(event) => event.preventDefault()}>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold">{effect.label}</p>
-                      <p className="line-clamp-2 text-[11px] text-muted-foreground">{effect.description}</p>
-                    </div>
-                    <span className="shrink-0 text-[11px] font-semibold tabular-nums text-amber-400">{formatRemaining(effect.expiresAt)}</span>
-                  </DropdownMenuItem>
-                ))
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <TemporaryEffectBadges effects={visibleTemporaryEffects} nowTs={nowTs} className="hidden sm:flex" />
           {rightSlot}
           <div className="hidden items-center gap-1.5 rounded-lg bg-muted/30 px-2.5 py-1 sm:flex">
             <CurrencyIcon type="aura" className="h-3 w-3" />

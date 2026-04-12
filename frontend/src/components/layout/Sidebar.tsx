@@ -107,7 +107,6 @@ const youNavItems = [
   { tab: 'travail',  label: t('sidebar_you_work'),     icon: Briefcase      },
   { tab: 'social',   label: t('sidebar_you_social'),   icon: Users          },
   { tab: 'explore',  label: t('sidebar_you_explore'),  icon: BarChart3      },
-  { tab: 'banques',  label: t('sidebar_you_banks'),    icon: Landmark       },
   { tab: 'finance',  label: t('sidebar_you_finance'),  icon: Landmark       },
 ];
 

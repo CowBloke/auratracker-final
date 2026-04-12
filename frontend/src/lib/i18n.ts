@@ -110,7 +110,6 @@ const fr = {
   sidebar_you_work: 'Travail',
   sidebar_you_social: 'Social',
   sidebar_you_explore: 'Explore',
-  sidebar_you_banks: 'Banques',
   sidebar_you_map: 'Carte',
   sidebar_you_finance: 'Finance',
   sidebar_logo_back_to_dashboard: 'Retour au tableau de bord',

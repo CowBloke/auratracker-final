@@ -31,7 +31,7 @@ interface SearchUser {
 }
 
 export default function Header() {
-  const { user, logout } = useAuth();
+  const { user, hasTemporaryAdblock, logout } = useAuth();
   const { connected } = useSocketBase();
   const navigate = useNavigate();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -163,7 +163,7 @@ export default function Header() {
           </Sheet>
 
           {/* Adblock indicator */}
-          {user?.hasAdblock ? (
+          {Boolean(user?.hasAdblock || hasTemporaryAdblock) ? (
             <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1">
               <ShieldOff className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs font-medium text-emerald-400">Adblock actif</span>

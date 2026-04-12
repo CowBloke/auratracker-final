@@ -13,11 +13,10 @@ import { SocialTab } from './tabs/SocialTab';
 import { TravailTab } from './tabs/TravailTab';
 import { CarteTab } from './tabs/CarteTab';
 import { PublicitesTab } from './tabs/PublicitesTab';
-import { BanquesTab } from './tabs/BanquesTab';
 
 export default function You() {
   const [params] = useSearchParams();
-  const { user, refreshUser } = useAuth();
+  const { user, hasTemporaryAdblock, refreshUser } = useAuth();
   const { maintenanceStatus } = useFeatures();
   const [data, setData] = useState<YouState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +39,11 @@ export default function You() {
   }, [loadState]);
 
   const tab = params.get('tab');
-  const currentTab = tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' || tab === 'banques' || tab === 'overview' ? tab : 'carte';
+  const currentTab = tab === 'banques'
+    ? 'finance'
+    : tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' || tab === 'overview'
+      ? tab
+      : 'carte';
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
 
   if (maintenanceStatus.youLogoAdminOnly && !canBypassMaintenance) {
@@ -60,7 +63,7 @@ export default function You() {
     );
   }
   if (!data || !user) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Impossible de charger les donnees YOU.</CardContent></Card></div>;
-  const hasYouAdblock = Boolean(user.hasAdblock) || data.temporaryEffects.some((effect) => effect.key === 'YOU_ADBLOCK');
+  const hasYouAdblock = Boolean(user.hasAdblock || hasTemporaryAdblock || data.temporaryEffects.some((effect) => effect.key === 'YOU_ADBLOCK'));
 
   return (
     <div className={currentTab === 'carte' ? 'flex min-h-0 flex-1 flex-col' : 'animate-in space-y-6 fade-in pb-8 duration-300'}>
@@ -78,7 +81,6 @@ export default function You() {
       {currentTab === 'travail' ? <TravailTab data={data} players={data.players} currentUserId={user.id} adblockActive={hasYouAdblock} onReload={loadState} /> : null}
       {currentTab === 'social' ? <SocialTab data={data} onReload={() => loadState()} /> : null}
       {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} adblockActive={hasYouAdblock} onReload={loadState} /> : null}
-      {currentTab === 'banques' ? <BanquesTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'finance' ? <FinanceTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'carte' ? <CarteTab data={data} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
       {currentTab === 'publicites' ? <PublicitesTab ownedBusinesses={data.ownedBusinesses} onReload={loadState} /> : null}

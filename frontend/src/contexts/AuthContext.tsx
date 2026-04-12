@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { authApi } from '../services/api';
+import { authApi, youApi } from '../services/api';
 import { clearBanInfo } from '../services/ban';
-import type { ClanActiveEffect } from '../services/api';
+import type { ClanActiveEffect, YouTemporaryEffect } from '../services/api';
 import { emitMoneyIncome } from '../lib/money-income-effects';
 
 interface User {
@@ -31,6 +31,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  hasTemporaryAdblock: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, firstName: string, schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE', classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G', email: string, password: string, motivationMessage: string, referralCode?: string) => Promise<void>;
   logout: () => void;
@@ -43,6 +44,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [temporaryEffects, setTemporaryEffects] = useState<YouTemporaryEffect[]>([]);
+  const [nowTs, setNowTs] = useState(Date.now());
 
   const applyUser = useCallback((nextUser: User | null, options?: { animateMoneyGain?: boolean }) => {
     setUser((prevUser) => {
@@ -59,6 +62,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const loadTemporaryEffects = useCallback(async () => {
+    if (!user?.id) {
+      setTemporaryEffects([]);
+      return;
+    }
+
+    try {
+      const response = await youApi.getTemporaryEffects();
+      setTemporaryEffects(response.data.effects ?? []);
+    } catch {
+      setTemporaryEffects([]);
+    }
+  }, [user?.id]);
+
   const refreshUser = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -72,6 +89,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       applyUser(null);
     }
   }, [applyUser]);
+
+  useEffect(() => {
+    if (!user) {
+      setTemporaryEffects([]);
+      return;
+    }
+
+    void loadTemporaryEffects();
+    const refreshInterval = window.setInterval(() => {
+      void loadTemporaryEffects();
+    }, 30000);
+    const countdownInterval = window.setInterval(() => {
+      setNowTs(Date.now());
+    }, 1000);
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.clearInterval(countdownInterval);
+    };
+  }, [loadTemporaryEffects, user?.id]);
+
+  const hasTemporaryAdblock = temporaryEffects.some(
+    (effect) => effect.key === 'YOU_ADBLOCK' && new Date(effect.expiresAt).getTime() > nowTs
+  );
 
   useEffect(() => {
     const initAuth = async () => {
@@ -117,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateBalance, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, hasTemporaryAdblock, login, register, logout, updateBalance, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

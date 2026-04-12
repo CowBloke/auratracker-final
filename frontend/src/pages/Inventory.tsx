@@ -95,7 +95,7 @@ const INVENTORY_SORT_OPTIONS: Array<{ value: InventorySortMode; label: string }>
 ];
 
 export default function Inventory() {
-  const { user, refreshUser } = useAuth();
+  const { user, hasTemporaryAdblock, refreshUser } = useAuth();
   const [items, setItems] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [using, setUsing] = useState<string | null>(null);
@@ -683,7 +683,7 @@ export default function Inventory() {
                       <CardContent className="p-0">
                         <div className={viewMode === 'list' ? 'divide-y divide-border/30' : 'p-4'}>
                           <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : ''}>
-                            {viewMode === 'grid' && cardAds.length > 0 && !user?.hasAdblock
+                            {viewMode === 'grid' && cardAds.length > 0 && !user?.hasAdblock && !hasTemporaryAdblock
                               ? section.items.flatMap((item, i) => {
                                   const el = renderInventoryItem(item);
                                   if ((i + 1) % 6 === 0) {
@@ -699,7 +699,7 @@ export default function Inventory() {
                     </Card>
                   </div>
                 );
-                if (sectionIdx === 0 && bannerAd && !bannerDismissed && !user?.hasAdblock) {
+                if (sectionIdx === 0 && bannerAd && !bannerDismissed && !user?.hasAdblock && !hasTemporaryAdblock) {
                   return [sectionEl, <AdBanner key="inv-banner" ad={bannerAd} onDismiss={() => setBannerDismissed(true)} />];
                 }
                 return [sectionEl];

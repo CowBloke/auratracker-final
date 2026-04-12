@@ -35,6 +35,7 @@ type BusinessFeatureProperties = {
   ownerUsername: string;
   typeKey: string;
   typeLabel: string;
+  description: string | null;
   emoji: string;
   pinColor: string;
   selected: boolean;
@@ -98,6 +99,7 @@ function buildSourceData(
         ownerUsername: pin.business.owner.username,
         typeKey: pin.business.typeKey,
         typeLabel: pin.business.type?.label ?? pin.business.typeKey,
+        description: pin.business.description,
         emoji: TYPE_EMOJI[pin.business.typeKey] ?? '📍',
         pinColor: pin.pinColor,
         selected: selectedId === pin.business.id,
@@ -314,6 +316,7 @@ export function CarteTab({
 }) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const hoverPopupRef = useRef<maplibregl.Popup | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
@@ -364,6 +367,11 @@ export function CarteTab({
 
   const selectedBusiness = allBusinesses.find((b) => b.id === selectedBusinessId) ?? null;
   const placingBusiness = allBusinesses.find((b) => b.id === placingBusinessId) ?? null;
+
+  function closeHoverPopup() {
+    hoverPopupRef.current?.remove();
+    hoverPopupRef.current = null;
+  }
 
   useEffect(() => {
     if (selectedBusinessId && !visibleBusinesses.some((b) => b.id === selectedBusinessId)) {
@@ -550,6 +558,50 @@ export function CarteTab({
       if (pin) map.flyTo({ center: [pin.longitude, pin.latitude], zoom: Math.max(map.getZoom(), 2.4), speed: 0.9 });
     };
 
+    const buildHoverPopupContent = (props: BusinessFeatureProperties) => {
+      const container = document.createElement('div');
+      container.className = 'max-w-[240px] rounded-lg border border-border/40 bg-background/95 px-3 py-2 text-foreground shadow-xl backdrop-blur-sm';
+
+      const title = document.createElement('div');
+      title.className = 'truncate text-sm font-semibold';
+      title.textContent = props.name;
+      container.appendChild(title);
+
+      const meta = document.createElement('div');
+      meta.className = 'mt-1 text-[11px] text-muted-foreground';
+      meta.textContent = `@${props.ownerUsername} · ${props.typeLabel}`;
+      container.appendChild(meta);
+
+      const description = document.createElement('div');
+      description.className = 'mt-1.5 max-h-14 overflow-hidden text-[11px] leading-4 text-muted-foreground';
+      description.textContent = props.description?.trim() || 'Aucune description';
+      container.appendChild(description);
+
+      return container;
+    };
+
+    const handlePinMouseEnter = (event: maplibregl.MapLayerMouseEvent) => {
+      const feature = event.features?.[0];
+      const properties = feature?.properties;
+      const coordinates = (feature?.geometry as GeoJSON.Point | undefined)?.coordinates;
+      if (!properties || !coordinates) return;
+
+      closeHoverPopup();
+      const popupProperties = properties as unknown as BusinessFeatureProperties;
+      hoverPopupRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14 })
+        .setLngLat(coordinates as [number, number])
+        .setDOMContent(buildHoverPopupContent(popupProperties))
+        .addTo(map);
+    };
+
+    const handlePinMouseMove = (event: maplibregl.MapLayerMouseEvent) => {
+      hoverPopupRef.current?.setLngLat(event.lngLat);
+    };
+
+    const handlePinMouseLeave = () => {
+      closeHoverPopup();
+    };
+
     const handleClusterClick = async (event: maplibregl.MapLayerMouseEvent) => {
       if (placingBusinessId) return;
       const features = map.queryRenderedFeatures(event.point, { layers: [CLUSTER_LAYER_ID] });
@@ -565,6 +617,9 @@ export function CarteTab({
     const handleMouseLeave = () => { map.getCanvas().style.cursor = placingBusinessId ? 'crosshair' : ''; };
 
     map.on('click', LAYER_ID, handlePinClick);
+    map.on('mouseenter', LAYER_ID, handlePinMouseEnter);
+    map.on('mousemove', LAYER_ID, handlePinMouseMove);
+    map.on('mouseleave', LAYER_ID, handlePinMouseLeave);
     map.on('click', CLUSTER_LAYER_ID, handleClusterClick);
     map.on('mouseenter', LAYER_ID, handleMouseEnter);
     map.on('mouseleave', LAYER_ID, handleMouseLeave);
@@ -572,11 +627,15 @@ export function CarteTab({
     map.on('mouseleave', CLUSTER_LAYER_ID, handleMouseLeave);
     return () => {
       map.off('click', LAYER_ID, handlePinClick);
+      map.off('mouseenter', LAYER_ID, handlePinMouseEnter);
+      map.off('mousemove', LAYER_ID, handlePinMouseMove);
+      map.off('mouseleave', LAYER_ID, handlePinMouseLeave);
       map.off('click', CLUSTER_LAYER_ID, handleClusterClick);
       map.off('mouseenter', LAYER_ID, handleMouseEnter);
       map.off('mouseleave', LAYER_ID, handleMouseLeave);
       map.off('mouseenter', CLUSTER_LAYER_ID, handleMouseEnter);
       map.off('mouseleave', CLUSTER_LAYER_ID, handleMouseLeave);
+      closeHoverPopup();
     };
   }, [mapReady, pins, placingBusinessId]);
 

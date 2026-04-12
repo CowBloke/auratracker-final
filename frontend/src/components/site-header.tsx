@@ -26,6 +26,7 @@ import { usersApi, supportApi, changelogApi, youApi, type YouTemporaryEffect } f
 import { cn } from '@/lib/utils';
 import { getPageMetaForPath } from '@/lib/page-meta';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
+import { TemporaryEffectBadges } from '@/components/temporary-effects/TemporaryEffectBadges';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -75,7 +76,7 @@ interface SearchUser {
 }
 
 export function SiteHeader() {
-  const { user, refreshUser } = useAuth();
+  const { user, hasTemporaryAdblock, refreshUser } = useAuth();
   const { connected, socket } = useSocketBase();
   const { onlineUsers, onlineCount, requestOnlineUsers, doodleSpectateSessions, requestDoodleSpectateSessions, chessSpectateSessions, requestChessSpectateSessions, sendMessage } = useChatSocket();
   const { currentParty, partyMembers, publicParties, createParty, leaveParty, deleteParty, joinParty, fetchPublicParties } = usePartySocket();
@@ -120,7 +121,7 @@ export function SiteHeader() {
     void load();
     const interval = window.setInterval(() => void load(), 30000);
     return () => { active = false; window.clearInterval(interval); };
-  }, [user?.id, user?.hasAdblock]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!socket || !user) return;
@@ -638,7 +639,7 @@ export function SiteHeader() {
       </div>
 
         <div className="flex items-center gap-2">
-          {user?.hasAdblock && (
+          {Boolean(user?.hasAdblock || hasTemporaryAdblock) && (
             <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1">
               <ShieldOff className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-xs font-medium text-emerald-400">Adblock actif</span>
@@ -1051,31 +1052,7 @@ export function SiteHeader() {
             </div>
           </div>
 
-          {temporaryEffects.filter((e) => new Date(e.expiresAt).getTime() > now).length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1.5 px-2 text-xs">
-                  Temporaires
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums">
-                    {temporaryEffects.filter((e) => new Date(e.expiresAt).getTime() > now).length}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuLabel>Objets temporaires actifs</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {temporaryEffects.filter((e) => new Date(e.expiresAt).getTime() > now).map((effect) => (
-                  <DropdownMenuItem key={`${effect.key}-${effect.expiresAt}`} className="flex items-start justify-between gap-3 py-2" onSelect={(e) => e.preventDefault()}>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold">{effect.label}</p>
-                      <p className="line-clamp-2 text-[11px] text-muted-foreground">{effect.description}</p>
-                    </div>
-                    <span className="shrink-0 text-[11px] font-semibold tabular-nums text-amber-400">{formatRemaining(effect.expiresAt)}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <TemporaryEffectBadges effects={temporaryEffects} nowTs={now} className="hidden sm:flex" />
 
           {searchSheet}
           {messagesButton}
