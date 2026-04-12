@@ -1,6 +1,5 @@
 import { Clock3, ShieldOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { YouTemporaryEffect } from '@/services/api';
 
@@ -57,33 +56,26 @@ export function TemporaryEffectBadges({
   }
 
   return (
-    <TooltipProvider delayDuration={100}>
-      <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
-        {activeEffects.map((effect) => {
-          const Icon = getEffectIcon(effect);
+    <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
+      {activeEffects.map((effect) => {
+        const Icon = getEffectIcon(effect);
+        const title = `${effect.label} | Type: ${getEffectTypeLabel(effect)} | Restant: ${formatRemaining(effect.expiresAt, nowTs)}`;
 
-          return (
-            <Tooltip key={`${effect.key}-${effect.expiresAt}`}>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    'flex h-7 w-7 shrink-0 items-center justify-center rounded-full p-0 shadow-sm',
-                    getEffectBadgeClass(effect)
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-64 space-y-1.5 text-center">
-                <p className="font-medium">{effect.label}</p>
-                <p className="text-xs text-muted-foreground">Type : {getEffectTypeLabel(effect)}</p>
-                <p className="text-xs text-muted-foreground/80">Restant : {formatRemaining(effect.expiresAt, nowTs)}</p>
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </div>
-    </TooltipProvider>
+        return (
+          <Badge
+            key={`${effect.key}-${effect.expiresAt}`}
+            variant="outline"
+            title={title}
+            aria-label={title}
+            className={cn(
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-full p-0 shadow-sm',
+              getEffectBadgeClass(effect)
+            )}
+          >
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+          </Badge>
+        );
+      })}
+    </div>
   );
 }

@@ -698,8 +698,8 @@ export function CarteTab({
       <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[264px] flex-col gap-2">
 
         {/* Search + filters */}
-        <div className="pointer-events-auto rounded-xl border border-border/30 bg-background/95 p-2.5 shadow-lg backdrop-blur-sm">
-          <label className="flex items-center gap-2 rounded-lg border border-input/80 bg-background px-2.5 py-1.5">
+        <div className="pointer-events-auto relative z-30 rounded-xl border border-border bg-popover p-2.5 text-popover-foreground shadow-lg">
+          <label className="flex items-center gap-2 rounded-lg border border-input bg-background px-2.5 py-1.5">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <Input
               value={searchQuery}
@@ -721,7 +721,7 @@ export function CarteTab({
             <button
               type="button"
               onClick={() => setShowTypeDropdown((prev) => !prev)}
-              className="flex w-full items-center justify-between rounded-lg border border-input/80 bg-background px-2.5 py-1.5 text-left"
+              className="flex w-full items-center justify-between rounded-lg border border-input bg-background px-2.5 py-1.5 text-left hover:bg-accent/40"
             >
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Types de business</p>
@@ -731,7 +731,7 @@ export function CarteTab({
             </button>
 
             {showTypeDropdown && (
-              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-56 overflow-auto rounded-lg border border-border/40 bg-background/98 p-1.5 shadow-xl backdrop-blur-sm">
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-56 overflow-auto rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-xl">
                 {hasMemberBusinesses && (
                   <button
                     type="button"
@@ -740,7 +740,7 @@ export function CarteTab({
                     }}
                     className={cn(
                       'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
-                      selectedTypeSet.has('__membre__') ? 'bg-accent text-foreground' : 'hover:bg-muted/70 text-muted-foreground hover:text-foreground',
+                      selectedTypeSet.has('__membre__') ? 'bg-accent text-accent-foreground' : 'text-popover-foreground/80 hover:bg-accent hover:text-accent-foreground',
                     )}
                   >
                     <span className={cn('inline-flex h-3.5 w-3.5 items-center justify-center rounded border', selectedTypeSet.has('__membre__') ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')}>
@@ -761,7 +761,7 @@ export function CarteTab({
                       }}
                       className={cn(
                         'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
-                        isActive ? 'bg-accent text-foreground' : 'hover:bg-muted/70 text-muted-foreground hover:text-foreground',
+                        isActive ? 'bg-accent text-accent-foreground' : 'text-popover-foreground/80 hover:bg-accent hover:text-accent-foreground',
                       )}
                     >
                       <span className={cn('inline-flex h-3.5 w-3.5 items-center justify-center rounded border', isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')}>
@@ -773,11 +773,11 @@ export function CarteTab({
                   );
                 })}
 
-                <div className="mt-1 border-t border-border/40 pt-1">
+                <div className="mt-1 border-t border-border pt-1">
                   <button
                     type="button"
                     onClick={() => setSelectedTypeFilters([])}
-                    className="w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+                    className="w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     Tout réinitialiser
                   </button>
@@ -788,7 +788,7 @@ export function CarteTab({
         </div>
 
         {/* Business list + info card */}
-        <div className="pointer-events-auto flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/30 bg-background/95 shadow-lg backdrop-blur-sm">
+        <div className="pointer-events-auto relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg">
           <ScrollArea className="min-h-0 flex-1">
             <div className="py-1">
 
