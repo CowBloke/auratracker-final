@@ -4,7 +4,57 @@ import { logAdmin } from './logger.js';
 
 export const BANK_BASE_DAILY_RATE = 0.002;       // 0.2% per day
 export const BANK_LIVRET_DAILY_RATE = 0.005;     // 0.5% per day with livret épargne
+export const BANK_ACCOUNT_COURANT_DAILY_RATE = 0.002; // 0.2% per day for checking accounts
 export const BANK_ACCOUNT_EPARGNE_DAILY_RATE = 0.005; // 0.5% per day for savings accounts
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const parseDayKeyToUtcDate = (dayKey: string): Date | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dayKey);
+  if (!match) return null;
+
+  const year = Number.parseInt(match[1], 10);
+  const month = Number.parseInt(match[2], 10);
+  const day = Number.parseInt(match[3], 10);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+
+  return new Date(Date.UTC(year, month - 1, day));
+};
+
+const getDaysToCredit = (lastDayKey: string | null, todayKey: string): number => {
+  if (!lastDayKey) {
+    return 1;
+  }
+
+  const lastDate = parseDayKeyToUtcDate(lastDayKey);
+  const todayDate = parseDayKeyToUtcDate(todayKey);
+  if (!lastDate || !todayDate) {
+    return 1;
+  }
+
+  const dayDiff = Math.floor((todayDate.getTime() - lastDate.getTime()) / MS_PER_DAY);
+  return Math.max(0, dayDiff);
+};
+
+const computeCompoundedDailyGain = (principal: number, dailyRate: number, days: number): number => {
+  if (principal <= 0 || days <= 0) {
+    return 0;
+  }
+
+  let currentBalance = principal;
+  let totalGain = 0;
+
+  for (let day = 0; day < days; day += 1) {
+    const gain = Math.max(1, Math.floor(currentBalance * dailyRate));
+    totalGain += gain;
+    currentBalance += gain;
+  }
+
+  return totalGain;
+};
 
 let _timer: ReturnType<typeof setInterval> | null = null;
 let _prisma: PrismaClient | null = null;
@@ -26,24 +76,25 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
   const eligible = banks.filter((b) => b.lastBankRevenueDate !== todayKey);
   if (eligible.length === 0) return;
 
-  const epargneAccounts = await prisma.bankAccount.findMany({
+  const bankAccounts = await prisma.bankAccount.findMany({
     where: {
       businessId: { in: eligible.map((bank) => bank.id) },
-      accountType: 'EPARGNE',
+      accountType: { in: ['COURANT', 'EPARGNE'] },
       balance: { gt: 0 },
     },
     select: {
       id: true,
       businessId: true,
+      accountType: true,
       balance: true,
     },
   });
 
-  const epargneByBusiness = new Map<string, Array<{ id: string; balance: number }>>();
-  for (const account of epargneAccounts) {
-    const list = epargneByBusiness.get(account.businessId) ?? [];
-    list.push({ id: account.id, balance: account.balance });
-    epargneByBusiness.set(account.businessId, list);
+  const accountsByBusiness = new Map<string, Array<{ id: string; balance: number; accountType: string }>>();
+  for (const account of bankAccounts) {
+    const list = accountsByBusiness.get(account.businessId) ?? [];
+    list.push({ id: account.id, balance: account.balance, accountType: account.accountType });
+    accountsByBusiness.set(account.businessId, list);
   }
 
   const dailySummary: Array<{
@@ -53,20 +104,35 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
     bankRate: number;
     accountInterestPaid: number;
     accountCountCredited: number;
+    creditedDays: number;
     livretEpargneUnlocked: boolean;
   }> = [];
 
   await prisma.$transaction(async (tx) => {
     for (const bank of eligible) {
-      const bankRate = bank.livretEpargneUnlocked ? BANK_LIVRET_DAILY_RATE : BANK_BASE_DAILY_RATE;
-      const bankRevenue = bank.treasuryMoney > 0 ? Math.max(1, Math.floor(bank.treasuryMoney * bankRate)) : 0;
+      const creditedDays = getDaysToCredit(bank.lastBankRevenueDate, todayKey);
+      if (creditedDays <= 0) {
+        continue;
+      }
 
-      const accounts = epargneByBusiness.get(bank.id) ?? [];
+      const bankRate = bank.livretEpargneUnlocked ? BANK_LIVRET_DAILY_RATE : BANK_BASE_DAILY_RATE;
+      const bankRevenue = computeCompoundedDailyGain(bank.treasuryMoney, bankRate, creditedDays);
+
+      const accounts = accountsByBusiness.get(bank.id) ?? [];
       let accountInterestPaid = 0;
+      const accountCredits: Array<{ id: string; interest: number }> = [];
 
       for (const account of accounts) {
-        const interest = Math.max(1, Math.floor(account.balance * BANK_ACCOUNT_EPARGNE_DAILY_RATE));
+        const accountRate = account.accountType === 'EPARGNE'
+          ? BANK_ACCOUNT_EPARGNE_DAILY_RATE
+          : BANK_ACCOUNT_COURANT_DAILY_RATE;
+        const interest = computeCompoundedDailyGain(account.balance, accountRate, creditedDays);
+        if (interest <= 0) {
+          continue;
+        }
+
         accountInterestPaid += interest;
+        accountCredits.push({ id: account.id, interest });
       }
 
       const claimed = await tx.business.updateMany({
@@ -87,11 +153,10 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
         continue;
       }
 
-      for (const account of accounts) {
-        const interest = Math.max(1, Math.floor(account.balance * BANK_ACCOUNT_EPARGNE_DAILY_RATE));
+      for (const account of accountCredits) {
         await tx.bankAccount.update({
           where: { id: account.id },
-          data: { balance: { increment: interest } },
+          data: { balance: { increment: account.interest } },
         });
       }
 
@@ -101,27 +166,30 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
         bankRevenue,
         bankRate,
         accountInterestPaid,
-        accountCountCredited: accounts.length,
+        accountCountCredited: accountCredits.length,
+        creditedDays,
         livretEpargneUnlocked: bank.livretEpargneUnlocked,
       });
     }
   });
 
-  await Promise.all(
+  await Promise.allSettled(
     dailySummary.map((bank) =>
       logAdmin('bank_daily_revenue', undefined, undefined, bank.id, bank.name, {
         revenue: bank.bankRevenue,
         rate: bank.bankRate,
+        accountCourantInterestRate: BANK_ACCOUNT_COURANT_DAILY_RATE,
         accountInterestRate: BANK_ACCOUNT_EPARGNE_DAILY_RATE,
         accountInterestPaid: bank.accountInterestPaid,
         accountCountCredited: bank.accountCountCredited,
+        creditedDays: bank.creditedDays,
         dayKey: todayKey,
         livretEpargneUnlocked: bank.livretEpargneUnlocked,
       })
     )
   );
 
-  console.log(`[daily-bank-revenue] Credited ${eligible.length} bank(s) for ${todayKey}`);
+  console.log(`[daily-bank-revenue] Credited ${dailySummary.length} bank(s) for ${todayKey}`);
 };
 
 export const startDailyBankRevenueScheduler = (prisma: PrismaClient): void => {

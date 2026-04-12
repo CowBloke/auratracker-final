@@ -13,7 +13,7 @@ export function getMoneyIndicatorRect() {
 }
 
 export function emitMoneyIncome(amount: number) {
-  if (!Number.isFinite(amount) || amount <= 0) return;
+  if (!Number.isFinite(amount) || amount === 0) return;
   listeners.forEach((listener) => listener(amount));
 }
 

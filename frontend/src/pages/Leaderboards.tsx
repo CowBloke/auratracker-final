@@ -34,13 +34,13 @@ interface Ranking {
 type StatItem = { label: string; value: string; hint?: string };
 type StatSection = { title: string; items: StatItem[] };
 
-type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'followers' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'snake' | 'crossy_road' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'hexgl' | 'tetris' | 'knife_hit' | 'minesweeper' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
+type Category = 'aura' | 'money' | 'total_money' | 'auracoin' | 'followers' | 'doodle_jump' | 'doodle_jump_mort_subite' | 'game_2048' | 'flappy_bird' | 'chrome_dino' | 'snake' | 'crossy_road' | 'stack_tower' | 'geometry_dash' | 'qs_watermelon' | 'solitaire' | 'racer' | 'hexgl' | 'tetris' | 'knife_hit' | 'minesweeper' | 'minesweeper_speedrun' | 'fruit_ninja' | 'goyave_empire' | 'logic_lab' | 'casino' | 'casino_losses' | 'chess' | 'petit_bac' | 'puissance_4' | 'ball_arena' | 'poker' | 'battleship' | 'russian_roulette' | 'uno' | 'morpion' | 'polymarket_ratio' | 'games_played' | 'bombparty' | 'overall';
 type View = Category | 'nombres';
 type Period = 'all' | 'monthly' | 'weekly' | 'daily';
 
 const PERIOD_CATEGORIES = new Set<Category>([
   'doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird',
-  'chrome_dino', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'casino',
+  'chrome_dino', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'minesweeper_speedrun', 'casino',
 ]);
 
 const PERIOD_OPTIONS: { id: Period; label: string }[] = [
@@ -73,6 +73,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: Catego
   { id: 'tetris', name: 'Tetris', valueLabel: 'score', icon: LayoutGrid },
   { id: 'knife_hit', name: 'Knife Hit', valueLabel: 'score', icon: Target },
   { id: 'minesweeper', name: 'Démineur', valueLabel: 'score', icon: Bomb },
+  { id: 'minesweeper_speedrun', name: 'Démineur Speedrun', valueLabel: 'temps', icon: Timer },
   { id: 'fruit_ninja', name: 'Fruit Ninja', valueLabel: 'score', icon: Target },
   { id: 'goyave_empire', name: 'Goyave Empire', valueLabel: 'score', icon: Flame },
   { id: 'logic_lab', name: 'Sudoku', valueLabel: 'score', icon: Hash },
@@ -94,7 +95,7 @@ const categories: { id: Category; name: string; valueLabel: string; icon: Catego
 
 const economyCategories: Category[] = ['aura', 'money', 'total_money', 'auracoin'];
 const socialCategories: Category[] = ['followers'];
-const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
+const gameCategories: Category[] = ['doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird', 'chrome_dino', 'snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'minesweeper_speedrun', 'fruit_ninja', 'goyave_empire', 'logic_lab', 'casino', 'casino_losses', 'chess', 'petit_bac', 'puissance_4', 'ball_arena', 'poker', 'battleship', 'russian_roulette', 'uno', 'morpion', 'polymarket_ratio', 'bombparty', 'games_played'];
 const genericGameCategories: Category[] = ['snake', 'crossy_road', 'stack_tower', 'geometry_dash', 'qs_watermelon', 'fruit_ninja', 'goyave_empire', 'logic_lab'];
 const deletableGameCategories: Partial<Record<Category, string>> = {
   doodle_jump: 'doodle_jump',
@@ -113,6 +114,7 @@ const deletableGameCategories: Partial<Record<Category, string>> = {
   tetris: 'tetris',
   knife_hit: 'knife_hit',
   minesweeper: 'minesweeper',
+  minesweeper_speedrun: 'minesweeper_speedrun',
   fruit_ninja: 'fruit_ninja',
   goyave_empire: 'goyave_empire',
   logic_lab: 'logic_lab',

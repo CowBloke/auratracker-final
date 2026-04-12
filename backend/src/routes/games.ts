@@ -14,6 +14,7 @@ import { applyDailyGameRewardCaps, syncUserDailyGameRewardState } from '../utils
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';
+const isAscendingScoreGame = (gameType: string) => gameType === 'racer' || gameType === 'hexgl' || gameType === 'minesweeper_speedrun';
 
 const GAME_CHAT_LABELS: Record<string, string> = {
   doodle_jump: 'Doodle Jump',
@@ -34,6 +35,7 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   goyave_empire: 'Goyave Empire',
   logic_lab: 'Sudoku',
   minesweeper: 'Minesweeper',
+  minesweeper_speedrun: 'Minesweeper Speedrun',
   fruit_ninja: 'Fruit Ninja',
   hexgl: 'HexGL',
 };
@@ -824,6 +826,43 @@ function calculateMinesweeperRewards(score: number, isNewHighScore: boolean, won
   return { money: moneyReward, aura: auraReward };
 }
 
+function calculateMinesweeperSpeedrunRewards(score: number, isNewHighScore: boolean, won: boolean): { money: number; aura: number } {
+  if (!won) {
+    return { money: 0, aura: 0 };
+  }
+
+  const durationSeconds = Math.max(0, Math.floor(score));
+
+  let moneyReward = 0;
+  let auraReward = 0;
+
+  if (durationSeconds <= 35) {
+    moneyReward = 340;
+    auraReward = 38;
+  } else if (durationSeconds <= 50) {
+    moneyReward = 250;
+    auraReward = 26;
+  } else if (durationSeconds <= 70) {
+    moneyReward = 180;
+    auraReward = 18;
+  } else if (durationSeconds <= 95) {
+    moneyReward = 130;
+    auraReward = 12;
+  } else if (durationSeconds <= 130) {
+    moneyReward = 90;
+    auraReward = 8;
+  } else {
+    moneyReward = 55;
+    auraReward = 5;
+  }
+
+  if (isNewHighScore) {
+    auraReward += 6;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
 
 router.get('/daily/racer', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -1194,19 +1233,21 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     const previousGlobalBest = await prisma.gameStats.findFirst({
       where: {
         gameType,
-        ...(gameType === 'racer' || gameType === 'hexgl' ? { highScore: { gt: 0 } } : {}),
+        ...(isAscendingScoreGame(gameType) ? { highScore: { gt: 0 } } : {}),
       },
-      orderBy: { highScore: gameType === 'racer' || gameType === 'hexgl' ? 'asc' : 'desc' },
+      orderBy: { highScore: isAscendingScoreGame(gameType) ? 'asc' : 'desc' },
       select: {
         userId: true,
         highScore: true,
       },
     });
     
-    const isTimedGame = gameType === 'racer' || gameType === 'hexgl';
+    const isTimedGame = isAscendingScoreGame(gameType);
+    const isMinesweeperSpeedrun = gameType === 'minesweeper_speedrun';
     // For timed games, lower score (time) is better.
     const isNewHighScore = isTimedGame
-      ? (!currentStats || score < currentStats.highScore || currentStats.highScore === 0)
+      ? (!isMinesweeperSpeedrun && (!currentStats || score < currentStats.highScore || currentStats.highScore === 0))
+        || (isMinesweeperSpeedrun && won && (!currentStats || currentStats.highScore === 0 || score < currentStats.highScore))
       : (!currentStats || score > currentStats.highScore);
     // Calculate rewards
     let auraReward = 0;
@@ -1281,6 +1322,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       const rewards = calculateMinesweeperRewards(score, isNewHighScore, won || false);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
+    } else if (gameType === 'minesweeper_speedrun') {
+      const rewards = calculateMinesweeperSpeedrunRewards(score, isNewHighScore, won || false);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'fruit_ninja') {
       const rewards = calculateFruitNinjaRewards(score, isNewHighScore);
       moneyReward = rewards.money;
@@ -1353,7 +1398,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
           gameType,
           wins: won ? 1 : 0,
           losses: won ? 0 : 1,
-          highScore: score,
+          highScore: isMinesweeperSpeedrun && !won ? 0 : score,
           totalPlayed: 1,
         },
         update: {
@@ -1466,7 +1511,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     }
 
     // Minesweeper difficulty badge tracking
-    if (gameType === 'minesweeper' && won && difficulty && typeof difficulty === 'string') {
+    if ((gameType === 'minesweeper' || gameType === 'minesweeper_speedrun') && won && difficulty && typeof difficulty === 'string') {
       const diffKey = difficulty.toLowerCase();
       const minesweeperGameType = `minesweeper_${diffKey}`;
       await prisma.gameStats.upsert({
@@ -1649,7 +1694,7 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
       }
-    } else if (gameType === 'minesweeper') {
+    } else if (gameType === 'minesweeper' || gameType === 'minesweeper_speedrun') {
       await checkQuestProgress(req.user.id, 'PLAY_GAMES', 1);
       if (won) {
         await checkQuestProgress(req.user.id, 'WIN_GAMES', 1);
@@ -1892,7 +1937,7 @@ router.get('/:gameType/leaderboard', authMiddleware, async (req: AuthRequest, re
 
     const rawRankings = await prisma.gameStats.findMany({
       where: { gameType, user: { isSuperAdmin: false } },
-      orderBy: { highScore: gameType === 'racer' || gameType === 'hexgl' ? 'asc' : 'desc' },
+      orderBy: { highScore: isAscendingScoreGame(gameType) ? 'asc' : 'desc' },
       take: parseInt(limit as string),
       include: {
         user: {

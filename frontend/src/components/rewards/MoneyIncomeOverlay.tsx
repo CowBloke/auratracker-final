@@ -22,12 +22,13 @@ type MoneyBurst = {
 };
 
 function createBurst(amount: number): MoneyBurst {
+  const absoluteAmount = Math.abs(amount);
   const targetRect = getMoneyIndicatorRect();
   const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth - 72;
   const targetY = targetRect ? targetRect.top + targetRect.height / 2 : 44;
   const originX = targetX;
   const originY = targetY + 24;
-  const particleCount = Math.max(4, Math.min(10, Math.round(Math.log10(amount + 10) * 4)));
+  const particleCount = Math.max(4, Math.min(10, Math.round(Math.log10(absoluteAmount + 10) * 4)));
   const idBase = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   return {
@@ -109,7 +110,11 @@ export default function MoneyIncomeOverlay() {
       {bursts.map((burst) => (
         <div key={burst.id} className="absolute inset-0">
           <div
-            className="absolute flex items-center gap-2 rounded-full border border-emerald-300/35 bg-emerald-400/18 px-3 py-1 text-xs font-bold text-emerald-50 shadow-[0_10px_30px_rgba(16,185,129,0.25)] backdrop-blur-sm"
+            className={`absolute flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold backdrop-blur-sm ${
+              burst.amount > 0
+                ? 'border-emerald-300/35 bg-emerald-400/18 text-emerald-50 shadow-[0_10px_30px_rgba(16,185,129,0.25)]'
+                : 'border-rose-300/35 bg-rose-500/18 text-rose-50 shadow-[0_10px_30px_rgba(244,63,94,0.25)]'
+            }`}
             style={{
               left: burst.labelStartX,
               top: burst.labelStartY,
@@ -117,7 +122,7 @@ export default function MoneyIncomeOverlay() {
             }}
           >
             <CurrencyIcon type="money" className="h-3.5 w-3.5" />
-            <span>+{burst.amount.toLocaleString('fr-FR')}</span>
+            <span>{burst.amount > 0 ? '+' : '-'}{Math.abs(burst.amount).toLocaleString('fr-FR')}</span>
           </div>
 
           {burst.particles.map((particle) => (

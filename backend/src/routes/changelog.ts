@@ -24,7 +24,7 @@ const SEED_ENTRIES = [
     id: '2026-04-12-modules-fixes-admin-chat-auravision',
     date: '2026-04-12',
     title: 'Maintenance auto, modération chat et messages business',
-    summary: 'Grosse passe de correctifs et d améliorations sur la modération (ban/mute), la maintenance automatique du week-end, la robustesse roulette/casino, la visio AuraVision, l admin utilisateur, les business, les messages, les uploads Aura Scroll et plusieurs corrections economiques et UI.',
+    summary: 'Grosse passe de correctifs et d améliorations sur la modération (ban/mute), la maintenance automatique du week-end, la robustesse roulette/casino, la visio AuraVision, l admin utilisateur, les business, les messages, les uploads Aura Scroll, le mode Minesweeper speedrun, les revenus bancaires, Eaglercraft multijoueur et plusieurs corrections economiques et UI.',
     items: [
       { category: 'BUG_FIX', text: '**Bans enrichis partout** — Les payloads de ban HTTP/Socket incluent maintenant `userId` et `ban.id` (middleware auth, server socket, chat socket, action admin), et le frontend stocke ces identifiants meme quand ils arrivent via `ban.userId`.', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Maintenance automatique week-end** — Nouveau flag `maintenance_auto_weekend_enabled` exposé en API maintenance et dans l admin: la maintenance peut s activer automatiquement le samedi et dimanche, en plus du mode manuel.', order: 1 },
@@ -66,6 +66,13 @@ const SEED_ENTRIES = [
       { category: 'BUG_FIX', text: '**Marketplace: usage d objet plus strict et compatible** — Le type d objet est maintenant normalise (`trim + uppercase`), les effets consommables lisent plusieurs cles (`bonusAura/auraBonus/aura`, `bonusMoney/moneyBonus/money/cash`), et les objets sans effet exploitable renvoient une erreur 400 explicite au lieu d un succes silencieux.', order: 37 },
       { category: 'BUG_FIX', text: '**Revenus business quotidiens fiabilises** — Le credit journalier est traite business par business avec garde transactionnelle anti double credit, notifications separees actionnaires/proprietaire, et emission des mises a jour de solde partage pour tous les comptes impactes.', order: 38 },
       { category: 'SMALL_FEATURE', text: '**Historique prets business etendu** — La vue des prets d un business remonte maintenant jusqu a 100 lignes recentes (au lieu de 8) pour offrir un suivi complet en gestion.', order: 39 },
+      { category: 'SMALL_FEATURE', text: '**Travail You plus souple** — Les employes peuvent maintenant quitter leur entreprise depuis l onglet Travail, et les propositions d actionnariat ne deviennent annulables qu apres une semaine in game.', order: 40 },
+      { category: 'BUG_FIX', text: '**Braquage Legal: solde synchronise** — La participation renvoie maintenant le nouveau solde du joueur pour mettre a jour immediatement l affichage argent/aura apres inscription.', order: 41 },
+      { category: 'BIG_FEATURE', text: '**Minesweeper Speedrun** — Un nouveau mode chronometre ajoute au Demineur un classement dedie, des recompenses basees sur le temps et un suivi distinct du mode score classique.', order: 42 },
+      { category: 'BUG_FIX', text: '**Revenus bancaires rattrapes** — Les interets journaliers s appliquent maintenant aussi aux comptes courant, avec calcul compose et rattrapage des jours non credités au lieu de se limiter au simple jour courant.', order: 43 },
+      { category: 'SMALL_FEATURE', text: '**Eaglercraft multijoueur rapide** — Le client peut maintenant ouvrir une session avec une adresse serveur WebSocket passee en parametre, directement depuis la page jeu.', order: 44 },
+      { category: 'BUG_FIX', text: '**Overlay argent negatif** — Les variations de money s affichent correctement dans l overlay, y compris quand le delta est negatif.', order: 45 },
+      { category: 'SMALL_FEATURE', text: '**Morpion a historique glissant** — Chaque joueur conserve maintenant ses derniers coups et le plus ancien pion est retire quand la limite est depassee, ce qui change la dynamique des parties.', order: 46 },
     ],
   },
   {

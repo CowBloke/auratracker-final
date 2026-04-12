@@ -58,6 +58,7 @@ import {
   updateMemberProfile,
   updateMemberSalary,
   sackMember,
+  leaveBusinessJob,
   repayLoan,
   repayLoanByBorrower,
   rateBusiness,
@@ -179,6 +180,7 @@ const ERROR_STATUS: Record<string, number> = {
   INVALID_BUSINESS_RATING: 400,
   INVALID_SALARY: 400,
   MEMBER_NOT_FOUND: 404,
+  CANNOT_LEAVE_OWN_BUSINESS: 400,
   CHEATING_ACCUSATION_ALREADY_PENDING: 400,
   CHEATING_ACCUSATION_NOT_FOUND: 404,
   CHEATING_ACCUSATION_FORBIDDEN: 403,
@@ -336,7 +338,7 @@ const ERROR_MESSAGE: Record<string, string> = {
   SHARE_PROPOSAL_REVIEW_FORBIDDEN: 'Tu ne peux pas traiter cette proposition d actionnariat.',
   SHARE_PROPOSAL_ALREADY_RESOLVED: 'Cette proposition d actionnariat a deja ete traitee.',
   SHARE_PROPOSAL_CANCEL_FORBIDDEN: 'Tu ne peux pas annuler cette proposition.',
-  SHARE_PROPOSAL_CANCEL_TOO_EARLY: 'Tu pourras annuler cette proposition apres un mois in game.',
+  SHARE_PROPOSAL_CANCEL_TOO_EARLY: 'Tu pourras annuler cette proposition apres une semaine in game.',
   BUSINESS_SHARE_CAP_EXCEEDED: 'La repartition du capital depasse 100%.',
   SHARE_BUYBACK_FORBIDDEN: 'Seul le fondateur peut demander le rachat des parts.',
   SHARE_BUYBACK_TARGET_INVALID: 'Actionnaire cible invalide.',
@@ -354,6 +356,7 @@ const ERROR_MESSAGE: Record<string, string> = {
   SHARE_MARKET_BUY_OWN_LISTING: 'Tu ne peux pas acheter ta propre annonce.',
   SHARE_MARKET_ALREADY_RESOLVED: 'Cette annonce n est plus disponible.',
   SHARE_MARKET_SELLER_NO_LONGER_HAS_SHARES: 'Le vendeur ne detient plus suffisamment de parts.',
+  CANNOT_LEAVE_OWN_BUSINESS: 'Tu ne peux pas quitter une entreprise dont tu es proprietaire.',
 };
 
 async function requireYouAccess(req: AuthRequest, res: Response, next: () => void) {
@@ -1103,6 +1106,15 @@ router.delete('/businesses/:businessId/members/:memberId', authMiddleware, requi
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Sack member error');
+  }
+});
+
+router.post('/businesses/:businessId/leave', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await leaveBusinessJob(req.user!.id, req.params.businessId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Leave business job error');
   }
 });
 

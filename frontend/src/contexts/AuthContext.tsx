@@ -49,10 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (
         options?.animateMoneyGain &&
         prevUser &&
-        nextUser &&
-        nextUser.money > prevUser.money
+        nextUser
       ) {
-        emitMoneyIncome(nextUser.money - prevUser.money);
+        const deltaMoney = nextUser.money - prevUser.money;
+        if (deltaMoney !== 0) {
+          emitMoneyIncome(deltaMoney);
+        }
       }
 
       return nextUser;
@@ -109,8 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateBalance = (aura: number, money: number) => {
     setUser((prevUser) => {
       if (!prevUser) return prevUser;
-      if (money > prevUser.money) {
-        emitMoneyIncome(money - prevUser.money);
+      const deltaMoney = money - prevUser.money;
+      if (deltaMoney !== 0) {
+        emitMoneyIncome(deltaMoney);
       }
       return { ...prevUser, aura, money };
     });

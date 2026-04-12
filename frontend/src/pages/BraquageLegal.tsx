@@ -56,7 +56,7 @@ function createConfettiPieces(count = 64): ConfettiPiece[] {
 }
 
 export default function BraquageLegal() {
-  const { user } = useAuth();
+  const { user, updateBalance } = useAuth();
   const { socket } = useSocketBase();
   const [session, setSession] = useState<BraquageLegalSession | null>(null);
   const [history, setHistory] = useState<BraquageLegalHistoryEntry[]>([]);
@@ -145,6 +145,7 @@ export default function BraquageLegal() {
     try {
       const response = await adminApi.participateBraquageLegal(participatingTier);
       setSession(response.data.session);
+      updateBalance(response.data.newBalance.aura, response.data.newBalance.money);
       toast.success(`Participation ${TIER_CONFIG[participatingTier].label} enregistrée.`);
     } catch (error) {
       const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Impossible de participer.';
