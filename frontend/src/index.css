@@ -143,6 +143,20 @@
 }
 
 @layer utilities {
+  .business-hover-popup.maplibregl-popup {
+    pointer-events: none;
+  }
+
+  .business-hover-popup .maplibregl-popup-content {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .business-hover-popup .maplibregl-popup-tip {
+    display: none;
+  }
+
   /* Hard block for all-caps UI styling. Keep this global to prevent regressions. */
   .uppercase,
   [class~="uppercase"] {

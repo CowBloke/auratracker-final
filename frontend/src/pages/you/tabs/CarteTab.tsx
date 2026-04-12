@@ -592,10 +592,7 @@ export function CarteTab({
         .setLngLat(coordinates as [number, number])
         .setDOMContent(buildHoverPopupContent(popupProperties))
         .addTo(map);
-    };
-
-    const handlePinMouseMove = (event: maplibregl.MapLayerMouseEvent) => {
-      hoverPopupRef.current?.setLngLat(event.lngLat);
+      hoverPopupRef.current.getElement().classList.add('business-hover-popup');
     };
 
     const handlePinMouseLeave = () => {
@@ -618,7 +615,6 @@ export function CarteTab({
 
     map.on('click', LAYER_ID, handlePinClick);
     map.on('mouseenter', LAYER_ID, handlePinMouseEnter);
-    map.on('mousemove', LAYER_ID, handlePinMouseMove);
     map.on('mouseleave', LAYER_ID, handlePinMouseLeave);
     map.on('click', CLUSTER_LAYER_ID, handleClusterClick);
     map.on('mouseenter', LAYER_ID, handleMouseEnter);
@@ -628,7 +624,6 @@ export function CarteTab({
     return () => {
       map.off('click', LAYER_ID, handlePinClick);
       map.off('mouseenter', LAYER_ID, handlePinMouseEnter);
-      map.off('mousemove', LAYER_ID, handlePinMouseMove);
       map.off('mouseleave', LAYER_ID, handlePinMouseLeave);
       map.off('click', CLUSTER_LAYER_ID, handleClusterClick);
       map.off('mouseenter', LAYER_ID, handleMouseEnter);
