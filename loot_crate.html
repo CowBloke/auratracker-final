@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>Loot Crate Overlay</title>
+<style>
+html,body{margin:0;padding:0;overflow:hidden;height:100%;font-family:system-ui,sans-serif;background:#0f1226;color:#fff}
+/* Fake underlying app UI */
+#app{position:absolute;inset:0;padding:24px;display:flex;flex-direction:column;gap:12px;background:linear-gradient(135deg,#1e2550,#3a1f5a)}
+#app h1{margin:0;font-size:22px}
+#app p{opacity:.75;margin:0;max-width:500px;font-size:14px}
+.tiers{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.tiers button{padding:10px 16px;border:none;border-radius:8px;color:#fff;font-weight:bold;cursor:pointer;font-size:14px;text-transform:uppercase;letter-spacing:.5px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.t-wood{background:#8b5a2b}.t-iron{background:#667}.t-gold{background:#d4a017}
+.t-diamond{background:#7ee8ff;color:#033}.t-emerald{background:#2ecc71}.t-ruby{background:#d9304b}
+/* Overlay */
+#lootOverlay{position:fixed;inset:0;z-index:9999;display:none;pointer-events:auto}
+#lootOverlay.active{display:block}
+#lootOverlay canvas{display:block;width:100%;height:100%;background:transparent}
+#lootClose{position:absolute;top:20px;right:20px;background:rgba(0,0,0,.5);color:#fff;border:none;width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;z-index:2}
+</style></head>
+<body>
+<div id="app">
+  <h1>🎮 My Awesome App</h1>
+  <p>This is your existing UI. Click a tier below — the loot crate overlay spawns on top with a transparent dark fade so the crate pops forward. Everything behind (this text, buttons, gradient) still exists underneath.</p>
+  <div class="tiers">
+    <button class="t-wood" onclick="demo('wood')">Wood</button>
+    <button class="t-iron" onclick="demo('iron')">Iron</button>
+    <button class="t-gold" onclick="demo('gold')">Gold</button>
+    <button class="t-diamond" onclick="demo('diamond')">Diamond</button>
+    <button class="t-emerald" onclick="demo('emerald')">Emerald</button>
+    <button class="t-ruby" onclick="demo('ruby')">Ruby</button>
+  </div>
+  <p style="margin-top:20px;font-size:12px;opacity:.5">Integration: <code>LootCrate.open({tier:'gold', itemName:'Epic Sword', itemColor:'#ff0', onClose:()=>{}})</code></p>
+</div>
+
+<div id="lootOverlay"><button id="lootClose">✕</button></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============================================================
+   LootCrate — drop-in overlay component
+   Usage: LootCrate.open({ tier, itemName, itemColor, itemImage, onClose })
+   ============================================================ */
+window.LootCrate = (()=>{
+const TIERS = {
+  wood:    { plank:0x8b5a2b, plankAlt:0xa06a35, metal:0x3a3a42, nail:0x888888, glow:0xffe08a, rarity:'Common' },
+  iron:    { plank:0x7a7d85, plankAlt:0x9095a0, metal:0x2a2d33, nail:0xbfc3cc, glow:0xcfd6e0, rarity:'Uncommon' },
+  gold:    { plank:0xd4a017, plankAlt:0xf2c14e, metal:0x8a5a00, nail:0xfff2a8, glow:0xffe066, rarity:'Rare' },
+  diamond: { plank:0x9fe8ff, plankAlt:0xd6f5ff, metal:0x3a8ab0, nail:0xffffff, glow:0xbaf0ff, rarity:'Epic' },
+  emerald: { plank:0x2ecc71, plankAlt:0x5ee396, metal:0x145a34, nail:0xb8f5d0, glow:0x7cffb0, rarity:'Legendary' },
+  ruby:    { plank:0xd9304b, plankAlt:0xf25a72, metal:0x6b0e1c, nail:0xffb8c2, glow:0xff6080, rarity:'Mythic' },
+};
+
+const overlay = document.getElementById('lootOverlay');
+const closeBtn = document.getElementById('lootClose');
+
+let renderer, scene, camera, crateGroup, lidPivot, itemGroup, gem, pngMesh, labelSprite, glowMat;
+let state = 'idle', t = 0, lidAngle = 0, itemY = 0, particles = [];
+let tierCfg = TIERS.wood;
+let currentOpts = {};
+let raf = null;
+let clickToOpenArmed = false;
+
+function init() {
+  if (renderer) return;
+  renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(devicePixelRatio);
+  renderer.setClearColor(0x000000, 0); // transparent
+  overlay.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, .1, 100);
+  camera.position.set(0, 1.2, 6.5);
+  camera.lookAt(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, .55));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.0); dir.position.set(5,8,4); scene.add(dir);
+  const fill = new THREE.DirectionalLight(0x99aaff, .3); fill.position.set(-4,2,-3); scene.add(fill);
+
+  addEventListener('resize', onResize);
+  overlay.addEventListener('click', onOverlayClick);
+  closeBtn.addEventListener('click', close);
+}
+
+function onResize(){ if(!renderer) return; camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); }
+
+function buildCrate() {
+  if (crateGroup) { scene.remove(crateGroup); disposeGroup(crateGroup); }
+  crateGroup = new THREE.Group();
+  scene.add(crateGroup);
+
+  const c = tierCfg;
+  const woodMat  = new THREE.MeshStandardMaterial({color:c.plank, flatShading:true, roughness:.9});
+  const woodAlt  = new THREE.MeshStandardMaterial({color:c.plankAlt, flatShading:true, roughness:.9});
+  const metalMat = new THREE.MeshStandardMaterial({color:c.metal, flatShading:true, roughness:.4, metalness:.75});
+  const nailMat  = new THREE.MeshStandardMaterial({color:c.nail, flatShading:true, roughness:.35, metalness:.85});
+  const inMat    = new THREE.MeshStandardMaterial({color:0x1a0f08, flatShading:true, roughness:1, side:THREE.DoubleSide});
+  glowMat = new THREE.MeshBasicMaterial({color:c.glow, transparent:true, opacity:0});
+
+  const W=2.2,H=1.5,D=2.2,T=.08,baseY=-.3;
+
+  function wall(w,h,d,axis,n){const g=new THREE.Group();const sz=axis==='x'?w:d;const pw=sz/n;for(let i=0;i<n;i++){const geo=axis==='x'?new THREE.BoxGeometry(pw*.97,h,d):new THREE.BoxGeometry(w,h,pw*.97);const m=new THREE.Mesh(geo, i%2?woodAlt:woodMat);if(axis==='x')m.position.x=-w/2+pw/2+i*pw;else m.position.z=-d/2+pw/2+i*pw;g.add(m)}return g}
+
+  const floor=new THREE.Mesh(new THREE.BoxGeometry(W,T,D),woodMat);floor.position.set(0,baseY-H/2+T/2,0);crateGroup.add(floor);
+  const fw=wall(W,H,T,'x',5);fw.position.set(0,baseY,D/2-T/2);crateGroup.add(fw);
+  const bw=wall(W,H,T,'x',5);bw.position.set(0,baseY,-D/2+T/2);crateGroup.add(bw);
+  const lw=wall(T,H,D-T*2,'z',5);lw.position.set(-W/2+T/2,baseY,0);crateGroup.add(lw);
+  const rw=wall(T,H,D-T*2,'z',5);rw.position.set(W/2-T/2,baseY,0);crateGroup.add(rw);
+
+  // Inner lining
+  const iW=W-T*2.2,iD=D-T*2.2,iH=H-T*1.1;
+  const iF=new THREE.Mesh(new THREE.BoxGeometry(iW,.02,iD),inMat);iF.position.set(0,baseY-H/2+T+.01,0);crateGroup.add(iF);
+  ['n','s','e','w'].forEach(s=>{const ns=s==='n'||s==='s';const p=new THREE.Mesh(new THREE.PlaneGeometry(ns?iW:iD,iH),inMat);if(s==='n')p.position.set(0,baseY+.05,-iD/2);if(s==='s'){p.position.set(0,baseY+.05,iD/2);p.rotation.y=Math.PI}if(s==='e'){p.position.set(iW/2,baseY+.05,0);p.rotation.y=-Math.PI/2}if(s==='w'){p.position.set(-iW/2,baseY+.05,0);p.rotation.y=Math.PI/2}crateGroup.add(p)});
+
+  // Corner posts
+  for(let x of[-W/2,W/2])for(let z of[-D/2,D/2]){const v=new THREE.Mesh(new THREE.BoxGeometry(.1,H+.02,.1),metalMat);v.position.set(x,baseY,z);crateGroup.add(v)}
+  // Bands
+  for(let y of[baseY+H/2-.06,baseY-H/2+.06]){
+    const h1=new THREE.Mesh(new THREE.BoxGeometry(W+.02,.08,.08),metalMat);h1.position.set(0,y,D/2);crateGroup.add(h1);
+    const h2=h1.clone();h2.position.z=-D/2;crateGroup.add(h2);
+    const h3=new THREE.Mesh(new THREE.BoxGeometry(.08,.08,D+.02),metalMat);h3.position.set(W/2,y,0);crateGroup.add(h3);
+    const h4=h3.clone();h4.position.x=-W/2;crateGroup.add(h4);
+  }
+  // Nails
+  const ng=new THREE.CylinderGeometry(.035,.035,.05,6);
+  for(let side of[-1,1])for(let i=0;i<4;i++)for(let y of[baseY+H/2-.06,baseY-H/2+.06]){const n=new THREE.Mesh(ng,nailMat);n.rotation.x=Math.PI/2;n.position.set(-W/2+.25+i*(W-.5)/3,y,side*(D/2+.04));crateGroup.add(n)}
+
+  // Lid
+  lidPivot=new THREE.Group();lidPivot.position.set(0,baseY+H/2,-D/2+T/2);crateGroup.add(lidPivot);
+  const lidH=.18,lg=new THREE.Group();
+  for(let i=0;i<5;i++){const pw=D/5;const m=new THREE.Mesh(new THREE.BoxGeometry(W,lidH,pw*.96),i%2?woodAlt:woodMat);m.position.z=pw/2+i*pw-T/2;lg.add(m)}
+  const strap=new THREE.Mesh(new THREE.BoxGeometry(W+.04,.05,.18),metalMat);strap.position.set(0,lidH/2+.02,D/2-.3);lg.add(strap);
+  const strap2=strap.clone();strap2.position.z=.3;lg.add(strap2);
+  const lock=new THREE.Mesh(new THREE.BoxGeometry(.3,.3,.08),metalMat);lock.position.set(0,lidH/2+.02,D-T-.15);lg.add(lock);
+  for(let x of[-W/2+.35,W/2-.35]){const h=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.18,8),metalMat);h.rotation.z=Math.PI/2;h.position.set(x,0,0);lidPivot.add(h)}
+  lidPivot.add(lg);
+
+  const glow=new THREE.Mesh(new THREE.CircleGeometry(.8,16),glowMat);glow.rotation.x=-Math.PI/2;glow.position.y=baseY-H/2+T+.03;crateGroup.add(glow);
+
+  // Item
+  itemGroup=new THREE.Group();itemGroup.visible=false;itemGroup.position.y=baseY;crateGroup.add(itemGroup);
+  const itemCol=currentOpts.itemColor||'#56e0ff';
+  const gm=new THREE.MeshStandardMaterial({color:itemCol,flatShading:true,emissive:new THREE.Color(itemCol).multiplyScalar(.25),roughness:.3,metalness:.4});
+  gem=new THREE.Mesh(new THREE.DodecahedronGeometry(.45,0),gm);itemGroup.add(gem);
+  const pm=new THREE.MeshBasicMaterial({transparent:true,alphaTest:.1,side:THREE.DoubleSide});
+  pngMesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),pm);pngMesh.visible=false;itemGroup.add(pngMesh);
+
+  labelSprite=makeLabel((currentOpts.itemName||'Mystery Item')+' · '+c.rarity.toUpperCase(), c.glow);
+  itemGroup.add(labelSprite);
+
+  // Start off-screen above, tilted, ready to drop
+  crateGroup.position.set(0, 8, 0);
+  crateGroup.rotation.set(-.3, .6, .15);
+}
+
+function makeLabel(t, tint){
+  const c=document.createElement('canvas');c.width=512;c.height=128;const x=c.getContext('2d');
+  x.fillStyle='rgba(0,0,0,.65)';
+  const r=18,w=c.width-40,h=c.height-40,px=20,py=20;
+  x.beginPath();x.moveTo(px+r,py);x.lineTo(px+w-r,py);x.quadraticCurveTo(px+w,py,px+w,py+r);x.lineTo(px+w,py+h-r);x.quadraticCurveTo(px+w,py+h,px+w-r,py+h);x.lineTo(px+r,py+h);x.quadraticCurveTo(px,py+h,px,py+h-r);x.lineTo(px,py+r);x.quadraticCurveTo(px,py,px+r,py);x.closePath();x.fill();
+  x.strokeStyle='#'+tint.toString(16).padStart(6,'0');x.lineWidth=3;x.stroke();
+  x.font='bold 44px system-ui,sans-serif';x.fillStyle='#fff';x.textAlign='center';x.textBaseline='middle';x.fillText(t,c.width/2,c.height/2);
+  const tex=new THREE.CanvasTexture(c);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true}));
+  s.scale.set(2.4,.6,1);s.position.y=1.1;return s;
+}
+
+function spawnParticles(){
+  const geo=new THREE.TetrahedronGeometry(.14,0);
+  const glowCol=new THREE.Color(tierCfg.glow);
+  for(let i=0;i<70;i++){
+    const mix=Math.random()<.5?glowCol:new THREE.Color().setHSL(Math.random(),.75,.6);
+    const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:mix,flatShading:true,emissive:mix.clone().multiplyScalar(.4),transparent:true}));
+    m.position.set(0,-.1,0);crateGroup.add(m);
+    const a=Math.random()*Math.PI*2,up=2.8+Math.random()*3,r=2+Math.random()*2.5;
+    m.userData={vel:new THREE.Vector3(Math.cos(a)*r,up,Math.sin(a)*r),rot:new THREE.Vector3(Math.random()*6-3,Math.random()*6-3,Math.random()*6-3),life:1.8,max:1.8};
+    particles.push(m);
+  }
+}
+
+function disposeGroup(g){g.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose()}})}
+
+function onOverlayClick(e){
+  if(e.target===closeBtn)return;
+  if(clickToOpenArmed && state==='idle_landed'){
+    clickToOpenArmed=false;
+    state='opening';
+    spawnParticles();
+  }
+}
+
+function open(opts={}){
+  currentOpts = opts;
+  tierCfg = TIERS[opts.tier] || TIERS.wood;
+  init();
+  onResize();
+  overlay.classList.add('active');
+
+  buildCrate();
+
+  if (opts.itemImage) {
+    new THREE.TextureLoader().load(opts.itemImage, tex=>{
+      tex.magFilter=THREE.NearestFilter;
+      const img=tex.image,asp=img.width/img.height,sc=1.4;
+      pngMesh.geometry.dispose();
+      pngMesh.geometry=new THREE.PlaneGeometry(sc*asp,sc);
+      pngMesh.material.map=tex;pngMesh.material.needsUpdate=true;
+      pngMesh.userData.ready=true;
+    });
+  }
+
+  state = 'dropping';
+  t = 0; lidAngle = 0; itemY = 0;
+  clickToOpenArmed = false;
+
+  if (!raf) loop(performance.now());
+}
+
+function close(){
+  overlay.classList.remove('active');
+  if (currentOpts.onClose) currentOpts.onClose();
+  state='idle';
+  if (raf){cancelAnimationFrame(raf);raf=null}
+}
+
+// Easing
+const easeOutBack = x => { const c1=1.70158, c3=c1+1; return 1+c3*Math.pow(x-1,3)+c1*Math.pow(x-1,2); };
+const easeOutCubic = x => 1-Math.pow(1-x,3);
+
+let last=performance.now();
+function loop(now){
+  raf = requestAnimationFrame(loop);
+  const dt = Math.min((now-last)/1000, .1);
+  last = now;
+  t += dt;
+
+  // Vignette via CSS radial gradient — updated on overlay
+  const fade = Math.min(t/.4, 1);
+  overlay.style.background = `radial-gradient(ellipse at center, rgba(0,0,0,${0.55*fade}) 0%, rgba(0,0,0,${0.9*fade}) 100%)`;
+
+  if (state === 'dropping') {
+    // Drop from y=8 to y=0 with easeOutBack for a bounce feel
+    const dur = 0.9;
+    const k = Math.min(t/dur, 1);
+    const e = easeOutBack(k);
+    crateGroup.position.y = 8 * (1 - e);
+    // Tumble during fall, settle to fixed display angle
+    const targetRotX = -0.25, targetRotY = 0.55, targetRotZ = 0.08;
+    const rk = easeOutCubic(k);
+    crateGroup.rotation.x = -.3 + (targetRotX - -.3) * rk + Math.sin(t*8)*.05*(1-k);
+    crateGroup.rotation.y = .6 + (targetRotY - .6) * rk;
+    crateGroup.rotation.z = .15 + (targetRotZ - .15) * rk;
+    if (k >= 1) {
+      state = 'idle_landed';
+      clickToOpenArmed = true;
+      t = 0;
+      // subtle squash already done via bounce
+    }
+  } else if (state === 'idle_landed') {
+    // Float slightly + gentle wobble invite click
+    crateGroup.position.y = Math.sin(t*2)*.05;
+    crateGroup.rotation.y = 0.55 + Math.sin(t*1.2)*.04;
+  } else if (state === 'opening') {
+    lidAngle = Math.min(lidAngle + dt*2.4, Math.PI*.7);
+    lidPivot.rotation.x = -lidAngle;
+    glowMat.opacity = Math.min(glowMat.opacity + dt*1.2, .85);
+    crateGroup.position.y = Math.sin(t*2)*.05;
+    if (lidAngle >= Math.PI*.7) {
+      state = 'revealing';
+      itemGroup.visible = true;
+      if (currentOpts.itemImage && pngMesh.userData.ready) { pngMesh.visible = true; gem.visible = false; }
+    }
+  } else if (state === 'revealing') {
+    itemY = Math.min(itemY + dt*1.1, 1.7);
+    itemGroup.position.y = -.3 + itemY;
+    gem.rotation.y += dt*1.4; gem.rotation.x += dt*.6;
+    const bob = Math.sin(now*.002)*.08;
+    gem.position.y = bob; pngMesh.position.y = bob;
+    if (pngMesh.visible){
+      const wp=new THREE.Vector3();pngMesh.getWorldPosition(wp);
+      pngMesh.lookAt(camera.position.x,wp.y,camera.position.z);
+    }
+    glowMat.opacity = .75 + Math.sin(now*.004)*.1;
+    crateGroup.position.y = Math.sin(t*2)*.04;
+  }
+
+  // Particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.userData.life-=dt; p.userData.vel.y-=6*dt;
+    p.position.addScaledVector(p.userData.vel,dt);
+    p.rotation.x+=p.userData.rot.x*dt; p.rotation.y+=p.userData.rot.y*dt; p.rotation.z+=p.userData.rot.z*dt;
+    p.material.opacity=Math.max(0,p.userData.life/p.userData.max);
+    if(p.userData.life<=0){crateGroup.remove(p);particles.splice(i,1)}
+  }
+
+  renderer.render(scene,camera);
+}
+
+return { open, close, TIERS };
+})();
+
+// Demo
+function demo(tier){
+  const names = {
+    wood:'Rusty Dagger', iron:'Iron Helm', gold:'Golden Chalice',
+    diamond:'Diamond Crown', emerald:'Emerald Staff', ruby:'Ruby Heart'
+  };
+  const colors = {
+    wood:'#c9a24a', iron:'#cfd6e0', gold:'#ffe066',
+    diamond:'#baf0ff', emerald:'#7cffb0', ruby:'#ff6080'
+  };
+  LootCrate.open({
+    tier,
+    itemName: names[tier],
+    itemColor: colors[tier],
+    onClose: ()=>console.log('crate closed')
+  });
+}
+</script></body></html>
