@@ -24,7 +24,7 @@ const SEED_ENTRIES = [
     id: '2026-04-12-modules-fixes-admin-chat-auravision',
     date: '2026-04-12',
     title: 'Maintenance auto, modération chat, roulette et AuraVision',
-    summary: 'Grosse passe de correctifs et d améliorations sur la modération (ban/mute), la maintenance automatique du week-end, la robustesse roulette/casino, la visio AuraVision, l admin utilisateur et l onglet You/Explore, avec en plus un marche d actions, un nouveau business illegal et des stats economiques profil.',
+    summary: 'Grosse passe de correctifs et d améliorations sur la modération (ban/mute), la maintenance automatique du week-end, la robustesse roulette/casino, la visio AuraVision, l admin utilisateur et l onglet You/Explore, avec en plus un marche d actions, un nouveau business illegal et plusieurs corrections economiques et UI.',
     items: [
       { category: 'BUG_FIX', text: '**Bans enrichis partout** — Les payloads de ban HTTP/Socket incluent maintenant `userId` et `ban.id` (middleware auth, server socket, chat socket, action admin), et le frontend stocke ces identifiants meme quand ils arrivent via `ban.userId`.', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Maintenance automatique week-end** — Nouveau flag `maintenance_auto_weekend_enabled` exposé en API maintenance et dans l admin: la maintenance peut s activer automatiquement le samedi et dimanche, en plus du mode manuel.', order: 1 },
@@ -49,6 +49,11 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Navigation You enrichie** — Nouvel onglet `Marche actions` dans la sidebar + presence chat + i18n, et rendu de l onglet dans la page You.', order: 20 },
       { category: 'BUG_FIX', text: '**Business invites: droits manager** — L invitation de membres ne repose plus sur un simple participant, mais sur la verification manager, pour eviter les invitations non autorisees.', order: 21 },
       { category: 'SMALL_FEATURE', text: '**Banque: visibilite remboursement client** — L interface de gestion des prets affiche maintenant les finances du client (money/aura), indique s il peut solder immediatement, et clarifie le bouton de remboursement integral cote emprunteur.', order: 22 },
+      { category: 'BUG_FIX', text: '**Salaires business fiabilises** — Le paiement journalier verifie maintenant la prise du jour dans la transaction avant de debiter la tresorerie et de crediter le joueur, ce qui evite les doubles paiements en cas de requetes concurrentes.', order: 23 },
+      { category: 'BUG_FIX', text: '**Revenus bancaires securises** — Les interets journaliers des comptes epargne ne sont plus verses si la ligne business a deja ete reclamee pour la journee, ce qui evite les doublons de revenus et les calculs partiels.', order: 24 },
+      { category: 'SMALL_FEATURE', text: '**Chat: details des reactions** — Les reactions deviennent cliquables et ouvrent un panneau listant les utilisateurs qui ont reagit, avec aperçu du message d origine.', order: 25 },
+      { category: 'SMALL_FEATURE', text: '**Admin utilisateurs: repartition par classe** — Un nouveau tableau regroupe les utilisateurs par classe avec leur aura, leur tri interne et un comptage par groupe.', order: 26 },
+      { category: 'SMALL_FEATURE', text: '**Admin roles: badges unifies** — Les badges de roles administrateur utilisent maintenant une logique unique avec les libelles normalises pour super admin, admin, beta tester, fiscal inspector et judge.', order: 27 },
     ],
   },
   {

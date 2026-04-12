@@ -52,6 +52,14 @@ type MentionableUser = {
   profilePicture?: string | null;
 };
 
+type ReactionDetails = {
+  emoji: string;
+  count: number;
+  users: string[];
+  author: string;
+  preview: string;
+};
+
 const REACTION_OPTIONS = [
   { value: '❤️', label: t('chat_reaction_heart') },
   { value: '👍', label: t('chat_reaction_like') },
@@ -115,6 +123,7 @@ export default function ChatSidebar() {
   const [isSubmittingMuteAppeal, setIsSubmittingMuteAppeal] = useState(false);
   const [muteAppealSent, setMuteAppealSent] = useState(false);
   const [muteAppealError, setMuteAppealError] = useState<string | null>(null);
+  const [selectedReaction, setSelectedReaction] = useState<ReactionDetails | null>(null);
   const mentionMap = new Map<string, MentionableUser>();
   const pinnedMessages = useMemo(() => {
     return messages
@@ -478,6 +487,19 @@ export default function ChatSidebar() {
     if (!node) return;
     node.scrollIntoView({ behavior: 'smooth', block: 'center' });
     markAllAsRead();
+  };
+
+  const openReactionUsers = (
+    msg: { username: string; message: string; imageUrl?: string | null },
+    reaction: { emoji: string; count: number; users: string[] }
+  ) => {
+    setSelectedReaction({
+      emoji: reaction.emoji,
+      count: reaction.count,
+      users: reaction.users,
+      author: msg.username,
+      preview: msg.message || (msg.imageUrl ? '[image]' : ''),
+    });
   };
 
   const handleLoadOlderMessages = () => {
@@ -889,15 +911,17 @@ export default function ChatSidebar() {
                       {msg.reactions.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {msg.reactions.map((reaction) => (
-                            <span
+                            <button
                               key={`${msg.id}-${reaction.emoji}`}
+                              type="button"
                               className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
                               title={getReactionUsersLabel(reaction.users)}
                               aria-label={getReactionUsersLabel(reaction.users)}
+                              onClick={() => openReactionUsers(msg, reaction)}
                             >
                               <span>{reaction.emoji}</span>
                               <span className="tabular-nums">{reaction.count}</span>
-                            </span>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -1165,6 +1189,47 @@ export default function ChatSidebar() {
               {t('chat_launch_poll')}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(selectedReaction)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedReaction(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedReaction ? `${selectedReaction.emoji} ${t('chat_reaction_users_title')}` : t('chat_reaction_users_title')}
+            </DialogTitle>
+            {selectedReaction && (
+              <DialogDescription>
+                {`${selectedReaction.count} personne${selectedReaction.count > 1 ? 's' : ''} ${selectedReaction.count > 1 ? 'ont' : 'a'} réagi au message de ${selectedReaction.author}.`}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          {selectedReaction && (
+            <div className="space-y-3">
+              {selectedReaction.preview && (
+                <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{selectedReaction.author}</span>
+                  <span className="mx-1">•</span>
+                  <span className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{selectedReaction.preview}</span>
+                </div>
+              )}
+
+              <ScrollArea className="max-h-72 rounded-lg border border-border/60">
+                <div className="divide-y divide-border/60">
+                  {selectedReaction.users.map((username) => (
+                    <div key={username} className="px-3 py-2 text-sm text-foreground">
+                      {username}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
       
