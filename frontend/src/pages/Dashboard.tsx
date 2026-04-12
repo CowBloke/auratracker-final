@@ -1237,7 +1237,7 @@ export default function Dashboard() {
                 <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground")}>Aucune nouveauté disponible.</p>
               ) : (
                 <div className="max-h-[70vh] overflow-y-auto pr-1">
-                  <Accordion type="multiple" defaultValue={changelogEntries[0] ? [changelogEntries[0].id] : []}>
+                  <Accordion type="multiple" defaultValue={[]}>
                     {changelogEntries.map((entry) => {
                       const counts: Record<DashboardUpdateCategory, number> = {
                         BIG_FEATURE: 0,
