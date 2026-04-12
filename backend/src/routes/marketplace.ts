@@ -26,6 +26,37 @@ const CLAN_SLOT_UPGRADE_MAX_MEMBERS = CLAN_BASE_MAX_MEMBERS + 2;
 const DEFAULT_YOU_ADBLOCK_DURATION_MINUTES = 60;
 const MAX_YOU_ADBLOCK_DURATION_MINUTES = 60 * 24 * 30;
 
+const normalizeItemType = (value: unknown): string =>
+  typeof value === 'string' ? value.trim().toUpperCase() : '';
+
+const parsePositiveInteger = (value: unknown): number => {
+  const parsed = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(parsed)) {
+    return 0;
+  }
+  const floored = Math.floor(parsed);
+  return floored > 0 ? floored : 0;
+};
+
+const getConsumableBonuses = (effect: unknown): { bonusAura: number; bonusMoney: number } => {
+  if (!effect || typeof effect !== 'object') {
+    return { bonusAura: 0, bonusMoney: 0 };
+  }
+
+  const payload = effect as Record<string, unknown>;
+  const bonusAura =
+    parsePositiveInteger(payload.bonusAura) ||
+    parsePositiveInteger(payload.auraBonus) ||
+    parsePositiveInteger(payload.aura);
+  const bonusMoney =
+    parsePositiveInteger(payload.bonusMoney) ||
+    parsePositiveInteger(payload.moneyBonus) ||
+    parsePositiveInteger(payload.money) ||
+    parsePositiveInteger(payload.cash);
+
+  return { bonusAura, bonusMoney };
+};
+
 const parseItemEffect = parseClanEffectPayload;
 
 const MARKETPLACE_LISTING_STATUSES = ['ACTIVE', 'SOLD', 'CANCELLED'] as const;
@@ -604,8 +635,10 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       });
     }
 
+    const normalizedItemType = normalizeItemType(userItem.item.type);
+
     // Handle different item types
-    if (userItem.item.type === 'COSMETIC' && effect) {
+    if (normalizedItemType === 'COSMETIC' && effect) {
       // Cosmetic items - apply the effect with user-provided data
       if (effect.type === 'USERNAME_COLOR' && effectData?.color) {
         // Apply username color
@@ -696,8 +729,14 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       }
     }
 
+    const consumableBonuses = getConsumableBonuses(effect);
+    const shouldTreatAsConsumable =
+      normalizedItemType === 'CONSUMABLE' ||
+      consumableBonuses.bonusAura > 0 ||
+      consumableBonuses.bonusMoney > 0;
+
     // Consumable items
-    if (userItem.item.type === 'CONSUMABLE') {
+    if (shouldTreatAsConsumable) {
       // Decrement quantity or delete if last one
       if (userItem.quantity > 1) {
         await prisma.userItem.update({
@@ -711,19 +750,14 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       }
 
       // Apply effects like bonus aura, money, etc.
-      if (effect) {
-        if (effect.bonusAura) {
-          await prisma.user.update({
-            where: { id: req.user.id },
-            data: { aura: { increment: effect.bonusAura } },
-          });
-        }
-        if (effect.bonusMoney) {
-          await prisma.user.update({
-            where: { id: req.user.id },
-            data: { money: { increment: effect.bonusMoney } },
-          });
-        }
+      if (consumableBonuses.bonusAura > 0 || consumableBonuses.bonusMoney > 0) {
+        await prisma.user.update({
+          where: { id: req.user.id },
+          data: {
+            ...(consumableBonuses.bonusAura > 0 ? { aura: { increment: consumableBonuses.bonusAura } } : {}),
+            ...(consumableBonuses.bonusMoney > 0 ? { money: { increment: consumableBonuses.bonusMoney } } : {}),
+          },
+        });
       }
 
       // Log consumable item use
@@ -740,7 +774,11 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
 
       return res.json({
         success: true,
-        effect,
+        effect: {
+          ...(effect && typeof effect === 'object' ? effect : {}),
+          ...(consumableBonuses.bonusAura > 0 ? { bonusAura: consumableBonuses.bonusAura } : {}),
+          ...(consumableBonuses.bonusMoney > 0 ? { bonusMoney: consumableBonuses.bonusMoney } : {}),
+        },
       });
     }
     
@@ -789,7 +827,7 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
     }
 
     // UPGRADE items
-    if (userItem.item.type === 'UPGRADE' && effect) {
+    if (normalizedItemType === 'UPGRADE' && effect) {
       if (effect.type === 'CLAN_TAG_UNLOCK') { // handled above, kept for safety
         return res.json({ success: true, effect: { type: 'CLAN_TAG_UNLOCK' } });
       }
@@ -886,10 +924,9 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       return res.json({ success: true, pending: true, effect: { type: 'CUSTOM_BADGE', requestId: request.id } });
     }
 
-    // Other item types
-    res.json({
-      success: true,
-      effect,
+    // No supported effect matched for this item.
+    return res.status(400).json({
+      error: 'Cet objet ne peut pas etre utilise dans son etat actuel.',
     });
   } catch (error) {
     console.error('Use item error:', error);

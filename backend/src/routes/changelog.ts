@@ -63,6 +63,9 @@ const SEED_ENTRIES = [
       { category: 'BUG_FIX', text: '**Aura Scroll: selections file mieux gerees** — Le selecteur video refuse les lots de plusieurs fichiers, et les champs de fichier sont reinitialises apres selection pour permettre de re-uploader le meme media.', order: 34 },
       { category: 'BUG_FIX', text: '**Clans: fin de guerre basee sur l heure** — Les guerres de clan se terminent maintenant uniquement a l heure prevue, ce qui evite les clotures prematurees sur simple score.', order: 35 },
       { category: 'BUG_FIX', text: '**Uploads: MIME normalises** — Les types MIME sont maintenant nettoyes des parametres `; charset=...` avant validation, ce qui evite de refuser des fichiers valides.', order: 36 },
+      { category: 'BUG_FIX', text: '**Marketplace: usage d objet plus strict et compatible** — Le type d objet est maintenant normalise (`trim + uppercase`), les effets consommables lisent plusieurs cles (`bonusAura/auraBonus/aura`, `bonusMoney/moneyBonus/money/cash`), et les objets sans effet exploitable renvoient une erreur 400 explicite au lieu d un succes silencieux.', order: 37 },
+      { category: 'BUG_FIX', text: '**Revenus business quotidiens fiabilises** — Le credit journalier est traite business par business avec garde transactionnelle anti double credit, notifications separees actionnaires/proprietaire, et emission des mises a jour de solde partage pour tous les comptes impactes.', order: 38 },
+      { category: 'SMALL_FEATURE', text: '**Historique prets business etendu** — La vue des prets d un business remonte maintenant jusqu a 100 lignes recentes (au lieu de 8) pour offrir un suivi complet en gestion.', order: 39 },
     ],
   },
   {

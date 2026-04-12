@@ -157,7 +157,7 @@ const BUSINESS_BASE_INCLUDE = {
   },
   loans: {
     orderBy: { createdAt: 'desc' as const },
-    take: 8,
+    take: 100,
     include: {
       borrower: {
         select: USER_PREVIEW_SELECT,

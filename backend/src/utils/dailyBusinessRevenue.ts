@@ -2,12 +2,18 @@ import type { PrismaClient } from '@prisma/client';
 import { getBusinessRevenueSnapshot } from '../modules/you/service.js';
 import { getParisDayKey } from './dailyAura.js';
 import { createNotification } from './notifications.js';
+import { emitSharedBalanceUpdatesForUserIds } from './sharedBalance.js';
 
 let _timer: ReturnType<typeof setInterval> | null = null;
 
 export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<void> => {
   const todayKey = getParisDayKey(new Date());
   const notificationsToSend: Array<{
+    userId: string;
+    amount: number;
+    businessName: string;
+  }> = [];
+  const ownerRevenueNotifications: Array<{
     userId: string;
     amount: number;
     businessName: string;
@@ -23,6 +29,7 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
     },
     select: {
       id: true,
+      ownerId: true,
       name: true,
       typeKey: true,
       treasuryMoney: true,
@@ -57,105 +64,144 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
 
   if (businesses.length === 0) return;
 
-  const results = await prisma.$transaction(async (tx) => {
-    const creditedBusinessIds: string[] = [];
+  const creditedBusinessIds: string[] = [];
+  const balanceUserIds = new Set<string>();
 
-    for (const business of businesses) {
-      const revenueSnapshot = getBusinessRevenueSnapshot(business);
-      if (revenueSnapshot.dailyRevenue <= 0) {
+  for (const business of businesses) {
+    const revenueSnapshot = getBusinessRevenueSnapshot(business);
+    if (revenueSnapshot.dailyRevenue <= 0) {
+      continue;
+    }
+
+    // Split daily revenue to shareholders first, then keep the remainder in treasury.
+    const payoutPlan: Array<{ userId: string; amount: number }> = [];
+    let remainingRevenue = revenueSnapshot.dailyRevenue;
+
+    const validShareholders = (business.shareholders ?? []).filter((shareholder) => shareholder.sharePercent > 0);
+    for (const shareholder of validShareholders) {
+      if (remainingRevenue <= 0) break;
+
+      const rawShareAmount = Math.floor((revenueSnapshot.dailyRevenue * shareholder.sharePercent) / 100);
+      const shareAmount = Math.min(remainingRevenue, Math.max(0, rawShareAmount));
+      if (shareAmount <= 0) {
         continue;
       }
 
-      // Split daily revenue to shareholders first, then keep the remainder in treasury.
-      const payoutPlan: Array<{ userId: string; amount: number }> = [];
-      let remainingRevenue = revenueSnapshot.dailyRevenue;
+      payoutPlan.push({ userId: shareholder.userId, amount: shareAmount });
+      remainingRevenue -= shareAmount;
+    }
 
-      const validShareholders = (business.shareholders ?? []).filter((shareholder) => shareholder.sharePercent > 0);
-      for (const shareholder of validShareholders) {
-        if (remainingRevenue <= 0) break;
+    try {
+      const applied = await prisma.$transaction(async (tx) => {
+        const updateResult = await tx.business.updateMany({
+          where: {
+            id: business.id,
+            OR: [
+              { lastBusinessRevenueDate: null },
+              { lastBusinessRevenueDate: { not: todayKey } },
+            ],
+          },
+          data: {
+            treasuryMoney: { increment: remainingRevenue },
+            lastBusinessRevenueDate: todayKey,
+          },
+        });
 
-        const rawShareAmount = Math.floor((revenueSnapshot.dailyRevenue * shareholder.sharePercent) / 100);
-        const shareAmount = Math.min(remainingRevenue, Math.max(0, rawShareAmount));
-        if (shareAmount <= 0) {
-          continue;
+        if (updateResult.count !== 1) {
+          return false;
         }
 
-        payoutPlan.push({ userId: shareholder.userId, amount: shareAmount });
-        remainingRevenue -= shareAmount;
-      }
+        for (const payout of payoutPlan) {
+          await tx.user.update({
+            where: { id: payout.userId },
+            data: { money: { increment: payout.amount } },
+          });
+        }
 
-      const updateResult = await tx.business.updateMany({
-        where: {
-          id: business.id,
-          OR: [
-            { lastBusinessRevenueDate: null },
-            { lastBusinessRevenueDate: { not: todayKey } },
-          ],
-        },
-        data: {
-          treasuryMoney: { increment: remainingRevenue },
-          lastBusinessRevenueDate: todayKey,
-        },
+        const totalShareholderPayout = payoutPlan.reduce((sum, payout) => sum + payout.amount, 0);
+
+        await tx.businessTransaction.create({
+          data: {
+            businessId: business.id,
+            type: 'DAILY_REVENUE',
+            amount: remainingRevenue,
+            label: totalShareholderPayout > 0
+              ? `Revenu quotidien de ${business.name} (actionnaires: ${totalShareholderPayout.toLocaleString('fr-FR')})`
+              : `Revenu quotidien de ${business.name}`,
+            actorId: null,
+          },
+        });
+
+        return true;
       });
 
-      if (updateResult.count !== 1) {
+      if (!applied) {
         continue;
       }
 
       creditedBusinessIds.push(business.id);
-
+      balanceUserIds.add(business.ownerId);
       for (const payout of payoutPlan) {
-        await tx.user.update({
-          where: { id: payout.userId },
-          data: { money: { increment: payout.amount } },
-        });
-
         notificationsToSend.push({
           userId: payout.userId,
           amount: payout.amount,
           businessName: business.name,
         });
+        balanceUserIds.add(payout.userId);
       }
 
-      const totalShareholderPayout = payoutPlan.reduce((sum, payout) => sum + payout.amount, 0);
-
-      await tx.businessTransaction.create({
-        data: {
-          businessId: business.id,
-          type: 'DAILY_REVENUE',
-          amount: remainingRevenue,
-          label: totalShareholderPayout > 0
-            ? `Revenu quotidien de ${business.name} (actionnaires: ${totalShareholderPayout.toLocaleString('fr-FR')})`
-            : `Revenu quotidien de ${business.name}`,
-          actorId: null,
-        },
+      ownerRevenueNotifications.push({
+        userId: business.ownerId,
+        amount: remainingRevenue,
+        businessName: business.name,
       });
+    } catch (error) {
+      console.error(`[daily-business-revenue] Failed for business ${business.id}:`, error);
     }
+  }
 
-    return creditedBusinessIds;
-  });
-
-  if (results.length === 0) return;
+  if (creditedBusinessIds.length === 0) return;
 
   await Promise.allSettled(
-    notificationsToSend.map((entry) =>
-      createNotification({
-        userId: entry.userId,
-        type: 'MONEY_RECEIVED',
-        title: 'Dividende quotidien reçu',
-        body: `${entry.amount.toLocaleString('fr-FR')} money ont ete verses sur ton wallet pour tes parts de ${entry.businessName}.`,
-        link: '/you?tab=travail',
-        icon: 'briefcase-business',
-        data: {
-          source: 'business_shareholder_daily_revenue',
-          amount: entry.amount,
-          businessName: entry.businessName,
-        },
-      }),
-    ),
+    [
+      ...notificationsToSend.map((entry) =>
+        createNotification({
+          userId: entry.userId,
+          type: 'MONEY_RECEIVED',
+          title: 'Dividende quotidien recu',
+          body: `${entry.amount.toLocaleString('fr-FR')} money ont ete verses sur ton wallet pour tes parts de ${entry.businessName}.`,
+          link: '/you?tab=travail',
+          icon: 'briefcase-business',
+          data: {
+            source: 'business_shareholder_daily_revenue',
+            amount: entry.amount,
+            businessName: entry.businessName,
+          },
+        }),
+      ),
+      ...ownerRevenueNotifications.map((entry) =>
+        createNotification({
+          userId: entry.userId,
+          type: 'SYSTEM',
+          title: 'Revenu quotidien credite',
+          body: `${entry.amount.toLocaleString('fr-FR')} money ont ete ajoutes a la tresorerie de ${entry.businessName}.`,
+          link: '/you?tab=travail',
+          icon: 'briefcase-business',
+          data: {
+            source: 'business_owner_daily_revenue',
+            amount: entry.amount,
+            businessName: entry.businessName,
+          },
+        }),
+      ),
+    ],
   );
 
-  console.log(`[daily-business-revenue] Credited ${results.length} business(es) for ${todayKey}`);
+  if (balanceUserIds.size > 0) {
+    await emitSharedBalanceUpdatesForUserIds(prisma, Array.from(balanceUserIds));
+  }
+
+  console.log(`[daily-business-revenue] Credited ${creditedBusinessIds.length} business(es) for ${todayKey}`);
 };
 
 export const startDailyBusinessRevenueScheduler = (prisma: PrismaClient): void => {
