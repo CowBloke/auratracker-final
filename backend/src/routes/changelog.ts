@@ -21,6 +21,29 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-12-modules-fixes-admin-chat-auravision',
+    date: '2026-04-12',
+    title: 'Maintenance auto, modération chat, roulette et AuraVision',
+    summary: 'Grosse passe de correctifs et d améliorations sur la modération (ban/mute), la maintenance automatique du week-end, la robustesse roulette/casino, la visio AuraVision, l admin utilisateur et l onglet You/Explore.',
+    items: [
+      { category: 'BUG_FIX', text: '**Bans enrichis partout** — Les payloads de ban HTTP/Socket incluent maintenant `userId` et `ban.id` (middleware auth, server socket, chat socket, action admin), et le frontend stocke ces identifiants meme quand ils arrivent via `ban.userId`.', order: 0 },
+      { category: 'SMALL_FEATURE', text: '**Maintenance automatique week-end** — Nouveau flag `maintenance_auto_weekend_enabled` exposé en API maintenance et dans l admin: la maintenance peut s activer automatiquement le samedi et dimanche, en plus du mode manuel.', order: 1 },
+      { category: 'BUG_FIX', text: '**Casino roulette anti double start** — Le backend verrouille le demarrage de manche par utilisateur (`activeCasinoStartLocks`) pour eviter les doubles requetes, et le frontend verrouille immediatement l UI avant l animation.', order: 2 },
+      { category: 'SMALL_FEATURE', text: '**Roulette testée en isolation** — Ajout du helper `startRouletteRound` (start + refresh best effort) avec tests unitaires Vitest pour garantir le comportement en cas d echec de refresh utilisateur.', order: 3 },
+      { category: 'BUG_FIX', text: '**Marketplace clan** — Les objets de type `CLAN_SLOT_UPGRADE` ne peuvent plus etre mis en vente sur la marketplace.', order: 4 },
+      { category: 'BIG_FEATURE', text: '**Pack massif de badges auto** — Ajout d une large serie de nouveaux badges auto (quetes daily, speedrun, horaires de victoire, series, cadeaux, referrals, Polymarket, guerres de clan, collection complete, etc.).', order: 5 },
+      { category: 'SMALL_FEATURE', text: '**Chat mute: contestation intégrée** — Quand un joueur est mute, le champ d envoi est desactive avec message explicite et formulaire de contestation direct vers le support.', order: 6 },
+      { category: 'BUG_FIX', text: '**Chat sidebar: unread plus propre** — Le marquage des messages lus en bas de conversation ne se fait plus quand le panneau est fermé.', order: 7 },
+      { category: 'BUG_FIX', text: '**Messages DM: auto-scroll intelligent** — Le scroll bas ne se declenche plus inutilement: il suit le changement de conversation et les nouveaux messages seulement si l utilisateur etait deja en bas.', order: 8 },
+      { category: 'SMALL_FEATURE', text: '**Admin maintenance UX** — Le modal maintenance ajoute un switch dedie au mode auto week-end et l etat resume affiche correctement le mode actif.', order: 9 },
+      { category: 'BUG_FIX', text: '**Admin utilisateurs: base aura/argent fiabilisée** — L edition utilisateur calcule maintenant le resultat depuis la base saisie dans le formulaire (solde direct), ce qui evite les ecarts de calcul sur ajout/retrait.', order: 10 },
+      { category: 'SMALL_FEATURE', text: '**Admin signalements: snapshot complet lisible** — Le bloc des messages de contexte devient scrollable et affiche tout le snapshot avec retour a la ligne.', order: 11 },
+      { category: 'SMALL_FEATURE', text: '**You/Explore: tri et pubs multiples** — Nouveau tri (avis, nombre d avis, recents, anciens, revenus) et rotation de plusieurs bannières pub dedupliquees au lieu d une seule.', order: 12 },
+      { category: 'SMALL_FEATURE', text: '**Sidebar: logo You plus visible** — Le bouton logo recoit un nudge visuel (bounce/shadow) quand on peut ouvrir You pour rendre ce point d entree plus evident.', order: 13 },
+      { category: 'BIG_FEATURE', text: '**AuraVision WebRTC plus robuste** — Ajout d une logique de negotiation parfaite (collision d offers), gestion prudente des ICE candidates et recovery automatique (ICE restart + timeout disconnect) pour limiter les decrochages.', order: 14 },
+    ],
+  },
+  {
     id: '2026-04-11-adblock-global',
     date: '2026-04-11',
     title: 'Adblock — Effet étendu à tout le site',

@@ -104,6 +104,8 @@ interface ChatSocketContextValue {
   messages: ChatMessage[];
   hasOlderMessages: boolean;
   isLoadingOlderMessages: boolean;
+  isChatMuted: boolean;
+  chatMutedMessage: string | null;
   activePoll: ChatPoll | null;
   onlineUsers: OnlineUser[];
   onlineCount: number;
@@ -132,6 +134,8 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+  const [isChatMuted, setIsChatMuted] = useState(false);
+  const [chatMutedMessage, setChatMutedMessage] = useState<string | null>(null);
   const [activePoll, setActivePoll] = useState<ChatPoll | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
@@ -223,6 +227,10 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     });
 
     s.on('chat:message', (message: ChatMessage) => {
+      if (message.userId === user.id) {
+        setIsChatMuted(false);
+        setChatMutedMessage(null);
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -235,6 +243,8 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     });
 
     s.on('chat:muted', (data: { message?: string }) => {
+      setIsChatMuted(true);
+      setChatMutedMessage(data.message || t('chat_muted_default'));
       if (typeof window !== 'undefined') {
         toast(data.message || t('chat_muted_default'));
       }
@@ -420,6 +430,8 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       messages,
       hasOlderMessages,
       isLoadingOlderMessages,
+      isChatMuted,
+      chatMutedMessage,
       activePoll,
       onlineUsers,
       onlineCount,
@@ -443,6 +455,8 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       messages,
       hasOlderMessages,
       isLoadingOlderMessages,
+      isChatMuted,
+      chatMutedMessage,
       activePoll,
       onlineUsers,
       onlineCount,

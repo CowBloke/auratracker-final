@@ -89,6 +89,7 @@ const SITE_RELOAD_TRIGGER_KEYS = new Set([
   'maintenance_message',
   'maintenance_pages',
   'maintenance_end_date',
+  'maintenance_auto_weekend_enabled',
   'blocked_pages',
   'blocked_message',
   'blocked_page_messages',
@@ -3553,7 +3554,10 @@ router.post('/bans', authMiddleware, requireAdmin, async (req: AuthRequest, res:
     io.to(`user:${userId}`).emit('ban:enforced', {
       message: banMessage,
       banned: true,
+      userId,
       ban: {
+        id: ban.id,
+        userId,
         reason: ban.reason,
         type: ban.type,
         expiresAt: ban.expiresAt ? ban.expiresAt.toISOString() : null,

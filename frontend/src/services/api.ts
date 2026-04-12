@@ -36,7 +36,7 @@ api.interceptors.response.use(
         expiresAt: banData.ban?.expiresAt ?? null,
         message: banData.error,
         banId: banData.ban?.id ?? null,
-        userId: banData.userId ?? null,
+        userId: banData.userId ?? banData.ban?.userId ?? null,
       });
       localStorage.removeItem('token');
       window.location.href = '/banned';

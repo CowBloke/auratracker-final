@@ -1145,6 +1145,10 @@ router.post('/listings', authMiddleware, validate(createMarketplaceListingSchema
       return res.status(400).json({ error: 'This item cannot be sold' });
     }
 
+    if (parseItemEffect(userItem.item.effect)?.type === 'CLAN_SLOT_UPGRADE') {
+      return res.status(400).json({ error: 'Le slot supplémentaire de clan ne peut pas être vendu sur la marketplace.' });
+    }
+
     if (quantity > userItem.quantity) {
       return res.status(400).json({ error: 'Quantity exceeds inventory amount' });
     }

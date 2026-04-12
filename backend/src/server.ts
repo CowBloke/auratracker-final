@@ -234,6 +234,7 @@ io.use(async (socket, next) => {
         ],
       },
       select: {
+        id: true,
         reason: true,
         type: true,
         expiresAt: true,
@@ -247,7 +248,10 @@ io.use(async (socket, next) => {
       socket.emit('ban:enforced', {
         message,
         banned: true,
+        userId: user.id,
         ban: {
+          id: activeBan.id,
+          userId: user.id,
           reason: activeBan.reason,
           type: activeBan.type,
           expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,
@@ -307,6 +311,7 @@ io.on('connection', (socket) => {
         ],
       },
       select: {
+        id: true,
         reason: true,
         type: true,
         expiresAt: true,
@@ -320,7 +325,10 @@ io.on('connection', (socket) => {
       socket.emit('ban:enforced', {
         message,
         banned: true,
+        userId,
         ban: {
+          id: activeBan.id,
+          userId,
           reason: activeBan.reason,
           type: activeBan.type,
           expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,

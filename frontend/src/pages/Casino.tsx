@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PageShell } from '@/components/layout/page-shell';
+import { startRouletteRound } from './casino/startRouletteRound';
 
 type GameTab = 'roulette' | 'slots' | 'blackjack' | 'soccer' | 'mines' | 'crash';
 
@@ -1673,13 +1674,18 @@ function RouletteGame({
       return;
     }
 
-    // Deduct the bet immediately before the animation so the balance is always correct
+    // Lock immediately to avoid duplicate start requests before state updates propagate.
+    setSpinning(true);
     setError(null);
     try {
-      await gamesApi.startCasino(totalBet);
-      await refreshUser();
+      await startRouletteRound({
+        bet: totalBet,
+        startCasino: gamesApi.startCasino,
+        refreshUser,
+      });
     } catch {
       setError('Fonds insuffisants ou erreur lors de la mise.');
+      setSpinning(false);
       return;
     }
 
@@ -1700,7 +1706,6 @@ function RouletteGame({
       targetBallRotation -= 360;
     }
 
-    setSpinning(true);
     setRewards(null);
     setLastResult(null);
     setBallRotation(targetBallRotation);

@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UserBadges } from '@/components/badges/UserBadges';
 import { toClanTagData } from '@/components/clans/ClanTag';
-import { uploadUserImage } from '@/services/api';
+import { supportApi, uploadUserImage } from '@/services/api';
 import { IMAGE_UPLOAD_INPUT_ACCEPT, prepareImageUploadPayload } from '@/lib/image-upload';
 import { t } from '@/lib/i18n';
 
@@ -76,6 +76,8 @@ export default function ChatSidebar() {
     activePoll,
     onlineUsers,
     typingUsers,
+    isChatMuted,
+    chatMutedMessage,
     sendMessage,
     setTyping,
     reactToMessage,
@@ -109,6 +111,10 @@ export default function ChatSidebar() {
   const [imageUrl, setImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [pollModalOpen, setPollModalOpen] = useState(false);
+  const [muteAppealMessage, setMuteAppealMessage] = useState('');
+  const [isSubmittingMuteAppeal, setIsSubmittingMuteAppeal] = useState(false);
+  const [muteAppealSent, setMuteAppealSent] = useState(false);
+  const [muteAppealError, setMuteAppealError] = useState<string | null>(null);
   const mentionMap = new Map<string, MentionableUser>();
   const pinnedMessages = useMemo(() => {
     return messages
@@ -192,10 +198,10 @@ export default function ChatSidebar() {
   const mentionableUsers = Array.from(mentionMap.values());
 
   useEffect(() => {
-    if (isAtBottom && unreadCount > 0) {
+    if (open && isAtBottom && unreadCount > 0) {
       markAllAsRead();
     }
-  }, [isAtBottom, unreadCount, markAllAsRead]);
+  }, [open, isAtBottom, unreadCount, markAllAsRead]);
 
   useEffect(() => {
     if (open && unreadCount === 0) {
@@ -440,6 +446,25 @@ export default function ChatSidebar() {
     setPollQuestion('');
     setPollOptionsText('');
     setPollModalOpen(false);
+  };
+
+  const handleSubmitMuteAppeal = async () => {
+    const trimmed = muteAppealMessage.trim();
+    if (trimmed.length < 10) {
+      setMuteAppealError('Décris un peu plus ta contestation (10 caractères minimum).');
+      return;
+    }
+
+    try {
+      setMuteAppealError(null);
+      setIsSubmittingMuteAppeal(true);
+      await supportApi.sendMessage(`Contestation mute:\n\n${trimmed}`);
+      setMuteAppealSent(true);
+    } catch (error: any) {
+      setMuteAppealError(error?.response?.data?.error || 'Impossible d\'envoyer la contestation pour le moment.');
+    } finally {
+      setIsSubmittingMuteAppeal(false);
+    }
   };
 
   const getPollOptionPercent = (votes: number) => {
@@ -916,6 +941,46 @@ export default function ChatSidebar() {
           )}
 
           <form onSubmit={handleSubmit} className="p-3 border-t border-border/40">
+            {isChatMuted && (
+              <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                <p className="text-xs font-medium text-amber-600 dark:text-amber-300">
+                  {chatMutedMessage || 'Tu es actuellement mute du chat.'}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Tu peux envoyer une contestation à l'équipe de modération.
+                </p>
+
+                {muteAppealSent ? (
+                  <p className="mt-2 text-xs text-green-600 dark:text-green-400">Contestation envoyée avec succès.</p>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    <Textarea
+                      value={muteAppealMessage}
+                      onChange={(e) => setMuteAppealMessage(e.target.value)}
+                      rows={3}
+                      maxLength={1000}
+                      placeholder="Explique pourquoi ce mute devrait être retiré."
+                      className="resize-none bg-transparent border-border/50 text-xs"
+                    />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-muted-foreground">{muteAppealMessage.length}/1000</span>
+                      {muteAppealError && (
+                        <span className="text-[11px] text-destructive">{muteAppealError}</span>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSubmitMuteAppeal}
+                      disabled={isSubmittingMuteAppeal || muteAppealMessage.trim().length < 10}
+                      className="h-8"
+                    >
+                      {isSubmittingMuteAppeal ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Envoyer la contestation'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
             <input
               ref={imageInputRef}
               type="file"
@@ -974,8 +1039,9 @@ export default function ChatSidebar() {
                   onKeyDown={handleInputKeyDown}
                   onKeyUp={handleInputCursorChange}
                   onClick={handleInputCursorChange}
-                  placeholder={t('chat_message_placeholder')}
+                  placeholder={isChatMuted ? 'Tu es mute pour le moment' : t('chat_message_placeholder')}
                   rows={1}
+                  disabled={isChatMuted}
                   className="min-h-9 max-h-40 resize-none overflow-y-hidden text-sm bg-transparent border-border/50 py-2"
                 />
                 {showMentionList && (
@@ -1022,7 +1088,7 @@ export default function ChatSidebar() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     type="button"
-                    disabled={isUploadingImage}
+                    disabled={isUploadingImage || isChatMuted}
                     variant="outline"
                     size="icon"
                     className="h-9 w-9 text-muted-foreground"
@@ -1049,7 +1115,7 @@ export default function ChatSidebar() {
               </DropdownMenu>
               <Button
                 type="submit"
-                disabled={(!input.trim() && !imageUrl) || isUploadingImage}
+                disabled={(!input.trim() && !imageUrl) || isUploadingImage || isChatMuted}
                 variant="outline"
                 size="icon"
                 className="h-9 w-9 text-muted-foreground"

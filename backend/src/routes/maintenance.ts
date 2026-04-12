@@ -7,6 +7,7 @@ const MAINTENANCE_ENABLED_KEY = 'maintenance_enabled';
 const MAINTENANCE_MESSAGE_KEY = 'maintenance_message';
 const MAINTENANCE_PAGES_KEY = 'maintenance_pages';
 const MAINTENANCE_END_DATE_KEY = 'maintenance_end_date';
+const MAINTENANCE_AUTO_WEEKEND_ENABLED_KEY = 'maintenance_auto_weekend_enabled';
 const BLOCKED_PAGES_KEY = 'blocked_pages';
 const BLOCKED_MESSAGE_KEY = 'blocked_message';
 const BLOCKED_PAGE_MESSAGES_KEY = 'blocked_page_messages';
@@ -65,6 +66,7 @@ router.get('/', async (_req, res) => {
       messageSetting,
       pagesSetting,
       endDateSetting,
+      autoWeekendEnabledSetting,
       blockedPagesSetting,
       blockedMessageSetting,
       blockedPageMessagesSetting,
@@ -83,6 +85,7 @@ router.get('/', async (_req, res) => {
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_MESSAGE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_PAGES_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_END_DATE_KEY } }),
+      prisma.gameSettings.findUnique({ where: { key: MAINTENANCE_AUTO_WEEKEND_ENABLED_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: BLOCKED_PAGES_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: BLOCKED_MESSAGE_KEY } }),
       prisma.gameSettings.findUnique({ where: { key: BLOCKED_PAGE_MESSAGES_KEY } }),
@@ -126,7 +129,11 @@ router.get('/', async (_req, res) => {
 
     const endDateMs = endDate ? new Date(endDate).getTime() : Number.NaN;
     const isExpired = Number.isFinite(endDateMs) && endDateMs <= Date.now();
-    const enabled = (enabledFromSetting || enabledFromLegacyPages) && !isExpired;
+    const manualMaintenanceEnabled = (enabledFromSetting || enabledFromLegacyPages) && !isExpired;
+    const autoWeekendEnabled = autoWeekendEnabledSetting?.value === 'true';
+    const currentDay = new Date().getDay();
+    const autoWeekendActive = autoWeekendEnabled && (currentDay === 0 || currentDay === 6);
+    const enabled = manualMaintenanceEnabled || autoWeekendActive;
 
     if (isExpired && (enabledFromSetting || enabledFromLegacyPages)) {
       await Promise.all([
@@ -151,6 +158,8 @@ router.get('/', async (_req, res) => {
       message,
       pages: responsePages,
       endDate,
+      autoWeekendEnabled,
+      autoWeekendActive,
       blockedPages,
       blockedMessage: blockedMessageSetting?.value ?? '',
       blockedPageMessages,

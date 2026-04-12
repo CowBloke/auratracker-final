@@ -140,6 +140,7 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const isOnGames = location.pathname.startsWith('/games');
   const isOnYou = location.pathname.startsWith('/you');
   const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
+  const shouldNudgeYouLogo = !isOnYou && canOpenYouFromLogo;
 
   const handleLogoClick = () => {
     if (isOnYou) {
@@ -153,13 +154,20 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
     <button
       type="button"
       onClick={handleLogoClick}
-      className="mb-4 flex h-9 w-full items-center gap-2 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2"
+      className={cn(
+        'mb-4 flex h-9 w-full items-center gap-2 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2',
+        shouldNudgeYouLogo && 'shadow-[0_0_0_rgba(99,102,241,0)] hover:shadow-[0_0_10px_rgba(99,102,241,0.25)]'
+      )}
       aria-label={isOnYou ? t('sidebar_logo_back_to_dashboard') : (canOpenYouFromLogo ? t('sidebar_logo_go_to_you') : t('sidebar_logo_go_to_dashboard'))}
     >
       <img
         src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
         alt="AuraTracker"
-        className={cn('h-5 w-5 shrink-0 transition-transform group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4', isOnYou && 'scale-110 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]')}
+        className={cn(
+          'h-5 w-5 shrink-0 transition-transform group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4',
+          isOnYou && 'scale-110 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]',
+          shouldNudgeYouLogo && 'motion-safe:animate-[bounce_2.8s_ease-in-out_infinite]'
+        )}
       />
       <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
         {isOnYou ? t('sidebar_logo_you') : t('sidebar_logo_aura_tracker')}

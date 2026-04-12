@@ -66,6 +66,7 @@ export const authMiddleware = async (
         ],
       },
       select: {
+        id: true,
         reason: true,
         type: true,
         expiresAt: true,
@@ -80,7 +81,10 @@ export const authMiddleware = async (
       return res.status(403).json({
         error: message,
         banned: true,
+        userId: user.id,
         ban: {
+          id: activeBan.id,
+          userId: user.id,
           reason: activeBan.reason,
           type: activeBan.type,
           expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,

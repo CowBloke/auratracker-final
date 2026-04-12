@@ -365,6 +365,8 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const groupImageInputRef = useRef<HTMLInputElement | null>(null);
+  const previousSelectedConversationRef = useRef<string | null>(null);
+  const previousMessageCountRef = useRef(0);
 
   const deferredSearch = useDeferredValue(search);
   const isAdminViewer = Boolean(user?.isAdmin || user?.isSuperAdmin);
@@ -697,12 +699,24 @@ export default function MessagesPage() {
   }, [socket, selectedIdSafe]);
 
   useEffect(() => {
+    const currentMessageCount = detail?.messages.length ?? 0;
+    const previousConversationId = previousSelectedConversationRef.current;
+    const previousMessageCount = previousMessageCountRef.current;
+    const conversationChanged = previousConversationId !== selectedIdSafe;
+    const receivedNewMessage = !conversationChanged && currentMessageCount > previousMessageCount;
+    const shouldAutoScroll = conversationChanged || (receivedNewMessage && isMessagesAtBottom);
+
+    previousSelectedConversationRef.current = selectedIdSafe;
+    previousMessageCountRef.current = currentMessageCount;
+
+    if (!shouldAutoScroll) return;
+
     const frame = window.requestAnimationFrame(() => {
       scrollMessagesToBottom();
       window.setTimeout(scrollMessagesToBottom, 0);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [detail?.messages.length, selectedIdSafe, convLoading]);
+  }, [detail?.messages.length, selectedIdSafe, isMessagesAtBottom]);
 
   // Load court case when switching to a court conversation
   useEffect(() => {

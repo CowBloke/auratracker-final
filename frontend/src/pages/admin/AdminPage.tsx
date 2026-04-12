@@ -1857,6 +1857,7 @@ export default function Admin() {
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+  const [maintenanceAutoWeekendEnabled, setMaintenanceAutoWeekendEnabled] = useState(false);
   const [maintenanceEndDate, setMaintenanceEndDate] = useState<string>('');
   const [savingMaintenance, setSavingMaintenance] = useState(false);
   const [blockedPages, setBlockedPages] = useState<string[]>([]);
@@ -3121,6 +3122,7 @@ export default function Admin() {
       setChaosCoinBuyFeePercentage(res.data.settings.chaos_coin_buy_fee_percentage || '0.035');
       setClashAttackCooldownMinutes(res.data.settings.clash_attack_cooldown_minutes || '10');
       setMaintenanceMessage(res.data.settings.maintenance_message || '');
+      setMaintenanceAutoWeekendEnabled(res.data.settings.maintenance_auto_weekend_enabled === 'true');
       setBlockedMessage(res.data.settings.blocked_message || '');
       if (res.data.settings.blocked_page_messages) {
         try {
@@ -3339,6 +3341,7 @@ export default function Admin() {
       setSavingMaintenance(true);
       const settings: Record<string, string> = {
         maintenance_enabled: maintenanceEnabled ? 'true' : 'false',
+        maintenance_auto_weekend_enabled: maintenanceAutoWeekendEnabled ? 'true' : 'false',
         maintenance_message: maintenanceMessage.trim(),
         // Champ legacy pour compat backend (toujours vide car maintenance globale)
         maintenance_pages: '[]',
@@ -4424,10 +4427,8 @@ export default function Admin() {
   };
 
   const saveUser = async (id: string) => {
-    const baseAura = toSafeNumber(editModalUser?.aura ?? editValues.aura);
-    const baseMoney = toSafeNumber(editModalUser?.money ?? editValues.money);
-    const nextAura = baseAura + editAuraAddAmount - editAuraRemoveAmount;
-    const nextMoney = baseMoney + editMoneyAddAmount - editMoneyRemoveAmount;
+    const nextAura = toSafeNumber(editValues.aura) + editAuraAddAmount - editAuraRemoveAmount;
+    const nextMoney = toSafeNumber(editValues.money) + editMoneyAddAmount - editMoneyRemoveAmount;
     if (nextAura < 0) {
       showMessage('error', 'Le total d\'aura ne peut pas etre negatif');
       return;
@@ -4833,8 +4834,8 @@ export default function Admin() {
   const allSelected = selectableUsers.length > 0 && selectableUsers.every((entry) => selectedUserIds.includes(entry.id));
   const baseEditAura = toSafeNumber(editModalUser?.aura ?? editValues.aura);
   const baseEditMoney = toSafeNumber(editModalUser?.money ?? editValues.money);
-  const nextEditAura = baseEditAura + editAuraAddAmount - editAuraRemoveAmount;
-  const nextEditMoney = baseEditMoney + editMoneyAddAmount - editMoneyRemoveAmount;
+  const nextEditAura = toSafeNumber(editValues.aura) + editAuraAddAmount - editAuraRemoveAmount;
+  const nextEditMoney = toSafeNumber(editValues.money) + editMoneyAddAmount - editMoneyRemoveAmount;
 
 
   return (
@@ -6096,7 +6097,11 @@ export default function Admin() {
                 <div>
                   <div className="text-sm font-medium">Maintenance</div>
                   <div className={cn('text-xs', maintenanceEnabled ? 'text-amber-500' : 'text-muted-foreground')}>
-                    {maintenanceEnabled ? 'Maintenance globale active' : 'Site accessible normalement'}
+                    {maintenanceEnabled
+                      ? 'Maintenance globale active'
+                      : maintenanceAutoWeekendEnabled
+                        ? 'Activation automatique le week-end'
+                        : 'Site accessible normalement'}
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setMaintenanceOpen(true)} className="shrink-0">
@@ -6517,6 +6522,13 @@ export default function Admin() {
                         <div className="text-xs text-muted-foreground">Active la page de maintenance sur tout le site.</div>
                       </div>
                       <Switch checked={maintenanceEnabled} onCheckedChange={setMaintenanceEnabled} />
+                    </div>
+                    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                      <div>
+                        <div className="text-sm font-medium">Maintenance auto le week-end</div>
+                        <div className="text-xs text-muted-foreground">Active automatiquement la maintenance les samedis et dimanches.</div>
+                      </div>
+                      <Switch checked={maintenanceAutoWeekendEnabled} onCheckedChange={setMaintenanceAutoWeekendEnabled} />
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -7013,7 +7025,18 @@ export default function Admin() {
             {/* Economy */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura (ajout / retrait)</label>
+                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura (solde direct)</label>
+                <div className="relative">
+                  <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400/60 pointer-events-none" />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={editValues.aura}
+                    onChange={(e) => setEditValues(prev => ({ ...prev, aura: Number.parseInt(e.target.value, 10) || 0 }))}
+                    className="h-9 bg-transparent border-purple-500/30 focus-visible:ring-purple-500/30 pl-8"
+                    placeholder="Solde aura"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
                     <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400/70 pointer-events-none" />
@@ -7039,11 +7062,22 @@ export default function Admin() {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Actuel: {baseEditAura.toLocaleString()} • Resultat: <span className={cn(nextEditAura < 0 ? 'text-rose-400' : 'text-purple-300')}>{nextEditAura.toLocaleString()}</span>
+                  Actuel: {baseEditAura.toLocaleString()} • Base: {toSafeNumber(editValues.aura).toLocaleString()} • Resultat: <span className={cn(nextEditAura < 0 ? 'text-rose-400' : 'text-purple-300')}>{nextEditAura.toLocaleString()}</span>
                 </p>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-green-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />Argent (ajout / retrait)</label>
+                <label className="text-xs font-medium text-green-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />Argent (solde direct)</label>
+                <div className="relative">
+                  <CurrencyIcon type="money" className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" />
+                  <Input
+                    type="number"
+                    min={0}
+                    value={editValues.money}
+                    onChange={(e) => setEditValues(prev => ({ ...prev, money: Number.parseInt(e.target.value, 10) || 0 }))}
+                    className="h-9 bg-transparent border-green-500/30 focus-visible:ring-green-500/30 pl-8"
+                    placeholder="Solde argent"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative">
                     <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400/70 pointer-events-none" />
@@ -7069,7 +7103,7 @@ export default function Admin() {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  Actuel: {baseEditMoney.toLocaleString()} • Resultat: <span className={cn(nextEditMoney < 0 ? 'text-rose-400' : 'text-green-300')}>{nextEditMoney.toLocaleString()}</span>
+                  Actuel: {baseEditMoney.toLocaleString()} • Base: {toSafeNumber(editValues.money).toLocaleString()} • Resultat: <span className={cn(nextEditMoney < 0 ? 'text-rose-400' : 'text-green-300')}>{nextEditMoney.toLocaleString()}</span>
                 </p>
               </div>
               <div className="space-y-1">
@@ -10232,9 +10266,9 @@ export default function Admin() {
                         </span>
                       </div>
                       {report.reason && <p className="text-sm text-foreground">{report.reason}</p>}
-                      <div className="space-y-2 rounded-md border border-border/50 bg-muted/20 p-2">
-                        {report.snapshot.slice(-4).map((message) => (
-                          <div key={message.id} className="rounded-md bg-background/80 px-2 py-1.5 text-xs">
+                      <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-border/50 bg-muted/20 p-2">
+                        {report.snapshot.map((message) => (
+                          <div key={message.id} className="rounded-md bg-background/80 px-2 py-1.5 text-xs whitespace-pre-wrap break-words">
                             <span className="font-semibold">{message.sender?.username ?? 'Systeme'}:</span> {message.body}
                           </div>
                         ))}

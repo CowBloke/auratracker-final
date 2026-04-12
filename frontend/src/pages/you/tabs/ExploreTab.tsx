@@ -1542,11 +1542,12 @@ export function ExploreTab({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const handledBusinessParam = useRef(false);
-  const [exploreBannerAd, setExploreBannerAd] = useState<Ad | null>(null);
+  const [exploreBannerAds, setExploreBannerAds] = useState<Ad[]>([]);
   const [exploreBannerDismissed, setExploreBannerDismissed] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'you' | 'player'>('all');
+  const [sortMode, setSortMode] = useState<'best' | 'most_reviews' | 'recent' | 'oldest' | 'revenue'>('best');
   const [filtersOpen, setFiltersOpen] = useState(true);
 
   // Which business's interaction modal is open
@@ -1589,10 +1590,17 @@ export function ExploreTab({
 
   useEffect(() => {
     if (adblockActive) {
-      setExploreBannerAd(null);
+      setExploreBannerAds([]);
       return;
     }
-    void adsApi.listPublic({ limit: 1 }).then((res) => setExploreBannerAd(res.data.ads[0] ?? null)).catch(() => {});
+    void adsApi.listPublic()
+      .then((res) => {
+        const uniqueAds = res.data.ads.filter((ad, index, allAds) => allAds.findIndex((entry) => entry.id === ad.id) === index);
+        setExploreBannerAds(uniqueAds);
+      })
+      .catch(() => {
+        setExploreBannerAds([]);
+      });
   }, [adblockActive]);
 
   // Open business modal from URL param (e.g. when coming from an ad click)
@@ -1671,19 +1679,45 @@ export function ExploreTab({
     [allBusinesses, ownerFilter, search, typeFilter, userId],
   );
 
+  const sortedBusinesses = useMemo(() => {
+    return [...filteredBusinesses].sort((a, b) => {
+      if (sortMode === 'most_reviews') {
+        const reviewDiff = (b.ratingCount ?? 0) - (a.ratingCount ?? 0);
+        if (reviewDiff !== 0) return reviewDiff;
+      }
+
+      if (sortMode === 'recent' || sortMode === 'oldest') {
+        const aFounded = Date.parse(a.foundedAt);
+        const bFounded = Date.parse(b.foundedAt);
+        const aTime = Number.isNaN(aFounded) ? 0 : aFounded;
+        const bTime = Number.isNaN(bFounded) ? 0 : bFounded;
+        if (aTime !== bTime) {
+          return sortMode === 'recent' ? bTime - aTime : aTime - bTime;
+        }
+      }
+
+      if (sortMode === 'revenue') {
+        const revenueDiff = getBusinessRevenue(b) - getBusinessRevenue(a);
+        if (revenueDiff !== 0) return revenueDiff;
+      }
+
+      const ratingDiff = (b.avgRating ?? 0) - (a.avgRating ?? 0);
+      if (Math.abs(ratingDiff) > 0.05) return ratingDiff;
+
+      const reviewsDiff = (b.ratingCount ?? 0) - (a.ratingCount ?? 0);
+      if (reviewsDiff !== 0) return reviewsDiff;
+
+      return getBusinessRevenue(b) - getBusinessRevenue(a);
+    });
+  }, [filteredBusinesses, sortMode]);
+
   const groupedBusinesses = useMemo(
     () =>
       BUSINESS_TYPE_ORDER.map((typeKey) => ({
         typeKey,
-        businesses: filteredBusinesses
-          .filter((business) => business.typeKey === typeKey)
-          .sort((a, b) => {
-            const ratingDiff = (b.avgRating ?? 0) - (a.avgRating ?? 0);
-            if (Math.abs(ratingDiff) > 0.05) return ratingDiff;
-            return getBusinessRevenue(b) - getBusinessRevenue(a);
-          }),
+        businesses: sortedBusinesses.filter((business) => business.typeKey === typeKey),
       })).filter((section) => section.businesses.length > 0),
-    [filteredBusinesses],
+    [sortedBusinesses],
   );
 
   const detailBusiness = detailBusinessId ? allBusinesses.find((b) => b.id === detailBusinessId) ?? null : null;
@@ -1838,6 +1872,20 @@ export function ExploreTab({
                   className="pl-9"
                 />
               </div>
+              <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-background px-3 py-2 text-xs">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                <select
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value as typeof sortMode)}
+                  className="bg-transparent text-xs outline-none"
+                >
+                  <option value="best">Par avis</option>
+                  <option value="most_reviews">Plus d avis</option>
+                  <option value="recent">Plus recents</option>
+                  <option value="oldest">Plus anciens</option>
+                  <option value="revenue">Plus rentables</option>
+                </select>
+              </div>
               <div className="text-xs text-muted-foreground">
                 {filteredBusinesses.length} resultat{filteredBusinesses.length > 1 ? 's' : ''}
               </div>
@@ -1890,83 +1938,88 @@ export function ExploreTab({
                     </div>
                   ) : null}
 
-                  {groupedBusinesses.flatMap((section, sectionIdx) => {
-                    // In "show all" view, state-owned businesses are already shown in the top "Institutions" section
-                    const showingStateInstitutions = typeFilter === 'all' && !search && ownerFilter === 'all';
-                    const isStateSectionHidden = showingStateInstitutions && allBusinesses.some((b) => b.isStateOwned && b.typeKey === section.typeKey);
-                    if (isStateSectionHidden) return [];
-                    const meta = SECTION_META[section.typeKey as keyof typeof SECTION_META];
-                    const Icon = meta.icon;
-                    const sectionStyle = BUSINESS_STYLE_MAP[section.typeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
-                    const sectionEl = (
-                      <div key={section.typeKey} className="space-y-2">
-                        <div className="flex items-center gap-3 px-1">
-                          <div className={cn('flex h-8 w-8 items-center justify-center rounded-xl', sectionStyle.iconWrap)}>
-                            <Icon className={cn('h-4 w-4', sectionStyle.icon)} />
+                  {(() => {
+                    let bannerIndex = 0;
+                    return groupedBusinesses.flatMap((section, sectionIdx) => {
+                      // In "show all" view, state-owned businesses are already shown in the top "Institutions" section
+                      const showingStateInstitutions = typeFilter === 'all' && !search && ownerFilter === 'all';
+                      const isStateSectionHidden = showingStateInstitutions && allBusinesses.some((b) => b.isStateOwned && b.typeKey === section.typeKey);
+                      if (isStateSectionHidden) return [];
+                      const meta = SECTION_META[section.typeKey as keyof typeof SECTION_META];
+                      const Icon = meta.icon;
+                      const sectionStyle = BUSINESS_STYLE_MAP[section.typeKey] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+                      const sectionEl = (
+                        <div key={section.typeKey} className="space-y-2">
+                          <div className="flex items-center gap-3 px-1">
+                            <div className={cn('flex h-8 w-8 items-center justify-center rounded-xl', sectionStyle.iconWrap)}>
+                              <Icon className={cn('h-4 w-4', sectionStyle.icon)} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold">{meta.label}</p>
+                              <p className="text-[11px] text-muted-foreground">Trie par note · cliquer pour interagir</p>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold">{meta.label}</p>
-                            <p className="text-[11px] text-muted-foreground">Trie par note · cliquer pour interagir</p>
-                          </div>
-                        </div>
 
-                        <div className="space-y-2">
-                          {section.businesses.map((business) => {
-                            const BusinessIcon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
-                            const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
-                            const cardStats = getBusinessListStats(business);
-                            return (
-                              <button
-                                key={business.id}
-                                type="button"
-                                onClick={() => setDetailBusinessId(business.id)}
-                                className="w-full rounded-2xl border border-border/30 bg-background px-4 py-3 text-left transition-colors hover:bg-muted/15 hover:border-border/50"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', style.iconWrap)}>
-                                    <BusinessIcon className={cn('h-4 w-4', style.icon)} />
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                      <p className="text-sm font-semibold">{business.name}</p>
-                                      {isNewBusiness(business) ? <Pill label="New" color="bg-rose-400/15 text-rose-300" /> : null}
-                                      {business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}
-                                      {business.isShared ? <Pill label={`Capital partage · ${business.shareholders.length + 1}`} color="bg-amber-400/15 text-amber-300" /> : null}
+                          <div className="space-y-2">
+                            {section.businesses.map((business) => {
+                              const BusinessIcon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+                              const style = BUSINESS_STYLE_MAP[business.typeKey as keyof typeof BUSINESS_STYLE_MAP] ?? { iconWrap: 'bg-muted/20', icon: 'text-foreground' };
+                              const cardStats = getBusinessListStats(business);
+                              return (
+                                <button
+                                  key={business.id}
+                                  type="button"
+                                  onClick={() => setDetailBusinessId(business.id)}
+                                  className="w-full rounded-2xl border border-border/30 bg-background px-4 py-3 text-left transition-colors hover:bg-muted/15 hover:border-border/50"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', style.iconWrap)}>
+                                      <BusinessIcon className={cn('h-4 w-4', style.icon)} />
                                     </div>
-                                    <div className="mt-0.5 flex items-center gap-2">
-                                      <p className="text-xs text-muted-foreground">{business.owner.username}</p>
-                                      {business.avgRating !== null ? (
-                                        <span className="flex items-center gap-0.5 text-[11px] text-amber-400">
-                                          <Star className="h-3 w-3 fill-amber-400" />
-                                          {business.avgRating.toFixed(1)}
-                                          <span className="text-muted-foreground/60">({business.ratingCount})</span>
-                                        </span>
-                                      ) : null}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <p className="text-sm font-semibold">{business.name}</p>
+                                        {isNewBusiness(business) ? <Pill label="New" color="bg-rose-400/15 text-rose-300" /> : null}
+                                        {business.ownerId === userId ? <Pill label="A toi" color="bg-purple-400/15 text-purple-400" /> : null}
+                                        {business.isShared ? <Pill label={`Capital partage · ${business.shareholders.length + 1}`} color="bg-amber-400/15 text-amber-300" /> : null}
+                                      </div>
+                                      <div className="mt-0.5 flex items-center gap-2">
+                                        <p className="text-xs text-muted-foreground">{business.owner.username}</p>
+                                        {business.avgRating !== null ? (
+                                          <span className="flex items-center gap-0.5 text-[11px] text-amber-400">
+                                            <Star className="h-3 w-3 fill-amber-400" />
+                                            {business.avgRating.toFixed(1)}
+                                            <span className="text-muted-foreground/60">({business.ratingCount})</span>
+                                          </span>
+                                        ) : null}
+                                      </div>
                                     </div>
+                                    <div className="shrink-0 text-right">
+                                      {cardStats.map((stat) => (
+                                        <p key={stat.label} className={cn('text-[11px] tabular-nums', stat.color ?? 'text-foreground')}>
+                                          <span className="text-muted-foreground">{stat.label}:</span> {stat.value}
+                                        </p>
+                                      ))}
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30" />
                                   </div>
-                                  <div className="shrink-0 text-right">
-                                    {cardStats.map((stat) => (
-                                      <p key={stat.label} className={cn('text-[11px] tabular-nums', stat.color ?? 'text-foreground')}>
-                                        <span className="text-muted-foreground">{stat.label}:</span> {stat.value}
-                                      </p>
-                                    ))}
-                                  </div>
-                                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30" />
-                                </div>
-                              </button>
-                            );
-                          })}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    );
-                    const nodes: ReactNode[] = [sectionEl];
-                    if (!adblockActive && (sectionIdx + 1) % 3 === 0 && exploreBannerAd && !exploreBannerDismissed) {
-                      nodes.push(
-                        <AdBanner key={`explore-banner-${sectionIdx}`} ad={exploreBannerAd} onDismiss={() => setExploreBannerDismissed(true)} />
                       );
-                    }
-                    return nodes;
-                  })}
+                      const nodes: ReactNode[] = [sectionEl];
+                      const nextBannerAd = exploreBannerAds[bannerIndex];
+                      if (!adblockActive && (sectionIdx + 1) % 3 === 0 && nextBannerAd && !exploreBannerDismissed) {
+                        bannerIndex += 1;
+                        nodes.push(
+                          <AdBanner key={`explore-banner-${sectionIdx}`} ad={nextBannerAd} onDismiss={() => setExploreBannerDismissed(true)} />
+                        );
+                      }
+                      return nodes;
+                    });
+                  })()}
 
                   {filteredBusinesses.length === 0 ? (
                     <p className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise ne correspond a tes filtres.</p>

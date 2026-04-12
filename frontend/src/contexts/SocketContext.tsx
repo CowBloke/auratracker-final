@@ -59,12 +59,18 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       window.location.reload();
     };
 
-    const handleBan = (data: { message?: string; ban?: { reason?: string; type?: string; expiresAt?: string | null } }) => {
+    const handleBan = (data: {
+      message?: string;
+      userId?: string;
+      ban?: { id?: string; userId?: string; reason?: string; type?: string; expiresAt?: string | null };
+    }) => {
       storeBanInfo({
         reason: data?.ban?.reason ?? null,
         type: (data?.ban?.type as 'TEMPORARY' | 'PERMANENT' | null) ?? null,
         expiresAt: data?.ban?.expiresAt ?? null,
         message: data?.message,
+        banId: data?.ban?.id ?? null,
+        userId: data?.userId ?? data?.ban?.userId ?? null,
       });
       logoutRef.current();
       disconnectSocket();

@@ -43,6 +43,7 @@ const CASINO_ROUND_TTL_MS = 10 * 60 * 1000;
 const MAX_CASINO_PAYOUT_MULTIPLIER = 50;
 
 const activeCasinoRounds = new Map<string, { bet: number; startedAt: number }>();
+const activeCasinoStartLocks = new Set<string>();
 
 function getRacerDaySeed(trackDate: Date): number {
   const dayKey = getParisDayKey(trackDate);
@@ -1093,6 +1094,23 @@ router.post('/casino/start', authMiddleware, validate(casinoStartSchema), async 
   try {
     if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
 
+    if (activeCasinoStartLocks.has(req.user.id)) {
+      return res.status(409).json({ error: 'Casino round already starting' });
+    }
+
+    activeCasinoStartLocks.add(req.user.id);
+
+    const existingRound = activeCasinoRounds.get(req.user.id);
+    if (existingRound) {
+      const isExpired = Date.now() - existingRound.startedAt > CASINO_ROUND_TTL_MS;
+
+      if (!isExpired) {
+        return res.status(409).json({ error: 'Casino round already active' });
+      }
+
+      activeCasinoRounds.delete(req.user.id);
+    }
+
     const { bet } = req.body as { bet: number };
 
     const currentUser = await prisma.user.findUnique({ where: { id: req.user.id } });
@@ -1117,6 +1135,10 @@ router.post('/casino/start', authMiddleware, validate(casinoStartSchema), async 
   } catch (error) {
     console.error('Casino start error:', error);
     return res.status(500).json({ error: 'Failed to start casino round' });
+  } finally {
+    if (req.user?.id) {
+      activeCasinoStartLocks.delete(req.user.id);
+    }
   }
 });
 

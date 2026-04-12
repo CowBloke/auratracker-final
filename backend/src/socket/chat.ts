@@ -650,6 +650,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         ],
       },
       select: {
+        id: true,
         reason: true,
         type: true,
         expiresAt: true,
@@ -664,7 +665,10 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
       socket.emit('ban:active', {
         message,
         banned: true,
+        userId,
         ban: {
+          id: activeBan.id,
+          userId,
           reason: activeBan.reason,
           type: activeBan.type,
           expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,
@@ -743,7 +747,10 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     if (activeBan) {
       socket.emit('ban:active', {
         banned: true,
+        userId,
         ban: {
+          id: activeBan.id,
+          userId,
           reason: activeBan.reason,
           type: activeBan.type,
           expiresAt: activeBan.expiresAt ? activeBan.expiresAt.toISOString() : null,

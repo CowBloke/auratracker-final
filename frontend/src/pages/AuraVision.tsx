@@ -70,6 +70,9 @@ const ICE_SERVERS: RTCConfiguration = {
   iceServers: buildIceServers(),
 };
 
+const DISCONNECTED_RECOVERY_DELAY_MS = 5000;
+const MAX_ICE_RECOVERY_ATTEMPTS = 2;
+
 type AuraVisionMessage = {
   id: string;
   senderId: string;
@@ -96,6 +99,29 @@ const getFilterStyle = (preset: FilterPreset, intensity: number) => {
   }
 };
 
+const attachStreamToVideo = async (
+  videoElement: HTMLVideoElement | null,
+  stream: MediaStream,
+  preferMuted: boolean,
+) => {
+  if (!videoElement) {
+    return;
+  }
+
+  videoElement.srcObject = stream;
+  videoElement.muted = preferMuted;
+
+  try {
+    await videoElement.play();
+  } catch {
+    // Fallback to muted playback if autoplay with audio is blocked.
+    if (!videoElement.muted) {
+      videoElement.muted = true;
+      await videoElement.play().catch(() => undefined);
+    }
+  }
+};
+
 export default function AuraVision() {
   const { user } = useAuth();
   const { socket, connected } = useSocketBase();
@@ -107,6 +133,12 @@ export default function AuraVision() {
   const currentSessionIdRef = useRef<string | null>(null);
   const currentPeerIdRef = useRef<string | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const makingOfferRef = useRef(false);
+  const ignoreOfferRef = useRef(false);
+  const settingRemoteAnswerRef = useRef(false);
+  const politeRef = useRef(false);
+  const recoveryAttemptsRef = useRef(0);
+  const recoveryTimerRef = useRef<number | null>(null);
   const autoNextRef = useRef(true);
   const messagesRef = useRef<HTMLDivElement>(null);
 
@@ -142,16 +174,82 @@ export default function AuraVision() {
     [effectPreset],
   );
 
+  const clearRecoveryTimer = useCallback(() => {
+    if (recoveryTimerRef.current !== null) {
+      window.clearTimeout(recoveryTimerRef.current);
+      recoveryTimerRef.current = null;
+    }
+  }, []);
+
+  const sendSignal = useCallback(
+    (signal: AuraVisionSignal, targetUserIdOverride?: string) => {
+      if (!socket || !currentSessionIdRef.current) {
+        return;
+      }
+
+      const targetUserId = targetUserIdOverride ?? currentPeerIdRef.current;
+      if (!targetUserId) {
+        return;
+      }
+
+      socket.emit('auravision:signal', {
+        sessionId: currentSessionIdRef.current,
+        targetUserId,
+        signal,
+      });
+    },
+    [socket],
+  );
+
+  const tryRecoverConnection = useCallback(async () => {
+    const connection = peerConnectionRef.current;
+    if (!connection || !currentSessionIdRef.current || !currentPeerIdRef.current) {
+      return;
+    }
+
+    if (recoveryAttemptsRef.current >= MAX_ICE_RECOVERY_ATTEMPTS) {
+      setError(t('aura_vision_error_video_connection_failed'));
+      setStatus(t('aura_vision_status_searching_player'));
+      if (socket) {
+        socket.emit('auravision:next');
+      }
+      return;
+    }
+
+    recoveryAttemptsRef.current += 1;
+    setStatus(t('aura_vision_status_connecting_with') + ` ${peerName ?? '...'}...`);
+
+    try {
+      connection.restartIce();
+      makingOfferRef.current = true;
+      const offer = await connection.createOffer({ iceRestart: true });
+      await connection.setLocalDescription(offer);
+      sendSignal({ type: 'offer', sdp: offer });
+    } catch (recoveryError) {
+      console.error('AuraVision recovery error:', recoveryError);
+    } finally {
+      makingOfferRef.current = false;
+    }
+  }, [peerName, sendSignal, socket]);
+
   const stopPeerConnection = useCallback(() => {
     const connection = peerConnectionRef.current;
     if (connection) {
+      clearRecoveryTimer();
       connection.onicecandidate = null;
+      connection.oniceconnectionstatechange = null;
+      connection.onconnectionstatechange = null;
       connection.ontrack = null;
       connection.close();
     }
 
     peerConnectionRef.current = null;
     pendingCandidatesRef.current = [];
+    makingOfferRef.current = false;
+    ignoreOfferRef.current = false;
+    settingRemoteAnswerRef.current = false;
+    politeRef.current = false;
+    recoveryAttemptsRef.current = 0;
     currentSessionIdRef.current = null;
     currentPeerIdRef.current = null;
 
@@ -168,7 +266,7 @@ export default function AuraVision() {
     setSessionId(null);
     setPeerName(null);
     setMessages([]);
-  }, []);
+  }, [clearRecoveryTimer]);
 
   const stopLocalStream = useCallback(() => {
     if (localStreamRef.current) {
@@ -196,9 +294,7 @@ export default function AuraVision() {
     });
 
     localStreamRef.current = stream;
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = stream;
-    }
+    void attachStreamToVideo(localVideoRef.current, stream, true);
 
     setCameraEnabled(true);
     setMicrophoneEnabled(true);
@@ -215,9 +311,7 @@ export default function AuraVision() {
       currentPeerIdRef.current = nextPeerId;
 
       remoteStreamRef.current = new MediaStream();
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = remoteStreamRef.current;
-      }
+      void attachStreamToVideo(remoteVideoRef.current, remoteStreamRef.current, false);
 
       stream.getTracks().forEach((track) => connection.addTrack(track, stream));
 
@@ -225,33 +319,77 @@ export default function AuraVision() {
         const [incomingStream] = event.streams;
         if (incomingStream) {
           remoteStreamRef.current = incomingStream;
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = incomingStream;
-          }
+          void attachStreamToVideo(remoteVideoRef.current, incomingStream, false);
         }
 
+        clearRecoveryTimer();
+        recoveryAttemptsRef.current = 0;
         setPeerConnected(true);
         setStatus(t('aura_vision_status_video_active'));
       };
 
       connection.onicecandidate = (event) => {
-        if (!event.candidate || !socket || !currentSessionIdRef.current || !currentPeerIdRef.current) {
+        if (!event.candidate) {
           return;
         }
 
-        socket.emit('auravision:signal', {
-          sessionId: currentSessionIdRef.current,
-          targetUserId: currentPeerIdRef.current,
-          signal: {
-            type: 'ice-candidate',
-            candidate: event.candidate.toJSON(),
-          },
+        sendSignal({
+          type: 'ice-candidate',
+          candidate: event.candidate.toJSON(),
         });
+      };
+
+      connection.oniceconnectionstatechange = () => {
+        const state = connection.iceConnectionState;
+
+        if (state === 'connected' || state === 'completed') {
+          clearRecoveryTimer();
+          recoveryAttemptsRef.current = 0;
+          return;
+        }
+
+        if (state === 'failed') {
+          void tryRecoverConnection();
+          return;
+        }
+
+        if (state === 'disconnected') {
+          clearRecoveryTimer();
+          recoveryTimerRef.current = window.setTimeout(() => {
+            void tryRecoverConnection();
+          }, DISCONNECTED_RECOVERY_DELAY_MS);
+          return;
+        }
+
+        if (state === 'closed') {
+          clearRecoveryTimer();
+        }
+      };
+
+      connection.onconnectionstatechange = () => {
+        const state = connection.connectionState;
+
+        if (state === 'connected') {
+          clearRecoveryTimer();
+          recoveryAttemptsRef.current = 0;
+          setPeerConnected(true);
+          return;
+        }
+
+        if (state === 'disconnected') {
+          setPeerConnected(false);
+          return;
+        }
+
+        if (state === 'failed') {
+          setPeerConnected(false);
+          void tryRecoverConnection();
+        }
       };
 
       return connection;
     },
-    [ensureLocalStream, socket],
+    [clearRecoveryTimer, ensureLocalStream, sendSignal, tryRecoverConnection],
   );
 
   const applySignal = useCallback(
@@ -262,6 +400,19 @@ export default function AuraVision() {
       }
 
       if (signal.type === 'offer') {
+        const readyForOffer =
+          !makingOfferRef.current && (connection.signalingState === 'stable' || settingRemoteAnswerRef.current);
+        const offerCollision = !readyForOffer;
+
+        ignoreOfferRef.current = !politeRef.current && offerCollision;
+        if (ignoreOfferRef.current) {
+          return;
+        }
+
+        if (offerCollision && connection.signalingState !== 'stable') {
+          await connection.setLocalDescription({ type: 'rollback' });
+        }
+
         await connection.setRemoteDescription(new RTCSessionDescription(signal.sdp));
 
         for (const candidate of pendingCandidatesRef.current) {
@@ -271,22 +422,17 @@ export default function AuraVision() {
 
         const answer = await connection.createAnswer();
         await connection.setLocalDescription(answer);
-
-        if (socket && currentSessionIdRef.current && currentPeerIdRef.current) {
-          socket.emit('auravision:signal', {
-            sessionId: currentSessionIdRef.current,
-            targetUserId: currentPeerIdRef.current,
-            signal: {
-              type: 'answer',
-              sdp: answer,
-            },
-          });
-        }
+        sendSignal({ type: 'answer', sdp: answer }, fromUserId);
         return;
       }
 
       if (signal.type === 'answer') {
-        await connection.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+        settingRemoteAnswerRef.current = true;
+        try {
+          await connection.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+        } finally {
+          settingRemoteAnswerRef.current = false;
+        }
 
         for (const candidate of pendingCandidatesRef.current) {
           await connection.addIceCandidate(new RTCIceCandidate(candidate));
@@ -295,13 +441,17 @@ export default function AuraVision() {
         return;
       }
 
-      if (connection.remoteDescription) {
-        await connection.addIceCandidate(new RTCIceCandidate(signal.candidate));
+      if (ignoreOfferRef.current) {
+        return;
+      }
+
+      if (connection.remoteDescription || settingRemoteAnswerRef.current) {
+        await connection.addIceCandidate(new RTCIceCandidate(signal.candidate)).catch(() => undefined);
       } else {
         pendingCandidatesRef.current.push(signal.candidate);
       }
     },
-    [createPeerConnection, socket],
+    [createPeerConnection, sendSignal],
   );
 
   const leaveEverything = useCallback(
@@ -391,30 +541,42 @@ export default function AuraVision() {
       setPeerConnected(false);
       setMessages([]);
       setStatus(`${t('aura_vision_status_connecting_with')} ${payload.peer.username}...`);
+      politeRef.current = !payload.initiator;
+      ignoreOfferRef.current = false;
+      settingRemoteAnswerRef.current = false;
+      pendingCandidatesRef.current = [];
+      recoveryAttemptsRef.current = 0;
+      clearRecoveryTimer();
 
       try {
         const connection = await createPeerConnection(payload.sessionId, payload.peer.id);
         if (payload.initiator) {
+          makingOfferRef.current = true;
           const offer = await connection.createOffer();
           await connection.setLocalDescription(offer);
-          socket.emit('auravision:signal', {
-            sessionId: payload.sessionId,
-            targetUserId: payload.peer.id,
-            signal: {
-              type: 'offer',
-              sdp: offer,
-            },
-          });
+          sendSignal({ type: 'offer', sdp: offer }, payload.peer.id);
         }
       } catch (matchError) {
         console.error('AuraVision match error:', matchError);
         setError(t('aura_vision_error_video_connection_failed'));
         socket.emit('auravision:next');
+      } finally {
+        makingOfferRef.current = false;
       }
     };
 
     const handleSignal = (payload: { sessionId: string; fromUserId: string; signal: AuraVisionSignal }) => {
-      void applySignal(payload.sessionId, payload.fromUserId, payload.signal);
+      if (!currentSessionIdRef.current || !currentPeerIdRef.current) {
+        return;
+      }
+
+      if (payload.sessionId !== currentSessionIdRef.current || payload.fromUserId !== currentPeerIdRef.current) {
+        return;
+      }
+
+      void applySignal(payload.sessionId, payload.fromUserId, payload.signal).catch((signalError) => {
+        console.error('AuraVision signal error:', signalError);
+      });
     };
 
     const handlePartnerLeft = (payload: { reason: 'left' | 'next' | 'disconnect' }) => {
@@ -463,7 +625,7 @@ export default function AuraVision() {
       socket.off('auravision:message', handleMessage);
       socket.off('auravision:error', handleSocketError);
     };
-  }, [applySignal, createPeerConnection, handleJoinQueue, socket, stopPeerConnection]);
+  }, [applySignal, clearRecoveryTimer, createPeerConnection, handleJoinQueue, sendSignal, socket, stopPeerConnection]);
 
   useEffect(() => {
     const videoTrack = localStreamRef.current?.getVideoTracks()[0];
