@@ -173,7 +173,7 @@ const games: Game[] = [
     type: 'Logique',
     emoji: '💣',
     image: getGameImage('minesweeper'),
-    statsKeys: ['minesweeper'],
+    statsKeys: ['minesweeper', 'minesweeper_speedrun'],
     releaseRank: 26,
     hasRewards: true,
   },

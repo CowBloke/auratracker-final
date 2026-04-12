@@ -13,6 +13,8 @@ import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/Ga
 
 type DifficultyKey = 'debutant' | 'intermediaire' | 'expert';
 type GameStatus = 'ready' | 'playing' | 'won' | 'lost';
+type MinesweeperMode = 'score' | 'speedrun';
+type MinesweeperGameType = 'minesweeper' | 'minesweeper_speedrun';
 
 interface DifficultyConfig {
   label: string;
@@ -31,7 +33,10 @@ interface Cell {
   adjacentMines: number;
 }
 
-const GAME_TYPE = 'minesweeper';
+const GAME_TYPES: Record<MinesweeperMode, MinesweeperGameType> = {
+  score: 'minesweeper',
+  speedrun: 'minesweeper_speedrun',
+};
 
 const DIFFICULTIES: Record<DifficultyKey, DifficultyConfig> = {
   debutant: {
@@ -192,9 +197,17 @@ function getCellSize(columns: number): string {
   return 'clamp(1.25rem, 3.1vw, 2rem)';
 }
 
+function formatDuration(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
 export default function Minesweeper() {
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
+  const [mode, setMode] = useState<MinesweeperMode>('score');
   const [difficulty, setDifficulty] = useState<DifficultyKey>('intermediaire');
   const [board, setBoard] = useState<Cell[][]>(() => createEmptyBoard(DIFFICULTIES.intermediaire.rows, DIFFICULTIES.intermediaire.columns));
   const [status, setStatus] = useState<GameStatus>('ready');
@@ -215,6 +228,13 @@ export default function Minesweeper() {
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
   const submitLockRef = useRef(false);
+  const activeModeRef = useRef<MinesweeperMode>('score');
+  const activeGameTypeRef = useRef<MinesweeperGameType>('minesweeper');
+
+  const selectedMode = mode;
+  const selectedGameType = GAME_TYPES[selectedMode];
+  const displayMode = hasStarted ? activeModeRef.current : selectedMode;
+  const isSpeedrunDisplay = displayMode === 'speedrun';
 
   const config = DIFFICULTIES[difficulty];
   const totalSafeCells = config.rows * config.columns - config.mines;
@@ -250,23 +270,23 @@ export default function Minesweeper() {
   const fetchStats = useCallback(async () => {
     if (!user) return;
     try {
-      const response = await gamesApi.getStats(GAME_TYPE, user.id);
+      const response = await gamesApi.getStats(selectedGameType, user.id);
       setHighScore(response.data.stats.highScore || 0);
       setTotalPlayed(response.data.stats.totalPlayed || 0);
       setWins(response.data.stats.wins || 0);
     } catch (error) {
       console.error('Failed to fetch minesweeper stats:', error);
     }
-  }, [user]);
+  }, [selectedGameType, user]);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
-      const response = await gamesApi.getLeaderboard(GAME_TYPE, 20);
+      const response = await gamesApi.getLeaderboard(selectedGameType, 20);
       setLeaderboard(response.data.rankings || []);
     } catch (error) {
       console.error('Failed to fetch minesweeper leaderboard:', error);
     }
-  }, []);
+  }, [selectedGameType]);
 
   useEffect(() => {
     fetchStats();
@@ -275,7 +295,7 @@ export default function Minesweeper() {
 
   useEffect(() => {
     resetBoard(difficulty);
-  }, [difficulty, resetBoard]);
+  }, [difficulty, mode, resetBoard]);
 
   useEffect(() => {
     if (status !== 'playing') {
@@ -299,12 +319,12 @@ export default function Minesweeper() {
     };
   }, [status]);
 
-  const submitResult = useCallback(async (won: boolean, score: number, duration: number) => {
+  const submitResult = useCallback(async (gameType: MinesweeperGameType, won: boolean, score: number, duration: number) => {
     if (!user || submitLockRef.current) return;
     submitLockRef.current = true;
 
     try {
-      const response = await gamesApi.complete(GAME_TYPE, {
+      const response = await gamesApi.complete(gameType, {
         score,
         won,
         duration,
@@ -329,7 +349,11 @@ export default function Minesweeper() {
 
   const finishGame = useCallback((won: boolean, nextBoard: Cell[][]) => {
     const duration = startTimeRef.current ? Math.max(1, Math.floor((Date.now() - startTimeRef.current) / 1000)) : elapsedSeconds;
-    const score = won ? computeScore(config, duration, wrongFlags) : 0;
+    const activeMode = activeModeRef.current;
+    const activeGameType = activeGameTypeRef.current;
+    const score = won
+      ? (activeMode === 'speedrun' ? duration : computeScore(config, duration, wrongFlags))
+      : 0;
 
     if (timerRef.current) {
       window.clearInterval(timerRef.current);
@@ -340,7 +364,7 @@ export default function Minesweeper() {
     setStatus(won ? 'won' : 'lost');
     setElapsedSeconds(duration);
     setLastScore(score);
-    submitResult(won, score, duration);
+    submitResult(activeGameType, won, score, duration);
   }, [config, elapsedSeconds, submitResult, wrongFlags]);
 
   const tryWinCheck = useCallback((nextBoard: Cell[][], nextRevealedSafeCells: number) => {
@@ -364,6 +388,8 @@ export default function Minesweeper() {
     if (status === 'ready') {
       workingBoard = seedBoard(config, row, column);
       startTimeRef.current = Date.now();
+      activeModeRef.current = selectedMode;
+      activeGameTypeRef.current = selectedGameType;
       nextStatus = 'playing';
       setStatus('playing');
       setHasStarted(true);
@@ -414,7 +440,7 @@ export default function Minesweeper() {
     if (nextStatus === 'playing') {
       tryWinCheck(result.board, nextRevealedSafeCells);
     }
-  }, [board, config, finishGame, revealedSafeCells, status, tryWinCheck]);
+  }, [board, config, finishGame, revealedSafeCells, selectedGameType, selectedMode, status, tryWinCheck]);
 
   const toggleFlagAt = useCallback((row: number, column: number) => {
     if (status === 'won' || status === 'lost') return;
@@ -445,13 +471,13 @@ export default function Minesweeper() {
   const handleDeleteScore = useCallback(async (userId: string) => {
     if (!user?.isAdmin) return;
     try {
-      await gamesApi.deleteStats(GAME_TYPE, userId);
+      await gamesApi.deleteStats(selectedGameType, userId);
       fetchLeaderboard();
       fetchStats();
     } catch (error) {
       console.error('Failed to delete minesweeper score:', error);
     }
-  }, [fetchLeaderboard, fetchStats, user?.isAdmin]);
+  }, [fetchLeaderboard, fetchStats, selectedGameType, user?.isAdmin]);
 
   const boardStyle = useMemo(
     () => ({
@@ -489,7 +515,7 @@ export default function Minesweeper() {
                 )}
                 <div className="rounded-xl border border-border/60 p-3">
                   <p className="text-xs text-muted-foreground">Record</p>
-                  <p className="text-xl font-semibold tabular-nums">{highScore}</p>
+                  <p className="text-xl font-semibold tabular-nums">{isSpeedrunDisplay ? (highScore > 0 ? formatDuration(highScore) : '--') : highScore}</p>
                 </div>
                 <div className="rounded-xl border border-border/60 p-3">
                   <p className="text-xs text-muted-foreground">Taux de victoire</p>
@@ -500,6 +526,32 @@ export default function Minesweeper() {
           </Card>
 
           {/* 2. Difficulty + New game */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Mode</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button
+                type="button"
+                variant={mode === 'score' ? 'default' : 'outline'}
+                className="w-full justify-start"
+                disabled={status === 'playing'}
+                onClick={() => setMode('score')}
+              >
+                Score classique
+              </Button>
+              <Button
+                type="button"
+                variant={mode === 'speedrun' ? 'default' : 'outline'}
+                className="w-full justify-start"
+                disabled={status === 'playing'}
+                onClick={() => setMode('speedrun')}
+              >
+                Speedrun (meilleur temps)
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Difficulte</CardTitle>
@@ -615,7 +667,9 @@ export default function Minesweeper() {
             <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
               <p className="font-medium">Grille nettoyee.</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Score {lastScore} · temps {elapsedSeconds}s · {wrongFlags} erreur{wrongFlags !== 1 ? 's' : ''} de drapeau.
+                {isSpeedrunDisplay
+                  ? `Temps ${formatDuration(lastScore)} · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`
+                  : `Score ${lastScore} · temps ${elapsedSeconds}s · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`}
               </p>
               {rewards && (
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -640,8 +694,10 @@ export default function Minesweeper() {
           entries={leaderboard}
           currentUserId={user?.id}
           personalHighScore={highScore}
+          scoreFormatter={isSpeedrunDisplay ? formatDuration : undefined}
           isAdmin={user?.isAdmin}
           onDeleteScore={(userId) => handleDeleteScore(userId)}
+          title={`Classement Démineur — ${displayMode === 'speedrun' ? 'Speedrun' : 'Score'}`}
           maxHeight={420}
           hidden={isFullscreen}
         />

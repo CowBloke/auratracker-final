@@ -771,6 +771,8 @@ export const youApi = {
     api.patch<{ result: { memberId: string; title: string | null } }>(`/you/businesses/${businessId}/members/${memberId}/profile`, { title }),
   sackMember: (businessId: string, memberId: string) =>
     api.delete<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/members/${memberId}`),
+  leaveBusiness: (businessId: string) =>
+    api.post<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/leave`, {}),
   repayLoan: (loanId: string) =>
     api.post<{ result: { repaid: number; totalOwed: number; collateralClaimed: number; status: string } }>(`/you/loans/${loanId}/repay`, {}),
   borrowerRepayLoan: (loanId: string, percentage: number = 100) =>
@@ -2201,7 +2203,8 @@ export interface BraquageLegalDrawResult {
 export const getBraquageLegalCurrent = () => api.get<{ session: BraquageLegalSession | null }>('/braquage-legal/current');
 export const getBraquageLegalHistory = () => api.get<{ sessions: BraquageLegalHistoryEntry[] }>('/braquage-legal/history');
 export const getBraquageLegalOwner = () => api.get<{ owner: BraquageLegalOwner | null }>('/braquage-legal/owner');
-export const participateBraquageLegal = (tier: BraquageLegalTier) => api.post<{ session: BraquageLegalSession | null }>('/braquage-legal/participate', { tier });
+export const participateBraquageLegal = (tier: BraquageLegalTier) =>
+  api.post<{ session: BraquageLegalSession | null; newBalance: { money: number; aura: number } }>('/braquage-legal/participate', { tier });
 
 export const adminCreateBraquageSession = (durationHours: number) => api.post<{ session: BraquageLegalSession }>('/braquage-legal/admin/create-session', { durationHours });
 export const adminDrawBraquage = (sessionId: number) => api.post<{ result: BraquageLegalDrawResult }>('/braquage-legal/admin/draw', { sessionId });

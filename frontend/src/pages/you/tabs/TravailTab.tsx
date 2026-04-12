@@ -11,8 +11,6 @@ import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '..
 import { ActionCard, ActionRow, Pill, SectionTitle } from '../components/ui';
 import { formatMoney, withRouteError } from '../utils';
 
-const SHARE_PROPOSAL_CANCEL_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
-
 function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b: YouBusiness) => void }) {
   const Icon = BUSINESS_ICON_MAP[business.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
   return (
@@ -45,6 +43,7 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
   const [managedBusinessId, setManagedBusinessId] = useState<string | null>(null);
   const [cancellingOfferId, setCancellingOfferId] = useState<string | null>(null);
   const [cancellingProposalId, setCancellingProposalId] = useState<string | null>(null);
+  const [leavingBusinessId, setLeavingBusinessId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const canCreateBusiness = isAdmin || data.ownedBusinesses.length < data.businessSlots;
@@ -92,17 +91,51 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
   const cancelShareholderProposal = async (proposalId: string) => {
     setCancellingProposalId(proposalId);
     try {
-      await youApi.cancelShareholderProposal(proposalId);
+      await withRouteError(() => youApi.cancelShareholderProposal(proposalId), 'Impossible d annuler cette proposition.');
       toast.success('Proposition annulee');
       await onReload(true);
     } catch {
-      toast.error('Impossible d annuler cette proposition.');
+      // withRouteError already shows contextual message
     } finally {
       setCancellingProposalId(null);
     }
   };
 
-  const canCancelShareProposal = (proposal: YouBusinessShareProposal) => now >= new Date(proposal.createdAt).getTime() + SHARE_PROPOSAL_CANCEL_DELAY_MS;
+  const canCancelShareProposal = (proposal: YouBusinessShareProposal) => now >= new Date(proposal.cancelAvailableAt).getTime();
+
+  const getShareProposalCancelCountdown = (proposal: YouBusinessShareProposal) => {
+    const remainingMs = new Date(proposal.cancelAvailableAt).getTime() - now;
+    if (remainingMs <= 0) {
+      return null;
+    }
+
+    const remainingMinutes = Math.ceil(remainingMs / 60_000);
+    const days = Math.floor(remainingMinutes / (24 * 60));
+    const hours = Math.floor((remainingMinutes % (24 * 60)) / 60);
+    const minutes = remainingMinutes % 60;
+
+    if (days > 0) {
+      return `${days}j ${hours}h`;
+    }
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}min`;
+    }
+
+    return `${minutes}min`;
+  };
+
+  const leaveBusiness = async (business: YouBusiness) => {
+    if (!window.confirm(`Quitter ton poste chez ${business.name} ?`)) return;
+    setLeavingBusinessId(business.id);
+    try {
+      await withRouteError(() => youApi.leaveBusiness(business.id), 'Impossible de quitter ce travail.');
+      toast.success('Tu as quitte ce travail.');
+      await onReload(true);
+    } finally {
+      setLeavingBusinessId(null);
+    }
+  };
 
   return (
     <>
@@ -196,7 +229,18 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
                           Proprietaire: {business.owner.username} · Salaire: {formatMoney(myMembership?.salary ?? 0)} / jour
                         </p>
                       </div>
-                      <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => setManagedBusinessId(business.id)}>Gerer</Button>
+                      <div className="flex shrink-0 gap-2">
+                        <Button size="sm" variant="outline" className="text-xs" onClick={() => setManagedBusinessId(business.id)}>Gerer</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs text-rose-300 hover:text-rose-200"
+                          onClick={() => void leaveBusiness(business)}
+                          disabled={leavingBusinessId !== null}
+                        >
+                          Quitter
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 );
@@ -261,13 +305,18 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
                     <div className="text-xs text-muted-foreground sm:text-right">
                       <p>Suggestion: {formatMoney(proposal.suggestedAmount)}</p>
                       <p>Proprio: {proposal.owner.username}</p>
-                      {proposal.status === 'PENDING' && !canCancelShareProposal(proposal) ? <p className="mt-1">Annulable apres 1 mois in game</p> : null}
+                      {proposal.status === 'PENDING' && !canCancelShareProposal(proposal) ? (
+                        <p className="mt-1">Annulable dans {getShareProposalCancelCountdown(proposal) ?? 'moins d une minute'} (minimum 1 semaine in game)</p>
+                      ) : null}
+                      {proposal.status === 'PENDING' && canCancelShareProposal(proposal) ? (
+                        <p className="mt-1 text-emerald-300">Tu peux la laisser active ou la retirer maintenant.</p>
+                      ) : null}
                     </div>
                   </CardContent>
                   {proposal.status === 'PENDING' && canCancelShareProposal(proposal) ? (
                     <div className="flex justify-end px-5 pb-4">
                       <Button size="sm" variant="outline" className="shrink-0 text-xs" onClick={() => void cancelShareholderProposal(proposal.id)} disabled={cancellingProposalId !== null}>
-                        Annuler et recuperer l argent
+                        Retirer la proposition et recuperer l argent
                       </Button>
                     </div>
                   ) : null}

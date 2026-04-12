@@ -116,7 +116,7 @@ function getBusinessSaleItems(business: { typeKey: string; customData?: string |
   return Array.isArray(parsed) ? parsed : fallbackItems;
 }
 
-const BUSINESS_SHARE_PROPOSAL_CANCEL_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
+const BUSINESS_SHARE_PROPOSAL_CANCEL_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
 
 function getBusinessShareProposalCancelAvailableAt(createdAt: Date) {
   return new Date(createdAt.getTime() + BUSINESS_SHARE_PROPOSAL_CANCEL_DELAY_MS);
@@ -6440,6 +6440,66 @@ export async function sackMember(ownerId: string, businessId: string, memberId: 
     role: member.role,
     salary: member.salary,
   });
+  return { ok: true };
+}
+
+export async function leaveBusinessJob(userId: string, businessId: string) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      id: true,
+      name: true,
+      ownerId: true,
+      owner: { select: USER_PREVIEW_SELECT },
+    },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.ownerId === userId) throw new Error('CANNOT_LEAVE_OWN_BUSINESS');
+
+  const member = await prisma.businessMember.findFirst({
+    where: {
+      businessId,
+      userId,
+      status: 'ACTIVE',
+    },
+    include: {
+      user: { select: USER_PREVIEW_SELECT },
+    },
+  });
+  if (!member) throw new Error('MEMBER_NOT_FOUND');
+
+  await prisma.businessMember.delete({ where: { id: member.id } });
+
+  await Promise.allSettled([
+    createNotification({
+      userId,
+      type: 'SYSTEM',
+      title: 'Contrat termine',
+      body: `Tu as quitte ${business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+    createNotification({
+      userId: business.ownerId,
+      type: 'SYSTEM',
+      title: 'Depart employe',
+      body: `${member.user.username} a quitte ${business.name}.`,
+      link: '/you?tab=travail',
+      icon: 'briefcase-business',
+    }),
+    prisma.businessInvitation.updateMany({
+      where: {
+        businessId,
+        employeeId: userId,
+        status: 'PENDING',
+      },
+      data: {
+        status: 'REJECTED',
+        respondedAt: new Date(),
+      },
+    }),
+  ]);
+
   return { ok: true };
 }
 

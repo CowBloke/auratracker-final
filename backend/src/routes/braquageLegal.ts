@@ -2,6 +2,7 @@ import { Router, type Response } from 'express';
 import { type PrismaClient, type Prisma } from '@prisma/client';
 import { authMiddleware, adminMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { prisma, io } from '../server.js';
+import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
 
 const router = Router();
 
@@ -429,7 +430,19 @@ router.post('/participate', authMiddleware, async (req: AuthRequest, res: Respon
       };
     });
 
-    return res.status(result.status).json(result.body);
+    if (result.status !== 200) {
+      return res.status(result.status).json(result.body);
+    }
+
+    const newBalance = await emitSharedBalanceUpdates(prisma, req.user!.id);
+
+    return res.status(200).json({
+      ...result.body,
+      newBalance: {
+        money: newBalance.money,
+        aura: Number(newBalance.aura),
+      },
+    });
   } catch (error) {
     console.error('Braquage Legal participate error:', error);
     return res.status(500).json({ error: 'Impossible de rejoindre la session.' });

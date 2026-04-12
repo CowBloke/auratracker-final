@@ -23,6 +23,7 @@ interface MorpionGame {
   partyId: string;
   players: MorpionPlayer[];
   board: Cell[];
+  moveHistory: [number[], number[]];
   currentPlayerIndex: MorpionPlayerIndex;
   turnDuration: number;
   turnStartTime: number;
@@ -30,7 +31,7 @@ interface MorpionGame {
   phase: 'playing' | 'finished';
   winnerId: string | null;
   winCells: number[] | null;
-  lastMove: { index: number; playerId: string } | null;
+  lastMove: { index: number; playerId: string; removedIndex?: number } | null;
   isActive: boolean;
 }
 
@@ -86,6 +87,25 @@ function checkWin(board: Cell[], player: 1 | 2): number[] | null {
 
 function isBoardFull(board: Cell[]): boolean {
   return board.every((cell) => cell !== 0);
+}
+
+function applyMove(game: MorpionGame, playerIndex: MorpionPlayerIndex, index: number, playerId: string): 1 | 2 {
+  const playerVal = (playerIndex + 1) as 1 | 2;
+  game.board[index] = playerVal;
+
+  const history = game.moveHistory[playerIndex];
+  history.push(index);
+
+  let removedIndex: number | undefined;
+  if (history.length > 3) {
+    removedIndex = history.shift();
+    if (removedIndex !== undefined) {
+      game.board[removedIndex] = 0;
+    }
+  }
+
+  game.lastMove = { index, playerId, removedIndex };
+  return playerVal;
 }
 
 function serializeState(game: MorpionGame) {
@@ -151,8 +171,7 @@ function makeAIMorpionMove(partyId: string, io: Server) {
   if (moveIdx < 0 || moveIdx > 8 || game.board[moveIdx] !== 0) return;
 
   clearTurnTimer(game);
-  game.board[moveIdx] = aiVal;
-  game.lastMove = { index: moveIdx, playerId: AI_PLAYER_ID };
+  applyMove(game, game.currentPlayerIndex, moveIdx, AI_PLAYER_ID);
 
   const winCells = checkWin(game.board, aiVal);
   if (winCells) {
@@ -379,6 +398,7 @@ async function resolvePlayAgainPrompt(partyId: string, io: Server) {
       playerIndex: index as MorpionPlayerIndex,
     })),
     board: createBoard(),
+    moveHistory: [[], []],
     currentPlayerIndex: Math.floor(Math.random() * 2) as MorpionPlayerIndex,
     turnDuration: TURN_TIMEOUT,
     turnStartTime: Date.now(),
@@ -431,6 +451,7 @@ async function resolveJoinPrompt(partyId: string, io: Server) {
       playerIndex: index as MorpionPlayerIndex,
     })),
     board: createBoard(),
+    moveHistory: [[], []],
     currentPlayerIndex: Math.floor(Math.random() * 2) as MorpionPlayerIndex,
     turnDuration: TURN_TIMEOUT,
     turnStartTime: Date.now(),
@@ -473,6 +494,7 @@ export function startAIMorpionGame(
     partyId,
     players,
     board: createBoard(),
+    moveHistory: [[], []],
     currentPlayerIndex: 0,
     turnDuration: TURN_TIMEOUT,
     turnStartTime: Date.now(),
@@ -510,6 +532,7 @@ export function startDirectMorpionGame(
       playerIndex: index as MorpionPlayerIndex,
     })),
     board: createBoard(),
+    moveHistory: [[], []],
     currentPlayerIndex: Math.floor(Math.random() * 2) as MorpionPlayerIndex,
     turnDuration: TURN_TIMEOUT,
     turnStartTime: Date.now(),
@@ -728,9 +751,7 @@ export const setupMorpionHandlers = (socket: Socket, io: Server) => {
 
     clearTurnTimer(game);
 
-    const playerVal = (game.currentPlayerIndex + 1) as 1 | 2;
-    game.board[index] = playerVal;
-    game.lastMove = { index, playerId: userId };
+    const playerVal = applyMove(game, game.currentPlayerIndex, index, userId);
 
     const winCells = checkWin(game.board, playerVal);
     if (winCells) {

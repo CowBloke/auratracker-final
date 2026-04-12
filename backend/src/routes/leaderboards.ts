@@ -25,7 +25,7 @@ type Period = 'daily' | 'weekly' | 'monthly';
 // Game types that can be filtered by period via game_complete logs
 const PERIOD_GAME_TYPES = new Set([
   'doodle_jump', 'doodle_jump_mort_subite', 'game_2048', 'flappy_bird',
-  'chrome_dino', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'casino',
+  'chrome_dino', 'solitaire', 'racer', 'hexgl', 'tetris', 'knife_hit', 'minesweeper', 'minesweeper_speedrun', 'casino',
 ]);
 
 const SCORE_GAME_CATEGORIES = {
@@ -40,6 +40,7 @@ const SCORE_GAME_CATEGORIES = {
   tetris: { gameType: 'tetris', order: 'desc' as const },
   knife_hit: { gameType: 'knife_hit', order: 'desc' as const },
   minesweeper: { gameType: 'minesweeper', order: 'desc' as const },
+  minesweeper_speedrun: { gameType: 'minesweeper_speedrun', order: 'asc' as const },
   casino: { gameType: 'casino', order: 'desc' as const },
 } as const;
 
@@ -171,6 +172,7 @@ type LeaderboardCategory =
   | 'tetris'
   | 'knife_hit'
   | 'minesweeper'
+  | 'minesweeper_speedrun'
   | 'casino'
   | 'casino_losses'
   | 'chess'

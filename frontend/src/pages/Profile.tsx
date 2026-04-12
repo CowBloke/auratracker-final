@@ -44,6 +44,7 @@ const PROFILE_GAME_CATALOG = [
   { gameType: 'doodle_jump_mort_subite', label: 'Doodle Jump Mort Subite' },
   { gameType: 'logic_lab', label: 'Sudoku' },
   { gameType: 'minesweeper', label: 'Demineur' },
+  { gameType: 'minesweeper_speedrun', label: 'Demineur Speedrun' },
   { gameType: 'game_2048', label: '2048' },
   { gameType: 'flappy_bird', label: 'Flappy Bird' },
   { gameType: 'chrome_dino', label: 'Chrome Dino' },
