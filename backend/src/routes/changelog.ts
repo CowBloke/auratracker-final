@@ -23,8 +23,8 @@ const SEED_ENTRIES = [
   {
     id: '2026-04-12-modules-fixes-admin-chat-auravision',
     date: '2026-04-12',
-    title: 'Maintenance auto, modération chat, roulette et AuraVision',
-    summary: 'Grosse passe de correctifs et d améliorations sur la modération (ban/mute), la maintenance automatique du week-end, la robustesse roulette/casino, la visio AuraVision, l admin utilisateur et l onglet You/Explore, avec en plus un marche d actions, un nouveau business illegal et plusieurs corrections economiques et UI.',
+    title: 'Maintenance auto, modération chat et messages business',
+    summary: 'Grosse passe de correctifs et d améliorations sur la modération (ban/mute), la maintenance automatique du week-end, la robustesse roulette/casino, la visio AuraVision, l admin utilisateur, les business, les messages, les uploads Aura Scroll et plusieurs corrections economiques et UI.',
     items: [
       { category: 'BUG_FIX', text: '**Bans enrichis partout** — Les payloads de ban HTTP/Socket incluent maintenant `userId` et `ban.id` (middleware auth, server socket, chat socket, action admin), et le frontend stocke ces identifiants meme quand ils arrivent via `ban.userId`.', order: 0 },
       { category: 'SMALL_FEATURE', text: '**Maintenance automatique week-end** — Nouveau flag `maintenance_auto_weekend_enabled` exposé en API maintenance et dans l admin: la maintenance peut s activer automatiquement le samedi et dimanche, en plus du mode manuel.', order: 1 },
@@ -54,6 +54,15 @@ const SEED_ENTRIES = [
       { category: 'SMALL_FEATURE', text: '**Chat: details des reactions** — Les reactions deviennent cliquables et ouvrent un panneau listant les utilisateurs qui ont reagit, avec aperçu du message d origine.', order: 25 },
       { category: 'SMALL_FEATURE', text: '**Admin utilisateurs: repartition par classe** — Un nouveau tableau regroupe les utilisateurs par classe avec leur aura, leur tri interne et un comptage par groupe.', order: 26 },
       { category: 'SMALL_FEATURE', text: '**Admin roles: badges unifies** — Les badges de roles administrateur utilisent maintenant une logique unique avec les libelles normalises pour super admin, admin, beta tester, fiscal inspector et judge.', order: 27 },
+      { category: 'BUG_FIX', text: '**Business: action invest debloquee** — Plusieurs types d entreprise peuvent maintenant utiliser l action `invest`, ce qui aligne les actions disponibles avec le reste de la gestion business.', order: 28 },
+      { category: 'BUG_FIX', text: '**Business: invitations synchronisees** — Les notifications d invitation se mettent maintenant a jour apres acceptation ou refus, avec le bon statut et la bonne disponibilite des actions cote utilisateur.', order: 29 },
+      { category: 'BIG_FEATURE', text: '**Messages: onglet Affaires dedie** — La page Messages separe maintenant les conversations business du reste des messages, avec un onglet dedie, son tri propre et une navigation plus claire.', order: 30 },
+      { category: 'SMALL_FEATURE', text: '**Messages et chat: export JSON admin** — Les admins peuvent maintenant exporter une conversation ou le chat complet en JSON depuis l interface, pour faciliter les controles et le support.', order: 31 },
+      { category: 'SMALL_FEATURE', text: '**Admin: limites jeux visibles** — Un nouvel onglet `Limites jeux` a ete ajoute dans l administration pour centraliser les regles et plafonds de jeu.', order: 32 },
+      { category: 'BUG_FIX', text: '**Aura Scroll: uploads plus robustes** — Les uploads images/videos acceptent mieux les types MIME avec parametres, les limites passent a 12 Mo pour les images et 15 Mo pour les videos, et un retry automatique couvre les erreurs reseau temporaires.', order: 33 },
+      { category: 'BUG_FIX', text: '**Aura Scroll: selections file mieux gerees** — Le selecteur video refuse les lots de plusieurs fichiers, et les champs de fichier sont reinitialises apres selection pour permettre de re-uploader le meme media.', order: 34 },
+      { category: 'BUG_FIX', text: '**Clans: fin de guerre basee sur l heure** — Les guerres de clan se terminent maintenant uniquement a l heure prevue, ce qui evite les clotures prematurees sur simple score.', order: 35 },
+      { category: 'BUG_FIX', text: '**Uploads: MIME normalises** — Les types MIME sont maintenant nettoyes des parametres `; charset=...` avant validation, ce qui evite de refuser des fichiers valides.', order: 36 },
     ],
   },
   {

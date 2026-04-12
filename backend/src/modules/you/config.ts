@@ -85,7 +85,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyExpenses: 600,
     satisfaction: 83,
     level: 2,
-    actions: ['invite', 'deposit', 'withdraw'],
+    actions: ['invite', 'invest', 'deposit', 'withdraw'],
   },
   {
     key: 'startup',
@@ -98,7 +98,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyExpenses: 1800,
     satisfaction: 86,
     level: 2,
-    actions: ['invite', 'deposit', 'withdraw', 'start_research', 'deploy_product'],
+    actions: ['invite', 'invest', 'deposit', 'withdraw', 'start_research', 'deploy_product'],
   },
   {
     key: 'agency',
@@ -150,7 +150,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyExpenses: 120,
     satisfaction: 84,
     level: 2,
-    actions: ['deposit', 'withdraw', 'collect_npc'],
+    actions: ['invest', 'deposit', 'withdraw', 'collect_npc'],
   },
   {
     key: 'medecins',
@@ -163,7 +163,7 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     monthlyExpenses: 200,
     satisfaction: 88,
     level: 2,
-    actions: ['invite', 'deposit', 'withdraw', 'purchase_item'],
+    actions: ['invite', 'invest', 'deposit', 'withdraw', 'purchase_item'],
   },
   // --- Level 3 ---
   {

@@ -12,6 +12,7 @@ import {
   Check,
   CheckCheck,
   ChevronDown,
+  Download,
   FileText,
   Gavel,
   Loader2,
@@ -57,6 +58,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChatSkeleton, ListSkeleton } from '@/components/ui/loading-skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
@@ -242,6 +244,26 @@ const DM_SORT_OPTIONS = {
 
 type DmSortMode = keyof typeof DM_SORT_OPTIONS;
 
+const BUSINESS_SORT_OPTIONS = {
+  RECENT: 'Recentes',
+  UNREAD: 'Non lus',
+  ALPHA: 'A-Z',
+} as const;
+
+type BusinessSortMode = keyof typeof BUSINESS_SORT_OPTIONS;
+
+const MESSAGING_TABS = {
+  BUSINESS: 'business',
+  OTHER: 'other',
+} as const;
+
+type MessagingTab = (typeof MESSAGING_TABS)[keyof typeof MESSAGING_TABS];
+
+const BUSINESS_CONVERSATION_TAG = 'Professionnel';
+
+const isBusinessConversation = (conversation: MessagingConversationSummary) =>
+  conversation.tagType === BUSINESS_CONVERSATION_TAG || conversation.tagLabel === BUSINESS_CONVERSATION_TAG;
+
 const ADMIN_SUPPORT_CONVERSATION_PREFIX = 'admin-support:';
 
 const getAdminSupportConversationId = (userId: string) => `${ADMIN_SUPPORT_CONVERSATION_PREFIX}${userId}`;
@@ -323,6 +345,8 @@ export default function MessagesPage() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [pinnedDmIds, setPinnedDmIds] = useState<Set<string>>(new Set());
   const [dmSortMode, setDmSortMode] = useState<DmSortMode>('RECENT');
+  const [businessSortMode, setBusinessSortMode] = useState<BusinessSortMode>('RECENT');
+  const [activeMessagesTab, setActiveMessagesTab] = useState<MessagingTab>(MESSAGING_TABS.OTHER);
   const [loading, setLoading] = useState(true);
   const [convLoading, setConvLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -808,6 +832,9 @@ export default function MessagesPage() {
         })
       : conversations;
 
+    const businessConversations = all.filter(isBusinessConversation);
+    const nonBusinessConversations = all.filter((conversation) => !isBusinessConversation(conversation));
+
     const sortDmList = (items: MessagingConversationSummary[]) => [...items].sort((a, b) => {
       if (dmSortMode === 'ALPHA') {
         const nameDiff = a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
@@ -824,10 +851,34 @@ export default function MessagesPage() {
       return a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
     });
 
-    const dmsOnly = all.filter((c) => c.type === 'DM');
+    const sortBusinessList = (items: MessagingConversationSummary[]) => [...items].sort((a, b) => {
+      if (businessSortMode === 'ALPHA') {
+        const nameDiff = a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
+        if (nameDiff !== 0) return nameDiff;
+        return getConversationActivityAt(b) - getConversationActivityAt(a);
+      }
+      if (businessSortMode === 'UNREAD') {
+        const unreadDiff = b.unreadCount - a.unreadCount;
+        if (unreadDiff !== 0) return unreadDiff;
+        return getConversationActivityAt(b) - getConversationActivityAt(a);
+      }
+      const timeDiff = getConversationActivityAt(b) - getConversationActivityAt(a);
+      if (timeDiff !== 0) return timeDiff;
+      return a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' });
+    });
+
+    if (activeMessagesTab === MESSAGING_TABS.BUSINESS) {
+      return {
+        pinnedDms: [],
+        dms: [],
+        others: sortBusinessList(businessConversations),
+      };
+    }
+
+    const dmsOnly = nonBusinessConversations.filter((c) => c.type === 'DM');
     const pinnedDmsOnly = dmsOnly.filter((c) => pinnedDmIds.has(c.id));
     const unpinnedDmsOnly = dmsOnly.filter((c) => !pinnedDmIds.has(c.id));
-    const nonDmOnly = all.filter((c) => c.type !== 'DM');
+    const nonDmOnly = nonBusinessConversations.filter((c) => c.type !== 'DM');
 
     if (dmSortMode === 'RECENT') {
       return {
@@ -844,7 +895,7 @@ export default function MessagesPage() {
       dms: sortDmList(unpinnedDmsOnly),
       others: nonDm,
     };
-  }, [conversations, deferredSearch, dmSortMode, pinnedDmIds]);
+  }, [activeMessagesTab, businessSortMode, conversations, deferredSearch, dmSortMode, pinnedDmIds]);
 
   const filteredPlayers = useMemo(() => {
     const term = createSearch.trim().toLowerCase();
@@ -1183,6 +1234,43 @@ export default function MessagesPage() {
     } catch {
       toast({ title: 'Erreur', variant: 'destructive' });
     }
+  };
+
+  const handleExportConversation = () => {
+    if (!detail) return;
+    const data = {
+      exportedAt: new Date().toISOString(),
+      conversation: {
+        id: detail.conversation.id,
+        displayName: detail.conversation.displayName,
+        type: detail.conversation.type,
+        participants: detail.conversation.participants.map((p) => ({
+          id: p.user.id,
+          username: p.user.username,
+          role: p.role,
+        })),
+      },
+      messageCount: detail.messages.length,
+      messages: detail.messages.map((msg) => ({
+        id: msg.id,
+        createdAt: msg.createdAt,
+        sender: msg.sender ? { id: msg.sender.id, username: msg.sender.username } : null,
+        body: msg.body,
+        type: msg.type,
+        imageUrl: msg.imageUrl ?? null,
+        courtRole: msg.courtRole ?? null,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = detail.conversation.displayName.replace(/[^a-z0-9]/gi, '-').toLowerCase().slice(0, 40);
+    a.download = `conversation-${safeName}-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const handleChangeStatus = async (status: string) => {
@@ -2035,24 +2123,43 @@ export default function MessagesPage() {
               </Button>
             </div>
             <div className="border-b border-border/60 px-3 py-2">
-              <div className="relative">
+              <Tabs value={activeMessagesTab} onValueChange={(value) => setActiveMessagesTab(value as MessagingTab)}>
+                <TabsList className="grid h-8 w-full grid-cols-2 bg-muted/20 p-0.5">
+                  <TabsTrigger value={MESSAGING_TABS.OTHER} className="h-7 text-[10px] data-[state=active]:bg-background data-[state=active]:text-foreground">
+                    Autres messages
+                  </TabsTrigger>
+                  <TabsTrigger value={MESSAGING_TABS.BUSINESS} className="h-7 text-[10px] data-[state=active]:bg-background data-[state=active]:text-foreground">
+                    Affaires
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="mt-2 relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..."
                   className="w-full rounded-lg border border-border/50 bg-muted/30 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-primary/40 focus:bg-background transition-colors" />
               </div>
               <div className="mt-2 flex items-center gap-1">
-                {(['RECENT', 'UNREAD', 'ALPHA'] as const).map((mode) => (
-                  <Button
-                    key={mode}
-                    type="button"
-                    size="sm"
-                    variant={dmSortMode === mode ? 'secondary' : 'ghost'}
-                    className="h-6 rounded-full px-2 text-[10px]"
-                    onClick={() => setDmSortMode(mode)}
-                  >
-                    {DM_SORT_OPTIONS[mode]}
-                  </Button>
-                ))}
+                {(activeMessagesTab === MESSAGING_TABS.BUSINESS ? BUSINESS_SORT_OPTIONS : DM_SORT_OPTIONS)
+                  && (Object.keys(activeMessagesTab === MESSAGING_TABS.BUSINESS ? BUSINESS_SORT_OPTIONS : DM_SORT_OPTIONS) as Array<DmSortMode | BusinessSortMode>).map((mode) => (
+                    <Button
+                      key={mode}
+                      type="button"
+                      size="sm"
+                      variant={activeMessagesTab === MESSAGING_TABS.BUSINESS ? (businessSortMode === mode ? 'secondary' : 'ghost') : (dmSortMode === mode ? 'secondary' : 'ghost')}
+                      className="h-6 rounded-full px-2 text-[10px]"
+                      onClick={() => {
+                        if (activeMessagesTab === MESSAGING_TABS.BUSINESS) {
+                          setBusinessSortMode(mode as BusinessSortMode);
+                        } else {
+                          setDmSortMode(mode as DmSortMode);
+                        }
+                      }}
+                    >
+                      {activeMessagesTab === MESSAGING_TABS.BUSINESS
+                        ? BUSINESS_SORT_OPTIONS[mode as BusinessSortMode]
+                        : DM_SORT_OPTIONS[mode as DmSortMode]}
+                    </Button>
+                  ))}
               </div>
             </div>
             <ScrollArea className="min-h-0 flex-1">
@@ -2067,7 +2174,7 @@ export default function MessagesPage() {
                 {dms.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
                 {others.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={false} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
                 {pinnedDms.length === 0 && dms.length === 0 && others.length === 0 && (
-                  <p className="px-3 py-6 text-center text-xs text-muted-foreground">Aucune conversation.</p>
+                  <p className="px-3 py-6 text-center text-xs text-muted-foreground">{activeMessagesTab === MESSAGING_TABS.BUSINESS ? 'Aucune affaire.' : 'Aucune conversation.'}</p>
                 )}
               </div>
             </ScrollArea>
@@ -2095,6 +2202,18 @@ export default function MessagesPage() {
                     </div>
                   </button>
                   <div className="flex shrink-0 items-center gap-0.5">
+                    {isAdminViewer && detail && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg"
+                        onClick={handleExportConversation}
+                        title="Exporter la conversation (admin)"
+                      >
+                        <Download className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    )}
                     {selectedConversation.type === 'DM' && (
                       <Button
                         type="button"

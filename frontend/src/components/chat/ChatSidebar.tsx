@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { Send, X, MoreHorizontal, Pin, PinOff, Reply, Plus, ChevronDown, BarChart3, Loader2, ImagePlus } from 'lucide-react';
+import { Send, X, MoreHorizontal, Pin, PinOff, Reply, Plus, ChevronDown, BarChart3, Loader2, ImagePlus, Download } from 'lucide-react';
 import { useSmartScroll } from '@/hooks/useSmartScroll';
 import {
   Sidebar,
@@ -510,6 +510,33 @@ export default function ChatSidebar() {
     loadOlderMessages();
   };
 
+  const handleExportChat = () => {
+    const data = {
+      exportedAt: new Date().toISOString(),
+      messageCount: sortedMessages.length,
+      messages: sortedMessages.map((msg) => ({
+        id: msg.id,
+        timestamp: msg.timestamp,
+        username: msg.username,
+        userId: msg.userId,
+        message: msg.message,
+        imageUrl: msg.imageUrl ?? null,
+        pinned: msg.pinned,
+        type: msg.type ?? 'user',
+        reactions: msg.reactions,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-export-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Sidebar variant="inset" side="right" collapsible="offcanvas" className="border-l border-border/40">
       <SidebarRail />
@@ -523,6 +550,16 @@ export default function ChatSidebar() {
               </span>
             )}
           </div>
+          {(user?.isAdmin || user?.isSuperAdmin) && (
+            <button
+              type="button"
+              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              onClick={handleExportChat}
+              title="Exporter le chat (admin)"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       </SidebarHeader>
 

@@ -29,6 +29,7 @@ export type AdminTab =
   | 'aura-scroll'
   | 'taxes'
   | 'fiscal'
+  | 'game-limits'
   | 'settings'
   | 'referrals'
   | 'activity'
@@ -48,6 +49,7 @@ export const ADMIN_TABS: AdminTab[] = [
   'aura-scroll',
   'taxes',
   'fiscal',
+  'game-limits',
   'settings',
   'referrals',
   'activity',

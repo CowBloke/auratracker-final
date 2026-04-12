@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useChatSocket } from '../../contexts/ChatSocketContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFeatures } from '../../contexts/FeaturesContext';
-import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff, Monitor } from 'lucide-react';
+import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff, Monitor, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -197,6 +197,33 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     });
   };
 
+  const handleExportChat = () => {
+    const data = {
+      exportedAt: new Date().toISOString(),
+      messageCount: sortedMessages.length,
+      messages: sortedMessages.map((msg) => ({
+        id: msg.id,
+        timestamp: msg.timestamp,
+        username: msg.username,
+        userId: msg.userId,
+        message: msg.message,
+        imageUrl: msg.imageUrl ?? null,
+        pinned: msg.pinned,
+        type: msg.type ?? 'user',
+        reactions: msg.reactions,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-export-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div
       className={cn(
@@ -205,26 +232,38 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
       )}
     >
       <Collapsible open={isOpen} onOpenChange={onToggle}>
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" className="h-12 w-full justify-between rounded-none px-6 text-sm">
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground">{t('chat_title')}</span>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {onlineCount} {t('chat_online')}
-              </span>
-              {!isOpen && unreadCount > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
-                  {unreadCount > 99 ? '99+' : unreadCount}
+        <div className="flex h-12 items-center">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="h-12 flex-1 justify-between rounded-none px-6 text-sm">
+              <div className="flex items-center gap-3">
+                <span className="text-muted-foreground">{t('chat_title')}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {onlineCount} {t('chat_online')}
                 </span>
+                {!isOpen && unreadCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] bg-foreground text-background">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </div>
+              {isOpen ? (
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <ChevronUp className="w-4 h-4 text-muted-foreground" />
               )}
-            </div>
-            {isOpen ? (
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            ) : (
-              <ChevronUp className="w-4 h-4 text-muted-foreground" />
-            )}
-          </Button>
-        </CollapsibleTrigger>
+            </Button>
+          </CollapsibleTrigger>
+          {(user?.isAdmin || user?.isSuperAdmin) && (
+            <button
+              type="button"
+              className="h-12 shrink-0 border-l border-border/40 px-3 text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
+              onClick={handleExportChat}
+              title="Exporter le chat (admin)"
+            >
+              <Download className="h-4 w-4" />
+            </button>
+          )}
+        </div>
 
         <CollapsibleContent className="flex h-[calc(100%-3rem)]">
           {/* Messages */}
