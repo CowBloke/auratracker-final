@@ -5,6 +5,8 @@ generator client {
 datasource db {
   provider = "sqlite"
   url      = "file:./dev.db"
+  // Connection limit is set via URL params in PrismaClient constructor (connection_limit=1)
+  // WAL mode and busy_timeout are set via PRAGMA on startup in server.ts
 }
 
 // User Model

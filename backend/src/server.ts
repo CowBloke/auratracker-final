@@ -89,8 +89,14 @@ import {
   stopDailyRacerRewardsScheduler,
 } from './utils/dailyRacerRewards.js';
 
-// Initialize Prisma
-export const prisma = new PrismaClient();
+// Initialize Prisma with connection limit to reduce SQLite lock contention
+export const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: 'file:./dev.db?connection_limit=1&socket_timeout=10',
+    },
+  },
+});
 let clanEventsTimer: ReturnType<typeof setInterval> | null = null;
 let braquageLegalTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -381,6 +387,8 @@ io.on('connection', (socket) => {
     }
   });
   
+  // Raise the limit to accommodate all per-module disconnect listeners
+  socket.setMaxListeners(20);
   setupChatHandlers(socket, io);
   setupPartyHandlers(socket, io);
   setupGameHandlers(socket, io);
@@ -397,7 +405,7 @@ io.on('connection', (socket) => {
   setupUnoHandlers(socket, io);
   setupMorpionHandlers(socket, io);
   setupAuraVisionHandlers(socket, io);
-  socket.on('disconnect', () => {
+  socket.once('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
   });
 });
@@ -406,6 +414,9 @@ io.on('connection', (socket) => {
 const start = async () => {
   try {
     await prisma.$connect();
+    // Enable WAL mode so reads don't block writes, and set busy timeout
+    await prisma.$executeRawUnsafe('PRAGMA journal_mode=WAL;');
+    await prisma.$executeRawUnsafe('PRAGMA busy_timeout=10000;');
     console.log('Connected to database');
     await new Promise<void>((resolve, reject) => {
       const onError = (error: NodeJS.ErrnoException) => {

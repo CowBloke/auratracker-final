@@ -95,7 +95,7 @@ export const setupAIDuelHandlers = (socket: Socket, io: Server) => {
   });
 
   // Cleanup AI game state when user disconnects
-  socket.on('disconnect', () => {
+  socket.once('disconnect', () => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
 

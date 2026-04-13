@@ -1148,7 +1148,7 @@ export const setupPokerHandlers = (socket: Socket, io: Server) => {
     }
   });
 
-  socket.on('disconnect', () => {
+  socket.once('disconnect', () => {
     for (const [userId, socketId] of playerSockets.entries()) {
       if (socketId === socket.id) {
         playerSockets.delete(userId);

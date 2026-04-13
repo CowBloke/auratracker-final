@@ -704,7 +704,7 @@ if (body || imageUrl) {
       }
 
       return created;
-    });
+    }, { timeout: 15000, maxWait: 5000 });
 
     const summary = await buildConversationSummaryForUser(conversation.id, user.id);
     await emitConversationToParticipants(conversation.id, 'messaging:conversation', { conversationId: conversation.id });
@@ -841,7 +841,7 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       });
 
       return createdMessage;
-    });
+    }, { timeout: 15000, maxWait: 5000 });
 
     const serializedMessage = serializeConversationMessage({
       id: message.id,
@@ -1061,7 +1061,7 @@ router.patch('/conversations/:conversationId', authMiddleware, async (req: AuthR
       }
 
       return conversation;
-    });
+    }, { timeout: 15000, maxWait: 5000 });
 
     await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
 
@@ -1142,7 +1142,7 @@ router.post('/conversations/:conversationId/members', authMiddleware, async (req
         user.id,
         `${user.username} a ajouté ${targetUser.username} au groupe.`,
       );
-    });
+    }, { timeout: 15000, maxWait: 5000 });
     await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
     io.to(`user:${targetUserId}`).emit('messaging:conversation', { conversationId });
     res.json({ success: true });
@@ -1230,7 +1230,7 @@ router.post('/conversations/:conversationId/witness-requests', authMiddleware, a
         where: { id: conversationId },
         data: { lastMessageAt: new Date() },
       });
-    });
+    }, { timeout: 15000, maxWait: 5000 });
 
     const adminParticipants = membership.conversation.participants.filter((entry) => isAdminUser(entry.user));
 
@@ -1303,7 +1303,7 @@ router.delete('/conversations/:conversationId/members/:memberId', authMiddleware
           ? `${user.username} a quitté le groupe.`
           : `${user.username} a retiré ${targetUser.username} du groupe.`,
       );
-    });
+    }, { timeout: 15000, maxWait: 5000 });
     await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
     res.json({ success: true });
   } catch (error) {
@@ -1428,7 +1428,7 @@ router.delete('/conversations/:conversationId/messages/:messageId', authMiddlewa
           },
         });
       }
-    });
+    }, { timeout: 15000, maxWait: 5000 });
 
     await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
     res.json({ success: true });

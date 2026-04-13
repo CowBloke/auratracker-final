@@ -592,7 +592,7 @@ export const setupBombPartyHandlers = (socket: Socket, io: Server) => {
   });
 
   // Handle disconnect during game
-  socket.on('disconnect', () => {
+  socket.once('disconnect', () => {
     // Find any games this socket was in and handle appropriately
     // This is handled by party:leave which calls bombparty:leave
   });

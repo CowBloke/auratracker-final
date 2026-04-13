@@ -1205,7 +1205,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
   });
 
   // Handle disconnect
-  socket.on('disconnect', () => {
+  socket.once('disconnect', () => {
     // Find and remove user from online list
     for (const [userId, user] of onlineUsers.entries()) {
       if (user.socketId === socket.id) {

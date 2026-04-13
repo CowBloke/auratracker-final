@@ -984,15 +984,15 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
     const appliedDailyMoneyReward = cappedDailyRewards?.appliedMoney ?? 0;
     const appliedDailyAuraReward = cappedDailyRewards?.appliedAura ?? 0;
 
-    const [run] = await prisma.$transaction([
-      prisma.dailyRacerRun.create({
+    const run = await prisma.$transaction(async (tx) => {
+      return tx.dailyRacerRun.create({
         data: {
-          userId: req.user.id,
+          userId: req.user!.id,
           trackDate,
           lapTimeMs,
         },
-      }),
-    ]);
+      });
+    }, { timeout: 15000, maxWait: 5000 });
 
     if (appliedDailyMoneyReward > 0 || appliedDailyAuraReward > 0) {
       await emitSharedBalanceUpdates(prisma, req.user.id);
@@ -1385,16 +1385,16 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     const appliedMoneyReward = cappedRewards?.appliedMoney ?? 0;
 
     // Update stats and user balance in transaction
-    const [stats] = await prisma.$transaction([
-      prisma.gameStats.upsert({
+    const stats = await prisma.$transaction(async (tx) => {
+      return tx.gameStats.upsert({
         where: {
           userId_gameType: {
-            userId: req.user.id,
+            userId: req.user!.id,
             gameType,
           },
         },
         create: {
-          userId: req.user.id,
+          userId: req.user!.id,
           gameType,
           wins: won ? 1 : 0,
           losses: won ? 0 : 1,
@@ -1409,8 +1409,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
         },
         // For racer, we need to ensure highScore is always the best (lowest) time
         // This is handled by isNewHighScore check above
-      }),
-    ]);
+      });
+    }, { timeout: 15000, maxWait: 5000 });
 
     // Record score history outside the main transaction so it never blocks game completion
     prisma.gameScoreHistory.create({

@@ -495,7 +495,7 @@ export const setupRussianRouletteHandlers = (socket: Socket, io: Server) => {
     }
   });
 
-  socket.on('disconnect', () => {
+  socket.once('disconnect', () => {
     for (const [uid, sid] of playerSockets.entries()) {
       if (sid === socket.id) {
         playerSockets.delete(uid);

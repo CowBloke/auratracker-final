@@ -1449,65 +1449,13 @@ export const setupPartyHandlers = (socket: Socket, io: Server) => {
   });
   
   // Handle disconnect - clean up user from parties
-  socket.on('disconnect', async () => {
+  socket.once('disconnect', async () => {
     // Remove socket mapping
     for (const [userId, socketId] of userSockets.entries()) {
       if (socketId === socket.id) {
         userSockets.delete(userId);
         break;
       }
-    }
-  });
-
-  // Sync current party membership on reconnect/refresh
-  socket.on('party:sync', async (data: { userId: string }) => {
-    const userId = socket.data.userId as string | undefined;
-    if (!userId) return;
-    
-    try {
-      const membership = await prisma.partyMember.findUnique({
-        where: { userId },
-        include: {
-          party: {
-            include: {
-              members: {
-                include: {
-                  user: {
-                    select: { id: true, username: true, usernameColor: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-      
-      if (!membership) {
-        return;
-      }
-      
-      const party = membership.party;
-      socket.join(getPartyRoomId(party.id));
-      
-      socket.emit('party:joined', {
-        party: {
-          id: party.id,
-          name: party.name,
-          isPublic: party.isPublic,
-          maxSize: party.maxSize,
-        },
-        members: party.members.map((m) => ({
-          userId: m.userId,
-          username: m.user.username,
-          usernameColor: m.user.usernameColor,
-          isLeader: m.isLeader,
-        })),
-      });
-      emitPartyGameState(socket, party.id);
-      await emitPartyChatHistory(socket, party.id);
-    } catch (error) {
-      console.error('Party sync error:', error);
-      socket.emit('party:error', { message: 'Failed to sync party' });
     }
   });
 

@@ -477,7 +477,7 @@ export const setupDuelHandlers = (socket: Socket, io: Server) => {
     });
   });
 
-  socket.on('disconnect', () => {
+  socket.once('disconnect', () => {
     const userId = socket.data.userId as string | undefined;
     if (!userId) return;
 

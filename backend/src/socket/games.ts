@@ -673,7 +673,7 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
   });
   
   // Handle disconnect
-  socket.on('disconnect', () => {
+  socket.once('disconnect', () => {
     doodleConfettiCooldownBySocket.delete(socket.id);
     removeDoodleSpectator(io, socket.id);
     cleanupDoodleMultiplayerSocket(io, socket.id);
