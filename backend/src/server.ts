@@ -415,9 +415,9 @@ const start = async () => {
   try {
     await prisma.$connect();
     // Enable WAL mode so reads don't block writes, and set busy timeout.
-    // journal_mode returns a result row so use $queryRawUnsafe; busy_timeout returns nothing.
+    // Both PRAGMAs return result rows in Prisma's SQLite driver, so use $queryRawUnsafe.
     await prisma.$queryRawUnsafe('PRAGMA journal_mode=WAL;');
-    await prisma.$executeRawUnsafe('PRAGMA busy_timeout=10000;');
+    await prisma.$queryRawUnsafe('PRAGMA busy_timeout=10000;');
     console.log('Connected to database');
     await new Promise<void>((resolve, reject) => {
       const onError = (error: NodeJS.ErrnoException) => {
