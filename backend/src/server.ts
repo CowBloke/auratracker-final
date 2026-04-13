@@ -414,8 +414,9 @@ io.on('connection', (socket) => {
 const start = async () => {
   try {
     await prisma.$connect();
-    // Enable WAL mode so reads don't block writes, and set busy timeout
-    await prisma.$executeRawUnsafe('PRAGMA journal_mode=WAL;');
+    // Enable WAL mode so reads don't block writes, and set busy timeout.
+    // journal_mode returns a result row so use $queryRawUnsafe; busy_timeout returns nothing.
+    await prisma.$queryRawUnsafe('PRAGMA journal_mode=WAL;');
     await prisma.$executeRawUnsafe('PRAGMA busy_timeout=10000;');
     console.log('Connected to database');
     await new Promise<void>((resolve, reject) => {
