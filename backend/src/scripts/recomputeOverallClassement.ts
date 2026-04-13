@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { recomputeOverallClassement } from '../utils/overallClassement.js';
-
-const prisma = new PrismaClient();
 
 const run = async () => {
   try {

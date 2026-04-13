@@ -705,8 +705,9 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
       by: ['userId'],
       where: excludedIds.length > 0 ? { badgeId: { notIn: excludedIds } } : {},
       _count: { badgeId: true },
+      having: { badgeId: { _count: { gte: 25 } } },
     });
-    return new Set(grouped.filter((r) => r._count.badgeId >= 25).map((r) => r.userId));
+    return new Set(grouped.map((r) => r.userId));
   }
 
   // GENEROUS_10_GIFTS – gifted 10+ times (tracked via gifts_sent gameStats)
@@ -724,8 +725,9 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
       by: ['userId'],
       where: { payout: { not: null } },
       _count: { id: true },
+      having: { id: { _count: { gte: 20 } } },
     });
-    return new Set(bets.filter((r) => r._count.id >= 20).map((r) => r.userId));
+    return new Set(bets.map((r) => r.userId));
   }
 
   // SOCIAL_50_MESSAGES – sent 50+ chat messages
@@ -734,12 +736,9 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
       by: ['userId'],
       where: { userId: { not: null }, type: 'user' },
       _count: { id: true },
+      having: { id: { _count: { gte: 50 } } },
     });
-    return new Set(
-      msgs
-        .filter((r) => r.userId !== null && r._count.id >= 50)
-        .map((r) => r.userId as string),
-    );
+    return new Set(msgs.map((r) => r.userId as string));
   }
 
   // STREAK_7 / STREAK_30 – daily pass streak threshold
@@ -758,12 +757,9 @@ const getQualifyingUserIds = async (key: string): Promise<Set<string>> => {
       by: ['referredById'],
       where: { isApproved: true, referredById: { not: null } },
       _count: { id: true },
+      having: { id: { _count: { gte: 3 } } },
     });
-    return new Set(
-      referrals
-        .filter((r) => r.referredById !== null && r._count.id >= 3)
-        .map((r) => r.referredById as string),
-    );
+    return new Set(referrals.map((r) => r.referredById as string));
   }
 
   // CLAN_WARS_10 – participated (attacked) in 10+ distinct completed wars

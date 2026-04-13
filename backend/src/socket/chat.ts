@@ -61,14 +61,12 @@ const getUserClanTag = async (userId: string): Promise<ClanTagWire | null> => {
 const getBatchClanTags = async (userIds: string[]): Promise<Map<string, ClanTagWire>> => {
   if (userIds.length === 0) return new Map();
   const memberships = await prisma.clanMember.findMany({
-    where: { userId: { in: userIds } },
-    select: { userId: true, clan: { select: { tagUnlocked: true, tagText: true, tagStyle: true } } },
+    where: { userId: { in: userIds }, clan: { tagUnlocked: true, tagText: { not: null } } },
+    select: { userId: true, clan: { select: { tagText: true, tagStyle: true } } },
   });
   const map = new Map<string, ClanTagWire>();
   for (const m of memberships) {
-    if (m.clan?.tagUnlocked && m.clan?.tagText) {
-      map.set(m.userId, { text: m.clan.tagText, style: m.clan.tagStyle });
-    }
+    map.set(m.userId, { text: m.clan.tagText!, style: m.clan.tagStyle });
   }
   return map;
 };
@@ -118,6 +116,8 @@ const onlineUsers = new Map<string, OnlineUser>();
 type PublicOnlineUser = Omit<OnlineUser, 'socketId'> & { badges?: any[] };
 
 const MIN_ONLINE_RATIO = 0.1;
+const DISPLAYED_ONLINE_CACHE_TTL = 5_000;
+let _displayedOnlineStateCache: { data: { users: PublicOnlineUser[]; count: number }; expiresAt: number } | null = null;
 
 let _fakeOnlineEnabled: boolean | null = null;
 let _fakeOnlineCacheAt = 0;
@@ -153,6 +153,11 @@ const toPublicOnlineUser = (user: OnlineUser): PublicOnlineUser => ({
 });
 
 const buildDisplayedOnlineState = async (): Promise<{ users: PublicOnlineUser[]; count: number }> => {
+  const now = Date.now();
+  if (_displayedOnlineStateCache && now < _displayedOnlineStateCache.expiresAt) {
+    return _displayedOnlineStateCache.data;
+  }
+
   const realUsers = Array.from(onlineUsers.values()).map(toPublicOnlineUser);
 
   let users: PublicOnlineUser[];
@@ -200,7 +205,7 @@ const buildDisplayedOnlineState = async (): Promise<{ users: PublicOnlineUser[];
     getBatchEquippedBadges(userIds),
     getBatchClanTags(userIds),
   ]);
-  return {
+  const data = {
     users: users.map((u) => ({
       ...u,
       badges: badgeMap.get(u.userId) ?? [],
@@ -208,6 +213,8 @@ const buildDisplayedOnlineState = async (): Promise<{ users: PublicOnlineUser[];
     })),
     count: users.length,
   };
+  _displayedOnlineStateCache = { data, expiresAt: Date.now() + DISPLAYED_ONLINE_CACHE_TTL };
+  return data;
 };
 
 const broadcastDisplayedOnlineState = async (io: Server) => {
@@ -605,12 +612,14 @@ const _rescheduleHeartbeat = () => {
 
 /** Call when a player joins — captured immediately. */
 const _onPlayerJoined = () => {
+  _displayedOnlineStateCache = null;
   _write();
   _rescheduleHeartbeat(); // reset heartbeat since activity just happened
 };
 
 /** Call when a player leaves — debounced to absorb quick reconnects. */
 const _onPlayerLeft = () => {
+  _displayedOnlineStateCache = null;
   if (_decreaseTimer) clearTimeout(_decreaseTimer);
   _decreaseTimer = setTimeout(async () => {
     await _write();

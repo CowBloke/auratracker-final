@@ -202,6 +202,9 @@ const cleanupDoodleMultiplayerSocket = (io: Server, socketId: string) => {
 };
 
 export const setupGameHandlers = (socket: Socket, io: Server) => {
+  if ((socket as any).__gameHandlersRegistered) return;
+  (socket as any).__gameHandlersRegistered = true;
+
   // Register socket for game events
   socket.on('game:register', (data: { userId: string }) => {
     const userId = socket.data.userId as string | undefined;

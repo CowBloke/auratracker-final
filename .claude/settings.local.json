@@ -127,7 +127,8 @@
       "Read(//private/tmp/SubwaySurfers_check/static/**)",
       "Bash(grep -v \"api\\\\|comment\\\\|CarteTab\\\\|presence\\\\|//\")",
       "Bash(head -n 1526 /Users/viktorabe/Documents/GitHub/auratracker-final/frontend/src/pages/Information.tsx)",
-      "Bash(mv /tmp/info_trimmed.tsx /Users/viktorabe/Documents/GitHub/auratracker-final/frontend/src/pages/Information.tsx)"
+      "Bash(mv /tmp/info_trimmed.tsx /Users/viktorabe/Documents/GitHub/auratracker-final/frontend/src/pages/Information.tsx)",
+      "Bash(xargs cat:*)"
     ]
   },
   "outputStyle": "default"

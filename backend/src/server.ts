@@ -5,7 +5,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { config } from './config/index.js';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './lib/prisma.js';
 
 // BigInt JSON serialization support (needed for aura field which is BigInt)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,14 +89,8 @@ import {
   stopDailyRacerRewardsScheduler,
 } from './utils/dailyRacerRewards.js';
 
-// Initialize Prisma with connection limit to reduce SQLite lock contention
-export const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: 'file:./dev.db?connection_limit=1&socket_timeout=10',
-    },
-  },
-});
+// Initialize Prisma
+export { prisma };
 let clanEventsTimer: ReturnType<typeof setInterval> | null = null;
 let braquageLegalTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -387,8 +381,6 @@ io.on('connection', (socket) => {
     }
   });
   
-  // Raise the limit to accommodate all per-module disconnect listeners
-  socket.setMaxListeners(20);
   setupChatHandlers(socket, io);
   setupPartyHandlers(socket, io);
   setupGameHandlers(socket, io);
@@ -405,7 +397,7 @@ io.on('connection', (socket) => {
   setupUnoHandlers(socket, io);
   setupMorpionHandlers(socket, io);
   setupAuraVisionHandlers(socket, io);
-  socket.once('disconnect', () => {
+  socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
   });
 });
@@ -414,10 +406,6 @@ io.on('connection', (socket) => {
 const start = async () => {
   try {
     await prisma.$connect();
-    // Enable WAL mode so reads don't block writes, and set busy timeout.
-    // Both PRAGMAs return result rows in Prisma's SQLite driver, so use $queryRawUnsafe.
-    await prisma.$queryRawUnsafe('PRAGMA journal_mode=WAL;');
-    await prisma.$queryRawUnsafe('PRAGMA busy_timeout=10000;');
     console.log('Connected to database');
     await new Promise<void>((resolve, reject) => {
       const onError = (error: NodeJS.ErrnoException) => {

@@ -32,6 +32,10 @@ import { getBusinessBalancing } from '../../config/balancing.js';
 
 const FORMATION_FILE_UPLOAD_DIR = 'uploads/formation-files';
 const MAX_FORMATION_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const YOU_CACHE_TTL_MS = 10_000;
+const _youStateCache = new Map<string, { data: any; expiresAt: number }>();
+const _startupProductCache = new Map<string, { data: any; expiresAt: number }>();
+const _formationProductCache = new Map<string, { data: any; expiresAt: number }>();
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 const safeJsonParse = <T>(value: string | null | undefined, fallback: T): T => {
   if (!value) return fallback;
@@ -446,6 +450,9 @@ async function ensureStartupProducts(businessId: string) {
 
 function serializeStartupProduct(product: any) {
   const now = Date.now();
+  const cacheKey = String(product.id);
+  const cached = _startupProductCache.get(cacheKey);
+  if (cached && now < cached.expiresAt) return cached.data;
   const researchEndsAt = product.researchEndsAt ? new Date(product.researchEndsAt).toISOString() : null;
   const researchStartedAt = product.researchStartedAt ? new Date(product.researchStartedAt).toISOString() : null;
   const isResearchActive = Boolean(product.activeResearchLevel && product.researchEndsAt && new Date(product.researchEndsAt).getTime() > now);
@@ -464,7 +471,7 @@ function serializeStartupProduct(product: any) {
       )
     : 0;
 
-  return {
+  const result = {
     id: product.id,
     slotIndex: product.slotIndex,
     name: product.name,
@@ -482,6 +489,8 @@ function serializeStartupProduct(product: any) {
     canStartResearch: !product.activeResearchLevel && product.deployedLevel < STARTUP_PRODUCT_MAX_LEVEL,
     isMaxLevel: product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL,
   };
+  _startupProductCache.set(cacheKey, { data: result, expiresAt: now + YOU_CACHE_TTL_MS });
+  return result;
 }
 
 function serializeBuyoutOffer(offer: any, viewerId: string) {
@@ -686,6 +695,10 @@ function getBusinessReviewStatus(business: any, viewerId: string) {
 }
 
 function serializeFormationProduct(product: any, viewerId: string, options?: { viewerIsAdmin?: boolean; viewerOwnsBusiness?: boolean }) {
+  const cacheKey = `${product.id}:${viewerId}:${options?.viewerIsAdmin ?? false}:${options?.viewerOwnsBusiness ?? false}`;
+  const cached = _formationProductCache.get(cacheKey);
+  if (cached && Date.now() < cached.expiresAt) return cached.data;
+
   const viewerPurchase = (product.purchases ?? []).find((purchase: any) => purchase.userId === viewerId) ?? null;
   const reviewEligibility = getFormationReviewEligibilityEntry(product, viewerId);
   const ratings = (product.ratings ?? []).map((entry: any) => ({
@@ -702,7 +715,7 @@ function serializeFormationProduct(product: any, viewerId: string, options?: { v
   const viewerIsAdmin = Boolean(options?.viewerIsAdmin);
   const viewerOwnsBusiness = Boolean(options?.viewerOwnsBusiness);
 
-  return {
+  const result = {
     id: product.id,
     title: product.title,
     description: product.description ?? null,
@@ -731,6 +744,8 @@ function serializeFormationProduct(product: any, viewerId: string, options?: { v
     reviewPromptedAt: reviewEligibility?.promptedAt ? new Date(reviewEligibility.promptedAt).toISOString() : null,
     canModerate: viewerIsAdmin,
   };
+  _formationProductCache.set(cacheKey, { data: result, expiresAt: Date.now() + YOU_CACHE_TTL_MS });
+  return result;
 }
 
 function serializeBusiness(business: any, viewerId: string, options?: { viewerIsAdmin?: boolean }) {
@@ -1041,6 +1056,10 @@ function serializeRelationship(relationship: any, viewerId: string, ctx?: { view
 }
 
 export async function getYouState(userId: string) {
+  const now = Date.now();
+  const cached = _youStateCache.get(userId);
+  if (cached && now < cached.expiresAt) return cached.data;
+
   await ensureUserSkills(userId);
 
   const relationships = await prisma.relationship.findMany({
@@ -1290,7 +1309,7 @@ export async function getYouState(userId: string) {
   const unlockedBusinessLevel = viewerUser?.unlockedBusinessLevel ?? 0;
   const temporaryEffects = serializeYouTemporaryEffects(viewerUser?.youAdblockExpiresAt ?? null);
 
-  return {
+  const data = {
     businessTypes: BUSINESS_TYPES,
     skills: serializedSkills,
     businessSlots,
@@ -1335,6 +1354,8 @@ export async function getYouState(userId: string) {
     shareholderBusinesses: shareholderBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
     temporaryEffects,
   };
+  _youStateCache.set(userId, { data, expiresAt: Date.now() + YOU_CACHE_TTL_MS });
+  return data;
 }
 
 function serializeYouTemporaryEffects(youAdblockExpiresAt: Date | null) {
