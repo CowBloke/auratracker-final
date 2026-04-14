@@ -76,7 +76,7 @@ const youNavItems = [
   { tab: 'marche-actions', label: t('sidebar_you_share_market'), icon: Coins },
 ];
 
-export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: ComponentProps<typeof Sidebar>) {
+export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...props }: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
   const { isMobile, setOpen } = useSidebar();
   const [isBugReportOpen, setIsBugReportOpen] = useState(false);
@@ -149,7 +149,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
       type="button"
       onClick={handleLogoClick}
       className={cn(
-        'mb-4 flex h-9 w-full items-center gap-2 rounded-md px-3 text-sidebar-foreground transition-all hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2',
+        'mb-4 flex h-8 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!justify-center group-data-[collapsible=icon]:!p-2 group-data-[collapsible=icon]:!gap-0 group-data-[collapsible=icon]:mx-auto',
         shouldNudgeYouLogo && 'shadow-[0_0_0_rgba(99,102,241,0)] hover:shadow-[0_0_10px_rgba(99,102,241,0.25)]'
       )}
       aria-label={isOnYou ? t('sidebar_logo_back_to_dashboard') : (canOpenYouFromLogo ? t('sidebar_logo_go_to_you') : t('sidebar_logo_go_to_dashboard'))}
@@ -158,12 +158,11 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
         src={theme === 'dark' ? '/aura-icon-white.svg' : '/aura-icon.svg'}
         alt="AuraTracker"
         className={cn(
-          'h-5 w-5 shrink-0 transition-transform group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4',
-          isOnYou && 'scale-110 drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]',
-          shouldNudgeYouLogo && 'motion-safe:animate-[bounce_2.8s_ease-in-out_infinite]'
+          'h-4 w-4 shrink-0',
+          isOnYou && 'drop-shadow-[0_0_6px_rgba(139,92,246,0.6)]'
         )}
       />
-      <span className="truncate text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+      <span className="inline-block overflow-hidden whitespace-nowrap truncate text-sm font-semibold tracking-tight transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">
         {isOnYou ? t('sidebar_logo_you') : t('sidebar_logo_aura_tracker')}
       </span>
     </button>
@@ -173,6 +172,8 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
     <Sidebar
       variant="inset"
       collapsible="icon"
+      detached
+      className={cn('transition-[left,right] duration-120 ease-out', className)}
       onMouseEnter={(event) => {
         onMouseEnter?.(event);
         openSidebar();
@@ -186,7 +187,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
       <SidebarContent>
         <div className="px-3 py-4">
           {logoButton}
-          <SidebarMenu className="space-y-1">
+          <SidebarMenu className="gap-0.5">
 
             {/* You section nav */}
             {isOnYou && youNavItems.map(({ tab, label, icon: Icon }) => {
@@ -201,7 +202,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                     isActive={isActive}
                     tooltip={label}
                     className={cn(
-                      'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
+                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
                       isActive
                         ? 'text-foreground bg-muted/50'
                         : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -209,7 +210,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                   >
                     <NavLink to={href}>
                       <Icon className="h-4 w-4" />
-                      <span className="group-data-[collapsible=icon]:hidden">{label}</span>
+                      <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{label}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -224,7 +225,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                   isActive={location.pathname === '/' || location.pathname === '/dashboard'}
                   tooltip={t('sidebar_dashboard')}
                   className={cn(
-                    'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
+                    'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
                     location.pathname === '/' || location.pathname === '/dashboard'
                       ? 'text-foreground bg-muted/50'
                       : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -232,7 +233,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                 >
                   <NavLink to="/dashboard" end>
                     <LayoutDashboard className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_dashboard')}</span>
+                    <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{t('sidebar_dashboard')}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -248,7 +249,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                   isActive={isGamesSectionActive}
                   tooltip={t('sidebar_games')}
                   className={cn(
-                    'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
+                    'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
                     isGamesSectionActive
                       ? 'text-foreground bg-muted/50'
                       : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -256,7 +257,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                 >
                   <NavLink to="/games">
                     <Gamepad2 className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_games')}</span>
+                    <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{t('sidebar_games')}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -272,7 +273,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                     isActive={isActive}
                     tooltip={item.label}
                     className={cn(
-                      'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
+                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
                       isActive
                         ? 'text-foreground bg-muted/50'
                         : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -280,7 +281,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                   >
                     <NavLink to={item.to} end={item.to === '/'}>
                       <ItemIcon className="h-4 w-4" />
-                      <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                      <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{item.label}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -291,10 +292,10 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
               <SidebarMenuButton
                 onClick={() => setIsBugReportOpen(true)}
                 tooltip={t('sidebar_report_bug')}
-                className="h-9 px-3 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent group-data-[collapsible=icon]:!h-9"
+                className="h-8 px-2 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent group-data-[collapsible=icon]:!h-8"
               >
                 <Bug className="h-4 w-4" />
-                <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_report_bug')}</span>
+                <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{t('sidebar_report_bug')}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             </>)}

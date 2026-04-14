@@ -7,7 +7,7 @@ import AdminWarningModal from './AdminWarningModal';
 import GameJoinPrompt from '../game/GameJoinPrompt';
 import GameReplayPrompt from '../game/GameReplayPrompt';
 import DuelChallengePopup from '../game/DuelChallengePopup';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useGameSocket } from '@/contexts/GameSocketContext';
 import { useDuelSocket } from '@/contexts/DuelSocketContext';
@@ -131,13 +131,13 @@ export default function Layout() {
           className="!w-auto flex-1"
           style={
             {
-              '--sidebar-width': 'calc(var(--spacing) * 72)',
+              '--sidebar-width': 'calc(var(--spacing) * 60)',
               '--header-height': 'calc(var(--spacing) * 12)',
             } as CSSProperties
           }
         >
           <AppSidebar variant="inset" />
-          <SidebarInset className="min-h-0 overflow-hidden">
+          <main className="relative min-h-0 flex w-full flex-1 flex-col overflow-hidden bg-background">
             {updateAvailable && (
               <div className="flex items-center justify-between gap-3 bg-primary px-4 py-2 text-sm text-primary-foreground">
                 <span>Une mise à jour est disponible — rechargez la page pour en bénéficier.</span>
@@ -166,7 +166,7 @@ export default function Layout() {
                 </div>
               </div>
             </div>
-          </SidebarInset>
+          </main>
         </SidebarProvider>
         <ChatSidebarWrapper />
         <PartyChatFloatingContainer />
