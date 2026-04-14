@@ -408,6 +408,14 @@ io.on('connection', (socket) => {
 const start = async () => {
   try {
     await prisma.$connect();
+    // WAL mode: reads don't block writes
+    await prisma.$queryRawUnsafe('PRAGMA journal_mode=WAL;');
+    // Wait up to 10s for a lock instead of failing immediately
+    await prisma.$queryRawUnsafe('PRAGMA busy_timeout=10000;');
+    // Checkpoint WAL back to main DB every 100 pages (keeps WAL small → lower RSS)
+    await prisma.$queryRawUnsafe('PRAGMA wal_autocheckpoint=100;');
+    // Cap SQLite page cache at ~4 MB (negative = KiB units)
+    await prisma.$queryRawUnsafe('PRAGMA cache_size=-4096;');
     console.log('Connected to database');
     await new Promise<void>((resolve, reject) => {
       const onError = (error: NodeJS.ErrnoException) => {
