@@ -63,7 +63,6 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/inbox': { title: 'Boîte de réception', description: 'Notifications et messages reçus.' },
   '/support': { title: 'Support', description: 'Contacte l\'équipe pour toute question ou problème.' },
   '/changelog': { title: 'Changelog', description: 'Historique des mises à jour et nouveautés publiées.' },
-  '/auravision': { title: 'AuraVision', description: 'Roulette video aleatoire entre joueurs avec filtres live et passage au suivant.' },
 };
 
 function humanizeSegment(segment: string) {

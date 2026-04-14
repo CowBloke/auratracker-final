@@ -50,9 +50,7 @@ import youRoutes from './routes/you.js';
 import adsRoutes from './routes/ads.js';
 import messagesRoutes from './routes/messages.js';
 import justiceRoutes from './routes/justice.js';
-import auraVisionRoutes from './routes/auravision.js';
 import braquageLegalRoutes, { drawBraquageLegalSession } from './routes/braquageLegal.js';
-import auraScrollRoutes from './routes/auraScroll.js';
 import infoRoutes from './routes/info.js';
 
 // Socket handlers
@@ -71,7 +69,6 @@ import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 import { setupBallArenaHandlers } from './socket/ballarena.js';
 import { setupUnoHandlers } from './socket/uno.js';
 import { setupMorpionHandlers } from './socket/morpion.js';
-import { setupAuraVisionHandlers } from './socket/auravision.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -185,8 +182,6 @@ app.use('/api/braquage-legal', braquageLegalRoutes);
 app.use('/api/you', youRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/justice', justiceRoutes);
-app.use('/api/auravision', auraVisionRoutes);
-app.use('/api/aura-scroll', auraScrollRoutes);
 app.use('/api/info', infoRoutes);
 
 // Health check
@@ -397,7 +392,6 @@ io.on('connection', (socket) => {
   setupBallArenaHandlers(socket, io);
   setupUnoHandlers(socket, io);
   setupMorpionHandlers(socket, io);
-  setupAuraVisionHandlers(socket, io);
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
   });

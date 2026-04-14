@@ -21,6 +21,30 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-14-removal-auravision-aurascroll-sidebar-refresh',
+    date: '2026-04-14',
+    title: 'Suppression AuraVision/Aura Scroll et refresh navigation',
+    summary: 'AuraVision et Aura Scroll sont retires du backend et du frontend (routes, sockets, pages, API, moderation), avec un nettoyage des traductions/metadonnees et une mise a jour de la sidebar/shadcn pour une navigation plus stable et compacte.',
+    items: [
+      { category: 'BIG_FEATURE', text: '**Retrait AuraVision (backend + frontend)** — Suppression du routeur API `/api/auravision`, des handlers socket AuraVision, de la page frontend dediee, de son API client de signalement et des textes i18n associes.', order: 0 },
+      { category: 'BIG_FEATURE', text: '**Retrait Aura Scroll (backend + frontend)** — Suppression du routeur API `/api/aura-scroll`, de la page feed/publication, des types/endpoints client, des outils de moderation admin et des references de navigation liees a Aura Scroll.', order: 1 },
+      { category: 'BUG_FIX', text: '**Serveur nettoye** — Le serveur n enregistre plus les routes/sockets AuraVision et Aura Scroll, ce qui supprime les points d entree orphelins et evite des appels vers des modules retires.', order: 2 },
+      { category: 'BUG_FIX', text: '**Routing app nettoye** — Les routes `/auravision` et `/aura-scroll` sont retirees du routeur principal frontend pour aligner la navigation avec les fonctionnalites encore actives.', order: 3 },
+      { category: 'BUG_FIX', text: '**Pages bloquables synchronisees** — AuraVision et Aura Scroll sont retires de la liste des pages bloquables pour garder une config de moderation coherente avec les pages existantes.', order: 4 },
+      { category: 'SMALL_FEATURE', text: '**Sidebar metier simplifiee** — Les entrees AuraVision/Aura Scroll sont retirees de la sidebar principale, avec conservation des autres sections communautaires et infos.', order: 5 },
+      { category: 'SMALL_FEATURE', text: '**Layout unifie** — Sidebar et header sont desormais rendus de facon constante dans le layout (suppression du cas special Aura Scroll).', order: 6 },
+      { category: 'SMALL_FEATURE', text: '**Header allege** — Le menu compte utilisateur dedie de la top bar est retire pour simplifier la surface d actions en en tete.', order: 7 },
+      { category: 'SMALL_FEATURE', text: '**UI sidebar/shadcn ajustee** — Largeur sidebar reduite, etat ouvert par defaut, transitions revisees, styles de boutons harmonises et labels de composants demo alignes en anglais (`Projects`, `More`, etc.).', order: 8 },
+      { category: 'BUG_FIX', text: '**Compatibilite composants UI** — `sheet` est force en composant client (`"use client"`) et un leger ajustement typographique est applique aux raccourcis du dropdown menu.', order: 9 },
+      { category: 'SMALL_FEATURE', text: '**Theme sidebar retouche** — Les variables de couleur de la sidebar (clair/sombre) sont remappees pour une base visuelle plus neutre et lisible.', order: 10 },
+      { category: 'BUG_FIX', text: '**Styles AuraVision purges** — Les keyframes/classes CSS dediees a AuraVision sont retirees pour eliminer le code style devenu mort.', order: 11 },
+      { category: 'BUG_FIX', text: '**Tutoriels/infos aligns** — Les sections de guide qui documentaient Aura Scroll sont retirees des pages Informations et Tutoriels.', order: 12 },
+      { category: 'BUG_FIX', text: '**Admin tabs synchronisees** — L onglet admin `aura-scroll` est retire de la liste des tabs afin d eviter les references a une moderation de fonctionnalite supprimee.', order: 13 },
+      { category: 'BUG_FIX', text: '**Metadonnees nettoyees** — Les metas de page pour AuraVision sont retirees, et les references restantes du changelog restent fonctionnelles.', order: 14 },
+      { category: 'SMALL_FEATURE', text: '**Docs/config synchronises** — Le guide codebase retire les references AuraVision/Aura Scroll, un ajustement de formatage est applique a la config Tailwind, et le TODO interne supprime la ligne Aura Scroll devenue obsolete.', order: 15 },
+    ],
+  },
+  {
     id: '2026-04-14-sidebar-messages-aura-scroll-blocking',
     date: '2026-04-14',
     title: 'Navigation sidebar simplifiee et ajustements messages/visibilite',

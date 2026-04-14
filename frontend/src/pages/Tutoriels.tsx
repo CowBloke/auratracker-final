@@ -802,12 +802,6 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
             La rareté est tirée aléatoirement. Ne pas réclamer son pass un jour remet le streak à zéro.
           </p>
         </GuideSection>
-        <GuideSection title="AuraScroll">
-          <p className={cn(TYPOGRAPHY.SMALL, 'leading-relaxed')}>
-            L'<strong>AuraScroll</strong> est le fil d'actualité de la plateforme. Tu peux y publier des posts,
-            commenter et interagir avec la communauté. Accessible depuis la sidebar ou le dashboard.
-          </p>
-        </GuideSection>
       </div>
     ),
   },

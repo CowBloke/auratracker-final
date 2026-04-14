@@ -57,7 +57,6 @@ import { InboxDropdown } from '@/components/inbox/InboxDropdown';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { YouHeaderBar } from '@/components/you/YouHeaderBar';
-import { UserAccountMenu } from '@/components/user-account-menu';
 import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
 import { getPartyDisplayName } from '@/lib/party-display-name';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -1089,7 +1088,6 @@ export function SiteHeader() {
               <CurrencyIcon type="money" className="h-3 w-3" />
               <span className="text-xs font-semibold tabular-nums">{user?.money?.toLocaleString() ?? '0'} {'\u20AC'}</span>
             </div>
-            <UserAccountMenu showLabel={false} />
           </div>
         </div>
       </div>

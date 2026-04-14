@@ -53,7 +53,6 @@ All REST route modules are mounted from [backend/src/server.ts](backend/src/serv
 - `backend/src/routes/ads.ts` -> `/api/ads`
 - `backend/src/routes/messages.ts` -> `/api/messages`
 - `backend/src/routes/justice.ts` -> `/api/justice`
-- `backend/src/routes/auravision.ts` -> `/api/auravision`
 
 Special admin Prisma Studio access is handled directly in `backend/src/server.ts` through `backend/src/routes/prismaStudio.ts`.
 
@@ -76,7 +75,6 @@ Socket logic lives in `backend/src/socket/` and is registered in `backend/src/se
 - `backend/src/socket/ballarena.ts`
 - `backend/src/socket/uno.ts`
 - `backend/src/socket/morpion.ts`
-- `backend/src/socket/auravision.ts`
 
 ## Frontend Route Map
 
@@ -152,7 +150,6 @@ The protected app shell is rendered through `frontend/src/components/layout/Layo
 - `/inbox` -> `frontend/src/pages/Inbox.tsx`
 - `/support` -> `frontend/src/pages/Support.tsx`
 - `/changelog` -> `frontend/src/pages/Changelog.tsx`
-- `/auravision` -> `frontend/src/pages/AuraVision.tsx`
 - `/you` -> `frontend/src/pages/You.tsx`
 
 ## Where Pages Are Organized

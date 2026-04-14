@@ -9,7 +9,6 @@
 - latence
 - code auratrack
 - archivé sa,nctions
-- partager aura scroll
 - avis banque
 - fotum avec questions
 - basge detitn le plus de badges

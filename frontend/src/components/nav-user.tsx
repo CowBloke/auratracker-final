@@ -1,16 +1,13 @@
 "use client"
 
-import { Link } from "react-router-dom"
 import {
-  User,
+  BadgeCheck,
+  Bell,
   ChevronsUpDown,
+  CreditCard,
   LogOut,
-  Moon,
-  Sun,
-  Settings,
+  Sparkles,
 } from "lucide-react"
-import { useAuth } from "@/contexts/AuthContext"
-import { useTheme } from "@/contexts/ThemeContext"
 
 import {
   Avatar,
@@ -32,33 +29,17 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { resolveImageUrl } from "@/lib/images"
-import { t } from "@/lib/i18n"
-import { UsernameDisplay } from "@/components/ui/username-display"
 
 export function NavUser({
   user,
 }: {
   user: {
     name: string
-    firstName?: string | null
     email: string
     avatar: string
-    usernameColor?: string | null
-    profilePicture?: string | null
   }
 }) {
   const { isMobile } = useSidebar()
-  const { logout, user: authUser } = useAuth()
-  const { theme, toggleTheme } = useTheme()
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .slice(0, 2)
-  }
 
   return (
     <SidebarMenu>
@@ -67,27 +48,17 @@ export function NavUser({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              tooltip={user.name}
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-full">
-                {user.profilePicture && (
-                  <AvatarImage src={resolveImageUrl(user.profilePicture)} alt={user.name} className="rounded-full object-cover" />
-                )}
-                <AvatarFallback className="rounded-full bg-primary">
-                  {getInitials(user.name)}
-                </AvatarFallback>
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <UsernameDisplay
-                  username={user.name}
-                  firstName={user.firstName}
-                  usernameColor={user.usernameColor}
-                  usernameClassName="font-semibold"
-                />
-                <span className="truncate text-xs">{user.email || t('nav_user_user')}</span>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate text-xs">{user.email}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+              <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -98,47 +69,42 @@ export function NavUser({
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-full">
-                  {user.profilePicture && (
-                    <AvatarImage src={resolveImageUrl(user.profilePicture)} alt={user.name} className="rounded-full object-cover" />
-                  )}
-                  <AvatarFallback className="rounded-full bg-primary">
-                    {getInitials(user.name)}
-                  </AvatarFallback>
+                <Avatar className="h-8 w-8 rounded-lg">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <UsernameDisplay
-                    username={user.name}
-                    usernameColor={user.usernameColor}
-                    usernameClassName="font-semibold"
-                  />
-                  <span className="truncate text-xs">{user.email || t('nav_user_user')}</span>
+                  <span className="truncate font-semibold">{user.name}</span>
+                  <span className="truncate text-xs">{user.email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link to={`/profile/${authUser?.id}`}>
-                  <User />
-                  {t('nav_user_profile')}
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/settings">
-                  <Settings />
-                  {t('nav_user_settings')}
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={toggleTheme}>
-                {theme === 'dark' ? <Sun /> : <Moon />}
-                {theme === 'dark' ? t('nav_user_light_mode') : t('nav_user_dark_mode')}
+              <DropdownMenuItem>
+                <Sparkles />
+                Upgrade to Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>
+            <DropdownMenuGroup>
+              <DropdownMenuItem>
+                <BadgeCheck />
+                Account
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <CreditCard />
+                Billing
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Bell />
+                Notifications
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
               <LogOut />
-              {t('nav_user_logout')}
+              Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

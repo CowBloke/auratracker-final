@@ -12,7 +12,7 @@ import { useSocketBase } from '@/contexts/SocketContext';
 import { useGameSocket } from '@/contexts/GameSocketContext';
 import { useDuelSocket } from '@/contexts/DuelSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { AppSidebar } from '@/components/app-sidebar';
+import AppSidebar from '@/components/layout/Sidebar';
 import { SiteHeader } from '@/components/site-header';
 import PartyChatFloating from '@/components/party/PartyChatFloating';
 import MoneyIncomeOverlay from '@/components/rewards/MoneyIncomeOverlay';
@@ -51,7 +51,6 @@ export default function Layout() {
   const mainRef = useRef<HTMLDivElement>(null);
   const keyboardShortcuts = useKeyboardShortcuts();
   const isMessagesPage = location.pathname === '/messages';
-  const isAuraScrollPage = location.pathname.startsWith('/aura-scroll');
   const youTab = new URLSearchParams(location.search).get('tab');
   const isCartePage = location.pathname === '/you' && (youTab === 'carte' || youTab === null);
 
@@ -137,7 +136,7 @@ export default function Layout() {
             } as CSSProperties
           }
         >
-          {!isAuraScrollPage && <AppSidebar variant="inset" />}
+          <AppSidebar variant="inset" />
           <SidebarInset className="min-h-0 overflow-hidden">
             {updateAvailable && (
               <div className="flex items-center justify-between gap-3 bg-primary px-4 py-2 text-sm text-primary-foreground">
@@ -159,7 +158,7 @@ export default function Layout() {
                 </div>
               </div>
             )}
-            {!isAuraScrollPage && <SiteHeader />}
+            <SiteHeader />
             <div className="@container/main flex min-h-0 flex-1 flex-col">
               <div ref={mainRef} className={cn('min-h-0 flex-1', isMessagesPage || isCartePage ? 'overflow-hidden' : 'overflow-auto')}>
                 <div className={cn('mx-auto flex w-full flex-1 flex-col', isMessagesPage || isCartePage ? 'h-full pt-0' : 'pt-6 lg:pt-8', isCartePage ? CONTAINER.FULL : CONTAINER.DEFAULT)}>

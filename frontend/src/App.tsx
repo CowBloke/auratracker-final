@@ -70,8 +70,6 @@ import OpenGD from './pages/OpenGD';
 import CrossyRoad from './pages/CrossyRoad';
 import BlockBlast from './pages/BlockBlast';
 import You from './pages/You';
-import AuraVision from './pages/AuraVision';
-import AuraScroll from './pages/AuraScroll';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
@@ -299,8 +297,6 @@ function App() {
         <Route path="changelog" element={<Changelog />} />
         <Route path="loto" element={<BraquageLegal />} />
         <Route path="braquage-legal" element={<Navigate to="/loto" replace />} />
-        <Route path="auravision" element={<AuraVision />} />
-        <Route path="aura-scroll" element={<AuraScroll />} />
         <Route path="you" element={<You />} />
       </Route>
     </Routes>

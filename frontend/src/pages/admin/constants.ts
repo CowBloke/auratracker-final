@@ -26,7 +26,6 @@ export type AdminTab =
   | 'braquageLegal'
   | 'content'
   | 'ads'
-  | 'aura-scroll'
   | 'taxes'
   | 'fiscal'
   | 'game-limits'
@@ -46,7 +45,6 @@ export const ADMIN_TABS: AdminTab[] = [
   'braquageLegal',
   'content',
   'ads',
-  'aura-scroll',
   'taxes',
   'fiscal',
   'game-limits',

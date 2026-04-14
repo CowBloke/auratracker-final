@@ -21,8 +21,6 @@ import {
   Briefcase,
   Landmark,
   Coins,
-  Camera,
-  Sparkles,
   Info,
 } from 'lucide-react';
 import {
@@ -60,12 +58,10 @@ const communityItems: SidebarRouteItem[] = [
   { to: '/party', label: t('sidebar_nav_party'), icon: Users },
   { to: '/clans', label: t('sidebar_nav_clans'), icon: Flag },
   { to: '/loto', label: 'Loto', icon: Ticket },
-  { to: '/auravision', label: t('sidebar_nav_auravision'), icon: Camera },
   { to: '/suggestions', label: t('sidebar_nav_suggestions'), icon: Lightbulb },
 ];
 
 const infoItems: SidebarRouteItem[] = [
-  { to: '/aura-scroll', label: 'Aura Scroll', icon: Sparkles },
   { to: '/rules', label: t('sidebar_nav_info'), icon: BookOpen },
   { to: '/tutoriels', label: 'Tutoriels', icon: Info },
 ];
@@ -205,7 +201,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                     isActive={isActive}
                     tooltip={label}
                     className={cn(
-                      'h-9 px-3 text-sm font-normal',
+                      'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
                       isActive
                         ? 'text-foreground bg-muted/50'
                         : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -228,7 +224,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                   isActive={location.pathname === '/' || location.pathname === '/dashboard'}
                   tooltip={t('sidebar_dashboard')}
                   className={cn(
-                    'h-9 px-3 text-sm font-normal',
+                    'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
                     location.pathname === '/' || location.pathname === '/dashboard'
                       ? 'text-foreground bg-muted/50'
                       : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -252,7 +248,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                   isActive={isGamesSectionActive}
                   tooltip={t('sidebar_games')}
                   className={cn(
-                    'h-9 px-3 text-sm font-normal',
+                    'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
                     isGamesSectionActive
                       ? 'text-foreground bg-muted/50'
                       : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -276,7 +272,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                     isActive={isActive}
                     tooltip={item.label}
                     className={cn(
-                      'h-9 px-3 text-sm font-normal',
+                      'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
                       isActive
                         ? 'text-foreground bg-muted/50'
                         : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -295,7 +291,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
               <SidebarMenuButton
                 onClick={() => setIsBugReportOpen(true)}
                 tooltip={t('sidebar_report_bug')}
-                className="h-9 px-3 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent"
+                className="h-9 px-3 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent group-data-[collapsible=icon]:!h-9"
               >
                 <Bug className="h-4 w-4" />
                 <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_report_bug')}</span>

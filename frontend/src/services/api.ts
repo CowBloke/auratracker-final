@@ -3459,12 +3459,6 @@ export interface MessagingReport {
   createdAt: string;
 }
 
-export interface AuraVisionReport {
-  id: string;
-  title: string;
-  createdAt: string;
-}
-
 export const supportApi = {
   // User
   getMessages: () => api.get<{ messages: SupportMessage[] }>('/support/messages'),
@@ -3510,11 +3504,6 @@ export const supportApi = {
   getReports: () => api.get<{ reports: MessagingReport[] }>('/support/admin/reports'),
   reviewReport: (reportId: string, data: { action: 'ACTION_TAKEN' | 'DISMISSED'; reviewerNote?: string }) =>
     api.post<{ report: { id: string; status: string; reviewerNote: string | null; reviewedAt: string | null } }>(`/support/admin/reports/${reportId}/review`, data),
-};
-
-export const auraVisionApi = {
-  report: (data: { peerUserId: string; sessionId?: string | null; reason: string; transcript?: Array<{ sender: string; body: string }> }) =>
-    api.post<{ report: AuraVisionReport }>('/auravision/report', data),
 };
 
 export interface DirectConversationUser {
@@ -3771,74 +3760,6 @@ export const sanctionsApi = {
     api.patch<{ sanction: PendingSanction }>(`/admin/pending-sanctions/${id}/approve`, { adminNote }),
   rejectSanction: (id: string, adminNote?: string) =>
     api.patch<{ sanction: PendingSanction }>(`/admin/pending-sanctions/${id}/reject`, { adminNote }),
-};
-
-// ─── Aura Scroll ──────────────────────────────────────────────────────────────
-
-export interface AuraScrollUser {
-  id: string;
-  username: string;
-  usernameColor: string | null;
-  profilePicture: string | null;
-}
-
-export interface AuraScrollComment {
-  id: string;
-  postId: string;
-  user: AuraScrollUser;
-  content: string;
-  createdAt: string;
-  likeCount: number;
-  liked: boolean;
-}
-
-export interface AuraScrollPost {
-  id: string;
-  userId: string;
-  user: AuraScrollUser;
-  title: string | null;
-  description: string | null;
-  mediaUrls: string[];
-  mediaType: 'VIDEO' | 'PHOTO' | 'PHOTOS';
-  thumbnailUrl: string | null;
-  status?: string;
-  rejectReason?: string | null;
-  viewCount?: number;
-  createdAt: string;
-  likeCount: number;
-  liked: boolean;
-  commentCount: number;
-  comments: AuraScrollComment[];
-}
-
-export const auraScrollApi = {
-  getFeed: (cursor?: string) =>
-    api.get<{ posts: AuraScrollPost[]; nextCursor: string | null }>('/aura-scroll', { params: cursor ? { cursor } : {} }),
-  createPost: (data: { title?: string; description?: string; mediaUrls: string[]; mediaType: string; thumbnailUrl?: string }) =>
-    api.post<{ post: AuraScrollPost }>('/aura-scroll', data),
-  uploadImage: (base64Data: string, mimeType: string) =>
-    api.post<{ url: string }>('/aura-scroll/upload/image', { base64Data, mimeType }),
-  uploadVideo: (base64Data: string, mimeType: string) =>
-    api.post<{ url: string }>('/aura-scroll/upload/video', { base64Data, mimeType }),
-  likePost: (id: string) =>
-    api.post<{ liked: boolean; likeCount: number }>(`/aura-scroll/${id}/like`),
-  viewPost: (id: string) =>
-    api.post(`/aura-scroll/${id}/view`),
-  addComment: (id: string, content: string) =>
-    api.post<{ comment: AuraScrollComment }>(`/aura-scroll/${id}/comments`, { content }),
-  deleteComment: (postId: string, commentId: string) =>
-    api.delete(`/aura-scroll/${postId}/comments/${commentId}`),
-  likeComment: (postId: string, commentId: string) =>
-    api.post<{ liked: boolean; likeCount: number }>(`/aura-scroll/${postId}/comments/${commentId}/like`),
-  deletePost: (id: string) =>
-    api.delete(`/aura-scroll/${id}`),
-  // Admin
-  adminGetPending: () =>
-    api.get<{ posts: AuraScrollPost[] }>('/aura-scroll/admin/pending'),
-  adminGetAll: (status?: string) =>
-    api.get<{ posts: AuraScrollPost[] }>('/aura-scroll/admin/all', { params: status ? { status } : {} }),
-  adminUpdateStatus: (id: string, status: string, rejectReason?: string) =>
-    api.patch<{ success: boolean; status: string }>(`/aura-scroll/${id}/status`, { status, rejectReason }),
 };
 
 export default api;
