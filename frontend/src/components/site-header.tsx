@@ -591,7 +591,7 @@ export function SiteHeader() {
         <div className="flex w-full min-w-0 items-center gap-3">
           <SidebarTrigger className="flex-shrink-0 text-muted-foreground hover:text-foreground" />
           <div className="min-w-0 flex-1">
-            <YouHeaderBar rightSlot={<div className="flex items-center gap-2">{onlineUsersControl}{searchSheet}{messagesButton}{changelogButton}<InboxDropdown /><UserAccountMenu showLabel={false} /></div>} />
+            <YouHeaderBar rightSlot={<div className="flex items-center gap-2">{onlineUsersControl}{searchSheet}{messagesButton}{changelogButton}<InboxDropdown /></div>} />
           </div>
         </div>
       </header>

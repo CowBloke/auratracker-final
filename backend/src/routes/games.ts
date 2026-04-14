@@ -1377,12 +1377,36 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       : 0;
 
     moneyReward += clanMoneyBoostBonus;
-    const cappedRewards = await applyDailyGameRewardCaps(prisma, req.user.id, gameType, {
-      aura: auraReward,
-      money: moneyReward,
-    });
-    const appliedAuraReward = cappedRewards?.appliedAura ?? 0;
-    const appliedMoneyReward = cappedRewards?.appliedMoney ?? 0;
+    let appliedAuraReward = 0;
+    let appliedMoneyReward = 0;
+
+    if (gameType === 'casino') {
+      appliedAuraReward = Math.max(0, Math.floor(auraReward));
+      appliedMoneyReward = Number.isFinite(moneyReward) ? Math.trunc(moneyReward) : 0;
+
+      if (appliedAuraReward !== 0 || appliedMoneyReward !== 0) {
+        await prisma.user.update({
+          where: { id: req.user.id },
+          data: {
+            ...(appliedAuraReward !== 0
+              ? { aura: { increment: BigInt(appliedAuraReward) } }
+              : {}),
+            ...(appliedMoneyReward > 0
+              ? { money: { increment: appliedMoneyReward } }
+              : appliedMoneyReward < 0
+                ? { money: { decrement: Math.abs(appliedMoneyReward) } }
+                : {}),
+          },
+        });
+      }
+    } else {
+      const cappedRewards = await applyDailyGameRewardCaps(prisma, req.user.id, gameType, {
+        aura: auraReward,
+        money: moneyReward,
+      });
+      appliedAuraReward = cappedRewards?.appliedAura ?? 0;
+      appliedMoneyReward = cappedRewards?.appliedMoney ?? 0;
+    }
 
     // Update stats and user balance in transaction
     const stats = await prisma.$transaction(async (tx) => {
