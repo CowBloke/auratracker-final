@@ -1,4 +1,5 @@
 import { prisma } from '../server.js';
+import { Prisma } from '@prisma/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,11 +96,6 @@ export const awardBadge = async (
   reason?: string,
 ): Promise<boolean> => {
   try {
-    const existing = await prisma.userBadge.findUnique({
-      where: { userId_badgeId: { userId, badgeId } },
-    });
-    if (existing) return false; // already owned
-
     await prisma.userBadge.create({
       data: { userId, badgeId, obtainedReason: reason ?? null },
     });
@@ -108,6 +104,9 @@ export const awardBadge = async (
     void recheckBadgeForCondition('TOP_BADGES_COUNT');
     return true;
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return false; // already owned (racing award calls)
+    }
     console.error('badgeAwards.awardBadge error:', error);
     return false;
   }

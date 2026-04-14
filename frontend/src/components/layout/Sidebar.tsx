@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import type { ComponentProps } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   ChevronRight,
@@ -35,6 +35,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   Collapsible,
@@ -45,7 +46,6 @@ import { cn } from '@/lib/utils';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { useTheme } from '@/contexts/ThemeContext';
-import { getGameImage } from '@/lib/game-images';
 import BugReportPanel from './BugReportPanel';
 import { t } from '@/lib/i18n';
 
@@ -79,42 +79,6 @@ const infoItems: SidebarRouteItem[] = [
   { to: '/tutoriels', label: 'Tutoriels', icon: Info },
 ];
 
-const gameItems = [
-  { to: '/games/russian-roulette', label: t('sidebar_game_russian_roulette'), image: getGameImage('russian-roulette') },
-  { to: '/games/bomb-party', label: t('sidebar_game_bomb_party'), image: getGameImage('bomb-party') },
-  { to: '/games/poker', label: 'Poker', image: getGameImage('poker') },
-  { to: '/games/petit-bac', label: t('sidebar_game_petit_bac'), image: getGameImage('petit-bac') },
-  { to: '/games/uno', label: 'UNO', image: getGameImage('uno') },
-  { to: '/games/bataille-navale', label: t('sidebar_game_bataille_navale'), image: getGameImage('bataille-navale') },
-  { to: '/games/doodle-jump', label: 'Doodle Jump', image: getGameImage('doodle-jump') },
-  { to: '/games/logic-lab', label: 'Sudoku', image: getGameImage('logic-lab') },
-  { to: '/games/minesweeper', label: t('sidebar_game_minesweeper'), image: getGameImage('minesweeper') },
-  { to: '/games/2048', label: '2048', image: getGameImage('game-2048') },
-  { to: '/games/flappy-bird', label: 'Flappy Bird', image: getGameImage('flappy-bird') },
-  { to: '/games/chrome-dino', label: 'Chrome Dino', image: getGameImage('chrome-dino') },
-  { to: '/games/snake', label: 'Snake', image: getGameImage('snake') },
-  { to: '/games/fruit-ninja', label: 'Fruit Ninja', image: getGameImage('fruit-ninja') },
-  { to: '/games/qs-watermelon', label: 'QS Watermelon', image: getGameImage('qs-watermelon') },
-  { to: '/games/stack-tower', label: t('sidebar_game_stack_tower'), image: getGameImage('stack-tower') },
-  { to: '/games/geometry-dash', label: 'Geometry Dash', image: getGameImage('geometry-dash') },
-  { to: '/games/casino', label: 'Casino', image: getGameImage('casino') },
-  { to: '/games/salle-de-marche', label: t('sidebar_game_market_room'), image: getGameImage('market-room') },
-  { to: '/games/solitaire', label: 'Solitaire', image: getGameImage('solitaire') },
-  { to: '/games/racer', label: 'Racer', image: getGameImage('racer') },
-  { to: '/games/tetris', label: 'Tetris', image: getGameImage('tetris') },
-  { to: '/games/knife-hit', label: 'Knife Hit', image: getGameImage('knife-hit') },
-  { to: '/games/clash-village', label: 'Clash Village', image: getGameImage('clash-village') },
-  { to: '/games/goyave-empire', label: 'Goyave Empire', image: getGameImage('goyave-empire') },
-  { to: '/games/polytrack', label: 'PolyTrack', image: getGameImage('polytrack') },
-  { to: '/games/eaglercraft', label: 'Eaglercraft', image: getGameImage('eaglercraft') },
-  { to: '/games/hexgl', label: 'HexGL', image: getGameImage('hexgl') },
-  { to: '/games/opengd', label: 'OpenGD', image: getGameImage('opengd') },
-  { to: '/games/puissance-quatre', label: t('sidebar_game_puissance_quatre'), image: getGameImage('puissance-quatre') },
-  { to: '/games/echecs', label: t('sidebar_game_echecs'), image: getGameImage('echecs') },
-  { to: '/games/ball-arena', label: t('sidebar_game_ball_arena'), image: getGameImage('ball-arena') },
-  { to: '/games/morpion', label: 'Morpion', image: getGameImage('morpion') },
-];
-
 const youNavItems = [
   { tab: 'carte',    label: t('sidebar_you_map'),      icon: Map            },
   { tab: 'overview', label: t('sidebar_you_overview'), icon: LayoutDashboard },
@@ -125,24 +89,14 @@ const youNavItems = [
   { tab: 'marche-actions', label: t('sidebar_you_share_market'), icon: Coins },
 ];
 
-function GameSidebarIcon({ src, alt }: { src: string; alt: string }) {
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className="h-4 w-4 rounded-[4px] object-cover shrink-0"
-      loading="lazy"
-    />
-  );
-}
-
-export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
+export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
+  const { isMobile, setOpen } = useSidebar();
   const [isBugReportOpen, setIsBugReportOpen] = useState(false);
-  const [gamesExpanded, setGamesExpanded] = useState(false);
-  const [economyExpanded, setEconomyExpanded] = useState(false);
-  const [communityExpanded, setCommunityExpanded] = useState(false);
-  const [infoExpanded, setInfoExpanded] = useState(false);
+  const [economyExpanded, setEconomyExpanded] = useState(true);
+  const [communityExpanded, setCommunityExpanded] = useState(true);
+  const [infoExpanded, setInfoExpanded] = useState(true);
+  const closeTimerRef = useRef<number | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { maintenanceStatus } = useFeatures();
@@ -162,7 +116,6 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const isPathActive = (path: string) =>
     location.pathname === path || (path !== '/' && location.pathname.startsWith(`${path}/`));
 
-  const enabledGameItems = gameItems.filter((game) => !isDisabled(game.to));
   const enabledEconomyItems = economyItems.filter((item) => !isDisabled(item.to));
   const enabledCommunityItems = communityItems.filter((item) => !isDisabled(item.to));
   const enabledInfoItems = infoItems.filter((item) => !isDisabled(item.to));
@@ -174,6 +127,34 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
 
   const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
   const shouldNudgeYouLogo = !isOnYou && canOpenYouFromLogo;
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  const openSidebar = () => {
+    if (isMobile) return;
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setOpen(true);
+  };
+
+  const closeSidebar = () => {
+    if (isMobile) return;
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+    }
+    closeTimerRef.current = window.setTimeout(() => {
+      setOpen(false);
+      closeTimerRef.current = null;
+    }, 70);
+  };
 
   const handleLogoClick = () => {
     if (isOnYou) {
@@ -209,7 +190,19 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   );
 
   return (
-    <Sidebar variant="inset" collapsible="icon" {...props}>
+    <Sidebar
+      variant="inset"
+      collapsible="icon"
+      onMouseEnter={(event) => {
+        onMouseEnter?.(event);
+        openSidebar();
+      }}
+      onMouseLeave={(event) => {
+        onMouseLeave?.(event);
+        closeSidebar();
+      }}
+      {...props}
+    >
       <SidebarContent>
         <div className="px-3 py-4">
           {logoButton}
@@ -268,79 +261,25 @@ export default function AppSidebar(props: ComponentProps<typeof Sidebar>) {
             {!isOnYou && (<>
 
             {/* Games */}
-            {(!isDisabled('/games') || enabledGameItems.length > 0) && (
-              <Collapsible asChild open={gamesExpanded} onOpenChange={setGamesExpanded} className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton
-                      type="button"
-                      isActive={isGamesSectionActive}
-                      tooltip={t('sidebar_games')}
-                      className={cn(
-                        'h-9 px-3 text-sm font-normal',
-                        isGamesSectionActive
-                          ? 'text-foreground bg-muted/50'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                      )}
-                    >
-                      <>
-                        <Gamepad2 className="h-4 w-4" />
-                        <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_games')}</span>
-                        <ChevronRight className={cn(
-                          'ml-auto h-4 w-4 transition-transform duration-200',
-                          gamesExpanded && 'rotate-90',
-                          'group-data-[collapsible=icon]:hidden'
-                        )} />
-                      </>
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {!isDisabled('/games') && (
-                        <SidebarMenuSubItem>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={location.pathname === '/games'}
-                            className={cn(
-                              'text-sm font-normal',
-                              location.pathname === '/games'
-                                ? 'text-foreground'
-                                : 'text-muted-foreground hover:text-foreground'
-                            )}
-                          >
-                            <NavLink to="/games">
-                              <Gamepad2 className="h-4 w-4" />
-                              <span>Hub jeux</span>
-                            </NavLink>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      )}
-                      {enabledGameItems.map((game) => {
-                        const isGameActive = location.pathname === game.to;
-                        return (
-                          <SidebarMenuSubItem key={game.to}>
-                            <SidebarMenuSubButton
-                              asChild
-                              isActive={isGameActive}
-                              className={cn(
-                                'text-sm font-normal',
-                                isGameActive
-                                  ? 'text-foreground'
-                                  : 'text-muted-foreground hover:text-foreground'
-                              )}
-                            >
-                              <NavLink to={game.to}>
-                                <GameSidebarIcon src={game.image} alt={game.label} />
-                                <span>{game.label}</span>
-                              </NavLink>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        );
-                      })}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+            {!isDisabled('/games') && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isGamesSectionActive}
+                  tooltip={t('sidebar_games')}
+                  className={cn(
+                    'h-9 px-3 text-sm font-normal',
+                    isGamesSectionActive
+                      ? 'text-foreground bg-muted/50'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                  )}
+                >
+                  <NavLink to="/games">
+                    <Gamepad2 className="h-4 w-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_games')}</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             )}
 
             {/* Economy */}
