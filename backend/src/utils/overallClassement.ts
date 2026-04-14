@@ -67,7 +67,11 @@ const applyCategoryRanks = (
 
 export const recomputeOverallClassement = async (prisma: PrismaClient): Promise<void> => {
   try {
-    const [users, latestAuraCoinPrice, allGameStats, bombPartyStats, resolvedBets, casinoLogs] = await Promise.all([
+    // Casino losses are aggregated in SQL so we never load individual log rows into memory.
+    // The raw query returns one row per user with their total absolute loss.
+    type CasinoLossRow = { userId: string; totalLoss: number };
+
+    const [users, latestAuraCoinPrice, allGameStats, bombPartyStats, resolvedBets, casinoLossRows] = await Promise.all([
       prisma.user.findMany({
         where: { isSuperAdmin: false },
         select: {
@@ -109,18 +113,17 @@ export const recomputeOverallClassement = async (prisma: PrismaClient): Promise<
           payout: true,
         },
       }),
-      prisma.log.findMany({
-        where: {
-          type: 'GAME',
-          action: 'casino_bet',
-          userId: { not: null },
-          metadata: { not: null },
-        },
-        select: {
-          userId: true,
-          metadata: true,
-        },
-      }),
+      // Aggregate casino losses directly in SQLite — one row per user, no raw JSON in Node memory
+      prisma.$queryRawUnsafe<CasinoLossRow[]>(`
+        SELECT userId, SUM(ABS(CAST(json_extract(metadata, '$.netGain') AS REAL))) AS totalLoss
+        FROM "Log"
+        WHERE type = 'GAME'
+          AND action = 'casino_bet'
+          AND userId IS NOT NULL
+          AND metadata IS NOT NULL
+          AND CAST(json_extract(metadata, '$.netGain') AS REAL) < 0
+        GROUP BY userId
+      `),
     ]);
 
     if (users.length === 0) {
@@ -219,27 +222,9 @@ export const recomputeOverallClassement = async (prisma: PrismaClient): Promise<
       }));
     addCategory(rankEntries(polymarketEntries, false), polymarketEntries.length);
 
-    const casinoLossesByUser = new Map<string, number>();
-    for (const log of casinoLogs) {
-      if (!log.userId || !validUserIds.has(log.userId) || !log.metadata) {
-        continue;
-      }
-
-      try {
-        const metadata = JSON.parse(log.metadata) as { netGain?: unknown };
-        const netGain = Number(metadata.netGain ?? 0);
-        if (Number.isFinite(netGain) && netGain < 0) {
-          const current = casinoLossesByUser.get(log.userId) ?? 0;
-          casinoLossesByUser.set(log.userId, current + Math.abs(netGain));
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    const casinoLossEntries = Array.from(casinoLossesByUser.entries())
-      .filter(([, losses]) => losses > 0)
-      .map(([userId, losses]) => ({ userId, metric: losses }));
+    const casinoLossEntries = casinoLossRows
+      .filter((row) => validUserIds.has(row.userId) && Number(row.totalLoss) > 0)
+      .map((row) => ({ userId: row.userId, metric: Number(row.totalLoss) }));
     addCategory(rankEntries(casinoLossEntries, false), casinoLossEntries.length);
 
     if (categoryCount === 0) {
