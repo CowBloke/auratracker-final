@@ -186,7 +186,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
       <SidebarContent>
         <div className="px-3 py-4">
           {logoButton}
-          <SidebarMenu className="space-y-1">
+          <SidebarMenu className="space-y-0.5">
 
             {/* You section nav */}
             {isOnYou && youNavItems.map(({ tab, label, icon: Icon }) => {
@@ -201,7 +201,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                     isActive={isActive}
                     tooltip={label}
                     className={cn(
-                      'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
+                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0',
                       isActive
                         ? 'text-foreground bg-muted/50'
                         : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -224,7 +224,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                   isActive={location.pathname === '/' || location.pathname === '/dashboard'}
                   tooltip={t('sidebar_dashboard')}
                   className={cn(
-                    'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
+                    'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0',
                     location.pathname === '/' || location.pathname === '/dashboard'
                       ? 'text-foreground bg-muted/50'
                       : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -248,7 +248,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                   isActive={isGamesSectionActive}
                   tooltip={t('sidebar_games')}
                   className={cn(
-                    'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
+                    'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0',
                     isGamesSectionActive
                       ? 'text-foreground bg-muted/50'
                       : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -272,7 +272,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
                     isActive={isActive}
                     tooltip={item.label}
                     className={cn(
-                      'h-9 px-3 text-sm font-normal group-data-[collapsible=icon]:!h-9',
+                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0',
                       isActive
                         ? 'text-foreground bg-muted/50'
                         : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
@@ -291,7 +291,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, ...props }: Com
               <SidebarMenuButton
                 onClick={() => setIsBugReportOpen(true)}
                 tooltip={t('sidebar_report_bug')}
-                className="h-9 px-3 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent group-data-[collapsible=icon]:!h-9"
+                className="h-8 px-2 text-sm font-normal text-muted-foreground hover:text-foreground hover:bg-transparent group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
               >
                 <Bug className="h-4 w-4" />
                 <span className="group-data-[collapsible=icon]:hidden">{t('sidebar_report_bug')}</span>

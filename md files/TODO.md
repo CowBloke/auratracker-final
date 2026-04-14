@@ -16,3 +16,4 @@
 - voir investisseurs
 - streak
 - fix casino
+- deux fois pubs mm page

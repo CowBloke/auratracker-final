@@ -56,6 +56,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { UserAccountMenu } from '@/components/user-account-menu';
 import { YouHeaderBar } from '@/components/you/YouHeaderBar';
 import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
 import { getPartyDisplayName } from '@/lib/party-display-name';
@@ -590,7 +591,7 @@ export function SiteHeader() {
         <div className="flex w-full min-w-0 items-center gap-3">
           <SidebarTrigger className="flex-shrink-0 text-muted-foreground hover:text-foreground" />
           <div className="min-w-0 flex-1">
-            <YouHeaderBar rightSlot={<div className="flex items-center gap-2">{onlineUsersControl}{searchSheet}{messagesButton}{changelogButton}<InboxDropdown /></div>} />
+            <YouHeaderBar rightSlot={<div className="flex items-center gap-2">{onlineUsersControl}{searchSheet}{messagesButton}{changelogButton}<InboxDropdown /><UserAccountMenu showLabel={false} /></div>} />
           </div>
         </div>
       </header>
@@ -1088,6 +1089,7 @@ export function SiteHeader() {
               <CurrencyIcon type="money" className="h-3 w-3" />
               <span className="text-xs font-semibold tabular-nums">{user?.money?.toLocaleString() ?? '0'} {'\u20AC'}</span>
             </div>
+            <UserAccountMenu showLabel={false} />
           </div>
         </div>
       </div>
