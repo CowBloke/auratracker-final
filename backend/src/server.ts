@@ -381,6 +381,8 @@ io.on('connection', (socket) => {
     }
   });
   
+  // 11 modules each add one disconnect listener — raise the cap to silence the warning
+  socket.setMaxListeners(20);
   setupChatHandlers(socket, io);
   setupPartyHandlers(socket, io);
   setupGameHandlers(socket, io);

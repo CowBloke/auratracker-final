@@ -681,10 +681,25 @@ export const setupGameHandlers = (socket: Socket, io: Server) => {
     removeDoodleSpectator(io, socket.id);
     cleanupDoodleMultiplayerSocket(io, socket.id);
 
+    let disconnectedUserId: string | undefined;
     for (const [userId, socketId] of userGameSockets.entries()) {
       if (socketId === socket.id) {
+        disconnectedUserId = userId;
         userGameSockets.delete(userId);
         break;
+      }
+    }
+
+    // Remove any pending game invites sent by or to this user
+    if (disconnectedUserId) {
+      gameInvites.delete(disconnectedUserId);
+      for (const [targetId, invites] of gameInvites.entries()) {
+        const filtered = invites.filter((i) => i.inviterId !== disconnectedUserId);
+        if (filtered.length === 0) {
+          gameInvites.delete(targetId);
+        } else if (filtered.length !== invites.length) {
+          gameInvites.set(targetId, filtered);
+        }
       }
     }
 
