@@ -42,7 +42,7 @@ function PartyChatFloatingContainer() {
 }
 
 export default function Layout() {
-  const { connected, setCurrentPage } = useSocketBase();
+  const { connected, setCurrentPage, updateAvailable, dismissUpdate } = useSocketBase();
   const { activeJoinPrompt, activeReplayPrompt, respondToGameJoinPrompt, respondToGameReplayPrompt } = useGameSocket();
   const { incomingDuelChallenge, acceptDuelChallenge, declineDuelChallenge } = useDuelSocket();
   const { user } = useAuth();
@@ -139,6 +139,26 @@ export default function Layout() {
         >
           {!isAuraScrollPage && <AppSidebar variant="inset" />}
           <SidebarInset className="min-h-0 overflow-hidden">
+            {updateAvailable && (
+              <div className="flex items-center justify-between gap-3 bg-primary px-4 py-2 text-sm text-primary-foreground">
+                <span>Une mise à jour est disponible — rechargez la page pour en bénéficier.</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="rounded bg-primary-foreground/20 px-3 py-0.5 font-medium hover:bg-primary-foreground/30"
+                  >
+                    Recharger
+                  </button>
+                  <button
+                    onClick={dismissUpdate}
+                    className="rounded px-2 py-0.5 hover:bg-primary-foreground/20"
+                    aria-label="Ignorer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
             {!isAuraScrollPage && <SiteHeader />}
             <div className="@container/main flex min-h-0 flex-1 flex-col">
               <div ref={mainRef} className={cn('min-h-0 flex-1', isMessagesPage || isCartePage ? 'overflow-hidden' : 'overflow-auto')}>

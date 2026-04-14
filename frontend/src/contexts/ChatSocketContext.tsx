@@ -193,8 +193,25 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       s.emit('doodle:spectate-list-request');
     };
 
+    // If the server lost our presence entry, it asks us to do a full rejoin
+    const handleRejoinRequired = () => handleConnect();
+
+    // Periodic heartbeat — re-confirms presence every 4 minutes.
+    // If the server lost the entry it replies with chat:rejoin-required.
+    const HEARTBEAT_INTERVAL_MS = 4 * 60 * 1000;
+    const heartbeatTimer = setInterval(() => {
+      if (s.connected) {
+        const isPageActive =
+          typeof document === 'undefined'
+            ? true
+            : document.visibilityState === 'visible' && document.hasFocus();
+        chatEvents.heartbeat(isPageActive);
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+
     if (s.connected) handleConnect();
     s.on('connect', handleConnect);
+    s.on('chat:rejoin-required', handleRejoinRequired);
 
     s.on('chat:history', (data: { messages: ChatMessage[]; hasMore?: boolean }) => {
       setHasOlderMessages(Boolean(data.hasMore));
@@ -331,7 +348,9 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     });
 
     return () => {
+      clearInterval(heartbeatTimer);
       s.off('connect', handleConnect);
+      s.off('chat:rejoin-required', handleRejoinRequired);
       s.off('chat:history');
       s.off('chat:history-older');
       s.off('chat:message');

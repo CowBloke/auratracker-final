@@ -15,6 +15,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { initSocket, connectSocket, disconnectSocket, chatEvents } from '../services/socket';
+import { api } from '../services/api';
 import { storeBanInfo } from '../services/ban';
 import { useAuth } from './AuthContext';
 import { useChatSocket } from './ChatSocketContext';
@@ -30,6 +31,8 @@ export type { RRGameState, RRGameOver, ActiveJoinPrompt, ActiveReplayPrompt, Pok
 interface SocketBaseContextValue {
   socket: Socket | null;
   connected: boolean;
+  updateAvailable: boolean;
+  dismissUpdate: () => void;
   setCurrentPage: (page: string) => void;
 }
 
@@ -45,6 +48,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const serverStartedAtRef = useRef<string | null>(null);
+  const hasConnectedRef = useRef(false);
+
+  const dismissUpdate = useCallback(() => setUpdateAvailable(false), []);
 
   useEffect(() => {
     if (!user) return;
@@ -52,7 +60,25 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setSocket(s);
     connectSocket();
 
-    s.on('connect', () => setConnected(true));
+    const handleConnect = async () => {
+      setConnected(true);
+      try {
+        const res = await api.get<{ startedAt?: string }>('/health');
+        const startedAt = res.data?.startedAt;
+        if (startedAt) {
+          if (hasConnectedRef.current && serverStartedAtRef.current !== startedAt) {
+            // Server restarted since we last connected — a new deploy is likely live
+            setUpdateAvailable(true);
+          }
+          serverStartedAtRef.current = startedAt;
+        }
+      } catch {
+        // Non-critical; ignore health check failures
+      }
+      hasConnectedRef.current = true;
+    };
+
+    s.on('connect', () => { void handleConnect(); });
     s.on('disconnect', () => setConnected(false));
 
     const handleSiteReloadRequired = () => {
@@ -116,8 +142,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ socket, connected, setCurrentPage }),
-    [socket, connected, setCurrentPage]
+    () => ({ socket, connected, updateAvailable, dismissUpdate, setCurrentPage }),
+    [socket, connected, updateAvailable, dismissUpdate, setCurrentPage]
   );
 
   return <SocketBaseContext.Provider value={value}>{children}</SocketBaseContext.Provider>;

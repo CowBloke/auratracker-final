@@ -190,8 +190,9 @@ app.use('/api/aura-scroll', auraScrollRoutes);
 app.use('/api/info', infoRoutes);
 
 // Health check
+const SERVER_STARTED_AT = new Date().toISOString();
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), startedAt: SERVER_STARTED_AT });
 });
 
 // Socket.io connection handling
@@ -381,8 +382,6 @@ io.on('connection', (socket) => {
     }
   });
   
-  // 11 modules each add one disconnect listener — raise the cap to silence the warning
-  socket.setMaxListeners(20);
   setupChatHandlers(socket, io);
   setupPartyHandlers(socket, io);
   setupGameHandlers(socket, io);
@@ -408,14 +407,6 @@ io.on('connection', (socket) => {
 const start = async () => {
   try {
     await prisma.$connect();
-    // WAL mode: reads don't block writes
-    await prisma.$queryRawUnsafe('PRAGMA journal_mode=WAL;');
-    // Wait up to 10s for a lock instead of failing immediately
-    await prisma.$queryRawUnsafe('PRAGMA busy_timeout=10000;');
-    // Checkpoint WAL back to main DB every 100 pages (keeps WAL small → lower RSS)
-    await prisma.$queryRawUnsafe('PRAGMA wal_autocheckpoint=100;');
-    // Cap SQLite page cache at ~4 MB (negative = KiB units)
-    await prisma.$queryRawUnsafe('PRAGMA cache_size=-4096;');
     console.log('Connected to database');
     await new Promise<void>((resolve, reject) => {
       const onError = (error: NodeJS.ErrnoException) => {

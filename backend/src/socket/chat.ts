@@ -1213,6 +1213,24 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     }
   });
 
+  // Heartbeat — keeps presence alive without resending chat history.
+  // If the user isn't in onlineUsers (presence was lost), we ask them to rejoin.
+  socket.on('chat:heartbeat', (data: { isPageActive?: boolean }) => {
+    const userId = socket.data.userId as string | undefined;
+    if (!userId) return;
+    const user = onlineUsers.get(userId);
+    if (user) {
+      // Refresh socket ID (handles the case where the map has a stale socket ID)
+      user.socketId = socket.id;
+      if (data?.isPageActive !== undefined) {
+        user.isPageActive = Boolean(data.isPageActive);
+      }
+    } else {
+      // Presence was lost — tell the client to do a full chat:join
+      socket.emit('chat:rejoin-required');
+    }
+  });
+
   // Handle disconnect
   socket.once('disconnect', () => {
     // Find and remove user from online list

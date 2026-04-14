@@ -60,6 +60,9 @@ export const chatEvents = {
   setPresence: (userId: string, isPageActive: boolean) => {
     socket?.emit('chat:presence', { userId, isPageActive });
   },
+  heartbeat: (isPageActive: boolean) => {
+    socket?.emit('chat:heartbeat', { isPageActive });
+  },
   createPoll: (userId: string, question: string, options: string[]) => {
     socket?.emit('chat:poll-create', { userId, question, options });
   },
