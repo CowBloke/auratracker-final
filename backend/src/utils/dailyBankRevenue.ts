@@ -1,6 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 import { getParisDayKey } from './dailyAura.js';
 import { logAdmin } from './logger.js';
+import { createNotification } from './notifications.js';
+import { emitSharedBalanceUpdatesForUserIds } from './sharedBalance.js';
 
 export const BANK_BASE_DAILY_RATE = 0.002;       // 0.2% per day
 export const BANK_LIVRET_DAILY_RATE = 0.005;     // 0.5% per day with livret épargne
@@ -70,6 +72,12 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
       treasuryMoney: true,
       livretEpargneUnlocked: true,
       lastBankRevenueDate: true,
+      shareholders: {
+        select: {
+          userId: true,
+          sharePercent: true,
+        },
+      },
     },
   });
 
@@ -103,6 +111,8 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
     bankRevenue: number;
     bankRate: number;
     accountInterestPaid: number;
+    shareholderPayoutTotal: number;
+    shareholderPayouts: Array<{ userId: string; amount: number }>;
     accountCountCredited: number;
     creditedDays: number;
     livretEpargneUnlocked: boolean;
@@ -117,6 +127,24 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
 
       const bankRate = bank.livretEpargneUnlocked ? BANK_LIVRET_DAILY_RATE : BANK_BASE_DAILY_RATE;
       const bankRevenue = computeCompoundedDailyGain(bank.treasuryMoney, bankRate, creditedDays);
+
+      // Split bank revenue to shareholders first, then keep the remainder in treasury.
+      const payoutPlan: Array<{ userId: string; amount: number }> = [];
+      let remainingBankRevenue = bankRevenue;
+
+      const validShareholders = (bank.shareholders ?? []).filter((shareholder) => shareholder.sharePercent > 0);
+      for (const shareholder of validShareholders) {
+        if (remainingBankRevenue <= 0) break;
+
+        const rawShareAmount = Math.floor((bankRevenue * shareholder.sharePercent) / 100);
+        const shareAmount = Math.min(remainingBankRevenue, Math.max(0, rawShareAmount));
+        if (shareAmount <= 0) {
+          continue;
+        }
+
+        payoutPlan.push({ userId: shareholder.userId, amount: shareAmount });
+        remainingBankRevenue -= shareAmount;
+      }
 
       const accounts = accountsByBusiness.get(bank.id) ?? [];
       let accountInterestPaid = 0;
@@ -144,13 +172,20 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
           ],
         },
         data: {
-          treasuryMoney: { increment: bankRevenue + accountInterestPaid },
+          treasuryMoney: { increment: remainingBankRevenue + accountInterestPaid },
           lastBankRevenueDate: todayKey,
         },
       });
 
       if (claimed.count !== 1) {
         continue;
+      }
+
+      for (const payout of payoutPlan) {
+        await tx.user.update({
+          where: { id: payout.userId },
+          data: { money: { increment: payout.amount } },
+        });
       }
 
       for (const account of accountCredits) {
@@ -166,6 +201,8 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
         bankRevenue,
         bankRate,
         accountInterestPaid,
+        shareholderPayoutTotal: payoutPlan.reduce((sum, payout) => sum + payout.amount, 0),
+        shareholderPayouts: payoutPlan,
         accountCountCredited: accountCredits.length,
         creditedDays,
         livretEpargneUnlocked: bank.livretEpargneUnlocked,
@@ -173,21 +210,54 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
     }
   });
 
-  await Promise.allSettled(
-    dailySummary.map((bank) =>
-      logAdmin('bank_daily_revenue', undefined, undefined, bank.id, bank.name, {
-        revenue: bank.bankRevenue,
-        rate: bank.bankRate,
-        accountCourantInterestRate: BANK_ACCOUNT_COURANT_DAILY_RATE,
-        accountInterestRate: BANK_ACCOUNT_EPARGNE_DAILY_RATE,
-        accountInterestPaid: bank.accountInterestPaid,
-        accountCountCredited: bank.accountCountCredited,
-        creditedDays: bank.creditedDays,
-        dayKey: todayKey,
-        livretEpargneUnlocked: bank.livretEpargneUnlocked,
-      })
-    )
+  const shareholderNotifications = dailySummary.flatMap((bank) =>
+    bank.shareholderPayouts.map((payout) => ({
+      userId: payout.userId,
+      amount: payout.amount,
+      bankName: bank.name,
+    }))
   );
+
+  await Promise.allSettled(
+    [
+      ...dailySummary.map((bank) =>
+        logAdmin('bank_daily_revenue', undefined, undefined, bank.id, bank.name, {
+          revenue: bank.bankRevenue,
+          rate: bank.bankRate,
+          accountCourantInterestRate: BANK_ACCOUNT_COURANT_DAILY_RATE,
+          accountInterestRate: BANK_ACCOUNT_EPARGNE_DAILY_RATE,
+          accountInterestPaid: bank.accountInterestPaid,
+          shareholderPayout: bank.shareholderPayoutTotal,
+          accountCountCredited: bank.accountCountCredited,
+          creditedDays: bank.creditedDays,
+          dayKey: todayKey,
+          livretEpargneUnlocked: bank.livretEpargneUnlocked,
+        })
+      ),
+      ...shareholderNotifications.map((entry) =>
+        createNotification({
+          userId: entry.userId,
+          type: 'MONEY_RECEIVED',
+          title: 'Dividende quotidien recu',
+          body: `${entry.amount.toLocaleString('fr-FR')} money ont ete verses sur ton wallet pour tes parts de ${entry.bankName}.`,
+          link: '/you?tab=travail',
+          icon: 'briefcase-business',
+          data: {
+            source: 'bank_shareholder_daily_revenue',
+            amount: entry.amount,
+            bankName: entry.bankName,
+          },
+        })
+      ),
+    ]
+  );
+
+  if (shareholderNotifications.length > 0) {
+    await emitSharedBalanceUpdatesForUserIds(
+      prisma,
+      shareholderNotifications.map((entry) => entry.userId),
+    );
+  }
 
   console.log(`[daily-bank-revenue] Credited ${dailySummary.length} bank(s) for ${todayKey}`);
 };

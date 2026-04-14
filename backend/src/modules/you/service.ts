@@ -427,6 +427,32 @@ function getBusinessSlots(skills: Array<{ key: string; level: number }>) {
   return Math.max(1, affairesSkill?.level ?? 1);
 }
 
+async function ensureCanOwnAdditionalBusiness(userId: string) {
+  const [skills, ownedBusinessCount, viewer] = await Promise.all([
+    prisma.userSkill.findMany({
+      where: { userId },
+      select: { key: true, level: true },
+    }),
+    prisma.business.count({
+      where: { ownerId: userId },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { isAdmin: true, isSuperAdmin: true },
+    }),
+  ]);
+
+  const bypassBusinessSlotLimit = Boolean(viewer?.isAdmin || viewer?.isSuperAdmin);
+  if (bypassBusinessSlotLimit) {
+    return;
+  }
+
+  const businessSlots = getBusinessSlots(skills);
+  if (ownedBusinessCount >= businessSlots) {
+    throw new Error('BUSINESS_SLOT_LIMIT_REACHED');
+  }
+}
+
 async function ensureStartupProducts(businessId: string) {
   await Promise.all(
     STARTUP_PRODUCTS.map((product) =>
@@ -3732,12 +3758,7 @@ export async function createBusinessBuyoutOffer(userId: string, businessId: stri
     throw new Error('INSUFFICIENT_MONEY');
   }
 
-  const alreadyOwns = await prisma.business.findFirst({
-    where: { ownerId: userId },
-  });
-  if (alreadyOwns) {
-    throw new Error('BUYOUT_ALREADY_OWNS_BUSINESS');
-  }
+  await ensureCanOwnAdditionalBusiness(userId);
 
   const existingPendingOffer = await prisma.businessBuyoutOffer.findFirst({
     where: {
@@ -3962,12 +3983,7 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
     };
   }
 
-  const bidderAlreadyOwns = await prisma.business.findFirst({
-    where: { ownerId: offer.bidderId },
-  });
-  if (bidderAlreadyOwns) {
-    throw new Error('BUYOUT_ALREADY_OWNS_BUSINESS');
-  }
+  await ensureCanOwnAdditionalBusiness(offer.bidderId);
 
   await prisma.$transaction(async (tx) => {
     await tx.businessBuyoutOffer.update({
