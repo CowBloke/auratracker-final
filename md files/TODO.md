@@ -1,0 +1,19 @@
+- contacter fisc
+- chat main bug envoie message
+- clash village stockage et non argent 
+- subway surfer
+- redirection bas de page messa ges
+- affaires/messages tri messages
+- logs
+- suspect
+- latence
+- code auratrack
+- archivé sa,nctions
+- partager aura scroll
+- avis banque
+- fotum avec questions
+- basge detitn le plus de badges
+- business illégaux chances de se faire attraper
+- voir investisseurs
+- streak
+- fix casino

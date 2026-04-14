@@ -262,7 +262,9 @@ type MessagingTab = (typeof MESSAGING_TABS)[keyof typeof MESSAGING_TABS];
 const BUSINESS_CONVERSATION_TAG = 'Professionnel';
 
 const isBusinessConversation = (conversation: MessagingConversationSummary) =>
-  conversation.tagType === BUSINESS_CONVERSATION_TAG || conversation.tagLabel === BUSINESS_CONVERSATION_TAG;
+  Boolean(conversation.courtCaseId)
+  || conversation.tagType === BUSINESS_CONVERSATION_TAG
+  || conversation.tagLabel === BUSINESS_CONVERSATION_TAG;
 
 const ADMIN_SUPPORT_CONVERSATION_PREFIX = 'admin-support:';
 

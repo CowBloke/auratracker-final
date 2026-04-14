@@ -21,6 +21,18 @@ type EntryWithItems = {
 
 const SEED_ENTRIES = [
   {
+    id: '2026-04-14-sidebar-messages-aura-scroll-blocking',
+    date: '2026-04-14',
+    title: 'Navigation sidebar simplifiee et ajustements messages/visibilite',
+    summary: 'La navigation laterale est simplifiee avec des liens directs, Aura Scroll devient une page bloquable, les conversations Affaires sont mieux detectees dans Messages, et la liste TODO interne est mise a jour.',
+    items: [
+      { category: 'SMALL_FEATURE', text: '**Sidebar simplifiee** — Les sections Economie, Communaute et Infos ne sont plus en menus repliables: leurs liens sont affiches directement dans la barre laterale, avec un bouton de signalement de bug conserve en acces direct.', order: 0 },
+      { category: 'SMALL_FEATURE', text: '**Blocage de page etendu** — La page `Aura Scroll` est ajoutee a la configuration des pages bloquables (`/aura-scroll`) pour la moderation/maintenance centralisee.', order: 1 },
+      { category: 'BUG_FIX', text: '**Messages Affaires mieux classes** — Une conversation est maintenant reconnue comme professionnelle aussi quand elle est liee a un dossier (`courtCaseId`), en plus du tag `Professionnel`.', order: 2 },
+      { category: 'SMALL_FEATURE', text: '**Backlog interne actualise** — Le fichier TODO interne a ete renseigne avec une nouvelle liste de points de suivi et correctifs a traiter.', order: 3 },
+    ],
+  },
+  {
     id: '2026-04-12-modules-fixes-admin-chat-auravision',
     date: '2026-04-12',
     title: 'Maintenance auto, modération chat et messages business',
