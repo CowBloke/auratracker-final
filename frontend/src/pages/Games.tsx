@@ -905,8 +905,8 @@ export default function Games() {
 
     nodes.forEach((node, i) => {
       result.push(node);
-      if ((i + 1) % 6 === 0) {
-        result.push(<AdCard key={`ad-${adIdx}`} ad={cardAds[adIdx % cardAds.length]!} />);
+      if ((i + 1) % 6 === 0 && adIdx < cardAds.length) {
+        result.push(<AdCard key={`ad-${adIdx}`} ad={cardAds[adIdx]!} />);
         adIdx += 1;
       }
     });

@@ -61,8 +61,8 @@ export default function Layout() {
   }, [connected, location.pathname, location.search, setCurrentPage]);
 
   useEffect(() => {
-    mainRef.current?.scrollTo(0, 0);
-  }, [location.pathname]);
+    if (!isMessagesPage) mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname, isMessagesPage]);
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null) => {

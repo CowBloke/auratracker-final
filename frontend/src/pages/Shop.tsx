@@ -433,8 +433,9 @@ function DoodleJumpShopSection({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {rotatingSkins.flatMap((item, i) => {
                   const el = <DjSkinCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} onPurchase={onPurchase} />;
-                  if ((i + 1) % 3 === 0 && cardAds.length > 0) {
-                    return [el, <AdCard key={`dj-rot-ad-${i}`} ad={cardAds[Math.floor(i / 3) % cardAds.length]!} />];
+                  const rotAdIdx = Math.floor(i / 3);
+                  if ((i + 1) % 3 === 0 && rotAdIdx < cardAds.length) {
+                    return [el, <AdCard key={`dj-rot-ad-${i}`} ad={cardAds[rotAdIdx]!} />];
                   }
                   return [el];
                 })}
@@ -455,8 +456,9 @@ function DoodleJumpShopSection({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {staticSkins.flatMap((item, i) => {
                   const el = <DjSkinCard key={item.id} item={item} user={user} buyingItemId={buyingItemId} ownedSkinItemIds={ownedSkinItemIds} onPurchase={onPurchase} />;
-                  if ((i + 1) % 6 === 0 && cardAds.length > 0) {
-                    return [el, <AdCard key={`dj-static-ad-${i}`} ad={cardAds[Math.floor(i / 6) % cardAds.length]!} />];
+                  const staticAdIdx = Math.floor(i / 6);
+                  if ((i + 1) % 6 === 0 && staticAdIdx < cardAds.length) {
+                    return [el, <AdCard key={`dj-static-ad-${i}`} ad={cardAds[staticAdIdx]!} />];
                   }
                   return [el];
                 })}
