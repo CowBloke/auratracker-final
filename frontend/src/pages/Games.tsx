@@ -120,6 +120,18 @@ const games: Game[] = [
     hasRewards: true,
   },
   {
+    id: 'loto',
+    pageKey: 'loto',
+    name: 'Loto',
+    description: 'Loterie multijoueur a tickets avec tirage periodique et cagnotte partagee.',
+    type: 'Groupe',
+    requiresParty: true,
+    image: getGameImage('loto'),
+    statsKeys: [],
+    releaseRank: 39,
+    hasRewards: true,
+  },
+  {
     id: 'bataille-navale',
     pageKey: 'game-bataille-navale',
     name: 'Bataille Navale',
@@ -872,6 +884,9 @@ export default function Games() {
     }
     if (gameId === 'market-room') {
       return '/games/salle-de-marche';
+    }
+    if (gameId === 'loto') {
+      return '/loto';
     }
     return `/games/${gameId}`;
   };

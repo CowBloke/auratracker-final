@@ -31,7 +31,6 @@ import Admin from './pages/Admin';
 import Rules from './pages/Rules';
 import Tutoriels from './pages/Tutoriels';
 import Suggestions from './pages/Suggestions';
-import Pass from './pages/Pass';
 import Maintenance from './pages/Maintenance';
 import Settings from './pages/Settings';
 import Banned from './pages/Banned';
@@ -288,7 +287,7 @@ function App() {
         <Route path="admin" element={<Admin />} />
         <Route path="rules" element={<Rules />} />
         <Route path="tutoriels" element={<Tutoriels />} />
-        <Route path="pass" element={<Pass />} />
+        <Route path="pass" element={<Navigate to="/quests" replace />} />
         <Route path="quests" element={<Quests />} />
         <Route path="suggestions" element={<Suggestions />} />
         <Route path="settings" element={<Settings />} />

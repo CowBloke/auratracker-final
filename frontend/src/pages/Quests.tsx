@@ -3,10 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { questsApi, DailyQuest, UserDailyQuest } from '../services/api';
+import { questsApi, passApi, DailyQuest, UserDailyQuest, type PassStatus, type PassRewardEntry } from '../services/api';
 import { toast } from '@/hooks/use-toast';
 import { useRewardQueue, type RewardItem } from '../contexts/RewardQueueContext';
-import { CheckCircle2, Circle, Search } from 'lucide-react';
+import { CheckCircle2, Circle, Gift, Search } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,10 @@ export default function Quests() {
   const [loading, setLoading] = useState(true);
   const [selecting, setSelecting] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [passStatus, setPassStatus] = useState<PassStatus | null>(null);
+  const [passLoading, setPassLoading] = useState(true);
+  const [passClaiming, setPassClaiming] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<QuestSortMode>('recommended');
   const [viewMode, setViewMode] = useState<QuestViewMode>('grid');
@@ -56,8 +60,27 @@ export default function Quests() {
     }
   };
 
+  const fetchPassStatus = async () => {
+    try {
+      setPassLoading(true);
+      const response = await passApi.getStatus();
+      setPassStatus(response.data);
+    } catch (error) {
+      console.error('Error fetching pass status:', error);
+      toast.error('Impossible de charger la boite quotidienne.');
+    } finally {
+      setPassLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchQuests();
+    fetchPassStatus();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const handleSelectQuest = (questId: string) => {
@@ -109,6 +132,46 @@ export default function Quests() {
       setClaiming(false);
     }
   };
+
+  const handleClaimDailyBox = async () => {
+    if (!passStatus || passStatus.status === 'claimed') return;
+
+    try {
+      setPassClaiming(true);
+      const response = await passApi.claim();
+
+      const rewardItems: RewardItem[] = response.data.rewards.map((reward: PassRewardEntry, index: number) => ({
+        id: `pass-${index}`,
+        type: reward.type,
+        amount: reward.amount ?? reward.quantity ?? 1,
+        label: reward.label,
+        rarity: reward.rarity,
+      }));
+
+      if (rewardItems.length > 0) {
+        enqueue(rewardItems);
+      }
+
+      toast.success('Boite quotidienne ouverte.');
+      await fetchPassStatus();
+    } catch (error) {
+      console.error('Error claiming daily box:', error);
+      toast.error("Impossible d'ouvrir la boite quotidienne.");
+    } finally {
+      setPassClaiming(false);
+    }
+  };
+
+  const passCountdown = useMemo(() => {
+    if (!passStatus?.nextReset) return '--:--:--';
+    const diff = new Date(passStatus.nextReset).getTime() - now;
+    if (diff <= 0) return '00:00:00';
+
+    const hours = Math.floor(diff / 3_600_000);
+    const minutes = Math.floor((diff % 3_600_000) / 60_000);
+    const seconds = Math.floor((diff % 60_000) / 1_000);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, [passStatus?.nextReset, now]);
 
   const hasSelectedQuests = myQuests.length > 0;
   const completedQuests = myQuests.filter((q) => q.isCompleted && !q.isClaimed);
@@ -192,6 +255,33 @@ export default function Quests() {
 
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Quetes + boite quotidienne</p>
+              <p className={TYPOGRAPHY.SMALL}>
+                Streak: {passStatus?.streak ?? 0} · Reset dans {passCountdown}
+              </p>
+            </div>
+            <Button
+              onClick={handleClaimDailyBox}
+              disabled={passLoading || passClaiming || passStatus?.status === 'claimed'}
+              className="w-full sm:w-auto"
+            >
+              <Gift className="mr-2 h-4 w-4" />
+              {passLoading
+                ? 'Loading...'
+                : passStatus?.status === 'claimed'
+                  ? 'Already claimed today'
+                  : passClaiming
+                    ? 'Claiming...'
+                    : 'Claim your daily box'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {(completedQuests.length > 0 || canSelectNewQuests) && (
         <Card>
           <CardContent className="p-4">

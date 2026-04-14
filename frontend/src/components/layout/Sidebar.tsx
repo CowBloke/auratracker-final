@@ -15,7 +15,6 @@ import {
   BookOpen,
   Store,
   BadgeDollarSign,
-  Ticket,
   BarChart3,
   Target,
   Briefcase,
@@ -45,25 +44,17 @@ type SidebarRouteItem = {
 };
 
 const economyItems: SidebarRouteItem[] = [
+  { to: '/leaderboards', label: t('sidebar_nav_leaderboard'), icon: Trophy },
+  { to: '/clans', label: t('sidebar_nav_clans'), icon: Flag },
+  { to: '/polymarket', label: t('sidebar_polymarket'), icon: BarChart3 },
   { to: '/market', label: t('sidebar_nav_shop'), icon: Store },
   { to: '/inventory', label: t('sidebar_nav_inventory'), icon: Backpack },
   { to: '/marketplace', label: t('sidebar_nav_marketplace'), icon: BadgeDollarSign },
-  { to: '/polymarket', label: t('sidebar_polymarket'), icon: BarChart3 },
-  { to: '/pass', label: t('sidebar_nav_pass'), icon: Ticket },
-  { to: '/quests', label: t('sidebar_nav_quests'), icon: Target },
-];
-
-const communityItems: SidebarRouteItem[] = [
-  { to: '/leaderboards', label: t('sidebar_nav_leaderboard'), icon: Trophy },
   { to: '/party', label: t('sidebar_nav_party'), icon: Users },
-  { to: '/clans', label: t('sidebar_nav_clans'), icon: Flag },
-  { to: '/loto', label: 'Loto', icon: Ticket },
+  { to: '/quests', label: t('sidebar_nav_quests'), icon: Target },
   { to: '/suggestions', label: t('sidebar_nav_suggestions'), icon: Lightbulb },
-];
-
-const infoItems: SidebarRouteItem[] = [
+  { to: '/tutoriels', label: 'Tutoriel', icon: Info },
   { to: '/rules', label: t('sidebar_nav_info'), icon: BookOpen },
-  { to: '/tutoriels', label: 'Tutoriels', icon: Info },
 ];
 
 const youNavItems = [
@@ -100,9 +91,9 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
   const isPathActive = (path: string) =>
     location.pathname === path || (path !== '/' && location.pathname.startsWith(`${path}/`));
 
-  const enabledEconomyItems = economyItems.filter((item) => !isDisabled(item.to));
-  const enabledCommunityItems = communityItems.filter((item) => !isDisabled(item.to));
-  const enabledInfoItems = infoItems.filter((item) => !isDisabled(item.to));
+  const enabledOrderedItems = economyItems.filter((item) => !isDisabled(item.to));
+  const infoItem = enabledOrderedItems.find((item) => item.to === '/rules');
+  const mainOrderedItems = enabledOrderedItems.filter((item) => item.to !== '/rules');
 
   const isGamesSectionActive = isOnGames;
   const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
@@ -173,7 +164,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
       variant="inset"
       collapsible="icon"
       detached
-      className={cn('transition-[left,right] duration-120 ease-out', className)}
+      className={cn('transition-[left,right] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)]', className)}
       onMouseEnter={(event) => {
         onMouseEnter?.(event);
         openSidebar();
@@ -263,7 +254,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
               </SidebarMenuItem>
             )}
 
-            {[...enabledEconomyItems, ...enabledCommunityItems, ...enabledInfoItems].map((item) => {
+            {mainOrderedItems.map((item) => {
               const ItemIcon = item.icon;
               const isActive = isPathActive(item.to);
               return (
@@ -298,6 +289,30 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
                 <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{t('sidebar_report_bug')}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
+            {infoItem && (() => {
+              const InfoIcon = infoItem.icon;
+              return (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isPathActive(infoItem.to)}
+                    tooltip={infoItem.label}
+                    className={cn(
+                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
+                      isPathActive(infoItem.to)
+                        ? 'text-foreground bg-muted/50'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                    )}
+                  >
+                    <NavLink to={infoItem.to} end={infoItem.to === '/'}>
+                      <InfoIcon className="h-4 w-4" />
+                      <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{infoItem.label}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })()}
             </>)}
 
           </SidebarMenu>
