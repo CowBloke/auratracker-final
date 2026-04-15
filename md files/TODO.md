@@ -21,3 +21,13 @@
 - export strictement tous les messages du chat main
 - scroll haut page message conv
 - historique des grandes actions sur le site, ex : rachat d'entreprise
+- on peut pas voir les screens uploadés lors de la création de la plainte
+- amendes pour admin prélevé directement sur le compte : andrew tate 1k+10k
+- classer plsuieurs catégories : fermé, verdict rendu, etc
+- regle décliner identité
+- pastille non lu par chat
+- 2 pub sur meme page
+- tout mettre dans la boutique
+- websocket pastille notif page message tpbar
+- reactions chat message
+- ... chats exportés (.json)
