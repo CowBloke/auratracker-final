@@ -137,7 +137,7 @@ export default function Layout() {
           }
         >
           <AppSidebar variant="inset" />
-          <main className="relative min-h-0 flex w-full flex-1 flex-col overflow-hidden bg-background">
+          <main className="relative min-h-0 flex w-full flex-1 flex-col overflow-hidden bg-background md:pl-14">
             {updateAvailable && (
               <div className="flex items-center justify-between gap-3 bg-primary px-4 py-2 text-sm text-primary-foreground">
                 <span>Une mise à jour est disponible — rechargez la page pour en bénéficier.</span>
