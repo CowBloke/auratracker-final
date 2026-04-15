@@ -51,6 +51,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const serverStartedAtRef = useRef<string | null>(null);
   const hasConnectedRef = useRef(false);
+  // True when the most recent connect() call was triggered by a background-wake event,
+  // meaning the user wasn't actively on the page — safe to auto-reload.
+  const reconnectFromBackgroundRef = useRef(false);
 
   const dismissUpdate = useCallback(() => setUpdateAvailable(false), []);
 
@@ -67,9 +70,15 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         const startedAt = res.data?.startedAt;
         if (startedAt) {
           if (hasConnectedRef.current && serverStartedAtRef.current !== startedAt) {
-            // Server restarted since we last connected — a new deploy is likely live
-            setUpdateAvailable(true);
+            // Server restarted since we last connected — a new deploy is live.
+            // If the user was away from the page, reload silently; otherwise show the banner.
+            if (reconnectFromBackgroundRef.current) {
+              window.location.reload();
+            } else {
+              setUpdateAvailable(true);
+            }
           }
+          reconnectFromBackgroundRef.current = false;
           serverStartedAtRef.current = startedAt;
         }
       } catch {
@@ -110,7 +119,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     // Reconnect when the tab becomes visible again or network comes back — the browser
     // suspends timers during background sleep which kills Socket.io's reconnect loop.
     const handleReconnectTrigger = () => {
-      if (!s.connected) connectSocket();
+      if (!s.connected) {
+        reconnectFromBackgroundRef.current = true;
+        connectSocket();
+      }
     };
     document.addEventListener('visibilitychange', handleReconnectTrigger);
     window.addEventListener('online', handleReconnectTrigger);
