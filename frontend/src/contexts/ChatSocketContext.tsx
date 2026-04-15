@@ -277,6 +277,12 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
     });
 
+    s.on('chat:clear-visual', () => {
+      setMessages([]);
+      setHasOlderMessages(false);
+      setIsLoadingOlderMessages(false);
+    });
+
     s.on('chat:reactions-updated', (data: { messageId: string; reactions: Array<{ emoji: string; count: number; users: string[] }> }) => {
       setMessages((prev) =>
         prev.map((m) => (m.id === data.messageId ? { ...m, reactions: data.reactions } : m))
@@ -357,6 +363,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       s.off('chat:muted');
       s.off('chat:blocked');
       s.off('chat:message-deleted');
+      s.off('chat:clear-visual');
       s.off('chat:reactions-updated');
       s.off('chat:pin-updated');
       s.off('chat:typing');

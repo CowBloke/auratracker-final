@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -1150,6 +1150,16 @@ export default function Admin() {
   const [massBanTargetIds, setMassBanTargetIds] = useState<string[]>([]);
   const [clearingChat, setClearingChat] = useState(false);
   const [exportingChat, setExportingChat] = useState(false);
+  const [chatHistoryDays, setChatHistoryDays] = useState<AdminChatHistoryDayBucket[]>([]);
+  const [chatHistoryCursor, setChatHistoryCursor] = useState<string | null>(null);
+  const [chatHistoryMessages, setChatHistoryMessages] = useState<AdminChatHistoryMessage[]>([]);
+  const [chatHistoryDay, setChatHistoryDay] = useState<string | null>(null);
+  const [loadingChatHistoryDays, setLoadingChatHistoryDays] = useState(false);
+  const [loadingMoreChatHistoryDays, setLoadingMoreChatHistoryDays] = useState(false);
+  const [loadingChatHistoryMessages, setLoadingChatHistoryMessages] = useState(false);
+  const [exportingChatDay, setExportingChatDay] = useState<string | null>(null);
+  const [softDeletingChatMessageId, setSoftDeletingChatMessageId] = useState<string | null>(null);
+  const [showDeletedChatMessages, setShowDeletedChatMessages] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>('inbox');
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [loginCommOpen, setLoginCommOpen] = useState(false);
@@ -2117,6 +2127,22 @@ export default function Admin() {
       setActiveTab('fiscal');
     }
   }, [isReadOnlyInspectionUser, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'chat-history' || isReadOnlyInspectionUser) {
+      return;
+    }
+    if (chatHistoryDays.length === 0 && !loadingChatHistoryDays) {
+      void fetchChatHistoryDays();
+    }
+  }, [activeTab, isReadOnlyInspectionUser, chatHistoryDays.length, loadingChatHistoryDays]);
+
+  useEffect(() => {
+    if (activeTab !== 'chat-history' || !chatHistoryDay) {
+      return;
+    }
+    void fetchChatHistoryDay(chatHistoryDay, showDeletedChatMessages);
+  }, [activeTab, chatHistoryDay, showDeletedChatMessages]);
 
   // Real-time support messages for admin
   useEffect(() => {
@@ -4515,6 +4541,12 @@ export default function Admin() {
     try {
       const res = await adminApi.clearChat();
       showMessage('success', res.data.message);
+      if (activeTab === 'chat-history') {
+        await fetchChatHistoryDays();
+        if (chatHistoryDay) {
+          await fetchChatHistoryDay(chatHistoryDay, showDeletedChatMessages);
+        }
+      }
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur');
     } finally {
@@ -4535,26 +4567,119 @@ export default function Admin() {
     }
   };
 
-  const exportChat = async () => {
-    setExportingChat(true);
+  const exportChat = async (day?: string) => {
+    if (day) {
+      setExportingChatDay(day);
+    } else {
+      setExportingChat(true);
+    }
     try {
-      const res = await adminApi.exportChat();
+      const res = await adminApi.exportChat(day);
       const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'application/json' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       const contentDisposition = res.headers?.['content-disposition'] as string | undefined;
       const match = contentDisposition?.match(/filename="([^"]+)"/);
       link.href = url;
-      link.download = match?.[1] ?? `chat-export-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = match?.[1] ?? `chat-export-${day ?? 'all-time'}-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      showMessage('success', 'Export du chat téléchargé');
+      showMessage('success', day ? `Export du chat du ${day} téléchargé` : 'Export du chat téléchargé');
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur lors de l’export du chat');
     } finally {
-      setExportingChat(false);
+      if (day) {
+        setExportingChatDay((current) => (current === day ? null : current));
+      } else {
+        setExportingChat(false);
+      }
+    }
+  };
+
+  const fetchChatHistoryDays = async (append: boolean = false) => {
+    if (append) {
+      if (!chatHistoryCursor || loadingMoreChatHistoryDays || loadingChatHistoryDays) {
+        return;
+      }
+      setLoadingMoreChatHistoryDays(true);
+    } else {
+      setLoadingChatHistoryDays(true);
+    }
+
+    try {
+      const res = await adminApi.getChatHistoryDays({
+        limit: 60,
+        cursor: append ? chatHistoryCursor : undefined,
+      });
+
+      const incomingDays = res.data.days ?? [];
+      setChatHistoryDays((prev) => {
+        if (!append) return incomingDays;
+        const seen = new Set(prev.map((entry) => entry.day));
+        return [...prev, ...incomingDays.filter((entry) => !seen.has(entry.day))];
+      });
+
+      setChatHistoryCursor(res.data.nextCursor ?? null);
+
+      if (!append && incomingDays.length > 0) {
+        const nextSelectedDay = chatHistoryDay && incomingDays.some((entry) => entry.day === chatHistoryDay)
+          ? chatHistoryDay
+          : incomingDays[0].day;
+        setChatHistoryDay(nextSelectedDay);
+      }
+
+      if (!append && incomingDays.length === 0) {
+        setChatHistoryDay(null);
+        setChatHistoryMessages([]);
+      }
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors du chargement des jours du chat');
+    } finally {
+      setLoadingChatHistoryDays(false);
+      setLoadingMoreChatHistoryDays(false);
+    }
+  };
+
+  const fetchChatHistoryDay = async (day: string, includeDeleted: boolean = showDeletedChatMessages) => {
+    setLoadingChatHistoryMessages(true);
+    try {
+      const res = await adminApi.getChatHistoryByDay(day, includeDeleted);
+      setChatHistoryMessages(res.data.messages ?? []);
+      setChatHistoryDay(day);
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors du chargement des messages du jour');
+    } finally {
+      setLoadingChatHistoryMessages(false);
+    }
+  };
+
+  const softDeleteChatMessage = async (messageId: string) => {
+    setSoftDeletingChatMessageId(messageId);
+    try {
+      await adminApi.softDeleteChatMessage(messageId);
+      if (showDeletedChatMessages) {
+        setChatHistoryMessages((prev) => prev.map((msg) => (
+          msg.id === messageId
+            ? {
+                ...msg,
+                deletedAt: new Date().toISOString(),
+                deletedByUserId: user?.id ?? msg.deletedByUserId,
+                pinned: false,
+                pinnedAt: null,
+              }
+            : msg
+        )));
+      } else {
+        setChatHistoryMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      }
+      await fetchChatHistoryDays();
+      showMessage('success', 'Message supprimé visuellement');
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors de la suppression visuelle');
+    } finally {
+      setSoftDeletingChatMessageId(null);
     }
   };
 
@@ -4933,7 +5058,7 @@ export default function Admin() {
                 {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['settings', 'game-limits', 'communication'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                    ['settings', 'game-limits', 'communication', 'chat-history'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                   )}>
                     <Settings className="w-4 h-4 shrink-0" />
                     Paramètres
@@ -4943,6 +5068,7 @@ export default function Admin() {
                     <div className={dropdownInner}>
                     {dropdownItemBtn('settings', 'Paramètres', <Settings className="w-3.5 h-3.5" />, () => setActiveTab('settings'))}
                     {dropdownItemBtn('game-limits', 'Limites jeux', <Gamepad2 className="w-3.5 h-3.5" />, () => setActiveTab('game-limits'))}
+                    {dropdownItemBtn('chat-history', 'Historique chat', <CalendarRange className="w-3.5 h-3.5" />, () => { setActiveTab('chat-history'); void fetchChatHistoryDays(); })}
                     {dropdownItemBtn('communication', 'Communication', <MessageCircle className="w-3.5 h-3.5" />, () => { setActiveTab('communication'); fetchSupportThreads(); },
                       supportUnread > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{supportUnread}</span> : undefined
                     )}
@@ -6512,7 +6638,7 @@ export default function Admin() {
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
                   <div className="text-sm font-medium text-destructive">Vider le chat</div>
-                  <div className="text-xs text-muted-foreground">Supprime définitivement tous les messages du chat global. Cette action est irréversible.</div>
+                  <div className="text-xs text-muted-foreground">Masque visuellement tous les messages du chat global, sans supprimer l&apos;historique stocké.</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Button variant="outline" size="sm" onClick={exportChat} disabled={exportingChat}>
@@ -6532,7 +6658,7 @@ export default function Admin() {
                           Vider le chat ?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Tous les messages du chat seront définitivement supprimés. Cette action ne peut pas être annulée.
+                          Tous les messages du chat seront masqués visuellement pour les joueurs. L&apos;historique restera disponible dans l&apos;onglet Historique chat.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -9911,6 +10037,171 @@ export default function Admin() {
               </DialogContent>
             </Dialog>
 
+          </div>
+        </TabsContent>
+
+        {/* ── CHAT HISTORY TAB ────────────────────────────────────────────────── */}
+        <TabsContent value="chat-history" className={SPACING.SECTION_SPACING}>
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h3 className={TYPOGRAPHY.H4}>Historique chat global</h3>
+                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
+                      Tous les messages de tous les temps, classés par jour (00:00 a 00:00 heure de Paris).
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void fetchChatHistoryDays()}
+                      disabled={loadingChatHistoryDays || loadingMoreChatHistoryDays}
+                    >
+                      {(loadingChatHistoryDays || loadingMoreChatHistoryDays)
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                        : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                      Rafraichir
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => void exportChat()} disabled={exportingChat}>
+                      {exportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                      Export total
+                    </Button>
+                    <div className="flex items-center gap-2 rounded-md border border-border/60 px-2 py-1.5">
+                      <Switch checked={showDeletedChatMessages} onCheckedChange={setShowDeletedChatMessages} />
+                      <span className="text-xs text-muted-foreground">Afficher les supprimés</span>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+                  <div className="rounded-lg border border-border/60 overflow-hidden">
+                    <div className="px-3 py-2 border-b border-border/60 bg-muted/20 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Jours
+                    </div>
+                    <div className="max-h-[620px] overflow-y-auto">
+                      {loadingChatHistoryDays && chatHistoryDays.length === 0 ? (
+                        <div className="p-4 flex items-center justify-center text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : chatHistoryDays.length === 0 ? (
+                        <p className="p-4 text-sm text-muted-foreground">Aucun message trouvé.</p>
+                      ) : (
+                        <div className="divide-y divide-border/40">
+                          {chatHistoryDays.map((dayEntry) => {
+                            const selected = chatHistoryDay === dayEntry.day;
+                            return (
+                              <button
+                                key={dayEntry.day}
+                                type="button"
+                                onClick={() => void fetchChatHistoryDay(dayEntry.day, showDeletedChatMessages)}
+                                className={cn('w-full px-3 py-2 text-left transition-colors hover:bg-muted/30', selected && 'bg-muted/50')}
+                              >
+                                <div className="text-sm font-medium">
+                                  {new Date(`${dayEntry.day}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                </div>
+                                <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                                  <span>{dayEntry.totalMessages.toLocaleString('fr-FR')} total</span>
+                                  <span>{dayEntry.visibleMessages.toLocaleString('fr-FR')} visibles</span>
+                                  <span>{dayEntry.deletedMessages.toLocaleString('fr-FR')} supprimés</span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                          {chatHistoryCursor && (
+                            <div className="p-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full"
+                                disabled={loadingMoreChatHistoryDays}
+                                onClick={() => void fetchChatHistoryDays(true)}
+                              >
+                                {loadingMoreChatHistoryDays ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                                Charger plus de jours
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border/60 overflow-hidden">
+                    <div className="px-3 py-2 border-b border-border/60 bg-muted/20 flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-medium">
+                        {chatHistoryDay
+                          ? `Messages du ${new Date(`${chatHistoryDay}T00:00:00`).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}`
+                          : 'Sélectionne un jour'}
+                      </div>
+                      {chatHistoryDay && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void exportChat(chatHistoryDay)}
+                          disabled={exportingChatDay === chatHistoryDay}
+                        >
+                          {exportingChatDay === chatHistoryDay ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                          Export jour
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="max-h-[620px] overflow-y-auto p-3 space-y-2">
+                      {loadingChatHistoryMessages ? (
+                        <div className="py-8 flex items-center justify-center text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : chatHistoryMessages.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Aucun message pour ce jour.</p>
+                      ) : (
+                        chatHistoryMessages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={cn('rounded-lg border px-3 py-2', msg.deletedAt ? 'border-destructive/30 bg-destructive/5' : 'border-border/60 bg-background')}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                  <span className="font-medium text-foreground">{msg.user?.username || 'Système'}</span>
+                                  <span>{new Date(msg.createdAt).toLocaleString('fr-FR')}</span>
+                                  <span className="uppercase">{msg.type}</span>
+                                  {msg.deletedAt && <span className="text-destructive font-medium">SUPPRIMÉ VISUELLEMENT</span>}
+                                </div>
+                                <p className="mt-1 text-sm whitespace-pre-wrap break-words">{msg.message || '(message vide)'}</p>
+                                {msg.imageUrl && (
+                                  <a
+                                    href={resolveImageUrl(msg.imageUrl)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="mt-1 inline-block text-xs text-blue-400 hover:underline"
+                                  >
+                                    Ouvrir image
+                                  </a>
+                                )}
+                              </div>
+                              {!msg.deletedAt && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                                  disabled={softDeletingChatMessageId === msg.id}
+                                  onClick={() => void softDeleteChatMessage(msg.id)}
+                                >
+                                  {softDeletingChatMessageId === msg.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 

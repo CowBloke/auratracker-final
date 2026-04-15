@@ -1602,6 +1602,8 @@ model ChatMessage {
   replyToId String?
   pinned    Boolean   @default(false)
   pinnedAt  DateTime?
+  deletedAt DateTime?
+  deletedByUserId String?
   createdAt DateTime  @default(now())
 
   user      User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1610,6 +1612,7 @@ model ChatMessage {
   reactions ChatReaction[]
 
   @@index([createdAt])
+  @@index([deletedAt, createdAt])
 }
 
 model ChatReaction {

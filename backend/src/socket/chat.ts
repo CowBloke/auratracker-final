@@ -418,7 +418,7 @@ const buildChatMessagePayload = async (
     badges: senderBadges,
     clanTag: senderClanTag,
     reactions: summarizeReactions(message.reactions ?? []),
-    replyTo: message.replyTo
+    replyTo: message.replyTo && !message.replyTo.deletedAt
       ? {
           id: message.replyTo.id,
           userId: message.replyTo.userId ?? null,
@@ -438,6 +438,7 @@ const fetchChatHistoryPage = async (
 ) => {
   const messages = await prisma.chatMessage.findMany({
     take: limit + 1,
+    where: { deletedAt: null },
     ...(beforeMessageId
       ? {
           cursor: { id: beforeMessageId },
@@ -477,7 +478,7 @@ const fetchChatHistoryPage = async (
       badges: message.userId ? badgeMap.get(message.userId) ?? [] : [],
       clanTag: message.userId ? clanTagMap.get(message.userId) ?? null : null,
       reactions: summarizeReactions(message.reactions),
-      replyTo: message.replyTo
+      replyTo: message.replyTo && !message.replyTo.deletedAt
         ? {
             id: message.replyTo.id,
             userId: message.replyTo.userId ?? null,
@@ -807,8 +808,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     }
     
     const replyTo = replyToId
-      ? await prisma.chatMessage.findUnique({
-          where: { id: replyToId },
+      ? await prisma.chatMessage.findFirst({
+          where: { id: replyToId, deletedAt: null },
           include: {
             user: {
               select: {
@@ -875,22 +876,6 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     // Broadcast to all in chat with cosmetics
     const leaderboardState = await getTopLeaderboardIds();
     io.to('global-chat').emit('chat:message', await buildChatMessagePayload(savedMessage, leaderboardState));
-    
-    // Cleanup old messages (keep last 1000)
-    const messageCount = await prisma.chatMessage.count();
-    if (messageCount > 1000) {
-      const oldMessages = await prisma.chatMessage.findMany({
-        take: messageCount - 1000,
-        where: { pinned: false },
-        orderBy: { createdAt: 'asc' },
-        select: { id: true },
-      });
-      if (oldMessages.length > 0) {
-        await prisma.chatMessage.deleteMany({
-          where: { id: { in: oldMessages.map((m) => m.id) } },
-        });
-      }
-    }
   });
   
   // Typing indicator
@@ -1089,9 +1074,9 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
 
     const message = await prisma.chatMessage.findUnique({
       where: { id: messageId },
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
-    if (!message) return;
+    if (!message || message.deletedAt) return;
 
     const existingReaction = await prisma.chatReaction.findUnique({
       where: {
@@ -1152,19 +1137,22 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     }
 
     try {
-      const updated = await prisma.chatMessage.update({
-        where: { id: messageId },
+      const updated = await prisma.chatMessage.updateMany({
+        where: { id: messageId, deletedAt: null },
         data: {
           pinned,
           pinnedAt: pinned ? new Date() : null,
         },
-        select: { pinned: true, pinnedAt: true },
       });
+
+      if (updated.count === 0) {
+        return;
+      }
 
       io.to('global-chat').emit('chat:pin-updated', {
         messageId,
-        pinned: updated.pinned,
-        pinnedAt: updated.pinnedAt ? updated.pinnedAt.toISOString() : null,
+        pinned,
+        pinnedAt: pinned ? new Date().toISOString() : null,
       });
     } catch (error) {
       console.error('Error pinning message:', error);
@@ -1194,9 +1182,19 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         include: { user: { select: { username: true } } },
       });
 
-      // Delete the message from database
-      await prisma.chatMessage.delete({
+      if (!messageToDelete || messageToDelete.deletedAt) {
+        return;
+      }
+
+      // Visual-only deletion: keep message in storage for full history/export.
+      await prisma.chatMessage.update({
         where: { id: messageId },
+        data: {
+          deletedAt: new Date(),
+          deletedByUserId: adminId,
+          pinned: false,
+          pinnedAt: null,
+        },
       });
 
       // Log message deletion

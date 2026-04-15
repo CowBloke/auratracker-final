@@ -2656,6 +2656,60 @@ export interface OnlineHistoryInsights {
   peakHours: OnlineHistoryInsightPeakHour[];
 }
 
+export interface AdminChatHistoryDayBucket {
+  day: string;
+  totalMessages: number;
+  visibleMessages: number;
+  deletedMessages: number;
+}
+
+export interface AdminChatHistoryReaction {
+  id: string;
+  emoji: string;
+  createdAt: string;
+  userId: string;
+  user: {
+    id: string;
+    username: string;
+  };
+}
+
+export interface AdminChatHistoryMessageUser {
+  id: string;
+  username: string;
+  usernameColor: string | null;
+  profilePicture: string | null;
+}
+
+export interface AdminChatHistoryMessage {
+  id: string;
+  userId: string | null;
+  type: string;
+  message: string;
+  imageUrl: string | null;
+  replyToId: string | null;
+  pinned: boolean;
+  pinnedAt: string | null;
+  deletedAt: string | null;
+  deletedByUserId: string | null;
+  createdAt: string;
+  user: AdminChatHistoryMessageUser | null;
+  replyTo: {
+    id: string;
+    userId: string | null;
+    type: string;
+    message: string;
+    imageUrl: string | null;
+    pinned: boolean;
+    pinnedAt: string | null;
+    deletedAt: string | null;
+    deletedByUserId: string | null;
+    createdAt: string;
+    user: AdminChatHistoryMessageUser | null;
+  } | null;
+  reactions: AdminChatHistoryReaction[];
+}
+
 type AdminRareAction =
   | { action: 'chat_clear' }
   | { action: 'deploy' }
@@ -2728,7 +2782,18 @@ export const adminApi = {
     api.delete<{ success: boolean }>(`/admin/users/${id}/inventory/${userItemId}`),
   clearChat: () =>
     runRareAction({ action: 'chat_clear' }) as Promise<{ data: { success: boolean; message: string; messagesDeleted: number } }>,
-  exportChat: () => api.get<Blob>('/admin/chat/export', { responseType: 'blob' }),
+  getChatHistoryDays: (params?: { limit?: number; cursor?: string | null }) =>
+    api.get<{ timezone: string; days: AdminChatHistoryDayBucket[]; nextCursor: string | null }>('/admin/chat/history/days', { params }),
+  getChatHistoryByDay: (day: string, includeDeleted: boolean = true) =>
+    api.get<{ timezone: string; day: string; dayStartUtc: string; dayEndUtc: string; messageCount: number; messages: AdminChatHistoryMessage[] }>('/admin/chat/history', {
+      params: { day, includeDeleted },
+    }),
+  softDeleteChatMessage: (messageId: string) =>
+    api.post<{ success: boolean; alreadyDeleted?: boolean }>(`/admin/chat/messages/${messageId}/soft-delete`, {}),
+  exportChat: (day?: string) => api.get<Blob>('/admin/chat/export', {
+    responseType: 'blob',
+    params: day ? { day } : undefined,
+  }),
   // Pending users management
   getPendingUsers: () => api.get<{ pendingUsers: PendingUser[] }>('/admin/pending-users'),
   getRegistrationReviews: () => api.get<{ registrationReviews: RegistrationReview[] }>('/admin/registration-reviews'),

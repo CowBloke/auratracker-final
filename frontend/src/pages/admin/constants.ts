@@ -34,7 +34,8 @@ export type AdminTab =
   | 'activity'
   | 'demographics'
   | 'badges'
-  | 'communication';
+  | 'communication'
+  | 'chat-history';
 
 export const ADMIN_TABS: AdminTab[] = [
   'inbox',
@@ -54,4 +55,5 @@ export const ADMIN_TABS: AdminTab[] = [
   'demographics',
   'badges',
   'communication',
+  'chat-history',
 ];

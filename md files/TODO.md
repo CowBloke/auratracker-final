@@ -40,3 +40,7 @@
 - frais coin
 - scroll messages
 - bug bug barre de scroll
+- supp messages que viduel pour les utilisateurs mais restent stockés
+- remettre controles jeux
+- voirniv des gens
+- pub sur la meme page

@@ -2838,9 +2838,290 @@ router.delete('/users/:id', authMiddleware, requireAdmin, async (req: AuthReques
   }
 });
 
+const CHAT_HISTORY_TIMEZONE = 'Europe/Paris';
+const CHAT_HISTORY_DAY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+const toParisDayKey = (date: Date): string => {
+  const formatter = new Intl.DateTimeFormat('fr-CA', {
+    timeZone: CHAT_HISTORY_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return formatter.format(date);
+};
+
+const getTimeZoneOffsetMinutes = (timeZone: string, date: Date): number => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    timeZoneName: 'shortOffset',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const timeZonePart = formatter.formatToParts(date).find((part) => part.type === 'timeZoneName')?.value ?? 'GMT+00:00';
+  const match = timeZonePart.match(/^GMT([+-])(\d{1,2})(?::?(\d{2}))?$/);
+  if (!match) return 0;
+  const sign = match[1] === '-' ? -1 : 1;
+  const hours = Number.parseInt(match[2], 10);
+  const minutes = Number.parseInt(match[3] ?? '0', 10);
+  return sign * (hours * 60 + minutes);
+};
+
+const getUtcForParisMidnight = (day: string): Date => {
+  const [yearRaw, monthRaw, dayRaw] = day.split('-');
+  const year = Number.parseInt(yearRaw, 10);
+  const month = Number.parseInt(monthRaw, 10);
+  const dayOfMonth = Number.parseInt(dayRaw, 10);
+
+  let guess = new Date(Date.UTC(year, month - 1, dayOfMonth, 0, 0, 0, 0));
+  for (let i = 0; i < 3; i += 1) {
+    const offsetMinutes = getTimeZoneOffsetMinutes(CHAT_HISTORY_TIMEZONE, guess);
+    guess = new Date(Date.UTC(year, month - 1, dayOfMonth, 0, 0, 0, 0) - offsetMinutes * 60_000);
+  }
+
+  return guess;
+};
+
+const getParisDayBoundsUtc = (day: string): { startUtc: Date; endUtc: Date } => {
+  const startUtc = getUtcForParisMidnight(day);
+  const nextDayUtcProbe = new Date(startUtc.getTime() + 36 * 60 * 60 * 1000);
+  const nextDay = toParisDayKey(nextDayUtcProbe);
+  const endUtc = getUtcForParisMidnight(nextDay);
+  return { startUtc, endUtc };
+};
+
+const serializeAdminChatMessage = (message: any) => ({
+  id: message.id,
+  userId: message.userId,
+  type: message.type,
+  message: message.message,
+  imageUrl: message.imageUrl,
+  replyToId: message.replyToId,
+  pinned: message.pinned,
+  pinnedAt: message.pinnedAt?.toISOString() ?? null,
+  deletedAt: message.deletedAt?.toISOString() ?? null,
+  deletedByUserId: message.deletedByUserId ?? null,
+  createdAt: message.createdAt.toISOString(),
+  user: message.user,
+  replyTo: message.replyTo
+    ? {
+        id: message.replyTo.id,
+        userId: message.replyTo.userId,
+        type: message.replyTo.type,
+        message: message.replyTo.message,
+        imageUrl: message.replyTo.imageUrl,
+        pinned: message.replyTo.pinned,
+        pinnedAt: message.replyTo.pinnedAt?.toISOString() ?? null,
+        deletedAt: message.replyTo.deletedAt?.toISOString() ?? null,
+        deletedByUserId: message.replyTo.deletedByUserId ?? null,
+        createdAt: message.replyTo.createdAt.toISOString(),
+        user: message.replyTo.user,
+      }
+    : null,
+  reactions: message.reactions.map((reaction: any) => ({
+    id: reaction.id,
+    emoji: reaction.emoji,
+    createdAt: reaction.createdAt.toISOString(),
+    userId: reaction.userId,
+    user: reaction.user,
+  })),
+});
+
+router.get('/chat/history/days', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const rawLimit = Number.parseInt(String(req.query.limit ?? '60'), 10);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 365) : 60;
+    const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : null;
+
+    if (cursor && !CHAT_HISTORY_DAY_REGEX.test(cursor)) {
+      return res.status(400).json({ error: 'Invalid cursor format. Expected YYYY-MM-DD.' });
+    }
+
+    const timestamps = await prisma.chatMessage.findMany({
+      select: {
+        createdAt: true,
+        deletedAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const byDay = new Map<string, { day: string; totalMessages: number; visibleMessages: number; deletedMessages: number }>();
+
+    for (const message of timestamps) {
+      const dayKey = toParisDayKey(message.createdAt);
+      const entry = byDay.get(dayKey) ?? {
+        day: dayKey,
+        totalMessages: 0,
+        visibleMessages: 0,
+        deletedMessages: 0,
+      };
+      entry.totalMessages += 1;
+      if (message.deletedAt) {
+        entry.deletedMessages += 1;
+      } else {
+        entry.visibleMessages += 1;
+      }
+      byDay.set(dayKey, entry);
+    }
+
+    const allDays = Array.from(byDay.values()).sort((a, b) => b.day.localeCompare(a.day));
+    const filteredDays = cursor ? allDays.filter((entry) => entry.day < cursor) : allDays;
+    const days = filteredDays.slice(0, limit);
+    const nextCursor = filteredDays.length > limit ? days[days.length - 1]?.day ?? null : null;
+
+    res.json({
+      timezone: CHAT_HISTORY_TIMEZONE,
+      days,
+      nextCursor,
+    });
+  } catch (error) {
+    console.error('Admin chat history days error:', error);
+    res.status(500).json({ error: 'Failed to load chat history day buckets' });
+  }
+});
+
+router.get('/chat/history', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const day = typeof req.query.day === 'string' ? req.query.day : '';
+    if (!CHAT_HISTORY_DAY_REGEX.test(day)) {
+      return res.status(400).json({ error: 'Invalid day format. Expected YYYY-MM-DD.' });
+    }
+
+    const includeDeleted = req.query.includeDeleted !== 'false';
+    const { startUtc, endUtc } = getParisDayBoundsUtc(day);
+
+    const messages = await prisma.chatMessage.findMany({
+      where: {
+        createdAt: {
+          gte: startUtc,
+          lt: endUtc,
+        },
+        ...(includeDeleted ? {} : { deletedAt: null }),
+      },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            usernameColor: true,
+            profilePicture: true,
+          },
+        },
+        replyTo: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                usernameColor: true,
+                profilePicture: true,
+              },
+            },
+          },
+        },
+        reactions: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    res.json({
+      timezone: CHAT_HISTORY_TIMEZONE,
+      day,
+      dayStartUtc: startUtc.toISOString(),
+      dayEndUtc: endUtc.toISOString(),
+      messageCount: messages.length,
+      messages: messages.map(serializeAdminChatMessage),
+    });
+  } catch (error) {
+    console.error('Admin chat history day error:', error);
+    res.status(500).json({ error: 'Failed to load chat history for day' });
+  }
+});
+
+router.post('/chat/messages/:messageId/soft-delete', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { messageId } = req.params;
+
+    const targetMessage = await prisma.chatMessage.findUnique({
+      where: { id: messageId },
+      include: {
+        user: {
+          select: {
+            username: true,
+          },
+        },
+      },
+    });
+
+    if (!targetMessage) {
+      return res.status(404).json({ error: 'Chat message not found' });
+    }
+
+    if (targetMessage.deletedAt) {
+      return res.json({ success: true, alreadyDeleted: true });
+    }
+
+    await prisma.chatMessage.update({
+      where: { id: messageId },
+      data: {
+        deletedAt: new Date(),
+        deletedByUserId: req.user!.id,
+        pinned: false,
+        pinnedAt: null,
+      },
+    });
+
+    io.to('global-chat').emit('chat:message-deleted', { messageId });
+
+    logAdmin('chat_clear', req.user!.id, req.user!.username, undefined, undefined, {
+      mode: 'single_message_soft_delete',
+      messageId,
+      originalAuthor: targetMessage.user?.username ?? null,
+      originalAuthorId: targetMessage.userId,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Admin soft delete chat message error:', error);
+    res.status(500).json({ error: 'Failed to soft delete chat message' });
+  }
+});
+
 router.get('/chat/export', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
+    const day = typeof req.query.day === 'string' ? req.query.day : null;
+    if (day && !CHAT_HISTORY_DAY_REGEX.test(day)) {
+      return res.status(400).json({ error: 'Invalid day format. Expected YYYY-MM-DD.' });
+    }
+
+    const bounds = day ? getParisDayBoundsUtc(day) : null;
+
     const messages = await prisma.chatMessage.findMany({
+      ...(bounds
+        ? {
+            where: {
+              createdAt: {
+                gte: bounds.startUtc,
+                lt: bounds.endUtc,
+              },
+            },
+          }
+        : {}),
       orderBy: { createdAt: 'asc' },
       include: {
         user: {
@@ -2879,47 +3160,28 @@ router.get('/chat/export', authMiddleware, requireAdmin, async (req: AuthRequest
 
     logAdmin('chat_export', req.user!.id, undefined, undefined, undefined, {
       messagesExported: messages.length,
+      day: day ?? null,
     });
 
     const exportedAt = new Date();
     const payload = {
       exportedAt: exportedAt.toISOString(),
+      timezone: CHAT_HISTORY_TIMEZONE,
+      filter: day
+        ? {
+            day,
+            dayStartUtc: bounds?.startUtc.toISOString() ?? null,
+            dayEndUtc: bounds?.endUtc.toISOString() ?? null,
+          }
+        : null,
       messageCount: messages.length,
-      messages: messages.map((message) => ({
-        id: message.id,
-        userId: message.userId,
-        type: message.type,
-        message: message.message,
-        imageUrl: message.imageUrl,
-        replyToId: message.replyToId,
-        pinned: message.pinned,
-        pinnedAt: message.pinnedAt?.toISOString() ?? null,
-        createdAt: message.createdAt.toISOString(),
-        user: message.user,
-        replyTo: message.replyTo ? {
-          id: message.replyTo.id,
-          userId: message.replyTo.userId,
-          type: message.replyTo.type,
-          message: message.replyTo.message,
-          imageUrl: message.replyTo.imageUrl,
-          pinned: message.replyTo.pinned,
-          pinnedAt: message.replyTo.pinnedAt?.toISOString() ?? null,
-          createdAt: message.replyTo.createdAt.toISOString(),
-          user: message.replyTo.user,
-        } : null,
-        reactions: message.reactions.map((reaction) => ({
-          id: reaction.id,
-          emoji: reaction.emoji,
-          createdAt: reaction.createdAt.toISOString(),
-          userId: reaction.userId,
-          user: reaction.user,
-        })),
-      })),
+      messages: messages.map(serializeAdminChatMessage),
     };
 
     const fileDate = exportedAt.toISOString().slice(0, 10);
+    const daySuffix = day ? `-${day}` : '-all-time';
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="chat-export-${fileDate}.json"`);
+    res.setHeader('Content-Disposition', `attachment; filename="chat-export${daySuffix}-${fileDate}.json"`);
     res.send(JSON.stringify(payload, null, 2));
   } catch (error) {
     console.error('Admin chat export error:', error);
@@ -2933,15 +3195,27 @@ router.post('/rare', authMiddleware, requireAdmin, validate(adminRareActionSchem
 
   try {
     if (action === 'chat_clear') {
-      const result = await prisma.chatMessage.deleteMany({});
+      const deletionDate = new Date();
+      const result = await prisma.chatMessage.updateMany({
+        where: { deletedAt: null },
+        data: {
+          deletedAt: deletionDate,
+          deletedByUserId: req.user!.id,
+          pinned: false,
+          pinnedAt: null,
+        },
+      });
+
+      io.to('global-chat').emit('chat:clear-visual');
 
       logAdmin('chat_clear', req.user!.id, undefined, undefined, undefined, {
-        messagesDeleted: result.count,
+        messagesSoftDeleted: result.count,
+        deletedAt: deletionDate.toISOString(),
       });
 
       return res.json({
         success: true,
-        message: `Deleted ${result.count} chat messages`,
+        message: `${result.count} messages masques visuellement`,
         messagesDeleted: result.count,
       });
     }
