@@ -7,7 +7,7 @@ import AdminWarningModal from './AdminWarningModal';
 import GameJoinPrompt from '../game/GameJoinPrompt';
 import GameReplayPrompt from '../game/GameReplayPrompt';
 import DuelChallengePopup from '../game/DuelChallengePopup';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useGameSocket } from '@/contexts/GameSocketContext';
 import { useDuelSocket } from '@/contexts/DuelSocketContext';
@@ -166,7 +166,7 @@ export default function Layout() {
                 </div>
               </div>
             </div>
-          </SidebarInset>
+          </main>
         </SidebarProvider>
         <ChatSidebarWrapper />
         <PartyChatFloatingContainer />
