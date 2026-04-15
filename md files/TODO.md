@@ -31,3 +31,12 @@
 - websocket pastille notif page message tpbar
 - reactions chat message
 - ... chats exportés (.json)
+- pour les utilisateurs avec le role admin, possibilité de DM avec le compte support ou perso
+- UI 2048
+- spécialité zone du globae
+- pouvoir poser que sur terre et non mer
+- busniesses pas notables
+- fusion aquisition
+- frais coin
+- scroll messages
+- bug bug barre de scroll

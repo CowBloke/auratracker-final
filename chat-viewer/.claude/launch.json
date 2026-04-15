@@ -4,7 +4,7 @@
     {
       "name": "chat-viewer",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "chat-viewer"],
+      "runtimeArgs": ["run", "dev"],
       "port": 5173
     }
   ]
