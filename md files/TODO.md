@@ -17,3 +17,7 @@
 - streak
 - fix casino
 - deux fois pubs mm page
+- pas de conv ouverte par defaut quand ouverture message
+- export strictement tous les messages du chat main
+- scroll haut page message conv
+- historique des grandes actions sur le site, ex : rachat d'entreprise
