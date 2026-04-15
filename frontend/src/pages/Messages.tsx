@@ -386,6 +386,7 @@ export default function MessagesPage() {
 
   // Court case state
   const [courtCase, setCourtCase] = useState<CourtCase | null>(null);
+  const [courtCaseStatusById, setCourtCaseStatusById] = useState<Record<string, CourtCase['status']>>({});
   const [courtArguments, setCourtArguments] = useState<CourtArgument[]>([]);
   const [argumentsLoading, setArgumentsLoading] = useState(false);
   const [showArgumentsDialog, setShowArgumentsDialog] = useState(false);
@@ -483,14 +484,18 @@ export default function MessagesPage() {
 
   // ── Data Loading ─────────────────────────────────────────────────────────
   const refreshConversations = async () => {
-    const [conversationsRes, supportThreadsRes] = await Promise.all([
+    const [conversationsRes, supportThreadsRes, courtCasesRes] = await Promise.all([
       supportApi.getConversations(),
       isAdminViewer ? supportApi.getThreads() : Promise.resolve({ data: { threads: [] as SupportThread[] } }),
+      justiceApi.listCases().catch(() => ({ data: { cases: [] as CourtCase[] } })),
     ]);
     const mergedConversations = [
       ...conversationsRes.data.conversations,
       ...supportThreadsRes.data.threads.map(buildAdminSupportConversationSummary),
     ];
+    setCourtCaseStatusById(
+      Object.fromEntries(courtCasesRes.data.cases.map((courtEntry) => [courtEntry.id, courtEntry.status])),
+    );
     setAdminSupportThreads(supportThreadsRes.data.threads);
     setConversations(sortConversationsByRecent(mergedConversations));
     return mergedConversations;
@@ -559,17 +564,21 @@ export default function MessagesPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [convRes, supportThreadsRes, playersRes, blockedRes] = await Promise.all([
+        const [convRes, supportThreadsRes, playersRes, blockedRes, courtCasesRes] = await Promise.all([
           supportApi.getConversations(),
           isAdminViewer ? supportApi.getThreads() : Promise.resolve({ data: { threads: [] as SupportThread[] } }),
           usersApi.getAll(),
           supportApi.getBlockedUsers(),
+          justiceApi.listCases().catch(() => ({ data: { cases: [] as CourtCase[] } })),
         ]);
         if (cancelled) return;
         const sortedConversations = sortConversationsByRecent([
           ...convRes.data.conversations,
           ...supportThreadsRes.data.threads.map(buildAdminSupportConversationSummary),
         ]);
+        setCourtCaseStatusById(
+          Object.fromEntries(courtCasesRes.data.cases.map((courtEntry) => [courtEntry.id, courtEntry.status])),
+        );
         setAdminSupportThreads(supportThreadsRes.data.threads);
         setConversations(sortedConversations);
         setPlayers(playersRes.data.users ?? []);
@@ -803,6 +812,15 @@ export default function MessagesPage() {
       ? { ...prev, conversation: { ...prev.conversation, displayName: caseTitle, title: caseTitle } }
       : prev);
   }, [courtCase?.plainte?.title, isCourtConversation, selectedConversation]);
+
+  useEffect(() => {
+    if (!courtCase?.id) return;
+    setCourtCaseStatusById((prev) => (
+      prev[courtCase.id] === courtCase.status
+        ? prev
+        : { ...prev, [courtCase.id]: courtCase.status }
+    ));
+  }, [courtCase?.id, courtCase?.status]);
 
   useEffect(() => {
     if (!isCourtConversation || !courtCase) return;
@@ -2169,12 +2187,12 @@ export default function MessagesPage() {
                 {pinnedDms.length > 0 && (
                   <>
                     <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">DM épinglés</p>
-                    {pinnedDms.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
+                    {pinnedDms.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} isClosedAffaire={Boolean(c.courtCaseId && courtCaseStatusById[c.courtCaseId] === 'CLOSED')} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
                     {(dms.length > 0 || others.length > 0) && <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Conversations</p>}
                   </>
                 )}
-                {dms.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
-                {others.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={false} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
+                {dms.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} isClosedAffaire={Boolean(c.courtCaseId && courtCaseStatusById[c.courtCaseId] === 'CLOSED')} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
+                {others.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={false} isClosedAffaire={Boolean(c.courtCaseId && courtCaseStatusById[c.courtCaseId] === 'CLOSED')} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
                 {pinnedDms.length === 0 && dms.length === 0 && others.length === 0 && (
                   <p className="px-3 py-6 text-center text-xs text-muted-foreground">{activeMessagesTab === MESSAGING_TABS.BUSINESS ? 'Aucune affaire.' : 'Aucune conversation.'}</p>
                 )}
@@ -2791,6 +2809,7 @@ function ConvRow({
   currentUserId,
   isActive,
   isPinnedDm,
+  isClosedAffaire,
   onSelect,
   onToggleFavorite,
   onToggleDmPin,
@@ -2799,6 +2818,7 @@ function ConvRow({
   currentUserId?: string | null;
   isActive: boolean;
   isPinnedDm: boolean;
+  isClosedAffaire: boolean;
   onSelect: () => void;
   onToggleFavorite: (e: React.MouseEvent) => void;
   onToggleDmPin: (e: React.MouseEvent) => void;
@@ -2814,15 +2834,23 @@ function ConvRow({
       onClick={onSelect}
       className={cn(
         'group flex w-full min-w-0 max-w-full items-center gap-2.5 overflow-hidden px-3 py-2 text-left transition-colors',
+        isClosedAffaire && 'opacity-55',
         isActive ? 'bg-primary/10' : 'hover:bg-muted/50',
       )}
     >
-      <ConversationAvatar conversation={conversation} />
+      <div className={cn(isClosedAffaire && 'grayscale')}>
+        <ConversationAvatar conversation={conversation} />
+      </div>
       <div className="w-0 min-w-0 flex-1 overflow-hidden">
         <div className="flex min-w-0 items-baseline gap-1 overflow-hidden">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
             <p
-              className={cn('min-w-0 flex-1 truncate text-xs font-semibold', conversation.type === 'DM' && 'text-foreground', isActive && conversation.type !== 'DM' && 'text-primary')}
+              className={cn(
+                'min-w-0 flex-1 truncate text-xs font-semibold',
+                conversation.type === 'DM' && 'text-foreground',
+                isActive && conversation.type !== 'DM' && 'text-primary',
+                isClosedAffaire && 'text-muted-foreground',
+              )}
               style={conversation.type === 'DM' && dmParticipant?.usernameColor ? { color: dmParticipant.usernameColor } : undefined}
             >
               {conversation.displayName}

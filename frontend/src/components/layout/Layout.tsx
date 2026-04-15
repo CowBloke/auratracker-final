@@ -161,7 +161,13 @@ export default function Layout() {
             <SiteHeader />
             <div className="@container/main flex min-h-0 flex-1 flex-col">
               <div ref={mainRef} className={cn('min-h-0 flex-1', isMessagesPage || isCartePage ? 'overflow-hidden' : 'overflow-auto')}>
-                <div className={cn('mx-auto flex w-full flex-1 flex-col', isMessagesPage || isCartePage ? 'h-full pt-0' : 'pt-6 lg:pt-8', isCartePage ? CONTAINER.FULL : CONTAINER.DEFAULT)}>
+                <div
+                  className={cn(
+                    'mx-auto flex w-full flex-1 flex-col md:pl-[4.125rem]',
+                    isMessagesPage || isCartePage ? 'h-full pt-0' : 'pt-6 lg:pt-8',
+                    isCartePage ? CONTAINER.FULL : CONTAINER.DEFAULT
+                  )}
+                >
                   <Outlet />
                 </div>
               </div>
