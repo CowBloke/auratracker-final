@@ -107,8 +107,21 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     s.on('ban:active', handleBan);
     s.on('site:reload-required', handleSiteReloadRequired);
 
+    // Reconnect when the tab becomes visible again or network comes back — the browser
+    // suspends timers during background sleep which kills Socket.io's reconnect loop.
+    const handleReconnectTrigger = () => {
+      if (!s.connected) connectSocket();
+    };
+    document.addEventListener('visibilitychange', handleReconnectTrigger);
+    window.addEventListener('online', handleReconnectTrigger);
+    // Periodic fallback: reconnect every 30 s if still disconnected
+    const reconnectInterval = setInterval(handleReconnectTrigger, 30_000);
+
     return () => {
       disconnectSocket();
+      document.removeEventListener('visibilitychange', handleReconnectTrigger);
+      window.removeEventListener('online', handleReconnectTrigger);
+      clearInterval(reconnectInterval);
       s.off('site:reload-required', handleSiteReloadRequired);
       s.removeAllListeners();
       setSocket(null);
