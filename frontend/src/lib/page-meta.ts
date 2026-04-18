@@ -4,6 +4,10 @@ export interface PageMeta {
   contentHeader?: boolean;
 }
 
+export interface SearchablePageEntry extends PageMeta {
+  path: string;
+}
+
 const STATIC_PAGE_META: Record<string, PageMeta> = {
   '/you': { title: 'Moi', description: 'Simulateur de vie — traits, travail, famille, argent et relations.' },
   '/': { title: 'Tableau de bord', description: "Vue d'ensemble de ton activité et des parties en direct." },
@@ -92,4 +96,11 @@ export function getPageMetaForPath(pathname: string): PageMeta {
         .map(humanizeSegment)
         .join(' / ') || 'Tableau de bord',
     };
+}
+
+export function getSearchablePageEntries(): SearchablePageEntry[] {
+  return Object.entries(STATIC_PAGE_META).map(([path, meta]) => ({
+    path,
+    ...meta,
+  }));
 }

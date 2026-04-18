@@ -246,7 +246,11 @@ function NotificationCard({
   );
 }
 
-export function InboxDropdown() {
+export function InboxDropdown({
+  buttonClassName,
+}: {
+  buttonClassName?: string;
+} = {}) {
   const [open, setOpen] = useState(false);
   const [actingKey, setActingKey] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -333,7 +337,7 @@ export function InboxDropdown() {
         variant="ghost"
         size="icon"
         onClick={() => setOpen((value) => !value)}
-        className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
+        className={cn('relative h-8 w-8 text-muted-foreground hover:text-foreground', buttonClassName)}
         title={t('inbox_title')}
       >
         <Bell className="h-4 w-4" />

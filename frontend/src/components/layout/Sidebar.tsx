@@ -25,6 +25,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -92,8 +93,9 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
     location.pathname === path || (path !== '/' && location.pathname.startsWith(`${path}/`));
 
   const enabledOrderedItems = economyItems.filter((item) => !isDisabled(item.to));
-  const infoItem = enabledOrderedItems.find((item) => item.to === '/rules');
-  const mainOrderedItems = enabledOrderedItems.filter((item) => item.to !== '/rules');
+  const footerItemPaths = new Set(['/suggestions', '/rules']);
+  const footerOrderedItems = enabledOrderedItems.filter((item) => footerItemPaths.has(item.to));
+  const mainOrderedItems = enabledOrderedItems.filter((item) => !footerItemPaths.has(item.to));
 
   const isGamesSectionActive = isOnGames;
   const canOpenYouFromLogo = !maintenanceStatus.youLogoAdminOnly || canBypassMaintenance;
@@ -278,7 +280,39 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
                 </SidebarMenuItem>
               );
             })}
+            </>)}
 
+          </SidebarMenu>
+        </div>
+      </SidebarContent>
+      {!isOnYou && (
+        <SidebarFooter className="px-3 pb-4 pt-0">
+          <div className="mx-2 mb-2 h-px bg-sidebar-border/60" />
+          <SidebarMenu className="gap-0.5">
+            {footerOrderedItems.map((item) => {
+              const ItemIcon = item.icon;
+              const isActive = isPathActive(item.to);
+              return (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    tooltip={item.label}
+                    className={cn(
+                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
+                      isActive
+                        ? 'text-foreground bg-muted/50'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                    )}
+                  >
+                    <NavLink to={item.to} end={item.to === '/'}>
+                      <ItemIcon className="h-4 w-4" />
+                      <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{item.label}</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={() => setIsBugReportOpen(true)}
@@ -289,35 +323,9 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
                 <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{t('sidebar_report_bug')}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-
-            {infoItem && (() => {
-              const InfoIcon = infoItem.icon;
-              return (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isPathActive(infoItem.to)}
-                    tooltip={infoItem.label}
-                    className={cn(
-                      'h-8 px-2 text-sm font-normal group-data-[collapsible=icon]:!h-8',
-                      isPathActive(infoItem.to)
-                        ? 'text-foreground bg-muted/50'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
-                    )}
-                  >
-                    <NavLink to={infoItem.to} end={infoItem.to === '/'}>
-                      <InfoIcon className="h-4 w-4" />
-                      <span className="inline-block overflow-hidden whitespace-nowrap transition-[opacity,transform,max-width] duration-150 ease-out group-data-[collapsible=icon]:pointer-events-none group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:-translate-x-1 group-data-[collapsible=icon]:opacity-0">{infoItem.label}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })()}
-            </>)}
-
           </SidebarMenu>
-        </div>
-      </SidebarContent>
+        </SidebarFooter>
+      )}
       <BugReportPanel
         open={isBugReportOpen}
         onOpenChange={setIsBugReportOpen}

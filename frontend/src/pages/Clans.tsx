@@ -1,4 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Axe, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
@@ -366,6 +367,7 @@ const NationFlagPreview = ({
 
 export default function Clans() {
   const { user, refreshUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [clans, setClans] = useState<ClanSummary[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
   const [globalWarHistory, setGlobalWarHistory] = useState<ClanWarState[]>([]);
@@ -456,6 +458,7 @@ export default function Clans() {
   const [tapFrenzyRunning, setTapFrenzyRunning] = useState(false);
   const [tapFrenzyScore, setTapFrenzyScore] = useState(0);
   const [tapFrenzyTimeLeft, setTapFrenzyTimeLeft] = useState(0);
+  const requestedClanId = searchParams.get('clan');
 
   const fetchGameStatus = useCallback(async (clanId: string) => {
     try {
@@ -485,9 +488,30 @@ export default function Clans() {
 
   useEffect(() => {
     if (!selectedClanId && clans.length > 0) {
-      setSelectedClanId(viewerClanId ?? clans[0].id);
+      const initialClanId = requestedClanId && clans.some((clan) => clan.id === requestedClanId)
+        ? requestedClanId
+        : viewerClanId ?? clans[0].id;
+      setSelectedClanId(initialClanId);
     }
-  }, [clans, selectedClanId, viewerClanId]);
+  }, [clans, requestedClanId, selectedClanId, viewerClanId]);
+
+  useEffect(() => {
+    if (!requestedClanId || !clans.some((clan) => clan.id === requestedClanId) || requestedClanId === selectedClanId) {
+      return;
+    }
+
+    setSelectedClanId(requestedClanId);
+  }, [clans, requestedClanId, selectedClanId]);
+
+  useEffect(() => {
+    if (!selectedClanId || searchParams.get('clan') === selectedClanId) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('clan', selectedClanId);
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, selectedClanId, setSearchParams]);
 
   useEffect(() => {
     if (!selectedClanId) return;
