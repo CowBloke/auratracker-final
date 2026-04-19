@@ -46,6 +46,7 @@ type CommandEntry = {
   subtitle: string;
   badge: string;
   value: string;
+  keywords: string[];
   icon?: LucideIcon;
   imageUrl?: string | null;
   fallback: string;
@@ -76,6 +77,64 @@ function getPageIcon(path: string) {
 
 function getFallback(value: string) {
   return value.trim().slice(0, 2).toUpperCase() || '?';
+}
+
+function normalizeSearchValue(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function tokenizeSearchValue(value: string) {
+  const normalized = normalizeSearchValue(value);
+  return normalized.split(/[^a-z0-9]+/).filter(Boolean);
+}
+
+function strictCommandFilter(value: string, search: string, keywords: string[]) {
+  const normalizedSearch = normalizeSearchValue(search);
+  if (!normalizedSearch) return 1;
+
+  const normalizedValue = normalizeSearchValue(value);
+  const allTokenList = [
+    ...tokenizeSearchValue(value),
+    ...keywords.flatMap((keyword) => tokenizeSearchValue(keyword)),
+  ];
+  const allTokens = new Set(allTokenList);
+  const searchTokens = tokenizeSearchValue(search);
+
+  if (!searchTokens.length) return 0;
+
+  const exactValueMatch = normalizedValue === normalizedSearch;
+  if (exactValueMatch) return 100;
+
+  const exactSingleTokenMatch = searchTokens.length === 1 && allTokens.has(searchTokens[0]);
+  if (exactSingleTokenMatch) return 90;
+
+  const allTermsMatchExactly = searchTokens.every((token) => allTokens.has(token));
+  if (allTermsMatchExactly) return 70;
+
+  const singleTerm = searchTokens.length === 1;
+  if (singleTerm) {
+    const [term] = searchTokens;
+    const startsWithToken = allTokenList.some((token) => token.startsWith(term));
+    if (startsWithToken) return 50;
+  }
+
+  const everyTermStartsWithToken = searchTokens.every((term) =>
+    allTokenList.some((token) => token.startsWith(term))
+  );
+  if (everyTermStartsWithToken) return 40;
+
+  if (normalizedValue.includes(normalizedSearch)) return 30;
+
+  const keywordIncludesSearch = keywords
+    .map((keyword) => normalizeSearchValue(keyword))
+    .some((keyword) => keyword.includes(normalizedSearch));
+  if (keywordIncludesSearch) return 20;
+
+  return 0;
 }
 
 export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: TopbarCommandPaletteProps) {
@@ -142,7 +201,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         title: 'Tableau de bord',
         subtitle: "Revenir à l'accueil principal",
         badge: 'Raccourci',
-        value: 'tableau de bord dashboard accueil home',
+        value: 'Tableau de bord',
+        keywords: ['dashboard', 'accueil', 'home'],
         icon: LayoutDashboard,
         fallback: 'TD',
         path: '/dashboard',
@@ -152,7 +212,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         title: 'Messages',
         subtitle: 'Ouvrir les conversations et le chat privé',
         badge: 'Raccourci',
-        value: 'messages chat conversation dm support',
+        value: 'Messages',
+        keywords: ['chat', 'conversation', 'dm', 'support'],
         icon: MessageSquare,
         fallback: 'MS',
         path: '/messages',
@@ -162,7 +223,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         title: 'Notifications',
         subtitle: 'Voir la boîte de réception complète',
         badge: 'Raccourci',
-        value: 'notifications inbox boite reception alertes',
+        value: 'Notifications',
+        keywords: ['inbox', 'boite', 'reception', 'alertes'],
         icon: Inbox,
         fallback: 'IN',
         path: '/inbox',
@@ -172,7 +234,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         title: 'Clans',
         subtitle: 'Parcourir les clans, événements et guerres',
         badge: 'Raccourci',
-        value: 'clans guerre evenement communaute equipe',
+        value: 'Clans',
+        keywords: ['guerre', 'evenement', 'communaute', 'equipe'],
         icon: Flag,
         fallback: 'CL',
         path: '/clans',
@@ -182,7 +245,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         title: 'Catalogue jeux',
         subtitle: 'Parcourir tous les jeux disponibles',
         badge: 'Raccourci',
-        value: 'jeux games arcade multijoueur catalogue',
+        value: 'Catalogue jeux',
+        keywords: ['jeux', 'games', 'arcade', 'multijoueur', 'catalogue'],
         icon: Gamepad2,
         fallback: 'JE',
         path: '/games',
@@ -192,7 +256,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         title: 'Paramètres',
         subtitle: "Régler l'interface et le compte",
         badge: 'Raccourci',
-        value: 'parametres reglages settings theme compte',
+        value: 'Paramètres',
+        keywords: ['parametres', 'reglages', 'settings', 'theme', 'compte'],
         icon: Settings,
         fallback: 'PA',
         path: '/settings',
@@ -205,7 +270,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         title: 'Mon profil',
         subtitle: 'Ouvrir mon profil joueur',
         badge: 'Raccourci',
-        value: 'mon profil joueur badges stats profile',
+        value: 'Mon profil',
+        keywords: ['profil', 'joueur', 'badges', 'stats', 'profile'],
         icon: UserCircle2,
         fallback: 'MP',
         path: `/profile/${currentUserId}`,
@@ -232,7 +298,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         title: entry.title,
         subtitle: entry.description ?? 'Page AuraTracker',
         badge: 'Page',
-        value: `${entry.title} ${entry.description ?? ''} ${entry.path} page`,
+        value: entry.title,
+        keywords: [entry.description ?? '', entry.path, 'page'],
         icon: getPageIcon(entry.path),
         fallback: getFallback(entry.title),
         path: entry.path,
@@ -255,7 +322,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         title: entry.title,
         subtitle: entry.description ?? 'Jeu AuraTracker',
         badge: 'Jeu',
-        value: `${entry.title} ${entry.description ?? ''} ${entry.path} jeu game`,
+        value: entry.title,
+        keywords: [entry.description ?? '', entry.path, 'jeu', 'game'],
         icon: Gamepad2,
         fallback: getFallback(entry.title),
         path: entry.path,
@@ -269,7 +337,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
       title: entry.username,
       subtitle: entry.bio?.trim() || entry.firstName?.trim() || 'Profil joueur',
       badge: 'Profil',
-      value: `${entry.username} ${entry.firstName ?? ''} ${entry.bio ?? ''} profil joueur user`,
+      value: entry.username,
+      keywords: [entry.firstName ?? '', entry.bio ?? '', 'profil', 'joueur', 'user', entry.id],
       imageUrl: entry.profilePicture,
       fallback: getFallback(entry.username),
       path: `/profile/${entry.id}`,
@@ -282,7 +351,8 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
       title: entry.name,
       subtitle: entry.description?.trim() || `Clan de ${entry.leader.username} · ${entry.memberCount}/${entry.maxMembers} membres`,
       badge: 'Clan',
-      value: `${entry.name} ${entry.description ?? ''} ${entry.leader.username} clan guerre event`,
+      value: entry.name,
+      keywords: [entry.description ?? '', entry.leader.username, 'clan', 'guerre', 'event'],
       imageUrl: entry.imageUrl,
       fallback: getFallback(entry.name),
       path: `/clans?clan=${entry.id}`,
@@ -304,7 +374,7 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
         <DialogHeader className="sr-only">
           <DialogTitle>Recherche globale</DialogTitle>
         </DialogHeader>
-        <Command loop className="bg-transparent">
+        <Command loop filter={strictCommandFilter} className="bg-transparent">
           <div className="border-b border-border/60 bg-gradient-to-b from-muted/30 to-transparent">
             <CommandInput
               placeholder="Rechercher un profil, une page, un jeu, un clan..."
@@ -387,6 +457,7 @@ function CommandPaletteItem({
   return (
     <CommandItem
       value={entry.value}
+      keywords={entry.keywords}
       onSelect={() => onSelect(entry.path)}
       className="cursor-pointer gap-3 rounded-xl border border-transparent px-3 py-3 transition-colors hover:bg-accent hover:text-accent-foreground data-[selected=true]:border-border/70 data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
     >

@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { SettingsPanel } from '@/components/SettingsPanel'
 import { ChatMessageRow } from '@/components/ChatMessage'
 import { DropZone } from '@/components/DropZone'
@@ -191,28 +190,36 @@ export default function App() {
             </button>
           )}
         </div>
-
-        {/* Settings panel */}
-        {showSettings && (
-          <>
-            <Separator orientation="vertical" />
-            <div className="w-72 flex-shrink-0 bg-[hsl(var(--card))] flex flex-col">
-              <div className="flex items-center justify-between px-4 h-12 border-b border-[hsl(var(--border))]">
-                <span className="font-semibold text-sm">Réglages</span>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <ScrollArea className="flex-1">
-                <SettingsPanel settings={settings} onChange={updateSettings} allUsers={allUsers} />
-              </ScrollArea>
-            </div>
-          </>
-        )}
       </div>
+
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowSettings(false)}
+            aria-label="Fermer les reglages"
+          />
+          <div className="relative z-10 w-full max-w-3xl rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[hsl(var(--border))]">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-[hsl(var(--muted-foreground))]">Configuration</p>
+                <h2 className="text-sm font-semibold">Reglages d affichage du chat</h2>
+              </div>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                aria-label="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <ScrollArea className="max-h-[70vh]">
+              <SettingsPanel settings={settings} onChange={updateSettings} allUsers={allUsers} />
+            </ScrollArea>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

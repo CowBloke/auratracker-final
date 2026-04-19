@@ -2,22 +2,20 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Tabs } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Edit2, X, Ban as BanIcon, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Download, Sparkles, Eye, Activity, Trophy, CalendarRange, RefreshCw, UserCog, Send, Upload, Award, Terminal, Landmark, Wallet, Inbox, Settings, BarChart2, Briefcase } from 'lucide-react';
+import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Ban as BanIcon, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Eye, Activity, CalendarRange, UserCog, Award, Terminal, Landmark, Wallet, Inbox, Settings, BarChart2, Briefcase } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ReferenceDot, LineChart, Line, Tooltip as RechartsTooltip, Legend, BarChart, Bar, Cell } from 'recharts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,13 +38,10 @@ import {
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { ImagePicker } from '@/components/ui/image-picker';
-import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { PageShell } from '@/components/layout/page-shell';
-import { getPageMetaForPath } from '@/lib/page-meta';
 import {
   DEFAULT_LANDING_PAGE,
   DEFAULT_LANDING_PAGE_KEY,
-  DEFAULT_LANDING_PAGE_OPTIONS,
   normalizeDefaultLandingPage,
 } from '@/lib/default-landing-page';
 import {
@@ -54,7 +49,6 @@ import {
   ADMIN_TABS,
   ANNOUNCEMENT_MAX_LENGTH,
   CHAT_BLOCK_MESSAGE_MAX_LENGTH,
-  CHAT_BLOCK_TIMEZONE,
   isValidChatTimeValue,
   ROLE_LABELS,
   type AdminTab,
@@ -66,236 +60,42 @@ import { BansTab } from './tabs/BansTab';
 import { BraquageLegalTab } from './tabs/BraquageLegalTab';
 import { ClubsTab } from './tabs/ClubsTab';
 import { LogsTab } from './tabs/LogsTab';
+import { ActivityTab } from './tabs/ActivityTab';
+import { ReferralsTab } from './tabs/ReferralsTab';
 import { TaxesTab } from './tabs/TaxesTab';
 import { UsersTab } from './tabs/UsersTab';
-import SanctionModal from '@/components/sanctions/SanctionModal';
-import { DashboardUpdatesManagerDialog } from '@/features/dashboard-updates/DashboardUpdatesManagerDialog';
+import { DemographicsTab } from './tabs/DemographicsTab';
+import { AdsTab } from './tabs/AdsTab';
+import { ContentTab } from './tabs/ContentTab';
+import { FiscalTab } from './tabs/FiscalTab';
+import { GameLimitsTab } from './tabs/GameLimitsTab';
+import { ChatHistoryTab } from './tabs/ChatHistoryTab';
+import { SettingsTab } from './tabs/SettingsTab';
+import { BadgesTab } from './tabs/BadgesTab';
+import { CommunicationTab } from './tabs/CommunicationTab';
+import {
+  DEFAULT_CLAN_EVENT_FORM,
+  DEFAULT_TAX_BRACKET,
+  EFFECT_TYPES,
+  EFFECT_TYPES_WITHOUT_VALUE,
+  GAME_TYPES,
+  ITEM_TYPE_LABELS,
+  SHOP_ITEMS_FILE_FORMAT,
+  SHOP_ITEMS_FILE_VERSION,
+  defaultItemForm,
+  generateBadgeSvgDataUrl,
+  getAdminRole,
+  mapClanEventToForm,
+  mapRegistrationReviewToArchivedRegistration,
+  parseLegacyArchivedRegistrations,
+  toSafeNumber,
+  type ArchivedRegistration,
+  type ClanEventForm,
+  type EditableTaxBracket,
+  type ItemFormData,
+} from './adminPageModels';
 
 const TaxesTabComponent = TaxesTab;
-
-// Effect types for items
-const EFFECT_TYPES = [
-  { value: 'USERNAME_COLOR', label: 'Couleur de pseudo', description: 'Permet de choisir une couleur pour le pseudo dans le chat' },
-  { value: 'PROFILE_PICTURE', label: 'Photo de profil', description: 'Permet de téléverser une photo affichée dans le chat' },
-  { value: 'PROFILE_BANNER', label: 'Bannière de profil', description: 'Permet de téléverser une bannière affichée en haut du profil' },
-  { value: 'BONUS_AURA', label: 'Bonus Aura', description: 'Donne un bonus d\'aura à l\'utilisation' },
-  { value: 'BONUS_MONEY', label: 'Bonus Argent', description: 'Donne un bonus d\'argent à l\'utilisation' },
-  { value: 'DOODLE_JUMP_SKIN', label: 'Apparence Doodle Jump', description: 'Débloque une apparence personnalisée dans Doodle Jump (sélectionner une image pour l’apparence)' },
-  { value: 'CLAN_TAG_UNLOCK', label: 'Tag de clan', description: 'Débloque le tag de clan pour le clan du membre acheteur. Un clan ne peut l\'acheter qu\'une fois.' },
-  { value: 'CLAN_SLOT_UPGRADE', label: '+1 Slot clan', description: 'Ajoute un slot membre supplémentaire au clan. Le clan peut l\'acheter jusqu\'à deux fois, pour monter jusqu\'à 7 membres. S\'applique automatiquement à l\'achat.' },
-  { value: 'CLAN_GAME_MONEY_BOOST', label: 'Boost gains clan', description: 'Objet de clan: active un boost en % sur l\'argent gagné en jeu pour tous les membres du clan.' },
-  { value: 'CLAN_PROFILE_PICTURE', label: 'Photo de profil de clan', description: 'Objet de clan: acheté avec la banque du clan, puis le chef téléverse une image pour l\'utiliser comme emblème du clan.' },
-  { value: 'CLAN_BANNER', label: 'Bannière de clan', description: 'Objet de clan: acheté avec la banque du clan, puis le chef téléverse une image pour l\'afficher en haut de la page clan.' },
-  { value: 'AWARD_BADGE', label: 'Badge', description: 'Donne un badge spécifique au joueur lors de l\'utilisation. L\'image boutique est générée automatiquement.' },
-  { value: 'CUSTOM_BADGE', label: 'Badge personnalisé', description: 'Permet au joueur de concevoir son propre badge. La demande est envoyée aux admins pour validation. Remboursement automatique si refusée.' },
-  { value: 'YOU_ADBLOCK', label: 'Adblock You (temporaire)', description: 'Masque les interfaces publicitaires dans la page You pendant une durée configurable.' },
-];
-
-const EFFECT_TYPES_WITHOUT_VALUE = new Set([
-  'USERNAME_COLOR',
-  'PROFILE_PICTURE',
-  'PROFILE_BANNER',
-  'CLAN_TAG_UNLOCK',
-  'CLAN_SLOT_UPGRADE',
-  'CLAN_PROFILE_PICTURE',
-  'CLAN_BANNER',
-  'AWARD_BADGE',
-  'CUSTOM_BADGE',
-  'YOU_ADBLOCK',
-]);
-
-const generateBadgeSvgDataUrl = (badge: Badge): string => {
-  let fill = badge.backgroundColor ?? '#374151';
-  let gradientDef = '';
-  if (badge.backgroundType === 'gradient' && badge.backgroundGradient) {
-    try {
-      const g = JSON.parse(badge.backgroundGradient) as { from: string; to: string; direction?: string };
-      const isVert = (g.direction ?? 'to right').includes('bottom');
-      gradientDef = `<defs><linearGradient id="g" x1="0" y1="0" x2="${isVert ? '0' : '1'}" y2="${isVert ? '1' : '0'}"><stop offset="0%" stop-color="${g.from}"/><stop offset="100%" stop-color="${g.to}"/></linearGradient></defs>`;
-      fill = 'url(#g)';
-    } catch { /* use solid */ }
-  }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56">${gradientDef}<rect width="56" height="56" rx="4" fill="${fill}" stroke="${badge.borderColor ?? '#6b7280'}" stroke-width="1.5"/><text x="28" y="39" text-anchor="middle" font-size="26" font-family="Apple Color Emoji,Segoe UI Emoji,sans-serif">${badge.icon ?? '⭐'}</text></svg>`;
-  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
-};
-
-const ITEM_TYPE_LABELS: Record<string, string> = {
-  CONSUMABLE: 'Objet',
-  COSMETIC: 'Cosmétique',
-  UPGRADE: 'Amélioration',
-};
-
-type EditableTaxBracket = {
-  id: string;
-  threshold: string;
-  rate: string;
-};
-
-const DEFAULT_TAX_BRACKET: EditableTaxBracket = {
-  id: 'default-tax-bracket',
-  threshold: '10000',
-  rate: '1',
-};
-
-type ClanEventQuestForm = {
-  title: string;
-  description: string;
-  activityType: string;
-  targetValue: number;
-  pointsReward: number;
-  sortOrder: number;
-  isActive: boolean;
-};
-
-type ClanEventMiniGameForm = {
-  title: string;
-  description: string;
-  type: 'REFLEX' | 'TAP_FRENZY';
-  instructions: string;
-  scoreMultiplier: number;
-  flatPointsBonus: number;
-  maxPointsPerAttempt: number;
-  maxAttemptsPerUser: number | null;
-  cooldownMinutes: number;
-  sortOrder: number;
-  isActive: boolean;
-  config: string;
-};
-
-type ClanEventRewardTierForm = {
-  title: string;
-  minRank: number;
-  maxRank: number;
-  moneyReward: number;
-  auraReward: number;
-  itemId: string;
-};
-
-type ClanEventForm = {
-  title: string;
-  description: string;
-  bannerUrl: string;
-  status: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
-  highlightColor: string;
-  rulesSummary: string;
-  startsAt: string;
-  endsAt: string;
-  quests: ClanEventQuestForm[];
-  miniGames: ClanEventMiniGameForm[];
-  rewardTiers: ClanEventRewardTierForm[];
-};
-
-const DEFAULT_CLAN_EVENT_FORM: ClanEventForm = {
-  title: '',
-  description: '',
-  bannerUrl: '',
-  status: 'SCHEDULED',
-  highlightColor: '#f59e0b',
-  rulesSummary: '',
-  startsAt: '',
-  endsAt: '',
-  quests: [
-    { title: 'Jouer 10 parties', description: 'Toutes les parties terminées comptent.', activityType: 'PLAY_ANY_GAME', targetValue: 10, pointsReward: 40, sortOrder: 0, isActive: true },
-  ],
-  miniGames: [
-    { title: 'Réflexe éclair', description: 'Clique dès que le signal apparaît.', type: 'REFLEX', instructions: 'Attends le signal vert, puis clique le plus vite possible.', scoreMultiplier: 0.5, flatPointsBonus: 0, maxPointsPerAttempt: 120, maxAttemptsPerUser: 5, cooldownMinutes: 15, sortOrder: 0, isActive: true, config: '{"minDelayMs":1200,"maxDelayMs":2800}' },
-  ],
-  rewardTiers: [
-    { title: 'Top 1', minRank: 1, maxRank: 1, moneyReward: 1500, auraReward: 80, itemId: '' },
-    { title: 'Top 2-3', minRank: 2, maxRank: 3, moneyReward: 900, auraReward: 45, itemId: '' },
-  ],
-};
-
-type ArchivedRegistration = PendingUser & {
-  registrationStatus: 'APPROVED' | 'REJECTED';
-  reviewedAt?: string;
-  importedFromLegacy?: boolean;
-};
-
-const parseLegacyArchivedRegistrations = (): ArchivedRegistration[] => {
-  try {
-    const raw = localStorage.getItem(ADMIN_ARCHIVED_REGISTRATIONS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((entry): entry is ArchivedRegistration => (
-      entry &&
-      typeof entry === 'object' &&
-      typeof entry.id === 'string' &&
-      typeof entry.username === 'string' &&
-      typeof entry.email === 'string' &&
-      typeof entry.createdAt === 'string' &&
-      (entry.registrationStatus === 'APPROVED' || entry.registrationStatus === 'REJECTED')
-    ));
-  } catch {
-    return [];
-  }
-};
-
-const mapClanEventToForm = (event: AdminClanEvent): ClanEventForm => ({
-  title: event.title,
-  description: event.description || '',
-  bannerUrl: event.bannerUrl || '',
-  status: event.storedStatus,
-  highlightColor: event.highlightColor || '#f59e0b',
-  rulesSummary: event.rulesSummary || '',
-  startsAt: toDateTimeLocalValue(event.startsAt),
-  endsAt: toDateTimeLocalValue(event.endsAt),
-  quests: event.quests.map((quest) => ({
-    title: quest.title,
-    description: quest.description || '',
-    activityType: quest.activityType,
-    targetValue: quest.targetValue,
-    pointsReward: quest.pointsReward,
-    sortOrder: quest.sortOrder,
-    isActive: quest.isActive,
-  })),
-  miniGames: event.miniGames.map((miniGame) => ({
-    title: miniGame.title,
-    description: miniGame.description || '',
-    type: miniGame.type,
-    instructions: miniGame.instructions || '',
-    scoreMultiplier: miniGame.scoreMultiplier,
-    flatPointsBonus: miniGame.flatPointsBonus,
-    maxPointsPerAttempt: miniGame.maxPointsPerAttempt,
-    maxAttemptsPerUser: miniGame.maxAttemptsPerUser,
-    cooldownMinutes: miniGame.cooldownMinutes,
-    sortOrder: miniGame.sortOrder,
-    isActive: miniGame.isActive,
-    config: miniGame.config ? JSON.stringify(miniGame.config) : '',
-  })),
-  rewardTiers: event.rewardTiers.map((tier) => ({
-    title: tier.title,
-    minRank: tier.minRank,
-    maxRank: tier.maxRank,
-    moneyReward: tier.moneyReward,
-    auraReward: tier.auraReward,
-    itemId: tier.itemId || '',
-  })),
-});
-
-const mapRegistrationReviewToArchivedRegistration = (review: RegistrationReview): ArchivedRegistration => ({
-  id: review.registrationUserId,
-  username: review.username,
-  firstName: review.firstName,
-  schoolLevel: review.schoolLevel,
-  classLetter: review.classLetter,
-  email: review.email,
-  motivationMessage: review.motivationMessage,
-  createdAt: review.registrationCreatedAt,
-  registrationStatus: review.status,
-  reviewedAt: review.reviewedAt,
-  importedFromLegacy: review.importedFromLegacy,
-});
-
-const getAdminRole = (user: Pick<AdminUser, 'isAdmin' | 'isSuperAdmin' | 'isBetaTester' | 'isFiscalInspector' | 'isJudge'>): AdminRole => {
-  if (user.isSuperAdmin) return 'SUPER_ADMIN';
-  if (user.isAdmin) return 'ADMIN';
-  if (user.isBetaTester) return 'BETA_TESTER';
-  if (user.isFiscalInspector) return 'FISCAL_INSPECTOR';
-  if (user.isJudge) return 'JUDGE';
-  return 'USER';
-};
 
 // Log type configuration with icons, colors and labels
 const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
@@ -978,110 +778,12 @@ const renderLogSummary = (log: ActivityLog): ReactNode => {
   return <>{log.username ? `${actionLabel} par ${actor}` : actionLabel}</>;
 };
 
-// Game type filters
-const GAME_TYPES = [
-  { value: 'doodle_jump', label: 'Doodle Jump' },
-  { value: 'doodle_jump_mort_subite', label: 'Doodle Jump (Mort Subite)' },
-  { value: 'game_2048', label: '2048' },
-  { value: 'flappy_bird', label: 'Flappy Bird' },
-  { value: 'chrome_dino', label: 'Chrome Dino' },
-  { value: 'snake', label: 'Snake' },
-  { value: 'blockblast', label: 'BlockBlast' },
-  { value: 'crossy_road', label: 'Crossy Road' },
-  { value: 'aura_coin', label: 'Aura Coin' },
-  { value: 'stack_tower', label: 'Tour empilée' },
-  { value: 'geometry_dash', label: 'Geometry Dash' },
-  { value: 'qs_watermelon', label: 'QS Watermelon' },
-  { value: 'solitaire', label: 'Solitaire' },
-  { value: 'racer', label: 'Racer' },
-  { value: 'racer_daily', label: 'Racer Quotidien' },
-  { value: 'tetris', label: 'Tetris' },
-  { value: 'knife_hit', label: 'Knife Hit' },
-  { value: 'minesweeper', label: 'Démineur' },
-  { value: 'goyave_empire', label: 'Goyave Empire' },
-  { value: 'logic_lab', label: 'Sudoku' },
-  { value: 'fruit_ninja', label: 'Fruit Ninja' },
-  { value: 'casino', label: 'Casino' },
-  { value: 'bombparty', label: 'Bombe de mots' },
-  { value: 'petit_bac', label: 'Petit Bac' },
-  { value: 'poker', label: 'Poker' },
-  { value: 'battleship', label: 'Bataille Navale' },
-  { value: 'chess', label: 'Échecs' },
-  { value: 'puissance_4', label: 'Puissance 4' },
-  { value: 'ball_arena', label: 'Arène des balles' },
-  { value: 'ballarena', label: 'Arène des balles (alias)' },
-  { value: 'uno', label: 'Uno' },
-  { value: 'morpion', label: 'Morpion' },
-  { value: 'polytrack', label: 'PolyTrack' },
-  { value: 'eaglercraft', label: 'Eaglercraft' },
-  { value: 'subway_surfers', label: 'Subway Surfers Clone' },
-  { value: 'hexgl', label: 'HexGL' },
-  { value: 'opengd', label: 'OpenGD' },
-  { value: 'russian_roulette', label: 'Roulette russe' },
-  { value: 'roulette', label: 'Roulette russe (alias)' },
-  { value: 'p4', label: 'Puissance 4 (alias)' },
-  { value: 'clash_village', label: 'Clash Village' },
-  { value: 'nuit_blanche', label: 'Nuit Blanche' },
-];
-
-interface ItemFormData {
-  name: string;
-  description: string;
-  type: string;
-  price: number;
-  imageUrl: string;
-  effectType: string;
-  effectValue: string;
-  bonusAura?: number;
-  bonusMoney?: number;
-  skinImageUrl?: string;
-  skinShopType?: 'none' | 'static' | 'rotating';
-  badgeId?: string;
-  durationMinutes?: number;
-}
-
-const defaultItemForm: ItemFormData = {
-  name: '',
-  description: '',
-  type: 'COSMETIC',
-  price: 0,
-  imageUrl: '',
-  effectType: 'USERNAME_COLOR',
-  effectValue: '',
-  bonusAura: 0,
-  bonusMoney: 0,
-  skinImageUrl: '',
-  skinShopType: 'none',
-  badgeId: '',
-  durationMinutes: 60,
-};
-
-const SHOP_ITEMS_FILE_FORMAT = 'auratracker-shop-items';
-const SHOP_ITEMS_FILE_VERSION = 1;
-
-const toDateTimeLocalValue = (value: string | Date): string => {
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
-
-const toSafeNumber = (value: unknown, fallback = 0): number => {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-
 export default function Admin() {
   const { user } = useAuth();
   const location = useLocation();
   const { socket } = useSocketBase();
   const { refreshFeatures } = useFeatures();
+  const { confirm, alert } = useAppDialog();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -1449,7 +1151,13 @@ export default function Admin() {
   };
 
   const handleDeleteAdForever = async (adId: string) => {
-    const confirmed = window.confirm('Supprimer cette publicite definitivement ? Cette action est irreversible.');
+    const confirmed = await confirm({
+      title: 'Supprimer cette publicite ?',
+      description: 'Cette action est irreversible.',
+      confirmLabel: 'Supprimer',
+      cancelLabel: 'Annuler',
+      variant: 'destructive',
+    });
     if (!confirmed) return;
 
     setReviewingAdId(adId);
@@ -3544,7 +3252,14 @@ export default function Admin() {
   };
 
   const purgeAllBusinesses = async () => {
-    if (!window.confirm('Purger TOUTES les entreprises ? Les propriétaires seront remboursés. Action irréversible.')) return;
+    const confirmed = await confirm({
+      title: 'Purger toutes les entreprises ?',
+      description: 'Les proprietaires seront rembourses. Action irreversible.',
+      confirmLabel: 'Purger',
+      cancelLabel: 'Annuler',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     setPurgingBusinesses(true);
     try {
       const res = await adminApi.purgeAllBusinesses();
@@ -3557,7 +3272,14 @@ export default function Admin() {
   };
 
   const resetBusinessUnlockLevels = async () => {
-    if (!window.confirm('Réinitialiser le niveau débloqué de TOUS les joueurs à 0 ?')) return;
+    const confirmed = await confirm({
+      title: 'Reinitialiser les niveaux debloques ?',
+      description: 'Le niveau de tous les joueurs sera remis a 0.',
+      confirmLabel: 'Reinitialiser',
+      cancelLabel: 'Annuler',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     setResettingUnlockLevels(true);
     try {
       await adminApi.resetBusinessUnlockLevels();
@@ -4941,164 +4663,16 @@ export default function Admin() {
           approveSanction={approveSanction}
           rejectSanction={rejectSanction}
         />
-
-        {/* ── ADS TAB ──────────────────────────────────────────────────────────── */}
-        <TabsContent value="ads" className={SPACING.SECTION_SPACING}>
-          <div className="space-y-8">
-            {/* Pending ads */}
-            {pendingAds.length > 0 && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-semibold">À valider</h2>
-                  <span className={TYPOGRAPHY.XS}>{pendingAds.length} en attente</span>
-                </div>
-                <div className="space-y-3">
-                  {pendingAdsLoading ? (
-                    <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement…</CardContent></Card>
-                  ) : pendingAds.map((ad) => (
-                    <Card key={ad.id} className="overflow-hidden">
-                      <CardContent className="space-y-4 px-5 py-4">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="min-w-0 flex-1 space-y-2">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-base font-semibold">{ad.title}</p>
-                              <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs text-violet-300">{ad.adType}</span>
-                              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">En attente</span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{ad.tagline}</p>
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">{ad.business.name} · par {ad.business.owner.username}</p>
-                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                              <span>CTA: {ad.ctaText}</span>
-                              <span>·</span>
-                              <span className="break-all">{ad.ctaLink}</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button size="sm" onClick={() => void handleReviewAd(ad.id, 'approve')} disabled={reviewingAdId === ad.id}>
-                              Approuver
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => void handleReviewAd(ad.id, 'reject')} disabled={reviewingAdId === ad.id}>
-                              Rejeter
-                            </Button>
-                            <Button size="sm" variant="destructive" onClick={() => void handleDeleteAdForever(ad.id)} disabled={reviewingAdId === ad.id}>
-                              Supprimer
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="grid gap-3 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
-                          <div className="overflow-hidden rounded-xl border border-border/40 bg-background/50">
-                            {ad.imageUrl ? (
-                              <img src={resolveImageUrl(ad.imageUrl)} alt={ad.title} className="h-40 w-full object-cover" />
-                            ) : (
-                              <div className="flex h-40 items-center justify-center bg-muted/30 text-xs text-muted-foreground">Pas d'image</div>
-                            )}
-                          </div>
-                          <div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-3">
-                            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Aperçu joueur</p>
-                            <div className="space-y-1">
-                              <p className="text-sm font-semibold">{ad.title}</p>
-                              <p className="text-sm text-muted-foreground">{ad.tagline}</p>
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <span>{ad.business.owner.username}</span>
-                              <span>·</span>
-                              <span>{ad.business.verified ? 'Entreprise vérifiée' : 'Entreprise non vérifiée'}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* All ads gallery */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold">Toutes les publicités</h2>
-                <span className={TYPOGRAPHY.XS}>{allAds.length} au total</span>
-              </div>
-              {allAdsLoading ? (
-                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Chargement…</CardContent></Card>
-              ) : allAds.length === 0 ? (
-                <Card><CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">Aucune publicité créée par les utilisateurs.</CardContent></Card>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {allAds.map((ad) => (
-                    <Card key={`all-${ad.id}`} className="overflow-hidden flex flex-col">
-                      <div className="relative">
-                        {ad.imageUrl ? (
-                          <img src={resolveImageUrl(ad.imageUrl)} alt={ad.title} className="h-44 w-full object-cover" />
-                        ) : (
-                          <div className="flex h-44 items-center justify-center bg-muted/30 text-xs text-muted-foreground">Pas d'image</div>
-                        )}
-                        {/* Status badges overlay */}
-                        <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                          <span className={ad.status === 'APPROVED' ? 'rounded-full bg-emerald-600/90 px-2 py-0.5 text-[11px] text-white font-medium' : ad.status === 'PENDING' ? 'rounded-full bg-amber-600/90 px-2 py-0.5 text-[11px] text-white font-medium' : 'rounded-full bg-red-600/90 px-2 py-0.5 text-[11px] text-white font-medium'}>
-                            {ad.status === 'APPROVED' ? 'Approuvée' : ad.status === 'PENDING' ? 'En attente' : 'Rejetée'}
-                          </span>
-                          {!ad.isActive && (
-                            <span className="rounded-full bg-background/80 border border-border/50 px-2 py-0.5 text-[11px] text-muted-foreground font-medium">Masquée</span>
-                          )}
-                        </div>
-                      </div>
-                      <CardContent className="flex flex-col gap-3 px-4 py-3 flex-1">
-                        <div className="space-y-1 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-sm">{ad.title}</p>
-                            <span className="rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[11px] text-violet-300">{ad.adType}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{ad.tagline}</p>
-                          <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground/60">{ad.business.name} · {ad.business.owner.username}</p>
-                          <div className="flex gap-3 text-[11px] text-muted-foreground pt-0.5">
-                            <span>{ad.impressions.toLocaleString('fr-FR')} impressions</span>
-                            <span>·</span>
-                            <span>{ad.clicks.toLocaleString('fr-FR')} clics</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/30">
-                          {ad.status === 'PENDING' && (
-                            <>
-                              <Button size="sm" className="h-7 text-xs" onClick={() => void handleReviewAd(ad.id, 'approve')} disabled={reviewingAdId === ad.id}>
-                                Approuver
-                              </Button>
-                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void handleReviewAd(ad.id, 'reject')} disabled={reviewingAdId === ad.id}>
-                                Rejeter
-                              </Button>
-                            </>
-                          )}
-                          {ad.status === 'APPROVED' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                              onClick={() => void handleToggleAdVisibility(ad.id, ad.isActive)}
-                              disabled={reviewingAdId === ad.id}
-                            >
-                              {reviewingAdId === ad.id ? <Loader2 className="w-3 h-3 animate-spin" /> : ad.isActive ? <Eye className="w-3 h-3" /> : <Eye className="w-3 h-3 opacity-40" />}
-                              {ad.isActive ? 'Masquer' : 'Afficher'}
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="h-7 text-xs ml-auto"
-                            onClick={() => void handleDeleteAdForever(ad.id)}
-                            disabled={reviewingAdId === ad.id}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            Supprimer
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </TabsContent>
+        <AdsTab
+          pendingAds={pendingAds}
+          pendingAdsLoading={pendingAdsLoading}
+          allAds={allAds}
+          allAdsLoading={allAdsLoading}
+          handleReviewAd={handleReviewAd}
+          handleDeleteAdForever={handleDeleteAdForever}
+          reviewingAdId={reviewingAdId}
+          handleToggleAdVisibility={handleToggleAdVisibility}
+        />
 
         <UsersTab
           userSearchQuery={userSearchQuery}
@@ -5162,253 +4736,37 @@ export default function Admin() {
         />
 
         <BraquageLegalTab users={users} />
-
-        <TabsContent value="content">
-          <div className="flex gap-6 items-start">
-
-            {/* ── Sidebar ── */}
-            <div className="w-72 shrink-0 space-y-4 sticky top-4">
-
-              {/* Categories */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardDescription>Catégories</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {loadingCategories ? (
-                    <div className="flex justify-center py-4">
-                      <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
-                    </div>
-                  ) : (
-                    <>
-                      <div className="space-y-1">
-                        {shopCategories.map((cat) => (
-                          <div key={cat.id} className="flex items-center justify-between rounded-md border border-border/30 px-2 py-1.5 text-sm">
-                            <div className="min-w-0">
-                              <span className="font-medium truncate block">{cat.label}</span>
-                              <span className="font-mono text-xs text-muted-foreground">{cat.id}</span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => removeShopCategory(cat.id)}
-                              disabled={savingCategories}
-                              className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-destructive"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="space-y-2 pt-1 border-t border-border/30">
-                        <Input
-                          value={newCategoryId}
-                          onChange={(e) => setNewCategoryId(e.target.value)}
-                          placeholder="Identifiant"
-                          className="bg-transparent h-8 text-xs"
-                        />
-                        <div className="flex gap-2">
-                          <Input
-                            value={newCategoryLabel}
-                            onChange={(e) => setNewCategoryLabel(e.target.value)}
-                            placeholder="Libellé"
-                            className="bg-transparent h-8 text-xs flex-1"
-                            onKeyDown={(e) => e.key === 'Enter' && addShopCategory()}
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={addShopCategory}
-                            disabled={savingCategories || !newCategoryId.trim() || !newCategoryLabel.trim()}
-                            className="h-8 w-8 p-0 shrink-0"
-                          >
-                            {savingCategories ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                          </Button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* DJ Skin rotation control */}
-              {(() => {
-                const djRotatingItems = items.filter(item => {
-                  try {
-                    const effect = JSON.parse(item.effect || '{}');
-                    return effect.type === 'DOODLE_JUMP_SKIN' && effect.shopType === 'rotating';
-                  } catch { return false; }
-                });
-                return (
-                  <Card className="border-violet-500/20 bg-gradient-to-b from-violet-950/20 to-transparent">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center gap-2">
-                        <Gamepad2 className="h-3.5 w-3.5 text-violet-400" />
-                        <CardDescription className="text-violet-300">Apparence forcée du jour</CardDescription>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {djForcedSkinLoading ? (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Chargement...
-                        </div>
-                      ) : djRotatingItems.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">Aucun skin dans le pool. Créez des skins avec le placement <em>🔥 Pool de rotation</em>.</p>
-                      ) : (
-                        <>
-                          <Select value={djForcedSkinSelected} onValueChange={setDjForcedSkinSelected}>
-                            <SelectTrigger className="bg-transparent border-violet-500/30 text-xs h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none__">🎲 Rotation aléatoire</SelectItem>
-                              {djRotatingItems.map(item => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  🔥 {item.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {djForcedSkinId && djForcedSkinId !== '__none__' && (
-                            <p className="text-xs text-violet-400">
-                              Forcé : {djRotatingItems.find(i => i.id === djForcedSkinId)?.name ?? djForcedSkinId}
-                            </p>
-                          )}
-                          <Button
-                            size="sm"
-                            onClick={saveDjForcedSkin}
-                            disabled={djForcedSkinSaving}
-                            className="w-full bg-gradient-to-r from-violet-500 to-indigo-600 hover:from-violet-400 hover:to-indigo-500 text-white border-0 h-8 text-xs"
-                          >
-                            {djForcedSkinSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Save className="h-3 w-3 mr-1.5" />}
-                            Appliquer
-                          </Button>
-                        </>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-            </div>
-
-            {/* ── Main: Items list ── */}
-            <Card className="flex-1 min-w-0">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardDescription>Objets de la boutique</CardDescription>
-                  <div className="flex items-center gap-2">
-                    <input
-                      ref={itemImportInputRef}
-                      type="file"
-                      accept="application/json,.json"
-                      className="hidden"
-                      onChange={handleImportItemsFile}
-                    />
-                    <Button size="sm" variant="outline" onClick={handleExportItems} className="h-8 px-2">
-                      <Download className="mr-1.5 h-4 w-4" />
-                      Export
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={openImportItemsPicker} className="h-8 px-2" disabled={importingItems}>
-                      {importingItems ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Upload className="mr-1.5 h-4 w-4" />}
-                      Import
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={openCreateItemDialog} className="h-8 w-8 p-0">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-              <p className="mb-4 text-xs text-muted-foreground">
-                Import/export au format JSON versionné. Les images restent référencées par URL et les effets sont conservés en structure JSON.
-              </p>
-              {loadingItems ? (
-                <div className="flex justify-center py-12">
-                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-                </div>
-              ) : items.length === 0 ? (
-                <p className={cn(TYPOGRAPHY.MUTED, "text-center py-12")}>Aucun objet créé</p>
-              ) : (() => {
-                const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
-                  acc[item.type] = acc[item.type] || [];
-                  acc[item.type].push(item);
-                  return acc;
-                }, {});
-                const allTypes = [...shopCategories.map(c => c.id), ...Object.keys(grouped).filter(t => !shopCategories.find(c => c.id === t))];
-                const getCategoryLabel = (typeId: string) => shopCategories.find(c => c.id === typeId)?.label || ITEM_TYPE_LABELS[typeId] || humanizeUiLabel(typeId);
-                return (
-                  <div className="space-y-6">
-                    {allTypes.filter(t => grouped[t]?.length).map(type => (
-                      <div key={type}>
-                        <p className="mb-2 px-1 text-xs font-semibold text-muted-foreground">
-                          {getCategoryLabel(type)}
-                        </p>
-                        <div className="divide-y divide-border/30">
-                          {grouped[type].map((item) => {
-                            const { type: effectType } = parseEffect(item.effect);
-                            const effectLabel = EFFECT_TYPES.find(e => e.value === effectType)?.label || humanizeUiLabel(effectType);
-                            return (
-                              <div key={item.id} className="py-3 flex items-center justify-between">
-                                <div className="flex items-center gap-4 min-w-0 flex-1">
-                                  {item.imageUrl ? (
-                                    <img src={resolveImageUrl(item.imageUrl)} alt={item.name} className="w-10 h-10 object-cover rounded shrink-0" />
-                                  ) : (
-                                    <div className="w-10 h-10 bg-muted/30 flex items-center justify-center rounded shrink-0">
-                                      <Package className="w-5 h-5 text-muted-foreground" />
-                                    </div>
-                                  )}
-                                  <div className="min-w-0 flex-1">
-                                    <span className="font-medium truncate block">{item.name}</span>
-                                    <p className="text-xs text-muted-foreground truncate">{item.description}</p>
-                                    <p className="text-xs text-muted-foreground/60">Effet: {effectLabel}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-4 shrink-0">
-                                  <span className="text-sm text-muted-foreground tabular-nums">${item.price}</span>
-                                  <div className="flex items-center gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => openEditItemDialog(item)} className="h-8 border-border/50">
-                                      <Edit2 className="h-4 w-4" />
-                                    </Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button size="sm" variant="outline" className="h-8 border-destructive/50 text-destructive hover:bg-destructive/10" disabled={deletingItem === item.id}>
-                                          {deletingItem === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle className="flex items-center gap-2">
-                                            <AlertTriangle className="h-5 w-5 text-destructive" />
-                                            Supprimer {item.name} ?
-                                          </AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            L'objet sera supprimé de la boutique. Les utilisateurs qui le possèdent le garderont.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => deleteItem(item.id)} className="bg-destructive hover:bg-destructive/90">
-                                            Supprimer
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </CardContent>
-          </Card>
-          </div>{/* end flex sidebar layout */}
-        </TabsContent>
+        <ContentTab
+          loadingCategories={loadingCategories}
+          shopCategories={shopCategories}
+          removeShopCategory={removeShopCategory}
+          savingCategories={savingCategories}
+          newCategoryId={newCategoryId}
+          setNewCategoryId={setNewCategoryId}
+          newCategoryLabel={newCategoryLabel}
+          setNewCategoryLabel={setNewCategoryLabel}
+          addShopCategory={addShopCategory}
+          items={items}
+          djForcedSkinLoading={djForcedSkinLoading}
+          djForcedSkinSelected={djForcedSkinSelected}
+          setDjForcedSkinSelected={setDjForcedSkinSelected}
+          djForcedSkinId={djForcedSkinId}
+          saveDjForcedSkin={saveDjForcedSkin}
+          djForcedSkinSaving={djForcedSkinSaving}
+          itemImportInputRef={itemImportInputRef}
+          handleImportItemsFile={handleImportItemsFile}
+          handleExportItems={handleExportItems}
+          openImportItemsPicker={openImportItemsPicker}
+          importingItems={importingItems}
+          openCreateItemDialog={openCreateItemDialog}
+          loadingItems={loadingItems}
+          parseEffect={parseEffect}
+          EFFECT_TYPES={EFFECT_TYPES}
+          ITEM_TYPE_LABELS={ITEM_TYPE_LABELS}
+          openEditItemDialog={openEditItemDialog}
+          deletingItem={deletingItem}
+          deleteItem={deleteItem}
+        />
 
         <TaxesTabComponent
           taxLastRunDate={taxLastRunDate}
@@ -5423,987 +4781,150 @@ export default function Admin() {
           runningTaxNow={runningTaxNow}
         />
 
-        {/* ── Fiscal Inspector Tab ── */}
-        <TabsContent value="fiscal" className={SPACING.SECTION_SPACING}>
-          <div className="space-y-6">
-            {/* Sanction modal for fiscal inspector */}
-            <SanctionModal
-              open={showFiscalSanctionModal}
-              onClose={() => setShowFiscalSanctionModal(false)}
-              issuerRole="FISCAL_INSPECTOR"
-              players={fiscalUsers.map((u) => ({ id: u.id, username: u.username }))}
-              onSubmit={async (data) => {
-                await sanctionsApi.submitFiscalSanction({
-                  type: data.type,
-                  targetUserId: data.targetUserId,
-                  beneficiaryUserId: data.beneficiaryUserId,
-                  amount: data.amount,
-                  message: data.message,
-                });
-                showMessage('success', 'Demande de sanction transmise à l\'administration');
-              }}
-            />
+        <FiscalTab
+          showFiscalSanctionModal={showFiscalSanctionModal}
+          setShowFiscalSanctionModal={setShowFiscalSanctionModal}
+          fiscalUsers={fiscalUsers}
+          showMessage={showMessage}
+          user={user}
+          fiscalFundRatePercent={fiscalFundRatePercent}
+          fiscalFundBalance={fiscalFundBalance}
+          fiscalPaymentSource={fiscalPaymentSource}
+          savingFiscalPaymentSource={savingFiscalPaymentSource}
+          saveFiscalPaymentSource={saveFiscalPaymentSource}
+          loadingFiscalUsers={loadingFiscalUsers}
+        />
+        <GameLimitsTab
+          dailyGameAuraLimit={dailyGameAuraLimit}
+          setDailyGameAuraLimit={setDailyGameAuraLimit}
+          dailyGameMoneyLimit={dailyGameMoneyLimit}
+          setDailyGameMoneyLimit={setDailyGameMoneyLimit}
+          saveDailyGameLimits={saveDailyGameLimits}
+          savingDailyGameLimits={savingDailyGameLimits}
+        />
 
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">Inspection fiscale — Patrimoine des joueurs</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Vue lecture seule. Utilisez le bouton ci-dessous pour soumettre une demande de récupération fiscale.</p>
-              </div>
-              <Button size="sm" onClick={() => setShowFiscalSanctionModal(true)} className="gap-1.5">
-                <Gavel className="w-3.5 h-3.5" />
-                Demande de sanction
-              </Button>
-            </div>
-
-            {user?.isFiscalInspector && (
-              <div className="rounded-lg border border-border/60 p-4 bg-muted/20">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">Fonds du fisc</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{fiscalFundRatePercent}% de chaque sanction fiscale approuvée sont ajoutés à cette cagnotte.</p>
-                    <p className="text-lg font-semibold mt-2 tabular-nums">{fiscalFundBalance.toLocaleString('fr-FR')}€</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">Source de paiement</p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant={fiscalPaymentSource === 'ACCOUNT' ? 'default' : 'outline'}
-                        disabled={savingFiscalPaymentSource}
-                        onClick={() => saveFiscalPaymentSource('ACCOUNT')}
-                      >
-                        Compte principal
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={fiscalPaymentSource === 'FONDS_DU_FISC' ? 'default' : 'outline'}
-                        disabled={savingFiscalPaymentSource}
-                        onClick={() => saveFiscalPaymentSource('FONDS_DU_FISC')}
-                      >
-                        Fonds du fisc
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {loadingFiscalUsers ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : fiscalUsers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun joueur trouvé.</p>
-            ) : (
-              <div className="rounded-lg border border-border/60 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/40 border-b border-border/60">
-                    <tr>
-                      <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Joueur</th>
-                      <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Compte (€)</th>
-                      <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Compte partagé (€)</th>
-                      <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Aura</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {fiscalUsers.map((u) => (
-                      <tr key={u.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="px-3 py-2 font-medium">{u.username}{u.firstName ? ` (${u.firstName})` : ''}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{u.money.toLocaleString('fr-FR')}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          {u.sharedMoney
-                            ? <span title={`Compte partagé avec ${u.sharedMoney.partner.username}`}>{u.sharedMoney.coupleBalance.toLocaleString('fr-FR')}</span>
-                            : <span className="text-muted-foreground/50">—</span>}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular-nums text-amber-500">{u.aura.toLocaleString('fr-FR')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="game-limits" className={SPACING.SECTION_SPACING}>
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Récompenses de jeux</p>
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Plafond d'aura journalier</div>
-                  <div className="text-xs text-muted-foreground">Total maximum d'aura gagnable via les jeux avant le reset de minuit. Valeur par défaut: 500.</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Input
-                    id="daily-game-aura-limit"
-                    type="number"
-                    min={0}
-                    max={100000}
-                    step={1}
-                    value={dailyGameAuraLimit}
-                    onChange={(event) => setDailyGameAuraLimit(event.target.value)}
-                    className="w-28 h-8 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Plafond d'argent journalier (par jeu)</div>
-                  <div className="text-xs text-muted-foreground">Maximum d'argent gagnable par jeu avant le reset de minuit. Valeur par défaut: 1000.</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Input
-                    id="daily-game-money-limit"
-                    type="number"
-                    min={0}
-                    max={100000}
-                    step={1}
-                    value={dailyGameMoneyLimit}
-                    onChange={(event) => setDailyGameMoneyLimit(event.target.value)}
-                    className="w-28 h-8 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end px-4 py-3.5">
-                <Button size="sm" onClick={saveDailyGameLimits} disabled={savingDailyGameLimits}>
-                  {savingDailyGameLimits ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
-
-          {/* ── Présence ───────────────────────────────────────── */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Système de présence</p>
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Utilisateurs en ligne fictifs</div>
-                  <div className="text-xs text-muted-foreground">Complète la liste des connectés avec des utilisateurs hors-ligne pour maintenir un minimum de 10 % affichés.</div>
-                </div>
-                <Switch checked={fakeOnlineEnabled} disabled={savingFakeOnline} onCheckedChange={saveFakeOnline} />
-              </div>
-            </div>
-          </div>
-
-          {/* ── Parrainage ─────────────────────────────────────── */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Parrainage</p>
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Matchmaking duel</div>
-                  <div className="text-xs text-muted-foreground">Affiche le bouton côté joueur et autorise l&apos;entrée dans la file de matchmaking duel.</div>
-                </div>
-                <Switch checked={duelMatchmakingEnabled} disabled={savingDuelMatchmakingEnabled} onCheckedChange={saveDuelMatchmakingEnabled} />
-              </div>
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Système de parrainage</div>
-                  <div className="text-xs text-muted-foreground">Coupe l&apos;usage des codes de parrainage sur l&apos;inscription et masque le module côté joueur.</div>
-                </div>
-                <Switch checked={referralEnabled} disabled={savingReferralEnabled} onCheckedChange={saveReferralEnabled} />
-              </div>
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Carte de parrainage sur le dashboard</div>
-                  <div className="text-xs text-muted-foreground">Affiche la carte de suivi du parrainage sur la page dashboard des joueurs.</div>
-                </div>
-                <Switch
-                  checked={referralDashboardCardEnabled}
-                  disabled={savingReferralDashboardCardEnabled}
-                  onCheckedChange={saveReferralDashboardCardEnabled}
-                />
-              </div>
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Récompense par inscription</div>
-                  <div className="text-xs text-muted-foreground">Montant versé au parrain et au filleul quand un compte parrainé est approuvé.</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Input
-                    id="referral-reward-amount"
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={referralRewardAmount}
-                    disabled={!referralEnabled}
-                    onChange={(event) => setReferralRewardAmount(event.target.value)}
-                    className="w-24 h-8 text-sm"
-                  />
-                  <Button size="sm" onClick={saveReferralReward} disabled={savingReferralReward || !referralEnabled}>
-                    {savingReferralReward ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Aura distribuable par jour</div>
-                  <div className="text-xs text-muted-foreground">Quota global disponible pour chaque joueur à chaque reset de minuit. Valeur par défaut: 100.</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Input
-                    id="daily-aura-distribution-limit"
-                    type="number"
-                    min={0}
-                    max={10000}
-                    step={1}
-                    value={dailyAuraDistributionLimit}
-                    onChange={(event) => setDailyAuraDistributionLimit(event.target.value)}
-                    className="w-24 h-8 text-sm"
-                  />
-                  <Button size="sm" onClick={saveDailyAuraDistributionLimit} disabled={savingDailyAuraDistributionLimit}>
-                    {savingDailyAuraDistributionLimit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Salle de marche ───────────────────────── */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Salle de marche</p>
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Frais Aura Coin</div>
-                  <div className="text-xs text-muted-foreground">Taux appliqué sur les achats et ventes AuraCoin (0 = 0 %, 0.5 = 50 %).</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Input
-                    id="auracoin-buy-fee"
-                    type="number"
-                    min={0}
-                    max={0.5}
-                    step={0.0001}
-                    value={auraCoinBuyFeePercentage}
-                    onChange={(event) => setAuraCoinBuyFeePercentage(event.target.value)}
-                    className="w-28 h-8 text-sm"
-                  />
-                  <Button size="sm" onClick={saveAuraCoinBuyFee} disabled={savingAuraCoinBuyFee}>
-                    {savingAuraCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Frais Aura Stable</div>
-                  <div className="text-xs text-muted-foreground">Stable coin a faible volatilite. Meme logique de frais modifiable depuis l&apos;admin.</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Input
-                    id="stable-coin-buy-fee"
-                    type="number"
-                    min={0}
-                    max={0.5}
-                    step={0.0001}
-                    value={stableCoinBuyFeePercentage}
-                    onChange={(event) => setStableCoinBuyFeePercentage(event.target.value)}
-                    className="w-28 h-8 text-sm"
-                  />
-                  <Button size="sm" onClick={saveStableCoinBuyFee} disabled={savingStableCoinBuyFee}>
-                    {savingStableCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Frais Chaos Coin</div>
-                  <div className="text-xs text-muted-foreground">Coin tres instable avec frais separes pour equilibrer le risque et les spreads.</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Input
-                    id="chaos-coin-buy-fee"
-                    type="number"
-                    min={0}
-                    max={0.5}
-                    step={0.0001}
-                    value={chaosCoinBuyFeePercentage}
-                    onChange={(event) => setChaosCoinBuyFeePercentage(event.target.value)}
-                    className="w-28 h-8 text-sm"
-                  />
-                  <Button size="sm" onClick={saveChaosCoinBuyFee} disabled={savingChaosCoinBuyFee}>
-                    {savingChaosCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Clash Village</p>
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Temps de recharge d&apos;attaque</div>
-                  <div className="text-xs text-muted-foreground">Temps d&apos;attente appliqué après un raid réussi ou raté. Mettre `0` pour désactiver ce temps de recharge.</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Input
-                    id="clash-attack-cooldown"
-                    type="number"
-                    min={0}
-                    max={1440}
-                    step={1}
-                    value={clashAttackCooldownMinutes}
-                    onChange={(event) => setClashAttackCooldownMinutes(event.target.value)}
-                    className="w-24 h-8 text-sm"
-                  />
-                  <span className="text-xs text-muted-foreground">min</span>
-                  <Button size="sm" onClick={saveClashAttackCooldown} disabled={savingClashAttackCooldown}>
-                    {savingClashAttackCooldown ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Communication ─────────────────────────────────── */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Communication</p>
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-
-              <div className="px-4 py-3.5 space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-medium">Blocage du chat</div>
-                    <div className="text-xs text-muted-foreground">
-                      Coupe l&apos;envoi de messages pour les joueurs. Les admins gardent l&apos;accès pour moderer.
-                    </div>
-                  </div>
-                  <Switch checked={chatBlockEnabled} onCheckedChange={setChatBlockEnabled} disabled={savingChatBlockSettings} />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Message affiche aux joueurs
-                    </label>
-                    <Textarea
-                      value={chatBlockMessage}
-                      onChange={(event) => setChatBlockMessage(event.target.value)}
-                      placeholder="Ex: Le chat est ferme pendant les heures de cours."
-                      className="min-h-[88px]"
-                      maxLength={CHAT_BLOCK_MESSAGE_MAX_LENGTH}
-                    />
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>Visible dans le chat et au moment d&apos;une tentative d&apos;envoi.</span>
-                      <span>{chatBlockMessage.length}/{CHAT_BLOCK_MESSAGE_MAX_LENGTH}</span>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-border/40 bg-background/40 p-3 text-xs text-muted-foreground md:w-64">
-                    <p className="font-medium text-foreground">Etat actuel</p>
-                    <p className="mt-1">
-                      {chatBlockEnabled
-                        ? 'Blocage manuel active'
-                        : chatAutoBlockEnabled
-                          ? `Blocage auto configure de ${chatAutoBlockStart} a ${chatAutoBlockEnd}`
-                          : 'Chat ouvert'}
-                    </p>
-                    <p className="mt-1">Fuseau horaire: {CHAT_BLOCK_TIMEZONE}</p>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-border/40 bg-background/30 p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <div className="text-sm font-medium">Blocage automatique quotidien</div>
-                      <div className="text-xs text-muted-foreground">
-                        Active un blocage chaque jour sur un creneau fixe. Gere aussi les plages qui passent minuit.
-                      </div>
-                    </div>
-                    <Switch checked={chatAutoBlockEnabled} onCheckedChange={setChatAutoBlockEnabled} disabled={savingChatBlockSettings} />
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Debut
-                      </label>
-                      <Input
-                        type="time"
-                        step={60}
-                        value={chatAutoBlockStart}
-                        disabled={!chatAutoBlockEnabled || savingChatBlockSettings}
-                        onChange={(event) => setChatAutoBlockStart(event.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Fin
-                      </label>
-                      <Input
-                        type="time"
-                        step={60}
-                        value={chatAutoBlockEnd}
-                        disabled={!chatAutoBlockEnabled || savingChatBlockSettings}
-                        onChange={(event) => setChatAutoBlockEnd(event.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-muted-foreground">
-                    Exemple: `22:00` → `07:00` bloque le chat toute la nuit.
-                  </p>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button onClick={saveChatBlockSettings} disabled={savingChatBlockSettings}>
-                    {savingChatBlockSettings ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
-                    Sauvegarder le chat
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Annonce topbar</div>
-                  <div className="text-xs text-muted-foreground">
-                    {announcementMessage.trim()
-                      ? `"${announcementMessage.trim().slice(0, 48)}${announcementMessage.trim().length > 48 ? '…' : ''}"`
-                      : 'Aucune annonce active'}
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setAnnouncementOpen(true)} className="shrink-0">
-                  <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-                  Configurer
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Page de connexion</div>
-                  <div className="text-xs text-muted-foreground">
-                    {loginMessage.trim()
-                      ? `Message actif · CTA ${loginRegisterCtaEnabled ? 'activé' : 'désactivé'}`
-                      : `Pas de message · CTA ${loginRegisterCtaEnabled ? 'activé' : 'désactivé'}`}
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setLoginCommOpen(true)} className="shrink-0">
-                  <LogIn className="h-3.5 w-3.5 mr-1.5" />
-                  Configurer
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Page principale du site</div>
-                  <div className="text-xs text-muted-foreground">
-                    {DEFAULT_LANDING_PAGE_OPTIONS.find((option) => option.value === defaultLandingPage)?.label ?? 'Tableau de bord'}
-                    {' '}ouvre quand un utilisateur connecte arrive sur `auratracker.xyz`.
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Select value={defaultLandingPage} onValueChange={setDefaultLandingPage}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Choisir une page" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEFAULT_LANDING_PAGE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" onClick={saveDefaultLandingPage} disabled={savingDefaultLandingPage}>
-                    {savingDefaultLandingPage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Logo sidebar → accès à Moi réservé aux admins</div>
-                  <div className="text-xs text-muted-foreground">
-                    Quand activé, seul un admin peut ouvrir la section Moi en cliquant sur le logo en haut à gauche.
-                  </div>
-                </div>
-                <Switch
-                  checked={youLogoAdminOnly}
-                  onCheckedChange={saveYouLogoAdminOnly}
-                  disabled={savingYouLogoAdminOnly}
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Dashboard et changelog</div>
-                  <div className="text-xs text-muted-foreground">
-                    Une seule interface pour composer les mises à jour visibles sur le dashboard et la page changelog.
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setUpdatesOpen(true)} className="shrink-0">
-                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                  Ouvrir
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Maintenance</div>
-                  <div className={cn('text-xs', maintenanceEnabled ? 'text-amber-500' : 'text-muted-foreground')}>
-                    {maintenanceEnabled
-                      ? 'Maintenance globale active'
-                      : maintenanceAutoWeekendEnabled
-                        ? 'Activation automatique le week-end'
-                        : 'Site accessible normalement'}
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setMaintenanceOpen(true)} className="shrink-0">
-                  <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
-                  Configurer
-                </Button>
-              </div>
-
-              {/* Business admin controls */}
-              <div className="mx-4 border-t border-border/30 pt-3 pb-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Entreprises</p>
-              </div>
-
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Création d'entreprise</div>
-                  <div className="text-xs text-muted-foreground">
-                    Quand désactivé, les joueurs ne peuvent plus créer de nouvelles entreprises.
-                  </div>
-                </div>
-                <Switch
-                  checked={businessCreationEnabled}
-                  onCheckedChange={saveBusinessCreationEnabled}
-                  disabled={savingBusinessCreation}
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Purger toutes les entreprises</div>
-                  <div className="text-xs text-muted-foreground">
-                    Supprime toutes les entreprises et rembourse chaque propriétaire.
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => void purgeAllBusinesses()} disabled={purgingBusinesses} className="shrink-0 border-red-400/30 text-red-300 hover:bg-red-500/10">
-                  {purgingBusinesses ? 'Purge…' : 'Purger'}
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Réinitialiser les niveaux débloqués</div>
-                  <div className="text-xs text-muted-foreground">
-                    Remet le niveau débloqué de tous les joueurs à 0 (niveau 1 accessible à nouveau).
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => void resetBusinessUnlockLevels()} disabled={resettingUnlockLevels} className="shrink-0">
-                  {resettingUnlockLevels ? 'Reset…' : 'Réinitialiser'}
-                </Button>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Annonce modal */}
-          <Dialog open={announcementOpen} onOpenChange={setAnnouncementOpen}>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Annonce topbar</DialogTitle>
-                <DialogDescription>Ce message s&apos;affiche pour tous les utilisateurs dans la barre du haut.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">Message</label>
-                  <span className={cn('text-xs', announcementMessage.length >= ANNOUNCEMENT_MAX_LENGTH ? 'text-amber-400' : 'text-muted-foreground')}>
-                    {announcementMessage.length}/{ANNOUNCEMENT_MAX_LENGTH}
-                  </span>
-                </div>
-                <Textarea
-                  value={announcementMessage}
-                  onChange={(e) => setAnnouncementMessage(e.target.value)}
-                  placeholder="Ex: Maintenance prévue ce soir à 23h."
-                  className="min-h-[90px]"
-                  maxLength={ANNOUNCEMENT_MAX_LENGTH}
-                />
-                <p className="text-xs text-muted-foreground">Laisser vide pour masquer l&apos;annonce.</p>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAnnouncementOpen(false)}>Annuler</Button>
-                <Button onClick={async () => { await saveAnnouncement(); setAnnouncementOpen(false); }} disabled={savingAnnouncement}>
-                  {savingAnnouncement ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                  Sauvegarder
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Login modal */}
-          <Dialog open={loginCommOpen} onOpenChange={setLoginCommOpen}>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Page de connexion</DialogTitle>
-                <DialogDescription>Personnalisez le message et le bouton d&apos;inscription visibles sur la page de connexion.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-                  <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                    <div>
-                      <div className="text-sm font-medium">Bouton &ldquo;Créer un compte&rdquo;</div>
-                      <div className="text-xs text-muted-foreground">Affiche ou masque le gros bouton animé sur la page de connexion.</div>
-                    </div>
-                    <Switch checked={loginRegisterCtaEnabled} onCheckedChange={saveLoginRegisterCta} disabled={savingLoginRegisterCta} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Message</label>
-                  <Textarea
-                    value={loginMessage}
-                    onChange={(e) => setLoginMessage(e.target.value)}
-                    placeholder="Ex: Bienvenue ! Le serveur est ouvert."
-                    className="min-h-[90px]"
-                  />
-                  <p className="text-xs text-muted-foreground">Laisser vide pour masquer le message.</p>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setLoginCommOpen(false)}>Annuler</Button>
-                <Button onClick={async () => { await saveLoginMessage(); setLoginCommOpen(false); }} disabled={savingLoginMessage}>
-                  {savingLoginMessage ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                  Sauvegarder
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <DashboardUpdatesManagerDialog open={updatesOpen} onOpenChange={setUpdatesOpen} />
-
-          {/* Maintenance modal */}
-          <Dialog open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Maintenance</DialogTitle>
-                <DialogDescription>Quand activée, toutes les pages affichent la maintenance sauf /admin, /login et /register.</DialogDescription>
-              </DialogHeader>
-              {loadingSettings ? (
-                <div className="flex justify-center py-8"><div className="w-1 h-8 bg-foreground/20 animate-pulse" /></div>
-              ) : (
-                <div className="space-y-4 py-2">
-                  <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-                    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                      <div>
-                        <div className="text-sm font-medium">Maintenance globale</div>
-                        <div className="text-xs text-muted-foreground">Active la page de maintenance sur tout le site.</div>
-                      </div>
-                      <Switch checked={maintenanceEnabled} onCheckedChange={setMaintenanceEnabled} />
-                    </div>
-                    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                      <div>
-                        <div className="text-sm font-medium">Maintenance auto le week-end</div>
-                        <div className="text-xs text-muted-foreground">Active automatiquement la maintenance les samedis et dimanches.</div>
-                      </div>
-                      <Switch checked={maintenanceAutoWeekendEnabled} onCheckedChange={setMaintenanceAutoWeekendEnabled} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Raison</label>
-                    <Textarea
-                      value={maintenanceMessage}
-                      onChange={(e) => setMaintenanceMessage(e.target.value)}
-                      placeholder="Ex: Mise à jour technique en cours."
-                      className="min-h-[100px]"
-                    />
-                    <p className="text-xs text-muted-foreground">Ce texte s&apos;affichera sur la page de maintenance.</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Fin de maintenance (optionnel)</label>
-                    <Input
-                      type="datetime-local"
-                      value={maintenanceEndDate}
-                      onChange={(e) => setMaintenanceEndDate(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">Si définie, un compte à rebours s&apos;affichera sur la page de maintenance.</p>
-                  </div>
-                </div>
-              )}
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setMaintenanceOpen(false)}>Annuler</Button>
-                <Button onClick={async () => { await saveMaintenance(); setMaintenanceOpen(false); }} disabled={savingMaintenance}>
-                  {savingMaintenance ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                  Sauvegarder
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* ── Fonctionnalités ────────────────────────────────── */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Fonctionnalités</p>
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium">Pages du site</div>
-                  <div className="text-xs text-muted-foreground">
-                    {blockedPages.length > 0
-                      ? `${blockedPages.length} page${blockedPages.length > 1 ? 's' : ''} désactivée${blockedPages.length > 1 ? 's' : ''}`
-                      : 'Toutes les pages sont actives'}
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => setFonctionnalitesOpen(true)} className="shrink-0">
-                  <Gamepad2 className="h-3.5 w-3.5 mr-1.5" />
-                  Gérer
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Actions sensibles ──────────────────────────────── */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Actions sensibles</p>
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div>
-                  <div className="text-sm font-medium text-destructive">Vider le chat</div>
-                  <div className="text-xs text-muted-foreground">Masque visuellement tous les messages du chat global, sans supprimer l&apos;historique stocké.</div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={() => void exportChat()} disabled={exportingChat}>
-                    {exportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
-                    Exporter
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="border-destructive/50 text-destructive hover:bg-destructive/10" disabled={clearingChat}>
-                        {clearingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-destructive" />
-                          Vider le chat ?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Tous les messages du chat seront masqués visuellement pour les joueurs. L&apos;historique restera disponible dans l&apos;onglet Historique chat.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={clearChat} className="bg-destructive hover:bg-destructive/90">
-                          Vider le chat
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Déploiement ────────────────────────────────────── */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Déploiement</p>
-            <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-              <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">Déployer la dernière version</div>
-                  <div className="text-xs text-muted-foreground">Exécute <code className="font-mono bg-muted/40 px-1 rounded">/var/scripts/deploy.sh</code> sur le serveur pour mettre en ligne les derniers changements Git.</div>
-                  {deployOutput && (
-                    <button
-                      onClick={() => setDeployModalOpen(true)}
-                      className={`mt-1.5 text-xs font-medium underline-offset-2 hover:underline ${deployOutput.success ? 'text-green-500' : 'text-destructive'}`}
-                    >
-                      {deployOutput.success ? '✓ Succès — voir la sortie' : '✗ Échec — voir la sortie'}
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={deploying}
-                    onClick={async () => {
-                      if (!confirm('Lancer le déploiement ? Le serveur va pull les changements Git et redémarrer.')) return;
-                      setDeploying(true);
-                      setDeployOutput(null);
-                      try {
-                        const res = await adminApi.deploy();
-                        setDeployOutput({ success: true, stdout: res.data.stdout || '', stderr: res.data.stderr || '', message: res.data.message });
-                        setDeployModalOpen(true);
-                      } catch (err: unknown) {
-                        const d = (err as { response?: { data?: { message?: string; stdout?: string; stderr?: string } } })?.response?.data;
-                        setDeployOutput({ success: false, stdout: d?.stdout || '', stderr: d?.stderr || '', message: d?.message || String(err) });
-                        setDeployModalOpen(true);
-                      } finally {
-                        setDeploying(false);
-                      }
-                    }}
-                  >
-                    {deploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Terminal className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Deploy output modal */}
-          <Dialog open={deployModalOpen} onOpenChange={setDeployModalOpen}>
-            <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
-              <DialogHeader className="px-6 pt-5 pb-4 border-b border-border/40 shrink-0">
-                <DialogTitle className="flex items-center gap-2">
-                  <Terminal className="h-4 w-4" />
-                  Sortie du déploiement
-                </DialogTitle>
-                <DialogDescription>
-                  {deployOutput?.success ? 'Le script s\'est terminé avec succès.' : 'Le script a échoué.'}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex-1 overflow-y-auto p-4">
-                <pre className="text-[11px] font-mono bg-black/80 text-green-400 rounded-lg p-4 whitespace-pre-wrap break-all leading-relaxed min-h-[200px]">
-                  {deployOutput
-                    ? [deployOutput.stdout, deployOutput.stderr].filter(Boolean).join('\n') || deployOutput.message
-                    : ''}
-                </pre>
-              </div>
-              <div className="px-6 py-4 border-t border-border/40 shrink-0 flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => setDeployModalOpen(false)}>Fermer</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* ── Classements (superAdmin) ───────────────────────── */}
-          {user?.isSuperAdmin && (
-            <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Classements par période</p>
-              <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-                <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-                  <div>
-                    <div className="text-sm font-medium">Backfill historique des scores</div>
-                    <div className="text-xs text-muted-foreground">
-                      Importe les scores passés dans GameScoreHistory pour alimenter les classements journalier / hebdo / mensuel. À lancer une seule fois.
-                    </div>
-                    {backfillResult && (
-                      <p className="text-xs text-green-500 mt-1">✓ {backfillResult.inserted} importés, {backfillResult.skipped} ignorés.</p>
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={backfillLoading}
-                    className="shrink-0"
-                    onClick={async () => {
-                      if (!confirm('Lancer le backfill des scores ? Cette opération peut prendre quelques secondes.')) return;
-                      setBackfillLoading(true);
-                      setBackfillResult(null);
-                      try {
-                        const res = await adminApi.backfillScoreHistory();
-                        setBackfillResult({ inserted: res.data.inserted, skipped: res.data.skipped });
-                      } catch {
-                        alert('Erreur lors du backfill.');
-                      } finally {
-                        setBackfillLoading(false);
-                      }
-                    }}
-                  >
-                    {backfillLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trophy className="h-3.5 w-3.5" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── Fonctionnalités modal ──────────────────────────── */}
-          <Dialog open={fonctionnalitesOpen} onOpenChange={setFonctionnalitesOpen}>
-            <DialogContent className="max-w-xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
-              <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
-                <DialogTitle>Fonctionnalités</DialogTitle>
-                <DialogDescription>
-                  Activez ou désactivez chaque page. Une page désactivée disparaît de la navigation et redirige vers un message.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="flex-1 overflow-y-auto">
-                <div className="px-6 py-4 border-b border-border/40 space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Message d&apos;erreur
-                  </label>
-                  <Textarea
-                    value={blockedMessage}
-                    onChange={(e) => setBlockedMessage(e.target.value)}
-                    placeholder="Ex: Cette page est momentanément désactivée."
-                    className="min-h-[70px] text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">Laisser vide pour le message par défaut.</p>
-                </div>
-
-                {Object.entries(
-                  BLOCKABLE_PAGES.reduce<Record<string, typeof BLOCKABLE_PAGES>>((acc, page) => {
-                    acc[page.category] = acc[page.category] || [];
-                    acc[page.category].push(page);
-                    return acc;
-                  }, {} as Record<string, typeof BLOCKABLE_PAGES>)
-                ).map(([category, pages]) => (
-                  <div key={category}>
-                    <div className="px-6 pt-5 pb-1.5 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">{category}</span>
-                      <span className="text-[11px] text-muted-foreground/50">
-                        {pages.filter(p => !blockedPages.includes(p.key)).length}/{pages.length}
-                      </span>
-                    </div>
-                    <div className="mx-4 rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-                      {pages.map((page) => {
-                        const isBlocked = blockedPages.includes(page.key);
-                        const blockedReason = blockedPageMessages[page.key] || '';
-                        return (
-                          <div key={page.key} className="px-4 py-3 hover:bg-muted/30 transition-colors cursor-default space-y-2">
-                            <div className="flex items-center justify-between gap-4">
-                              <div className={cn('text-sm font-medium', isBlocked && 'text-muted-foreground/50 line-through')}>
-                                {page.label}
-                              </div>
-                              <Switch checked={!isBlocked} onCheckedChange={() => toggleBlockedPage(page.key)} />
-                            </div>
-                            {isBlocked && (
-                              <div className="space-y-1.5">
-                                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                                  Raison spécifique
-                                </label>
-                                <Textarea
-                                  value={blockedReason}
-                                  onChange={(e) => updateBlockedPageMessage(page.key, e.target.value)}
-                                  placeholder={`Ex: ${page.label} est bloquée temporairement pour maintenance ciblée.`}
-                                  className="min-h-[64px] text-xs"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-                <div className="h-4" />
-              </div>
-
-              <div className="px-6 py-4 border-t border-border/40 flex items-center justify-between shrink-0 bg-background">
-                <span className="text-sm text-muted-foreground">
-                  {blockedPages.length > 0
-                    ? `${blockedPages.length} désactivée${blockedPages.length > 1 ? 's' : ''}`
-                    : 'Tout activé'}
-                </span>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setFonctionnalitesOpen(false)}>Annuler</Button>
-                  <Button onClick={async () => { const ok = await saveBlockedPages(); if (ok) setFonctionnalitesOpen(false); }} disabled={savingBlocks}>
-                    {savingBlocks ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                    Sauvegarder
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-        </TabsContent>
+        <SettingsTab
+          fakeOnlineEnabled={fakeOnlineEnabled}
+          savingFakeOnline={savingFakeOnline}
+          saveFakeOnline={saveFakeOnline}
+          duelMatchmakingEnabled={duelMatchmakingEnabled}
+          savingDuelMatchmakingEnabled={savingDuelMatchmakingEnabled}
+          saveDuelMatchmakingEnabled={saveDuelMatchmakingEnabled}
+          referralEnabled={referralEnabled}
+          savingReferralEnabled={savingReferralEnabled}
+          saveReferralEnabled={saveReferralEnabled}
+          referralDashboardCardEnabled={referralDashboardCardEnabled}
+          savingReferralDashboardCardEnabled={savingReferralDashboardCardEnabled}
+          saveReferralDashboardCardEnabled={saveReferralDashboardCardEnabled}
+          referralRewardAmount={referralRewardAmount}
+          setReferralRewardAmount={setReferralRewardAmount}
+          saveReferralReward={saveReferralReward}
+          savingReferralReward={savingReferralReward}
+          dailyAuraDistributionLimit={dailyAuraDistributionLimit}
+          setDailyAuraDistributionLimit={setDailyAuraDistributionLimit}
+          saveDailyAuraDistributionLimit={saveDailyAuraDistributionLimit}
+          savingDailyAuraDistributionLimit={savingDailyAuraDistributionLimit}
+          auraCoinBuyFeePercentage={auraCoinBuyFeePercentage}
+          setAuraCoinBuyFeePercentage={setAuraCoinBuyFeePercentage}
+          saveAuraCoinBuyFee={saveAuraCoinBuyFee}
+          savingAuraCoinBuyFee={savingAuraCoinBuyFee}
+          stableCoinBuyFeePercentage={stableCoinBuyFeePercentage}
+          setStableCoinBuyFeePercentage={setStableCoinBuyFeePercentage}
+          saveStableCoinBuyFee={saveStableCoinBuyFee}
+          savingStableCoinBuyFee={savingStableCoinBuyFee}
+          chaosCoinBuyFeePercentage={chaosCoinBuyFeePercentage}
+          setChaosCoinBuyFeePercentage={setChaosCoinBuyFeePercentage}
+          saveChaosCoinBuyFee={saveChaosCoinBuyFee}
+          savingChaosCoinBuyFee={savingChaosCoinBuyFee}
+          clashAttackCooldownMinutes={clashAttackCooldownMinutes}
+          setClashAttackCooldownMinutes={setClashAttackCooldownMinutes}
+          saveClashAttackCooldown={saveClashAttackCooldown}
+          savingClashAttackCooldown={savingClashAttackCooldown}
+          chatBlockEnabled={chatBlockEnabled}
+          setChatBlockEnabled={setChatBlockEnabled}
+          savingChatBlockSettings={savingChatBlockSettings}
+          chatBlockMessage={chatBlockMessage}
+          setChatBlockMessage={setChatBlockMessage}
+          chatAutoBlockEnabled={chatAutoBlockEnabled}
+          setChatAutoBlockEnabled={setChatAutoBlockEnabled}
+          chatAutoBlockStart={chatAutoBlockStart}
+          setChatAutoBlockStart={setChatAutoBlockStart}
+          chatAutoBlockEnd={chatAutoBlockEnd}
+          setChatAutoBlockEnd={setChatAutoBlockEnd}
+          saveChatBlockSettings={saveChatBlockSettings}
+          announcementMessage={announcementMessage}
+          setAnnouncementMessage={setAnnouncementMessage}
+          setAnnouncementOpen={setAnnouncementOpen}
+          announcementOpen={announcementOpen}
+          saveAnnouncement={saveAnnouncement}
+          savingAnnouncement={savingAnnouncement}
+          loginMessage={loginMessage}
+          loginRegisterCtaEnabled={loginRegisterCtaEnabled}
+          setLoginCommOpen={setLoginCommOpen}
+          loginCommOpen={loginCommOpen}
+          saveLoginMessage={saveLoginMessage}
+          savingLoginMessage={savingLoginMessage}
+          setLoginMessage={setLoginMessage}
+          saveLoginRegisterCta={saveLoginRegisterCta}
+          savingLoginRegisterCta={savingLoginRegisterCta}
+          defaultLandingPage={defaultLandingPage}
+          setDefaultLandingPage={setDefaultLandingPage}
+          saveDefaultLandingPage={saveDefaultLandingPage}
+          savingDefaultLandingPage={savingDefaultLandingPage}
+          youLogoAdminOnly={youLogoAdminOnly}
+          saveYouLogoAdminOnly={saveYouLogoAdminOnly}
+          savingYouLogoAdminOnly={savingYouLogoAdminOnly}
+          updatesOpen={updatesOpen}
+          setUpdatesOpen={setUpdatesOpen}
+          maintenanceEnabled={maintenanceEnabled}
+          maintenanceAutoWeekendEnabled={maintenanceAutoWeekendEnabled}
+          setMaintenanceOpen={setMaintenanceOpen}
+          maintenanceOpen={maintenanceOpen}
+          loadingSettings={loadingSettings}
+          setMaintenanceEnabled={setMaintenanceEnabled}
+          setMaintenanceAutoWeekendEnabled={setMaintenanceAutoWeekendEnabled}
+          maintenanceMessage={maintenanceMessage}
+          setMaintenanceMessage={setMaintenanceMessage}
+          maintenanceEndDate={maintenanceEndDate}
+          setMaintenanceEndDate={setMaintenanceEndDate}
+          saveMaintenance={saveMaintenance}
+          savingMaintenance={savingMaintenance}
+          businessCreationEnabled={businessCreationEnabled}
+          saveBusinessCreationEnabled={saveBusinessCreationEnabled}
+          savingBusinessCreation={savingBusinessCreation}
+          purgeAllBusinesses={purgeAllBusinesses}
+          purgingBusinesses={purgingBusinesses}
+          resetBusinessUnlockLevels={resetBusinessUnlockLevels}
+          resettingUnlockLevels={resettingUnlockLevels}
+          deployOutput={deployOutput}
+          setDeployModalOpen={setDeployModalOpen}
+          deployModalOpen={deployModalOpen}
+          deploying={deploying}
+          confirm={confirm}
+          setDeploying={setDeploying}
+          setDeployOutput={setDeployOutput}
+          adminApi={adminApi}
+          user={user}
+          backfillResult={backfillResult}
+          backfillLoading={backfillLoading}
+          setBackfillLoading={setBackfillLoading}
+          setBackfillResult={setBackfillResult}
+          alert={alert}
+          fonctionnalitesOpen={fonctionnalitesOpen}
+          setFonctionnalitesOpen={setFonctionnalitesOpen}
+          blockedPages={blockedPages}
+          blockedMessage={blockedMessage}
+          setBlockedMessage={setBlockedMessage}
+          blockedPageMessages={blockedPageMessages}
+          toggleBlockedPage={toggleBlockedPage}
+          updateBlockedPageMessage={updateBlockedPageMessage}
+          saveBlockedPages={saveBlockedPages}
+          savingBlocks={savingBlocks}
+          exportChat={exportChat}
+          exportingChat={exportingChat}
+          clearingChat={clearingChat}
+          clearChat={clearChat}
+        />
 
         <BansTab
           bans={bans}
@@ -7326,2695 +5847,167 @@ export default function Admin() {
         </DialogContent>
       </Dialog>
 
-        <TabsContent value="referrals" className={SPACING.SECTION_SPACING}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold">Statistiques de parrainage</h2>
-              <p className="text-xs text-muted-foreground">Suivi global du funnel et des meilleurs parrains.</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={fetchReferralStats} disabled={loadingReferralStats}>
-              <RefreshCw className={cn('h-3.5 w-3.5 mr-2', loadingReferralStats && 'animate-spin')} />
-              Rafraîchir
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-            <Card className="border-border/40">
-              <CardContent className="p-4 space-y-1">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Système</p>
-                <p className="text-xl font-semibold tabular-nums">
-                  {referralStats?.overview.referralEnabled ? 'Actif' : 'Désactivé'}
-                </p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>état global</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/40">
-              <CardContent className="p-4 space-y-1">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Comptes avec code</p>
-                <p className="text-xl font-semibold tabular-nums">{referralStats?.overview.totalUsersWithCode.toLocaleString('fr-FR') ?? '—'}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>parrains potentiels</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/40">
-              <CardContent className="p-4 space-y-1">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inscrits via parrainage</p>
-                <p className="text-xl font-semibold tabular-nums">{referralStats?.overview.totalReferredUsers.toLocaleString('fr-FR') ?? '—'}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>total filleuls</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/40">
-              <CardContent className="p-4 space-y-1">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Validés</p>
-                <p className="text-xl font-semibold tabular-nums">{referralStats?.overview.approvedReferredUsers.toLocaleString('fr-FR') ?? '—'}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>{referralStats ? `${referralStats.overview.conversionRate}% conversion` : 'conversion'}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/40">
-              <CardContent className="p-4 space-y-1">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>En attente</p>
-                <p className="text-xl font-semibold tabular-nums">{referralStats?.overview.pendingReferredUsers.toLocaleString('fr-FR') ?? '—'}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>{referralStats ? `${referralStats.overview.pendingRate}% du flux` : 'du flux'}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/40">
-              <CardContent className="p-4 space-y-1">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Coût total</p>
-                <p className="text-xl font-semibold tabular-nums">{referralStats ? referralStats.overview.rewardPayoutTotal.toLocaleString('fr-FR') : '—'}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
-                  {referralStats ? `${referralStats.overview.rewardAmount.toLocaleString('fr-FR')} / validation` : 'récompenses'}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <CardDescription>Parrainages récompensés</CardDescription>
-                <p className="text-2xl font-semibold tabular-nums">{referralStats?.overview.rewardedReferrals.toLocaleString('fr-FR') ?? '—'}</p>
-              </CardHeader>
-              <CardContent>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                  Nombre de filleuls déjà approuvés ayant déclenché le versement.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <CardDescription>En attente depuis plus de 7 jours</CardDescription>
-                <p className="text-2xl font-semibold tabular-nums">{referralStats?.overview.stalePendingOlderThan7Days.toLocaleString('fr-FR') ?? '—'}</p>
-              </CardHeader>
-              <CardContent>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                  Comptes parrainés toujours non validés après une semaine.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-border/40">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold">Top parrains</h3>
-                  <CardDescription>Classement par nombre total de filleuls.</CardDescription>
-                </div>
-                {loadingReferralStats && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {!referralStats ? (
-                <p className="text-sm text-muted-foreground">Chargement des stats de parrainage...</p>
-              ) : referralStats.topReferrers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun parrainage enregistré pour le moment.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground border-b border-border/40">
-                        <th className="py-2 pr-2">Parrain</th>
-                        <th className="py-2 pr-2">Code</th>
-                        <th className="py-2 pr-2 text-right">Total</th>
-                        <th className="py-2 pr-2 text-right">Validés</th>
-                        <th className="py-2 pr-2 text-right">En attente</th>
-                        <th className="py-2 pr-2 text-right">Récompensés</th>
-                        <th className="py-2 text-right">Montant total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {referralStats.topReferrers.map((entry) => (
-                        <tr key={entry.userId} className="border-b border-border/20">
-                          <td className="py-2 pr-2">
-                            <span className="font-medium">{entry.username}</span>
-                            {!entry.isApproved && <span className="ml-2 text-xs text-amber-400">(non validé)</span>}
-                          </td>
-                          <td className="py-2 pr-2 font-mono text-xs">{entry.referralCode ?? '—'}</td>
-                          <td className="py-2 pr-2 text-right tabular-nums">{entry.totalReferrals.toLocaleString('fr-FR')}</td>
-                          <td className="py-2 pr-2 text-right tabular-nums">{entry.approvedReferrals.toLocaleString('fr-FR')}</td>
-                          <td className="py-2 pr-2 text-right tabular-nums">{entry.pendingReferrals.toLocaleString('fr-FR')}</td>
-                          <td className="py-2 pr-2 text-right tabular-nums">{entry.rewardedReferrals.toLocaleString('fr-FR')}</td>
-                          <td className="py-2 text-right tabular-nums">{entry.totalRewardsGiven.toLocaleString('fr-FR')}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <ReferralsTab
+          referralStats={referralStats}
+          loadingReferralStats={loadingReferralStats}
+          fetchReferralStats={fetchReferralStats}
+        />
 
         {/* ===== ACTIVITY TAB ===== */}
-        <TabsContent value="activity" className={SPACING.SECTION_SPACING}>
-
-          {/* ── PLATFORM OVERVIEW ── */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-muted-foreground" />
-                <span className="font-semibold text-sm">Vue d'ensemble de la plateforme</span>
-                {loadingPlatformStats && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" onClick={downloadStatsCSV} disabled={!platformStats} className="h-7 w-7 p-0" title="Télécharger CSV">
-                  <Download className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={fetchPlatformStats} className="h-7 w-7 p-0" title="Rafraîchir">
-                  <RefreshCw className={cn('h-3.5 w-3.5', loadingPlatformStats && 'animate-spin')} />
-                </Button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-              <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5">
-                <CardContent className="p-4 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5 text-blue-400" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Membres actifs</p>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums text-blue-400">{platformStats?.overview.approvedUsers ?? '—'}</p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>{platformStats?.overview.totalUsers ?? '—'} inscrits</p>
-                </CardContent>
-              </Card>
-              <Card className="border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-purple-600/5">
-                <CardContent className="p-4 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <Gamepad2 className="h-3.5 w-3.5 text-purple-400" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Parties jouées</p>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums text-purple-400">
-                    {platformStats ? formatBigNumber(platformStats.overview.totalGamesPlayed) : '—'}
-                  </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous les temps</p>
-                </CardContent>
-              </Card>
-              <Card className="border-green-500/20 bg-gradient-to-br from-green-500/10 to-green-600/5">
-                <CardContent className="p-4 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <Trophy className="h-3.5 w-3.5 text-green-400" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Victoires</p>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums text-green-400">
-                    {platformStats ? formatBigNumber(platformStats.overview.totalWins) : '—'}
-                  </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
-                    {platformStats && platformStats.overview.totalGamesPlayed > 0
-                      ? `${Math.round(platformStats.overview.totalWins / platformStats.overview.totalGamesPlayed * 100)}% win rate`
-                      : 'win rate'}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5">
-                <CardContent className="p-4 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <CurrencyIcon type="aura" className="h-3.5 w-3.5" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Aura totale</p>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums text-yellow-400">
-                    {platformStats ? formatBigNumber(parseInt(platformStats.overview.totalAura)) : '—'}
-                  </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
-                </CardContent>
-              </Card>
-              <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-orange-600/5">
-                <CardContent className="p-4 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <CurrencyIcon type="money" className="h-3.5 w-3.5" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Argent total</p>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums text-orange-400">
-                    {platformStats ? formatBigNumber(platformStats.overview.totalMoney) : '—'}
-                  </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
-                </CardContent>
-              </Card>
-              <Card className="border-pink-500/20 bg-gradient-to-br from-pink-500/10 to-pink-600/5">
-                <CardContent className="p-4 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-pink-400" />
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Transferts</p>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums text-pink-400">
-                    {platformStats ? formatBigNumber(platformStats.overview.totalTransfers) : '—'}
-                  </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
-                    {platformStats ? `${formatBigNumber(platformStats.overview.totalAuraTransferred)} aura` : 'échangée'}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* ── EXTRA STATS ROW ── */}
-          {platformStats && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Card className="border-border/40">
-                <CardContent className="p-4 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Argent échangé</p>
-                  <p className="text-xl font-semibold tabular-nums">{formatBigNumber(platformStats.overview.totalMoneyTransferred)}</p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>via transferts</p>
-                </CardContent>
-              </Card>
-              <Card className="border-border/40">
-                <CardContent className="p-4 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Mots tapés (Bombe)</p>
-                  <p className="text-xl font-semibold tabular-nums">{formatBigNumber(platformStats.overview.totalWordsTyped)}</p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous les temps</p>
-                </CardContent>
-              </Card>
-              <Card className="border-border/40">
-                <CardContent className="p-4 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Parties (30j)</p>
-                  <p className="text-xl font-semibold tabular-nums">
-                    {formatBigNumber(platformStats.activityChart.reduce((s, d) => s + d.count, 0))}
-                  </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>sur les 30 derniers jours</p>
-                </CardContent>
-              </Card>
-              <Card className="border-border/40">
-                <CardContent className="p-4 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Moy. / jour (30j)</p>
-                  <p className="text-xl font-semibold tabular-nums">
-                    {(platformStats.activityChart.reduce((s, d) => s + d.count, 0) / 30).toFixed(1)}
-                  </p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>parties par jour</p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {(moneyDistribution || auraDistribution) && (
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-              <Card className="border-border/40">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <Landmark className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-sm">Répartition des richesses</span>
-                  </div>
-                  <CardDescription>
-                    Calculé sur {wealthUsers.length.toLocaleString('fr-FR')} comptes hors super admin.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <Card className="border-emerald-500/20 bg-emerald-500/5">
-                      <CardContent className="p-4 space-y-1">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Médiane argent</p>
-                        <p className="text-xl font-semibold tabular-nums text-emerald-300">
-                          {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.median)) : '—'}
-                        </p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
-                          moyenne {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.average)) : '—'}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-cyan-500/20 bg-cyan-500/5">
-                      <CardContent className="p-4 space-y-1">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Médiane aura</p>
-                        <p className="text-xl font-semibold tabular-nums text-cyan-300">
-                          {auraDistribution ? formatBigNumber(Math.round(auraDistribution.median)) : '—'}
-                        </p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
-                          moyenne {auraDistribution ? formatBigNumber(Math.round(auraDistribution.average)) : '—'}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-amber-500/20 bg-amber-500/5">
-                      <CardContent className="p-4 space-y-1">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inégalité argent</p>
-                        <p className="text-xl font-semibold tabular-nums text-amber-300">
-                          {moneyDistribution ? formatPercent(moneyDistribution.gini) : '—'}
-                        </p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
-                          top 10%: {moneyDistribution ? formatPercent(moneyDistribution.top10Share) : '—'}
-                        </p>
-                      </CardContent>
-                    </Card>
-                    <Card className="border-fuchsia-500/20 bg-fuchsia-500/5">
-                      <CardContent className="p-4 space-y-1">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Inégalité aura</p>
-                        <p className="text-xl font-semibold tabular-nums text-fuchsia-300">
-                          {auraDistribution ? formatPercent(auraDistribution.gini) : '—'}
-                        </p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>
-                          top 10%: {auraDistribution ? formatPercent(auraDistribution.top10Share) : '—'}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium">Argent par décile</p>
-                          <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Qui détient quoi dans l’économie.</p>
-                        </div>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-right text-muted-foreground')}>
-                          Top 1%: {moneyDistribution ? formatPercent(moneyDistribution.top1Share) : '—'}
-                        </p>
-                      </div>
-                      {moneyDistribution && moneyDistribution.deciles.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={moneyDistribution.deciles} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
-                            <RechartsTooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
-                              formatter={(value: number, _name: string, props: any) => [
-                                `${value.toLocaleString('fr-FR')} total · moyenne ${Math.round(props.payload.average).toLocaleString('fr-FR')}`,
-                                'Argent',
-                              ]}
-                            />
-                            <Bar dataKey="total" fill="#10b981" radius={[3, 3, 0, 0]} isAnimationActive={false} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-                      )}
-                    </div>
-
-                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3">
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-medium">Aura par décile</p>
-                          <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Distribution sociale et prestige accumulé.</p>
-                        </div>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-right text-muted-foreground')}>
-                          Top 1%: {auraDistribution ? formatPercent(auraDistribution.top1Share) : '—'}
-                        </p>
-                      </div>
-                      {auraDistribution && auraDistribution.deciles.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={auraDistribution.deciles} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                            <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
-                            <RechartsTooltip
-                              contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
-                              formatter={(value: number, _name: string, props: any) => [
-                                `${value.toLocaleString('fr-FR')} total · moyenne ${Math.round(props.payload.average).toLocaleString('fr-FR')}`,
-                                'Aura',
-                              ]}
-                            />
-                            <Bar dataKey="total" fill="#06b6d4" radius={[3, 3, 0, 0]} isAnimationActive={false} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/40">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-sm">Concentration & écarts</span>
-                  </div>
-                  <CardDescription>
-                    Vue rapide sur les poches de richesse et les écarts entre bas et haut de tableau.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium">Argent</p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                          p10 {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.p10)) : '—'} · p90 {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.p90)) : '—'}
-                        </p>
-                      </div>
-                      {moneyDistribution?.concentration.map((item) => (
-                        <div key={item.label} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">{item.label}</span>
-                            <span className="font-medium tabular-nums">{formatPercent(item.share)}</span>
-                          </div>
-                          <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
-                            <div className="h-full rounded-full bg-emerald-400" style={{ width: `${Math.max(2, Math.min(100, item.share))}%` }} />
-                          </div>
-                        </div>
-                      ))}
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                        Plus riche: <span className="font-medium text-foreground">{moneyDistribution?.richestUser?.username ?? '—'}</span> · {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.max)) : '—'}
-                      </p>
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                        Comptes à 0 ou moins: {moneyDistribution?.zeroCount.toLocaleString('fr-FR') ?? '—'}
-                      </p>
-                    </div>
-
-                    <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-medium">Aura</p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                          p10 {auraDistribution ? formatBigNumber(Math.round(auraDistribution.p10)) : '—'} · p90 {auraDistribution ? formatBigNumber(Math.round(auraDistribution.p90)) : '—'}
-                        </p>
-                      </div>
-                      {auraDistribution?.concentration.map((item) => (
-                        <div key={item.label} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">{item.label}</span>
-                            <span className="font-medium tabular-nums">{formatPercent(item.share)}</span>
-                          </div>
-                          <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
-                            <div className="h-full rounded-full bg-cyan-400" style={{ width: `${Math.max(2, Math.min(100, item.share))}%` }} />
-                          </div>
-                        </div>
-                      ))}
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                        Plus riche: <span className="font-medium text-foreground">{auraDistribution?.richestUser?.username ?? '—'}</span> · {auraDistribution ? formatBigNumber(Math.round(auraDistribution.max)) : '—'}
-                      </p>
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                        Comptes à 0 ou moins: {auraDistribution?.zeroCount.toLocaleString('fr-FR') ?? '—'}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* ── GAME ACTIVITY CHART (30 days) ── */}
-          <Card className="border-border/40">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CalendarRange className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Parties jouées (30 derniers jours)</span>
-                  {loadingPlatformStats && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                </div>
-                {platformStats && (
-                  <span className="text-sm font-semibold tabular-nums text-muted-foreground">
-                    {platformStats.activityChart.reduce((s, d) => s + d.count, 0).toLocaleString('fr-FR')} parties
-                  </span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingPlatformStats && !platformStats ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : platformStats && platformStats.activityChart.length > 0 ? (
-                <ResponsiveContainer width="100%" height={160}>
-                  <BarChart data={platformStats.activityChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v: string) => {
-                        const d = new Date(v + 'T12:00:00');
-                        return `${d.getDate()}/${d.getMonth() + 1}`;
-                      }}
-                      interval={4}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={24}
-                    />
-                    <RechartsTooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
-                      formatter={(value: number) => [`${value} partie${value !== 1 ? 's' : ''}`, 'Jeux']}
-                      labelFormatter={(label: string) => new Date(label + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
-                    />
-                    <Bar dataKey="count" fill="#8b5cf6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* ── TOP GAMES + ALL-TIME LEADERBOARD ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Top games by plays */}
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Gamepad2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Jeux les plus joués (tous les temps)</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {loadingPlatformStats && !platformStats ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : platformStats && platformStats.topGames.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={platformTopGamesChartHeight}>
-                    <BarChart
-                      data={platformTopGamesChartData}
-                      layout="vertical"
-                      margin={{ top: 4, right: 50, left: 0, bottom: 0 }}
-                    >
-                      <XAxis
-                        type="number"
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={(v: number) => formatBigNumber(v)}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="label"
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                        axisLine={false}
-                        tickLine={false}
-                        width={96}
-                      />
-                      <RechartsTooltip
-                        contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
-                        formatter={(value: number, _name: string, props: any) => [
-                          `${value.toLocaleString('fr-FR')} parties · ${(props.payload.wins ?? 0).toLocaleString('fr-FR')} victoires`,
-                          'Stats',
-                        ]}
-                      />
-                      <Bar dataKey="totalPlayed" radius={[0, 3, 3, 0]} isAnimationActive={false}>
-                        {platformTopGamesChartData.map((_g, index) => (
-                          <Cell key={index} fill={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="py-12 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* All-time games played leaderboard */}
-            <Card className="border-border/40">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Classement parties jouées (tous les temps)</span>
-                  {loadingGamesLeaderboard && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                </div>
-                <CardDescription>
-                  Basé sur les stats de jeu — toutes les parties comptées pour tous les jeux, sans estimation de durée.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loadingGamesLeaderboard && gamesLeaderboard.length === 0 ? (
-                  <div className="flex justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : gamesLeaderboard.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border/40">
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground w-10">#</th>
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Joueur</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Parties</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {gamesLeaderboard.map((entry: any, i: number) => (
-                          <tr key={entry.userId} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
-                            <td className="py-2 px-3 font-semibold text-foreground">{entry.rank ?? i + 1}</td>
-                            <td className="py-2 px-3">
-                              <span style={{ color: entry.usernameColor || 'inherit' }} className="font-medium">
-                                {entry.username}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                              {(entry.value ?? 0).toLocaleString('fr-FR')}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="py-12 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Card className="border-border/40">
-              <CardContent className="flex items-start gap-3 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/40 bg-muted/20">
-                  <Trophy className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="min-w-0 space-y-1">
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Record absolu</p>
-                  <p className="text-2xl font-semibold tabular-nums">{onlineStats?.allTimeRecord ?? '—'}</p>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                    {onlineStats?.allTimeRecordAt
-                      ? new Date(onlineStats.allTimeRecordAt).toLocaleString('fr-FR', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : 'Aucun record enregistre'}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/40">
-              <CardContent className="space-y-1 p-4">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>En ligne</p>
-                <p className="text-2xl font-semibold tabular-nums">{onlineStats?.current ?? '—'}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/40">
-              <CardContent className="space-y-1 p-4">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Pic 24h</p>
-                <p className="text-2xl font-semibold tabular-nums">{onlineStats?.peak1d ?? '—'}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/40">
-              <CardContent className="space-y-1 p-4">
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Pic 7 jours</p>
-                <p className="text-2xl font-semibold tabular-nums">{onlineStats?.peak7d ?? '—'}</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* ── CHART CARD ── */}
-          <Card>
-            <CardHeader className="pb-0">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Joueurs en ligne</span>
-                  {loadingActivity && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {(['day', 'week', 'month', 'specific', 'custom'] as const).map(p => (
-                    <Button
-                      key={p}
-                      variant={activityPeriod === p ? 'default' : 'outline'}
-                      onClick={() => {
-                        setActivityPeriod(p);
-                        if (p !== 'custom' && p !== 'specific') fetchActivity(p);
-                      }}
-                      className="h-8 px-3 text-xs"
-                    >
-                      {p === 'day' ? "Aujourd'hui" : p === 'week' ? '7j' : p === 'month' ? '30j' : p === 'specific' ? 'Jour' : 'Plage'}
-                    </Button>
-                  ))}
-                  <Button
-                    variant="outline"
-                    onClick={() => fetchActivity(activityPeriod)}
-                    className="h-8 px-2"
-                    title="Rafraîchir"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                  </Button>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    setSnapshotting(true);
-                    try {
-                      await adminApi.takeOnlineSnapshot();
-                      await fetchActivity(activityPeriod);
-                    } finally {
-                      setSnapshotting(false);
-                    }
-                  }}
-                  disabled={snapshotting}
-                  className="h-8 gap-1.5 px-3 text-xs"
-                  title="Enregistrer un snapshot maintenant"
-                >
-                  {snapshotting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                  Snapshot
-                </Button>
-              </div>
-
-              {/* Custom date range — native date pickers (open system calendar) */}
-              {activityPeriod === 'custom' && (
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <CalendarRange className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <Input
-                    type="date"
-                    value={activityCustomStart}
-                    onChange={e => setActivityCustomStart(e.target.value)}
-                    className="h-8 w-auto text-xs"
-                  />
-                  <span className="text-xs text-muted-foreground">→</span>
-                  <Input
-                    type="date"
-                    value={activityCustomEnd}
-                    onChange={e => setActivityCustomEnd(e.target.value)}
-                    className="h-8 w-auto text-xs"
-                  />
-                  <Button
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    onClick={() => fetchActivity('custom', activityCustomStart, activityCustomEnd)}
-                    disabled={!activityCustomStart || !activityCustomEnd}
-                  >
-                    Appliquer
-                  </Button>
-                </div>
-              )}
-
-              {/* Specific day picker */}
-              {activityPeriod === 'specific' && (
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <CalendarRange className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <Input
-                    type="date"
-                    value={activitySpecificDay}
-                    onChange={e => setActivitySpecificDay(e.target.value)}
-                    className="h-8 w-auto text-xs"
-                  />
-                  <Button
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    onClick={() => fetchActivity('specific')}
-                    disabled={!activitySpecificDay}
-                  >
-                    Appliquer
-                  </Button>
-                </div>
-              )}
-            </CardHeader>
-
-            <CardContent className="pt-4">
-              {loadingActivity && !activityHistory ? (
-                <div className="flex justify-center py-20">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : activityHistory && activityHistory.data.length > 0 ? (
-                <>
-                  {/* Big period title */}
-                  <p className="text-2xl font-bold tracking-tight mb-4 capitalize">
-                    {activityPeriod === 'day'
-                      ? new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-                      : activityPeriod === 'week'
-                      ? '7 derniers jours'
-                      : activityPeriod === 'month'
-                      ? '30 derniers jours'
-                      : activityPeriod === 'specific' && activitySpecificDay
-                      ? new Date(activitySpecificDay + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                      : activityPeriod === 'custom' && activityCustomStart && activityCustomEnd
-                      ? `${new Date(activityCustomStart + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → ${new Date(activityCustomEnd + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`
-                      : 'Activité'}
-                  </p>
-
-                  {activityHistory.peak > 0 && (
-                    <div className="mb-4 flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Trophy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Pic sur la période</span>
-                      </div>
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-lg font-semibold tabular-nums">
-                          {activityHistory.peak}
-                        </span>
-                        <span className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                          {activityHistory.peakAt
-                            ? new Date(activityHistory.peakAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-                            : 'joueurs'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
-                    <Card className="border-border/40">
-                      <CardContent className="space-y-1 p-4">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Connectés au moins une fois</p>
-                        <p className="text-2xl font-semibold tabular-nums">{(activityHistory.insights?.uniqueConnectedUsers ?? 0).toLocaleString('fr-FR')}</p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
-                          Utilisateurs vus en snapshot ou en connexion sur la période
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-border/40">
-                      <CardContent className="space-y-1 p-4">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Jour le plus joué</p>
-                        {activityHistory.insights?.busiestWeekday ? (
-                          <>
-                            <p className="text-2xl font-semibold capitalize">{activityHistory.insights.busiestWeekday.label}</p>
-                            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
-                              {activityHistory.insights.busiestWeekday.totalGames.toLocaleString('fr-FR')} parties loggées, {activityHistory.insights.busiestWeekday.uniquePlayers.toLocaleString('fr-FR')} joueur{activityHistory.insights.busiestWeekday.uniquePlayers > 1 ? 's' : ''} actifs
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Pas encore assez de logs de jeu</p>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-border/40">
-                      <CardContent className="space-y-1 p-4">
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Heures de pointe</p>
-                        {(activityHistory.insights?.peakHours?.length ?? 0) > 0 ? (
-                          <>
-                            <p className="text-lg font-semibold">
-                              {activityHistory.insights!.peakHours.map((entry) => entry.label).join(' • ')}
-                            </p>
-                            <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
-                              Moyenne de {activityHistory.insights!.peakHours[0]?.averageOnline.toLocaleString('fr-FR')} joueurs en ligne sur le créneau n°1
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Pas encore assez de snapshots</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Chart + side panel */}
-                  {(() => {
-                    const activeActivity = selectedActivity ?? hoveredActivity;
-                    return (
-                      <div className="flex gap-4 items-start">
-                    <div className="flex-1 min-w-0">
-                      {(() => {
-                        const MS_HOUR = 3600000;
-                        const MS_DAY = 86400000;
-
-                        // All periods use a numeric time axis for proportional spacing
-                        const chartData: ActivityChartPoint[] = activityHistory.data.map(pt => ({ ...pt, ts: new Date(pt.timestamp).getTime() }));
-                        activityChartDataRef.current = chartData;
-
-                        // Compute full domain boundaries for this period
-                        const now = new Date();
-                        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-                        let domainStart: number, domainEnd: number;
-                        if (activityPeriod === 'specific' && activitySpecificDay) {
-                          domainStart = new Date(activitySpecificDay + 'T00:00:00').getTime();
-                          domainEnd = domainStart + MS_DAY;
-                        } else if (activityPeriod === 'day') {
-                          domainStart = todayMidnight;
-                          domainEnd = todayMidnight + MS_DAY;
-                        } else if (activityPeriod === 'week') {
-                          domainStart = todayMidnight - 7 * MS_DAY;
-                          domainEnd = todayMidnight + MS_DAY;
-                        } else if (activityPeriod === 'month') {
-                          domainStart = todayMidnight - 30 * MS_DAY;
-                          domainEnd = todayMidnight + MS_DAY;
-                        } else if (activityPeriod === 'custom' && activityCustomStart && activityCustomEnd) {
-                          domainStart = new Date(activityCustomStart + 'T00:00:00').getTime();
-                          domainEnd = new Date(activityCustomEnd + 'T00:00:00').getTime() + MS_DAY;
-                        } else {
-                          const times = chartData.map(pt => pt.ts);
-                          domainStart = Math.min(...times);
-                          domainEnd = Math.max(...times);
-                        }
-
-                        // Keep full domain in ref so the wheel handler can read it
-                        activityFullDomainRef.current = [domainStart, domainEnd];
-
-                        // Apply zoom if active
-                        const [viewStart, viewEnd] = activityZoomDomain ?? [domainStart, domainEnd];
-                        const viewRange = viewEnd - viewStart;
-                        const isZoomed = viewRange < domainEnd - domainStart;
-
-                        // Adaptive ticks and separator lines based on visible range
-                        const getTicksAndLines = (start: number, end: number, range: number) => {
-                          const alignedStart = (interval: number) => Math.ceil(start / interval) * interval;
-                          const generate = (interval: number, from: number, to: number) => {
-                            const out: number[] = [];
-                            for (let t = from; t <= to; t += interval) out.push(t);
-                            return out;
-                          };
-                          if (range <= 3 * MS_HOUR) {
-                            const lines = generate(30 * 60000, alignedStart(30 * 60000), end);
-                            return { ticks: lines, lines };
-                          } else if (range <= 8 * MS_HOUR) {
-                            const lines = generate(MS_HOUR, alignedStart(MS_HOUR), end);
-                            return { ticks: lines, lines };
-                          } else if (range <= 18 * MS_HOUR) {
-                            const lines = generate(MS_HOUR, alignedStart(MS_HOUR), end);
-                            const ticks = generate(2 * MS_HOUR, alignedStart(2 * MS_HOUR), end);
-                            return { ticks, lines };
-                          } else if (range <= MS_DAY * 1.5) {
-                            const lines = generate(MS_HOUR, alignedStart(MS_HOUR), end);
-                            const ticks = generate(3 * MS_HOUR, alignedStart(3 * MS_HOUR), end);
-                            return { ticks, lines };
-                          } else if (range <= 4 * MS_DAY) {
-                            const lines = generate(MS_DAY, alignedStart(MS_DAY), end);
-                            const ticks = generate(MS_DAY, alignedStart(MS_DAY), end);
-                            return { ticks, lines };
-                          } else if (range <= 10 * MS_DAY) {
-                            const lines = generate(MS_DAY, alignedStart(MS_DAY), end);
-                            const ticks = generate(2 * MS_DAY, alignedStart(2 * MS_DAY), end);
-                            return { ticks, lines };
-                          } else {
-                            const lines = generate(MS_DAY, alignedStart(MS_DAY), end);
-                            const ticks = generate(5 * MS_DAY, alignedStart(5 * MS_DAY), end);
-                            return { ticks, lines };
-                          }
-                        };
-
-                        const { ticks: xAxisTicks, lines: separatorLines } = getTicksAndLines(viewStart, viewEnd, viewRange);
-
-                        const tickFormatter = (ts: number) => {
-                          const d = new Date(ts);
-                          if (viewRange <= MS_DAY * 1.5) {
-                            const h = d.getHours(), m = d.getMinutes();
-                            return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
-                          }
-                          if (viewRange <= 8 * MS_DAY) return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
-                          return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
-                        };
-
-                        return (
-                          <div className="space-y-2">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs text-muted-foreground">
-                              Molette pour zoomer, glisser pour déplacer, clic pour figer
-                            </p>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => panActivityDomain(-viewRange * 0.25)}
-                                disabled={!isZoomed}
-                                aria-label="DÃ©placer vers la gauche"
-                              >
-                                <ChevronLeft className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => zoomActivityDomain(1 / 1.25)}
-                                aria-label="Zoomer"
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => zoomActivityDomain(1.25)}
-                                aria-label="DÃ©zoomer"
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-2 text-xs"
-                                onClick={() => setActivityDomain(null)}
-                                disabled={!isZoomed}
-                              >
-                                Reset
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                onClick={() => panActivityDomain(viewRange * 0.25)}
-                                disabled={!isZoomed}
-                                aria-label="DÃ©placer vers la droite"
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div
-                            ref={activityChartRef}
-                            onPointerDown={handleActivityPointerDown}
-                            onPointerMove={handleActivityPointerMove}
-                            onPointerUp={handleActivityPointerEnd}
-                            onPointerCancel={handleActivityPointerEnd}
-                            onPointerLeave={handleActivityPointerLeave}
-                            className={cn('touch-none select-none', isZoomed ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer')}
-                          >
-                          <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart
-                              data={chartData}
-                              margin={{ top: 6, right: 4, left: -8, bottom: 0 }}
-                              style={{ cursor: isZoomed ? 'grab' : 'pointer' }}
-                            >
-                              <defs>
-                                <linearGradient id="strokeGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.95} />
-                                  <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0.35} />
-                                </linearGradient>
-                                <linearGradient id="activityGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity={0.12} />
-                                  <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity={0} />
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                              <XAxis
-                                dataKey="ts"
-                                type="number"
-                                domain={[viewStart, viewEnd]}
-                                allowDataOverflow
-                                ticks={xAxisTicks}
-                                tickFormatter={tickFormatter}
-                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                                axisLine={false}
-                                tickLine={false}
-                                interval={0}
-                              />
-                              <YAxis
-                                allowDecimals={false}
-                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                                axisLine={false}
-                                tickLine={false}
-                                width={24}
-                              />
-                              {activityHistory.peak > 0 && (
-                                <ReferenceLine
-                                  y={activityHistory.peak}
-                                  stroke="hsl(var(--muted-foreground))"
-                                  strokeDasharray="5 4"
-                                  strokeWidth={1}
-                                  label={{ value: `↑ ${activityHistory.peak}`, fill: 'hsl(var(--muted-foreground))', fontSize: 10, position: 'insideTopRight', dy: -4 }}
-                                />
-                              )}
-                              {separatorLines.map(ts => (
-                                <ReferenceLine
-                                  key={`sep-${ts}`}
-                                  x={ts}
-                                  stroke="hsl(var(--border))"
-                                  strokeWidth={1.5}
-                                />
-                              ))}
-                              {activeActivity && (
-                                <>
-                                  <ReferenceLine
-                                    x={activeActivity.cursorTs}
-                                    stroke="hsl(var(--foreground))"
-                                    strokeDasharray="4 4"
-                                    strokeWidth={1.25}
-                                  />
-                                  <ReferenceDot
-                                    x={activeActivity.cursorTs}
-                                    y={activeActivity.point.max}
-                                    r={5}
-                                    fill="hsl(var(--foreground))"
-                                    stroke="hsl(var(--background))"
-                                    strokeWidth={2}
-                                  />
-                                </>
-                              )}
-                              <Area
-                                type="stepAfter"
-                                dataKey="max"
-                                stroke="url(#strokeGradient)"
-                                strokeWidth={2.5}
-                                fill="url(#activityGradient)"
-                                dot={false}
-                                activeDot={{ r: 4, fill: 'hsl(var(--foreground))', strokeWidth: 0 }}
-                                isAnimationActive={false}
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                          </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    {/* User list side panel — always visible */}
-                    {(() => {
-                      const displayPoint = activeActivity?.point ?? null;
-                      const users = displayPoint?.usernames ?? [];
-                      return (
-                        <div className="w-44 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
-                          <div className="px-3 py-2 border-b border-border/40 shrink-0">
-                            {displayPoint ? (
-                              <>
-                                <p className="text-xs font-medium tabular-nums">{displayPoint.max} joueur{displayPoint.max !== 1 ? 's' : ''}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {new Date(activeActivity!.cursorTs).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
-                                </p>
-                                {selectedActivity && (
-                                  <p className="text-[10px] text-muted-foreground/70 mt-1">Cliquer à nouveau pour libérer</p>
-                                )}
-                              </>
-                            ) : (
-                              <p className="text-xs text-muted-foreground/60">Survolez ou cliquez sur le graphe</p>
-                            )}
-                          </div>
-                          <div className="overflow-y-auto flex-1 p-1.5">
-                            {!displayPoint ? (
-                              <p className="text-xs text-muted-foreground/40 text-center py-4">—</p>
-                            ) : users.length === 0 ? (
-                              <p className="text-xs text-muted-foreground/60 text-center py-4">Aucun joueur enregistré</p>
-                            ) : (
-                              <ul className="space-y-0.5">
-                                {users.map(u => (
-                                  <li key={u.userId} className="text-xs px-1.5 py-1 rounded hover:bg-muted/30 truncate" title={u.username}>
-                                    {u.username}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                    );
-                  })()}
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/40 bg-muted/20">
-                    <Activity className="h-6 w-6 opacity-40" />
-                  </div>
-                  <div className="text-center">
-                    <p className={TYPOGRAPHY.SMALL}>Aucune donnée pour cette période</p>
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 mt-0.5')}>Les snapshots sont enregistrés automatiquement</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <Card className="border-border/40">
-              <CardHeader className="space-y-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-semibold text-sm">Pages sur la journée</span>
-                    </div>
-                    <CardDescription>
-                      Présence moyenne par page heure par heure.
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="date"
-                      value={activityBreakdownDay}
-                      onChange={(e) => setActivityBreakdownDay(e.target.value)}
-                      className="h-8 w-auto text-xs"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 px-3 text-xs"
-                      onClick={() => fetchActivityBreakdown(activityBreakdownDay)}
-                      disabled={!activityBreakdownDay || loadingActivityBreakdown}
-                    >
-                      {loadingActivityBreakdown ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Appliquer'}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {loadingActivityBreakdown && !activityBreakdown ? (
-                  <div className="flex justify-center py-16">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : pageBreakdownKeys.length > 0 ? (
-                  <>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={pageBreakdownData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis
-                          dataKey="hourLabel"
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                          axisLine={false}
-                          tickLine={false}
-                          interval={1}
-                        />
-                        <YAxis
-                          allowDecimals={false}
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                          axisLine={false}
-                          tickLine={false}
-                          width={28}
-                        />
-                        <RechartsTooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '0.75rem',
-                          }}
-                          formatter={(value: number, name: string) => [
-                            `${value} joueur${value > 1 ? 's' : ''}`,
-                            getPageMetaForPath(name).title,
-                          ]}
-                          labelFormatter={(label) => `${label}`}
-                        />
-                        <Legend
-                          formatter={(value) => getPageMetaForPath(value).title}
-                          wrapperStyle={{ fontSize: '12px' }}
-                        />
-                        {pageBreakdownKeys.map((page: string, index: number) => (
-                          <Line
-                            key={page}
-                            type="monotone"
-                            dataKey={page}
-                            stroke={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]}
-                            strokeWidth={2}
-                            dot={false}
-                            name={page}
-                            isAnimationActive={false}
-                          />
-                        ))}
-                      </LineChart>
-                    </ResponsiveContainer>
-
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {activityBreakdown?.topPages.map((entry, index) => (
-                        <div key={entry.page} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span
-                              className="h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length] }}
-                            />
-                            <span className="truncate">{getPageMetaForPath(entry.page).title}</span>
-                          </div>
-                          <span className="tabular-nums text-muted-foreground">{entry.total}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <p className="py-12 text-center text-sm text-muted-foreground">
-                    Pas encore assez de snapshots avec la page courante pour cette date.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/40">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Gamepad2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Jeux par heure</span>
-                </div>
-                <CardDescription>
-                  Nombre d’actions de jeu enregistrées par heure sur la date choisie.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {loadingActivityBreakdown && !activityBreakdown ? (
-                  <div className="flex justify-center py-16">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : gameBreakdownKeys.length > 0 ? (
-                  <>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={gameBreakdownData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                        <XAxis
-                          dataKey="hourLabel"
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                          axisLine={false}
-                          tickLine={false}
-                          interval={1}
-                        />
-                        <YAxis
-                          allowDecimals={false}
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                          axisLine={false}
-                          tickLine={false}
-                          width={28}
-                        />
-                        <RechartsTooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '0.75rem',
-                          }}
-                          formatter={(value: number, name: string) => [
-                            `${value} action${value > 1 ? 's' : ''}`,
-                            GAME_TYPE_LABELS[name] ?? humanizeUiLabel(name),
-                          ]}
-                          labelFormatter={(label) => `${label}`}
-                        />
-                        <Legend
-                          formatter={(value) => GAME_TYPE_LABELS[value] ?? humanizeUiLabel(value)}
-                          wrapperStyle={{ fontSize: '12px' }}
-                        />
-                        {gameBreakdownKeys.map((gameType: string, index: number) => (
-                          <Bar
-                            key={gameType}
-                            dataKey={gameType}
-                            stackId="games"
-                            fill={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]}
-                            radius={index === gameBreakdownKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                            isAnimationActive={false}
-                          />
-                        ))}
-                      </BarChart>
-                    </ResponsiveContainer>
-
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {activityBreakdown?.topGames.map((entry, index) => (
-                        <div key={entry.gameType} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span
-                              className="h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length] }}
-                            />
-                            <span className="truncate">{GAME_TYPE_LABELS[entry.gameType] ?? humanizeUiLabel(entry.gameType)}</span>
-                          </div>
-                          <span className="tabular-nums text-muted-foreground">{entry.total}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <p className="py-12 text-center text-sm text-muted-foreground">
-                    Aucun log de jeu disponible pour cette date.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/40">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <CalendarRange className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Temps passé par jeu</span>
-                </div>
-                <CardDescription>
-                  Durée cumulée des parties par heure (sur la date choisie).
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {loadingActivityBreakdown && !activityBreakdown ? (
-                  <div className="flex justify-center py-16">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : gameDurationBreakdownKeys.length > 0 ? (
-                  <>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={gameDurationBreakdownData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                        <XAxis
-                          dataKey="hourLabel"
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                          axisLine={false}
-                          tickLine={false}
-                          interval={1}
-                        />
-                        <YAxis
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
-                          axisLine={false}
-                          tickLine={false}
-                          width={44}
-                          tickFormatter={(value: number) => `${Math.round(value / 60)}m`}
-                        />
-                        <RechartsTooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '0.75rem',
-                          }}
-                          formatter={(value: number, name: string) => [
-                            formatDurationShort(value),
-                            GAME_TYPE_LABELS[name] ?? humanizeUiLabel(name),
-                          ]}
-                          labelFormatter={(label) => `${label}`}
-                        />
-                        <Legend
-                          formatter={(value) => GAME_TYPE_LABELS[value] ?? humanizeUiLabel(value)}
-                          wrapperStyle={{ fontSize: '12px' }}
-                        />
-                        {gameDurationBreakdownKeys.map((gameType: string, index: number) => (
-                          <Bar
-                            key={gameType}
-                            dataKey={gameType}
-                            stackId="durations"
-                            fill={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]}
-                            radius={index === gameDurationBreakdownKeys.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                            isAnimationActive={false}
-                          />
-                        ))}
-                      </BarChart>
-                    </ResponsiveContainer>
-
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {activityBreakdown?.topGameDurations.map((entry, index) => (
-                        <div key={entry.gameType} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span
-                              className="h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length] }}
-                            />
-                            <span className="truncate">{GAME_TYPE_LABELS[entry.gameType] ?? humanizeUiLabel(entry.gameType)}</span>
-                          </div>
-                          <span className="tabular-nums text-muted-foreground">{formatDurationShort(entry.totalSeconds)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <p className="py-12 text-center text-sm text-muted-foreground">
-                    Aucune durée de partie exploitable pour cette date.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* ── PLAYTIME LEADERBOARD ── */}
-          <Card className="border-border/40">
-            <CardHeader className="space-y-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-semibold text-sm">Classement temps de jeu</span>
-                  </div>
-                  <CardDescription>
-                    Joueurs qui jouent le plus (en temps de jeu).
-                  </CardDescription>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {(['day', 'week', 'month', 'custom'] as const).map(p => (
-                    <Button
-                      key={p}
-                      variant={playtimePeriod === p ? 'default' : 'outline'}
-                      onClick={() => {
-                        setPlaytimePeriod(p);
-                        if (p !== 'custom') fetchPlaytimeLeaderboard(p);
-                      }}
-                      className="h-8 px-3 text-xs"
-                    >
-                      {p === 'day' ? "Aujourd'hui" : p === 'week' ? '7j' : p === 'month' ? '30j' : 'Plage'}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {playtimePeriod === 'custom' && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    type="date"
-                    value={playtimeCustomStart}
-                    onChange={(e) => setPlaytimeCustomStart(e.target.value)}
-                    className="h-8 text-xs flex-1 min-w-max"
-                    placeholder="Début"
-                  />
-                  <span className="text-xs text-muted-foreground">à</span>
-                  <Input
-                    type="date"
-                    value={playtimeCustomEnd}
-                    onChange={(e) => setPlaytimeCustomEnd(e.target.value)}
-                    className="h-8 text-xs flex-1 min-w-max"
-                    placeholder="Fin"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    onClick={() => fetchPlaytimeLeaderboard('custom', playtimeCustomStart, playtimeCustomEnd)}
-                    disabled={!playtimeCustomStart || !playtimeCustomEnd || loadingPlaytimeLeaderboard}
-                  >
-                    {loadingPlaytimeLeaderboard ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Appliquer'}
-                  </Button>
-                </div>
-              )}
-            </CardHeader>
-
-            <CardContent>
-              {loadingPlaytimeLeaderboard && !playtimeLeaderboard ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : playtimeLeaderboard && playtimeLeaderboard.leaderboard.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border/40">
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Rang</th>
-                          <th className="text-left py-2 px-3 font-medium text-muted-foreground">Joueur</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Temps total</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Parties</th>
-                          <th className="text-right py-2 px-3 font-medium text-muted-foreground">Moyenne/partie</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {playtimeLeaderboard.leaderboard.map((entry) => {
-                          const totalHours = Math.floor(entry.totalSeconds / 3600);
-                          const totalMinutes = Math.floor((entry.totalSeconds % 3600) / 60);
-                          const avgSeconds = Math.floor(entry.averageGameDuration);
-                          const avgMinutes = Math.floor(avgSeconds / 60);
-                          const avgSecs = avgSeconds % 60;
-                          return (
-                            <tr key={entry.userId} className="border-b border-border/40 hover:bg-muted/30 transition-colors">
-                              <td className="py-2 px-3 font-semibold text-foreground">{entry.rank}</td>
-                              <td className="py-2 px-3">
-                                <div className="flex items-center gap-2">
-                                  {entry.profilePicture ? (
-                                    <img src={entry.profilePicture} alt="" className="h-5 w-5 rounded" />
-                                  ) : (
-                                    <div className="h-5 w-5 rounded bg-muted" />
-                                  )}
-                                  <span style={{ color: entry.usernameColor || 'inherit' }} className="truncate font-medium">
-                                    {entry.username}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="py-2 px-3 text-right tabular-nums">
-                                {totalHours > 0 ? `${totalHours}h ${totalMinutes}min` : `${totalMinutes}min`}
-                              </td>
-                              <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                                {entry.gamesPlayed}
-                              </td>
-                              <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                                {avgMinutes}m {String(avgSecs).padStart(2, '0')}s
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  {playtimeLeaderboard.totalEntries > playtimeLeaderboard.limit && (
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 text-center mt-3')}>
-                      Affichage des {playtimeLeaderboard.limit} premiers sur {playtimeLeaderboard.totalEntries} joueurs
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  Aucune donnée de temps de jeu pour cette période
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-        </TabsContent>
-
-        <TabsContent value="demographics" className={SPACING.SECTION_SPACING}>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Comptes analysés</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold tabular-nums">{totalDemographicUsers.toLocaleString('fr-FR')}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Hors super admin.</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <span className="font-semibold text-sm">Niveaux distincts</span>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold tabular-nums">{levelDistributionData.length.toLocaleString('fr-FR')}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Seconde, Première, Terminale, etc.</p>
-              </CardContent>
-            </Card>
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <span className="font-semibold text-sm">Classes distinctes</span>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold tabular-nums">{classDistributionData.length.toLocaleString('fr-FR')}</p>
-                <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Combinaisons niveau + lettre.</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <UserCog className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Répartition par niveau</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {levelDistributionData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={levelDistributionData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-                      <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} width={30} />
-                      <RechartsTooltip
-                        contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
-                        formatter={(value: number, _name: string, props: any) => [`${value} utilisateurs (${formatPercent(props.payload.share)})`, 'Niveau']}
-                      />
-                      <Bar dataKey="count" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-                        {levelDistributionData.map((entry, index) => (
-                          <Cell key={entry.label} fill={ACTIVITY_BREAKDOWN_COLORS[index % ACTIVITY_BREAKDOWN_COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Répartition par classe (top 12)</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {classDistributionData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={classDistributionData.slice(0, 12)} layout="vertical" margin={{ top: 4, right: 8, left: 20, bottom: 4 }}>
-                      <XAxis type="number" allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <YAxis type="category" dataKey="label" width={100} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <RechartsTooltip
-                        contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
-                        formatter={(value: number, _name: string, props: any) => [`${value} utilisateurs (${formatPercent(props.payload.share)})`, 'Classe']}
-                      />
-                      <Bar dataKey="count" radius={[0, 4, 4, 0]} fill="#3b82f6" isAnimationActive={false} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Moyennes par classe (Aura / Argent)</span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {classAveragesData.length > 0 ? (
-                  <div className="space-y-3">
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart data={classAveragesData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-                        <XAxis dataKey="label" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} angle={-25} textAnchor="end" height={64} />
-                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} width={36} tickFormatter={(value: number) => formatBigNumber(value)} />
-                        <Legend wrapperStyle={{ fontSize: '11px' }} />
-                        <RechartsTooltip
-                          contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
-                          formatter={(value: number, name: string, props: any) => [
-                            `${Math.round(value).toLocaleString('fr-FR')} (n=${props.payload.count})`,
-                            name === 'avgAura' ? 'Aura moyenne' : 'Argent moyen',
-                          ]}
-                        />
-                        <Bar dataKey="avgAura" name="avgAura" fill="#f59e0b" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                        <Bar dataKey="avgMoney" name="avgMoney" fill="#22c55e" radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                      </BarChart>
-                    </ResponsiveContainer>
-
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {classAveragesData.slice(0, 4).map((entry) => (
-                        <div key={entry.label} className="rounded-lg border border-border/40 bg-muted/10 p-3">
-                          <p className="text-sm font-medium truncate">{entry.label}</p>
-                          <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>n = {entry.count}</p>
-                          <p className="text-sm mt-1">Aura moy: <span className="font-semibold tabular-nums">{Math.round(entry.avgAura).toLocaleString('fr-FR')}</span></p>
-                          <p className="text-sm">Argent moy: <span className="font-semibold tabular-nums">{Math.round(entry.avgMoney).toLocaleString('fr-FR')}</span></p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/40">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-semibold text-sm">Top joueurs par niveau (Aura)</span>
-                </div>
-                <CardDescription>
-                  Classement interne par niveau scolaire.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {topUsersByLevel.length > 0 ? topUsersByLevel.map((entry) => (
-                  <div key={entry.level} className="rounded-lg border border-border/40 bg-muted/10 p-3 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold">{entry.level}</p>
-                      <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>{entry.users.length} affichés</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      {entry.users.map((member, index) => (
-                        <div key={member.id} className="flex items-center justify-between text-xs">
-                          <div className="min-w-0 flex items-center gap-2">
-                            <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background font-semibold">
-                              {index + 1}
-                            </span>
-                            <span className="truncate">{member.username}</span>
-                          </div>
-                          <span className="tabular-nums font-medium">{member.aura.toLocaleString('fr-FR')}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )) : (
-                  <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="border-border/40">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span className="font-semibold text-sm">Utilisateurs par classe (Aura)</span>
-              </div>
-              <CardDescription>
-                Un tableau par classe avec tous les utilisateurs et leur aura.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {usersByClass.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  {usersByClass.map((entry) => (
-                    <div key={entry.classLabel} className="rounded-lg border border-border/40 bg-muted/10 overflow-hidden">
-                      <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
-                        <p className="text-sm font-semibold truncate">{entry.classLabel}</p>
-                        <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>{entry.users.length} utilisateur{entry.users.length > 1 ? 's' : ''}</p>
-                      </div>
-                      <div className="max-h-72 overflow-y-auto">
-                        <table className="w-full text-xs">
-                          <thead className="sticky top-0 bg-muted/30 backdrop-blur">
-                            <tr>
-                              <th className="px-3 py-2 text-left font-medium text-muted-foreground">Utilisateur</th>
-                              <th className="px-3 py-2 text-right font-medium text-muted-foreground">Aura</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {entry.users.map((member) => (
-                              <tr key={member.id} className="border-t border-border/30">
-                                <td className="px-3 py-2">
-                                  <span className="font-medium">{member.username}</span>
-                                  {member.firstName ? <span className="text-muted-foreground"> ({member.firstName})</span> : null}
-                                </td>
-                                <td className="px-3 py-2 text-right tabular-nums font-medium">{member.aura.toLocaleString('fr-FR')}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
-              )}
-            </CardContent>
-          </Card>
-
-        </TabsContent>
-
-        {/* ── BADGES TAB ─────────────────────────────────────────────────────── */}
-        <TabsContent value="badges" className={SPACING.SECTION_SPACING}>
-          <div className="space-y-6">
-
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <h2 className={TYPOGRAPHY.H3}>Gestion des Badges</h2>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleCheckAutoBadges}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Vérifier auto-badges
-                </Button>
-                <Button size="sm" onClick={openCreateBadge}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nouveau badge
-                </Button>
-              </div>
-            </div>
-
-            {/* Badge list */}
-            <Card>
-              <CardHeader>
-                <CardDescription>Tous les badges ({badges.length})</CardDescription>
-              </CardHeader>
-              <CardContent className={SPACING.CARD_SPACING}>
-                {badgesLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : badges.length === 0 ? (
-                  <p className={TYPOGRAPHY.MUTED}>Aucun badge. Clique sur "Nouveau badge" pour en créer un.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {badges.map((badge) => (
-                      <div key={badge.id} className="flex items-center gap-3 p-3 rounded-md border border-border/40 hover:bg-muted/30">
-                        <BadgeIcon badge={badge} size="md" />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{badge.name}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
-                              badge.rarity === 'legendary' ? 'border-yellow-500/40 text-yellow-400' :
-                              badge.rarity === 'epic' ? 'border-purple-500/40 text-purple-400' :
-                              badge.rarity === 'rare' ? 'border-blue-500/40 text-blue-400' :
-                              badge.rarity === 'uncommon' ? 'border-green-500/40 text-green-400' :
-                              'border-border/40 text-muted-foreground'
-                            }`}>{badge.rarity}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">{badge.category}</span>
-                            {badge.isAutomatic && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">
-                                auto: {badge.autoConditionKey}
-                              </span>
-                            )}
-                            {!badge.isActive && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/30">inactif</span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">{badge.description}</p>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditBadge(badge)}>
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Supprimer le badge</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Supprimer le badge "{badge.name}" ? Cette action est irréversible et retirera le badge de tous les utilisateurs.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteBadge(badge.id)} className="bg-destructive hover:bg-destructive/90">
-                                  Supprimer
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Award badge to user */}
-            <Card>
-              <CardHeader>
-                <CardDescription>Attribuer un badge à un utilisateur</CardDescription>
-              </CardHeader>
-              <CardContent className={SPACING.CARD_SPACING}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <label className={TYPOGRAPHY.XS}>ID utilisateur</label>
-                    <Input
-                      placeholder="user-id ou username"
-                      value={awardBadgeUserId}
-                      onChange={(e) => setAwardBadgeUserId(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className={TYPOGRAPHY.XS}>Badge</label>
-                    <Select value={awardBadgeId} onValueChange={setAwardBadgeId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choisir un badge..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {badges.map((b) => (
-                          <SelectItem key={b.id} value={b.id}>
-                            <div className="flex items-center gap-2">
-                              <BadgeIcon badge={b} size="xs" />
-                              <span>{b.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className={TYPOGRAPHY.XS}>Raison (optionnel)</label>
-                    <Input
-                      placeholder="Raison de l'attribution..."
-                      value={awardBadgeReason}
-                      onChange={(e) => setAwardBadgeReason(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <Button className="mt-3" onClick={handleAwardBadge} disabled={!awardBadgeUserId || !awardBadgeId}>
-                  <Award className="w-4 h-4 mr-2" />
-                  Attribuer
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Badge create/edit dialog */}
-            <Dialog open={badgeFormOpen} onOpenChange={setBadgeFormOpen}>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>{editingBadge ? 'Modifier le badge' : 'Nouveau badge'}</DialogTitle>
-                  <DialogDescription>
-                    Personnalise l&apos;apparence et les propriétés du badge.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-5 py-2">
-                  {/* Preview + Basic Info */}
-                  <div className="flex gap-4 items-start p-4 rounded-lg bg-muted/20 border border-border/40">
-                    <div className="flex flex-col items-center gap-1.5 shrink-0">
-                      <BadgeIcon badge={{
-                        id: 'preview',
-                        name: badgeForm.name || 'Aperçu',
-                        description: badgeForm.description || '',
-                        backgroundType: badgeForm.backgroundType || 'solid',
-                        backgroundColor: badgeForm.backgroundColor || '#374151',
-                        backgroundGradient: badgeForm.backgroundGradient || null,
-                        backgroundImage: badgeForm.backgroundImage || null,
-                        icon: badgeForm.icon || '⭐',
-                        iconColor: badgeForm.iconColor || '#ffffff',
-                        borderColor: badgeForm.borderColor || '#6b7280',
-                        category: badgeForm.category || 'special',
-                        rarity: badgeForm.rarity || 'common',
-                      }} size="lg" />
-                      <p className="text-[11px] text-muted-foreground text-center w-20 truncate">{badgeForm.name || 'Aperçu'}</p>
-                    </div>
-                    <div className="flex-1 space-y-2.5 min-w-0">
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1 space-y-1 min-w-0">
-                          <label className={TYPOGRAPHY.XS}>Nom *</label>
-                          <Input value={badgeForm.name ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, name: e.target.value }))} />
-                        </div>
-                        <div className="space-y-1">
-                          <label className={TYPOGRAPHY.XS}>Icône</label>
-                          <Input value={badgeForm.icon ?? '⭐'} onChange={(e) => setBadgeForm(f => ({ ...f, icon: e.target.value }))} maxLength={4} className="w-16 text-center text-lg" />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className={TYPOGRAPHY.XS}>Description *</label>
-                        <Textarea value={badgeForm.description ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, description: e.target.value }))} rows={2} />
-                      </div>
-                      <div className="space-y-1">
-                        <label className={TYPOGRAPHY.XS}>Comment l&apos;obtenir</label>
-                        <Input value={badgeForm.howToObtain ?? ''} onChange={(e) => setBadgeForm(f => ({ ...f, howToObtain: e.target.value }))} placeholder="Ex: Être dans le top 5 de l'aura" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Apparence */}
-                  <div className="space-y-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Apparence</p>
-
-                    {/* Background type */}
-                    <div className="space-y-2.5">
-                      <div className="flex gap-2">
-                        {(['solid', 'gradient', 'image'] as const).map((t) => (
-                          <Button key={t} variant={badgeForm.backgroundType === t ? 'default' : 'outline'} size="sm"
-                            onClick={() => setBadgeForm(f => ({ ...f, backgroundType: t }))}>
-                            {t === 'solid' ? 'Couleur unie' : t === 'gradient' ? 'Dégradé' : 'Image'}
-                          </Button>
-                        ))}
-                      </div>
-
-                      {badgeForm.backgroundType === 'solid' && (
-                        <div className="space-y-1">
-                          <label className={TYPOGRAPHY.XS}>Couleur de fond</label>
-                          <div className="flex items-center gap-2">
-                            <label className="cursor-pointer shrink-0">
-                              <div className="h-9 w-9 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: badgeForm.backgroundColor ?? '#374151' }} />
-                              <input type="color" value={badgeForm.backgroundColor ?? '#374151'} onChange={(e) => setBadgeForm(f => ({ ...f, backgroundColor: e.target.value }))} className="sr-only" />
-                            </label>
-                            <Input value={badgeForm.backgroundColor ?? '#374151'} onChange={(e) => setBadgeForm(f => ({ ...f, backgroundColor: e.target.value }))} className="flex-1 font-mono" placeholder="#374151" />
-                          </div>
-                        </div>
-                      )}
-
-                      {badgeForm.backgroundType === 'gradient' && (() => {
-                        const _g = (() => { try { return JSON.parse(badgeForm.backgroundGradient ?? '{}'); } catch { return {}; } })();
-                        const gradFrom = (_g.from as string) ?? '#374151';
-                        const gradTo = (_g.to as string) ?? '#6b7280';
-                        const gradDir = (_g.direction as string) ?? 'to bottom right';
-                        const setGrad = (field: string, val: string) => {
-                          const cur = (() => { try { return JSON.parse(badgeForm.backgroundGradient ?? '{}'); } catch { return {}; } })();
-                          setBadgeForm(f => ({ ...f, backgroundGradient: JSON.stringify({ ...cur, [field]: val }) }));
-                        };
-                        return (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-3 gap-2 items-end">
-                              <div className="space-y-1">
-                                <label className={TYPOGRAPHY.XS}>Depuis</label>
-                                <div className="flex items-center gap-1.5">
-                                  <label className="cursor-pointer shrink-0">
-                                    <div className="h-8 w-8 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: gradFrom }} />
-                                    <input type="color" value={gradFrom} onChange={(e) => setGrad('from', e.target.value)} className="sr-only" />
-                                  </label>
-                                  <Input value={gradFrom} onChange={(e) => setGrad('from', e.target.value)} className="font-mono text-xs min-w-0" />
-                                </div>
-                              </div>
-                              <div className="space-y-1">
-                                <label className={TYPOGRAPHY.XS}>Vers</label>
-                                <div className="flex items-center gap-1.5">
-                                  <label className="cursor-pointer shrink-0">
-                                    <div className="h-8 w-8 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: gradTo }} />
-                                    <input type="color" value={gradTo} onChange={(e) => setGrad('to', e.target.value)} className="sr-only" />
-                                  </label>
-                                  <Input value={gradTo} onChange={(e) => setGrad('to', e.target.value)} className="font-mono text-xs min-w-0" />
-                                </div>
-                              </div>
-                              <div className="space-y-1">
-                                <label className={TYPOGRAPHY.XS}>Direction</label>
-                                <Select value={gradDir} onValueChange={(v) => setGrad('direction', v)}>
-                                  <SelectTrigger><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="to right">→ Droite</SelectItem>
-                                    <SelectItem value="to left">← Gauche</SelectItem>
-                                    <SelectItem value="to bottom">↓ Bas</SelectItem>
-                                    <SelectItem value="to top">↑ Haut</SelectItem>
-                                    <SelectItem value="to bottom right">↘ Bas droite</SelectItem>
-                                    <SelectItem value="to bottom left">↙ Bas gauche</SelectItem>
-                                    <SelectItem value="to top right">↗ Haut droite</SelectItem>
-                                    <SelectItem value="to top left">↖ Haut gauche</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            <div className="h-6 rounded-md border border-border/40" style={{ background: `linear-gradient(${gradDir}, ${gradFrom}, ${gradTo})` }} />
-                          </div>
-                        );
-                      })()}
-
-                      {badgeForm.backgroundType === 'image' && (
-                        <ImagePicker
-                          value={badgeForm.backgroundImage ?? ''}
-                          onChange={(url) => setBadgeForm(f => ({ ...f, backgroundImage: url }))}
-                          uploadFn={uploadItemImageFile}
-                          placeholder="URL de l'image de fond..."
-                        />
-                      )}
-                    </div>
-
-                    {/* Icon + Border colors */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className={TYPOGRAPHY.XS}>Couleur de l&apos;icône</label>
-                        <div className="flex items-center gap-2">
-                          <label className="cursor-pointer shrink-0">
-                            <div className="h-9 w-9 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: badgeForm.iconColor ?? '#ffffff' }} />
-                            <input type="color" value={badgeForm.iconColor ?? '#ffffff'} onChange={(e) => setBadgeForm(f => ({ ...f, iconColor: e.target.value }))} className="sr-only" />
-                          </label>
-                          <Input value={badgeForm.iconColor ?? '#ffffff'} onChange={(e) => setBadgeForm(f => ({ ...f, iconColor: e.target.value }))} className="flex-1 font-mono" />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className={TYPOGRAPHY.XS}>Couleur de bordure</label>
-                        <div className="flex items-center gap-2">
-                          <label className="cursor-pointer shrink-0">
-                            <div className="h-9 w-9 rounded-md border border-border shadow-sm transition-transform hover:scale-105" style={{ backgroundColor: badgeForm.borderColor ?? '#6b7280' }} />
-                            <input type="color" value={badgeForm.borderColor ?? '#6b7280'} onChange={(e) => setBadgeForm(f => ({ ...f, borderColor: e.target.value }))} className="sr-only" />
-                          </label>
-                          <Input value={badgeForm.borderColor ?? '#6b7280'} onChange={(e) => setBadgeForm(f => ({ ...f, borderColor: e.target.value }))} className="flex-1 font-mono" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Paramètres */}
-                  <div className="space-y-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Paramètres</p>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className={TYPOGRAPHY.XS}>Catégorie</label>
-                        <Select value={badgeForm.category ?? 'special'} onValueChange={(v) => setBadgeForm(f => ({ ...f, category: v }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="leaderboard">Classement</SelectItem>
-                            <SelectItem value="achievement">Succès</SelectItem>
-                            <SelectItem value="special">Spécial</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className={TYPOGRAPHY.XS}>Rareté</label>
-                        <Select value={badgeForm.rarity ?? 'common'} onValueChange={(v) => setBadgeForm(f => ({ ...f, rarity: v }))}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="common">Commun</SelectItem>
-                            <SelectItem value="uncommon">Peu commun</SelectItem>
-                            <SelectItem value="rare">Rare</SelectItem>
-                            <SelectItem value="epic">Épique</SelectItem>
-                            <SelectItem value="legendary">Légendaire</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Auto condition */}
-                    {editingBadge?.isAutomatic ? (
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/30 border border-border/40 text-xs text-muted-foreground">
-                        <Sparkles className="w-3.5 h-3.5 shrink-0 text-primary/60" />
-                        <span>Badge automatique — condition&nbsp;: <span className="font-mono text-foreground">{editingBadge.autoConditionKey}</span></span>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <Switch
-                            checked={badgeForm.isAutomatic ?? false}
-                            onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isAutomatic: v }))}
-                          />
-                          <label className={TYPOGRAPHY.XS}>Attribution automatique</label>
-                        </div>
-                        {badgeForm.isAutomatic && (
-                          <div className="space-y-1">
-                            <label className={TYPOGRAPHY.XS}>Condition</label>
-                            <Select value={badgeForm.autoConditionKey ?? ''} onValueChange={(v) => setBadgeForm(f => ({ ...f, autoConditionKey: v }))}>
-                              <SelectTrigger><SelectValue placeholder="Choisir une condition..." /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="TOP_1_AURA">Top 1 Aura</SelectItem>
-                                <SelectItem value="TOP_3_AURA">Top 3 Aura</SelectItem>
-                                <SelectItem value="TOP_5_AURA">Top 5 Aura</SelectItem>
-                                <SelectItem value="TOP_10_AURA">Top 10 Aura</SelectItem>
-                                <SelectItem value="TOP_1_MONEY">Top 1 Argent</SelectItem>
-                                <SelectItem value="TOP_3_MONEY">Top 3 Argent</SelectItem>
-                                <SelectItem value="TOP_5_MONEY">Top 5 Argent</SelectItem>
-                                <SelectItem value="TOP_10_MONEY">Top 10 Argent</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_doodle_jump">🦘 Champion Doodle Jump</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_doodle_jump_mort_subite">💀 Champion Doodle Jump Mort Subite</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_flappy_bird">🐦 Champion Flappy Bird</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_game_2048">🔢 Champion 2048</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_geometry_dash">📐 Champion Geometry Dash</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_solitaire">🃏 Champion Solitaire</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_racer">🏎️ Champion Racer (meilleur temps)</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_tetris">🧱 Champion Tetris</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_knife_hit">🔪 Champion Knife Hit</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_goyave_empire">🌿 Champion Goyave Empire</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_logic_lab">🧠 Champion Logic Lab</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_minesweeper">💣 Champion Démineur</SelectItem>
-                                <SelectItem value="GAME_HIGHSCORE_casino">🎰 Champion Casino</SelectItem>
-                                <SelectItem value="BOMBPARTY_TOP_WINS">💥 Champion Bombe de mots (victoires)</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={badgeForm.isActive ?? true}
-                        onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isActive: v }))}
-                      />
-                      <label className={TYPOGRAPHY.XS}>Badge actif (visible et attribuable)</label>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={badgeForm.isHidden ?? false}
-                        onCheckedChange={(v) => setBadgeForm(f => ({ ...f, isHidden: v }))}
-                      />
-                      <label className={TYPOGRAPHY.XS}>Achievement caché — s'affiche comme ??? sur les profils avant d'être obtenu</label>
-                    </div>
-                  </div>
-                </div>
-
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setBadgeFormOpen(false)}>Annuler</Button>
-                  <Button onClick={handleSaveBadge} disabled={!badgeForm.name || !badgeForm.description}>
-                    <Save className="w-4 h-4 mr-2" />
-                    {editingBadge ? 'Mettre à jour' : 'Créer'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-          </div>
-        </TabsContent>
-
-        {/* ── CHAT HISTORY TAB ────────────────────────────────────────────────── */}
-        <TabsContent value="chat-history" className={SPACING.SECTION_SPACING}>
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <h3 className={TYPOGRAPHY.H4}>Historique chat global</h3>
-                    <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>
-                      Tous les messages de tous les temps, classés par jour (00:00 a 00:00 heure de Paris).
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void fetchChatHistoryDays()}
-                      disabled={loadingChatHistoryDays || loadingMoreChatHistoryDays}
-                    >
-                      {(loadingChatHistoryDays || loadingMoreChatHistoryDays)
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                        : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
-                      Rafraichir
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => void exportChat()} disabled={exportingChat}>
-                      {exportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
-                      Export total
-                    </Button>
-                    <div className="flex items-center gap-2 rounded-md border border-border/60 px-2 py-1.5">
-                      <Switch checked={showDeletedChatMessages} onCheckedChange={setShowDeletedChatMessages} />
-                      <span className="text-xs text-muted-foreground">Afficher les supprimés</span>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-                  <div className="rounded-lg border border-border/60 overflow-hidden">
-                    <div className="px-3 py-2 border-b border-border/60 bg-muted/20 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Jours
-                    </div>
-                    <div className="max-h-[620px] overflow-y-auto">
-                      {loadingChatHistoryDays && chatHistoryDays.length === 0 ? (
-                        <div className="p-4 flex items-center justify-center text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      ) : chatHistoryDays.length === 0 ? (
-                        <p className="p-4 text-sm text-muted-foreground">Aucun message trouvé.</p>
-                      ) : (
-                        <div className="divide-y divide-border/40">
-                          {chatHistoryDays.map((dayEntry) => {
-                            const selected = chatHistoryDay === dayEntry.day;
-                            return (
-                              <button
-                                key={dayEntry.day}
-                                type="button"
-                                onClick={() => void fetchChatHistoryDay(dayEntry.day, showDeletedChatMessages)}
-                                className={cn('w-full px-3 py-2 text-left transition-colors hover:bg-muted/30', selected && 'bg-muted/50')}
-                              >
-                                <div className="text-sm font-medium">
-                                  {new Date(`${dayEntry.day}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                                </div>
-                                <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-                                  <span>{dayEntry.totalMessages.toLocaleString('fr-FR')} total</span>
-                                  <span>{dayEntry.visibleMessages.toLocaleString('fr-FR')} visibles</span>
-                                  <span>{dayEntry.deletedMessages.toLocaleString('fr-FR')} supprimés</span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                          {chatHistoryCursor && (
-                            <div className="p-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full"
-                                disabled={loadingMoreChatHistoryDays}
-                                onClick={() => void fetchChatHistoryDays(true)}
-                              >
-                                {loadingMoreChatHistoryDays ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
-                                Charger plus de jours
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-border/60 overflow-hidden">
-                    <div className="px-3 py-2 border-b border-border/60 bg-muted/20 flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-sm font-medium">
-                        {chatHistoryDay
-                          ? `Messages du ${new Date(`${chatHistoryDay}T00:00:00`).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}`
-                          : 'Sélectionne un jour'}
-                      </div>
-                      {chatHistoryDay && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void exportChat(chatHistoryDay)}
-                          disabled={exportingChatDay === chatHistoryDay}
-                        >
-                          {exportingChatDay === chatHistoryDay ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
-                          Export jour
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="max-h-[620px] overflow-y-auto p-3 space-y-2">
-                      {loadingChatHistoryMessages ? (
-                        <div className="py-8 flex items-center justify-center text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      ) : chatHistoryMessages.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">Aucun message pour ce jour.</p>
-                      ) : (
-                        chatHistoryMessages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={cn('rounded-lg border px-3 py-2', msg.deletedAt ? 'border-destructive/30 bg-destructive/5' : 'border-border/60 bg-background')}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                  <span className="font-medium text-foreground">{msg.user?.username || 'Système'}</span>
-                                  <span>{new Date(msg.createdAt).toLocaleString('fr-FR')}</span>
-                                  <span className="uppercase">{msg.type}</span>
-                                  {msg.deletedAt && <span className="text-destructive font-medium">SUPPRIMÉ VISUELLEMENT</span>}
-                                </div>
-                                <p className="mt-1 text-sm whitespace-pre-wrap break-words">{msg.message || '(message vide)'}</p>
-                                {msg.imageUrl && (
-                                  <a
-                                    href={resolveImageUrl(msg.imageUrl)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="mt-1 inline-block text-xs text-blue-400 hover:underline"
-                                  >
-                                    Ouvrir image
-                                  </a>
-                                )}
-                              </div>
-                              {!msg.deletedAt && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-destructive/40 text-destructive hover:bg-destructive/10"
-                                  disabled={softDeletingChatMessageId === msg.id}
-                                  onClick={() => void softDeleteChatMessage(msg.id)}
-                                >
-                                  {softDeletingChatMessageId === msg.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* ── COMMUNICATION TAB ────────────────────────────────────────────────── */}
-        <TabsContent value="communication" className={SPACING.SECTION_SPACING}>
-          {/* New thread dialog */}
-          <Dialog open={newThreadOpen} onOpenChange={(o) => { setNewThreadOpen(o); if (!o) { setNewThreadUserId(''); setNewThreadBody(''); setNewThreadSearch(''); } }}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nouvelle conversation</DialogTitle>
-                <DialogDescription>Envoie un premier message à un utilisateur.</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-2">
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Utilisateur</label>
-                  <Input
-                    placeholder="Rechercher un utilisateur…"
-                    value={newThreadSearch}
-                    onChange={(e) => { setNewThreadSearch(e.target.value); setNewThreadUserId(''); }}
-                    className="mb-2"
-                  />
-                  {newThreadSearch.trim() && (
-                    <div className="border border-border rounded-md max-h-40 overflow-y-auto">
-                      {users
-                        .filter((u) => u.username.toLowerCase().includes(newThreadSearch.toLowerCase()))
-                        .slice(0, 10)
-                        .map((u) => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            className={cn('w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors', newThreadUserId === u.id && 'bg-muted font-medium')}
-                            onClick={() => { setNewThreadUserId(u.id); setNewThreadSearch(u.username); }}
-                          >
-                            {u.username}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Message</label>
-                  <Textarea
-                    value={newThreadBody}
-                    onChange={(e) => setNewThreadBody(e.target.value)}
-                    placeholder="Votre message…"
-                    rows={3}
-                    maxLength={1000}
-                    className="resize-none"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setNewThreadOpen(false)}>Annuler</Button>
-                <Button disabled={!newThreadUserId || !newThreadBody.trim() || newThreadSending} onClick={handleStartThread}>
-                  {newThreadSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                  Envoyer
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-muted/10 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h3 className={TYPOGRAPHY.H4}>Signalements de conversations</h3>
-                  <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Les derniers messages sont envoyes ici quand un joueur signale un DM ou un groupe.</p>
-                </div>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchSupportReports}>
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              {supportReportsLoading ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : supportReports.length === 0 ? (
-                <p className={cn(TYPOGRAPHY.MUTED, 'text-center')}>Aucun signalement.</p>
-              ) : (
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {supportReports.slice(0, 8).map((report) => (
-                    <div key={report.id} className="rounded-lg border border-border/60 bg-background p-3 space-y-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold">{report.conversationTitle || report.conversationType || 'Conversation'}</p>
-                          <p className="text-xs text-muted-foreground">Signale par {report.reporter.username} • {new Date(report.createdAt).toLocaleString('fr-FR')}</p>
-                        </div>
-                        <span className={cn('rounded-full px-2 py-1 text-[10px] font-semibold', report.status === 'PENDING' ? 'bg-amber-500/15 text-amber-400' : report.status === 'ACTION_TAKEN' ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400')}>
-                          {report.status}
-                        </span>
-                      </div>
-                      {report.reason && <p className="text-sm text-foreground">{report.reason}</p>}
-                      <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-border/50 bg-muted/20 p-2">
-                        {report.snapshot.map((message) => (
-                          <div key={message.id} className="rounded-md bg-background/80 px-2 py-1.5 text-xs whitespace-pre-wrap break-words">
-                            <span className="font-semibold">{message.sender?.username ?? 'Systeme'}:</span> {message.body}
-                          </div>
-                        ))}
-                      </div>
-                      {report.status === 'PENDING' && (
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="destructive" disabled={reviewingSupportReportId === report.id} onClick={() => handleReviewSupportReport(report.id, 'ACTION_TAKEN')}>
-                            Action prise
-                          </Button>
-                          <Button size="sm" variant="outline" disabled={reviewingSupportReportId === report.id} onClick={() => handleReviewSupportReport(report.id, 'DISMISSED')}>
-                            Ignorer
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          <div className="flex gap-4 h-[600px]">
-            {/* Thread list */}
-            <div className="w-72 shrink-0 flex flex-col border border-border rounded-lg overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-muted/40 flex items-center justify-between">
-                <h3 className={TYPOGRAPHY.H4}>Conversations</h3>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Nouvelle conversation" onClick={() => setNewThreadOpen(true)}>
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchSupportThreads}>
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {supportThreadsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : supportThreads.length === 0 ? (
-                  <p className={cn(TYPOGRAPHY.MUTED, 'p-4 text-center')}>Aucune conversation.</p>
-                ) : (
-                  supportThreads.map((thread) => (
-                    <button
-                      key={thread.userId}
-                      type="button"
-                      onClick={() => openSupportThread(thread.userId)}
-                      className={cn(
-                        'w-full text-left px-4 py-3 border-b border-border/50 hover:bg-muted/40 transition-colors',
-                        activeThreadUserId === thread.userId && 'bg-muted'
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium truncate">
-                          {thread.user?.username ?? thread.userId}
-                        </span>
-                        {thread.unreadCount > 0 && (
-                          <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-semibold shrink-0">
-                            {thread.unreadCount}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {thread.lastFromAdmin ? '↩ ' : ''}{thread.lastBody}
-                      </p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Thread view */}
-            <div className="flex-1 flex flex-col border border-border rounded-lg overflow-hidden">
-              {!activeThreadUserId ? (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                  Sélectionne une conversation.
-                </div>
-              ) : (
-                <>
-                  <div className="px-4 py-3 border-b border-border bg-muted/40">
-                    <h3 className={TYPOGRAPHY.H4}>{activeThreadUser?.username ?? activeThreadUserId}</h3>
-                  </div>
-                  <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-                    {activeThreadMessages.map((msg) => {
-                      const messageImages = msg.images ? JSON.parse(msg.images) : [];
-                      return (
-                        <div key={msg.id} className={cn('flex', msg.fromAdmin ? 'justify-end' : 'justify-start')}>
-                          <div className={cn(
-                            'max-w-[75%] rounded-2xl px-3 py-2 text-sm',
-                            msg.fromAdmin
-                              ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                              : 'bg-muted text-foreground rounded-tl-sm'
-                          )}>
-                            {!msg.fromAdmin && (
-                              <p className="text-[10px] font-semibold text-primary mb-0.5">{activeThreadUser?.username}</p>
-                            )}
-                            {messageImages.length > 0 && (
-                              <div className="flex gap-1 mb-2 flex-wrap">
-                                {messageImages.map((img: string, idx: number) => (
-                                  <img
-                                    key={idx}
-                                    src={img}
-                                    alt={`Message ${idx}`}
-                                    className="h-16 w-16 object-cover rounded"
-                                  />
-                                ))}
-                              </div>
-                            )}
-                            <p className="break-words whitespace-pre-wrap">{msg.body}</p>
-                            <p className={cn('text-[10px] mt-1', msg.fromAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                              {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div ref={supportMessagesEndRef} />
-                  </div>
-                  <div className="border-t border-border p-3 space-y-2">
-                    {supportReplyImages.length > 0 && (
-                      <div className="flex gap-2 flex-wrap">
-                        {supportReplyImages.map((img, idx) => (
-                          <div key={idx} className="relative group">
-                            <img
-                              src={img}
-                              alt={`Support ${idx}`}
-                              className="h-12 w-12 object-cover rounded border border-border"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeSupportReplyImage(idx)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Supprimer l'image"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex gap-2 items-end">
-                      <div className="flex flex-col gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-2 hover:bg-primary/10 hover:text-primary text-xs"
-                          disabled={supportUploadingImage || supportReplyImages.length >= 5 || supportSending}
-                          onClick={() => supportImageInputRef.current?.click()}
-                          title="Ajouter une image"
-                        >
-                          <Upload className="h-3.5 w-3.5 mr-1.5" />
-                          Image
-                        </Button>
-                        <input
-                          ref={supportImageInputRef}
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleSupportImageUpload}
-                          className="hidden"
-                        />
-                      </div>
-                      <Textarea
-                        value={supportReply}
-                        onChange={(e) => setSupportReply(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSupportReply(); }
-                        }}
-                        placeholder="Répondre…"
-                        className="resize-none text-sm min-h-[36px] max-h-24 py-2"
-                        rows={1}
-                        maxLength={1000}
-                      />
-                      <Button
-                        size="icon"
-                        className="h-9 w-9 shrink-0"
-                        disabled={(!supportReply.trim() && supportReplyImages.length === 0) || supportSending || supportUploadingImage}
-                        onClick={handleSupportReply}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-          </div>
-        </TabsContent>
+        <ActivityTab
+          loadingPlatformStats={loadingPlatformStats}
+          downloadStatsCSV={downloadStatsCSV}
+          platformStats={platformStats}
+          fetchPlatformStats={fetchPlatformStats}
+          formatBigNumber={formatBigNumber}
+          moneyDistribution={moneyDistribution}
+          auraDistribution={auraDistribution}
+          wealthUsers={wealthUsers}
+          formatPercent={formatPercent}
+          platformTopGamesChartHeight={platformTopGamesChartHeight}
+          platformTopGamesChartData={platformTopGamesChartData}
+          activityBreakdownColors={ACTIVITY_BREAKDOWN_COLORS}
+          loadingGamesLeaderboard={loadingGamesLeaderboard}
+          gamesLeaderboard={gamesLeaderboard}
+          onlineStats={onlineStats}
+          loadingActivity={loadingActivity}
+          activityPeriod={activityPeriod}
+          setActivityPeriod={setActivityPeriod}
+          fetchActivity={fetchActivity}
+          snapshotting={snapshotting}
+          setSnapshotting={setSnapshotting}
+          adminApi={adminApi}
+          activityCustomStart={activityCustomStart}
+          setActivityCustomStart={setActivityCustomStart}
+          activityCustomEnd={activityCustomEnd}
+          setActivityCustomEnd={setActivityCustomEnd}
+          activitySpecificDay={activitySpecificDay}
+          setActivitySpecificDay={setActivitySpecificDay}
+          activityHistory={activityHistory}
+          selectedActivity={selectedActivity}
+          hoveredActivity={hoveredActivity}
+          activityChartDataRef={activityChartDataRef}
+          activityFullDomainRef={activityFullDomainRef}
+          activityZoomDomain={activityZoomDomain}
+          setActivityDomain={setActivityDomain}
+          panActivityDomain={panActivityDomain}
+          zoomActivityDomain={zoomActivityDomain}
+          activityChartRef={activityChartRef}
+          handleActivityPointerDown={handleActivityPointerDown}
+          handleActivityPointerMove={handleActivityPointerMove}
+          handleActivityPointerEnd={handleActivityPointerEnd}
+          handleActivityPointerLeave={handleActivityPointerLeave}
+          activityBreakdownDay={activityBreakdownDay}
+          setActivityBreakdownDay={setActivityBreakdownDay}
+          fetchActivityBreakdown={fetchActivityBreakdown}
+          loadingActivityBreakdown={loadingActivityBreakdown}
+          activityBreakdown={activityBreakdown}
+          pageBreakdownKeys={pageBreakdownKeys}
+          pageBreakdownData={pageBreakdownData}
+          gameTypeLabels={GAME_TYPE_LABELS}
+          gameBreakdownKeys={gameBreakdownKeys}
+          gameBreakdownData={gameBreakdownData}
+          gameDurationBreakdownKeys={gameDurationBreakdownKeys}
+          gameDurationBreakdownData={gameDurationBreakdownData}
+          formatDurationShort={formatDurationShort}
+          playtimePeriod={playtimePeriod}
+          setPlaytimePeriod={setPlaytimePeriod}
+          fetchPlaytimeLeaderboard={fetchPlaytimeLeaderboard}
+          playtimeCustomStart={playtimeCustomStart}
+          setPlaytimeCustomStart={setPlaytimeCustomStart}
+          playtimeCustomEnd={playtimeCustomEnd}
+          setPlaytimeCustomEnd={setPlaytimeCustomEnd}
+          loadingPlaytimeLeaderboard={loadingPlaytimeLeaderboard}
+          playtimeLeaderboard={playtimeLeaderboard}
+        />
+        <DemographicsTab
+          totalDemographicUsers={totalDemographicUsers}
+          levelDistributionData={levelDistributionData}
+          classDistributionData={classDistributionData}
+          classAveragesData={classAveragesData}
+          topUsersByLevel={topUsersByLevel}
+          usersByClass={usersByClass}
+          activityBreakdownColors={ACTIVITY_BREAKDOWN_COLORS}
+          formatPercent={formatPercent}
+          formatBigNumber={formatBigNumber}
+        />
+
+        <BadgesTab
+          handleCheckAutoBadges={handleCheckAutoBadges}
+          openCreateBadge={openCreateBadge}
+          badges={badges}
+          badgesLoading={badgesLoading}
+          openEditBadge={openEditBadge}
+          handleDeleteBadge={handleDeleteBadge}
+          awardBadgeUserId={awardBadgeUserId}
+          setAwardBadgeUserId={setAwardBadgeUserId}
+          awardBadgeId={awardBadgeId}
+          setAwardBadgeId={setAwardBadgeId}
+          awardBadgeReason={awardBadgeReason}
+          setAwardBadgeReason={setAwardBadgeReason}
+          handleAwardBadge={handleAwardBadge}
+          badgeFormOpen={badgeFormOpen}
+          setBadgeFormOpen={setBadgeFormOpen}
+          editingBadge={editingBadge}
+          badgeForm={badgeForm}
+          setBadgeForm={setBadgeForm}
+          uploadItemImageFile={uploadItemImageFile}
+          handleSaveBadge={handleSaveBadge}
+        />
+        <ChatHistoryTab
+          fetchChatHistoryDays={fetchChatHistoryDays}
+          loadingChatHistoryDays={loadingChatHistoryDays}
+          loadingMoreChatHistoryDays={loadingMoreChatHistoryDays}
+          exportChat={exportChat}
+          exportingChat={exportingChat}
+          showDeletedChatMessages={showDeletedChatMessages}
+          setShowDeletedChatMessages={setShowDeletedChatMessages}
+          chatHistoryDays={chatHistoryDays}
+          chatHistoryDay={chatHistoryDay}
+          fetchChatHistoryDay={fetchChatHistoryDay}
+          chatHistoryCursor={chatHistoryCursor}
+          chatHistoryMessages={chatHistoryMessages}
+          loadingChatHistoryMessages={loadingChatHistoryMessages}
+          exportingChatDay={exportingChatDay}
+          softDeletingChatMessageId={softDeletingChatMessageId}
+          softDeleteChatMessage={softDeleteChatMessage}
+        />
+
+        <CommunicationTab
+          newThreadOpen={newThreadOpen}
+          setNewThreadOpen={setNewThreadOpen}
+          setNewThreadUserId={setNewThreadUserId}
+          setNewThreadBody={setNewThreadBody}
+          setNewThreadSearch={setNewThreadSearch}
+          newThreadSearch={newThreadSearch}
+          users={users}
+          newThreadUserId={newThreadUserId}
+          newThreadBody={newThreadBody}
+          newThreadSending={newThreadSending}
+          handleStartThread={handleStartThread}
+          supportReportsLoading={supportReportsLoading}
+          supportReports={supportReports}
+          fetchSupportReports={fetchSupportReports}
+          reviewingSupportReportId={reviewingSupportReportId}
+          handleReviewSupportReport={handleReviewSupportReport}
+          fetchSupportThreads={fetchSupportThreads}
+          supportThreadsLoading={supportThreadsLoading}
+          supportThreads={supportThreads}
+          openSupportThread={openSupportThread}
+          activeThreadUserId={activeThreadUserId}
+          activeThreadUser={activeThreadUser}
+          activeThreadMessages={activeThreadMessages}
+          supportMessagesEndRef={supportMessagesEndRef}
+          supportReplyImages={supportReplyImages}
+          removeSupportReplyImage={removeSupportReplyImage}
+          supportUploadingImage={supportUploadingImage}
+          supportSending={supportSending}
+          supportImageInputRef={supportImageInputRef}
+          handleSupportImageUpload={handleSupportImageUpload}
+          supportReply={supportReply}
+          setSupportReply={setSupportReply}
+          handleSupportReply={handleSupportReply}
+        />
 
         </Tabs>
       </div>
@@ -10023,6 +6016,14 @@ export default function Admin() {
     </>
   );
 }
+
+
+
+
+
+
+
+
 
 
 

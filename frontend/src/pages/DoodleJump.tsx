@@ -355,7 +355,6 @@ export default function DoodleJump() {
 
   // Admin: Delete a user's high score
   const handleDeleteScore = async (userId: string, username: string) => {
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
 
     try {
       await gamesApi.deleteStats(selectedGameType, userId);
@@ -1888,3 +1887,4 @@ export default function DoodleJump() {
     </div>
   );
 }
+

@@ -1038,6 +1038,8 @@ export const gamesApi = {
     api.get<DailyRacerStateResponse>('/games/daily/racer', { params: { limit } }),
   submitDailyRacerRun: (lapTimeMs: number) =>
     api.post<DailyRacerSubmitResponse>('/games/daily/racer/complete', { lapTimeMs }),
+  deleteDailyRacerRuns: (userId: string) =>
+    api.delete(`/games/daily/racer/stats/${userId}`),
   // Admin: Delete a user's game stats
   deleteStats: (gameType: string, userId: string) =>
     api.delete(`/games/${gameType}/stats/${userId}`),
@@ -1081,6 +1083,8 @@ export const polytrackApi = {
     api.post<{ saved: boolean; isGlobalRecord: boolean; isNewPB: boolean; personalBest: { timeMs: number; timeDisplay: string } }>('/polytrack/records', { trackNumber, timeMs }),
   getLeaderboard: (trackNumber: number, limit?: number) =>
     api.get<{ trackNumber: number; rankings: PolytrackLeaderboardEntry[]; userRank: { rank: number; timeMs: number; timeDisplay: string } | null }>(`/polytrack/leaderboard/${trackNumber}`, { params: { limit } }),
+  deleteRecord: (trackNumber: number, userId: string) =>
+    api.delete(`/polytrack/records/${trackNumber}/${userId}`),
 };
 
 export interface ClashPlayerSummary {

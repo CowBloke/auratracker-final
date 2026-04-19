@@ -4,15 +4,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { polytrackApi, type PolytrackTrack, type PolytrackLeaderboardEntry } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { PageShell } from '@/components/layout/page-shell';
 import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useHideGameLeaderboards } from '@/lib/game-preferences';
+import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
 const GAME_SRC = '/polytrack/index.html';
-const MEDAL_COLORS = ['text-yellow-400', 'text-slate-400', 'text-amber-600'];
 
 export default function Polytrack() {
   const { user } = useAuth();
@@ -21,7 +20,6 @@ export default function Polytrack() {
   const [tracks, setTracks] = useState<PolytrackTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<number>(1);
   const [leaderboard, setLeaderboard] = useState<PolytrackLeaderboardEntry[]>([]);
-  const [userRank, setUserRank] = useState<{ rank: number; timeMs: number; timeDisplay: string } | null>(null);
   const [, setLoadingTracks] = useState(true);
   const [loadingLb, setLoadingLb] = useState(false);
 
@@ -54,13 +52,21 @@ export default function Polytrack() {
     try {
       const res = await polytrackApi.getLeaderboard(trackNumber, 15);
       setLeaderboard(res.data.rankings);
-      setUserRank(res.data.userRank);
     } catch {
       setLeaderboard([]);
-      setUserRank(null);
     } finally {
       setLoadingLb(false);
     }
+  };
+
+  const formatMsTime = (lapTimeMs: number): string => {
+    const minutes = Math.floor(lapTimeMs / 60000);
+    const seconds = Math.floor((lapTimeMs % 60000) / 1000);
+    const milliseconds = lapTimeMs % 1000;
+    if (minutes > 0) {
+      return `${minutes}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
+    }
+    return `${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(3, '0')}`;
   };
 
   useEffect(() => {
@@ -95,6 +101,31 @@ export default function Polytrack() {
       setSubmitting(false);
     }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDeleteScore = useCallback(async (userId: string, _username: string) => {
+    if (!user?.isAdmin) return;
+
+    try {
+      await polytrackApi.deleteRecord(selectedTrack, userId);
+      await Promise.all([fetchTracks(), fetchLeaderboard(selectedTrack)]);
+      if (userId === user.id) {
+        setSubmitResult(null);
+        setPendingMs(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete polytrack score:', error);
+    }
+  }, [selectedTrack, user?.id, user?.isAdmin]);
+
+  const leaderboardEntries: GameLeaderboardEntry[] = leaderboard.map((entry) => ({
+    id: `${entry.userId}-${entry.rank}`,
+    highScore: entry.timeMs,
+    user: {
+      id: entry.userId,
+      username: entry.username,
+      usernameColor: entry.usernameColor,
+    },
+  }));
 
   // Listen for finish events posted by the game iframe
   useEffect(() => {
@@ -278,55 +309,18 @@ export default function Polytrack() {
                 <div className="px-4 py-4">
                   <ListSkeleton rows={5} />
                 </div>
-              ) : leaderboard.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-muted-foreground">Aucun temps enregistré. Sois le premier !</p>
               ) : (
-                <div className="divide-y divide-border">
-                  {leaderboard.map((entry) => {
-                    const isCurrentUser = entry.userId === user?.id;
-                    const medalColor = MEDAL_COLORS[entry.rank - 1] ?? null;
-                    return (
-                      <div
-                        key={entry.userId}
-                        className={cn(
-                          'flex items-center gap-3 px-4 py-2.5 text-sm',
-                          isCurrentUser && 'bg-primary/5'
-                        )}
-                      >
-                        {/* Rank */}
-                        <span className={cn('w-6 text-center font-bold shrink-0', medalColor ?? 'text-muted-foreground')}>
-                          {entry.rank <= 3 ? ['🥇', '🥈', '🥉'][entry.rank - 1] : entry.rank}
-                        </span>
-
-                        {/* Username */}
-                        <div className="flex-1 min-w-0">
-                          <PlayerHoverCard userId={entry.userId} username={entry.username}>
-                            <span
-                              className={cn('font-medium truncate cursor-pointer hover:underline', isCurrentUser && 'font-semibold')}
-                              style={entry.usernameColor ? { color: entry.usernameColor } : undefined}
-                            >
-                              {entry.username}
-                            </span>
-                          </PlayerHoverCard>
-                        </div>
-
-                        {/* Time */}
-                        <span className={cn('font-mono text-sm shrink-0', entry.rank === 1 ? 'text-yellow-500 font-bold' : 'text-foreground')}>
-                          {entry.timeDisplay}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* User's own rank if outside top 15 */}
-              {userRank && !leaderboard.some((e) => e.userId === user?.id) && (
-                <div className="border-t px-4 py-2.5 flex items-center gap-3 text-sm bg-primary/5">
-                  <span className="w-6 text-center font-bold text-muted-foreground shrink-0">{userRank.rank}</span>
-                  <span className="flex-1 font-semibold">{user?.username}</span>
-                  <span className="font-mono text-sm shrink-0">{userRank.timeDisplay}</span>
-                </div>
+                <GameLeaderboard
+                  entries={leaderboardEntries}
+                  currentUserId={user?.id}
+                  personalHighScore={currentTrack?.personalBest?.timeMs ?? null}
+                  scoreFormatter={formatMsTime}
+                  isAdmin={user?.isAdmin}
+                  onDeleteScore={handleDeleteScore}
+                  title="Classement"
+                  noCard
+                  maxHeight={520}
+                />
               )}
             </CardContent>
           </Card>

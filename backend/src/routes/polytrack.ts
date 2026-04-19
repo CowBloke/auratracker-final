@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
-import { logGame } from '../utils/logger.js';
+import { logGame, logAdmin } from '../utils/logger.js';
 
 const router = Router();
 
@@ -221,6 +221,53 @@ router.get('/leaderboard/:trackNumber', authMiddleware, async (req: AuthRequest,
   } catch (error) {
     console.error('Get polytrack leaderboard error:', error);
     res.status(500).json({ error: 'Failed to get leaderboard' });
+  }
+});
+
+// DELETE /polytrack/records/:trackNumber/:userId — admin only reset for one user on one track
+router.delete('/records/:trackNumber/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const adminUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, username: true, isAdmin: true },
+    });
+
+    if (!adminUser?.isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const trackNum = parseInt(req.params.trackNumber, 10);
+    const { userId } = req.params;
+    if (!Number.isInteger(trackNum) || trackNum < 1 || trackNum > 14) {
+      return res.status(400).json({ error: 'Invalid trackNumber' });
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+
+    const result = await prisma.polytrackRecord.deleteMany({
+      where: {
+        userId,
+        trackNumber: trackNum,
+      },
+    });
+
+    logAdmin('stats_delete', adminUser.id, adminUser.username, userId, targetUser?.username || undefined, {
+      gameType: 'polytrack',
+      trackNumber: trackNum,
+      deletedCount: result.count,
+    });
+
+    return res.json({ success: true, deletedCount: result.count });
+  } catch (error) {
+    console.error('Delete polytrack record error:', error);
+    return res.status(500).json({ error: 'Failed to delete polytrack record' });
   }
 });
 

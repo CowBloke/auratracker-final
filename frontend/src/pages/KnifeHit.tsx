@@ -470,6 +470,22 @@ export default function KnifeHit() {
     fetchLeaderboard();
   }, [fetchLeaderboard, fetchStats]);
 
+  const handleDeleteScore = useCallback(async (userId: string, _username: string) => {
+    if (!user?.isAdmin) {
+      return;
+    }
+
+    try {
+      await gamesApi.deleteStats('knife_hit', userId);
+      if (userId === user.id) {
+        setHighScore(0);
+      }
+      await fetchLeaderboard();
+    } catch (error) {
+      console.error('Failed to delete knife hit score:', error);
+    }
+  }, [fetchLeaderboard, user]);
+
   const setupLevel = useCallback((levelNumber: number, keepScore: boolean) => {
     const config = getLevelConfig(levelNumber);
     wheelRotationRef.current = 0;
@@ -1217,6 +1233,8 @@ export default function KnifeHit() {
           entries={leaderboard}
           currentUserId={user?.id}
           personalHighScore={highScore}
+          isAdmin={user?.isAdmin}
+          onDeleteScore={handleDeleteScore}
           maxHeight={420}
           hidden={isFullscreen}
         />

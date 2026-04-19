@@ -223,6 +223,22 @@ export default function Solitaire() {
     }
   };
 
+  const handleDeleteScore = async (userId: string, _username: string) => {
+    if (!user?.isAdmin) {
+      return;
+    }
+
+    try {
+      await gamesApi.deleteStats('solitaire', userId);
+      if (userId === user.id) {
+        setHighScore(0);
+      }
+      await fetchLeaderboard();
+    } catch (error) {
+      console.error('Failed to delete solitaire score:', error);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
     fetchLeaderboard();
@@ -799,6 +815,8 @@ export default function Solitaire() {
           entries={leaderboard}
           currentUserId={user?.id}
           personalHighScore={highScore}
+          isAdmin={user?.isAdmin}
+          onDeleteScore={handleDeleteScore}
           maxHeight={720}
           hidden={isFullscreen}
         />

@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { toast } from '@/hooks/use-toast';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { useHideGameLeaderboards } from '@/lib/game-preferences';
@@ -214,6 +215,7 @@ function BuildingInspector({
 
 export default function ClashVillage() {
   const { user, refreshUser } = useAuth();
+  const { confirm } = useAppDialog();
   const hideGameLeaderboards = useHideGameLeaderboards();
   const [activeTab, setActiveTab] = useState<TabId>('village');
   const [state, setState] = useState<ClashStateResponse | null>(null);
@@ -331,7 +333,7 @@ export default function ClashVillage() {
   }, [loadPage]);
 
   const handleDeleteVillage = useCallback(async () => {
-    if (!window.confirm('Supprimer ton village Clash ? Cette action retirera ton village du jeu et personne ne pourra plus l’attaquer tant que tu n’en recrées pas un.')) {
+    if (!(await confirm('Supprimer ton village Clash ? Cette action retirera ton village du jeu et personne ne pourra plus l’attaquer tant que tu n’en recrées pas un.'))) {
       return;
     }
 
@@ -363,7 +365,7 @@ export default function ClashVillage() {
     } finally {
       setDeleteLoading(false);
     }
-  }, []);
+  }, [confirm]);
 
   const handleUpgrade = useCallback(async (buildingType: ClashBuilding['type']) => {
     setUpgradeLoading(buildingType);

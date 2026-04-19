@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { RotateCcw } from 'lucide-react';
@@ -64,7 +64,6 @@ export default function Tetris() {
   }, [user, fetchStats, fetchLeaderboard]);
 
   const handleDeleteScore = async (userId: string, username: string) => {
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
 
     try {
       await gamesApi.deleteStats('tetris', userId);
@@ -245,3 +244,4 @@ export default function Tetris() {
     </div>
   );
 }
+

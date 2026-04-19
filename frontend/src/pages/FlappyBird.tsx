@@ -128,7 +128,6 @@ export default function FlappyBird() {
 
   // Admin: Delete a user's high score
   const handleDeleteScore = async (userId: string, username: string) => {
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
 
     try {
       await gamesApi.deleteStats('flappy_bird', userId);
@@ -586,3 +585,4 @@ export default function FlappyBird() {
     </div>
   );
 }
+

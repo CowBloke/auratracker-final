@@ -11,6 +11,7 @@ import { DuelSocketProvider } from './contexts/DuelSocketContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { FeaturesProvider } from './contexts/FeaturesContext';
+import { AppDialogProvider } from './contexts/AppDialogContext';
 import { RewardQueueProvider } from './contexts/RewardQueueContext';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -29,14 +30,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 <GameSocketProvider>
                   <DuelSocketProvider>
                     <ChatSocketProvider>
-                      <NotificationProvider>
-                        <RewardQueueProvider>
-                          <FeaturesProvider>
-                            <App />
-                          </FeaturesProvider>
-                        </RewardQueueProvider>
-                        <Toaster />
-                      </NotificationProvider>
+                      <AppDialogProvider>
+                        <NotificationProvider>
+                          <RewardQueueProvider>
+                            <FeaturesProvider>
+                              <App />
+                            </FeaturesProvider>
+                          </RewardQueueProvider>
+                          <Toaster />
+                        </NotificationProvider>
+                      </AppDialogProvider>
                     </ChatSocketProvider>
                   </DuelSocketProvider>
                 </GameSocketProvider>

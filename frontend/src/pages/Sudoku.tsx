@@ -496,6 +496,23 @@ export default function Sudoku() {
     }
   }, [completed, difficulty, draftGrid, elapsedSeconds, hintsUsed, mistakesFound, solutionGrid]);
 
+  const handleDeleteScore = async (userId: string, _username: string) => {
+    if (!user?.isAdmin) {
+      return;
+    }
+
+    try {
+      await gamesApi.deleteStats('logic_lab', userId);
+      if (userId === user.id) {
+        setHighScore(0);
+      }
+      const leaderboardResponse = await gamesApi.getLeaderboard('logic_lab', 20);
+      setLeaderboard(leaderboardResponse.data.rankings || []);
+    } catch (error) {
+      console.error('Failed to delete sudoku score:', error);
+    }
+  };
+
   return (
     <PageShell size="wide">
 
@@ -696,6 +713,8 @@ export default function Sudoku() {
           entries={leaderboard}
           currentUserId={user?.id}
           personalHighScore={highScore}
+          isAdmin={user?.isAdmin}
+          onDeleteScore={handleDeleteScore}
           title="Classement"
           maxHeight={420}
           hidden={isFullscreen}

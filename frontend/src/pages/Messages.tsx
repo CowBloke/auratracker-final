@@ -62,6 +62,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChatSkeleton, ListSkeleton } from '@/components/ui/loading-skeletons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { toast } from '@/hooks/use-toast';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
@@ -331,6 +332,7 @@ function ConversationAvatar({ conversation, size = 'md' }: { conversation: Messa
 
 export default function MessagesPage() {
   const { user } = useAuth();
+  const { confirm } = useAppDialog();
   const { socket } = useSocketBase();
   const navigate = useNavigate();
   const location = useLocation();
@@ -409,6 +411,7 @@ export default function MessagesPage() {
   const [lawyerRatingSubmitting, setLawyerRatingSubmitting] = useState(false);
   const [showSanctionModal, setShowSanctionModal] = useState(false);
   const [courtImagePreviewUrl, setCourtImagePreviewUrl] = useState<string | null>(null);
+  const [dmProfilePreviewOpen, setDmProfilePreviewOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() =>
     typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false,
   );
@@ -1440,7 +1443,7 @@ export default function MessagesPage() {
     if (selectedConversation.type === 'GROUP') openGroupSettings();
     else if (selectedConversation.type === 'DM') {
       const other = selectedConversation.participants.find((e) => e.user.id !== user?.id)?.user;
-      if (other) navigate(`/profile/${other.id}`);
+      if (other) setDmProfilePreviewOpen(true);
     }
   };
 
@@ -1507,6 +1510,48 @@ export default function MessagesPage() {
               J'ai compris
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(dmOtherUser) && dmProfilePreviewOpen} onOpenChange={setDmProfilePreviewOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Apercu du profil</DialogTitle>
+            <DialogDescription>
+              Ouvre le profil complet pour voir ses stats, badges et activite.
+            </DialogDescription>
+          </DialogHeader>
+          {dmOtherUser ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/20 px-3 py-3">
+                <Avatar className="h-11 w-11">
+                  <AvatarImage src={resolveImageUrl(dmOtherUser.profilePicture)} alt={dmOtherUser.username} />
+                  <AvatarFallback>{dmOtherUser.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold" style={{ color: dmOtherUser.usernameColor ?? undefined }}>
+                    {dmOtherUser.username}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Discussion privee</p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" size="sm" onClick={() => setDmProfilePreviewOpen(false)}>
+                  Fermer
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setDmProfilePreviewOpen(false);
+                    navigate(`/profile/${dmOtherUser.id}`);
+                  }}
+                >
+                  Voir le profil
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
 
@@ -2623,8 +2668,8 @@ export default function MessagesPage() {
                                 {canDeleteMessage && (
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      if (!window.confirm('Supprimer ce message ?')) return;
+                                    onClick={async () => {
+                                      if (!(await confirm('Supprimer ce message ?'))) return;
                                       void handleDeleteMessage(msg.id);
                                     }}
                                     className={cn(

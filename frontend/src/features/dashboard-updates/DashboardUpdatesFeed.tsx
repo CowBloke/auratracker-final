@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Loader2, ChevronDown, ChevronRight, Flame, Heart, Sparkles, Zap, ArrowUpRight, MessagesSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { dashboardUpdatesApi, type DashboardUpdateEntry, type DashboardUpdateReaction } from '@/services/api';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -349,14 +350,13 @@ function Hero({
         <div className="db-hero__actions">
           <button type="button" className="db-button db-button--ghost" onClick={() => onToggleExpand(entry.id)}>
             <MessagesSquare className="h-3.5 w-3.5" />
-            {expanded ? 'Refermer le changelog' : 'Etendre le changelog'}
+            {expanded ? 'Fermer les details' : 'Voir le changelog detaille'}
           </button>
           <ActionLink href={entry.ctaHref} className="db-button db-button--primary">
             {entry.ctaLabel || 'Voir plus'}
             <ArrowUpRight className="h-3.5 w-3.5" />
           </ActionLink>
         </div>
-        {expanded ? <ExpandedEntry entry={entry} /> : null}
       </div>
     </article>
   );
@@ -391,7 +391,7 @@ function TimelineItem({
         </div>
         <div className="db-timeline__actions">
           <button type="button" className="db-inline-link" onClick={() => onToggleExpand(entry.id)}>
-            {expanded ? 'Masquer les details' : 'Etendre le changelog'}
+            {expanded ? 'Fermer les details' : 'Voir le changelog detaille'}
             {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </button>
           {entry.ctaHref ? (
@@ -401,7 +401,6 @@ function TimelineItem({
             </ActionLink>
           ) : null}
         </div>
-        {expanded ? <ExpandedEntry entry={entry} /> : null}
       </div>
       <div className={cn('db-timeline__media', !entry.image && 'is-empty')}>
         {entry.image ? <img src={entry.image} alt="" /> : <Sparkles className="h-8 w-8" />}
@@ -428,7 +427,7 @@ export function DashboardUpdatesFeed({
   action?: ReactNode;
 }) {
   const [tab, setTab] = useState<FilterTab>('tout');
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pendingReactionKey, setPendingReactionKey] = useState<string | null>(null);
   const [feedEntries, setFeedEntries] = useState<DashboardUpdateEntry[]>(entries);
 
@@ -481,16 +480,13 @@ export function DashboardUpdatesFeed({
     }));
   }, [timelineEntries]);
 
+  const expandedEntry = useMemo(
+    () => (expandedId ? mappedEntries.find((entry) => entry.id === expandedId) ?? null : null),
+    [expandedId, mappedEntries]
+  );
+
   const toggleExpanded = (entryId: string) => {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (next.has(entryId)) {
-        next.delete(entryId);
-      } else {
-        next.add(entryId);
-      }
-      return next;
-    });
+    setExpandedId((current) => (current === entryId ? null : entryId));
   };
 
   const replaceEntry = (updatedEntry: DashboardUpdateEntry | null | undefined) => {
@@ -546,7 +542,7 @@ export function DashboardUpdatesFeed({
         <div className="db-feed db-feed--experimental">
           <Hero
             entry={heroEntry}
-            expanded={expandedIds.has(heroEntry.id)}
+            expanded={expandedId === heroEntry.id}
             pendingKey={pendingReactionKey}
             onToggleExpand={toggleExpanded}
             onToggleReaction={handleToggleReaction}
@@ -567,7 +563,7 @@ export function DashboardUpdatesFeed({
                       <TimelineItem
                         key={entry.id}
                         entry={entry}
-                        expanded={expandedIds.has(entry.id)}
+                        expanded={expandedId === entry.id}
                         pendingKey={pendingReactionKey}
                         onToggleExpand={toggleExpanded}
                         onToggleReaction={handleToggleReaction}
@@ -578,6 +574,22 @@ export function DashboardUpdatesFeed({
               );
             })}
           </div>
+
+          <Dialog open={Boolean(expandedEntry)} onOpenChange={(open) => { if (!open) setExpandedId(null); }}>
+            <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <DialogTitle>{expandedEntry?.title || 'Details de la mise a jour'}</DialogTitle>
+                <DialogDescription>
+                  {expandedEntry
+                    ? `${CATEGORY_META[expandedEntry.feedCategory].label} · ${formatUpdateDateLabel(expandedEntry.date)} · ${formatUpdateTimeLabel(expandedEntry.publishedAt)}`
+                    : 'Details du changelog'}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="overflow-y-auto pr-1">
+                {expandedEntry ? <ExpandedEntry entry={expandedEntry} /> : null}
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       ) : (
         <div className="db-state">Aucune mise a jour pour le moment.</div>

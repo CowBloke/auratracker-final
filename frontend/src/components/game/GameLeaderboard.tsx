@@ -6,6 +6,7 @@ import type { BadgeData } from '@/components/badges/BadgeIcon';
 import { ClanTag, toClanTagData } from '@/components/clans/ClanTag';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { useHideGameLeaderboards } from '@/lib/game-preferences';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 
 export interface GameLeaderboardEntry {
   id: string;
@@ -25,7 +26,7 @@ interface GameLeaderboardProps {
   personalHighScore?: number | null;
   scoreFormatter?: (value: number) => string;
   isAdmin?: boolean;
-  onDeleteScore?: (userId: string, username: string) => void;
+  onDeleteScore?: (userId: string, username: string) => void | Promise<void>;
   title?: string;
   maxHeight?: number | string;
   /** Hide the whole card (e.g. when fullscreen) */
@@ -42,6 +43,28 @@ function LeaderboardList({
   onDeleteScore,
   maxHeight,
 }: Pick<GameLeaderboardProps, 'entries' | 'currentUserId' | 'scoreFormatter' | 'isAdmin' | 'onDeleteScore' | 'maxHeight'>) {
+  const { confirm } = useAppDialog();
+
+  const handleDeleteClick = async (userId: string, username: string) => {
+    if (!onDeleteScore) {
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: 'Supprimer le score',
+      description: `Supprimer le score de ${username} ?`,
+      confirmLabel: 'Supprimer',
+      cancelLabel: 'Annuler',
+      variant: 'destructive',
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    await onDeleteScore(userId, username);
+  };
+
   if (entries.length === 0) {
     return (
       <p className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -107,7 +130,9 @@ function LeaderboardList({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onDeleteScore(entry.user.id, entry.user.username)}
+              onClick={() => {
+                void handleDeleteClick(entry.user.id, entry.user.username);
+              }}
               className="opacity-0 group-hover:opacity-100 h-6 w-6 text-destructive hover:bg-destructive/10 shrink-0"
               title="Supprimer ce score"
             >

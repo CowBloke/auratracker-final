@@ -119,7 +119,6 @@ export default function QSWatermelon() {
   }, [submitScore]);
 
   const handleDeleteScore = useCallback(async (userId: string, username: string) => {
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
     try {
       await gamesApi.deleteStats(GAME_TYPE, userId);
       await fetchLeaderboard();
@@ -198,3 +197,4 @@ export default function QSWatermelon() {
     </PageShell>
   );
 }
+

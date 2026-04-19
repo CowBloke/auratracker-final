@@ -462,7 +462,6 @@ export default function GoyaveEmpire() {
   }, [user, isCashingOut, fetchCashOutLeaderboard, fetchActiveLeaderboard, refreshUser, saveToDb]);
 
   const handleDeleteScore = async (userId: string, username: string) => {
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
     try {
       await gamesApi.deleteStats('goyave_empire', userId);
       fetchCashOutLeaderboard();
@@ -626,9 +625,9 @@ export default function GoyaveEmpire() {
                 size="sm"
                 className="shrink-0 text-xs"
                 disabled={save.totalGuavas < 100 || isCashingOut}
-                onClick={() => {
-                  if (!confirm('Encaisser et réinitialiser votre empire ?')) return;
-                  handleCashOut();
+                onClick={async () => {
+                  if (!(await confirm('Encaisser et réinitialiser votre empire ?'))) return;
+                  void handleCashOut();
                 }}
               >
                 {isCashingOut ? '...' : 'Encaisser'}
@@ -745,3 +744,4 @@ export default function GoyaveEmpire() {
     </div>
   );
 }
+

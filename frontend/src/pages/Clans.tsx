@@ -40,6 +40,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { ClanTag, ClanTagStyle, DEFAULT_CLAN_TAG_STYLE, getClanTagBackground, parseClanTagStyle } from '@/components/clans/ClanTag';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { toast } from '@/hooks/use-toast';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
@@ -367,6 +368,7 @@ const NationFlagPreview = ({
 
 export default function Clans() {
   const { user, refreshUser } = useAuth();
+  const { confirm } = useAppDialog();
   const [searchParams, setSearchParams] = useSearchParams();
   const [clans, setClans] = useState<ClanSummary[]>([]);
   const [activeWars, setActiveWars] = useState<ClanWarState[]>([]);
@@ -1128,7 +1130,7 @@ export default function Clans() {
 
   const handleTransferLeadership = async (userId: string, username: string) => {
     if (!selectedClan) return;
-    if (!confirm(`Confirmer le transfert du rôle de chef à ${username} ?`)) return;
+    if (!(await confirm(`Confirmer le transfert du rôle de chef à ${username} ?`))) return;
 
     setActionLoading(true);
     try {
@@ -1149,7 +1151,7 @@ export default function Clans() {
 
   const handleLeave = async () => {
     if (!selectedClan) return;
-    if (!confirm('Voulez-vous vraiment quitter ce clan ?')) return;
+    if (!(await confirm('Voulez-vous vraiment quitter ce clan ?'))) return;
 
     setActionLoading(true);
     try {
@@ -1658,55 +1660,72 @@ export default function Clans() {
                             {selectedClan.viewer.isLeader ? <Crown className="h-4 w-4 text-amber-500" /> : null}
                           </div>
 
-                          {descriptionEditOpen ? (
-                            <div className="space-y-2">
-                              <Textarea
-                                value={editDescription}
-                                onChange={(event) => setEditDescription(event.target.value)}
-                                maxLength={300}
-                                rows={3}
-                                placeholder="Décris l'identité, le style de jeu et l'objectif du clan."
-                                disabled={savingDescription}
-                              />
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Button type="button" size="sm" onClick={handleSaveDescription} disabled={savingDescription}>
-                                  {savingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                                  Enregistrer
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setEditDescription(selectedClan.description ?? '');
-                                    setDescriptionEditOpen(false);
-                                  }}
+                          <div className="flex flex-wrap items-start gap-2">
+                            <p className="text-sm text-muted-foreground">
+                              {selectedClan.description || 'Aucune description pour le moment.'}
+                            </p>
+                            {selectedClan.viewer.isLeader ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 px-2"
+                                onClick={() => setDescriptionEditOpen(true)}
+                              >
+                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                                Modifier
+                              </Button>
+                            ) : null}
+                          </div>
+
+                          <Dialog
+                            open={descriptionEditOpen}
+                            onOpenChange={(open) => {
+                              if (!open && savingDescription) return;
+                              if (!open) {
+                                setEditDescription(selectedClan.description ?? '');
+                              }
+                              setDescriptionEditOpen(open);
+                            }}
+                          >
+                            <DialogContent className="max-w-lg">
+                              <DialogHeader>
+                                <DialogTitle>Modifier la description du clan</DialogTitle>
+                                <DialogDescription>
+                                  Decris l identite, le style de jeu et l objectif du clan.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-2">
+                                <Textarea
+                                  value={editDescription}
+                                  onChange={(event) => setEditDescription(event.target.value)}
+                                  maxLength={300}
+                                  rows={4}
+                                  placeholder="Description du clan"
                                   disabled={savingDescription}
-                                >
-                                  Annuler
-                                </Button>
-                                <span className="text-xs text-muted-foreground">{editDescription.length}/300</span>
+                                />
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Button type="button" size="sm" onClick={handleSaveDescription} disabled={savingDescription}>
+                                    {savingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                                    Enregistrer
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setEditDescription(selectedClan.description ?? '');
+                                      setDescriptionEditOpen(false);
+                                    }}
+                                    disabled={savingDescription}
+                                  >
+                                    Annuler
+                                  </Button>
+                                  <span className="text-xs text-muted-foreground">{editDescription.length}/300</span>
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap items-start gap-2">
-                              <p className="text-sm text-muted-foreground">
-                                {selectedClan.description || 'Aucune description pour le moment.'}
-                              </p>
-                              {selectedClan.viewer.isLeader ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 px-2"
-                                  onClick={() => setDescriptionEditOpen(true)}
-                                >
-                                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                                  Modifier
-                                </Button>
-                              ) : null}
-                            </div>
-                          )}
+                            </DialogContent>
+                          </Dialog>
 
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                             <span>

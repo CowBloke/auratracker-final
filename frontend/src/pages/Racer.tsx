@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi, DailyRacerLeaderboardEntry } from '../services/api';
-import { Play, RotateCcw, Trophy } from 'lucide-react';
+import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useHideGameLeaderboards } from '@/lib/game-preferences';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
+import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
 // ============================================
 // GAME CONSTANTS
@@ -1335,6 +1336,31 @@ export default function Racer() {
     return formatTime(lapTimeMs / 1000);
   };
 
+  const leaderboardEntries: GameLeaderboardEntry[] = leaderboard.map((entry) => ({
+    id: `${entry.userId}-${entry.bestLapTimeMs}`,
+    highScore: entry.bestLapTimeMs,
+    user: {
+      id: entry.userId,
+      username: entry.username,
+      usernameColor: entry.usernameColor,
+    },
+  }));
+
+  const handleDeleteScore = useCallback(async (userId: string, _username: string) => {
+    if (!user?.isAdmin) return;
+
+    try {
+      await gamesApi.deleteDailyRacerRuns(userId);
+      if (userId === user.id) {
+        setDailyBestLapTimeMs(null);
+        setDailyRunCount(0);
+      }
+      await fetchDailyRacerState();
+    } catch (error) {
+      console.error('Failed to delete daily racer score:', error);
+    }
+  }, [fetchDailyRacerState, user?.id, user?.isAdmin]);
+
   return (
     <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
       <div className={cn('flex items-center justify-end gap-4', isFullscreen && 'hidden')}>
@@ -1425,65 +1451,23 @@ export default function Racer() {
         </div>
 
         {!hideGameLeaderboards && (
-        <div
-          className={cn(
-            'w-full max-w-[1024px] border border-border/30 rounded-lg bg-card overflow-hidden shadow-sm 2xl:w-80 2xl:max-w-none',
-            isFullscreen && 'hidden'
-          )}
-        >
-          <div className="p-4 border-b border-border/30 bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-yellow-500" />
-              <h3 className="text-base font-semibold">Classement quotidien</h3>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 border-b border-border/20 px-4 py-3">
-            <div className="rounded-md bg-muted/40 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Record perso</p>
-              <p className="text-sm font-medium tabular-nums">
-                {dailyBestLapTimeMs ? formatMsTime(dailyBestLapTimeMs) : '--'}
-              </p>
-            </div>
-            <div className="rounded-md bg-muted/40 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Record du jeu</p>
-              <p className="text-sm font-medium tabular-nums">
-                {leaderboard[0]?.bestLapTimeMs ? formatMsTime(leaderboard[0].bestLapTimeMs) : '--'}
-              </p>
-            </div>
-          </div>
-          <div className="max-h-[420px] overflow-y-auto 2xl:max-h-[708px]">
-            {leaderboard.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground text-sm">Aucun temps enregistre aujourd'hui</div>
-            ) : (
-              <div className="divide-y divide-border/20">
-                {leaderboard.map((entry, index) => (
-                  <div
-                    key={`${entry.userId}-${entry.bestLapTimeMs}`}
-                    className={`flex items-center gap-3 px-4 py-3 ${entry.userId === user?.id ? 'bg-primary/10' : ''}`}
-                  >
-                    <span
-                      className={`w-7 text-center font-mono text-base ${
-                        index === 0
-                          ? 'text-yellow-500 font-bold'
-                          : index === 1
-                            ? 'text-gray-400 font-bold'
-                            : index === 2
-                              ? 'text-amber-600 font-bold'
-                              : 'text-muted-foreground'
-                      }`}
-                    >
-                      {index + 1}
-                    </span>
-                    <span className="flex-1 truncate text-base">{entry.username}</span>
-                    <span className="font-mono text-base tabular-nums text-muted-foreground">
-                      {formatMsTime(entry.bestLapTimeMs)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          <div
+            className={cn(
+              'w-full max-w-[1024px] 2xl:w-80 2xl:max-w-none',
+              isFullscreen && 'hidden'
             )}
+          >
+            <GameLeaderboard
+              entries={leaderboardEntries}
+              currentUserId={user?.id}
+              personalHighScore={dailyBestLapTimeMs}
+              scoreFormatter={formatMsTime}
+              isAdmin={user?.isAdmin}
+              onDeleteScore={handleDeleteScore}
+              title="Classement quotidien"
+              maxHeight={420}
+            />
           </div>
-        </div>
         )}
       </div>
 

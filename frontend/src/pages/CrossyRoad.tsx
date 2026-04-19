@@ -240,7 +240,6 @@ export default function CrossyRoad() {
   };
 
   const handleDeleteScore = useCallback(async (userId: string, username: string) => {
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
 
     try {
       await gamesApi.deleteStats(GAME_TYPE, userId);
@@ -345,3 +344,4 @@ export default function CrossyRoad() {
     </PageShell>
   );
 }
+

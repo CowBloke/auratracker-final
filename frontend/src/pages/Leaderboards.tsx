@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { type Ad, adsApi, auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
 import { AdBanner } from '@/components/ads/AdBanner';
 import { X, TrendingUp, Gem, ArrowUp, Skull, Layers, Wind, Diamond, Timer, LayoutGrid, Sparkles, TrendingDown, Flame, Gamepad2, Hash, Target, Bomb, BarChart2, Trophy, Info, ChevronDown, Bird, Rocket, Zap, Coins, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
@@ -138,6 +140,7 @@ const formatMoney = (value: number, digits = 0) => `$${formatNumber(value, digit
 
 export default function Leaderboards() {
   const { user } = useAuth();
+  const { confirm } = useAppDialog();
   const [activeView, setActiveView] = useState<View>('overall');
   const [period, setPeriod] = useState<Period>('all');
   const category: Category = activeView === 'nombres' ? 'aura' : activeView as Category;
@@ -351,7 +354,7 @@ export default function Leaderboards() {
   const handleDeleteScore = async (userId: string, username: string) => {
     const gameType = deletableGameCategories[category];
     if (!gameType) return;
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
+    if (!(await confirm(`Supprimer le score de ${username} ?`))) return;
 
     try {
       await gamesApi.deleteStats(gameType, userId);
@@ -497,63 +500,74 @@ export default function Leaderboards() {
               <div className="rounded-lg border border-border/40 bg-muted/20">
                 <button
                   type="button"
-                  onClick={() => setShowBreakdown(v => !v)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left"
+                  onClick={() => setShowBreakdown(true)}
+                  className="flex w-full items-center px-4 py-3 text-left"
                 >
                   <span className={cn("flex items-center gap-1.5", TYPOGRAPHY.SMALL, "text-muted-foreground")}>
                     <Info className="w-3.5 h-3.5 shrink-0" />
                     Comment est calculé ce classement ?
                   </span>
-                  <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground/60 transition-transform duration-200", showBreakdown && "rotate-180")} />
                 </button>
-                {showBreakdown && (
-                  <div className="px-4 pb-4 space-y-3 text-[11px] text-muted-foreground border-t border-border/30 pt-3">
-                    <p>
-                      Chaque joueur reçoit un rang dans chacune des catégories ci-dessous.
-                      Le <span className="text-foreground/80 font-medium">score global est la somme de ces rangs</span> — un score plus bas signifie un meilleur classement.
-                      Les catégories non jouées ajoutent une pénalité de <span className="text-foreground/80 font-medium">(N+1) points</span> où N est le nombre de participants dans cette catégorie.
-                    </p>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div>
-                        <p className="text-foreground/70 font-medium mb-1.5">Économie</p>
-                        <ul className="space-y-0.5 text-muted-foreground/80">
-                          <li>Aura</li>
-                          <li>Argent</li>
-                          <li>Valeur totale (argent + AuraCoin)</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="text-foreground/70 font-medium mb-1.5">Jeux — score</p>
-                        <ul className="space-y-0.5 text-muted-foreground/80">
-                          <li>Doodle Jump, 2048, Flappy Bird</li>
-                          <li>Chrome Dino, Crossy Road, Stack Tower</li>
-                          <li>Geometry Dash, QS Watermelon, Solitaire, Racer, HexGL</li>
-                          <li>Tetris, Knife Hit, Démineur</li>
-                          <li>Fruit Ninja, Goyave Empire, Sudoku</li>
-                          <li>Casino (gain max)</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="text-foreground/70 font-medium mb-1.5">Jeux — victoires</p>
-                        <ul className="space-y-0.5 text-muted-foreground/80">
-                          <li>Échecs, Petit Bac, Puissance 4</li>
-                          <li>Arène des balles, Poker, Bataille Navale</li>
-                          <li>Roulette Russe, Uno, Morpion</li>
-                          <li>Bombe de mots</li>
-                        </ul>
-                        <p className="text-foreground/70 font-medium mb-1.5 mt-3">Divers</p>
-                        <ul className="space-y-0.5 text-muted-foreground/80">
-                          <li>Parties jouées (tous jeux)</li>
-                          <li>Polymarket (ratio V/D)</li>
-                          <li>Pertes Casino (totales)</li>
-                        </ul>
-                      </div>
-                    </div>
-                    <p className="text-muted-foreground/50 text-[10px]">Mis à jour automatiquement toutes les 15 minutes.</p>
-                  </div>
-                )}
               </div>
             )}
+
+            <Dialog open={showBreakdown} onOpenChange={setShowBreakdown}>
+              <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Info className="h-4 w-4" />
+                    Comment est calcule le classement global ?
+                  </DialogTitle>
+                  <DialogDescription>
+                    Details de la methode utilisee pour classer les joueurs.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 text-[11px] text-muted-foreground">
+                  <p>
+                    Chaque joueur recoit un rang dans chacune des categories ci-dessous.
+                    Le <span className="text-foreground/80 font-medium">score global est la somme de ces rangs</span> ; un score plus bas signifie un meilleur classement.
+                    Les categories non jouees ajoutent une penalite de <span className="text-foreground/80 font-medium">(N+1) points</span> ou N est le nombre de participants dans cette categorie.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <p className="text-foreground/70 font-medium mb-1.5">Economie</p>
+                      <ul className="space-y-0.5 text-muted-foreground/80">
+                        <li>Aura</li>
+                        <li>Argent</li>
+                        <li>Valeur totale (argent + AuraCoin)</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-foreground/70 font-medium mb-1.5">Jeux - score</p>
+                      <ul className="space-y-0.5 text-muted-foreground/80">
+                        <li>Doodle Jump, 2048, Flappy Bird</li>
+                        <li>Chrome Dino, Crossy Road, Stack Tower</li>
+                        <li>Geometry Dash, QS Watermelon, Solitaire, Racer, HexGL</li>
+                        <li>Tetris, Knife Hit, Demineur</li>
+                        <li>Fruit Ninja, Goyave Empire, Sudoku</li>
+                        <li>Casino (gain max)</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-foreground/70 font-medium mb-1.5">Jeux - victoires</p>
+                      <ul className="space-y-0.5 text-muted-foreground/80">
+                        <li>Echecs, Petit Bac, Puissance 4</li>
+                        <li>Arene des balles, Poker, Bataille Navale</li>
+                        <li>Roulette Russe, Uno, Morpion</li>
+                        <li>Bombe de mots</li>
+                      </ul>
+                      <p className="text-foreground/70 font-medium mb-1.5 mt-3">Divers</p>
+                      <ul className="space-y-0.5 text-muted-foreground/80">
+                        <li>Parties jouees (tous jeux)</li>
+                        <li>Polymarket (ratio V/D)</li>
+                        <li>Pertes Casino (totales)</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground/50 text-[10px]">Mis a jour automatiquement toutes les 15 minutes.</p>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {activeView !== 'nombres' && PERIOD_CATEGORIES.has(category) && (
               <div className="flex gap-1">

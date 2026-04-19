@@ -550,27 +550,74 @@ const parseLogDateBoundary = (value: unknown, boundary: 'start' | 'end'): Date |
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const BUSINESS_ACTION_PREFIXES = [
+  'business_',
+  'bank_',
+  'formation_',
+  'relationship_',
+  'marriage_',
+  'divorce_',
+  'couple_',
+];
+
+const buildBusinessActionMatcher = () => ({
+  OR: BUSINESS_ACTION_PREFIXES.map((prefix) => ({
+    action: { startsWith: prefix },
+  })),
+});
+
+const isBusinessRelatedAction = (action: string): boolean =>
+  BUSINESS_ACTION_PREFIXES.some((prefix) => action.startsWith(prefix));
+
+const normalizeLogTypeForAdminView = (type: string, action: string): string => {
+  if (type === 'ADMIN' && isBusinessRelatedAction(action)) {
+    return 'BUSINESS';
+  }
+  return type;
+};
+
 const buildLogWhereClause = (query: Record<string, unknown>) => {
   const { type, action, username, gameType, startDate, endDate } = query;
-  const where: Record<string, unknown> = {};
+  const andConditions: Record<string, unknown>[] = [];
+  const businessActionMatcher = buildBusinessActionMatcher();
 
   if (type && type !== 'ALL') {
-    where.type = type as string;
+    const normalizedType = String(type).toUpperCase();
+    if (normalizedType === 'BUSINESS') {
+      andConditions.push({
+        OR: [
+          { type: 'BUSINESS' },
+          {
+            AND: [
+              { type: 'ADMIN' },
+              businessActionMatcher,
+            ],
+          },
+        ],
+      });
+    } else if (normalizedType === 'ADMIN') {
+      andConditions.push({ type: 'ADMIN' });
+      andConditions.push({ NOT: businessActionMatcher });
+    } else {
+      andConditions.push({ type: normalizedType });
+    }
   }
 
   if (action) {
-    where.action = { contains: action as string };
+    andConditions.push({ action: { contains: action as string } });
   }
 
   if (username) {
-    where.OR = [
-      { username: { contains: username as string } },
-      { targetName: { contains: username as string } },
-    ];
+    andConditions.push({
+      OR: [
+        { username: { contains: username as string } },
+        { targetName: { contains: username as string } },
+      ],
+    });
   }
 
   if (gameType && gameType !== 'ALL') {
-    where.metadata = { contains: `"gameType":"${gameType}"` };
+    andConditions.push({ metadata: { contains: `"gameType":"${gameType}"` } });
   }
 
   const createdAt: Record<string, Date> = {};
@@ -586,10 +633,14 @@ const buildLogWhereClause = (query: Record<string, unknown>) => {
   }
 
   if (Object.keys(createdAt).length > 0) {
-    where.createdAt = createdAt;
+    andConditions.push({ createdAt });
   }
 
-  return where;
+  if (andConditions.length === 0) {
+    return {};
+  }
+
+  return { AND: andConditions };
 };
 
 const WEEKDAY_LABELS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -3522,6 +3573,7 @@ router.get('/logs', authMiddleware, requireAdminOrFiscal, async (req: AuthReques
     // Parse JSON fields for response
     const parsedLogs = logs.map(log => ({
       ...log,
+      type: normalizeLogTypeForAdminView(log.type, log.action),
       details: log.details ? JSON.parse(log.details) : null,
       metadata: log.metadata ? JSON.parse(log.metadata) : null,
     }));
@@ -3592,7 +3644,7 @@ router.get('/logs/download', authMiddleware, requireAdminOrFiscal, async (req: A
 
     const rows = logs.map((log) => [
       escapeCsv(log.id),
-      escapeCsv(log.type),
+      escapeCsv(normalizeLogTypeForAdminView(log.type, log.action)),
       escapeCsv(log.action),
       escapeCsv(log.userId),
       escapeCsv(log.username),
@@ -3620,6 +3672,7 @@ router.get('/logs/download', authMiddleware, requireAdminOrFiscal, async (req: A
 // Get log stats (admin or fiscal inspector)
 router.get('/logs/stats', authMiddleware, requireAdminOrFiscal, async (req: AuthRequest, res: Response) => {
   try {
+    const businessActionMatcher = buildBusinessActionMatcher();
     const [
       totalLogs,
       authLogs,
@@ -3632,6 +3685,7 @@ router.get('/logs/stats', authMiddleware, requireAdminOrFiscal, async (req: Auth
       banLogs,
       suggestionLogs,
       auraCoinLogs,
+      businessLogs,
     ] = await Promise.all([
       prisma.log.count(),
       prisma.log.count({ where: { type: 'AUTH' } }),
@@ -3640,10 +3694,30 @@ router.get('/logs/stats', authMiddleware, requireAdminOrFiscal, async (req: Auth
       prisma.log.count({ where: { type: 'ECONOMY' } }),
       prisma.log.count({ where: { type: 'PARTY' } }),
       prisma.log.count({ where: { type: 'MARKETPLACE' } }),
-      prisma.log.count({ where: { type: 'ADMIN' } }),
+      prisma.log.count({
+        where: {
+          AND: [
+            { type: 'ADMIN' },
+            { NOT: businessActionMatcher },
+          ],
+        },
+      }),
       prisma.log.count({ where: { type: 'BAN' } }),
       prisma.log.count({ where: { type: 'SUGGESTION' } }),
       prisma.log.count({ where: { type: 'AURACOIN' } }),
+      prisma.log.count({
+        where: {
+          OR: [
+            { type: 'BUSINESS' },
+            {
+              AND: [
+                { type: 'ADMIN' },
+                businessActionMatcher,
+              ],
+            },
+          ],
+        },
+      }),
     ]);
 
     res.json({
@@ -3659,6 +3733,7 @@ router.get('/logs/stats', authMiddleware, requireAdminOrFiscal, async (req: Auth
         BAN: banLogs,
         SUGGESTION: suggestionLogs,
         AURACOIN: auraCoinLogs,
+        BUSINESS: businessLogs,
       },
     });
   } catch (error) {

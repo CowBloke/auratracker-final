@@ -1048,6 +1048,50 @@ router.post('/daily/racer/complete', authMiddleware, async (req: AuthRequest, re
   }
 });
 
+// Admin: delete today's daily racer runs for one user
+router.delete('/daily/racer/stats/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const adminUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, username: true, isAdmin: true },
+    });
+
+    if (!adminUser?.isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { userId } = req.params;
+    const trackDate = getParisDayStart();
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+
+    const result = await prisma.dailyRacerRun.deleteMany({
+      where: {
+        userId,
+        trackDate,
+      },
+    });
+
+    logAdmin('stats_delete', adminUser.id, adminUser.username, userId, targetUser?.username || undefined, {
+      gameType: 'racer_daily',
+      trackDate: trackDate.toISOString(),
+      deletedCount: result.count,
+    });
+
+    return res.json({ success: true, deletedCount: result.count });
+  } catch (error) {
+    console.error('Delete daily racer stats error:', error);
+    return res.status(500).json({ error: 'Failed to delete daily racer stats' });
+  }
+});
+
 // Get game stats for a user
 router.get('/:gameType/stats/:userId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {

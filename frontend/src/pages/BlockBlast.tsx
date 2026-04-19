@@ -312,7 +312,6 @@ export default function BlockBlast() {
   }, [fetchLeaderboard, fetchStats, game.mode, game.moves, game.score, game.status, refreshUser, user?.id]);
 
   const handleDeleteScore = useCallback(async (userId: string, username: string) => {
-    if (!confirm(`Supprimer le score de ${username} ?`)) return;
 
     try {
       await gamesApi.deleteStats(GAME_TYPE, userId);
@@ -672,3 +671,4 @@ export default function BlockBlast() {
     </PageShell>
   );
 }
+

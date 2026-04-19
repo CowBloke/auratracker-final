@@ -6,6 +6,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -820,6 +821,7 @@ export function ManageBusinessModal({
   onInviteRequested: (business: YouBusiness) => void;
   onSubmitted: (refreshBalance?: boolean) => Promise<void>;
 }) {
+  const { confirm } = useAppDialog();
   const [activeSection, setActiveSection] = useState<'deposit' | 'withdraw' | 'loanRate' | 'transferFee' | 'illegalUpgrades' | null>(null);
   const [depositAmount, setDepositAmount] = useState('1000');
   const [withdrawAmount, setWithdrawAmount] = useState('1000');
@@ -846,6 +848,9 @@ export function ManageBusinessModal({
   const [loanViewTab, setLoanViewTab] = useState<'active' | 'history'>('active');
   const [loanHistory, setLoanHistory] = useState<YouBusinessLoan[]>([]);
   const [loadingLoanHistory, setLoadingLoanHistory] = useState(false);
+  const [buybackTarget, setBuybackTarget] = useState<{ shareholderId: string; username: string; sharePercent: number } | null>(null);
+  const [buybackAmountInput, setBuybackAmountInput] = useState('');
+  const [sendingBuybackOffer, setSendingBuybackOffer] = useState(false);
 
   const toggleSection = (s: typeof activeSection) => setActiveSection((prev) => (prev === s ? null : s));
 
@@ -865,6 +870,9 @@ export function ManageBusinessModal({
       setTransferOpen(false);
       setLoanViewTab('active');
       setLoanHistory([]);
+      setBuybackTarget(null);
+      setBuybackAmountInput('');
+      setSendingBuybackOffer(false);
     }
   }, [open, business?.id]);
 
@@ -1064,7 +1072,13 @@ export function ManageBusinessModal({
 
   const liquidateBusiness = async () => {
     if (!business) return;
-    const confirmed = window.confirm(`Liquider ${business.name} ? Cette action est irreversible.`);
+    const confirmed = await confirm({
+      title: `Liquider ${business.name} ?`,
+      description: 'Cette action est irreversible.',
+      confirmLabel: 'Liquider',
+      cancelLabel: 'Annuler',
+      variant: 'destructive',
+    });
     if (!confirmed) return;
 
     setLiquidating(true);
@@ -1075,6 +1089,44 @@ export function ManageBusinessModal({
       await onSubmitted();
     } finally {
       setLiquidating(false);
+    }
+  };
+
+  const openShareBuybackDialog = (shareholderId: string, username: string, sharePercent: number) => {
+    setBuybackTarget({ shareholderId, username, sharePercent });
+    setBuybackAmountInput('');
+  };
+
+  const closeShareBuybackDialog = () => {
+    if (sendingBuybackOffer) return;
+    setBuybackTarget(null);
+    setBuybackAmountInput('');
+  };
+
+  const submitShareBuybackOffer = async () => {
+    if (!business || !buybackTarget) return;
+    const amount = Number(buybackAmountInput);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast({ title: 'Montant invalide', variant: 'destructive', description: 'Veuillez entrer un montant valide superieur a 0.' });
+      return;
+    }
+
+    setSendingBuybackOffer(true);
+    try {
+      const success = await withRouteError(
+        () => youApi.createShareBuybackOffer(business.id, { shareholderId: buybackTarget.shareholderId, amount }),
+        'Impossible d\'envoyer l\'offre de rachat.'
+      );
+      if (success) {
+        toast({
+          title: 'Offre de rachat envoyee',
+          description: `L'offre de ${amount.toLocaleString('fr-FR')} money a bien ete envoyee a ${buybackTarget.username}.`,
+        });
+        setBuybackTarget(null);
+        setBuybackAmountInput('');
+      }
+    } finally {
+      setSendingBuybackOffer(false);
     }
   };
 
@@ -1399,28 +1451,7 @@ export function ManageBusinessModal({
                               variant="secondary"
                               size="sm"
                               className="h-6 text-xs px-2 h-auto py-0.5"
-                              onClick={async () => {
-                                const amountStr = prompt(
-                                  `Montant proposé pour racheter les ${shareholder.sharePercent.toFixed(2)}% de ${shareholder.user.username} ?\nLe joueur recevra une notification et pourra accepter ou refuser l'offre.`
-                                );
-                                if (!amountStr) return;
-                                const amount = Number(amountStr);
-                                if (isNaN(amount) || amount <= 0) {
-                                  toast({ title: 'Montant invalide', variant: 'destructive', description: 'Veuillez entrer un montant valide supérieur à 0.' });
-                                  return;
-                                }
-                                const offerDesc = `L'offre de ${amount.toLocaleString('fr-FR')} money a bien été envoyée à ${shareholder.user.username}.`;
-                                const success = await withRouteError(
-                                  () => youApi.createShareBuybackOffer(business.id, { shareholderId: shareholder.user.id, amount }),
-                                  'Impossible d\'envoyer l\'offre de rachat.'
-                                );
-                                if (success) {
-                                  toast({
-                                    title: 'Offre de rachat envoyée 📨',
-                                    description: offerDesc,
-                                  });
-                                }
-                              }}
+                              onClick={() => openShareBuybackDialog(shareholder.user.id, shareholder.user.username, shareholder.sharePercent)}
                             >
                               Racheter
                             </Button>
@@ -1697,6 +1728,33 @@ export function ManageBusinessModal({
         onSubmitted={() => onSubmitted(true)}
       />
     ) : null}
+
+    <ModalWrap
+      open={Boolean(buybackTarget)}
+      onClose={closeShareBuybackDialog}
+      title="Proposer un rachat de parts"
+      desc={buybackTarget
+        ? `Tu proposes une offre pour racheter ${buybackTarget.sharePercent.toFixed(2)}% detenus par ${buybackTarget.username}.`
+        : 'Tu proposes une offre de rachat.'}
+    >
+      <FieldRow label="Montant propose (money)">
+        <Input
+          type="number"
+          min={1}
+          value={buybackAmountInput}
+          onChange={(event) => setBuybackAmountInput(event.target.value)}
+          placeholder="Exemple: 250000"
+          disabled={sendingBuybackOffer}
+        />
+      </FieldRow>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={closeShareBuybackDialog} disabled={sendingBuybackOffer}>Annuler</Button>
+        <Button size="sm" onClick={() => void submitShareBuybackOffer()} disabled={sendingBuybackOffer || Number(buybackAmountInput) <= 0}>
+          {sendingBuybackOffer ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+          Envoyer l offre
+        </Button>
+      </div>
+    </ModalWrap>
     </>
   );
 }
@@ -1716,6 +1774,7 @@ export function ManageTeamModal({
   onInviteRequested: () => void;
   onSubmitted: (refreshBalance?: boolean) => Promise<void>;
 }) {
+  const { confirm } = useAppDialog();
   const [sackingId, setSackingId] = useState<string | null>(null);
   const [reviewingInvitationId, setReviewingInvitationId] = useState<string | null>(null);
   const [editingMember, setEditingMember] = useState<typeof business.members[number] | null>(null);
@@ -1725,7 +1784,14 @@ export function ManageTeamModal({
   }, [open]);
 
   const sack = async (memberId: string) => {
-    if (!window.confirm('Renvoyer cet employé ? Il perdra l\'accès à l\'entreprise.')) return;
+    const confirmed = await confirm({
+      title: 'Renvoyer cet employe ?',
+      description: 'Il perdra l acces a l entreprise.',
+      confirmLabel: 'Renvoyer',
+      cancelLabel: 'Annuler',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     setSackingId(memberId);
     try {
       await withRouteError(() => youApi.sackMember(business.id, memberId), 'Impossible de renvoyer ce membre.');
@@ -2347,6 +2413,7 @@ export function ManageFormationsModal({
   business: YouBusiness;
   onSubmitted: (refreshBalance?: boolean) => Promise<void>;
 }) {
+  const { confirm } = useAppDialog();
   const [draft, setDraft] = useState<FormationDraft>(EMPTY_DRAFT);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -2424,7 +2491,14 @@ export function ManageFormationsModal({
   };
 
   const remove = async (productId: string) => {
-    if (!window.confirm('Supprimer cette formation ?')) return;
+    const confirmed = await confirm({
+      title: 'Supprimer cette formation ?',
+      description: 'Cette action est irreversible.',
+      confirmLabel: 'Supprimer',
+      cancelLabel: 'Annuler',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
     setDeletingId(productId);
     try {
       await withRouteError(() => youApi.deleteFormationProduct(business.id, productId), 'Impossible de supprimer.');

@@ -4,6 +4,7 @@ import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppDialog } from '@/contexts/AppDialogContext';
 import { type Ad, adsApi, type YouBusiness, type YouBusinessShareProposal, type YouPlayer, type YouState, youApi } from '@/services/api';
 import { AdBanner } from '@/components/ads/AdBanner';
 import { BUSINESS_ICON_MAP } from '../constants';
@@ -38,6 +39,7 @@ function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b:
 
 export function TravailTab({ data, players, currentUserId, adblockActive, onReload }: { data: YouState; players: YouPlayer[]; currentUserId: string; adblockActive: boolean; onReload: (refreshBalance?: boolean) => Promise<void> }) {
   const { user } = useAuth();
+  const { confirm } = useAppDialog();
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteBusinessId, setInviteBusinessId] = useState<string | null>(null);
   const [managedBusinessId, setManagedBusinessId] = useState<string | null>(null);
@@ -126,7 +128,7 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
   };
 
   const leaveBusiness = async (business: YouBusiness) => {
-    if (!window.confirm(`Quitter ton poste chez ${business.name} ?`)) return;
+    if (!(await confirm(`Quitter ton poste chez ${business.name} ?`))) return;
     setLeavingBusinessId(business.id);
     try {
       await withRouteError(() => youApi.leaveBusiness(business.id), 'Impossible de quitter ce travail.');
