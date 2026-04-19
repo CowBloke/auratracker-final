@@ -175,9 +175,8 @@ function Welcome({
   return (
     <div className="db-welcome">
       <div className="db-welcome__copy">
-        <span className="db-eyebrow">Flux live</span>
         <h1>{showWelcome ? <>Yo <em>{welcomeName || 'toi'}</em>, y&apos;a du neuf.</> : heading}</h1>
-        <p>{subheading}</p>
+        {subheading ? <p>{subheading}</p> : null}
       </div>
       {action ? <div className="db-welcome__action">{action}</div> : null}
     </div>
@@ -350,7 +349,7 @@ function Hero({
         <div className="db-hero__actions">
           <button type="button" className="db-button db-button--ghost" onClick={() => onToggleExpand(entry.id)}>
             <MessagesSquare className="h-3.5 w-3.5" />
-            {expanded ? 'Fermer les details' : 'Voir le changelog detaille'}
+            {expanded ? 'Fermer les details' : 'Voir les details'}
           </button>
           <ActionLink href={entry.ctaHref} className="db-button db-button--primary">
             {entry.ctaLabel || 'Voir plus'}
@@ -391,7 +390,7 @@ function TimelineItem({
         </div>
         <div className="db-timeline__actions">
           <button type="button" className="db-inline-link" onClick={() => onToggleExpand(entry.id)}>
-            {expanded ? 'Fermer les details' : 'Voir le changelog detaille'}
+            {expanded ? 'Fermer les details' : 'Voir les details'}
             {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </button>
           {entry.ctaHref ? (
@@ -582,7 +581,7 @@ export function DashboardUpdatesFeed({
                 <DialogDescription>
                   {expandedEntry
                     ? `${CATEGORY_META[expandedEntry.feedCategory].label} · ${formatUpdateDateLabel(expandedEntry.date)} · ${formatUpdateTimeLabel(expandedEntry.publishedAt)}`
-                    : 'Details du changelog'}
+                    : 'Details de la mise a jour'}
                 </DialogDescription>
               </DialogHeader>
               <div className="overflow-y-auto pr-1">

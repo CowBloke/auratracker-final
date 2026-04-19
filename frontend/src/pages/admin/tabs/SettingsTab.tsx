@@ -510,9 +510,9 @@ export function SettingsTab(props: SettingsTabProps) {
 
           <div className="flex items-center justify-between gap-4 px-4 py-3.5">
             <div>
-              <div className="text-sm font-medium">Dashboard et changelog</div>
+              <div className="text-sm font-medium">Dashboard et mises a jour</div>
               <div className="text-xs text-muted-foreground">
-                Une seule interface pour composer les mises a jour visibles sur le dashboard et la page changelog.
+                Une seule interface pour composer les mises a jour visibles sur le dashboard.
               </div>
             </div>
             <Button variant="outline" size="sm" onClick={() => setUpdatesOpen(true)} className="shrink-0">

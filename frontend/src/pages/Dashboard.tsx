@@ -37,7 +37,7 @@ export default function Dashboard() {
         entries={entries}
         loading={loading}
         heading="Centre des mises à jour"
-        subheading="Le dashboard devient un vrai flux éditorial : nouveautés, patchs, annonces d’équipe et temps forts de la communauté, le tout piloté depuis une seule source de données."
+        subheading=""
         welcomeName={user?.username}
         showWelcome
         action={user?.isAdmin ? (

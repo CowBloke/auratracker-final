@@ -7,37 +7,12 @@ import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Trash2, Save, AlertTriangle, Plus, Minus, Package, Ban as BanIcon, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Eye, Activity, CalendarRange, UserCog, Award, Terminal, Landmark, Wallet, Inbox, Settings, BarChart2, Briefcase } from 'lucide-react';
-import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
-import { BadgeIcon } from '@/components/badges/BadgeIcon';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Loader2, Package, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Eye, Activity, CalendarRange, Award, Terminal, Landmark, Inbox, Settings, BarChart2, Briefcase } from 'lucide-react';
+
 import { cn, humanizeUiLabel } from '@/lib/utils';
-import { resolveImageUrl } from '@/lib/images';
-import { ImagePicker } from '@/components/ui/image-picker';
 import { PageShell } from '@/components/layout/page-shell';
 import {
   DEFAULT_LANDING_PAGE,
@@ -50,7 +25,6 @@ import {
   ANNOUNCEMENT_MAX_LENGTH,
   CHAT_BLOCK_MESSAGE_MAX_LENGTH,
   isValidChatTimeValue,
-  ROLE_LABELS,
   type AdminTab,
   type AdminRole,
   YOU_LOGO_ADMIN_ONLY_SETTING_KEY,
@@ -73,6 +47,13 @@ import { ChatHistoryTab } from './tabs/ChatHistoryTab';
 import { SettingsTab } from './tabs/SettingsTab';
 import { BadgesTab } from './tabs/BadgesTab';
 import { CommunicationTab } from './tabs/CommunicationTab';
+import { BanDialog } from './dialogs/BanDialog';
+import { EditUserModal } from './dialogs/EditUserModal';
+import { BadgeAssignModal } from './dialogs/BadgeAssignModal';
+import { MassDeleteConfirmation } from './dialogs/MassDeleteConfirmation';
+import { SharedMoneyDialog } from './dialogs/SharedMoneyDialog';
+import { InventoryDialog } from './dialogs/InventoryDialog';
+import { ItemDialog } from './dialogs/ItemDialog';
 import {
   DEFAULT_CLAN_EVENT_FORM,
   DEFAULT_TAX_BRACKET,
@@ -4991,394 +4972,95 @@ export default function Admin() {
         />
 
       {/* Ban Dialog */}
-      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Bannir un utilisateur</DialogTitle>
-            <DialogDescription>
-              Empêcher un utilisateur d'accéder à la plateforme.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Raison</label>
-              <Textarea
-                value={banReason}
-                onChange={(e) => setBanReason(e.target.value)}
-                placeholder="Indiquez la raison du bannissement..."
-                className="min-h-[80px]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Type de bannissement</label>
-              <Select value={banType} onValueChange={(value: 'TEMPORARY' | 'PERMANENT') => setBanType(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="TEMPORARY">Temporaire</SelectItem>
-                  <SelectItem value="PERMANENT">Permanent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {banType === 'TEMPORARY' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Durée (heures)</label>
-                <Input
-                  type="number"
-                  value={banDuration}
-                  onChange={(e) => setBanDuration(parseInt(e.target.value) || 1)}
-                  min={1}
-                  placeholder="24"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Le bannissement expirera dans {banDuration} heure{banDuration > 1 ? 's' : ''}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setBanDialogOpen(false)}
-              disabled={creatingBan}
-            >
-              Annuler
-            </Button>
-            <Button
-              onClick={createBan}
-              disabled={creatingBan || !banReason.trim()}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              {creatingBan ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Bannissement...
-                </>
-              ) : (
-                <>
-                  <BanIcon className="h-4 w-4 mr-2" />
-                  Bannir
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BanDialog
+        isOpen={banDialogOpen}
+        onOpenChange={setBanDialogOpen}
+        banReason={banReason}
+        setBanReason={setBanReason}
+        banType={banType}
+        setBanType={setBanType}
+        banDuration={banDuration}
+        setBanDuration={setBanDuration}
+        creatingBan={creatingBan}
+        onCreateBan={createBan}
+      />
 
       {/* Edit User Modal */}
-      <Dialog open={editModalOpen} onOpenChange={(open) => { if (!open) cancelEditing(); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Modifier {editModalUser?.username}</DialogTitle>
-            <DialogDescription>{editModalUser?.email}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            {/* Identity */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-blue-400 flex items-center gap-1"><UserCog className="h-3 w-3" />Pseudo</label>
-                <div className="relative">
-                  <UserCog className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-400/60 pointer-events-none" />
-                  <Input type="text" value={editValues.username} onChange={(e) => setEditValues(prev => ({ ...prev, username: e.target.value }))} className="h-9 bg-transparent border-blue-500/30 focus-visible:ring-blue-500/30 pl-8" />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-blue-400 flex items-center gap-1"><Users className="h-3 w-3" />Prénom</label>
-                <div className="relative">
-                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-400/60 pointer-events-none" />
-                  <Input type="text" value={editValues.firstName} onChange={(e) => setEditValues(prev => ({ ...prev, firstName: e.target.value }))} className="h-9 bg-transparent border-blue-500/30 focus-visible:ring-blue-500/30 pl-8" placeholder="Non défini" />
-                </div>
-              </div>
-            </div>
+      <EditUserModal
+        isOpen={editModalOpen}
+        onOpenChange={(open) => {
+          if (!open) cancelEditing();
+        }}
+        editingUser={editingUser}
+        editModalUser={editModalUser}
+        editValues={editValues}
+        setEditValues={setEditValues}
+        editAuraAddAmount={editAuraAddAmount}
+        setEditAuraAddAmount={setEditAuraAddAmount}
+        editAuraRemoveAmount={editAuraRemoveAmount}
+        setEditAuraRemoveAmount={setEditAuraRemoveAmount}
+        baseEditAura={baseEditAura}
+        nextEditAura={nextEditAura}
+        editMoneyAddAmount={editMoneyAddAmount}
+        setEditMoneyAddAmount={setEditMoneyAddAmount}
+        editMoneyRemoveAmount={editMoneyRemoveAmount}
+        setEditMoneyRemoveAmount={setEditMoneyRemoveAmount}
+        baseEditMoney={baseEditMoney}
+        nextEditMoney={nextEditMoney}
+        editPassword={editPassword}
+        setEditPassword={setEditPassword}
+        saving={saving}
+        updatingRoleUserId={updatingRoleUserId}
+        user={user}
+        onCancelEditing={cancelEditing}
+        onSaveUser={saveUser}
+        onUpdateUserRole={updateUserRole}
+      />
 
-            {/* Role */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-amber-400 flex items-center gap-1"><Shield className="h-3 w-3" />Rôle</label>
-              <Select
-                value={editModalUser ? getAdminRole(editModalUser) : 'USER'}
-                onValueChange={(value) => editModalUser && void updateUserRole(editModalUser, value as AdminRole)}
-                disabled={updatingRoleUserId === editModalUser?.id || user?.id === editModalUser?.id}
-              >
-                <SelectTrigger className="h-9 border-amber-500/30 bg-transparent">
-                  <Shield className="h-3.5 w-3.5 text-amber-400/60 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USER">{ROLE_LABELS.USER}</SelectItem>
-                  <SelectItem value="BETA_TESTER">{ROLE_LABELS.BETA_TESTER}</SelectItem>
-                  <SelectItem value="FISCAL_INSPECTOR">{ROLE_LABELS.FISCAL_INSPECTOR}</SelectItem>
-                  <SelectItem value="JUDGE">{ROLE_LABELS.JUDGE}</SelectItem>
-                  <SelectItem value="ADMIN">{ROLE_LABELS.ADMIN}</SelectItem>
-                  <SelectItem value="SUPER_ADMIN">{ROLE_LABELS.SUPER_ADMIN}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Economy */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-purple-400 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Aura (solde direct)</label>
-                <div className="relative">
-                  <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-purple-400/60 pointer-events-none" />
-                  <Input
-                    type="number"
-                    min={0}
-                    value={editValues.aura}
-                    onChange={(e) => setEditValues(prev => ({ ...prev, aura: Number.parseInt(e.target.value, 10) || 0 }))}
-                    className="h-9 bg-transparent border-purple-500/30 focus-visible:ring-purple-500/30 pl-8"
-                    placeholder="Solde aura"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="relative">
-                    <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400/70 pointer-events-none" />
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editAuraAddAmount}
-                      onChange={(e) => setEditAuraAddAmount(Number.parseInt(e.target.value, 10) || 0)}
-                      className="h-9 bg-transparent border-emerald-500/30 focus-visible:ring-emerald-500/30 pl-8"
-                      placeholder="Ajouter"
-                    />
-                  </div>
-                  <div className="relative">
-                    <Minus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-rose-400/70 pointer-events-none" />
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editAuraRemoveAmount}
-                      onChange={(e) => setEditAuraRemoveAmount(Number.parseInt(e.target.value, 10) || 0)}
-                      className="h-9 bg-transparent border-rose-500/30 focus-visible:ring-rose-500/30 pl-8"
-                      placeholder="Enlever"
-                    />
-                  </div>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Actuel: {baseEditAura.toLocaleString()} • Base: {toSafeNumber(editValues.aura).toLocaleString()} • Resultat: <span className={cn(nextEditAura < 0 ? 'text-rose-400' : 'text-purple-300')}>{nextEditAura.toLocaleString()}</span>
-                </p>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-green-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />Argent (solde direct)</label>
-                <div className="relative">
-                  <CurrencyIcon type="money" className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" />
-                  <Input
-                    type="number"
-                    min={0}
-                    value={editValues.money}
-                    onChange={(e) => setEditValues(prev => ({ ...prev, money: Number.parseInt(e.target.value, 10) || 0 }))}
-                    className="h-9 bg-transparent border-green-500/30 focus-visible:ring-green-500/30 pl-8"
-                    placeholder="Solde argent"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="relative">
-                    <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-400/70 pointer-events-none" />
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editMoneyAddAmount}
-                      onChange={(e) => setEditMoneyAddAmount(Number.parseInt(e.target.value, 10) || 0)}
-                      className="h-9 bg-transparent border-emerald-500/30 focus-visible:ring-emerald-500/30 pl-8"
-                      placeholder="Ajouter"
-                    />
-                  </div>
-                  <div className="relative">
-                    <Minus className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-rose-400/70 pointer-events-none" />
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editMoneyRemoveAmount}
-                      onChange={(e) => setEditMoneyRemoveAmount(Number.parseInt(e.target.value, 10) || 0)}
-                      className="h-9 bg-transparent border-rose-500/30 focus-visible:ring-rose-500/30 pl-8"
-                      placeholder="Enlever"
-                    />
-                  </div>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Actuel: {baseEditMoney.toLocaleString()} • Base: {toSafeNumber(editValues.money).toLocaleString()} • Resultat: <span className={cn(nextEditMoney < 0 ? 'text-rose-400' : 'text-green-300')}>{nextEditMoney.toLocaleString()}</span>
-                </p>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-yellow-400 flex items-center gap-1"><CurrencyIcon type="money" className="h-3 w-3" />AuraCoin</label>
-                <div className="relative">
-                  <CurrencyIcon type="money" className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none" />
-                  <Input type="number" step="0.01" value={editValues.auraCoinBalance} onChange={(e) => setEditValues(prev => ({ ...prev, auraCoinBalance: parseFloat(e.target.value) || 0 }))} className="h-9 bg-transparent border-yellow-500/30 focus-visible:ring-yellow-500/30 pl-8" />
-                </div>
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Eye className="h-3 w-3" />Nouveau mot de passe</label>
-              <div className="relative">
-                <Eye className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 pointer-events-none" />
-                <Input type="password" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="h-9 bg-transparent border-border/40 pl-8" placeholder="Laisser vide pour ne pas changer" />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={cancelEditing}>Annuler</Button>
-            <Button onClick={() => editingUser && saveUser(editingUser)} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Sauvegarder
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Badge Award Modal */}
-      <Dialog open={badgeModalOpen} onOpenChange={(open) => { if (!open) { setBadgeModalOpen(false); setBadgeModalUserId(''); setBadgeModalBadgeId(''); setBadgeModalReason(''); } }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Attribuer un badge</DialogTitle>
-            <DialogDescription>
-              {badgeModalUserId
-                ? `Attribution à ${users.find(u => u.id === badgeModalUserId)?.username || badgeModalUserId}`
-                : `Attribution à ${selectedUserIds.length} utilisateur(s) sélectionné(s)`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Badge</label>
-              <Select value={badgeModalBadgeId} onValueChange={setBadgeModalBadgeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un badge..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {badges.map(b => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.icon} {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Raison (optionnel)</label>
-              <Input
-                placeholder="Raison de l'attribution..."
-                value={badgeModalReason}
-                onChange={(e) => setBadgeModalReason(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setBadgeModalOpen(false); setBadgeModalUserId(''); setBadgeModalBadgeId(''); setBadgeModalReason(''); }}>
-              Annuler
-            </Button>
-            <Button onClick={handleBadgeModalAward} disabled={!badgeModalBadgeId} className="bg-violet-600 hover:bg-violet-700">
-              <Award className="h-4 w-4 mr-2" />
-              Attribuer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Mass Delete Confirmation */}
-      <AlertDialog open={massDeleteOpen} onOpenChange={setMassDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Supprimer {selectedUserIds.length} utilisateur(s) ?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action est irréversible. Toutes les données de ces utilisateurs seront définitivement supprimées.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={massDeleteUsers} className="bg-destructive hover:bg-destructive/90">
-              Supprimer tout
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog
-        open={Boolean(sharedMoneyUser)}
+      <BadgeAssignModal
+        isOpen={badgeModalOpen}
         onOpenChange={(open) => {
           if (!open) {
-            setSharedMoneyUser(null);
+            setBadgeModalOpen(false);
+            setBadgeModalUserId('');
+            setBadgeModalBadgeId('');
+            setBadgeModalReason('');
           }
         }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              Compte commun de {sharedMoneyUser?.username || 'l\'utilisateur'}
-            </DialogTitle>
-            <DialogDescription>
-              Consultez l'argent personnel et le solde partagé actuel.
-            </DialogDescription>
-          </DialogHeader>
+        badgeModalUserId={badgeModalUserId}
+        selectedUserIds={selectedUserIds}
+        users={users}
+        badges={badges}
+        badgeModalBadgeId={badgeModalBadgeId}
+        setBadgeModalBadgeId={setBadgeModalBadgeId}
+        badgeModalReason={badgeModalReason}
+        setBadgeModalReason={setBadgeModalReason}
+        onAward={handleBadgeModalAward}
+        onClose={() => {
+          setBadgeModalUserId('');
+          setBadgeModalBadgeId('');
+          setBadgeModalReason('');
+        }}
+      />
 
-          <div className="space-y-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-border/40 bg-muted/10 p-3">
-                <p className="text-xs text-muted-foreground">Argent personnel</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-green-400">
-                  {sharedMoneyUser?.money.toLocaleString('fr-FR') ?? '0'} €
-                </p>
-              </div>
-              <div className="rounded-lg border border-border/40 bg-emerald-500/10 p-3">
-                <p className="text-xs text-muted-foreground">Compte commun</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-400">
-                  {sharedMoneyUser?.sharedMoney?.coupleBalance.toLocaleString('fr-FR') ?? '0'} €
-                </p>
-              </div>
-            </div>
+      <MassDeleteConfirmation
+        isOpen={massDeleteOpen}
+        onOpenChange={setMassDeleteOpen}
+        selectedCount={selectedUserIds.length}
+        onConfirm={massDeleteUsers}
+      />
 
-            {sharedMoneyUser?.sharedMoney ? (
-              <div className="space-y-3 rounded-xl border border-border/40 bg-muted/10 p-4">
-                <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-emerald-400" />
-                  <p className="text-sm font-medium">Conjoint</p>
-                  <span className="ml-auto text-sm font-semibold tabular-nums">
-                    {sharedMoneyUser.sharedMoney.partner.username}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>Argent du conjoint</span>
-                  <span className="ml-auto font-semibold tabular-nums text-green-400">
-                    {sharedMoneyUser.sharedMoney.partner.money.toLocaleString('fr-FR')} €
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>Total du foyer</span>
-                  <span className="ml-auto font-semibold tabular-nums text-amber-400">
-                    {(sharedMoneyUser.money + sharedMoneyUser.sharedMoney.partner.money + sharedMoneyUser.sharedMoney.coupleBalance).toLocaleString('fr-FR')} €
-                  </span>
-                </div>
-                {sharedMoneyUser.sharedMoney.marriedAt && (
-                  <div className="text-xs text-muted-foreground">
-                    Mariage depuis le {new Date(sharedMoneyUser.sharedMoney.marriedAt).toLocaleDateString('fr-FR')}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-border/40 bg-muted/5 p-4 text-sm text-muted-foreground">
-                Cet utilisateur n'a pas de compte commun actif.
-              </div>
-            )}
-          </div>
+      <SharedMoneyDialog
+        isOpen={Boolean(sharedMoneyUser)}
+        onOpenChange={(open) => {
+          if (!open) setSharedMoneyUser(null);
+        }}
+        sharedMoneyUser={sharedMoneyUser}
+        onClose={() => setSharedMoneyUser(null)}
+      />
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSharedMoneyUser(null)}>
-              Fermer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* User Inventory Dialog */}
-      <Dialog
-        open={inventoryDialogOpen}
+      <InventoryDialog
+        isOpen={inventoryDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
             closeInventory();
@@ -5386,466 +5068,37 @@ export default function Admin() {
             setInventoryDialogOpen(true);
           }
         }}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              Inventaire de {inventoryUser?.username || 'l\'utilisateur'}
-            </DialogTitle>
-            <DialogDescription>
-              Consultez et ajustez les objets détenus par l'utilisateur.
-            </DialogDescription>
-          </DialogHeader>
+        inventoryUser={inventoryUser}
+        items={items}
+        inventoryAddItemId={inventoryAddItemId}
+        setInventoryAddItemId={setInventoryAddItemId}
+        inventoryAddQuantity={inventoryAddQuantity}
+        setInventoryAddQuantity={setInventoryAddQuantity}
+        addingInventoryItem={addingInventoryItem}
+        onAddInventoryItem={addInventoryItem}
+        loadingInventory={loadingInventory}
+        inventoryItems={inventoryItems}
+        inventoryQuantities={inventoryQuantities}
+        setInventoryQuantities={setInventoryQuantities}
+        updatingInventoryItem={updatingInventoryItem}
+        onUpdateInventoryQuantity={updateInventoryQuantity}
+        removingInventoryItem={removingInventoryItem}
+        onRemoveInventoryItem={removeInventoryItem}
+        onClose={closeInventory}
+      />
 
-          <div className="space-y-6 py-4">
-            <div className="border border-border/30 rounded p-4 space-y-3">
-              <h3 className="text-sm text-muted-foreground  ">
-                Ajouter un objet
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                <div className="space-y-2">
-                  <label className="text-xs text-muted-foreground">Objet</label>
-                  <Select
-                    value={inventoryAddItemId}
-                    onValueChange={(value) => setInventoryAddItemId(value)}
-                  >
-                    <SelectTrigger className="bg-transparent">
-                      <SelectValue placeholder="Choisir un objet" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {items.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          Aucun objet disponible
-                        </SelectItem>
-                      ) : (
-                        items.map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {item.name} • {ITEM_TYPE_LABELS[item.type] || humanizeUiLabel(item.type)}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs text-muted-foreground">Quantité</label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={inventoryAddQuantity}
-                    onChange={(e) => setInventoryAddQuantity(parseInt(e.target.value) || 1)}
-                    className="bg-transparent"
-                  />
-                </div>
-                <Button
-                  onClick={addInventoryItem}
-                  disabled={addingInventoryItem || items.length === 0 || !inventoryAddItemId}
-                  className="h-9"
-                >
-                  {addingInventoryItem ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Plus className="h-4 w-4 mr-2" />
-                  )}
-                  Ajouter
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm text-muted-foreground  ">
-                  Inventaire actuel
-                </h3>
-                <span className="text-xs text-muted-foreground">
-                  Définissez 0 pour supprimer un objet
-                </span>
-              </div>
-
-              {loadingInventory ? (
-                <div className="flex justify-center py-8">
-                  <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
-                </div>
-              ) : inventoryItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Aucun objet dans l'inventaire
-                </p>
-              ) : (
-                <div className="space-y-0">
-                  {inventoryItems.map((inventoryItem) => {
-                    const effect = inventoryItem.item.effect ? parseEffect(inventoryItem.item.effect) : null;
-                    const effectLabel = effect
-                      ? EFFECT_TYPES.find((effectItem) => effectItem.value === effect.type)?.label || humanizeUiLabel(effect.type)
-                      : null;
-
-                    return (
-                      <div
-                        key={inventoryItem.id}
-                        className="py-4 border-b border-border/30 last:border-0"
-                      >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div className="flex items-center gap-4 min-w-0">
-                            {inventoryItem.item.imageUrl ? (
-                              <img
-                                src={resolveImageUrl(inventoryItem.item.imageUrl)}
-                                alt={inventoryItem.item.name}
-                                className="w-10 h-10 object-cover rounded"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 bg-muted/30 flex items-center justify-center rounded">
-                                <Package className="w-5 h-5 text-muted-foreground" />
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium truncate">{inventoryItem.item.name}</span>
-                                <span className="text-xs text-muted-foreground  ">
-                                  {ITEM_TYPE_LABELS[inventoryItem.item.type] || humanizeUiLabel(inventoryItem.item.type)}
-                                </span>
-                              </div>
-                              {effectLabel && (
-                                <p className="text-xs text-muted-foreground/70">
-                                  Effet: {effectLabel}
-                                </p>
-                              )}
-                              <p className="text-xs text-muted-foreground/60">
-                                Ajouté le {new Date(inventoryItem.acquiredAt).toLocaleDateString('fr-FR', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                })}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              min={0}
-                              value={inventoryQuantities[inventoryItem.id] ?? inventoryItem.quantity}
-                              onChange={(e) =>
-                                setInventoryQuantities((prev) => ({
-                                  ...prev,
-                                  [inventoryItem.id]: parseInt(e.target.value) || 0,
-                                }))
-                              }
-                              className="h-9 w-24 bg-transparent"
-                            />
-                            <Button
-                              size="sm"
-                              onClick={() => updateInventoryQuantity(inventoryItem.id)}
-                              disabled={updatingInventoryItem === inventoryItem.id}
-                              className="h-9"
-                            >
-                              {updatingInventoryItem === inventoryItem.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Save className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-9 border-destructive/50 text-destructive hover:bg-destructive/10"
-                                  disabled={removingInventoryItem === inventoryItem.id}
-                                >
-                                  {removingInventoryItem === inventoryItem.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="flex items-center gap-2">
-                                    <AlertTriangle className="h-5 w-5 text-destructive" />
-                                    Retirer {inventoryItem.item.name} ?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    L'objet sera supprimé de l'inventaire de l'utilisateur.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => removeInventoryItem(inventoryItem.id)}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                  >
-                                    Retirer
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={closeInventory}>
-              Fermer
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Item Create/Edit Dialog */}
-      <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingItem ? 'Modifier l\'objet' : 'Créer un objet'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingItem ? 'Modifiez les propriétés de l\'objet.' : 'Créez un nouvel objet pour la boutique.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-2 space-y-4">
-            {/* Row 1: Name + Category + Price */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-1 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Nom</label>
-                <Input
-                  value={itemForm.name}
-                  onChange={(e) => setItemForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Nom de l'objet"
-                  className="bg-transparent"
-                />
-              </div>
-              <div className="col-span-1 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Catégorie</label>
-                <Select
-                  value={itemForm.type}
-                  onValueChange={(value) => setItemForm(prev => ({ ...prev, type: value }))}
-                >
-                  <SelectTrigger className="bg-transparent">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {shopCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-1 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Prix ($)</label>
-                <Input
-                  type="number"
-                  value={itemForm.price}
-                  onChange={(e) => setItemForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-                  className="bg-transparent"
-                  min={0}
-                />
-              </div>
-            </div>
-
-            {/* Row 2: Description */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <Textarea
-                value={itemForm.description}
-                onChange={(e) => setItemForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Description de l'objet"
-                className="bg-transparent resize-none"
-                rows={2}
-              />
-            </div>
-
-            {/* Row 3: Image + Effect */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Image boutique (optionnel)</label>
-                <ImagePicker
-                  value={itemForm.imageUrl}
-                  onChange={(url) => setItemForm(prev => ({ ...prev, imageUrl: url }))}
-                  uploadFn={uploadItemImageFile}
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Type d'effet</label>
-                  <Select
-                    value={itemForm.effectType}
-                    onValueChange={(value) => {
-                      setItemForm(prev => ({
-                        ...prev,
-                        effectType: value,
-                        effectValue: '',
-                        bonusAura: 0,
-                        bonusMoney: 0,
-                        skinImageUrl: '',
-                        skinShopType: 'none',
-                        badgeId: '',
-                        durationMinutes: 60,
-                      }));
-                    }}
-                  >
-                    <SelectTrigger className="bg-transparent">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EFFECT_TYPES.map((effect) => (
-                        <SelectItem key={effect.value} value={effect.value}>
-                          {effect.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {EFFECT_TYPES.find(e => e.value === itemForm.effectType)?.description}
-                  </p>
-                </div>
-
-                {itemForm.effectType === 'BONUS_AURA' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Valeur Bonus Aura</label>
-                    <Input
-                      type="number"
-                      value={itemForm.bonusAura || 0}
-                      onChange={(e) => setItemForm(prev => ({ ...prev, bonusAura: parseInt(e.target.value) || 0 }))}
-                      className="bg-transparent"
-                      min="0"
-                    />
-                  </div>
-                )}
-
-                {itemForm.effectType === 'BONUS_MONEY' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Valeur Bonus Argent</label>
-                    <Input
-                      type="number"
-                      value={itemForm.bonusMoney || 0}
-                      onChange={(e) => setItemForm(prev => ({ ...prev, bonusMoney: parseInt(e.target.value) || 0 }))}
-                      className="bg-transparent"
-                      min="0"
-                    />
-                  </div>
-                )}
-
-                {itemForm.effectType === 'DOODLE_JUMP_SKIN' && (
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">Image du skin</label>
-                      <ImagePicker
-                        value={itemForm.skinImageUrl || ''}
-                        onChange={(url) => setItemForm(prev => ({ ...prev, skinImageUrl: url }))}
-                        uploadFn={uploadItemImageFile}
-                      />
-                      <p className="text-xs text-muted-foreground">Cette image sera utilisée comme sprite du personnage dans Doodle Jump.</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">Placement dans la boutique DJ</label>
-                      <Select
-                        value={itemForm.skinShopType || 'none'}
-                        onValueChange={(value) => setItemForm(prev => ({ ...prev, skinShopType: value as 'none' | 'static' | 'rotating' }))}
-                      >
-                        <SelectTrigger className="bg-transparent">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Non placé (invisible en boutique)</SelectItem>
-                          <SelectItem value="static">⭐ Boutique permanente</SelectItem>
-                          <SelectItem value="rotating">🔥 Pool de rotation quotidienne</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">Choisir si ce skin apparaît en permanence ou dans la rotation du jour.</p>
-                    </div>
-                  </div>
-                )}
-
-                {itemForm.effectType === 'AWARD_BADGE' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Badge à attribuer</label>
-                    <div className="max-h-48 overflow-y-auto rounded border border-border/40 bg-muted/10 p-2">
-                      {badges.length === 0 ? (
-                        <p className="text-xs text-muted-foreground p-2">Aucun badge disponible.</p>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-1">
-                          {badges.filter(b => b.isActive).map((badge) => (
-                            <button
-                              key={badge.id}
-                              type="button"
-                              onClick={() => {
-                                const svg = generateBadgeSvgDataUrl(badge);
-                                setItemForm(prev => ({ ...prev, badgeId: badge.id, imageUrl: prev.imageUrl || svg }));
-                              }}
-                              className={cn(
-                                'flex items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted/40',
-                                itemForm.badgeId === badge.id ? 'bg-muted/60 ring-1 ring-border' : '',
-                              )}
-                            >
-                              <BadgeIcon badge={badge} size="xs" />
-                              <span className="truncate font-medium">{badge.name}</span>
-                              <span className="ml-auto shrink-0 text-muted-foreground">{badge.rarity}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {itemForm.badgeId && (
-                      <p className="text-xs text-muted-foreground">
-                        Sélectionné : {badges.find(b => b.id === itemForm.badgeId)?.name ?? itemForm.badgeId}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {itemForm.effectType === 'YOU_ADBLOCK' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Durée de l'effet (minutes)</label>
-                    <Input
-                      type="number"
-                      value={itemForm.durationMinutes || 60}
-                      onChange={(e) => setItemForm((prev) => ({ ...prev, durationMinutes: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
-                      className="bg-transparent"
-                      min="1"
-                    />
-                  </div>
-                )}
-
-                {itemForm.effectType !== 'BONUS_AURA' && itemForm.effectType !== 'BONUS_MONEY' && itemForm.effectType !== 'DOODLE_JUMP_SKIN' && !EFFECT_TYPES_WITHOUT_VALUE.has(itemForm.effectType) && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      {itemForm.effectType === 'CLAN_GAME_MONEY_BOOST' ? 'Pourcentage de boost' : 'Valeur de l\'effet'}
-                    </label>
-                    <Input
-                      value={itemForm.effectValue}
-                      onChange={(e) => setItemForm(prev => ({ ...prev, effectValue: e.target.value }))}
-                      placeholder={itemForm.effectType === 'CLAN_GAME_MONEY_BOOST' ? 'Ex: 10' : 'Valeur de l\'effet'}
-                      className="bg-transparent"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setItemDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={saveItem} disabled={savingItem}>
-              {savingItem ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              {editingItem ? 'Modifier' : 'Créer'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ItemDialog
+        isOpen={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        editingItem={editingItem}
+        itemForm={itemForm}
+        setItemForm={setItemForm}
+        shopCategories={shopCategories}
+        badges={badges}
+        savingItem={savingItem}
+        onSaveItem={saveItem}
+        uploadItemImageFile={uploadItemImageFile}
+      />
 
         <ReferralsTab
           referralStats={referralStats}

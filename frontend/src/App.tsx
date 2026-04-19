@@ -58,7 +58,6 @@ import FruitNinja from './pages/FruitNinja';
 import StackTower from './pages/StackTower';
 import Snake from './pages/Snake';
 import Support from './pages/Support';
-import Changelog from './pages/Changelog';
 import BraquageLegal from './pages/BraquageLegal';
 import QSWatermelon from './pages/QSWatermelon';
 import Polytrack from './pages/Polytrack';
@@ -293,7 +292,7 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="inbox" element={<Inbox />} />
         <Route path="support" element={<Support />} />
-        <Route path="changelog" element={<Changelog />} />
+        <Route path="changelog" element={<Navigate to="/dashboard" replace />} />
         <Route path="loto" element={<BraquageLegal />} />
         <Route path="braquage-legal" element={<Navigate to="/loto" replace />} />
         <Route path="you" element={<You />} />

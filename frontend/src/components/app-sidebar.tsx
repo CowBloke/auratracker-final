@@ -90,7 +90,7 @@ const data = {
           url: "#",
         },
         {
-          title: "Changelog",
+          title: "Mises à jour",
           url: "#",
         },
       ],

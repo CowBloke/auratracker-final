@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
-import { Download, Eye, Loader2, Trash2 } from 'lucide-react';
+import { Eye, Loader2, Trash2 } from 'lucide-react';
 
 export type AdsTabProps = Record<string, unknown>;
 
