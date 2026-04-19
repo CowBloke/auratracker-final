@@ -239,7 +239,7 @@ export default function CrossyRoad() {
     postToGame('pause');
   };
 
-  const handleDeleteScore = useCallback(async (userId: string, username: string) => {
+  const handleDeleteScore = useCallback(async (userId: string, _username: string) => {
 
     try {
       await gamesApi.deleteStats(GAME_TYPE, userId);

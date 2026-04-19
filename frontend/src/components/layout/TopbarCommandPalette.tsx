@@ -92,7 +92,7 @@ function tokenizeSearchValue(value: string) {
   return normalized.split(/[^a-z0-9]+/).filter(Boolean);
 }
 
-function strictCommandFilter(value: string, search: string, keywords: string[]) {
+function strictCommandFilter(value: string, search: string, keywords: string[] = []) {
   const normalizedSearch = normalizeSearchValue(search);
   if (!normalizedSearch) return 1;
 

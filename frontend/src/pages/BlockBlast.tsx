@@ -311,7 +311,7 @@ export default function BlockBlast() {
     void submit();
   }, [fetchLeaderboard, fetchStats, game.mode, game.moves, game.score, game.status, refreshUser, user?.id]);
 
-  const handleDeleteScore = useCallback(async (userId: string, username: string) => {
+  const handleDeleteScore = useCallback(async (userId: string, _username: string) => {
 
     try {
       await gamesApi.deleteStats(GAME_TYPE, userId);

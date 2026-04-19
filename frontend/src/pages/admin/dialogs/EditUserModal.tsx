@@ -1,4 +1,4 @@
-import { AdminUser, type AdminRole } from '@/services/api';
+import { AdminUser } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,22 +12,26 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, Save, UserCog, Users, Shield, TrendingUp, Plus, Minus, Eye } from 'lucide-react';
-import { ROLE_LABELS } from '../constants';
-import { cn, toSafeNumber, getAdminRole } from '../adminPageModels';
+import { ROLE_LABELS, type AdminRole } from '../constants';
+import { cn } from '@/lib/utils';
+import { toSafeNumber, getAdminRole } from '../adminPageModels';
+
+type EditValues = {
+  username: string;
+  firstName: string;
+  aura: number;
+  money: number;
+  auraCoinBalance: number;
+  dailyAuraLimit: number;
+};
 
 interface EditUserModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   editingUser: string | null;
   editModalUser: AdminUser | null;
-  editValues: {
-    username: string;
-    firstName: string;
-    aura: number;
-    money: number;
-    auraCoinBalance: number;
-  };
-  setEditValues: (values: any) => void;
+  editValues: EditValues;
+  setEditValues: (values: EditValues | ((prev: EditValues) => EditValues)) => void;
   editAuraAddAmount: number;
   setEditAuraAddAmount: (amount: number) => void;
   editAuraRemoveAmount: number;
@@ -82,6 +86,7 @@ export function EditUserModal({
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
+        onOpenChange(open);
         if (!open) onCancelEditing();
       }}
     >
@@ -134,7 +139,7 @@ export function EditUserModal({
             </label>
             <Select
               value={editModalUser ? getAdminRole(editModalUser) : 'USER'}
-              onValueChange={(value) => editModalUser && void onUpdateUserRole(editModalUser, value as AdminRole)}
+              onValueChange={(value) => editModalUser && void onUpdateUserRole(editModalUser, value as any)}
               disabled={updatingRoleUserId === editModalUser?.id || user?.id === editModalUser?.id}
             >
               <SelectTrigger className="h-9 border-amber-500/30 bg-transparent">

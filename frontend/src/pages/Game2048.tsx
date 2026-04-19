@@ -288,7 +288,7 @@ export default function Game2048() {
   };
   
   // Admin: Delete a user's high score
-  const handleDeleteScore = async (userId: string, username: string) => {
+  const handleDeleteScore = async (userId: string, _username: string) => {
     
     try {
       await gamesApi.deleteStats('game_2048', userId);

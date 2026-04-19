@@ -332,3 +332,33 @@ export const toSafeNumber = (value: unknown, fallback = 0): number => {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
+
+export const parseEffect = (effectStr: string | null): { type: string; value: string; bonusAura?: number; bonusMoney?: number; skinImageUrl?: string; skinShopType?: 'none' | 'static' | 'rotating'; badgeId?: string; durationMinutes?: number } => {
+  if (!effectStr) return { type: 'USERNAME_COLOR', value: '' };
+
+  try {
+    const effect = JSON.parse(effectStr);
+    let effectType = effect.type || 'USERNAME_COLOR';
+
+    if (effect.bonusAura !== undefined) effectType = 'BONUS_AURA';
+    if (effect.bonusMoney !== undefined) effectType = 'BONUS_MONEY';
+    if (effectType === 'ADBLOCK_YOU') effectType = 'YOU_ADBLOCK';
+
+    return {
+      type: effectType,
+      value: String(effect.percentage ?? effect.value ?? ''),
+      bonusAura: effect.bonusAura,
+      bonusMoney: effect.bonusMoney,
+      skinImageUrl: effect.skinImageUrl || '',
+      skinShopType: (effect.shopType as 'none' | 'static' | 'rotating') || 'none',
+      badgeId: effect.badgeId || '',
+      durationMinutes:
+        Number.parseInt(
+          String(effect.durationMinutes ?? effect.durationMins ?? (effect.durationHours != null ? Number(effect.durationHours) * 60 : 60)),
+          10,
+        ) || 60,
+    };
+  } catch {
+    return { type: 'USERNAME_COLOR', value: '' };
+  }
+};

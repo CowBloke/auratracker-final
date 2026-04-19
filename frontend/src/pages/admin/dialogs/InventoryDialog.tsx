@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Loader2, Plus, Save, Trash2, Package, AlertTriangle } from 'lucide-react';
 import { resolveImageUrl } from '@/lib/images';
-import { ITEM_TYPE_LABELS } from '../constants';
+import { ITEM_TYPE_LABELS } from '../adminPageModels';
 import { EFFECT_TYPES, parseEffect } from '../adminPageModels';
 import { humanizeUiLabel } from '@/lib/utils';
 
@@ -41,7 +41,7 @@ interface InventoryDialogProps {
   loadingInventory: boolean;
   inventoryItems: AdminInventoryItem[];
   inventoryQuantities: Record<string, number>;
-  setInventoryQuantities: (quantities: any) => void;
+  setInventoryQuantities: (quantities: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void;
   updatingInventoryItem: string | null;
   onUpdateInventoryQuantity: (id: string) => void;
   removingInventoryItem: string | null;
@@ -77,7 +77,7 @@ export function InventoryDialog({
         if (!open) {
           onClose();
         } else {
-          onOpenChange(true);
+          onOpenChange(open);
         }
       }}
     >

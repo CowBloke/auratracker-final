@@ -461,7 +461,7 @@ export default function GoyaveEmpire() {
     }
   }, [user, isCashingOut, fetchCashOutLeaderboard, fetchActiveLeaderboard, refreshUser, saveToDb]);
 
-  const handleDeleteScore = async (userId: string, username: string) => {
+  const handleDeleteScore = async (userId: string, _username: string) => {
     try {
       await gamesApi.deleteStats('goyave_empire', userId);
       fetchCashOutLeaderboard();

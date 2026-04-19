@@ -18,7 +18,6 @@ import {
   Store,
   LayoutDashboard,
   MessageSquare,
-  Sparkles,
   Landmark,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';

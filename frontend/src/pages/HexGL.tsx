@@ -171,7 +171,7 @@ export default function HexGL() {
     }
   }, [focusGame, isFullscreen, isPaused, sessionKey]);
 
-  const handleDeleteScore = useCallback(async (userId: string, username: string) => {
+  const handleDeleteScore = useCallback(async (userId: string, _username: string) => {
 
     try {
       await gamesApi.deleteStats(GAME_TYPE, userId);

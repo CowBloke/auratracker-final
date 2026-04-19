@@ -232,7 +232,7 @@ export function ActivityTab(props: ActivityTabProps) {
                 <CardContent className="p-4 space-y-1">
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Parties (30j)</p>
                   <p className="text-xl font-semibold tabular-nums">
-                    {formatBigNumber(platformStats.activityChart.reduce((s, d) => s + d.count, 0))}
+                    {formatBigNumber(platformStats.activityChart.reduce((s: number, d: { count: number }) => s + d.count, 0))}
                   </p>
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>sur les 30 derniers jours</p>
                 </CardContent>
@@ -241,7 +241,7 @@ export function ActivityTab(props: ActivityTabProps) {
                 <CardContent className="p-4 space-y-1">
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground')}>Moy. / jour (30j)</p>
                   <p className="text-xl font-semibold tabular-nums">
-                    {(platformStats.activityChart.reduce((s, d) => s + d.count, 0) / 30).toFixed(1)}
+                    {(platformStats.activityChart.reduce((s: number, d: { count: number }) => s + d.count, 0) / 30).toFixed(1)}
                   </p>
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>parties par jour</p>
                 </CardContent>
@@ -392,7 +392,7 @@ export function ActivityTab(props: ActivityTabProps) {
                           p10 {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.p10)) : '—'} · p90 {moneyDistribution ? formatBigNumber(Math.round(moneyDistribution.p90)) : '—'}
                         </p>
                       </div>
-                      {moneyDistribution?.concentration.map((item) => (
+                      {moneyDistribution?.concentration.map((item: { label: string; share: number }) => (
                         <div key={item.label} className="space-y-1">
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-muted-foreground">{item.label}</span>
@@ -418,7 +418,7 @@ export function ActivityTab(props: ActivityTabProps) {
                           p10 {auraDistribution ? formatBigNumber(Math.round(auraDistribution.p10)) : '—'} · p90 {auraDistribution ? formatBigNumber(Math.round(auraDistribution.p90)) : '—'}
                         </p>
                       </div>
-                      {auraDistribution?.concentration.map((item) => (
+                      {auraDistribution?.concentration.map((item: { label: string; share: number }) => (
                         <div key={item.label} className="space-y-1">
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-muted-foreground">{item.label}</span>
@@ -453,7 +453,7 @@ export function ActivityTab(props: ActivityTabProps) {
                 </div>
                 {platformStats && (
                   <span className="text-sm font-semibold tabular-nums text-muted-foreground">
-                    {platformStats.activityChart.reduce((s, d) => s + d.count, 0).toLocaleString('fr-FR')} parties
+                    {platformStats.activityChart.reduce((s: number, d: { count: number }) => s + d.count, 0).toLocaleString('fr-FR')} parties
                   </span>
                 )}
               </div>
@@ -543,7 +543,7 @@ export function ActivityTab(props: ActivityTabProps) {
                         ]}
                       />
                       <Bar dataKey="totalPlayed" radius={[0, 3, 3, 0]} isAnimationActive={false}>
-                        {platformTopGamesChartData.map((_g, index) => (
+                        {platformTopGamesChartData.map((_g: { label: string }, index: number) => (
                           <Cell key={index} fill={activityBreakdownColors[index % activityBreakdownColors.length]} />
                         ))}
                       </Bar>
@@ -829,7 +829,7 @@ export function ActivityTab(props: ActivityTabProps) {
                         {(activityHistory.insights?.peakHours?.length ?? 0) > 0 ? (
                           <>
                             <p className="text-lg font-semibold">
-                              {activityHistory.insights!.peakHours.map((entry) => entry.label).join(' • ')}
+                              {activityHistory.insights!.peakHours.map((entry: { label: string }) => entry.label).join(' • ')}
                             </p>
                             <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/70')}>
                               Moyenne de {activityHistory.insights!.peakHours[0]?.averageOnline.toLocaleString('fr-FR')} joueurs en ligne sur le créneau n°1
@@ -876,7 +876,7 @@ export function ActivityTab(props: ActivityTabProps) {
                           domainStart = new Date(activityCustomStart + 'T00:00:00').getTime();
                           domainEnd = new Date(activityCustomEnd + 'T00:00:00').getTime() + MS_DAY;
                         } else {
-                          const times = chartData.map(pt => pt.ts);
+                            const times = chartData.map((pt: { ts: number }) => pt.ts);
                           domainStart = Math.min(...times);
                           domainEnd = Math.max(...times);
                         }
@@ -1125,7 +1125,7 @@ export function ActivityTab(props: ActivityTabProps) {
                               <p className="text-xs text-muted-foreground/60 text-center py-4">Aucun joueur enregistré</p>
                             ) : (
                               <ul className="space-y-0.5">
-                                {users.map(u => (
+                                {users.map((u: { userId: string; username: string }) => (
                                   <li key={u.userId} className="text-xs px-1.5 py-1 rounded hover:bg-muted/30 truncate" title={u.username}>
                                     {u.username}
                                   </li>
@@ -1242,7 +1242,7 @@ export function ActivityTab(props: ActivityTabProps) {
                     </ResponsiveContainer>
 
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {activityBreakdown?.topPages.map((entry, index) => (
+                      {activityBreakdown?.topPages.map((entry: { page: string; total: number }, index: number) => (
                         <div key={entry.page} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
                           <div className="flex min-w-0 items-center gap-2">
                             <span
@@ -1328,7 +1328,7 @@ export function ActivityTab(props: ActivityTabProps) {
                     </ResponsiveContainer>
 
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {activityBreakdown?.topGames.map((entry, index) => (
+                      {activityBreakdown?.topGames.map((entry: { gameType: string; total: number }, index: number) => (
                         <div key={entry.gameType} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
                           <div className="flex min-w-0 items-center gap-2">
                             <span
@@ -1414,7 +1414,7 @@ export function ActivityTab(props: ActivityTabProps) {
                     </ResponsiveContainer>
 
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {activityBreakdown?.topGameDurations.map((entry, index) => (
+                      {activityBreakdown?.topGameDurations.map((entry: { gameType: string; totalSeconds: number }, index: number) => (
                         <div key={entry.gameType} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
                           <div className="flex min-w-0 items-center gap-2">
                             <span
@@ -1516,7 +1516,7 @@ export function ActivityTab(props: ActivityTabProps) {
                         </tr>
                       </thead>
                       <tbody>
-                        {playtimeLeaderboard.leaderboard.map((entry) => {
+                        {playtimeLeaderboard.leaderboard.map((entry: { userId: string; totalSeconds: number; averageGameDuration: number; gamesPlayed: number; rank: number; profilePicture?: string | null; usernameColor?: string | null; username: string }) => {
                           const totalHours = Math.floor(entry.totalSeconds / 3600);
                           const totalMinutes = Math.floor((entry.totalSeconds % 3600) / 60);
                           const avgSeconds = Math.floor(entry.averageGameDuration);

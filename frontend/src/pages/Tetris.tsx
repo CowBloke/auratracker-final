@@ -63,7 +63,7 @@ export default function Tetris() {
     fetchLeaderboard();
   }, [user, fetchStats, fetchLeaderboard]);
 
-  const handleDeleteScore = async (userId: string, username: string) => {
+  const handleDeleteScore = async (userId: string, _username: string) => {
 
     try {
       await gamesApi.deleteStats('tetris', userId);

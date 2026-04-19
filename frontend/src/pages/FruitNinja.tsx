@@ -174,7 +174,7 @@ export default function FruitNinja() {
     if (fpsMode) particlesRef.current = [];
   }, [fpsMode]);
 
-  const handleDeleteScore = useCallback(async (userId: string, username: string) => {
+  const handleDeleteScore = useCallback(async (userId: string, _username: string) => {
     try {
       await gamesApi.deleteStats(GAME_TYPE, userId);
       fetchLeaderboard();
