@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
-  ChevronUp,
   Crosshair,
   Eye,
   Monitor,

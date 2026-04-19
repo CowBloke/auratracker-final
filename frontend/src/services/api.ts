@@ -82,8 +82,6 @@ export const usersApi = {
   unfollow: (targetUserId: string) =>
     api.delete<{ relationship: SocialRelationship; stats: SocialStats }>(`/users/social/follow/${targetUserId}`),
   getAnnouncement: () => api.get<{ message: string }>('/users/announcement'),
-  getPendingUpdatePopups: () => api.get<{ popups: UserUpdatePopup[] }>('/users/update-popups/pending'),
-  markUpdatePopupViewed: (id: string) => api.post<{ success: boolean }>(`/users/update-popups/${id}/viewed`),
   getById: (id: string) => api.get(`/users/${id}`),
   getEconomyHistory: (id: string, days = 30) =>
     api.get<UserEconomyHistoryResponse>(`/users/${id}/economy-history`, { params: { days } }),
@@ -94,17 +92,6 @@ export const usersApi = {
   getPendingWarnings: () => api.get<{ warnings: UserPendingWarning[] }>('/users/warnings/pending'),
   acknowledgeWarning: (id: string) => api.post<{ success: boolean; message: string }>(`/users/warnings/${id}/acknowledge`),
 };
-
-export interface UserUpdatePopup {
-  id: string;
-  title: string;
-  summary: string | null;
-  message: string;
-  imageUrl: string | null;
-  type: 'UPDATE' | 'CLAN_PROMPT';
-  releaseDate: string;
-  createdAt: string;
-}
 
 export interface UserPendingWarning {
   id: string;
@@ -2255,28 +2242,6 @@ export interface PendingSanction {
   reviewedBy: { id: string; username: string } | null;
 }
 
-export interface AdminUpdatePopup {
-  id: string;
-  title: string;
-  summary: string | null;
-  message: string;
-  imageUrl: string | null;
-  type: 'UPDATE' | 'CLAN_PROMPT';
-  audience: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS';
-  targetUserIds: string[];
-  releaseDate: string;
-  isPublished: boolean;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: {
-    id: string;
-    username: string;
-  };
-  _count: {
-    views: number;
-  };
-}
-
 export interface AdminClanMember {
   id: string;
   userId: string;
@@ -2899,36 +2864,8 @@ export const adminApi = {
   // Reset extreme aura values
   resetExtremeAura: (threshold?: number) =>
     runRareAction({ action: 'reset_extreme_aura', threshold }) as Promise<{ data: { success: boolean; message: string; usersReset: number; users: { id: string; username: string; oldAura: string }[] } }>,
-  // Update popups
-  getUpdatePopups: () => api.get<{ popups: AdminUpdatePopup[] }>('/admin/update-popups'),
-  createUpdatePopup: (data: {
-    title: string;
-    summary?: string;
-    message: string;
-    imageUrl?: string;
-    type?: 'UPDATE' | 'CLAN_PROMPT';
-    audience?: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS';
-    targetUserIds?: string[];
-    releaseDate?: string;
-    isPublished?: boolean;
-  }) => api.post<{ popup: AdminUpdatePopup }>('/admin/update-popups', data),
-  updateUpdatePopup: (id: string, data: Partial<{
-    title: string;
-    summary: string | null;
-    message: string;
-    imageUrl: string | null;
-    type: 'UPDATE' | 'CLAN_PROMPT';
-    audience: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS';
-    targetUserIds: string[];
-    releaseDate: string;
-    isPublished: boolean;
-  }>) => api.put<{ popup: AdminUpdatePopup }>(`/admin/update-popups/${id}`, data),
-  deleteUpdatePopup: (id: string) => api.delete<{ success: boolean }>(`/admin/update-popups/${id}`),
-  uploadUpdatePopupImage: (data: { base64Data: string; mimeType: string }) =>
-    api.post<{ imageUrl: string }>('/admin/update-popups/upload-image', data),
   uploadItemImage: (data: { base64Data: string; mimeType: string }) =>
     api.post<{ imageUrl: string }>('/admin/items/upload-image', data),
-  suggestUpdatePopupSummary: () => api.get<{ suggestion: string; sinceDate: string }>('/admin/update-popups/suggest-summary'),
   // Online activity history
   takeOnlineSnapshot: () => api.post<{ success: boolean; count: number }>('/admin/online-snapshot'),
   getOnlineHistory: (params?: {
@@ -3669,36 +3606,79 @@ export const customBadgesApi = {
     api.post<{ success: boolean }>(`/custom-badges/${id}/reject`, { adminNote }),
 };
 
-export interface ChangelogItem {
+export interface DashboardUpdateItem {
   id: string;
   text: string;
-  category: string;
 }
 
-export interface ChangelogSection {
-  category: string;
-  items: { id: string; text: string }[];
+export interface DashboardUpdateSection {
+  category: 'BIG_FEATURE' | 'SMALL_FEATURE' | 'BUG_FIX';
+  items: DashboardUpdateItem[];
 }
 
-export interface ChangelogEntry {
+export interface DashboardUpdateAuthor {
+  name: string;
+  role: string | null;
+  avatarUrl: string | null;
+}
+
+export interface DashboardUpdateEntry {
   id: string;
   date: string;
   title: string;
   summary: string;
-  sections: ChangelogSection[];
+  body: string | null;
+  feedCategory: 'GAME' | 'PATCH' | 'COMMUNITY' | 'DEV';
+  imageUrl: string | null;
+  accentColor: string | null;
+  isFeatured: boolean;
+  ctaLabel: string | null;
+  ctaHref: string | null;
+  author: DashboardUpdateAuthor;
+  isPublished: boolean;
+  publishedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  sections: DashboardUpdateSection[];
 }
 
-export const changelogApi = {
-  getAll: () => api.get<ChangelogEntry[]>('/changelog'),
+export interface DashboardUpdatePayload {
+  date: string;
+  title: string;
+  summary: string;
+  body?: string | null;
+  feedCategory: DashboardUpdateEntry['feedCategory'];
+  imageUrl?: string | null;
+  accentColor?: string | null;
+  isFeatured?: boolean;
+  ctaLabel?: string | null;
+  ctaHref?: string | null;
+  authorName: string;
+  authorRole?: string | null;
+  authorAvatarUrl?: string | null;
+  isPublished?: boolean;
+  publishedAt: string;
+  sections: Array<{
+    category: DashboardUpdateSection['category'];
+    items: Array<{ text: string } | string>;
+  }>;
+}
+
+export const dashboardUpdatesApi = {
+  getAll: () => api.get<DashboardUpdateEntry[]>('/changelog'),
+  getAdminAll: () => api.get<{ entries: DashboardUpdateEntry[] }>('/changelog/admin'),
   getIds: () => api.get<{ ids: string[] }>('/changelog/ids'),
-  createEntry: (data: { date: string; title: string; summary: string }) =>
-    api.post<ChangelogEntry>('/changelog', data),
+  createEntry: (data: DashboardUpdatePayload) =>
+    api.post<{ entry: DashboardUpdateEntry }>('/changelog', data),
+  updateEntry: (id: string, data: DashboardUpdatePayload) =>
+    api.put<{ entry: DashboardUpdateEntry }>(`/changelog/${id}`, data),
   deleteEntry: (id: string) => api.delete(`/changelog/${id}`),
-  addItem: (entryId: string, data: { category: string; text: string }) =>
-    api.post<ChangelogItem>(`/changelog/${entryId}/items`, data),
-  deleteItem: (entryId: string, itemId: string) =>
-    api.delete(`/changelog/${entryId}/items/${itemId}`),
+  uploadImage: (data: { base64Data: string; mimeType: string }) =>
+    api.post<{ imageUrl: string }>('/changelog/upload-image', data),
 };
+
+export type ChangelogEntry = DashboardUpdateEntry;
+export const changelogApi = dashboardUpdatesApi;
 
 // ─── Justice System ──────────────────────────────────────────────────────────
 

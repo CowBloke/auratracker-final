@@ -121,8 +121,6 @@ model User {
   clanWarFortifications        ClanWarFortification[]
   polymarketSuggestions        PolymarketSuggestion[]
   polymarketBets               PolymarketBet[]
-  createdUpdatePopups          UpdatePopup[]                 @relation("UpdatePopupCreator")
-  updatePopupViews             UserUpdatePopupView[]
   cryptoBalances               UserCryptoBalance[]
   cryptoTransactions           CryptoTransaction[]
   cryptoPositions              CryptoPosition[]
@@ -2147,42 +2145,6 @@ model OnlineSnapshot {
   @@index([createdAt])
 }
 
-// Update Popup System
-model UpdatePopup {
-  id            String   @id @default(uuid())
-  title         String
-  summary       String? // Optional short subtitle/summary
-  message       String
-  imageUrl      String?
-  type          String   @default("UPDATE") // "UPDATE" | "CLAN_PROMPT"
-  audience      String   @default("ALL") // "ALL" | "NO_CLAN" | "SELECTED_USERS"
-  targetUserIds String   @default("[]") // JSON array of user IDs for SELECTED_USERS
-  releaseDate   DateTime @default(now())
-  isPublished   Boolean  @default(true)
-  createdById   String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  createdBy User                  @relation("UpdatePopupCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  views     UserUpdatePopupView[]
-
-  @@index([isPublished, releaseDate])
-  @@index([createdAt])
-}
-
-model UserUpdatePopupView {
-  id       String   @id @default(uuid())
-  userId   String
-  popupId  String
-  viewedAt DateTime @default(now())
-
-  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  popup UpdatePopup @relation(fields: [popupId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, popupId])
-  @@index([userId, viewedAt])
-}
-
 // ============================================
 // NOTIFICATION / INBOX SYSTEM
 // ============================================
@@ -2523,14 +2485,28 @@ model PolytrackRecord {
 // UPDATES / CHANGELOG
 // ============================================
 model UpdateEntry {
-  id        String       @id @default(uuid())
-  date      String // ISO date string e.g. "2026-03-29"
-  title     String
-  summary   String
-  createdAt DateTime     @default(now())
-  items     UpdateItem[]
+  id              String       @id @default(uuid())
+  date            String // ISO date string e.g. "2026-03-29"
+  title           String
+  summary         String
+  body            String?
+  feedCategory    String       @default("DEV") // GAME | PATCH | COMMUNITY | DEV
+  imageUrl        String?
+  accentColor     String?
+  isFeatured      Boolean      @default(false)
+  ctaLabel        String?
+  ctaHref         String?
+  authorName      String       @default("Equipe AuraTracker")
+  authorRole      String?
+  authorAvatarUrl String?
+  isPublished     Boolean      @default(true)
+  publishedAt     DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @default(now()) @updatedAt
+  items           UpdateItem[]
 
   @@index([date])
+  @@index([isPublished, publishedAt])
 }
 
 model UpdateItem {

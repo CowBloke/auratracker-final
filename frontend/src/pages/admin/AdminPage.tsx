@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, AdminUpdatePopup, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, RegistrationReview, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
@@ -70,6 +69,7 @@ import { LogsTab } from './tabs/LogsTab';
 import { TaxesTab } from './tabs/TaxesTab';
 import { UsersTab } from './tabs/UsersTab';
 import SanctionModal from '@/components/sanctions/SanctionModal';
+import { DashboardUpdatesManagerDialog } from '@/features/dashboard-updates/DashboardUpdatesManagerDialog';
 
 const TaxesTabComponent = TaxesTab;
 
@@ -1059,19 +1059,6 @@ const defaultItemForm: ItemFormData = {
 const SHOP_ITEMS_FILE_FORMAT = 'auratracker-shop-items';
 const SHOP_ITEMS_FILE_VERSION = 1;
 
-interface UpdatePopupFormData {
-  type: 'UPDATE' | 'CLAN_PROMPT';
-  title: string;
-  summary: string;
-  message: string;
-  imageUrl: string;
-  audience: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS';
-  targetUserIds: string[];
-  releaseDate: string;
-  publishMode: 'draft' | 'now' | 'scheduled';
-  isPublished: boolean;
-}
-
 const toDateTimeLocalValue = (value: string | Date): string => {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -1088,26 +1075,6 @@ const toDateTimeLocalValue = (value: string | Date): string => {
 const toSafeNumber = (value: unknown, fallback = 0): number => {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const getUpdatePopupPublishMode = (popup: Pick<AdminUpdatePopup, 'isPublished' | 'releaseDate'>): UpdatePopupFormData['publishMode'] => {
-  if (!popup.isPublished) {
-    return 'draft';
-  }
-  return new Date(popup.releaseDate).getTime() > Date.now() ? 'scheduled' : 'now';
-};
-
-const defaultUpdatePopupForm: UpdatePopupFormData = {
-  type: 'UPDATE',
-  title: '',
-  summary: '',
-  message: '',
-  imageUrl: '',
-  audience: 'ALL',
-  targetUserIds: [],
-  releaseDate: toDateTimeLocalValue(new Date()),
-  publishMode: 'now',
-  isPublished: true,
 };
 
 export default function Admin() {
@@ -1862,64 +1829,6 @@ export default function Admin() {
   const [savingBusinessCreation, setSavingBusinessCreation] = useState(false);
   const [purgingBusinesses, setPurgingBusinesses] = useState(false);
   const [resettingUnlockLevels, setResettingUnlockLevels] = useState(false);
-  const [updatePopups, setUpdatePopups] = useState<AdminUpdatePopup[]>([]);
-  const [loadingUpdatePopups, setLoadingUpdatePopups] = useState(false);
-  const [savingUpdatePopup, setSavingUpdatePopup] = useState(false);
-  const [deletingUpdatePopup, setDeletingUpdatePopup] = useState<string | null>(null);
-  const [updatingUpdatePopupId, setUpdatingUpdatePopupId] = useState<string | null>(null);
-  const [suggestingUpdateSummary, setSuggestingUpdateSummary] = useState(false);
-  const [editingUpdatePopupId, setEditingUpdatePopupId] = useState<string | null>(null);
-  const [updatePopupForm, setUpdatePopupForm] = useState<UpdatePopupFormData>(defaultUpdatePopupForm);
-
-
-  const fetchUpdatePopups = async () => {
-    try {
-      setLoadingUpdatePopups(true);
-      const res = await adminApi.getUpdatePopups();
-      setUpdatePopups(res.data.popups);
-    } catch {
-      showMessage('error', 'Erreur lors du chargement du changelog');
-    } finally {
-      setLoadingUpdatePopups(false);
-    }
-  };
-
-  const resetUpdatePopupForm = () => {
-    setEditingUpdatePopupId(null);
-    setUpdatePopupForm({
-      ...defaultUpdatePopupForm,
-      releaseDate: toDateTimeLocalValue(new Date()),
-    });
-  };
-
-  const handleSuggestUpdateSummary = async () => {
-    try {
-      setSuggestingUpdateSummary(true);
-      const res = await adminApi.suggestUpdatePopupSummary();
-      setUpdatePopupForm((prev) => ({
-        ...prev,
-        message: res.data.suggestion || prev.message,
-      }));
-      showMessage('success', 'Suggestion chargée');
-    } catch {
-      showMessage('error', 'Erreur lors de la suggestion');
-    } finally {
-      setSuggestingUpdateSummary(false);
-    }
-  };
-
-  const uploadUpdatePopupImageFile = async (file: File): Promise<string> => {
-    try {
-      const { base64Data, mimeType } = await prepareImageUploadPayload(file);
-      const res = await adminApi.uploadUpdatePopupImage({ base64Data, mimeType });
-      showMessage('success', 'Image téléchargée');
-      return res.data.imageUrl;
-    } catch {
-      showMessage('error', 'Erreur lors du téléchargement de l\'image');
-      throw new Error();
-    }
-  };
-
   const uploadItemImageFile = async (file: File): Promise<string> => {
     try {
       const { base64Data, mimeType } = await prepareImageUploadPayload(file);
@@ -1930,111 +1839,6 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du téléchargement de l\'image');
       throw new Error();
     }
-  };
-
-  const handleSaveUpdatePopup = async () => {
-    const title = updatePopupForm.title.trim();
-    const message = updatePopupForm.message.trim();
-    const summary = updatePopupForm.summary.trim();
-    const imageUrl = updatePopupForm.imageUrl.trim();
-
-    if (!title || !message) {
-      showMessage('error', 'Titre et message requis');
-      return;
-    }
-
-    if (updatePopupForm.audience === 'SELECTED_USERS' && updatePopupForm.targetUserIds.length === 0) {
-      showMessage('error', 'Sélectionne au moins un utilisateur');
-      return;
-    }
-
-    let releaseDateIso = new Date().toISOString();
-    if (updatePopupForm.publishMode === 'scheduled') {
-      const parsedReleaseDate = new Date(updatePopupForm.releaseDate);
-      if (Number.isNaN(parsedReleaseDate.getTime())) {
-        showMessage('error', 'Date de programmation invalide');
-        return;
-      }
-      releaseDateIso = parsedReleaseDate.toISOString();
-    }
-
-    const isPublished = updatePopupForm.publishMode !== 'draft';
-
-    try {
-      setSavingUpdatePopup(true);
-      const payload = {
-        type: updatePopupForm.type,
-        title,
-        message,
-        summary: summary || undefined,
-        imageUrl: imageUrl || undefined,
-        audience: updatePopupForm.audience,
-        targetUserIds: updatePopupForm.targetUserIds,
-        releaseDate: releaseDateIso,
-        isPublished,
-      };
-
-      if (editingUpdatePopupId) {
-        await adminApi.updateUpdatePopup(editingUpdatePopupId, payload);
-        showMessage('success', 'Annonce modifiée');
-      } else {
-        await adminApi.createUpdatePopup(payload);
-        showMessage('success', 'Annonce créée');
-      }
-
-      resetUpdatePopupForm();
-      fetchUpdatePopups();
-    } catch {
-      showMessage('error', 'Erreur lors de la sauvegarde');
-    } finally {
-      setSavingUpdatePopup(false);
-    }
-  };
-
-  const handleDeleteUpdatePopup = async (id: string) => {
-    try {
-      setDeletingUpdatePopup(id);
-      await adminApi.deleteUpdatePopup(id);
-      if (editingUpdatePopupId === id) {
-        resetUpdatePopupForm();
-      }
-      showMessage('success', 'Annonce supprimée');
-      fetchUpdatePopups();
-    } catch {
-      showMessage('error', 'Erreur lors de la suppression');
-    } finally {
-      setDeletingUpdatePopup(null);
-    }
-  };
-
-  const handleToggleUpdatePopupPublished = async (popup: AdminUpdatePopup, isPublished: boolean) => {
-    try {
-      setUpdatingUpdatePopupId(popup.id);
-      await adminApi.updateUpdatePopup(popup.id, { isPublished });
-      showMessage('success', isPublished ? 'Annonce publiée' : 'Annonce masquée');
-      fetchUpdatePopups();
-    } catch {
-      showMessage('error', 'Erreur lors de la mise à jour');
-    } finally {
-      setUpdatingUpdatePopupId(null);
-    }
-  };
-
-  const handleEditUpdatePopup = (popup: AdminUpdatePopup) => {
-    setEditingUpdatePopupId(popup.id);
-    setUpdatePopupForm({
-      type: popup.type,
-      title: popup.title,
-      summary: popup.summary || '',
-      message: popup.message,
-      imageUrl: popup.imageUrl || '',
-      audience: popup.audience,
-      targetUserIds: popup.targetUserIds || [],
-      releaseDate: toDateTimeLocalValue(popup.releaseDate),
-      publishMode: getUpdatePopupPublishMode(popup),
-      isPublished: popup.isPublished,
-    });
-    setActiveTab('communication');
   };
 
   const toggleLogExpand = (logId: string) => {
@@ -2105,7 +1909,6 @@ export default function Admin() {
     fetchLogStats();
     fetchSettings();
     fetchTaxSettings();
-    fetchUpdatePopups();
     fetchActivity('day');
     fetchActivityBreakdown(new Date().toISOString().slice(0, 10));
     fetchPlatformStats();
@@ -6130,9 +5933,9 @@ export default function Admin() {
 
               <div className="flex items-center justify-between gap-4 px-4 py-3.5">
                 <div>
-                  <div className="text-sm font-medium">Changelog et popup clan</div>
+                  <div className="text-sm font-medium">Dashboard et changelog</div>
                   <div className="text-xs text-muted-foreground">
-                    Gère le changelog classique et la popup qui force les utilisateurs à rejoindre un clan.
+                    Une seule interface pour composer les mises à jour visibles sur le dashboard et la page changelog.
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => setUpdatesOpen(true)} className="shrink-0">
@@ -6275,282 +6078,7 @@ export default function Admin() {
             </DialogContent>
           </Dialog>
 
-          {/* Changelog modal */}
-          <Dialog open={updatesOpen} onOpenChange={setUpdatesOpen}>
-            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
-              <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40 shrink-0">
-                <DialogTitle>Changelog et popup clan</DialogTitle>
-                <DialogDescription>Gérez le changelog classique et les popups qui redirigent vers la page des clans.</DialogDescription>
-              </DialogHeader>
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-                {/* Preview */}
-                <div className="space-y-2 p-4 rounded-lg border bg-background/30">
-                  <div className="flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Aperçu joueur</span>
-                  </div>
-                  <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
-                    <div>
-                      <h4 className="text-lg font-semibold">{updatePopupForm.title || 'Titre du changelog'}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {updatePopupForm.type === 'CLAN_PROMPT' ? 'Popup clan' : 'Popup changelog'} ·{' '}
-                        {updatePopupForm.publishMode === 'draft'
-                          ? 'Brouillon non visible'
-                          : updatePopupForm.publishMode === 'scheduled'
-                            ? `Programmée pour le ${updatePopupForm.releaseDate ? new Date(updatePopupForm.releaseDate).toLocaleString('fr-FR') : 'date non définie'}`
-                            : 'Publication immédiate'}
-                      </p>
-                    </div>
-                    {updatePopupForm.summary && <p className="text-sm font-medium">{updatePopupForm.summary}</p>}
-                    {updatePopupForm.imageUrl && (
-                      <img
-                        src={resolveImageUrl(updatePopupForm.imageUrl)}
-                        alt="preview"
-                        className="w-full max-h-56 rounded-md border object-cover"
-                        onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    )}
-                    <div className="rounded-md border bg-background/60 p-3">
-                      <p className="text-sm whitespace-pre-wrap">{updatePopupForm.message || 'Le contenu de la popup s\'affichera ici.'}</p>
-                    </div>
-                  </div>
-                </div>
-                {/* Form */}
-                <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
-                  <div className="flex items-center justify-between">
-                    <h3 className={TYPOGRAPHY.H3}>{editingUpdatePopupId ? 'Modifier un changelog' : 'Nouveau changelog'}</h3>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={handleSuggestUpdateSummary} disabled={suggestingUpdateSummary}>
-                        {suggestingUpdateSummary ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
-                        Auto-résumé
-                      </Button>
-                      {editingUpdatePopupId && (
-                        <Button variant="ghost" size="sm" onClick={resetUpdatePopupForm}>
-                          <X className="h-4 w-4 mr-1" />
-                          Annuler
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Type</label>
-                    <Select
-                      value={updatePopupForm.type}
-                      onValueChange={(value: 'UPDATE' | 'CLAN_PROMPT') => setUpdatePopupForm((prev) => ({
-                        ...prev,
-                        type: value,
-                        title: prev.title || (value === 'CLAN_PROMPT' ? 'Rejoins un clan' : ''),
-                      }))}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="UPDATE">Annonce classique</SelectItem>
-                        <SelectItem value="CLAN_PROMPT">Popup rejoindre un clan</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Titre *</label>
-                    <Input
-                      value={updatePopupForm.title}
-                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, title: e.target.value }))}
-                      placeholder={updatePopupForm.type === 'CLAN_PROMPT' ? 'Ex: Rejoins un clan maintenant' : 'Ex: Changelog 1.8.0'}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Sous-titre</label>
-                    <Input
-                      value={updatePopupForm.summary}
-                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, summary: e.target.value }))}
-                      placeholder={updatePopupForm.type === 'CLAN_PROMPT' ? 'Ex: Trouve une equipe et participe aux guerres' : 'Ex: Nouvelles features, équilibrage et fixes'}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Message *</label>
-                    <Textarea
-                      value={updatePopupForm.message}
-                      onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, message: e.target.value }))}
-                      rows={8}
-                      placeholder={updatePopupForm.type === 'CLAN_PROMPT'
-                        ? 'Ex: Rejoins un clan pour participer aux guerres, discuter avec ton equipe et progresser plus vite.'
-                        : 'Ex: • Nouveau mode de jeu\n• Ajustement des récompenses\n• Corrections de bugs'}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Audience</label>
-                    <Select
-                      value={updatePopupForm.audience}
-                      onValueChange={(value: 'ALL' | 'NO_CLAN' | 'SELECTED_USERS') => setUpdatePopupForm((prev) => ({
-                        ...prev,
-                        audience: value,
-                        targetUserIds: value === 'SELECTED_USERS' ? prev.targetUserIds : [],
-                      }))}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="NO_CLAN">Envoyer aux personnes sans clan</SelectItem>
-                        <SelectItem value="ALL">Envoyer a tout le monde</SelectItem>
-                        <SelectItem value="SELECTED_USERS">Selectionner des utilisateurs</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {updatePopupForm.audience === 'NO_CLAN'
-                        ? 'La popup sera visible uniquement pour les utilisateurs qui ne sont dans aucun clan.'
-                        : updatePopupForm.audience === 'ALL'
-                          ? 'La popup sera visible par tout le monde selon la date de diffusion.'
-                          : 'Choisis exactement les utilisateurs qui recevront la popup.'}
-                    </p>
-                  </div>
-                  {updatePopupForm.audience === 'SELECTED_USERS' && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Utilisateurs ciblés</label>
-                      <div className="max-h-56 overflow-y-auto rounded-md border bg-background/60 p-2 space-y-2">
-                        {users.map((u) => {
-                          const checked = updatePopupForm.targetUserIds.includes(u.id);
-                          return (
-                            <label key={u.id} className="flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-muted/40">
-                              <Checkbox
-                                checked={checked}
-                                onCheckedChange={(isChecked) => setUpdatePopupForm((prev) => ({
-                                  ...prev,
-                                  targetUserIds: isChecked
-                                    ? [...prev.targetUserIds, u.id]
-                                    : prev.targetUserIds.filter((id) => id !== u.id),
-                                }))}
-                              />
-                              <span className="text-sm">{u.username}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                      <p className="text-xs text-muted-foreground">{updatePopupForm.targetUserIds.length} utilisateur(s) sélectionné(s)</p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Mode de diffusion</label>
-                      <Select
-                        value={updatePopupForm.publishMode}
-                        onValueChange={(value: 'draft' | 'now' | 'scheduled') => setUpdatePopupForm((prev) => ({
-                          ...prev,
-                          publishMode: value,
-                          isPublished: value !== 'draft',
-                          releaseDate: value === 'scheduled' ? prev.releaseDate : toDateTimeLocalValue(new Date()),
-                        }))}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="draft">Brouillon</SelectItem>
-                          <SelectItem value="now">Publier maintenant</SelectItem>
-                          <SelectItem value="scheduled">Programmer</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        {updatePopupForm.publishMode === 'draft'
-                          ? 'La popup ne sera visible par aucun joueur.'
-                          : updatePopupForm.publishMode === 'scheduled'
-                            ? 'La popup sera visible automatiquement à la date choisie.'
-                            : 'La popup devient visible dès la sauvegarde.'}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Date de programmation</label>
-                      <Input
-                        type="datetime-local"
-                        value={updatePopupForm.releaseDate}
-                        onChange={(e) => setUpdatePopupForm((prev) => ({ ...prev, releaseDate: e.target.value }))}
-                        disabled={updatePopupForm.publishMode !== 'scheduled'}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {updatePopupForm.publishMode === 'scheduled'
-                          ? 'Choisissez la date et l\'heure de publication automatique.'
-                          : 'Disponible uniquement en mode Programmé.'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Image</label>
-                    <ImagePicker
-                      value={updatePopupForm.imageUrl}
-                      onChange={(url) => setUpdatePopupForm((prev) => ({ ...prev, imageUrl: url }))}
-                      uploadFn={uploadUpdatePopupImageFile}
-                      placeholder="/uploads/update-popups/... ou https://..."
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button onClick={handleSaveUpdatePopup} disabled={savingUpdatePopup}>
-                      {savingUpdatePopup ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                      {editingUpdatePopupId ? 'Mettre à jour' : 'Créer'}
-                    </Button>
-                  </div>
-                </div>
-                {/* List */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className={TYPOGRAPHY.H3}>Historique</h3>
-                    <span className="text-xs text-muted-foreground">{updatePopups.length} entrées</span>
-                  </div>
-                  {loadingUpdatePopups ? (
-                    <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-                  ) : updatePopups.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Aucune popup créée.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {updatePopups.map((popup) => (
-                        <div key={popup.id} className="rounded-lg border p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          {(() => {
-                            const isScheduled = popup.isPublished && new Date(popup.releaseDate).getTime() > Date.now();
-                            const statusClass = !popup.isPublished ? 'bg-muted text-muted-foreground' : isScheduled ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400';
-                            const statusLabel = !popup.isPublished ? 'Brouillon' : isScheduled ? 'Programmée' : 'Publiée';
-                            return (
-                              <div className="min-w-0 space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium">{popup.title}</span>
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300">
-                                    {popup.type === 'CLAN_PROMPT' ? 'Clan' : 'Annonce'}
-                                  </span>
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                                    {popup.audience === 'NO_CLAN' ? 'Sans clan' : popup.audience === 'SELECTED_USERS' ? 'Sélection' : 'Tout le monde'}
-                                  </span>
-                                  <span className={cn('text-xs px-2 py-0.5 rounded-full', statusClass)}>{statusLabel}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {isScheduled ? `Diffusion le ${new Date(popup.releaseDate).toLocaleString('fr-FR')}` : new Date(popup.releaseDate).toLocaleString('fr-FR')}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground">Vu {popup._count.views} fois · Créée par {popup.createdBy.username}</p>
-                                {popup.summary && <p className="text-sm text-muted-foreground truncate">{popup.summary}</p>}
-                              </div>
-                            );
-                          })()}
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Switch checked={popup.isPublished} disabled={updatingUpdatePopupId === popup.id} onCheckedChange={(checked) => handleToggleUpdatePopupPublished(popup, checked)} />
-                            <Button size="sm" variant="outline" onClick={() => handleEditUpdatePopup(popup)}><Edit2 className="h-4 w-4" /></Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="outline" className="text-destructive border-destructive/30">
-                                  {deletingUpdatePopup === popup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Supprimer ce changelog ?</AlertDialogTitle>
-                                  <AlertDialogDescription>Cette action est irréversible. La popup ne sera plus affichée aux joueurs.</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteUpdatePopup(popup.id)}>Supprimer</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <DashboardUpdatesManagerDialog open={updatesOpen} onOpenChange={setUpdatesOpen} />
 
           {/* Maintenance modal */}
           <Dialog open={maintenanceOpen} onOpenChange={setMaintenanceOpen}>
@@ -6641,7 +6169,7 @@ export default function Admin() {
                   <div className="text-xs text-muted-foreground">Masque visuellement tous les messages du chat global, sans supprimer l&apos;historique stocké.</div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={exportChat} disabled={exportingChat}>
+                  <Button variant="outline" size="sm" onClick={() => void exportChat()} disabled={exportingChat}>
                     {exportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
                     Exporter
                   </Button>

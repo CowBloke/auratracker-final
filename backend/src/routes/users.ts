@@ -13,22 +13,6 @@ import { getParisDayKey, getParisDayStart } from '../utils/dailyAura.js';
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
 
-const parseStoredTargetUserIds = (value: string | null | undefined): string[] => {
-  if (!value) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed.filter((entry): entry is string => typeof entry === 'string');
-  } catch {
-    return [];
-  }
-};
-
 const toNumericValue = (value: unknown): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -324,101 +308,6 @@ router.get('/announcement', authMiddleware, async (req: AuthRequest, res: Respon
   } catch (error) {
     console.error('Get announcement error:', error);
     res.status(500).json({ error: 'Failed to get announcement' });
-  }
-});
-
-// Get pending update popups for the current user
-router.get('/update-popups/pending', authMiddleware, async (req: AuthRequest, res: Response) => {
-  try {
-    const now = new Date();
-    const hasClan = await prisma.clanMember.findUnique({
-      where: { userId: req.user!.id },
-      select: { id: true },
-    });
-
-    const popups = await prisma.updatePopup.findMany({
-      where: {
-        isPublished: true,
-        releaseDate: { lte: now },
-        views: {
-          none: {
-            userId: req.user!.id,
-          },
-        },
-      },
-      orderBy: [
-        { releaseDate: 'asc' },
-        { createdAt: 'asc' },
-      ],
-      select: {
-        id: true,
-        title: true,
-        summary: true,
-        message: true,
-        imageUrl: true,
-        type: true,
-        audience: true,
-        targetUserIds: true,
-        releaseDate: true,
-        createdAt: true,
-      },
-    });
-
-    const filteredPopups = popups
-      .filter((popup) => {
-        if (popup.audience === 'NO_CLAN' && hasClan) {
-          return false;
-        }
-
-        if (popup.audience === 'SELECTED_USERS') {
-          return parseStoredTargetUserIds(popup.targetUserIds).includes(req.user!.id);
-        }
-
-        return true;
-      })
-      .map(({ audience: _audience, targetUserIds: _targetUserIds, ...popup }) => popup);
-
-    res.json({ popups: filteredPopups });
-  } catch (error) {
-    console.error('Get pending update popups error:', error);
-    res.status(500).json({ error: 'Failed to get pending update popups' });
-  }
-});
-
-// Mark an update popup as viewed for current user
-router.post('/update-popups/:id/viewed', authMiddleware, async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    const popup = await prisma.updatePopup.findUnique({
-      where: { id },
-      select: { id: true, isPublished: true },
-    });
-
-    if (!popup || !popup.isPublished) {
-      return res.status(404).json({ error: 'Update popup not found' });
-    }
-
-    await prisma.userUpdatePopupView.upsert({
-      where: {
-        userId_popupId: {
-          userId: req.user!.id,
-          popupId: id,
-        },
-      },
-      create: {
-        userId: req.user!.id,
-        popupId: id,
-      },
-      update: {
-        viewedAt: new Date(),
-      },
-    });
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Mark update popup viewed error:', error);
-    res.status(500).json({ error: 'Failed to mark popup as viewed' });
   }
 });
 

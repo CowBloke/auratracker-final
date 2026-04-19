@@ -2,7 +2,6 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
-import UpdatePopupModal from './UpdatePopupModal';
 import AdminWarningModal from './AdminWarningModal';
 import GameJoinPrompt from '../game/GameJoinPrompt';
 import GameReplayPrompt from '../game/GameReplayPrompt';
@@ -223,7 +222,6 @@ export default function Layout() {
           />
         )}
 
-        <UpdatePopupModal />
         <AdminWarningModal />
       </div>
     </ChatSidebarProvider>
