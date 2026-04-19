@@ -3622,6 +3622,20 @@ export interface DashboardUpdateAuthor {
   avatarUrl: string | null;
 }
 
+export interface DashboardUpdateReactionUser {
+  id: string;
+  username: string;
+  profilePicture: string | null;
+  usernameColor: string | null;
+}
+
+export interface DashboardUpdateReaction {
+  kind: 'fire' | 'heart' | 'zap';
+  count: number;
+  reacted: boolean;
+  sampleUsers: DashboardUpdateReactionUser[];
+}
+
 export interface DashboardUpdateEntry {
   id: string;
   date: string;
@@ -3640,6 +3654,7 @@ export interface DashboardUpdateEntry {
   createdAt: string;
   updatedAt: string;
   sections: DashboardUpdateSection[];
+  reactions: DashboardUpdateReaction[];
 }
 
 export interface DashboardUpdatePayload {
@@ -3673,6 +3688,10 @@ export const dashboardUpdatesApi = {
   updateEntry: (id: string, data: DashboardUpdatePayload) =>
     api.put<{ entry: DashboardUpdateEntry }>(`/changelog/${id}`, data),
   deleteEntry: (id: string) => api.delete(`/changelog/${id}`),
+  addReaction: (id: string, kind: DashboardUpdateReaction['kind']) =>
+    api.post<{ entry: DashboardUpdateEntry }>(`/changelog/${id}/reactions`, { kind }),
+  removeReaction: (id: string, kind: DashboardUpdateReaction['kind']) =>
+    api.delete<{ entry: DashboardUpdateEntry }>(`/changelog/${id}/reactions/${kind}`),
   uploadImage: (data: { base64Data: string; mimeType: string }) =>
     api.post<{ imageUrl: string }>('/changelog/upload-image', data),
 };

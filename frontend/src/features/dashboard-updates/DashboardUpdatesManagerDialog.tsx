@@ -213,6 +213,11 @@ export function DashboardUpdatesManagerDialog({
     publishedAt: new Date(form.publishedAt || form.date).toISOString(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    reactions: [
+      { kind: 'fire', count: 0, reacted: false, sampleUsers: [] },
+      { kind: 'heart', count: 0, reacted: false, sampleUsers: [] },
+      { kind: 'zap', count: 0, reacted: false, sampleUsers: [] },
+    ],
     sections: SECTION_ORDER
       .map((category) => ({
         category,

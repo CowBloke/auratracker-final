@@ -1,112 +1,410 @@
-import { useMemo, useState } from 'react';
-import { ArrowRight, Eye, Loader2, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Loader2, ChevronDown, ChevronRight, Flame, Heart, Sparkles, Zap, ArrowUpRight, MessagesSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { dashboardUpdatesApi, type DashboardUpdateEntry, type DashboardUpdateReaction } from '@/services/api';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
-import type { DashboardUpdateEntry } from '@/services/api';
-import {
-  feedCategoryMeta,
-  formatUpdateDateLabel,
-  formatUpdateTimeLabel,
-  renderUpdateRichText,
-  sectionCategoryMeta,
-} from './shared';
+import { toast } from '@/hooks/use-toast';
+import { formatUpdateDateLabel, formatUpdateTimeLabel, renderUpdateRichText } from './shared';
+import './dashboard-feed.css';
 
-type FilterTab = 'ALL' | DashboardUpdateEntry['feedCategory'];
+type FilterTab = 'tout' | 'GAME' | 'PATCH' | 'COMMUNITY' | 'DEV';
 
-const FILTER_ORDER: FilterTab[] = ['ALL', 'GAME', 'PATCH', 'COMMUNITY', 'DEV'];
+type FeedEntry = DashboardUpdateEntry & {
+  image: string | null;
+  authorAvatar: string;
+};
 
-function UpdateCard({
-  entry,
-  onOpen,
+const TABS: Array<{ id: FilterTab; label: string }> = [
+  { id: 'tout', label: 'Tout' },
+  { id: 'GAME', label: 'Jeux' },
+  { id: 'PATCH', label: 'Patchs' },
+  { id: 'COMMUNITY', label: 'Communaute' },
+  { id: 'DEV', label: 'Equipe' },
+];
+
+const CATEGORY_META: Record<DashboardUpdateEntry['feedCategory'], { label: string; className: string }> = {
+  GAME: {
+    label: 'Jeux',
+    className: 'is-game',
+  },
+  PATCH: {
+    label: 'Patch',
+    className: 'is-patch',
+  },
+  COMMUNITY: {
+    label: 'Communaute',
+    className: 'is-community',
+  },
+  DEV: {
+    label: 'Equipe',
+    className: 'is-dev',
+  },
+};
+
+function ActionLink({
+  href,
+  className,
+  children,
+  onClick,
 }: {
-  entry: DashboardUpdateEntry;
-  onOpen: (entry: DashboardUpdateEntry) => void;
+  href: string | null;
+  className: string;
+  children: ReactNode;
+  onClick?: () => void;
 }) {
-  const meta = feedCategoryMeta[entry.feedCategory];
-  const Icon = meta.icon;
+  if (!href || href === '#') {
+    return (
+      <button type="button" className={className} onClick={onClick}>
+        {children}
+      </button>
+    );
+  }
+
+  if (href.startsWith('/')) {
+    return (
+      <Link to={href} className={className} onClick={onClick}>
+        {children}
+      </Link>
+    );
+  }
 
   return (
-    <article className="group grid gap-0 overflow-hidden rounded-[26px] border border-border/60 bg-card shadow-[0_18px_70px_-44px_rgba(15,23,42,0.55)] transition-transform duration-200 hover:-translate-y-0.5 lg:grid-cols-[280px_1fr]">
-      <div className="relative overflow-hidden border-b border-border/50 bg-muted/20 lg:border-b-0 lg:border-r">
-        {entry.imageUrl ? (
-          <img
-            src={resolveImageUrl(entry.imageUrl)}
-            alt={entry.title}
-            className="h-60 w-full object-cover transition duration-500 group-hover:scale-[1.03] lg:h-full"
-          />
-        ) : (
-          <div
-            className={cn(
-              'flex h-60 items-end bg-gradient-to-br p-6 lg:h-full',
-              entry.feedCategory === 'GAME' && 'from-sky-500/20 via-sky-500/5 to-transparent',
-              entry.feedCategory === 'PATCH' && 'from-emerald-500/20 via-emerald-500/5 to-transparent',
-              entry.feedCategory === 'COMMUNITY' && 'from-fuchsia-500/20 via-fuchsia-500/5 to-transparent',
-              entry.feedCategory === 'DEV' && 'from-amber-500/20 via-amber-500/5 to-transparent'
-            )}
-          >
-            <div className="rounded-full border border-border/60 bg-background/80 p-4">
-              <Icon className="h-7 w-7 text-foreground" />
-            </div>
-          </div>
-        )}
+    <a href={href} className={className} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer" onClick={onClick}>
+      {children}
+    </a>
+  );
+}
+
+function mapEntry(entry: DashboardUpdateEntry): FeedEntry {
+  return {
+    ...entry,
+    image: entry.imageUrl ? resolveImageUrl(entry.imageUrl) : null,
+    authorAvatar: resolveImageUrl(entry.author.avatarUrl || '/aura-icon.svg'),
+  };
+}
+
+function getDateParts(dateValue: string) {
+  const date = new Date(`${dateValue}T12:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return {
+      short: dateValue,
+      full: dateValue,
+    };
+  }
+
+  return {
+    short: date.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+    }),
+    full: formatUpdateDateLabel(dateValue),
+  };
+}
+
+function getReactionMeta(kind: DashboardUpdateReaction['kind']) {
+  if (kind === 'fire') {
+    return {
+      label: 'Flamme',
+      Icon: Flame,
+    };
+  }
+  if (kind === 'heart') {
+    return {
+      label: 'Coeur',
+      Icon: Heart,
+    };
+  }
+  return {
+    label: 'Boost',
+    Icon: Zap,
+  };
+}
+
+function buildReactionTitle(reaction: DashboardUpdateReaction) {
+  if (reaction.sampleUsers.length === 0) {
+    return `${reaction.count} reaction${reaction.count > 1 ? 's' : ''}`;
+  }
+
+  const users = reaction.sampleUsers.map((user) => user.username).join(', ');
+  return `${users}${reaction.count > reaction.sampleUsers.length ? ` et ${reaction.count - reaction.sampleUsers.length} autre(s)` : ''}`;
+}
+
+function applyOptimisticReaction(
+  entries: DashboardUpdateEntry[],
+  entryId: string,
+  kind: DashboardUpdateReaction['kind'],
+  nextReacted: boolean
+) {
+  return entries.map((entry) => {
+    if (entry.id !== entryId) {
+      return entry;
+    }
+
+    return {
+      ...entry,
+      reactions: entry.reactions.map((reaction) => {
+        if (reaction.kind !== kind) {
+          return reaction;
+        }
+
+        return {
+          ...reaction,
+          reacted: nextReacted,
+          count: Math.max(0, reaction.count + (nextReacted ? 1 : -1)),
+        };
+      }),
+    };
+  });
+}
+
+function Welcome({
+  welcomeName,
+  showWelcome,
+  heading,
+  subheading,
+  action,
+}: {
+  welcomeName?: string | null;
+  showWelcome: boolean;
+  heading: string;
+  subheading: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="db-welcome">
+      <div className="db-welcome__copy">
+        <span className="db-eyebrow">Flux live</span>
+        <h1>{showWelcome ? <>Yo <em>{welcomeName || 'toi'}</em>, y&apos;a du neuf.</> : heading}</h1>
+        <p>{subheading}</p>
       </div>
+      {action ? <div className="db-welcome__action">{action}</div> : null}
+    </div>
+  );
+}
 
-      <div className="p-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className={meta.badgeClass}>{meta.label}</Badge>
-          {entry.isFeatured ? (
-            <Badge variant="outline" className="border-foreground/10 bg-foreground/[0.04] text-foreground">
-              <Sparkles className="mr-1 h-3.5 w-3.5" />
-              Épinglé
-            </Badge>
-          ) : null}
-          <span className="text-xs text-muted-foreground">{formatUpdateTimeLabel(entry.publishedAt)}</span>
+function TeamNote({ entry }: { entry: FeedEntry | null }) {
+  if (!entry) {
+    return null;
+  }
+
+  return (
+    <article className="db-notice">
+      <div className="db-notice__icon">
+        <Sparkles className="h-4 w-4" />
+      </div>
+      <div className="db-notice__body">
+        <div className="db-notice__meta">
+          <span>Mot d&apos;equipe</span>
+          <span>·</span>
+          <span>{formatUpdateTimeLabel(entry.publishedAt)}</span>
         </div>
+        <h2>{entry.title}</h2>
+        <p>{entry.summary}</p>
+      </div>
+      <ActionLink href={entry.ctaHref} className="db-inline-link">
+        Ouvrir
+        <ArrowUpRight className="h-3.5 w-3.5" />
+      </ActionLink>
+    </article>
+  );
+}
 
-        <h3 className="mt-4 text-2xl font-semibold tracking-tight">{entry.title}</h3>
-        <p className="mt-3 text-sm leading-7 text-muted-foreground">{entry.summary}</p>
+function FeedTabs({
+  entries,
+  value,
+  onChange,
+}: {
+  entries: FeedEntry[];
+  value: FilterTab;
+  onChange: (value: FilterTab) => void;
+}) {
+  return (
+    <div className="db-tabs">
+      {TABS.map((tab) => {
+        const count = tab.id === 'tout' ? entries.length : entries.filter((entry) => entry.feedCategory === tab.id).length;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            className={cn('db-tabs__btn', value === tab.id && 'is-active')}
+            onClick={() => onChange(tab.id)}
+          >
+            {tab.label}
+            <span className="db-tabs__count">{count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
-        <div className="mt-4 flex flex-wrap gap-2">
+function AuthorRow({ entry }: { entry: FeedEntry }) {
+  return (
+    <div className="db-author">
+      <img src={entry.authorAvatar} alt="" />
+      <div>
+        <strong>{entry.author.name}</strong>
+        <span>{entry.author.role || CATEGORY_META[entry.feedCategory].label}</span>
+      </div>
+    </div>
+  );
+}
+
+function ReactionBar({
+  entry,
+  pendingKey,
+  onToggleReaction,
+}: {
+  entry: FeedEntry;
+  pendingKey: string | null;
+  onToggleReaction: (entryId: string, kind: DashboardUpdateReaction['kind'], reacted: boolean) => void;
+}) {
+  return (
+    <div className="db-reactions">
+      {entry.reactions.map((reaction) => {
+        const { Icon, label } = getReactionMeta(reaction.kind);
+        const isPending = pendingKey === `${entry.id}:${reaction.kind}`;
+
+        return (
+          <button
+            key={reaction.kind}
+            type="button"
+            className={cn('db-reaction', reaction.reacted && 'is-active')}
+            title={buildReactionTitle(reaction)}
+            disabled={isPending}
+            onClick={() => onToggleReaction(entry.id, reaction.kind, reaction.reacted)}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            <span>{reaction.count}</span>
+            <span className="sr-only">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ExpandedEntry({ entry }: { entry: FeedEntry }) {
+  return (
+    <div className="db-expanded">
+      <div className="db-expanded__body">
+        <p>{entry.body || entry.summary}</p>
+      </div>
+      {entry.sections.length > 0 ? (
+        <div className="db-expanded__sections">
           {entry.sections.map((section) => (
-            <Badge key={section.category} variant="outline" className={sectionCategoryMeta[section.category].badgeClass}>
-              {sectionCategoryMeta[section.category].label} · {section.items.length}
-            </Badge>
+            <section key={`${entry.id}-${section.category}`} className="db-expanded__section">
+              <h4>
+                {section.category === 'BIG_FEATURE'
+                  ? 'Grandes fonctionnalites'
+                  : section.category === 'SMALL_FEATURE'
+                    ? 'Ameliorations'
+                    : 'Correctifs'}
+              </h4>
+              <div className="db-expanded__items">
+                {section.items.map((item) => (
+                  <div key={item.id} className="db-expanded__item">
+                    {renderUpdateRichText(item.text)}
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
+      ) : null}
+    </div>
+  );
+}
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <img
-              src={entry.author.avatarUrl ? resolveImageUrl(entry.author.avatarUrl) : '/aura-icon.svg'}
-              alt={entry.author.name}
-              className="h-10 w-10 rounded-full border border-border/60 object-cover"
-            />
-            <div>
-              <p className="text-sm font-medium">{entry.author.name}</p>
-              <p className="text-xs text-muted-foreground">{entry.author.role || formatUpdateDateLabel(entry.date)}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => onOpen(entry)}>
-              <Eye className="mr-1.5 h-4 w-4" />
-              Détails
-            </Button>
-            {entry.ctaHref && entry.ctaLabel ? (
-              <Button asChild>
-                <Link to={entry.ctaHref}>
-                  {entry.ctaLabel}
-                  <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Link>
-              </Button>
-            ) : null}
-          </div>
+function Hero({
+  entry,
+  expanded,
+  pendingKey,
+  onToggleExpand,
+  onToggleReaction,
+}: {
+  entry: FeedEntry;
+  expanded: boolean;
+  pendingKey: string | null;
+  onToggleExpand: (entryId: string) => void;
+  onToggleReaction: (entryId: string, kind: DashboardUpdateReaction['kind'], reacted: boolean) => void;
+}) {
+  return (
+    <article className={cn('db-hero', !entry.image && 'db-hero--no-image')}>
+      <div className="db-hero__media">
+        {entry.image ? <img src={entry.image} alt="" /> : <div className="db-hero__wash" aria-hidden="true" />}
+      </div>
+      <div className="db-hero__body">
+        <div className="db-hero__topline">
+          <span className={cn('db-chip', CATEGORY_META[entry.feedCategory].className)}>A la une · {CATEGORY_META[entry.feedCategory].label}</span>
+          <span>{formatUpdateTimeLabel(entry.publishedAt)}</span>
         </div>
+        <h2>{entry.title}</h2>
+        <p>{entry.summary}</p>
+        <div className="db-hero__foot">
+          <AuthorRow entry={entry} />
+          <ReactionBar entry={entry} pendingKey={pendingKey} onToggleReaction={onToggleReaction} />
+        </div>
+        <div className="db-hero__actions">
+          <button type="button" className="db-button db-button--ghost" onClick={() => onToggleExpand(entry.id)}>
+            <MessagesSquare className="h-3.5 w-3.5" />
+            {expanded ? 'Refermer le changelog' : 'Etendre le changelog'}
+          </button>
+          <ActionLink href={entry.ctaHref} className="db-button db-button--primary">
+            {entry.ctaLabel || 'Voir plus'}
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </ActionLink>
+        </div>
+        {expanded ? <ExpandedEntry entry={entry} /> : null}
+      </div>
+    </article>
+  );
+}
+
+function TimelineItem({
+  entry,
+  expanded,
+  pendingKey,
+  onToggleExpand,
+  onToggleReaction,
+}: {
+  entry: FeedEntry;
+  expanded: boolean;
+  pendingKey: string | null;
+  onToggleExpand: (entryId: string) => void;
+  onToggleReaction: (entryId: string, kind: DashboardUpdateReaction['kind'], reacted: boolean) => void;
+}) {
+  return (
+    <article className="db-timeline__item">
+      <div className="db-timeline__body">
+        <div className="db-timeline__head">
+          <span className={cn('db-chip', CATEGORY_META[entry.feedCategory].className)}>{CATEGORY_META[entry.feedCategory].label}</span>
+          {entry.isFeatured ? <span className="db-chip is-featured">Epingle</span> : null}
+          <span>{formatUpdateTimeLabel(entry.publishedAt)}</span>
+        </div>
+        <h3>{entry.title}</h3>
+        <p>{entry.summary}</p>
+        <div className="db-timeline__foot">
+          <AuthorRow entry={entry} />
+          <ReactionBar entry={entry} pendingKey={pendingKey} onToggleReaction={onToggleReaction} />
+        </div>
+        <div className="db-timeline__actions">
+          <button type="button" className="db-inline-link" onClick={() => onToggleExpand(entry.id)}>
+            {expanded ? 'Masquer les details' : 'Etendre le changelog'}
+            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </button>
+          {entry.ctaHref ? (
+            <ActionLink href={entry.ctaHref} className="db-inline-link">
+              {entry.ctaLabel || 'Voir plus'}
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </ActionLink>
+          ) : null}
+        </div>
+        {expanded ? <ExpandedEntry entry={entry} /> : null}
+      </div>
+      <div className={cn('db-timeline__media', !entry.image && 'is-empty')}>
+        {entry.image ? <img src={entry.image} alt="" /> : <Sparkles className="h-8 w-8" />}
       </div>
     </article>
   );
@@ -127,251 +425,163 @@ export function DashboardUpdatesFeed({
   subheading: string;
   welcomeName?: string | null;
   showWelcome?: boolean;
-  action?: React.ReactNode;
+  action?: ReactNode;
 }) {
-  const [tab, setTab] = useState<FilterTab>('ALL');
-  const [selectedEntry, setSelectedEntry] = useState<DashboardUpdateEntry | null>(null);
+  const [tab, setTab] = useState<FilterTab>('tout');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [pendingReactionKey, setPendingReactionKey] = useState<string | null>(null);
+  const [feedEntries, setFeedEntries] = useState<DashboardUpdateEntry[]>(entries);
 
-  const filteredEntries = useMemo(() => (
-    tab === 'ALL' ? entries : entries.filter((entry) => entry.feedCategory === tab)
-  ), [entries, tab]);
+  useEffect(() => {
+    setFeedEntries(entries);
+  }, [entries]);
+
+  const mappedEntries = useMemo(() => feedEntries.map(mapEntry), [feedEntries]);
+
+  const teamNote = useMemo(
+    () => mappedEntries.find((entry) => entry.id === 'mock-dashboard-team-note') ?? null,
+    [mappedEntries]
+  );
+
+  const regularEntries = useMemo(
+    () => mappedEntries.filter((entry) => entry.id !== 'mock-dashboard-team-note'),
+    [mappedEntries]
+  );
+
+  const filteredEntries = useMemo(() => {
+    if (tab === 'tout') {
+      return regularEntries;
+    }
+
+    return regularEntries.filter((entry) => entry.feedCategory === tab);
+  }, [regularEntries, tab]);
 
   const heroEntry = useMemo(
     () => filteredEntries.find((entry) => entry.isFeatured) ?? filteredEntries[0] ?? null,
     [filteredEntries]
   );
 
-  const devNote = useMemo(
-    () => entries.find((entry) => entry.feedCategory === 'DEV' && entry.id !== heroEntry?.id) ?? null,
-    [entries, heroEntry?.id]
-  );
-
-  const restEntries = useMemo(
+  const timelineEntries = useMemo(
     () => filteredEntries.filter((entry) => entry.id !== heroEntry?.id),
     [filteredEntries, heroEntry?.id]
   );
 
+  const timelineGroups = useMemo(() => {
+    const groups = new Map<string, FeedEntry[]>();
+
+    for (const entry of timelineEntries) {
+      const list = groups.get(entry.date) ?? [];
+      list.push(entry);
+      groups.set(entry.date, list);
+    }
+
+    return Array.from(groups.entries()).map(([date, items]) => ({
+      date,
+      items,
+    }));
+  }, [timelineEntries]);
+
+  const toggleExpanded = (entryId: string) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(entryId)) {
+        next.delete(entryId);
+      } else {
+        next.add(entryId);
+      }
+      return next;
+    });
+  };
+
+  const replaceEntry = (updatedEntry: DashboardUpdateEntry | null | undefined) => {
+    if (!updatedEntry) {
+      return;
+    }
+
+    setFeedEntries((current) => current.map((entry) => (entry.id === updatedEntry.id ? updatedEntry : entry)));
+  };
+
+  const handleToggleReaction = async (
+    entryId: string,
+    kind: DashboardUpdateReaction['kind'],
+    reacted: boolean
+  ) => {
+    const nextReacted = !reacted;
+    const reactionKey = `${entryId}:${kind}`;
+
+    setPendingReactionKey(reactionKey);
+    setFeedEntries((current) => applyOptimisticReaction(current, entryId, kind, nextReacted));
+
+    try {
+      const response = nextReacted
+        ? await dashboardUpdatesApi.addReaction(entryId, kind)
+        : await dashboardUpdatesApi.removeReaction(entryId, kind);
+
+      replaceEntry(response.data.entry);
+    } catch (error) {
+      setFeedEntries((current) => applyOptimisticReaction(current, entryId, kind, reacted));
+      toast.error("Impossible d'enregistrer la reaction.");
+    } finally {
+      setPendingReactionKey((current) => (current === reactionKey ? null : current));
+    }
+  };
+
   return (
-    <>
-      <section className="relative overflow-hidden rounded-[34px] border border-border/60 bg-card/90 px-5 py-6 shadow-[0_30px_120px_-52px_rgba(15,23,42,0.6)] sm:px-8 sm:py-8">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-24 -top-20 h-64 w-64 rounded-full bg-sky-500/10 blur-3xl" />
-          <div className="absolute right-0 top-8 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl" />
-          <div className="absolute bottom-0 left-1/3 h-56 w-56 rounded-full bg-fuchsia-500/10 blur-3xl" />
+    <div className="db-page">
+      <Welcome
+        welcomeName={welcomeName}
+        showWelcome={showWelcome}
+        heading={heading}
+        subheading={subheading}
+        action={action}
+      />
+      <TeamNote entry={tab === 'tout' || tab === 'DEV' ? teamNote : null} />
+      <FeedTabs entries={regularEntries} value={tab} onChange={setTab} />
+
+      {loading ? (
+        <div className="db-state">
+          <Loader2 className="h-6 w-6 animate-spin" />
         </div>
+      ) : heroEntry ? (
+        <div className="db-feed db-feed--experimental">
+          <Hero
+            entry={heroEntry}
+            expanded={expandedIds.has(heroEntry.id)}
+            pendingKey={pendingReactionKey}
+            onToggleExpand={toggleExpanded}
+            onToggleReaction={handleToggleReaction}
+          />
 
-        <div className="relative z-10">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">Dashboard updates</p>
-              {showWelcome ? (
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Yo <span className="text-amber-500">{welcomeName || 'toi'}</span>, y&apos;a du neuf.
-                </h1>
-              ) : (
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{heading}</h1>
-              )}
-              <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">{subheading}</p>
-            </div>
-            {action}
-          </div>
+          <div className="db-timeline">
+            {timelineGroups.map((group) => {
+              const parts = getDateParts(group.date);
 
-          {devNote ? (
-            <div className="mt-6 rounded-[26px] border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/12 text-amber-700 dark:text-amber-300">
-                  Mot de l’équipe
-                </Badge>
-                <span className="text-xs text-muted-foreground">{formatUpdateTimeLabel(devNote.publishedAt)}</span>
-              </div>
-              <h2 className="mt-3 text-lg font-semibold">{devNote.title}</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-7 text-muted-foreground">{devNote.summary}</p>
-            </div>
-          ) : null}
-
-          <div className="mt-8 flex flex-wrap items-center gap-2 border-b border-border/50 pb-3">
-            {FILTER_ORDER.map((filter) => {
-              const count = filter === 'ALL'
-                ? entries.length
-                : entries.filter((entry) => entry.feedCategory === filter).length;
-              const label = filter === 'ALL' ? 'Tout' : feedCategoryMeta[filter].label;
               return (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setTab(filter)}
-                  className={cn(
-                    'inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors',
-                    tab === filter
-                      ? 'border-foreground/15 bg-foreground text-background'
-                      : 'border-border/60 bg-background/60 text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <span>{label}</span>
-                  <span className={cn(
-                    'rounded-full px-2 py-0.5 text-xs',
-                    tab === filter ? 'bg-background/10 text-background' : 'bg-muted text-muted-foreground'
-                  )}>
-                    {count}
-                  </span>
-                </button>
+                <section key={group.date} className="db-timeline__group">
+                  <div className="db-timeline__date">
+                    <strong>{parts.short}</strong>
+                    <span>{parts.full}</span>
+                  </div>
+                  <div className="db-timeline__list">
+                    {group.items.map((entry) => (
+                      <TimelineItem
+                        key={entry.id}
+                        entry={entry}
+                        expanded={expandedIds.has(entry.id)}
+                        pendingKey={pendingReactionKey}
+                        onToggleExpand={toggleExpanded}
+                        onToggleReaction={handleToggleReaction}
+                      />
+                    ))}
+                  </div>
+                </section>
               );
             })}
           </div>
         </div>
-      </section>
-
-      {loading ? (
-        <Card className="rounded-[28px] border-border/60">
-          <CardContent className="flex min-h-[280px] items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </CardContent>
-        </Card>
-      ) : heroEntry ? (
-        <div className="space-y-5">
-          <article className="group overflow-hidden rounded-[30px] border border-border/60 bg-card shadow-[0_30px_120px_-52px_rgba(15,23,42,0.6)]">
-            <div className="grid gap-0 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="relative min-h-[320px] overflow-hidden border-b border-border/50 bg-muted/20 xl:border-b-0 xl:border-r">
-                {heroEntry.imageUrl ? (
-                  <img
-                    src={resolveImageUrl(heroEntry.imageUrl)}
-                    alt={heroEntry.title}
-                    className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
-                  />
-                ) : (
-                  <div
-                    className={cn(
-                      'absolute inset-0 bg-gradient-to-br',
-                      heroEntry.feedCategory === 'GAME' && 'from-sky-500/25 via-sky-500/10 to-transparent',
-                      heroEntry.feedCategory === 'PATCH' && 'from-emerald-500/25 via-emerald-500/10 to-transparent',
-                      heroEntry.feedCategory === 'COMMUNITY' && 'from-fuchsia-500/25 via-fuchsia-500/10 to-transparent',
-                      heroEntry.feedCategory === 'DEV' && 'from-amber-500/25 via-amber-500/10 to-transparent'
-                    )}
-                  />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent xl:bg-gradient-to-r xl:from-transparent xl:to-background/20" />
-              </div>
-
-              <div className="p-6 sm:p-8 xl:p-10">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className={feedCategoryMeta[heroEntry.feedCategory].badgeClass}>
-                    {feedCategoryMeta[heroEntry.feedCategory].label}
-                  </Badge>
-                  <Badge variant="outline" className="border-foreground/10 bg-foreground/[0.04] text-foreground">
-                    <Sparkles className="mr-1 h-3.5 w-3.5" />
-                    À la une
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">{formatUpdateTimeLabel(heroEntry.publishedAt)}</span>
-                </div>
-
-                <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">{heroEntry.title}</h2>
-                <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">{heroEntry.summary}</p>
-
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {heroEntry.sections.map((section) => (
-                    <Badge key={section.category} variant="outline" className={sectionCategoryMeta[section.category].badgeClass}>
-                      {sectionCategoryMeta[section.category].label} · {section.items.length}
-                    </Badge>
-                  ))}
-                </div>
-
-                <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={heroEntry.author.avatarUrl ? resolveImageUrl(heroEntry.author.avatarUrl) : '/aura-icon.svg'}
-                      alt={heroEntry.author.name}
-                      className="h-11 w-11 rounded-full border border-border/60 object-cover"
-                    />
-                    <div>
-                      <p className="text-sm font-medium">{heroEntry.author.name}</p>
-                      <p className="text-xs text-muted-foreground">{heroEntry.author.role || formatUpdateDateLabel(heroEntry.date)}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => setSelectedEntry(heroEntry)}>
-                      <Eye className="mr-1.5 h-4 w-4" />
-                      Détails
-                    </Button>
-                    {heroEntry.ctaHref && heroEntry.ctaLabel ? (
-                      <Button asChild>
-                        <Link to={heroEntry.ctaHref}>
-                          {heroEntry.ctaLabel}
-                          <ArrowRight className="ml-1.5 h-4 w-4" />
-                        </Link>
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </article>
-
-          {restEntries.map((entry) => (
-            <UpdateCard key={entry.id} entry={entry} onOpen={setSelectedEntry} />
-          ))}
-        </div>
       ) : (
-        <Card className="rounded-[28px] border-border/60">
-          <CardContent className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-center">
-            <Sparkles className="h-6 w-6 text-muted-foreground" />
-            <div>
-              <p className="text-lg font-medium">Aucune mise à jour pour le moment.</p>
-              <p className="text-sm text-muted-foreground">Le tableau de bord se remplira dès qu’une nouvelle entrée sera publiée.</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="db-state">Aucune mise a jour pour le moment.</div>
       )}
-
-      <Dialog open={Boolean(selectedEntry)} onOpenChange={(open) => !open && setSelectedEntry(null)}>
-        <DialogContent className="max-w-3xl overflow-hidden border-border/60 p-0">
-          {selectedEntry ? (
-            <>
-              <DialogHeader className="border-b border-border/50 px-6 pb-4 pt-6">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className={feedCategoryMeta[selectedEntry.feedCategory].badgeClass}>
-                    {feedCategoryMeta[selectedEntry.feedCategory].label}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">{formatUpdateDateLabel(selectedEntry.date)}</span>
-                </div>
-                <DialogTitle className="mt-3 text-2xl">{selectedEntry.title}</DialogTitle>
-                <DialogDescription className="text-sm leading-7">{selectedEntry.summary}</DialogDescription>
-              </DialogHeader>
-
-              <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
-                {selectedEntry.imageUrl ? (
-                  <img
-                    src={resolveImageUrl(selectedEntry.imageUrl)}
-                    alt={selectedEntry.title}
-                    className="mb-5 h-64 w-full rounded-[24px] border border-border/60 object-cover"
-                  />
-                ) : null}
-
-                {selectedEntry.body ? (
-                  <p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{selectedEntry.body}</p>
-                ) : null}
-
-                <div className="mt-6 space-y-5">
-                  {selectedEntry.sections.map((section) => (
-                    <div key={section.category}>
-                      <Badge variant="outline" className={sectionCategoryMeta[section.category].badgeClass}>
-                        {sectionCategoryMeta[section.category].label}
-                      </Badge>
-                      <div className="mt-3 space-y-2">
-                        {section.items.map((item) => (
-                          <div key={item.id} className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm leading-7">
-                            {renderUpdateRichText(item.text)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 }

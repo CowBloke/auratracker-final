@@ -216,6 +216,7 @@ model User {
   auraScrollLikes        AuraScrollLike[]
   auraScrollComments     AuraScrollComment[]
   auraScrollCommentLikes AuraScrollCommentLike[]
+  updateReactions        UpdateReaction[]
 
   @@index([aura])
   @@index([money])
@@ -2494,6 +2495,9 @@ model UpdateEntry {
   imageUrl        String?
   accentColor     String?
   isFeatured      Boolean      @default(false)
+  reactionSeedFire Int         @default(0)
+  reactionSeedHeart Int        @default(0)
+  reactionSeedZap Int          @default(0)
   ctaLabel        String?
   ctaHref         String?
   authorName      String       @default("Equipe AuraTracker")
@@ -2504,6 +2508,7 @@ model UpdateEntry {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @default(now()) @updatedAt
   items           UpdateItem[]
+  reactions       UpdateReaction[]
 
   @@index([date])
   @@index([isPublished, publishedAt])
@@ -2519,6 +2524,21 @@ model UpdateItem {
   createdAt DateTime    @default(now())
 
   @@index([entryId])
+}
+
+model UpdateReaction {
+  id        String      @id @default(uuid())
+  entryId    String
+  userId     String
+  kind       String
+  createdAt  DateTime   @default(now())
+
+  entry UpdateEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, userId, kind])
+  @@index([entryId, kind])
+  @@index([userId, createdAt])
 }
 
 model BankAccount {
