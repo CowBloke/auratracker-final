@@ -3047,9 +3047,17 @@ export const publicApi = {
 };
 
 // Info API (public)
+export interface SeedVersionStatus {
+  currentVersion: number;
+  appliedVersion: number;
+  needsUpdate: boolean;
+}
+
 export const infoApi = {
   getTaxBrackets: () =>
     api.get<{ brackets: Array<{ id: string; threshold: number; rate: number }>; isDefault: boolean }>('/info/tax-brackets'),
+  getSeedStatus: () => api.get<SeedVersionStatus>('/info/seed/status'),
+  runSeed: () => api.post<SeedVersionStatus>('/info/seed/run'),
 };
 
 // Bomb Party API

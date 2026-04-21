@@ -1,8 +1,27 @@
+/// <reference types="node" />
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 const prisma = new PrismaClient();
+const prismaAny = prisma as any;
+const SEED_DATA_VERSION = 2; // Increment this whenever the seed data changes.
+const SEED_VERSION_MARKER_PATH = path.resolve('prisma', '.seed-version.json');
+
+const writeSeedVersionMarker = async () => {
+  try {
+    await fs.writeFile(
+      SEED_VERSION_MARKER_PATH,
+      JSON.stringify({ version: SEED_DATA_VERSION, updatedAt: new Date().toISOString() }, null, 2),
+      'utf8'
+    );
+  } catch (error) {
+    console.warn('Unable to persist seed version marker:', error);
+  }
+};
 
 const DEV_PASSWORD = 'aaaaaa';
 const COMMON_PASSWORD = DEV_PASSWORD;
@@ -35,6 +54,7 @@ const daysAgo = (days: number, hour = 12) => {
   date.setHours(hour, 0, 0, 0);
   return date;
 };
+const getDirectKey = (userAId: string, userBId: string) => [userAId, userBId].sort().join(':');
 
 const getExistingTables = async () => {
   const rows = await prisma.$queryRaw<Array<{ name: string }>>`
@@ -51,6 +71,36 @@ const getTableColumns = async (tableName: string) => {
 };
 
 async function clearMockData(mockUsernames: string[], existingTables: Set<string>) {
+  if (existingTables.has('AuraScrollCommentLike')) {
+    await prisma.auraScrollCommentLike.deleteMany();
+  }
+  if (existingTables.has('AuraScrollComment')) {
+    await prisma.auraScrollComment.deleteMany();
+  }
+  if (existingTables.has('AuraScrollLike')) {
+    await prisma.auraScrollLike.deleteMany();
+  }
+  if (existingTables.has('AuraScrollPost')) {
+    await prisma.auraScrollPost.deleteMany();
+  }
+  if (existingTables.has('UpdateReaction')) {
+    await prisma.updateReaction.deleteMany();
+  }
+  if (existingTables.has('UpdateItem')) {
+    await prisma.updateItem.deleteMany();
+  }
+  if (existingTables.has('UpdateEntry')) {
+    await prisma.updateEntry.deleteMany();
+  }
+  if (existingTables.has('DirectMessage')) {
+    await prisma.directMessage.deleteMany();
+  }
+  if (existingTables.has('DirectConversationParticipant')) {
+    await prisma.directConversationParticipant.deleteMany();
+  }
+  if (existingTables.has('DirectConversation')) {
+    await prisma.directConversation.deleteMany();
+  }
   if (existingTables.has('SupportMessage')) {
     await prisma.supportMessage.deleteMany();
   }
@@ -63,8 +113,12 @@ async function clearMockData(mockUsernames: string[], existingTables: Set<string
   if (existingTables.has('UserBadge')) {
     await prisma.userBadge.deleteMany();
   }
-  await prisma.userUpdatePopupView.deleteMany();
-  await prisma.updatePopup.deleteMany();
+  if (existingTables.has('UserUpdatePopupView')) {
+    await prismaAny.userUpdatePopupView.deleteMany();
+  }
+  if (existingTables.has('UpdatePopup')) {
+    await prismaAny.updatePopup.deleteMany();
+  }
   if (existingTables.has('Notification')) {
     await prisma.notification.deleteMany();
   }
@@ -974,6 +1028,152 @@ async function main() {
       { messageId: chatMessages[8].id, userId: userByName.get('camille')!.id, emoji: '👀' },
     ],
   });
+
+  if (existingTables.has('DirectConversation') && existingTables.has('DirectConversationParticipant') && existingTables.has('DirectMessage')) {
+    const dmThreads = [
+      {
+        users: ['lena', 'milo'] as const,
+        messages: [
+          { sender: 'lena', body: 'Tu peux relire mon setup Racer avant le reset daily ?', createdAt: hoursAgo(10.5) },
+          { sender: 'milo', body: 'Oui, j ai vu ta trajectoire, tu gagnes 0.4s au secteur 2.', createdAt: hoursAgo(10.3) },
+          { sender: 'lena', body: 'Parfait, je push un dernier run ce soir.', createdAt: hoursAgo(9.9) },
+        ],
+      },
+      {
+        users: ['zoe', 'salma'] as const,
+        messages: [
+          { sender: 'zoe', body: 'Je garde deux slots pour la guerre active. Tu confirmes ?', createdAt: hoursAgo(8.2) },
+          { sender: 'salma', body: 'Confirmé. Je couvre aussi les fortifs banner.', createdAt: hoursAgo(8) },
+        ],
+      },
+      {
+        users: ['jade', 'camille'] as const,
+        messages: [
+          { sender: 'jade', body: 'Le ticket support Racer est bien classé côté admin.', createdAt: hoursAgo(5.1) },
+          { sender: 'camille', body: 'Nickel, je valide demain avec un replay mobile.', createdAt: hoursAgo(4.8) },
+        ],
+      },
+    ];
+
+    for (const thread of dmThreads) {
+      const userAId = userByName.get(thread.users[0])!.id;
+      const userBId = userByName.get(thread.users[1])!.id;
+      const directKey = getDirectKey(userAId, userBId);
+      const lastMessageAt = thread.messages[thread.messages.length - 1]!.createdAt;
+
+      const conversation = await prisma.directConversation.create({
+        data: {
+          directKey,
+          lastMessageAt,
+          participants: {
+            create: [
+              { userId: userAId, lastReadAt: hoursAgo(1.5) },
+              { userId: userBId, lastReadAt: hoursAgo(1.1) },
+            ],
+          },
+        },
+      });
+
+      await prisma.directMessage.createMany({
+        data: thread.messages.map((message) => ({
+          conversationId: conversation.id,
+          senderId: userByName.get(message.sender)!.id,
+          body: message.body,
+          createdAt: message.createdAt,
+        })),
+      });
+    }
+  }
+
+  if (
+    existingTables.has('AuraScrollPost')
+    && existingTables.has('AuraScrollLike')
+    && existingTables.has('AuraScrollComment')
+    && existingTables.has('AuraScrollCommentLike')
+  ) {
+    const scrollPosts = await prisma.auraScrollPost.createManyAndReturn({
+      data: [
+        {
+          userId: userByName.get('ava')!.id,
+          title: 'Run propre sur Track 14',
+          description: 'Setup stable, freinage tardif et gain net sur le dernier split.',
+          mediaUrls: JSON.stringify([MOCK_IMAGE.cardB]),
+          mediaType: 'PHOTO',
+          thumbnailUrl: MOCK_IMAGE.cardB,
+          status: 'APPROVED',
+          viewCount: 214,
+          createdAt: hoursAgo(7),
+        },
+        {
+          userId: userByName.get('zoe')!.id,
+          title: 'Prépa de guerre: rotation mini-jeux',
+          description: 'On alterne memory et bomb pour tenir le score et les fortifs.',
+          mediaUrls: JSON.stringify([MOCK_IMAGE.clan, MOCK_IMAGE.bannerA]),
+          mediaType: 'PHOTOS',
+          thumbnailUrl: MOCK_IMAGE.clan,
+          status: 'APPROVED',
+          viewCount: 167,
+          createdAt: hoursAgo(6),
+        },
+        {
+          userId: userByName.get('nina')!.id,
+          title: null,
+          description: 'Inbox cleanup fini, prêt pour une nouvelle vague de cadeaux.',
+          mediaUrls: JSON.stringify([MOCK_IMAGE.cardF]),
+          mediaType: 'PHOTO',
+          thumbnailUrl: MOCK_IMAGE.cardF,
+          status: 'APPROVED',
+          viewCount: 93,
+          createdAt: hoursAgo(4.5),
+        },
+      ],
+      select: { id: true, userId: true },
+    });
+
+    const scrollPostByAuthor = new Map(scrollPosts.map((post) => [post.userId, post.id]));
+
+    await prisma.auraScrollLike.createMany({
+      data: [
+        { postId: scrollPostByAuthor.get(userByName.get('ava')!.id)!, userId: userByName.get('milo')!.id },
+        { postId: scrollPostByAuthor.get(userByName.get('ava')!.id)!, userId: userByName.get('yanis')!.id },
+        { postId: scrollPostByAuthor.get(userByName.get('zoe')!.id)!, userId: userByName.get('lena')!.id },
+        { postId: scrollPostByAuthor.get(userByName.get('zoe')!.id)!, userId: userByName.get('salma')!.id },
+        { postId: scrollPostByAuthor.get(userByName.get('nina')!.id)!, userId: userByName.get('jade')!.id },
+      ],
+    });
+
+    const scrollComments = await prisma.auraScrollComment.createManyAndReturn({
+      data: [
+        {
+          postId: scrollPostByAuthor.get(userByName.get('ava')!.id)!,
+          userId: userByName.get('milo')!.id,
+          content: 'Split 2 est monstrueux, poste le ghost lap aussi.',
+          createdAt: hoursAgo(6.7),
+        },
+        {
+          postId: scrollPostByAuthor.get(userByName.get('zoe')!.id)!,
+          userId: userByName.get('ava')!.id,
+          content: 'Je prends memory puis navale, timing validé.',
+          createdAt: hoursAgo(5.6),
+        },
+        {
+          postId: scrollPostByAuthor.get(userByName.get('nina')!.id)!,
+          userId: userByName.get('tom')!.id,
+          content: 'Parfait, je renvoie des crates pour le test boutique.',
+          createdAt: hoursAgo(4),
+        },
+      ],
+      select: { id: true },
+    });
+
+    await prisma.auraScrollCommentLike.createMany({
+      data: [
+        { commentId: scrollComments[0]!.id, userId: userByName.get('ava')!.id },
+        { commentId: scrollComments[1]!.id, userId: userByName.get('zoe')!.id },
+        { commentId: scrollComments[2]!.id, userId: userByName.get('nina')!.id },
+      ],
+    });
+  }
 
   await prisma.transfer.createMany({
     data: [
@@ -2037,38 +2237,51 @@ async function main() {
     ],
   });
 
-  const popup1 = await prisma.updatePopup.create({
-    data: {
-      title: '1.9 mock data refresh',
-      summary: 'Dashboard, clans, inbox, market and quests now have richer seed data.',
-      message: 'This popup ships with seeded gifts, polymarket events, clans, quest progress, daily racer runs, and reusable mock images for cards and avatars.',
-      imageUrl: MOCK_IMAGE.update,
-      releaseDate: hoursAgo(12),
-      isPublished: true,
-      createdById: admin.id,
-      createdAt: hoursAgo(12),
-    },
-  });
-  const popup2 = await prisma.updatePopup.create({
-    data: {
-      title: 'Prediction market visuals',
-      summary: 'Added local SVG mock visuals for polymarket and clan cards.',
-      message: 'Use the new local assets to preview suggestion images, event covers, update popups, and profile avatars without external URLs.',
-      imageUrl: MOCK_IMAGE.market,
-      releaseDate: hoursAgo(3),
-      isPublished: true,
-      createdById: admin.id,
-      createdAt: hoursAgo(3),
-    },
-  });
+  let popup2: { id: string; title: string } | null = null;
+  if (existingTables.has('UpdatePopup')) {
+    const popup1 = await prismaAny.updatePopup.create({
+      data: {
+        title: '1.9 mock data refresh',
+        summary: 'Dashboard, clans, inbox, market and quests now have richer seed data.',
+        message: 'This popup ships with seeded gifts, polymarket events, clans, quest progress, daily racer runs, and reusable mock images for cards and avatars.',
+        imageUrl: MOCK_IMAGE.update,
+        releaseDate: hoursAgo(12),
+        isPublished: true,
+        createdById: admin.id,
+        createdAt: hoursAgo(12),
+      },
+      select: {
+        id: true,
+      },
+    });
+    const popup2Created = await prismaAny.updatePopup.create({
+      data: {
+        title: 'Prediction market visuals',
+        summary: 'Added local SVG mock visuals for polymarket and clan cards.',
+        message: 'Use the new local assets to preview suggestion images, event covers, update popups, and profile avatars without external URLs.',
+        imageUrl: MOCK_IMAGE.market,
+        releaseDate: hoursAgo(3),
+        isPublished: true,
+        createdById: admin.id,
+        createdAt: hoursAgo(3),
+      },
+      select: {
+        id: true,
+        title: true,
+      },
+    });
+    popup2 = popup2Created;
 
-  await prisma.userUpdatePopupView.createMany({
-    data: [
-      { userId: userByName.get('milo')!.id, popupId: popup1.id, viewedAt: hoursAgo(10) },
-      { userId: userByName.get('salma')!.id, popupId: popup1.id, viewedAt: hoursAgo(9) },
-      { userId: userByName.get('lena')!.id, popupId: popup2.id, viewedAt: hoursAgo(1) },
-    ],
-  });
+    if (existingTables.has('UserUpdatePopupView')) {
+      await prismaAny.userUpdatePopupView.createMany({
+        data: [
+          { userId: userByName.get('milo')!.id, popupId: popup1.id, viewedAt: hoursAgo(10) },
+          { userId: userByName.get('salma')!.id, popupId: popup1.id, viewedAt: hoursAgo(9) },
+          { userId: userByName.get('lena')!.id, popupId: popup2Created.id, viewedAt: hoursAgo(1) },
+        ],
+      });
+    }
+  }
 
   if (existingTables.has('Notification')) {
     await prisma.notification.createMany({
@@ -2145,7 +2358,7 @@ async function main() {
           type: 'SYSTEM',
           title: 'Mock seed refreshed',
           body: 'New seed data is available across the dashboard and admin tools.',
-          data: JSON.stringify({ popupId: popup2.id }),
+          data: JSON.stringify({ popupId: popup2?.id ?? null }),
           link: '/',
           icon: 'sparkles',
           isRead: true,
@@ -2212,6 +2425,100 @@ async function main() {
         { count: 11, usernames: JSON.stringify([{ userId: userByName.get('lena')!.id, username: 'lena' }, { userId: userByName.get('milo')!.id, username: 'milo' }, { userId: userByName.get('zoe')!.id, username: 'zoe' }, { userId: userByName.get('salma')!.id, username: 'salma' }, { userId: userByName.get('ava')!.id, username: 'ava' }, { userId: userByName.get('yanis')!.id, username: 'yanis' }, { userId: userByName.get('lucas')!.id, username: 'lucas' }, { userId: userByName.get('ines')!.id, username: 'ines' }, { userId: userByName.get('jade')!.id, username: 'jade' }, { userId: userByName.get('camille')!.id, username: 'camille' }, { userId: userByName.get('theo')!.id, username: 'theo' }]), createdAt: daysAgo(1, 22) },
         { count: 8, usernames: JSON.stringify([{ userId: userByName.get('lena')!.id, username: 'lena' }, { userId: userByName.get('milo')!.id, username: 'milo' }, { userId: userByName.get('zoe')!.id, username: 'zoe' }, { userId: userByName.get('ava')!.id, username: 'ava' }, { userId: userByName.get('salma')!.id, username: 'salma' }, { userId: userByName.get('theo')!.id, username: 'theo' }, { userId: userByName.get('yanis')!.id, username: 'yanis' }, { userId: userByName.get('jade')!.id, username: 'jade' }]), createdAt: hoursAgo(12) },
         { count: 10, usernames: JSON.stringify([{ userId: userByName.get('lena')!.id, username: 'lena' }, { userId: userByName.get('milo')!.id, username: 'milo' }, { userId: userByName.get('zoe')!.id, username: 'zoe' }, { userId: userByName.get('salma')!.id, username: 'salma' }, { userId: userByName.get('ava')!.id, username: 'ava' }, { userId: userByName.get('yanis')!.id, username: 'yanis' }, { userId: userByName.get('lucas')!.id, username: 'lucas' }, { userId: userByName.get('ines')!.id, username: 'ines' }, { userId: userByName.get('jade')!.id, username: 'jade' }, { userId: userByName.get('camille')!.id, username: 'camille' }]), createdAt: hoursAgo(1) },
+      ],
+    });
+  }
+
+  if (existingTables.has('UpdateEntry') && existingTables.has('UpdateItem') && existingTables.has('UpdateReaction')) {
+    const updateEntries = await prisma.updateEntry.createManyAndReturn({
+      data: [
+        {
+          date: startOfDay().toISOString().slice(0, 10),
+          title: 'DM inbox and Aura Scroll coverage',
+          summary: 'Seed now includes direct messages and seeded Aura Scroll activity.',
+          body: 'Added realistic DM threads, scroll posts, likes, comments, and comment likes to improve local QA coverage.',
+          feedCategory: 'PATCH',
+          imageUrl: MOCK_IMAGE.update,
+          accentColor: '#0EA5E9',
+          isFeatured: true,
+          authorName: 'Equipe AuraTracker',
+          authorRole: 'Backend Seed',
+          authorAvatarUrl: MOCK_IMAGE.lena,
+          isPublished: true,
+          publishedAt: hoursAgo(1.2),
+          createdAt: hoursAgo(1.2),
+        },
+        {
+          date: startOfDay().toISOString().slice(0, 10),
+          title: 'Update feed receives seed entries',
+          summary: 'Changelog cards now have seeded entries, bullets, and reactions.',
+          body: 'This helps validate update-feed UI states without relying on manual admin creation.',
+          feedCategory: 'DEV',
+          imageUrl: MOCK_IMAGE.market,
+          accentColor: '#22C55E',
+          isFeatured: false,
+          authorName: 'Equipe AuraTracker',
+          authorRole: 'Data Ops',
+          authorAvatarUrl: MOCK_IMAGE.milo,
+          isPublished: true,
+          publishedAt: hoursAgo(0.9),
+          createdAt: hoursAgo(0.9),
+        },
+      ],
+      select: { id: true, title: true },
+    });
+
+    const entryByTitle = new Map(updateEntries.map((entry) => [entry.title, entry.id]));
+
+    await prisma.updateItem.createMany({
+      data: [
+        {
+          entryId: entryByTitle.get('DM inbox and Aura Scroll coverage')!,
+          category: 'BIG_FEATURE',
+          text: 'Direct conversations now ship with multi-message threads between active users.',
+          order: 1,
+        },
+        {
+          entryId: entryByTitle.get('DM inbox and Aura Scroll coverage')!,
+          category: 'SMALL_FEATURE',
+          text: 'Aura Scroll includes approved posts, likes, and comment-like interactions.',
+          order: 2,
+        },
+        {
+          entryId: entryByTitle.get('Update feed receives seed entries')!,
+          category: 'SMALL_FEATURE',
+          text: 'Update feed renders with seed cards and category bullets by default.',
+          order: 1,
+        },
+        {
+          entryId: entryByTitle.get('Update feed receives seed entries')!,
+          category: 'BUG_FIX',
+          text: 'Added deterministic seed order for update-card testing snapshots.',
+          order: 2,
+        },
+      ],
+    });
+
+    await prisma.updateReaction.createMany({
+      data: [
+        {
+          entryId: entryByTitle.get('DM inbox and Aura Scroll coverage')!,
+          userId: userByName.get('lena')!.id,
+          kind: 'fire',
+          createdAt: hoursAgo(0.8),
+        },
+        {
+          entryId: entryByTitle.get('DM inbox and Aura Scroll coverage')!,
+          userId: userByName.get('milo')!.id,
+          kind: 'zap',
+          createdAt: hoursAgo(0.75),
+        },
+        {
+          entryId: entryByTitle.get('Update feed receives seed entries')!,
+          userId: userByName.get('zoe')!.id,
+          kind: 'heart',
+          createdAt: hoursAgo(0.6),
+        },
       ],
     });
   }
@@ -2321,7 +2628,7 @@ async function main() {
         action: 'update_popup_create',
         userId: admin.id,
         username: 'admin',
-        details: JSON.stringify({ title: popup2.title }),
+        details: JSON.stringify({ title: popup2?.title ?? 'Prediction market visuals' }),
         createdAt: hoursAgo(3),
       },
     ],
@@ -2333,6 +2640,8 @@ async function main() {
   console.log('Seeded features: games, daily racer, polytrack, clash village, shop, inventory, clans, clan wars, support, social, suggestions, polymarket, gifts, badges, quests, pass, inbox, update popups, admin pending users.');
   console.log(`Kept active features only. No legacy placeholder entries were reintroduced for removed mock content.`);
   console.log(`Pending polymarket suggestion id: ${polyPending.id}`);
+
+  await writeSeedVersionMarker();
 }
 
 main()

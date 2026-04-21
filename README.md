@@ -81,6 +81,7 @@ The frontend uses Vite mode-specific environment files and proxies `/api` and `/
 ## Documentation
 
 For a detailed map of routes, pages, files, and build flow, see [CODEBASE_GUIDE.md](CODEBASE_GUIDE.md).
+For a complete mechanics and content reference (systems, progression, economy, social, and game rules), see [AURATRACKER_COMPLETE_MECHANICS.md](AURATRACKER_COMPLETE_MECHANICS.md).
 
 ## License
 

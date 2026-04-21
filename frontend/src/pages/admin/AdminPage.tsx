@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Package, ChevronLeft, ChevronRight, ChevronDown, LogIn, MessageCircle, Gamepad2, Coins, Users, Store, Shield, Gavel, Lightbulb, TrendingUp, Eye, Activity, CalendarRange, Award, Terminal, Landmark, Inbox, Settings, BarChart2, Briefcase } from 'lucide-react';
+import { Loader2, Package, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Gamepad2, Coins, Users, Shield, Gavel, TrendingUp, Eye, Activity, CalendarRange, Award, Terminal, Landmark, Inbox, Settings, BarChart2 } from 'lucide-react';
 
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { PageShell } from '@/components/layout/page-shell';
@@ -75,136 +75,9 @@ import {
   type EditableTaxBracket,
   type ItemFormData,
 } from './adminPageModels';
+import { ACTION_LABELS, LOG_TYPE_CONFIG } from './log-constants';
 
 const TaxesTabComponent = TaxesTab;
-
-// Log type configuration with icons, colors and labels
-const LOG_TYPE_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ComponentType<{ className?: string }> }> = {
-  AUTH: { label: 'Connexion', color: 'text-blue-400', bgColor: 'bg-blue-500', borderColor: 'border-blue-500', icon: LogIn },
-  CHAT: { label: 'Chat', color: 'text-green-400', bgColor: 'bg-green-500', borderColor: 'border-green-500', icon: MessageCircle },
-  GAME: { label: 'Jeux', color: 'text-purple-400', bgColor: 'bg-purple-500', borderColor: 'border-purple-500', icon: Gamepad2 },
-  ECONOMY: { label: 'Economie', color: 'text-yellow-400', bgColor: 'bg-yellow-500', borderColor: 'border-yellow-500', icon: Coins },
-  PARTY: { label: 'Groupe', color: 'text-pink-400', bgColor: 'bg-pink-500', borderColor: 'border-pink-500', icon: Users },
-  MARKETPLACE: { label: 'Boutique', color: 'text-orange-400', bgColor: 'bg-orange-500', borderColor: 'border-orange-500', icon: Store },
-  ADMIN: { label: 'Admin', color: 'text-red-400', bgColor: 'bg-red-500', borderColor: 'border-red-500', icon: Shield },
-  BAN: { label: 'Bans', color: 'text-red-300', bgColor: 'bg-red-700', borderColor: 'border-red-700', icon: Gavel },
-  SUGGESTION: { label: 'Suggestions', color: 'text-cyan-400', bgColor: 'bg-cyan-500', borderColor: 'border-cyan-500', icon: Lightbulb },
-  AURACOIN: { label: 'AuraCoin', color: 'text-amber-400', bgColor: 'bg-amber-500', borderColor: 'border-amber-500', icon: TrendingUp },
-  BUSINESS: { label: 'Business', color: 'text-emerald-400', bgColor: 'bg-emerald-600', borderColor: 'border-emerald-600', icon: Briefcase },
-};
-
-// Human-readable action labels
-const ACTION_LABELS: Record<string, string> = {
-  // Auth
-  login: 'Connexion',
-  logout: 'Déconnexion',
-  register: 'Inscription',
-  login_failed: 'Connexion échouée',
-  login_banned: 'Connexion bannie',
-  // Chat
-  message_sent: 'Message envoyé',
-  message_deleted: 'Message supprimé',
-  // Game
-  game_complete: 'Partie terminée',
-  game_reward: 'Récompense obtenue',
-  casino_bet: 'Pari casino',
-  highscore: 'Nouveau record',
-  reward_fallback: 'Récompense de secours',
-  // Economy
-  transfer: 'Transfert',
-  balance_change: 'Modification solde',
-  pass_reward: 'Récompense pass',
-  // Party
-  party_create: 'Groupe créé',
-  party_join: 'Rejoint groupe',
-  party_leave: 'Quitté groupe',
-  party_disband: 'Groupe dissous',
-  party_kick: 'Expulsion',
-  party_invite: 'Invitation envoyée',
-  // Suggestion
-  suggestion_create: 'Suggestion créée',
-  suggestion_vote: 'Vote',
-  suggestion_comment: 'Commentaire',
-  suggestion_delete: 'Suggestion supprimée',
-  bug_report: 'Bug signalé',
-  // Marketplace
-  item_purchase: 'Achat',
-  item_use: 'Utilisation objet',
-  item_create: 'Objet créé',
-  item_import: 'Objets importés',
-  item_delete: 'Objet supprimé',
-  // Admin
-  user_update: 'Utilisateur modifié',
-  user_delete: 'Utilisateur supprimé',
-  user_approve: 'Utilisateur approuvé',
-  user_reject: 'Utilisateur refusé',
-  inventory_add: 'Inventaire ajouté',
-  inventory_update: 'Inventaire modifié',
-  inventory_remove: 'Inventaire retiré',
-  chat_clear: 'Chat vidé',
-  chat_export: 'Chat exporté',
-  stats_delete: 'Stats supprimées',
-  business_create: 'Entreprise créée',
-  business_delete: 'Entreprise supprimée',
-  business_invite: 'Invitation business envoyée',
-  business_loan_request: 'Demande de prêt business',
-  business_loan_decision: 'Décision prêt business',
-  business_loan_repay: 'Prêt business remboursé',
-  business_deposit: 'Dépôt business',
-  business_withdraw: 'Retrait business',
-  business_invest: 'Investissement business',
-  business_transfer: 'Transfert business',
-  business_transfer_fee_update: 'Frais de transfert modifiés',
-  business_buyout_offer_create: 'Offre de rachat créée',
-  business_buyout_offer_respond: 'Offre de rachat traitée',
-  business_buyout_offer_cancel: 'Offre de rachat annulée',
-  business_research_start: 'Recherche business lancée',
-  business_share_proposal_cancel: 'Proposition actionnaire annulée',
-  business_product_deploy: 'Produit startup déployé',
-  business_collect: 'Recette business collectée',
-  business_sale: 'Vente business enregistrée',
-  business_profile_update: 'Profil business modifié',
-  business_invitation_respond: 'Invitation business traitée',
-  business_member_sack: 'Membre business renvoyé',
-  business_member_salary_update: 'Salaire business modifié',
-  business_formation_product_buy: 'Produit formation acheté',
-  business_rate: 'Business noté',
-  bank_upgrade_purchase: 'Upgrade bancaire acheté',
-  bank_rate_update: 'Taux bancaire modifié',
-  bank_account_open: 'Compte bancaire ouvert',
-  bank_account_deposit: 'Dépôt bancaire',
-  bank_account_withdraw: 'Retrait bancaire',
-  formation_update: 'Formation modifiée',
-  formation_purchase: 'Formation achetée',
-  formation_product_create: 'Produit formation créé',
-  formation_product_update: 'Produit formation modifié',
-  formation_product_delete: 'Produit formation supprimé',
-  relationship_create: 'Relation créée',
-  relationship_forget: 'Relation supprimée',
-  relationship_reactivate: 'Relation relancée',
-  marriage_proposal: 'Demande en mariage',
-  marriage_response: 'Réponse mariage',
-  divorce_proposal: 'Demande de divorce',
-  divorce_response: 'Réponse divorce',
-  relationship_force_divorce: 'Divorce forcé',
-  relationship_mistress: 'Liaison créée',
-  relationship_cheating_report: 'Soupçon de tricherie',
-  relationship_court_case: 'Décision tribunal',
-  couple_deposit: 'Dépôt compte commun',
-  couple_withdraw: 'Retrait compte commun',
-  update_popup_create: 'Popup changelog créée',
-  update_popup_update: 'Popup changelog modifiée',
-  update_popup_delete: 'Popup changelog supprimée',
-  clan_update: 'Clan modifié',
-  clan_transfer_leadership: 'Chef de clan modifié',
-  clan_delete: 'Clan supprimé',
-  // Ban
-  ban_create: 'Bannissement créé',
-  ban_remove: 'Bannissement levé',
-  // AuraCoin
-  auracoin_buy: 'Achat AuraCoin',
-  auracoin_sell: 'Vente AuraCoin',
-};
 
 // Human-readable metadata key labels
 const METADATA_LABELS: Record<string, string> = {

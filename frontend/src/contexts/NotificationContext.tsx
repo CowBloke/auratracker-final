@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from './AuthContext';
-import { notificationsApi, type BrowserPushSubscription, type Notification } from '@/services/api';
+import { infoApi, notificationsApi, type BrowserPushSubscription, type Notification } from '@/services/api';
 import { playNotification } from '@/lib/sound-engine';
 import { Button } from '@/components/ui/button';
 import {
@@ -135,11 +135,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [hasMore, setHasMore] = useState(true);
   const [hasMoreArchived, setHasMoreArchived] = useState(true);
   const [showInstallPromptModal, setShowInstallPromptModal] = useState(false);
+  const [showSeedPromptModal, setShowSeedPromptModal] = useState(false);
+  const [seedPromptVersion, setSeedPromptVersion] = useState<number | null>(null);
+  const [seedPromptLoading, setSeedPromptLoading] = useState(false);
   const socketRef = useRef<ReturnType<typeof import('../services/socket').initSocket> | null>(null);
   const serviceWorkerRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const notificationsRef = useRef<Notification[]>([]);
   const archivedNotificationsRef = useRef<Notification[]>([]);
   const knownNotificationIdsRef = useRef<Set<string>>(new Set());
+  const seedPromptSeenRef = useRef(false);
 
   useEffect(() => {
     notificationsRef.current = notifications;
@@ -281,6 +285,30 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     dismissInstallPromptModal('no');
   }, [dismissInstallPromptModal]);
 
+  const dismissSeedPromptModal = useCallback(() => {
+    setShowSeedPromptModal(false);
+  }, []);
+
+  const handleSeedPromptRun = useCallback(async () => {
+    setSeedPromptLoading(true);
+    try {
+      const res = await infoApi.runSeed();
+      setSeedPromptVersion(res.data.currentVersion);
+      if (res.data.needsUpdate) {
+        setShowSeedPromptModal(true);
+        toast.error("Seed relancé, mais la version locale n'a pas pu etre synchronisée.");
+        return;
+      }
+
+      setShowSeedPromptModal(false);
+      toast.success('Seed relancé avec succes.');
+    } catch {
+      toast.error('Impossible de relancer le seed.');
+    } finally {
+      setSeedPromptLoading(false);
+    }
+  }, []);
+
   const fetchNotifications = useCallback(
     async (opts: { reset?: boolean } = {}) => {
       if (!user) return;
@@ -384,6 +412,33 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setShowInstallPromptModal(true);
     }
   }, [browserNotificationPermission, user?.id]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    let cancelled = false;
+
+    const loadSeedStatus = async () => {
+      try {
+        const res = await infoApi.getSeedStatus();
+        if (cancelled) return;
+
+        setSeedPromptVersion(res.data.currentVersion);
+        if (res.data.needsUpdate && !seedPromptSeenRef.current) {
+          seedPromptSeenRef.current = true;
+          setShowSeedPromptModal(true);
+        }
+      } catch {
+        // Ignore dev-only seed prompt failures.
+      }
+    };
+
+    void loadSeedStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const handleAppInstalled = () => {
@@ -696,6 +751,26 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             </Button>
             <Button type="button" onClick={() => { void handleInstallPromptYes(); }}>
               Oui
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showSeedPromptModal} onOpenChange={(open) => { if (!open) dismissSeedPromptModal(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Seed disponible</DialogTitle>
+            <DialogDescription>
+              {seedPromptVersion != null
+                ? `La version ${seedPromptVersion} du seed n'a pas encore ete lancee sur cette base locale.`
+                : 'Une version plus recente du seed est disponible pour cette base locale.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={dismissSeedPromptModal} disabled={seedPromptLoading}>
+              Plus tard
+            </Button>
+            <Button type="button" onClick={() => { void handleSeedPromptRun(); }} disabled={seedPromptLoading}>
+              {seedPromptLoading ? 'Lancement...' : 'Lancer le seed'}
             </Button>
           </DialogFooter>
         </DialogContent>

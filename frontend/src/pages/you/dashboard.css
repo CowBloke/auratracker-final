@@ -1,0 +1,62 @@
+/* You Dashboard — 3-column grid layout (sidebar + topbar provided by app shell) */
+
+.you-dash {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  grid-template-rows: 1fr 44px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.you-dash-left-rail {
+  grid-row: 1;
+  grid-column: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.you-dash-left-rail::-webkit-scrollbar { width: 4px; }
+.you-dash-left-rail::-webkit-scrollbar-track { background: transparent; }
+.you-dash-left-rail::-webkit-scrollbar-thumb { background: hsl(0 0% 100% / 0.08); border-radius: 9999px; }
+
+.you-dash-map {
+  grid-row: 1;
+  grid-column: 2;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.you-dash-right-rail {
+  grid-row: 1;
+  grid-column: 3;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.you-dash-right-rail::-webkit-scrollbar { width: 4px; }
+.you-dash-right-rail::-webkit-scrollbar-track { background: transparent; }
+.you-dash-right-rail::-webkit-scrollbar-thumb { background: hsl(0 0% 100% / 0.08); border-radius: 9999px; }
+
+.you-dash-ticker {
+  grid-row: 2;
+  grid-column: 1 / span 3;
+}
+
+@media (max-width: 1200px) {
+  .you-dash {
+    grid-template-columns: 240px 1fr 260px;
+  }
+}
+
+@media (max-width: 960px) {
+  .you-dash {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 44px;
+  }
+  .you-dash-left-rail,
+  .you-dash-right-rail { display: none; }
+  .you-dash-map { grid-column: 1; }
+  .you-dash-ticker { grid-column: 1; }
+}

@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Check, ChevronDown, ExternalLink, LocateFixed, MapPin, Minus, Plus, Search, X } from 'lucide-react';
+import { BellRing, Check, ChevronDown, ExternalLink, LocateFixed, MapPin, Minus, Plus, Search, Wallet, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { type YouBusiness, type YouState, youApi } from '@/services/api';
 import {
   WORLD_LATITUDE_LIMITS,
@@ -18,6 +19,7 @@ import {
   clamp,
   getBusinessPinColor,
 } from '../mapConstants';
+import { getYouNotificationMeta, isYouNotification } from '../utils';
 
 interface MapPin {
   business: YouBusiness;
@@ -202,6 +204,10 @@ function formatCoordinates(lon: number, lat: number): string {
   return `${Math.abs(lat).toFixed(5)}°${latDir}, ${Math.abs(lon).toFixed(5)}°${lonDir}`;
 }
 
+function formatCompactMoney(amount: number): string {
+  return `${Math.round(amount).toLocaleString('fr-FR')} €`;
+}
+
 function BusinessInfoPanel({
   business,
   userId,
@@ -254,7 +260,28 @@ function BusinessInfoPanel({
       </div>
 
       {/* Info rows */}
-      <div className="divide-y divide-border border-t border-border">
+      <div className="border-y border-border px-4 py-3">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-border/40 bg-muted/10 px-2.5 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Trésorerie</p>
+            <p className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">{formatCompactMoney(business.treasuryMoney)}</p>
+          </div>
+          <div className="rounded-lg border border-border/40 bg-muted/10 px-2.5 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Membres</p>
+            <p className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">{business.memberCount}</p>
+          </div>
+          <div className="rounded-lg border border-border/40 bg-muted/10 px-2.5 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Revenu mensuel</p>
+            <p className="mt-0.5 text-xs font-semibold tabular-nums text-emerald-500">{formatCompactMoney(business.monthlyRevenue)}</p>
+          </div>
+          <div className="rounded-lg border border-border/40 bg-muted/10 px-2.5 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Satisfaction</p>
+            <p className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">{business.satisfaction}%</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="divide-y divide-border border-b border-border">
         <div className="px-4 py-2.5">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Position</p>
           <p className="mt-0.5 font-mono text-xs text-foreground">
@@ -299,20 +326,29 @@ function BusinessInfoPanel({
   );
 }
 
-export function CarteTab({
-  data,
-  userId,
-  isAdmin,
-  onReload,
-}: {
+export type CarteTabHandle = {
+  startPlacing: (id: string) => void;
+};
+
+export const CarteTab = forwardRef<CarteTabHandle, {
   data: YouState;
   userId: string;
   isAdmin: boolean;
   onReload: () => Promise<void>;
-}) {
+  embedded?: boolean;
+  externalSelectedId?: string | null;
+}>(function CarteTab({
+  data,
+  userId,
+  isAdmin,
+  onReload,
+  embedded = false,
+  externalSelectedId,
+},  ref) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const hoverPopupRef = useRef<maplibregl.Popup | null>(null);
+  const { notifications, unreadCount } = useNotifications();
   const [mapReady, setMapReady] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>([]);
@@ -320,9 +356,21 @@ export function CarteTab({
   const [searchQuery, setSearchQuery] = useState('');
   const [placingBusinessId, setPlacingBusinessId] = useState<string | null>(null);
   const [savingPlacementBusinessId, setSavingPlacementBusinessId] = useState<string | null>(null);
+  const [tickerOffset, setTickerOffset] = useState(0);
+
+  useImperativeHandle(ref, () => ({
+    startPlacing: (id: string) => handleStartPlacement(id),
+  }));
+
+  // Sync external selection (from dashboard left rail) into internal state
+  useEffect(() => {
+    if (externalSelectedId !== undefined && externalSelectedId !== null) {
+      setSelectedBusinessId(externalSelectedId);
+    }
+  }, [externalSelectedId]);
 
   const allBusinesses = useMemo(() => uniqueBusinesses(data), [data]);
-  const memberBusinessIds = useMemo(() => new Set(data.memberBusinesses.map((b) => b.id)), [data.memberBusinesses]);
+  const ownedBusinesses = useMemo(() => data.ownedBusinesses, [data.ownedBusinesses]);
 
   const typeChips = useMemo(() => {
     const seen = new Set<string>();
@@ -340,28 +388,24 @@ export function CarteTab({
     return chips;
   }, [allBusinesses]);
 
-  const hasMemberBusinesses = memberBusinessIds.size > 0;
   const selectedTypeSet = useMemo(() => new Set(selectedTypeFilters), [selectedTypeFilters]);
 
   const visibleBusinesses = useMemo(() => {
-    let filtered = allBusinesses;
+    let filtered = ownedBusinesses;
     if (selectedTypeSet.size > 0) {
-      filtered = filtered.filter((b) => {
-        if (selectedTypeSet.has('__membre__') && memberBusinessIds.has(b.id)) return true;
-        return selectedTypeSet.has(b.typeKey);
-      });
+      filtered = filtered.filter((b) => selectedTypeSet.has(b.typeKey));
     }
     const q = searchQuery.trim().toLowerCase();
     if (!q) return filtered;
     return filtered.filter((b) =>
       [b.name, b.owner.username, b.type?.label ?? b.typeKey, b.typeKey, b.location ?? ''].join(' ').toLowerCase().includes(q),
     );
-  }, [allBusinesses, memberBusinessIds, searchQuery, selectedTypeSet]);
+  }, [ownedBusinesses, searchQuery, selectedTypeSet]);
 
   const placedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX != null && b.mapY != null), [visibleBusinesses]);
   const unplacedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX == null || b.mapY == null), [visibleBusinesses]);
 
-  const pins = useMemo(() => buildPins(visibleBusinesses, userId, isAdmin), [visibleBusinesses, userId, isAdmin]);
+  const pins = useMemo(() => buildPins(allBusinesses, userId, isAdmin), [allBusinesses, userId, isAdmin]);
   const sourceData = useMemo(() => buildSourceData(pins, selectedBusinessId), [pins, selectedBusinessId]);
 
   const selectedBusiness = allBusinesses.find((b) => b.id === selectedBusinessId) ?? null;
@@ -369,12 +413,55 @@ export function CarteTab({
   const selectedTypeLabels = useMemo(() => {
     if (selectedTypeFilters.length === 0) return 'Tous les types';
     const labels = selectedTypeFilters.map((key) => {
-      if (key === '__membre__') return 'Clan';
       const chip = typeChips.find((entry) => entry.key === key);
       return chip ? `${chip.emoji} ${chip.label}` : key;
     });
     return labels.join(', ');
   }, [selectedTypeFilters, typeChips]);
+  const legendEntries = useMemo(() => {
+    const counts = new Map<string, number>();
+    allBusinesses.forEach((business) => {
+      counts.set(business.typeKey, (counts.get(business.typeKey) ?? 0) + 1);
+    });
+    return typeChips
+      .filter((chip) => counts.has(chip.key))
+      .sort((a, b) => (counts.get(b.key) ?? 0) - (counts.get(a.key) ?? 0))
+      .slice(0, 4)
+      .map((chip) => ({
+        ...chip,
+        count: counts.get(chip.key) ?? 0,
+        color: getBusinessPinColor(chip.key),
+      }));
+  }, [allBusinesses, typeChips]);
+
+  const youNotifications = useMemo(
+    () => notifications.filter(isYouNotification).slice(0, 40),
+    [notifications],
+  );
+
+  const tickerItems = useMemo(() => {
+    const placedCount = data.ownedBusinesses.filter((business) => business.mapX != null && business.mapY != null).length;
+    const totalTreasury = data.ownedBusinesses.reduce((sum, business) => sum + business.treasuryMoney, 0);
+    const totalMonthlyRevenue = data.ownedBusinesses.reduce((sum, business) => sum + business.monthlyRevenue, 0);
+    const totalMonthlyExpenses = data.ownedBusinesses.reduce((sum, business) => sum + business.monthlyExpenses, 0);
+    const averageSatisfaction = data.ownedBusinesses.length
+      ? Math.round(data.ownedBusinesses.reduce((sum, business) => sum + business.satisfaction, 0) / data.ownedBusinesses.length)
+      : 0;
+    const activeLoans = [...data.ownedBusinesses, ...data.exploreBusinesses]
+      .flatMap((business) => business.recentLoans)
+      .filter((loan) => loan.status === 'ACTIVE').length;
+
+    return [
+      { label: 'EMP', value: `${data.ownedBusinesses.length} businesses` },
+      { label: 'MAP', value: `${placedCount} placés` },
+      { label: 'TRE', value: `${Math.round(totalTreasury).toLocaleString('fr-FR')} money` },
+      { label: 'REV', value: `+${Math.round(totalMonthlyRevenue).toLocaleString('fr-FR')} /mois` },
+      { label: 'COST', value: `-${Math.round(totalMonthlyExpenses).toLocaleString('fr-FR')} /mois` },
+      { label: 'SAT', value: `${averageSatisfaction}%` },
+      { label: 'LOAN', value: `${activeLoans} prêts actifs` },
+      { label: 'SOC', value: `${data.relationships.length} relations` },
+    ];
+  }, [data.exploreBusinesses, data.ownedBusinesses, data.relationships.length]);
 
   function closeHoverPopup() {
     hoverPopupRef.current?.remove();
@@ -382,11 +469,11 @@ export function CarteTab({
   }
 
   useEffect(() => {
-    if (selectedBusinessId && !visibleBusinesses.some((b) => b.id === selectedBusinessId)) {
+    if (selectedBusinessId && !allBusinesses.some((b) => b.id === selectedBusinessId)) {
       setSelectedBusinessId(null);
       setPlacingBusinessId(null);
     }
-  }, [selectedBusinessId, visibleBusinesses]);
+  }, [allBusinesses, selectedBusinessId]);
 
   // Map init
   useEffect(() => {
@@ -659,6 +746,16 @@ export function CarteTab({
     canvas.style.cursor = placingBusinessId ? 'crosshair' : '';
   }, [placingBusinessId]);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setTickerOffset((current) => (current + 0.6) % 1800);
+    }, 30);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   function centerMap() {
     mapRef.current?.easeTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 700 });
   }
@@ -690,12 +787,13 @@ export function CarteTab({
   }
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-1 overflow-hidden rounded-2xl border border-border/60 shadow-xl">
+    <div className={cn('relative flex h-full min-h-0 w-full flex-1 overflow-hidden', !embedded && 'rounded-2xl border border-border/60 shadow-xl')}>
       {/* Map fills everything */}
       <div ref={mapContainerRef} className="absolute inset-0" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/15 via-transparent to-background/15" />
 
-      {/* Left floating panel */}
-      <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[264px] flex-col gap-2">
+      {/* Left floating panel — hidden when embedded in dashboard */}
+      {!embedded && <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[264px] flex-col gap-2">
 
         {/* Search + filters */}
         <div className="pointer-events-auto relative z-30 rounded-xl border border-border bg-popover p-2.5 text-popover-foreground shadow-lg">
@@ -732,24 +830,6 @@ export function CarteTab({
 
             {showTypeDropdown && (
               <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-56 overflow-auto rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-xl">
-                {hasMemberBusinesses && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedTypeFilters((prev) => prev.includes('__membre__') ? prev.filter((key) => key !== '__membre__') : [...prev, '__membre__']);
-                    }}
-                    className={cn(
-                      'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
-                      selectedTypeSet.has('__membre__') ? 'bg-accent text-accent-foreground' : 'text-popover-foreground/80 hover:bg-accent hover:text-accent-foreground',
-                    )}
-                  >
-                    <span className={cn('inline-flex h-3.5 w-3.5 items-center justify-center rounded border', selectedTypeSet.has('__membre__') ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')}>
-                      {selectedTypeSet.has('__membre__') ? <Check className="h-2.5 w-2.5" /> : null}
-                    </span>
-                    <span>👥 Clan</span>
-                  </button>
-                )}
-
                 {typeChips.map((chip) => {
                   const isActive = selectedTypeSet.has(chip.key);
                   return (
@@ -896,10 +976,11 @@ export function CarteTab({
           </ScrollArea>
         </div>
       </div>
+      }
 
       {/* Right floating info panel */}
       {selectedBusiness && (
-        <div className="pointer-events-auto absolute right-3 top-3 z-10 w-[280px]">
+        <div className={cn('pointer-events-auto absolute top-3 z-10 w-[280px]', embedded ? 'right-3' : 'right-[312px]')}>
           <BusinessInfoPanel
             business={selectedBusiness}
             userId={userId}
@@ -909,6 +990,54 @@ export function CarteTab({
             onPlace={() => handleStartPlacement(selectedBusiness.id)}
           />
         </div>
+      )}
+
+      {!embedded && (
+      <div className="pointer-events-auto absolute bottom-14 right-3 top-3 z-10 w-[300px] rounded-xl border border-border/60 bg-background/95 shadow-xl backdrop-blur-sm">
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="flex items-center justify-between p-3 pb-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Notifications</p>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <BellRing className="h-3 w-3" />
+              <span>{unreadCount} non lues</span>
+            </div>
+          </div>
+
+          <ScrollArea className="min-h-0 flex-1 px-3 pb-3">
+            <div className="space-y-2">
+              {youNotifications.length === 0 && (
+                <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground">
+                  Aucune notification YOU pour le moment.
+                </div>
+              )}
+
+              {youNotifications.map((notification) => {
+                const meta = getYouNotificationMeta(notification);
+                const ItemIcon = meta.icon;
+                return (
+                  <div key={notification.id} className={cn('rounded-lg border px-3 py-2', meta.tone)}>
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5 rounded-md bg-background/35 p-1.5">
+                        <ItemIcon className="h-3.5 w-3.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-[12px] font-semibold text-foreground">{notification.title}</p>
+                          {!notification.isRead ? <span className="shrink-0 rounded-full bg-foreground px-1.5 py-0.5 text-[9px] font-semibold text-background">Nouveau</span> : null}
+                        </div>
+                        <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{notification.body}</p>
+                        <p className="mt-1 text-[10px] text-muted-foreground/70">
+                          {new Date(notification.createdAt).toLocaleString('fr-FR')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
       )}
 
       {/* Placement banner — top center */}
@@ -935,7 +1064,7 @@ export function CarteTab({
       )}
 
       {/* Zoom controls — bottom right (above attribution) */}
-      <div className="absolute bottom-10 right-3 z-10 flex flex-col gap-1.5">
+      <div className={cn('absolute right-3 z-10 flex flex-col gap-1.5', embedded ? 'bottom-3' : 'bottom-10')}>
         <Button
           size="icon"
           variant="outline"
@@ -962,6 +1091,48 @@ export function CarteTab({
           <LocateFixed className="h-3.5 w-3.5" />
         </Button>
       </div>
+
+      {legendEntries.length > 0 && (
+        <div className={cn('pointer-events-none absolute bottom-3 z-10 rounded-xl border border-border/50 bg-background/85 px-3 py-2.5 shadow-lg backdrop-blur-sm', embedded ? 'left-3' : 'left-[278px]')}>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground">Légende</p>
+          <div className="mt-1.5 space-y-1">
+            {legendEntries.map((entry) => (
+              <div key={entry.key} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                <span>{entry.emoji}</span>
+                <span className="truncate">{entry.label}</span>
+                <span className="tabular-nums text-[10px] text-muted-foreground/70">{entry.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!embedded && (
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/92 backdrop-blur-sm">
+        <div className="flex h-10 items-center overflow-hidden px-4">
+          <div className="mr-3 inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <Wallet className="h-3 w-3" />
+            Flux
+          </div>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="flex items-center gap-6 whitespace-nowrap" style={{ transform: `translateX(${-tickerOffset}px)` }}>
+              {[...tickerItems, ...tickerItems, ...tickerItems].map((item, index) => (
+                <div key={`${item.label}-${index}`} className="inline-flex items-center gap-2 text-[11px]">
+                  <span className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{item.label}</span>
+                  <span className="font-medium text-foreground">{item.value}</span>
+                  <span className="text-muted-foreground/40">•</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="ml-3 inline-flex items-center gap-2 text-[10px] text-muted-foreground/80">
+            <BellRing className="h-3 w-3" />
+            Live
+          </div>
+        </div>
+      </div>
+      )}
     </div>
   );
-}
+});

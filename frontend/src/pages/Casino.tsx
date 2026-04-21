@@ -11,221 +11,47 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { PageShell } from '@/components/layout/page-shell';
 import { startRouletteRound } from './casino/startRouletteRound';
+import {
+  BALL_DURATION,
+  CHIP_VALUES,
+  SLICE_ANGLE,
+  SPIN_DURATION,
+  TABLE_ROWS,
+  WHEEL_NUMBERS,
+  WHEEL_OFFSET,
+  type Bet,
+  type BetType,
+  type SpinOutcome,
+  getBetMultiplier,
+  getNumberColor,
+} from './casino/roulette';
+import {
+  BLACKJACK_BET_STEPS,
+  BLACKJACK_MIN_BET,
+  BLACKJACK_MIN_DECK,
+  BLACKJACK_SUIT_META,
+  type BlackjackCard,
+  type BlackjackHand,
+  type BlackjackOutcome,
+  type BlackjackStatus,
+  createBlackjackDeck,
+  getHandTotal,
+  shuffleDeck,
+} from './casino/blackjack';
+import {
+  BET_STEPS,
+  REEL_COUNT,
+  ROWS,
+  SLOT_SPIN_DURATION,
+  SLOT_SYMBOLS,
+  SLOT_SYMBOL_VALUES,
+  type SlotResult,
+  type SlotSymbol,
+} from './casino/slots';
 
 type GameTab = 'roulette' | 'slots' | 'blackjack' | 'soccer' | 'mines' | 'crash';
 
-// -----------------------------
-// Roulette setup
-// -----------------------------
-type RouletteColor = 'red' | 'black' | 'green';
-type BetType = 'straight' | 'color' | 'parity' | 'range' | 'dozen' | 'column';
-
-interface Bet {
-  type: BetType;
-  value: number | string;
-  amount: number;
-}
-
-interface SpinOutcome {
-  number: number;
-  color: RouletteColor;
-  payout: number;
-  net: number;
-  totalBet: number;
-}
-
-const WHEEL_NUMBERS: number[] = [
-  0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
-  5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26,
-];
-
-const RED_NUMBERS = new Set([
-  1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
-]);
-
-const CHIP_VALUES = [5, 10, 25, 50, 100, 250, 500, 1000];
-const SPIN_DURATION = 4200;
-const BALL_DURATION = 4600;
-const SLICE_ANGLE = 360 / WHEEL_NUMBERS.length;
-const WHEEL_OFFSET = -90;
-
-const TABLE_ROWS = Array.from({ length: 12 }, (_, idx) => {
-  const start = 3 * (12 - idx) - 2;
-  return [start, start + 1, start + 2];
-});
-
-const getNumberColor = (num: number): RouletteColor => {
-  if (num === 0) return 'green';
-  return RED_NUMBERS.has(num) ? 'red' : 'black';
-};
-
-const getDozen = (num: number) => {
-  if (num === 0) return null;
-  if (num <= 12) return 1;
-  if (num <= 24) return 2;
-  return 3;
-};
-
-const getColumn = (num: number) => {
-  if (num === 0) return null;
-  return ((num - 1) % 3) + 1;
-};
-
-const getBetMultiplier = (bet: Bet, winningNumber: number) => {
-  switch (bet.type) {
-    case 'straight':
-      return bet.value === winningNumber ? 36 : 0;
-    case 'color': {
-      const color = getNumberColor(winningNumber);
-      return bet.value === color ? 2 : 0;
-    }
-    case 'parity': {
-      if (winningNumber === 0) return 0;
-      const parity = winningNumber % 2 === 0 ? 'even' : 'odd';
-      return bet.value === parity ? 2 : 0;
-    }
-    case 'range': {
-      if (winningNumber === 0) return 0;
-      const range = winningNumber <= 18 ? 'low' : 'high';
-      return bet.value === range ? 2 : 0;
-    }
-    case 'dozen': {
-      const dozen = getDozen(winningNumber);
-      return dozen && dozen === bet.value ? 3 : 0;
-    }
-    case 'column': {
-      const column = getColumn(winningNumber);
-      return column && column === bet.value ? 3 : 0;
-    }
-    default:
-      return 0;
-  }
-};
-
-// -----------------------------
-// Slot machine setup (previous implementation)
-// -----------------------------
-type SlotSymbol = '🍒' | '🍋' | '🍊' | '🍇' | '🔔' | '⭐' | '💎' | '7️⃣';
-
-interface SlotResult {
-  reels: SlotSymbol[][];
-  winAmount: number;
-  multiplier: number;
-  winningLines: number[];
-}
-
-const SLOT_SYMBOLS: SlotSymbol[] = ['🍒', '🍋', '🍊', '🍇', '🔔', '⭐', '💎', '7️⃣'];
-const SLOT_SYMBOL_VALUES: Record<SlotSymbol, number> = {
-  '🍒': 2,
-  '🍋': 3,
-  '🍊': 4,
-  '🍇': 5,
-  '🔔': 10,
-  '⭐': 15,
-  '💎': 25,
-  '7️⃣': 50,
-};
-
-const REEL_COUNT = 3;
-const ROWS = 3;
-const SLOT_SPIN_DURATION = 2000;
-const BET_STEPS = [10, 25, 50, 100, 250, 500, 1000];
-
-// -----------------------------
-// Blackjack setup
-// -----------------------------
-type BlackjackStatus = 'idle' | 'player' | 'dealer' | 'finished';
-type BlackjackOutcome = 'win' | 'lose' | 'push' | 'blackjack';
-type BlackjackSuit = 'spades' | 'hearts' | 'diamonds' | 'clubs';
-type BlackjackRank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
-
-interface BlackjackCard {
-  id: string;
-  rank: BlackjackRank;
-  suit: BlackjackSuit;
-  value: number;
-  isRed: boolean;
-}
-
-interface BlackjackHand {
-  id: string;
-  cards: BlackjackCard[];
-  bet: number;
-  doubled: boolean;
-  state: 'playing' | 'stood' | 'bust' | 'blackjack';
-  outcome: BlackjackOutcome | null;
-}
-
-const BLACKJACK_BET_STEPS = [25, 50, 100, 250, 500, 1000];
-const BLACKJACK_MIN_BET = 5;
-const BLACKJACK_SUITS: BlackjackSuit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
-const BLACKJACK_RANKS: BlackjackRank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const BLACKJACK_MIN_DECK = 15;
-
-const BLACKJACK_SUIT_META: Record<BlackjackSuit, { symbol: string; isRed: boolean }> = {
-  spades: { symbol: '♠', isRed: false },
-  hearts: { symbol: '♥', isRed: true },
-  diamonds: { symbol: '♦', isRed: true },
-  clubs: { symbol: '♣', isRed: false },
-};
-
-const BLACKJACK_RANK_VALUES: Record<BlackjackRank, number> = {
-  A: 11,
-  '2': 2,
-  '3': 3,
-  '4': 4,
-  '5': 5,
-  '6': 6,
-  '7': 7,
-  '8': 8,
-  '9': 9,
-  '10': 10,
-  J: 10,
-  Q: 10,
-  K: 10,
-};
-
-const createBlackjackDeck = (): BlackjackCard[] => {
-  const deck: BlackjackCard[] = [];
-  BLACKJACK_SUITS.forEach((suit) => {
-    BLACKJACK_RANKS.forEach((rank) => {
-      deck.push({
-        id: `${rank}-${suit}-${deck.length}`,
-        rank,
-        suit,
-        value: BLACKJACK_RANK_VALUES[rank],
-        isRed: BLACKJACK_SUIT_META[suit].isRed,
-      });
-    });
-  });
-  return deck;
-};
-
-const shuffleDeck = (deck: BlackjackCard[]) => {
-  const shuffled = [...deck];
-  for (let idx = shuffled.length - 1; idx > 0; idx -= 1) {
-    const swapIndex = Math.floor(Math.random() * (idx + 1));
-    [shuffled[idx], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[idx]];
-  }
-  return shuffled;
-};
-
-const getHandTotal = (hand: BlackjackCard[]) => {
-  let total = 0;
-  let aces = 0;
-
-  hand.forEach((card) => {
-    total += card.value;
-    if (card.rank === 'A') aces += 1;
-  });
-
-  while (total > 21 && aces > 0) {
-    total -= 10;
-    aces -= 1;
-  }
-
-  return total;
-};
+// helper logic moved into ./casino/*.ts
 
 type CasinoCelebrationGame = 'roulette' | 'slots' | 'blackjack' | 'soccer' | 'mines' | 'crash';
 type CasinoCelebrationTier = 'small' | 'big' | 'mega' | 'jackpot';

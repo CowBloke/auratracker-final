@@ -11,9 +11,9 @@ import { FinanceTab } from './tabs/FinanceTab';
 import { OverviewTab } from './tabs/OverviewTab';
 import { SocialTab } from './tabs/SocialTab';
 import { TravailTab } from './tabs/TravailTab';
-import { CarteTab } from './tabs/CarteTab';
 import { PublicitesTab } from './tabs/PublicitesTab';
 import { ShareMarketTab } from './tabs/ShareMarketTab';
+import { YouDashboard } from './YouDashboard';
 
 export default function You() {
   const [params] = useSearchParams();
@@ -66,8 +66,16 @@ export default function You() {
   if (!data || !user) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Impossible de charger les donnees YOU.</CardContent></Card></div>;
   const hasAdblock = Boolean(user.hasAdblock);
 
+  if (currentTab === 'carte') {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <YouDashboard data={data} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} />
+      </div>
+    );
+  }
+
   return (
-    <div className={currentTab === 'carte' ? 'flex min-h-0 flex-1 flex-col' : 'animate-in space-y-6 fade-in pb-8 duration-300'}>
+    <div className="animate-in space-y-6 fade-in pb-8 duration-300">
       {currentTab === 'overview' ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[{ label: 'Money personnel', value: user.money.toLocaleString('fr-FR') }, { label: 'Aura partagee', value: user.aura.toLocaleString('fr-FR') }, { label: 'Businesses', value: String(data.ownedBusinesses.length) }, { label: 'Relations', value: String(data.relationships.length) }].map((entry) => (
           <Card key={entry.label} className="min-w-0 overflow-hidden">
@@ -84,7 +92,6 @@ export default function You() {
       {currentTab === 'explore' ? <ExploreTab data={data} players={data.players} userId={user.id} isAdmin={Boolean(user.isAdmin)} adblockActive={hasAdblock} onReload={loadState} /> : null}
       {currentTab === 'finance' ? <FinanceTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'marche-actions' ? <ShareMarketTab data={data} userId={user.id} onReload={loadState} /> : null}
-      {currentTab === 'carte' ? <CarteTab data={data} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} /> : null}
       {currentTab === 'publicites' ? <PublicitesTab ownedBusinesses={data.ownedBusinesses} onReload={loadState} /> : null}
     </div>
   );

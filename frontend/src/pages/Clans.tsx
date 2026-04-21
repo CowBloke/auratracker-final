@@ -46,160 +46,31 @@ import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
+import {
+  formatAura,
+  formatDate,
+  formatEffectCooldown,
+  formatCountdown,
+  formatMoney,
+  formatSignedValue,
+  getAvatarFallback,
+  getClanEventActivityLabel,
+  getClanEventStatusLabel,
+  getStatusLabel,
+  getStatusVariant,
+} from './clans/formatters';
+import {
+  getWarDefenseSet,
+  getWarEnemyDefenseSet,
+  getWarOpponent,
+  getWarOpponentParticipantStats,
+  getWarOwnSide,
+  getWarParticipantStats,
+  getWarResultBadge,
+} from './clans/war-utils';
 
 const panelClassName = 'rounded-2xl border border-border/50 bg-background shadow-none';
 const mutedPanelClassName = 'rounded-2xl border border-border/50 bg-muted/15 shadow-none';
-
-const formatAura = (value: number | string) => {
-  const numericValue = typeof value === 'string' ? Number(value) : value;
-  if (Number.isNaN(numericValue)) return '0';
-  return numericValue.toLocaleString('fr-FR');
-};
-
-const formatMoney = (value: number | string) => {
-  const numericValue = typeof value === 'string' ? Number(value) : value;
-  if (Number.isNaN(numericValue)) return '0';
-  return numericValue.toLocaleString('fr-FR');
-};
-
-const formatSignedValue = (value: number) =>
-  `${value > 0 ? '+' : ''}${value.toLocaleString('fr-FR')}`;
-
-const formatDate = (value: string | null | undefined) => {
-  if (!value) return 'N/A';
-  return new Date(value).toLocaleString('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
-const formatCountdown = (value: string | null | undefined) => {
-  if (!value) return null;
-  const diff = new Date(value).getTime() - Date.now();
-  if (diff <= 0) return 'maintenant';
-
-  const totalMinutes = Math.floor(diff / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours <= 0) return `${minutes} min`;
-  return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
-};
-
-const formatEffectCooldown = (effect: ClanActiveEffect) => {
-  return `Actif encore ${formatCountdown(effect.activeUntil)}`;
-};
-
-
-const getClanEffectIcon = (effect: ClanActiveEffect) => {
-  if (effect.type === 'CLAN_GAME_MONEY_BOOST') {
-    return <CurrencyIcon type="money" className="h-4 w-4" />;
-  }
-
-  return <Sparkles className="h-4 w-4" />;
-};
-
-const getStatusLabel = (status: ClanWarState['status']) => {
-  switch (status) {
-    case 'PREPARING':
-      return 'Préparation';
-    case 'ACTIVE':
-      return 'En cours';
-    case 'COMPLETED':
-      return 'Terminée';
-    default:
-      return status;
-  }
-};
-
-const getClanEventStatusLabel = (status: ClanEventView['status']) => {
-  switch (status) {
-    case 'ACTIVE':
-      return 'En cours';
-    case 'SCHEDULED':
-      return 'Bientôt';
-    case 'COMPLETED':
-      return 'Terminée';
-    case 'DRAFT':
-      return 'Brouillon';
-    default:
-      return 'Annulée';
-  }
-};
-
-const getClanEventActivityLabel = (activityType: string) => {
-  switch (activityType) {
-    case 'PLAY_ANY_GAME':
-      return 'Parties jouées';
-    case 'WIN_ANY_GAME':
-      return 'Victoires';
-    case 'CLAN_CHAT_MESSAGE':
-      return 'Messages clan';
-    case 'CLAN_BANK_DEPOSIT':
-      return 'Money déposée';
-    case 'CLAN_WAR_ATTACK':
-      return "Actions d'attaque";
-    case 'CLAN_WAR_SUPPORT':
-      return 'Actions de support';
-    case 'EVENT_MINIGAME_PLAY':
-      return 'Mini-jeux joués';
-    case 'EVENT_MINIGAME_POINTS':
-      return 'Points mini-jeux';
-    default:
-      return activityType.replace(/_/g, ' ').toLowerCase();
-  }
-};
-
-const getStatusVariant = (status: ClanWarState['status']) => {
-  switch (status) {
-    case 'ACTIVE':
-      return 'destructive' as const;
-    case 'PREPARING':
-      return 'secondary' as const;
-    default:
-      return 'outline' as const;
-  }
-};
-
-const getWarOpponent = (war: ClanWarState, clanId: string) =>
-  war.attackerClan.id === clanId ? war.defenderClan : war.attackerClan;
-
-const getWarOwnSide = (war: ClanWarState, clanId: string) =>
-  war.attackerClan.id === clanId ? war.attackerClan : war.defenderClan;
-
-const getWarDefenseSet = (war: ClanWarState, clanId: string) =>
-  war.attackerClan.id === clanId ? war.defenses.attacker : war.defenses.defender;
-
-const getWarEnemyDefenseSet = (war: ClanWarState, clanId: string) =>
-  war.attackerClan.id === clanId ? war.defenses.defender : war.defenses.attacker;
-
-const getWarParticipantStats = (war: ClanWarState, clanId: string) =>
-  war.attackerClan.id === clanId ? war.participantStats.attacker : war.participantStats.defender;
-
-const getWarOpponentParticipantStats = (war: ClanWarState, clanId: string) =>
-  war.attackerClan.id === clanId ? war.participantStats.defender : war.participantStats.attacker;
-
-const getAvatarFallback = (value: string) => value.trim().slice(0, 2);
-
-const getWarResultBadge = (war: ClanWarState, clanId: string) => {
-  const isCurrentWar = war.status !== 'COMPLETED';
-  if (isCurrentWar) {
-    return {
-      label: getStatusLabel(war.status),
-      variant: getStatusVariant(war.status),
-    };
-  }
-
-  if (!war.winnerClan) {
-    return { label: 'Égalité', variant: 'outline' as const };
-  }
-
-  return war.winnerClan.id === clanId
-    ? { label: 'Victoire', variant: 'secondary' as const }
-    : { label: 'Défaite', variant: 'destructive' as const };
-};
 
 const BankContributionRow = ({ entry }: { entry: ClanBankContribution }) => (
   <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
@@ -245,7 +116,7 @@ const ClanEffectBadge = ({ effect }: { effect: ClanActiveEffect }) => (
     className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-700 shadow-sm"
     title={`${effect.name} • +${effect.value}%${effect.activeUntil ? ` • ${formatEffectCooldown(effect)}` : ""}`}
   >
-    {getClanEffectIcon(effect)}
+    {effect.type === 'CLAN_GAME_MONEY_BOOST' ? <CurrencyIcon type="money" className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
   </div>
 );
 
