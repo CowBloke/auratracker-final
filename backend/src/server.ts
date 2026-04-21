@@ -52,6 +52,7 @@ import messagesRoutes from './routes/messages.js';
 import justiceRoutes from './routes/justice.js';
 import braquageLegalRoutes, { drawBraquageLegalSession } from './routes/braquageLegal.js';
 import infoRoutes from './routes/info.js';
+import forumRoutes from './routes/forum.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -183,6 +184,7 @@ app.use('/api/you', youRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/justice', justiceRoutes);
 app.use('/api/info', infoRoutes);
+app.use('/api/forum', forumRoutes);
 
 // Health check
 const SERVER_STARTED_AT = new Date().toISOString();

@@ -68,6 +68,8 @@ import OpenGD from './pages/OpenGD';
 import CrossyRoad from './pages/CrossyRoad';
 import BlockBlast from './pages/BlockBlast';
 import You from './pages/You';
+import Forum from './pages/Forum';
+import ForumPost from './pages/ForumPost';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
@@ -296,6 +298,9 @@ function App() {
         <Route path="loto" element={<BraquageLegal />} />
         <Route path="braquage-legal" element={<Navigate to="/loto" replace />} />
         <Route path="you" element={<You />} />
+        <Route path="forum" element={<Forum />} />
+        <Route path="forum/r/:subredditName" element={<Forum />} />
+        <Route path="forum/r/:subredditName/post/:postId" element={<ForumPost />} />
       </Route>
     </Routes>
   );

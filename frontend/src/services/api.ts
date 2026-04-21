@@ -3838,4 +3838,68 @@ export const sanctionsApi = {
     api.patch<{ sanction: PendingSanction }>(`/admin/pending-sanctions/${id}/reject`, { adminNote }),
 };
 
+// ─── Forum (Reddit-like) ──────────────────────────────────────────────────────
+
+export interface ForumSubreddit {
+  id: string;
+  name: string;
+  description: string;
+  icon: string | null;
+  createdAt: string;
+  creator: { id: string; username: string; usernameColor: string | null; profilePicture: string | null };
+  memberCount: number;
+  postCount: number;
+  isJoined: boolean;
+}
+
+export interface ForumPost {
+  id: string;
+  title: string;
+  body: string | null;
+  url: string | null;
+  type: string;
+  score: number;
+  createdAt: string;
+  author: { id: string; username: string; usernameColor: string | null; profilePicture: string | null };
+  subreddit: { name: string; icon: string | null; description?: string };
+  commentCount: number;
+  userVote: number;
+}
+
+export interface ForumComment {
+  id: string;
+  body: string;
+  score: number;
+  createdAt: string;
+  parentId: string | null;
+  authorId: string;
+  author: { id: string; username: string; usernameColor: string | null; profilePicture: string | null };
+  userVote: number;
+  children: ForumComment[];
+}
+
+export const forumApi = {
+  getSubreddits: () => api.get<ForumSubreddit[]>('/forum/subreddits'),
+  getSubreddit: (name: string) => api.get<ForumSubreddit>(`/forum/subreddits/${name}`),
+  createSubreddit: (data: { name: string; description: string; icon?: string }) =>
+    api.post<ForumSubreddit>('/forum/subreddits', data),
+  toggleJoin: (name: string) => api.post<{ joined: boolean }>(`/forum/subreddits/${name}/join`),
+
+  getPosts: (params: { subreddit?: string; sort?: string; page?: number }) =>
+    api.get<ForumPost[]>('/forum/posts', { params }),
+  createPost: (data: { title: string; body?: string; url?: string; type?: string; subredditName: string }) =>
+    api.post<ForumPost>('/forum/posts', data),
+  getPost: (postId: string) =>
+    api.get<ForumPost & { comments: ForumComment[] }>(`/forum/posts/${postId}`),
+  deletePost: (postId: string) => api.delete(`/forum/posts/${postId}`),
+  votePost: (postId: string, value: number) =>
+    api.post<{ score: number; userVote: number }>(`/forum/posts/${postId}/vote`, { value }),
+
+  addComment: (postId: string, data: { body: string; parentId?: string }) =>
+    api.post<ForumComment>(`/forum/posts/${postId}/comments`, data),
+  voteComment: (commentId: string, value: number) =>
+    api.post<{ score: number; userVote: number }>(`/forum/comments/${commentId}/vote`, { value }),
+  deleteComment: (commentId: string) => api.delete(`/forum/comments/${commentId}`),
+};
+
 export default api;

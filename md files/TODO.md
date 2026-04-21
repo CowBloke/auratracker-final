@@ -1,9 +1,6 @@
 - contacter fisc
-- chat main bug envoie message
 - clash village stockage et non argent 
 - subway surfer
-- redirection bas de page messa ges
-- affaires/messages tri messages
 - logs
 - suspect
 - latence

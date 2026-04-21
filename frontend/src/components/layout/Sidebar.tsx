@@ -21,6 +21,7 @@ import {
   Landmark,
   Coins,
   Info,
+  MessagesSquare,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -53,6 +54,7 @@ const economyItems: SidebarRouteItem[] = [
   { to: '/marketplace', label: t('sidebar_nav_marketplace'), icon: BadgeDollarSign },
   { to: '/party', label: t('sidebar_nav_party'), icon: Users },
   { to: '/quests', label: t('sidebar_nav_quests'), icon: Target },
+  { to: '/forum', label: 'Forum', icon: MessagesSquare },
   { to: '/suggestions', label: t('sidebar_nav_suggestions'), icon: Lightbulb },
   { to: '/tutoriels', label: 'Tutoriel', icon: Info },
   { to: '/rules', label: t('sidebar_nav_info'), icon: BookOpen },

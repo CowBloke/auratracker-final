@@ -218,6 +218,14 @@ model User {
   auraScrollCommentLikes AuraScrollCommentLike[]
   updateReactions        UpdateReaction[]
 
+  // Forum (Reddit-like)
+  forumSubredditsCreated    ForumSubreddit[]         @relation("ForumSubredditCreator")
+  forumSubredditMemberships ForumSubredditMember[]
+  forumPosts                ForumPost[]              @relation("ForumPostAuthor")
+  forumComments             ForumComment[]           @relation("ForumCommentAuthor")
+  forumPostVotes            ForumPostVote[]
+  forumCommentVotes         ForumCommentVote[]
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
@@ -2754,4 +2762,90 @@ model BusinessPurchasedItem {
 
   @@index([userId, acquiredAt])
   @@index([businessId])
+}
+
+// ───────────────────────────────────────────
+// Forum System (Reddit-like)
+// ───────────────────────────────────────────
+
+model ForumSubreddit {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String
+  icon        String?
+  createdAt   DateTime @default(now())
+  creatorId   String
+  creator     User     @relation("ForumSubredditCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  posts       ForumPost[]
+  members     ForumSubredditMember[]
+
+  @@index([name])
+}
+
+model ForumSubredditMember {
+  userId      String
+  subredditId String
+  joinedAt    DateTime @default(now())
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subreddit   ForumSubreddit @relation(fields: [subredditId], references: [id], onDelete: Cascade)
+
+  @@id([userId, subredditId])
+}
+
+model ForumPost {
+  id          String   @id @default(uuid())
+  title       String
+  body        String?
+  url         String?
+  type        String   @default("text")
+  authorId    String
+  author      User           @relation("ForumPostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  subredditId String
+  subreddit   ForumSubreddit @relation(fields: [subredditId], references: [id], onDelete: Cascade)
+  comments    ForumComment[]
+  votes       ForumPostVote[]
+  score       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subredditId, createdAt])
+  @@index([authorId])
+}
+
+model ForumComment {
+  id        String   @id @default(uuid())
+  body      String
+  authorId  String
+  author    User      @relation("ForumCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    ForumComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies   ForumComment[] @relation("CommentReplies")
+  votes     ForumCommentVote[]
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@index([authorId])
+}
+
+model ForumPostVote {
+  userId String
+  postId String
+  value  Int
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post   ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+}
+
+model ForumCommentVote {
+  userId    String
+  commentId String
+  value     Int
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   ForumComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, commentId])
 }
