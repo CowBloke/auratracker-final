@@ -44,3 +44,8 @@
 - remettre controles jeux
 - voirniv des gens
 - pub sur la meme page
+- reaction msg et reply et tick
+- entrée ecole
+- limites business et auracoin
+- graph pour les entreprises heatmap
+- sidebar 04
