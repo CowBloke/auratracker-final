@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
-  CreditCard, Download, Edit2, ExternalLink, GraduationCap, Image, Landmark, Loader2, Percent,
+  CreditCard, Download, Edit2, ExternalLink, Factory, GraduationCap, Image, Landmark, Loader2, Percent,
   Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X, Utensils,
   ShieldAlert,
 } from 'lucide-react';
@@ -18,6 +18,8 @@ import {
 } from '@/services/api';
 import { resolveImageUrl } from '@/lib/images';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
+import { PRODUCER_TYPES } from '@/lib/resources';
+import { ProductionModal } from './ProductionModal';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';
 import { openFormationAccess } from '../formation-access';
 import {
@@ -720,6 +722,7 @@ export function ManageBusinessModal({
   const [transactions, setTransactions] = useState<YouBusinessTransaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
   const [manageTeamOpen, setManageTeamOpen] = useState(false);
+  const [productionOpen, setProductionOpen] = useState(false);
   const [manageFormationsOpen, setManageFormationsOpen] = useState(false);
   const [manageMenuOpen, setManageMenuOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -752,6 +755,7 @@ export function ManageBusinessModal({
       setBuybackTarget(null);
       setBuybackAmountInput('');
       setSendingBuybackOffer(false);
+      setProductionOpen(false);
     }
   }, [open, business?.id]);
 
@@ -1074,6 +1078,11 @@ export function ManageBusinessModal({
                   iconColor="text-yellow-400"
                   onClick={() => { if (!npcOnCooldown && !collectingNpc) void collectNpc(); }}
                 />
+              ) : null}
+
+              {/* Production & Ressources */}
+              {business.ownerKind === 'you' && PRODUCER_TYPES.has(business.typeKey) ? (
+                <ActionRow icon={Factory} label="Production & Ressources" sub="Stock, équipe, fabrication et stockage" iconBg="bg-emerald-400/15" iconColor="text-emerald-400" onClick={() => setProductionOpen(true)} />
               ) : null}
 
               {/* Gérer l'équipe */}
@@ -1606,6 +1615,10 @@ export function ManageBusinessModal({
         currentUserId={currentUserId}
         onSubmitted={() => onSubmitted(true)}
       />
+    ) : null}
+
+    {business ? (
+      <ProductionModal open={productionOpen} onClose={() => setProductionOpen(false)} business={business} />
     ) : null}
 
     <ModalWrap

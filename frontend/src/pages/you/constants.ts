@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, BarChart3, Briefcase, Building2, Coffee, CreditCard, GraduationCap, Landmark, Scale, ShieldAlert, ShoppingBasket, Stethoscope, Store, TrendingUp, UserPlus, Utensils, Video } from 'lucide-react';
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, AxeIcon, BarChart3, Briefcase, Building2, Coffee, CreditCard, Flame, GraduationCap, Hammer, Landmark, Leaf, Scale, Scissors, ShieldAlert, ShoppingBasket, Stethoscope, Store, TrendingUp, UserPlus, Utensils, Video } from 'lucide-react';
 import { type BusinessAction } from './types';
 
 export const BUSINESS_ICON_MAP = {
@@ -8,6 +8,12 @@ export const BUSINESS_ICON_MAP = {
   formation: GraduationCap,
   transfer: ArrowLeftRight,
   lemonade: Store,
+  farm: Leaf,
+  sawmill: AxeIcon,
+  quarry: Hammer,
+  iron_mine: Hammer,
+  fuel_refinery: Flame,
+  textile_mill: Scissors,
   epicerie: ShoppingBasket,
   restaurant: Utensils,
   coffee_shop: Coffee,
@@ -25,6 +31,12 @@ export const BUSINESS_STYLE_MAP = {
   formation: { card: 'border-amber-400/30 bg-amber-400/10', badge: 'bg-amber-400/15 text-amber-400', iconWrap: 'bg-amber-400/15', icon: 'text-amber-400' },
   transfer: { card: 'border-cyan-400/30 bg-cyan-400/10', badge: 'bg-cyan-400/15 text-cyan-400', iconWrap: 'bg-cyan-400/15', icon: 'text-cyan-400' },
   lemonade: { card: 'border-yellow-400/30 bg-yellow-400/10', badge: 'bg-yellow-400/15 text-yellow-400', iconWrap: 'bg-yellow-400/15', icon: 'text-yellow-400' },
+  farm: { card: 'border-green-400/30 bg-green-400/10', badge: 'bg-green-400/15 text-green-400', iconWrap: 'bg-green-400/15', icon: 'text-green-400' },
+  sawmill: { card: 'border-amber-400/30 bg-amber-400/10', badge: 'bg-amber-400/15 text-amber-300', iconWrap: 'bg-amber-400/15', icon: 'text-amber-300' },
+  quarry: { card: 'border-slate-400/30 bg-slate-400/10', badge: 'bg-slate-400/15 text-slate-300', iconWrap: 'bg-slate-400/15', icon: 'text-slate-300' },
+  iron_mine: { card: 'border-zinc-400/30 bg-zinc-400/10', badge: 'bg-zinc-400/15 text-zinc-300', iconWrap: 'bg-zinc-400/15', icon: 'text-zinc-300' },
+  fuel_refinery: { card: 'border-orange-400/30 bg-orange-400/10', badge: 'bg-orange-400/15 text-orange-400', iconWrap: 'bg-orange-400/15', icon: 'text-orange-400' },
+  textile_mill: { card: 'border-rose-400/30 bg-rose-400/10', badge: 'bg-rose-400/15 text-rose-300', iconWrap: 'bg-rose-400/15', icon: 'text-rose-300' },
   epicerie: { card: 'border-lime-400/30 bg-lime-400/10', badge: 'bg-lime-400/15 text-lime-400', iconWrap: 'bg-lime-400/15', icon: 'text-lime-400' },
   restaurant: { card: 'border-red-400/30 bg-red-400/10', badge: 'bg-red-400/15 text-red-400', iconWrap: 'bg-red-400/15', icon: 'text-red-400' },
   coffee_shop: { card: 'border-orange-400/30 bg-orange-400/10', badge: 'bg-orange-400/15 text-orange-400', iconWrap: 'bg-orange-400/15', icon: 'text-orange-400' },
