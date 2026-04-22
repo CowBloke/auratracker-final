@@ -405,7 +405,7 @@ export default function Profile() {
   if (loading) {
     return (
       <div className="w-full px-4 pb-8 lg:px-6">
-        <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[28px] border border-border/60 bg-card">
+        <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-3xl border border-border/60 bg-card">
           <div className="h-36 animate-pulse bg-muted/60 md:h-48" />
           <div className="px-5 pb-8 md:px-8">
             <div className="-mt-12 flex flex-col gap-6 md:-mt-16">
@@ -425,7 +425,7 @@ export default function Profile() {
   if (!profileUser) {
     return (
       <div className="w-full px-4 pb-8 lg:px-6">
-        <div className="mx-auto w-full max-w-4xl rounded-[28px] border border-border/60 bg-card px-6 py-16 text-center">
+        <div className="mx-auto w-full max-w-4xl rounded-3xl border border-border/60 bg-card px-6 py-16 text-center">
           <p className={cn(TYPOGRAPHY.MUTED)}>Utilisateur introuvable</p>
         </div>
       </div>
@@ -558,7 +558,7 @@ export default function Profile() {
   return (
     <>
       <div className="w-full px-0 pb-8">
-        <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[28px] border border-border/60 bg-card shadow-sm">
+        <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm">
           <div className="relative h-36 overflow-hidden border-b border-border/60 bg-gradient-to-br from-muted via-background to-muted/70 md:h-48">
           {profileBannerUrl ? (
             <>

@@ -169,7 +169,7 @@ function Welcome({
   welcomeName?: string | null;
   showWelcome: boolean;
   heading: string;
-  subheading: string;
+  subheading?: string;
   action?: ReactNode;
 }) {
   return (
@@ -420,7 +420,7 @@ export function DashboardUpdatesFeed({
   entries: DashboardUpdateEntry[];
   loading?: boolean;
   heading: string;
-  subheading: string;
+  subheading?: string;
   welcomeName?: string | null;
   showWelcome?: boolean;
   action?: ReactNode;

@@ -7,10 +7,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageShell } from '@/components/layout/page-shell';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1157,45 +1156,6 @@ export default function Games() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="hidden sm:w-[220px]">
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Trier les jeux" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">Ordre par défaut</SelectItem>
-                  <SelectItem value="popular">Populaire</SelectItem>
-                  <SelectItem value="newest">Nouveaux</SelectItem>
-                  <SelectItem value="most-played">Plus joués</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="hidden sm:w-[220px]">
-              <Select value={rewardFilter} onValueChange={(value) => setRewardFilter(value as RewardFilter)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Récompenses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Toutes les récompenses</SelectItem>
-                  <SelectItem value="with-rewards">Avec récompenses</SelectItem>
-                  <SelectItem value="without-rewards">Sans récompenses</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="hidden sm:w-[180px]">
-              <Select value={betaFilter} onValueChange={(value) => setBetaFilter(value as BetaFilter)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Statut bêta" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="beta">Bêta</SelectItem>
-                  <SelectItem value="stable">Hors bêta</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
 
@@ -1266,9 +1226,6 @@ export default function Games() {
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>Récompenses: {activeRewardDetailsGame?.name ?? 'Jeu'}</DialogTitle>
-            <DialogDescription>
-              Détail des paliers et gains actuellement affichés pour ce jeu.
-            </DialogDescription>
           </DialogHeader>
 
           <div className="rounded-xl border border-border/70 bg-muted/25 p-4">

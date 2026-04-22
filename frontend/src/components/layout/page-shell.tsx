@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 type PageShellSize = 'compact' | 'default' | 'wide' | 'full';
 
 const sizeClasses: Record<PageShellSize, string> = {
-  compact: CONTAINER.COMPACT,
+  compact: CONTAINER.DEFAULT,
   default: CONTAINER.DEFAULT,
   wide: CONTAINER.WIDE,
   full: CONTAINER.FULL,

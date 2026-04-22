@@ -37,7 +37,6 @@ export default function Dashboard() {
         entries={entries}
         loading={loading}
         heading="Centre des mises à jour"
-        subheading=""
         welcomeName={user?.username}
         showWelcome
         action={user?.isAdmin ? (

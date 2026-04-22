@@ -522,7 +522,7 @@ export function SiteHeader() {
         </TooltipProvider>
       ) : null}
       <div className="flex shrink-0 items-center gap-2">
-        <div className={cn(chromeChipClassName, 'text-[hsl(45_86%_33%)]')}>
+        <div className={cn(chromeChipClassName, 'text-amber-700 dark:text-amber-500')}>
           <CurrencyIcon type="aura" className="h-3.5 w-3.5 text-yellow-400" />
           <span className="tabular-nums">{user?.aura?.toLocaleString() ?? '0'}</span>
         </div>

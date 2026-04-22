@@ -1,32 +1,3 @@
-/*
- * FeatureHint — dismissible "NEW" bubble pointing at any element
- *
- * Usage:
- *   import { FeatureHint } from '@/components/ui/feature-hint';
- *
- *   <FeatureHint id="my-feature" label="Découvre cette nouvelle fonctionnalité !">
- *     <Button>Click me</Button>
- *   </FeatureHint>
- *
- * Props:
- *   id       — unique string per hint; used as the localStorage key (required)
- *   label    — text shown in the bubble (required)
- *   side     — where the bubble appears relative to the element: 'top' | 'bottom' | 'left' | 'right'  (default: 'top')
- *   children — the element the hint points at (required)
- *
- * Dismissal:
- *   Clicking × saves `hint_dismissed_<id> = "1"` in localStorage.
- *   The hint will never appear again for that id, even after page reload.
- *
- * Examples:
- *   <FeatureHint id="inbox-v2" label="Tes notifications sont ici" side="bottom">
- *     <InboxButton />
- *   </FeatureHint>
- *
- *   <FeatureHint id="new-filter" label="Filtre par genre !" side="right">
- *     <FilterIcon />
- *   </FeatureHint>
- */
 import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
@@ -35,25 +6,12 @@ import { cn } from '@/lib/utils';
 const STORAGE_PREFIX = 'hint_dismissed_';
 
 interface FeatureHintProps {
-  /** Unique key — stored in localStorage to remember dismissal */
   id: string;
-  /** Short label shown in the hint bubble */
   label: string;
-  /** Which side of the wrapped element the hint appears on (default: top) */
   side?: 'top' | 'bottom' | 'left' | 'right';
   children: React.ReactNode;
   className?: string;
 }
-
-/**
- * Wraps any element and shows a dismissible "NEW" hint bubble pointing at it.
- * Dismissal is persisted in localStorage — never shown again once closed.
- *
- * Usage:
- *   <FeatureHint id="inbox-button" label="Retrouve tes notifications ici">
- *     <Button>Inbox</Button>
- *   </FeatureHint>
- */
 export function FeatureHint({ id, label, side = 'top', children, className }: FeatureHintProps) {
   const key = STORAGE_PREFIX + id;
   const [visible, setVisible] = useState(() => {

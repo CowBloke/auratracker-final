@@ -27,7 +27,6 @@ export const SPACING = {
 // Container Widths
 export const CONTAINER = {
   DEFAULT: 'max-w-7xl',
-  COMPACT: 'max-w-7xl',
   WIDE: 'max-w-screen-2xl',
   FULL: 'max-w-full',
 } as const;

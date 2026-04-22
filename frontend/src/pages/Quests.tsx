@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
+import { PageShell } from '@/components/layout/page-shell';
 import { t } from '@/lib/i18n';
 
 type QuestSortMode = 'recommended' | 'reward-desc' | 'target-asc' | 'title-asc';
@@ -47,8 +48,6 @@ export default function Quests() {
         questsApi.getDaily(),
         questsApi.getMyQuests(),
       ]);
-      console.log('Daily quests:', dailyRes.data.quests);
-      console.log('My quests:', myQuestsRes.data.userQuests);
       setDailyQuests(dailyRes.data.quests || []);
       setMyQuests(myQuestsRes.data.userQuests || []);
     } catch (error: any) {
@@ -240,7 +239,7 @@ export default function Quests() {
 
   if (loading) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
+      <PageShell>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -249,12 +248,12 @@ export default function Quests() {
             ))}
           </div>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
+    <PageShell>
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -499,6 +498,6 @@ export default function Quests() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageShell>
   );
 }
