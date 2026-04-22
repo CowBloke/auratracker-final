@@ -3,6 +3,9 @@ import { useEffect, useRef, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
 import AdminWarningModal from './AdminWarningModal';
+import { TutorialProvider } from '@/components/tutorial/TutorialContext';
+import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
+import { TutorialWelcomeModal } from '@/components/tutorial/TutorialWelcomeModal';
 import GameJoinPrompt from '../game/GameJoinPrompt';
 import GameReplayPrompt from '../game/GameReplayPrompt';
 import DuelChallengePopup from '../game/DuelChallengePopup';
@@ -123,6 +126,7 @@ export default function Layout() {
   }, [keyboardShortcuts, navigate, user?.id]);
 
   return (
+    <TutorialProvider>
     <ChatSidebarProvider>
       <div className="flex h-svh w-full overflow-hidden bg-background">
         <SidebarProvider
@@ -223,7 +227,10 @@ export default function Layout() {
         )}
 
         <AdminWarningModal />
+        <TutorialOverlay />
+        <TutorialWelcomeModal />
       </div>
     </ChatSidebarProvider>
+    </TutorialProvider>
   );
 }

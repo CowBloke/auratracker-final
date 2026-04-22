@@ -145,7 +145,15 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
         <div className="space-y-4">
           <SectionTitle>Actions</SectionTitle>
           <ActionCard>
-            <ActionRow icon={Building2} label="Creer une entreprise" sub={`${slotLabel} · Niveau debloque : ${unlockedLevel}`} iconBg="bg-emerald-400/15" iconColor="text-emerald-400" onClick={() => { if (canCreateBusiness) setCreateOpen(true); else toast.error('Monte Affaires pour debloquer un nouveau slot business.'); }} />
+            <ActionRow
+              icon={Building2}
+              label="Creer une entreprise"
+              sub={`${slotLabel} · Niveau debloque : ${unlockedLevel}`}
+              iconBg="bg-emerald-400/15"
+              iconColor="text-emerald-400"
+              dataTutorialId="travail-create-business-action"
+              onClick={() => { if (canCreateBusiness) setCreateOpen(true); else toast.error('Monte Affaires pour debloquer un nouveau slot business.'); }}
+            />
             <ActionRow
               icon={Megaphone}
               label="Gerer mes publicites"
@@ -157,7 +165,7 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
           </ActionCard>
         </div>
         <div className="space-y-6">
-          <div className="space-y-4">
+          <div className="space-y-4" data-tutorial-id="travail-owned-businesses">
             <SectionTitle>Mes entreprises ({isAdmin ? `${data.ownedBusinesses.length}/Illimite` : `${data.ownedBusinesses.length}/${data.businessSlots}`})</SectionTitle>
             {data.ownedBusinesses.length === 0
               ? <Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Aucune entreprise creee. Ouvre-en une depuis cette page pour utiliser ton argent reel du site.</CardContent></Card>

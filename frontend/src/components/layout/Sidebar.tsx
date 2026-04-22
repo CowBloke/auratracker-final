@@ -142,6 +142,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
   const logoButton = (
     <button
       type="button"
+      data-tutorial-id="sidebar-logo"
       onClick={handleLogoClick}
       className={cn(
         'mb-4 flex h-8 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent/50 active:scale-95 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!justify-center group-data-[collapsible=icon]:!p-2 group-data-[collapsible=icon]:!gap-0 group-data-[collapsible=icon]:mx-auto',
@@ -179,7 +180,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
       }}
       {...props}
     >
-      <SidebarContent>
+      <SidebarContent data-tutorial-id="sidebar">
         <div className="px-3 py-4">
           {logoButton}
           <SidebarMenu className="gap-0.5">
@@ -191,7 +192,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
               const currentTab = params.get('tab') ?? 'carte';
               const isActive = currentTab === tab;
               return (
-                <SidebarMenuItem key={label}>
+                <SidebarMenuItem key={label} data-tutorial-id={`you-tab-${tab}`}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive}
@@ -238,7 +239,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
 
             {/* Games */}
             {!isDisabled('/games') && (
-              <SidebarMenuItem>
+              <SidebarMenuItem data-tutorial-id="nav-games">
                 <SidebarMenuButton
                   asChild
                   isActive={isGamesSectionActive}
@@ -261,8 +262,10 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
             {mainOrderedItems.map((item) => {
               const ItemIcon = item.icon;
               const isActive = isPathActive(item.to);
+              const NAV_TUTORIAL_IDS: Record<string, string> = { '/marketplace': 'nav-marketplace', '/leaderboards': 'nav-leaderboards', '/clans': 'nav-clans', '/tutoriels': 'nav-tutoriels' };
+              const tutorialId = NAV_TUTORIAL_IDS[item.to];
               return (
-                <SidebarMenuItem key={item.to}>
+                <SidebarMenuItem key={item.to} data-tutorial-id={tutorialId}>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive}
@@ -315,7 +318,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
                 </SidebarMenuItem>
               );
             })}
-            <SidebarMenuItem>
+            <SidebarMenuItem data-tutorial-id="nav-bug-report">
               <SidebarMenuButton
                 onClick={() => setIsBugReportOpen(true)}
                 tooltip={t('sidebar_report_bug')}

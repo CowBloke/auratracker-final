@@ -55,6 +55,7 @@ export function ModalWrap({
   desc,
   wide,
   centerTitle,
+  contentDataTutorialId,
   children,
 }: {
   open: boolean;
@@ -63,11 +64,16 @@ export function ModalWrap({
   desc?: string;
   wide?: boolean;
   centerTitle?: boolean;
+  contentDataTutorialId?: string;
   children: ReactNode;
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className={wide ? 'max-w-5xl' : 'max-w-md'} aria-describedby={desc ? undefined : undefined}>
+      <DialogContent
+        className={wide ? 'max-w-5xl' : 'max-w-md'}
+        aria-describedby={desc ? undefined : undefined}
+        data-tutorial-id={contentDataTutorialId}
+      >
         <DialogHeader className={centerTitle ? 'text-center' : undefined}>
           <DialogTitle className={centerTitle ? 'text-xl sm:text-2xl' : undefined}>{title}</DialogTitle>
           {desc ? <DialogDescription>{desc}</DialogDescription> : null}
@@ -102,6 +108,7 @@ export function ActionRow({
   iconBg,
   iconColor,
   onClick,
+  dataTutorialId,
 }: {
   icon: ElementType;
   label: string;
@@ -109,9 +116,15 @@ export function ActionRow({
   iconBg: string;
   iconColor: string;
   onClick: () => void;
+  dataTutorialId?: string;
 }) {
   return (
-    <button type="button" onClick={onClick} className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/20">
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/20"
+      data-tutorial-id={dataTutorialId}
+    >
       <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', iconBg)}>
         <Icon className={cn('h-4 w-4', iconColor)} />
       </div>

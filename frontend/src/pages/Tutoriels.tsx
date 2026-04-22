@@ -1,5 +1,8 @@
 import { useEffect, useState, type ComponentType } from 'react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTutorial } from '@/components/tutorial/TutorialContext';
+import { TUTORIAL_FLOWS, TUTORIAL_FLOW_ORDER } from '@/lib/tutorials';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { PageShell } from '@/components/layout/page-shell';
@@ -1394,6 +1397,7 @@ function GuideDetail({ guide, subsectionId }: { guide: TutorialGuide; subsection
 // ─── TutorialsTab ─────────────────────────────────────────────────────────────
 
 function TutorialsTab() {
+  const { start } = useTutorial();
   const activeGuides = tutorialGuides.filter(g => !g.comingSoon);
   const [selectedGuideId, setSelectedGuideId] = useState(activeGuides[0].id);
   const [selectedSubsectionId, setSelectedSubsectionId] = useState<string | undefined>(
@@ -1410,7 +1414,48 @@ function TutorialsTab() {
     setSelectedSubsectionId(guide.subsections?.[0]?.id);
   }
 
+  const orderedFlows = TUTORIAL_FLOW_ORDER.map((id) => TUTORIAL_FLOWS[id]).filter(Boolean);
+
   return (
+    <div className="space-y-6">
+
+    {/* Interactive tutorial cards */}
+    <div>
+      <div className="mb-3 flex items-center gap-2">
+        <BookOpen className="h-4 w-4 text-muted-foreground" />
+        <h2 className={TYPOGRAPHY.H2}>Tutoriels interactifs</h2>
+      </div>
+      <p className={cn(TYPOGRAPHY.SMALL, 'mb-4 text-muted-foreground')}>
+        Des guides pas à pas directement dans l'interface — les explications s'affichent sur les éléments concernés.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {orderedFlows.map((flow, i) => (
+          <Card key={flow.id} className={cn('border-border/60 bg-card shadow-sm', i === 0 && 'border-primary/30 bg-primary/5')}>
+            <CardContent className="flex flex-col gap-3 px-4 py-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                  {i + 1}
+                </div>
+                {i === 0 && (
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">Recommandé</span>
+                )}
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold leading-snug">{flow.title}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{flow.description}</p>
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <span className="text-xs text-muted-foreground tabular-nums">{flow.steps.length} étapes</span>
+                <Button size="sm" variant={i === 0 ? 'default' : 'outline'} onClick={() => start(flow.id)} className="h-7 px-3 text-xs">
+                  Lancer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+
     <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       <Card className="h-fit border-border/60 bg-card shadow-sm lg:sticky lg:top-6 lg:self-start">
         <CardContent className="p-2">
@@ -1497,6 +1542,7 @@ function TutorialsTab() {
         </CardContent>
       </Card>
       <GuideDetail guide={selectedGuide} subsectionId={selectedSubsectionId} />
+    </div>
     </div>
   );
 }

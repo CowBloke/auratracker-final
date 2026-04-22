@@ -135,12 +135,19 @@ export function CreateBusinessModal({
 
   return (
     <>
-      <ModalWrap open={open} onClose={onClose} title="Creer une entreprise" desc={isBank ? 'La creation de la banque coute 10 000 money et la tresorerie demarre a 0.' : 'Le capital de depart est pris sur ton argent global.'}>
+      <ModalWrap
+        open={open}
+        onClose={onClose}
+        title="Creer une entreprise"
+        desc={isBank ? 'La creation de la banque coute 10 000 money et la tresorerie demarre a 0.' : 'Le capital de depart est pris sur ton argent global.'}
+        contentDataTutorialId="create-business-modal"
+      >
         <FieldRow label="Type d activite">
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
             className="w-full rounded-2xl border border-border/40 bg-muted/10 px-4 py-4 text-left transition-all hover:bg-muted/20"
+            data-tutorial-id="create-business-type"
           >
             {selectedType ? (
               <div className="flex items-center gap-4">
@@ -162,9 +169,26 @@ export function CreateBusinessModal({
           </button>
         </FieldRow>
         {selectedType ? <div className="rounded-xl border border-border/40 bg-muted/10 p-4"><p className="text-[11px] text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></div> : null}
-        <FieldRow label="Nom"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="ex : Citizen Bank" /></FieldRow>
-        {!isBank ? <FieldRow label="Capital de depart"><Input type="number" value={capital} onChange={(event) => setCapital(event.target.value)} min={selectedType?.minCapital ?? 0} /></FieldRow> : null}
-        <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedType || !name.trim() || (!isBank && Number(capital) < selectedType.minCapital)}>Creer</Button></div>
+        <FieldRow label="Nom">
+          <Input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="ex : Citizen Bank"
+            data-tutorial-id="create-business-name"
+          />
+        </FieldRow>
+        {!isBank ? (
+          <FieldRow label="Capital de depart">
+            <Input
+              type="number"
+              value={capital}
+              onChange={(event) => setCapital(event.target.value)}
+              min={selectedType?.minCapital ?? 0}
+              data-tutorial-id="create-business-capital"
+            />
+          </FieldRow>
+        ) : null}
+        <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedType || !name.trim() || (!isBank && Number(capital) < selectedType.minCapital)} data-tutorial-id="create-business-submit">Creer</Button></div>
       </ModalWrap>
       <BusinessTypePickerModal
         open={pickerOpen}
