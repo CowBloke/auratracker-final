@@ -84,6 +84,21 @@ export function getYouNotificationMeta(notification: Notification) {
   return { icon: BellRing, tone: 'bg-violet-400/15 text-violet-300 border-violet-400/20' };
 }
 
+export function relativeTime(date: string): string {
+  const ms = Date.now() - new Date(date).getTime();
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day}j`;
+  const mo = Math.floor(day / 30);
+  if (mo < 12) return `${mo}mo`;
+  return `${Math.floor(mo / 12)}a`;
+}
+
 export async function withRouteError<T>(fn: () => Promise<T>, fallback: string) {
   try {
     return await fn();

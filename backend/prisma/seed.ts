@@ -8,7 +8,7 @@ import path from 'node:path';
 
 const prisma = new PrismaClient();
 const prismaAny = prisma as any;
-const SEED_DATA_VERSION = 2; // Increment this whenever the seed data changes.
+const SEED_DATA_VERSION = 4; // Increment this whenever the seed data changes.
 const SEED_VERSION_MARKER_PATH = path.resolve('prisma', '.seed-version.json');
 
 const writeSeedVersionMarker = async () => {
@@ -55,6 +55,10 @@ const daysAgo = (days: number, hour = 12) => {
   return date;
 };
 const getDirectKey = (userAId: string, userBId: string) => [userAId, userBId].sort().join(':');
+const getCanonicalPair = (userIdA: string, userIdB: string) =>
+  userIdA < userIdB
+    ? { userAId: userIdA, userBId: userIdB }
+    : { userAId: userIdB, userBId: userIdA };
 
 const getExistingTables = async () => {
   const rows = await prisma.$queryRaw<Array<{ name: string }>>`
@@ -205,6 +209,81 @@ async function clearMockData(mockUsernames: string[], existingTables: Set<string
   }
   if (existingTables.has('RegistrationReview')) {
     await prisma.registrationReview.deleteMany();
+  }
+  if (existingTables.has('CheatingAccusation')) {
+    await prisma.cheatingAccusation.deleteMany();
+  }
+  if (existingTables.has('DivorceProposal')) {
+    await prisma.divorceProposal.deleteMany();
+  }
+  if (existingTables.has('MarriageProposal')) {
+    await prisma.marriageProposal.deleteMany();
+  }
+  if (existingTables.has('Relationship')) {
+    await prisma.relationship.deleteMany();
+  }
+  if (existingTables.has('UserSkill')) {
+    await prisma.userSkill.deleteMany();
+  }
+  if (existingTables.has('ReviewEligibility')) {
+    await prisma.reviewEligibility.deleteMany();
+  }
+  if (existingTables.has('LawyerRating')) {
+    await prisma.lawyerRating.deleteMany();
+  }
+  if (existingTables.has('BusinessRating')) {
+    await prisma.businessRating.deleteMany();
+  }
+  if (existingTables.has('FormationProductRating')) {
+    await prisma.formationProductRating.deleteMany();
+  }
+  if (existingTables.has('FormationProductPurchase')) {
+    await prisma.formationProductPurchase.deleteMany();
+  }
+  if (existingTables.has('FormationProduct')) {
+    await prisma.formationProduct.deleteMany();
+  }
+  if (existingTables.has('BankAccount')) {
+    await prisma.bankAccount.deleteMany();
+  }
+  if (existingTables.has('BusinessPurchasedItem')) {
+    await prisma.businessPurchasedItem.deleteMany();
+  }
+  if (existingTables.has('BusinessTransaction')) {
+    await prisma.businessTransaction.deleteMany();
+  }
+  if (existingTables.has('BusinessStartupProduct')) {
+    await prisma.businessStartupProduct.deleteMany();
+  }
+  if (existingTables.has('BusinessTransferTransaction')) {
+    await prisma.businessTransferTransaction.deleteMany();
+  }
+  if (existingTables.has('BusinessBuyoutOffer')) {
+    await prisma.businessBuyoutOffer.deleteMany();
+  }
+  if (existingTables.has('BusinessShareMarketListing')) {
+    await prisma.businessShareMarketListing.deleteMany();
+  }
+  if (existingTables.has('BusinessShareProposal')) {
+    await prisma.businessShareProposal.deleteMany();
+  }
+  if (existingTables.has('BusinessShareholder')) {
+    await prisma.businessShareholder.deleteMany();
+  }
+  if (existingTables.has('BusinessInvestment')) {
+    await prisma.businessInvestment.deleteMany();
+  }
+  if (existingTables.has('BusinessLoan')) {
+    await prisma.businessLoan.deleteMany();
+  }
+  if (existingTables.has('BusinessInvitation')) {
+    await prisma.businessInvitation.deleteMany();
+  }
+  if (existingTables.has('BusinessMember')) {
+    await prisma.businessMember.deleteMany();
+  }
+  if (existingTables.has('Business')) {
+    await prisma.business.deleteMany();
   }
   if (existingTables.has('UserFollow')) {
     await prisma.userFollow.deleteMany();
@@ -790,6 +869,745 @@ async function main() {
       { followerId: userByName.get('ines')!.id, followingId: userByName.get('lucas')!.id, createdAt: daysAgo(1, 19) },
     ],
   });
+
+  const youSkillKeys = ['affaires', 'social', 'intelligence', 'charisme', 'finance', 'illegalite'] as const;
+  const skillLevelByUsername: Record<string, number> = {
+    lena: 5,
+    milo: 6,
+    salma: 6,
+    zoe: 4,
+    tom: 3,
+    nina: 2,
+    ava: 5,
+    yanis: 4,
+    jade: 2,
+    raph: 2,
+    noah: 3,
+  };
+
+  await prisma.userSkill.createMany({
+    data: Object.entries(skillLevelByUsername).flatMap(([username, level]) =>
+      youSkillKeys.map((key, index) => ({
+        userId: userByName.get(username)!.id,
+        key,
+        level,
+        xp: Math.min(99, level * 12 + index * 3),
+      }))
+    ),
+  });
+
+  const lenaMiloPair = getCanonicalPair(userByName.get('lena')!.id, userByName.get('milo')!.id);
+  const zoeSalmaPair = getCanonicalPair(userByName.get('zoe')!.id, userByName.get('salma')!.id);
+  const ninaTomPair = getCanonicalPair(userByName.get('nina')!.id, userByName.get('tom')!.id);
+
+  const [relationshipLenaMilo, relationshipZoeSalma, relationshipNinaTom] = await prisma.$transaction([
+    prisma.relationship.create({
+      data: {
+        userAId: lenaMiloPair.userAId,
+        userBId: lenaMiloPair.userBId,
+        initiatedById: userByName.get('lena')!.id,
+        status: 'MARRIED',
+        connectionLevel: 93,
+        coupleBalance: 2450,
+        createdAt: daysAgo(120, 10),
+        marriedAt: daysAgo(100, 12),
+      },
+    }),
+    prisma.relationship.create({
+      data: {
+        userAId: zoeSalmaPair.userAId,
+        userBId: zoeSalmaPair.userBId,
+        initiatedById: userByName.get('zoe')!.id,
+        status: 'DATING',
+        connectionLevel: 74,
+        coupleBalance: 0,
+        createdAt: daysAgo(18, 18),
+      },
+    }),
+    prisma.relationship.create({
+      data: {
+        userAId: ninaTomPair.userAId,
+        userBId: ninaTomPair.userBId,
+        initiatedById: userByName.get('tom')!.id,
+        status: 'FRIEND',
+        connectionLevel: 63,
+        coupleBalance: 0,
+        createdAt: daysAgo(7, 14),
+      },
+    }),
+  ]);
+
+  await prisma.marriageProposal.create({
+    data: {
+      relationshipId: relationshipZoeSalma.id,
+      proposerId: userByName.get('zoe')!.id,
+      recipientId: userByName.get('salma')!.id,
+      message: 'On verrouille le duo pour la suite ?',
+      status: 'PENDING',
+      createdAt: hoursAgo(7),
+    },
+  });
+
+  await prisma.cheatingAccusation.create({
+    data: {
+      accuserId: userByName.get('lena')!.id,
+      accusedId: userByName.get('milo')!.id,
+      status: 'PENDING',
+      createdAt: hoursAgo(6),
+    },
+  });
+
+  const businesses = await prisma.business.createManyAndReturn({
+    data: [
+      {
+        ownerId: userByName.get('salma')!.id,
+        supportAgentId: userByName.get('jade')!.id,
+        name: 'Orbit Banque',
+        typeKey: 'bank',
+        description: 'Banque communautaire pour depots, prets et virements.',
+        logoUrl: MOCK_IMAGE.market,
+        location: 'Quartier central',
+        mapX: 27,
+        mapY: 34,
+        verified: true,
+        hiring: true,
+        startingCapital: 10000,
+        treasuryMoney: 18600,
+        monthlyRevenue: 4200,
+        monthlyExpenses: 800,
+        satisfaction: 90,
+        livretEpargneUnlocked: true,
+        loanInterestRate: 4.5,
+        transferFeeRate: 2.0,
+        lastBankRevenueDate: startOfDay().toISOString(),
+        lastBusinessRevenueDate: startOfDay().toISOString(),
+        createdAt: daysAgo(28, 10),
+      },
+      {
+        ownerId: userByName.get('milo')!.id,
+        supportAgentId: userByName.get('camille')!.id,
+        name: 'Nova Labs',
+        typeKey: 'startup',
+        description: 'Startup orientee produits SaaS et automatisation.',
+        logoUrl: MOCK_IMAGE.cardB,
+        location: 'Zone Tech',
+        mapX: 61,
+        mapY: 22,
+        verified: true,
+        hiring: true,
+        startingCapital: 10000,
+        treasuryMoney: 15200,
+        monthlyRevenue: 5400,
+        monthlyExpenses: 1700,
+        satisfaction: 87,
+        lastBusinessRevenueDate: startOfDay().toISOString(),
+        createdAt: daysAgo(20, 11),
+      },
+      {
+        ownerId: userByName.get('zoe')!.id,
+        supportAgentId: userByName.get('jade')!.id,
+        name: 'Lex Nova',
+        typeKey: 'law_firm',
+        description: 'Cabinet d avocats specialise en litiges entre joueurs.',
+        logoUrl: MOCK_IMAGE.bannerA,
+        location: 'District Justice',
+        mapX: 74,
+        mapY: 66,
+        verified: true,
+        hiring: true,
+        startingCapital: 2500,
+        treasuryMoney: 7600,
+        monthlyRevenue: 2300,
+        monthlyExpenses: 740,
+        satisfaction: 86,
+        lastBusinessRevenueDate: startOfDay().toISOString(),
+        createdAt: daysAgo(17, 9),
+      },
+      {
+        ownerId: userByName.get('lena')!.id,
+        supportAgentId: userByName.get('tom')!.id,
+        name: 'Campus Skills',
+        typeKey: 'formation',
+        description: 'Micro-formations pour optimiser jeu, commerce et social.',
+        logoUrl: MOCK_IMAGE.update,
+        location: 'Campus Nord',
+        mapX: 42,
+        mapY: 58,
+        verified: true,
+        hiring: true,
+        startingCapital: 2800,
+        treasuryMoney: 6300,
+        monthlyRevenue: 1750,
+        monthlyExpenses: 520,
+        satisfaction: 83,
+        formationUrl: 'https://example.com/campus-skills',
+        formationPrice: 540,
+        lastBusinessRevenueDate: startOfDay().toISOString(),
+        createdAt: daysAgo(15, 13),
+      },
+      {
+        ownerId: userByName.get('tom')!.id,
+        supportAgentId: userByName.get('nina')!.id,
+        name: 'Swift Transfer',
+        typeKey: 'transfer',
+        description: 'Service de transferts rapides avec frais reduits.',
+        logoUrl: MOCK_IMAGE.cardC,
+        location: 'Hub Commerce',
+        mapX: 50,
+        mapY: 40,
+        verified: false,
+        hiring: true,
+        startingCapital: 5000,
+        treasuryMoney: 9200,
+        monthlyRevenue: 1180,
+        monthlyExpenses: 690,
+        satisfaction: 79,
+        transferFeeRate: 1.5,
+        lastBusinessRevenueDate: startOfDay().toISOString(),
+        createdAt: daysAgo(12, 16),
+      },
+      {
+        ownerId: userByName.get('noah')!.id,
+        supportAgentId: userByName.get('ava')!.id,
+        name: 'Burger Pulse',
+        typeKey: 'restaurant',
+        description: 'Resto rapide orienté ventes NPC et commandes joueurs.',
+        logoUrl: MOCK_IMAGE.cardD,
+        location: 'Centre Ville',
+        mapX: 33,
+        mapY: 72,
+        verified: true,
+        hiring: true,
+        startingCapital: 2200,
+        treasuryMoney: 4100,
+        monthlyRevenue: 1300,
+        monthlyExpenses: 450,
+        satisfaction: 82,
+        lastBusinessRevenueDate: startOfDay().toISOString(),
+        createdAt: daysAgo(9, 12),
+      },
+      {
+        ownerId: admin.id,
+        supportAgentId: null,
+        name: 'Cour Supreme Aura',
+        typeKey: 'supreme_court',
+        description: 'Institution judiciaire d etat pour les plaintes formelles.',
+        logoUrl: MOCK_IMAGE.bannerC,
+        location: 'Capitole',
+        mapX: 86,
+        mapY: 18,
+        verified: true,
+        hiring: false,
+        startingCapital: 0,
+        treasuryMoney: 0,
+        monthlyRevenue: 0,
+        monthlyExpenses: 0,
+        satisfaction: 100,
+        isStateOwned: true,
+        createdAt: daysAgo(60, 10),
+      },
+    ],
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  const businessByName = new Map(businesses.map((business) => [business.name, business]));
+
+  await prisma.businessMember.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Orbit Banque')!.id,
+        userId: userByName.get('jade')!.id,
+        role: 'Conseillere',
+        specialty: 'Comptes premium',
+        salary: 460,
+        createdAt: daysAgo(14, 9),
+      },
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        userId: userByName.get('yanis')!.id,
+        role: 'associe',
+        specialty: 'Produit',
+        salary: 520,
+        createdAt: daysAgo(13, 11),
+      },
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        userId: userByName.get('camille')!.id,
+        role: 'Developpeuse',
+        specialty: 'Frontend',
+        salary: 430,
+        createdAt: daysAgo(10, 10),
+      },
+      {
+        businessId: businessByName.get('Lex Nova')!.id,
+        userId: userByName.get('salma')!.id,
+        role: 'Avocate',
+        specialty: 'Contentieux commercial',
+        isPrimaryLawyer: true,
+        displayOrder: 0,
+        salary: 600,
+        createdAt: daysAgo(11, 14),
+      },
+      {
+        businessId: businessByName.get('Lex Nova')!.id,
+        userId: userByName.get('theo')!.id,
+        role: 'Juriste',
+        specialty: 'Procedures rapides',
+        displayOrder: 1,
+        salary: 340,
+        createdAt: daysAgo(9, 9),
+      },
+      {
+        businessId: businessByName.get('Campus Skills')!.id,
+        userId: userByName.get('tom')!.id,
+        role: 'Formateur',
+        specialty: 'Monetisation',
+        salary: 390,
+        createdAt: daysAgo(8, 10),
+      },
+      {
+        businessId: businessByName.get('Swift Transfer')!.id,
+        userId: userByName.get('nina')!.id,
+        role: 'associee',
+        specialty: 'Operations',
+        salary: 410,
+        createdAt: daysAgo(7, 15),
+      },
+      {
+        businessId: businessByName.get('Burger Pulse')!.id,
+        userId: userByName.get('ava')!.id,
+        role: 'Gerante',
+        specialty: 'Service',
+        salary: 350,
+        createdAt: daysAgo(6, 12),
+      },
+    ],
+  });
+
+  await prisma.businessInvitation.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Campus Skills')!.id,
+        inviterId: userByName.get('lena')!.id,
+        inviteeId: userByName.get('ines')!.id,
+        employerId: userByName.get('lena')!.id,
+        employeeId: userByName.get('ines')!.id,
+        initiatedByRole: 'EMPLOYER',
+        role: 'Coach',
+        salary: 380,
+        message: 'On monte le niveau des formations social/finance.',
+        status: 'PENDING',
+        createdAt: hoursAgo(8),
+      },
+    ],
+  });
+
+  await prisma.businessLoan.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Orbit Banque')!.id,
+        borrowerId: userByName.get('raph')!.id,
+        amount: 1200,
+        termMonths: 30,
+        interestRate: 5.5,
+        motivationMessage: 'Investir dans mon stand de niveau 1.',
+        collateralAura: 20,
+        collateralAuraHeld: 20,
+        status: 'APPROVED',
+        repaidAmount: 300,
+        decidedAt: daysAgo(3, 14),
+        createdAt: daysAgo(3, 13),
+      },
+      {
+        businessId: businessByName.get('Orbit Banque')!.id,
+        borrowerId: userByName.get('hugo')!.id,
+        amount: 900,
+        termMonths: 21,
+        interestRate: 6.2,
+        motivationMessage: 'Upgrade de production et equipement.',
+        collateralAura: 10,
+        collateralAuraHeld: 10,
+        status: 'PENDING',
+        repaidAmount: 0,
+        createdAt: hoursAgo(5),
+      },
+    ],
+  });
+
+  await prisma.businessInvestment.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        investorId: userByName.get('ava')!.id,
+        amount: 2200,
+        riskLevel: 'medium',
+        expectedReturnMin: 150,
+        expectedReturnMax: 420,
+        createdAt: daysAgo(2, 16),
+      },
+      {
+        businessId: businessByName.get('Burger Pulse')!.id,
+        investorId: userByName.get('lena')!.id,
+        amount: 900,
+        riskLevel: 'low',
+        expectedReturnMin: 20,
+        expectedReturnMax: 65,
+        createdAt: daysAgo(1, 15),
+      },
+    ],
+  });
+
+  await prisma.businessShareholder.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        userId: userByName.get('milo')!.id,
+        sharePercent: 65,
+        investedAmount: 10000,
+        averagePrice: 154,
+      },
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        userId: userByName.get('ava')!.id,
+        sharePercent: 20,
+        investedAmount: 3600,
+        averagePrice: 180,
+      },
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        userId: userByName.get('yanis')!.id,
+        sharePercent: 15,
+        investedAmount: 2600,
+        averagePrice: 173,
+      },
+      {
+        businessId: businessByName.get('Swift Transfer')!.id,
+        userId: userByName.get('tom')!.id,
+        sharePercent: 75,
+        investedAmount: 5000,
+        averagePrice: 66,
+      },
+      {
+        businessId: businessByName.get('Swift Transfer')!.id,
+        userId: userByName.get('nina')!.id,
+        sharePercent: 25,
+        investedAmount: 1800,
+        averagePrice: 72,
+      },
+    ],
+  });
+
+  await prisma.businessShareProposal.create({
+    data: {
+      businessId: businessByName.get('Nova Labs')!.id,
+      investorId: userByName.get('salma')!.id,
+      ownerId: userByName.get('milo')!.id,
+      sharePercent: 8,
+      amount: 1800,
+      suggestedAmount: 2100,
+      message: 'Je veux entrer pour booster le run croissance.',
+      status: 'PENDING',
+      createdAt: hoursAgo(4),
+    },
+  });
+
+  await prisma.businessShareMarketListing.create({
+    data: {
+      businessId: businessByName.get('Swift Transfer')!.id,
+      sellerId: userByName.get('nina')!.id,
+      sharePercent: 5,
+      price: 430,
+      status: 'ACTIVE',
+      createdAt: hoursAgo(9),
+    },
+  });
+
+  await prisma.businessBuyoutOffer.create({
+    data: {
+      businessId: businessByName.get('Burger Pulse')!.id,
+      bidderId: userByName.get('tom')!.id,
+      ownerId: userByName.get('noah')!.id,
+      amount: 6200,
+      message: 'Offre cash immediate avec reprise de staff.',
+      status: 'PENDING',
+      createdAt: hoursAgo(10),
+    },
+  });
+
+  await prisma.businessTransferTransaction.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Swift Transfer')!.id,
+        senderId: userByName.get('tom')!.id,
+        recipientId: userByName.get('hugo')!.id,
+        amount: 300,
+        fee: 5,
+        feeRate: 1.5,
+        createdAt: hoursAgo(11),
+      },
+      {
+        businessId: businessByName.get('Swift Transfer')!.id,
+        senderId: userByName.get('nina')!.id,
+        recipientId: userByName.get('raph')!.id,
+        amount: 420,
+        fee: 6,
+        feeRate: 1.5,
+        createdAt: hoursAgo(3),
+      },
+    ],
+  });
+
+  await prisma.businessStartupProduct.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        slotIndex: 1,
+        name: 'Produit Alpha',
+        deployedLevel: 2,
+      },
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        slotIndex: 2,
+        name: 'Produit Nova',
+        deployedLevel: 1,
+        activeResearchLevel: 2,
+        researchStartedAt: hoursAgo(2),
+        researchEndsAt: hoursAgo(-1),
+        researchCost: 6400,
+      },
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        slotIndex: 3,
+        name: 'Produit Pulse',
+        deployedLevel: 0,
+      },
+    ],
+  });
+
+  await prisma.bankAccount.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Orbit Banque')!.id,
+        userId: userByName.get('lena')!.id,
+        balance: 1450,
+        accountType: 'COURANT',
+      },
+      {
+        businessId: businessByName.get('Orbit Banque')!.id,
+        userId: userByName.get('milo')!.id,
+        balance: 1900,
+        accountType: 'COURANT',
+      },
+      {
+        businessId: businessByName.get('Orbit Banque')!.id,
+        userId: userByName.get('salma')!.id,
+        balance: 2600,
+        accountType: 'EPARGNE',
+      },
+    ],
+  });
+
+  await prisma.businessTransaction.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Orbit Banque')!.id,
+        type: 'LOAN_DISBURSEMENT',
+        amount: -1200,
+        label: 'Pret accorde a raph',
+        actorId: userByName.get('salma')!.id,
+        createdAt: daysAgo(3, 14),
+      },
+      {
+        businessId: businessByName.get('Orbit Banque')!.id,
+        type: 'ACCOUNT_DEPOSIT',
+        amount: 700,
+        label: 'Depot compte courant lena',
+        actorId: userByName.get('lena')!.id,
+        createdAt: daysAgo(1, 15),
+      },
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        type: 'INVESTMENT',
+        amount: 2200,
+        label: 'Investissement de ava',
+        actorId: userByName.get('ava')!.id,
+        createdAt: daysAgo(2, 16),
+      },
+      {
+        businessId: businessByName.get('Campus Skills')!.id,
+        type: 'FORMATION_SALE',
+        amount: 540,
+        label: 'Vente formation monetisation',
+        actorId: userByName.get('noah')!.id,
+        createdAt: hoursAgo(20),
+      },
+      {
+        businessId: businessByName.get('Swift Transfer')!.id,
+        type: 'TRANSFER_FEE',
+        amount: 11,
+        label: 'Frais de transfert cumules',
+        actorId: userByName.get('tom')!.id,
+        createdAt: hoursAgo(2),
+      },
+    ],
+  });
+
+  await prisma.businessRating.createMany({
+    data: [
+      {
+        businessId: businessByName.get('Orbit Banque')!.id,
+        userId: userByName.get('lena')!.id,
+        rating: 5,
+        comment: 'Service rapide et lisible.',
+        createdAt: daysAgo(2, 12),
+      },
+      {
+        businessId: businessByName.get('Nova Labs')!.id,
+        userId: userByName.get('salma')!.id,
+        rating: 4,
+        comment: 'Bon potentiel, a structurer encore.',
+        createdAt: daysAgo(1, 11),
+      },
+      {
+        businessId: businessByName.get('Burger Pulse')!.id,
+        userId: userByName.get('hugo')!.id,
+        rating: 4,
+        comment: 'Bon rapport qualite prix.',
+        createdAt: hoursAgo(18),
+      },
+    ],
+  });
+
+  const formationProducts = await prisma.formationProduct.createManyAndReturn({
+    data: [
+      {
+        businessId: businessByName.get('Campus Skills')!.id,
+        title: 'Monetiser ses quetes quotidiennes',
+        description: 'Methodes simples pour convertir quetes en cash regulier.',
+        price: 540,
+        url: 'https://example.com/formation-quetes',
+        imageUrl: MOCK_IMAGE.cardE,
+        status: 'APPROVED',
+        createdAt: daysAgo(6, 10),
+      },
+      {
+        businessId: businessByName.get('Campus Skills')!.id,
+        title: 'Guide social et reputations',
+        description: 'Ameliorer connexions, reputations et interactions utiles.',
+        price: 620,
+        url: 'https://example.com/formation-social',
+        imageUrl: MOCK_IMAGE.cardF,
+        status: 'APPROVED',
+        createdAt: daysAgo(4, 11),
+      },
+    ],
+    select: { id: true, title: true },
+  });
+
+  const formationProductByTitle = new Map(formationProducts.map((product) => [product.title, product]));
+
+  await prisma.formationProductPurchase.createMany({
+    data: [
+      {
+        userId: userByName.get('noah')!.id,
+        businessId: businessByName.get('Campus Skills')!.id,
+        productId: formationProductByTitle.get('Monetiser ses quetes quotidiennes')!.id,
+        pricePaid: 540,
+        purchasedAt: hoursAgo(20),
+        reviewPromptAt: hoursAgo(2),
+      },
+      {
+        userId: userByName.get('yanis')!.id,
+        businessId: businessByName.get('Campus Skills')!.id,
+        productId: formationProductByTitle.get('Guide social et reputations')!.id,
+        pricePaid: 620,
+        purchasedAt: hoursAgo(16),
+        reviewPromptAt: hoursAgo(1),
+      },
+    ],
+  });
+
+  await prisma.formationProductRating.createMany({
+    data: [
+      {
+        productId: formationProductByTitle.get('Monetiser ses quetes quotidiennes')!.id,
+        businessId: businessByName.get('Campus Skills')!.id,
+        userId: userByName.get('noah')!.id,
+        rating: 5,
+        comment: 'Clair et actionnable en 10 minutes.',
+        createdAt: hoursAgo(4),
+      },
+      {
+        productId: formationProductByTitle.get('Guide social et reputations')!.id,
+        businessId: businessByName.get('Campus Skills')!.id,
+        userId: userByName.get('yanis')!.id,
+        rating: 4,
+        comment: 'Bon guide, exemples utiles.',
+        createdAt: hoursAgo(3),
+      },
+    ],
+  });
+
+  await prisma.reviewEligibility.createMany({
+    data: [
+      {
+        userId: userByName.get('noah')!.id,
+        businessId: businessByName.get('Campus Skills')!.id,
+        formationProductId: formationProductByTitle.get('Monetiser ses quetes quotidiennes')!.id,
+        targetType: 'FORMATION_PRODUCT',
+        sourceType: 'FORMATION_PURCHASE',
+        promptAt: hoursAgo(2),
+      },
+      {
+        userId: userByName.get('yanis')!.id,
+        businessId: businessByName.get('Campus Skills')!.id,
+        formationProductId: formationProductByTitle.get('Guide social et reputations')!.id,
+        targetType: 'FORMATION_PRODUCT',
+        sourceType: 'FORMATION_PURCHASE',
+        promptAt: hoursAgo(1),
+      },
+      {
+        userId: userByName.get('lena')!.id,
+        businessId: businessByName.get('Orbit Banque')!.id,
+        targetType: 'BUSINESS',
+        sourceType: 'BANK_ACCOUNT',
+        promptAt: hoursAgo(3),
+      },
+    ],
+  });
+
+  await prisma.businessPurchasedItem.createMany({
+    data: [
+      {
+        userId: userByName.get('hugo')!.id,
+        businessId: businessByName.get('Burger Pulse')!.id,
+        businessName: 'Burger Pulse',
+        itemKey: 'combo_burger',
+        itemLabel: 'Menu Burger',
+        itemEmoji: '🍔',
+        price: 55,
+        quantity: 1,
+        acquiredAt: hoursAgo(9),
+      },
+      {
+        userId: userByName.get('raph')!.id,
+        businessId: businessByName.get('Burger Pulse')!.id,
+        businessName: 'Burger Pulse',
+        itemKey: 'frites',
+        itemLabel: 'Frites',
+        itemEmoji: '🍟',
+        price: 22,
+        quantity: 2,
+        acquiredAt: hoursAgo(6),
+      },
+    ],
+  });
+
+  void relationshipLenaMilo;
+  void relationshipNinaTom;
 
   const items = [
     {

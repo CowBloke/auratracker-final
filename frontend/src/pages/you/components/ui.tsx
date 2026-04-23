@@ -11,7 +11,7 @@ import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
 import { type YouJobOffer, type YouPlayer } from '@/services/api';
 import { type FeedItem } from '../types';
-import { formatMoney, getRelationshipPill, getYouNotificationMeta } from '../utils';
+import { formatMoney, getRelationshipPill, getYouNotificationMeta, relativeTime } from '../utils';
 
 export function Pill({ label, color }: { label: string; color: string }) {
   return <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', color)}>{label}</span>;
@@ -170,23 +170,22 @@ export function FeedCard({
   onRepayLoan?: (loanId: string, percentage: number) => Promise<void>;
 }) {
   const [confirmMarriage, setConfirmMarriage] = useState(false);
-  const dateStr = new Date(item.date).toLocaleString('fr-FR');
+  const timeAgo = relativeTime(item.date);
 
   if (item.kind === 'notification') {
     const meta = getYouNotificationMeta(item.notification);
     const Icon = meta.icon;
     return (
-      <div className="flex items-start gap-3 rounded-2xl border border-border/40 bg-background/60 px-4 py-3">
+      <div className="flex items-start gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3">
         <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border', meta.tone)}>
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold">{item.notification.title}</p>
-            {!item.notification.isRead ? <Pill label="Nouveau" color="bg-foreground text-background" /> : null}
+            <span className="shrink-0 text-[10px] text-muted-foreground/60">{timeAgo}</span>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">{item.notification.body}</p>
-          <p className="mt-1.5 text-[11px] text-muted-foreground/60">{dateStr}</p>
         </div>
       </div>
     );
@@ -198,7 +197,7 @@ export function FeedCard({
       ? `${item.offer.inviter.username} te propose le role ${item.offer.role}`
       : `${item.offer.employee.username} candidate pour ${item.offer.role}`;
     return (
-      <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 px-4 py-3">
+      <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-400/15">
             <UserPlus className="h-4 w-4 text-violet-300" />
@@ -209,7 +208,7 @@ export function FeedCard({
               <Pill label={directionLabel} color="bg-violet-400/15 text-violet-300" />
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">{subtitle} · {item.offer.salary.toLocaleString('fr-FR')} money/jour</p>
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{dateStr}</p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
             {item.offer.needsViewerAcceptance ? (
               <div className="mt-2 flex gap-2">
                 <Button size="sm" className="h-7 text-xs" onClick={() => void onRespondJobOffer(item.offer, 'accept')}>Accepter</Button>
@@ -227,7 +226,7 @@ export function FeedCard({
   if (item.kind === 'marriage_proposal') {
     const proposal = item.relationship.pendingProposal!;
     return (
-      <div className="rounded-2xl border border-pink-400/20 bg-pink-400/5 px-4 py-3">
+      <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pink-400/15">
             <Heart className="h-4 w-4 text-pink-300" />
@@ -238,7 +237,7 @@ export function FeedCard({
               <Pill label="Mariage" color="bg-pink-400/15 text-pink-300" />
             </div>
             {proposal.message ? <p className="mt-0.5 text-xs text-muted-foreground">{proposal.message}</p> : null}
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{dateStr}</p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
             {confirmMarriage ? (
               <div className="mt-2 space-y-2">
                 <div className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-200 space-y-1">
@@ -267,7 +266,7 @@ export function FeedCard({
   if (item.kind === 'divorce_proposal') {
     const proposal = item.relationship.pendingDivorceProposal!;
     return (
-      <div className="rounded-2xl border border-rose-400/20 bg-rose-400/5 px-4 py-3">
+      <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-400/15">
             <X className="h-4 w-4 text-rose-300" />
@@ -278,7 +277,7 @@ export function FeedCard({
               <Pill label="Divorce" color="bg-rose-400/15 text-rose-300" />
             </div>
             {proposal.message ? <p className="mt-0.5 text-xs text-muted-foreground">{proposal.message}</p> : null}
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{dateStr}</p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
             <div className="mt-2 flex gap-2">
               <Button size="sm" className="h-7 text-xs" onClick={() => void onRespondDivorce(proposal.id, 'accept')}>Valider</Button>
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRespondDivorce(proposal.id, 'reject')}>Refuser</Button>
@@ -293,7 +292,7 @@ export function FeedCard({
     const totalOwed = Math.round(item.loan.amount * (1 + item.loan.interestRate / 100));
     const remaining = Math.max(0, totalOwed - (item.loan.repaidAmount ?? 0));
     return (
-      <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 px-4 py-3">
+      <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/15">
             <Landmark className="h-4 w-4 text-amber-300" />
@@ -305,7 +304,7 @@ export function FeedCard({
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">{formatMoney(item.loan.amount)} principal · {item.loan.interestRate} % · {item.loan.termDays} jours</p>
             <p className="mt-0.5 text-xs text-muted-foreground">Reste a rembourser : <span className="font-semibold text-amber-300">{formatMoney(remaining)}</span></p>
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{dateStr}</p>
+            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
             {onRepayLoan ? (
               <div className="mt-2 flex gap-2">
                 <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRepayLoan(item.loan.id, 50)}>
@@ -325,7 +324,7 @@ export function FeedCard({
   if (item.kind === 'relationship') {
     const pill = getRelationshipPill(item.relationship.status);
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-border/40 bg-background/60 px-4 py-3">
+      <div className="flex items-center gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3">
         <UserAvatar player={item.relationship.otherUser} className="h-9 w-9 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -337,7 +336,7 @@ export function FeedCard({
           <div className="mt-1.5">
             <ProgressBar value={item.relationship.connectionLevel} color="bg-pink-400" />
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground/60">{dateStr}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground/60">{timeAgo}</p>
         </div>
         <span className="shrink-0 text-sm font-bold tabular-nums text-pink-400">{item.relationship.connectionLevel}%</span>
       </div>

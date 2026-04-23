@@ -783,6 +783,10 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
       .filter((proposal: any) => proposal.status === 'PENDING')
       .map((proposal: any) => serializeShareProposal(proposal, viewerId)),
     transferHistory: business.transferHistory.map((entry: any) => serializeTransferHistoryEntry(entry)),
+    revenueHistory: (business.transactions ?? [])
+      .filter((tx: any) => tx.type === 'DAILY_REVENUE')
+      .reverse()
+      .map((tx: any) => tx.amount),
     pendingBuyoutOffers: business.buyoutOffers
       .filter((offer: any) => offer.status === 'PENDING')
       .map((offer: any) => serializeBuyoutOffer(offer, viewerId)),

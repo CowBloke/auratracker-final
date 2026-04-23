@@ -129,7 +129,9 @@
       "Bash(head -n 1526 /Users/viktorabe/Documents/GitHub/auratracker-final/frontend/src/pages/Information.tsx)",
       "Bash(mv /tmp/info_trimmed.tsx /Users/viktorabe/Documents/GitHub/auratracker-final/frontend/src/pages/Information.tsx)",
       "Bash(xargs cat:*)",
-      "WebFetch(domain:api.anthropic.com)"
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(grep -v 'prisma\\\\.$transaction\\\\|await.*tx\\\\.\\\\|const transactions\\\\|businessTransaction')",
+      "Bash(grep -v 'prisma\\\\.$transaction\\\\|await.*tx\\\\.\\\\|logBusiness\\\\|getBusinessT\\\\|BusinessTransaction\\\\.')"
     ]
   },
   "outputStyle": "default"

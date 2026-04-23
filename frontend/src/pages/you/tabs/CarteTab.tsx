@@ -19,7 +19,7 @@ import {
   clamp,
   getBusinessPinColor,
 } from '../mapConstants';
-import { getYouNotificationMeta, isYouNotification } from '../utils';
+import { getYouNotificationMeta, isYouNotification, relativeTime } from '../utils';
 
 interface MapPin {
   business: YouBusiness;
@@ -348,6 +348,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const hoverPopupRef = useRef<maplibregl.Popup | null>(null);
+  const labelMarkerRef = useRef<maplibregl.Marker | null>(null);
   const { notifications, unreadCount } = useNotifications();
   const [mapReady, setMapReady] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
@@ -357,6 +358,9 @@ export const CarteTab = forwardRef<CarteTabHandle, {
   const [placingBusinessId, setPlacingBusinessId] = useState<string | null>(null);
   const [savingPlacementBusinessId, setSavingPlacementBusinessId] = useState<string | null>(null);
   const [tickerOffset, setTickerOffset] = useState(0);
+  const [ownerFilter, setOwnerFilter] = useState<'all' | 'mine'>('all');
+  const [hoverBusinessId, setHoverBusinessId] = useState<string | null>(null);
+  const hoverBusinessIdRef = useRef<string | null>(null);
 
   useImperativeHandle(ref, () => ({
     startPlacing: (id: string) => handleStartPlacement(id),
@@ -405,7 +409,10 @@ export const CarteTab = forwardRef<CarteTabHandle, {
   const placedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX != null && b.mapY != null), [visibleBusinesses]);
   const unplacedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX == null || b.mapY == null), [visibleBusinesses]);
 
-  const pins = useMemo(() => buildPins(allBusinesses, userId, isAdmin), [allBusinesses, userId, isAdmin]);
+  const pins = useMemo(() => {
+    const source = ownerFilter === 'mine' ? ownedBusinesses : allBusinesses;
+    return buildPins(source, userId, isAdmin);
+  }, [ownerFilter, ownedBusinesses, allBusinesses, userId, isAdmin]);
   const sourceData = useMemo(() => buildSourceData(pins, selectedBusinessId), [pins, selectedBusinessId]);
 
   const selectedBusiness = allBusinesses.find((b) => b.id === selectedBusinessId) ?? null;
@@ -526,7 +533,8 @@ export const CarteTab = forwardRef<CarteTabHandle, {
           cluster: true,
           clusterMaxZoom: 9,
           clusterRadius: 25,
-        });
+          promoteId: 'id',
+        } as any);
 
         // Cluster bubble (icon generated on demand via styleimagemissing)
         map.addLayer({
@@ -550,9 +558,19 @@ export const CarteTab = forwardRef<CarteTabHandle, {
           source: SOURCE_ID,
           filter: ['!', ['has', 'point_count']],
           paint: {
-            'circle-radius': ['case', ['boolean', ['get', 'selected'], false], 22, 16],
+            'circle-radius': [
+              'case',
+              ['boolean', ['get', 'selected'], false], 22,
+              ['boolean', ['feature-state', 'hovered'], false], 20,
+              16,
+            ],
             'circle-color': ['get', 'pinColor'],
-            'circle-opacity': ['case', ['boolean', ['get', 'selected'], false], 0.22, 0.1],
+            'circle-opacity': [
+              'case',
+              ['boolean', ['get', 'selected'], false], 0.22,
+              ['boolean', ['feature-state', 'hovered'], false], 0.18,
+              0.1,
+            ],
             'circle-blur': 0.9,
           },
         });
@@ -570,7 +588,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
               ['concat', 'pin-', ['get', 'typeKey'], '-sel'],
               ['concat', 'pin-', ['get', 'typeKey']],
             ],
-            'icon-size': 1,
+            'icon-size': ['case', ['boolean', ['feature-state', 'hovered'], false], 1.12, 1],
             'icon-allow-overlap': true,
             'icon-ignore-placement': true,
             'icon-anchor': 'center',
@@ -681,6 +699,11 @@ export const CarteTab = forwardRef<CarteTabHandle, {
       const coordinates = (feature?.geometry as GeoJSON.Point | undefined)?.coordinates;
       if (!properties || !coordinates) return;
 
+      const bizId = String(properties.id);
+      map.setFeatureState({ source: SOURCE_ID, id: bizId }, { hovered: true });
+      hoverBusinessIdRef.current = bizId;
+      setHoverBusinessId(bizId);
+
       closeHoverPopup();
       const popupProperties = properties as unknown as BusinessFeatureProperties;
       hoverPopupRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 14 })
@@ -691,6 +714,11 @@ export const CarteTab = forwardRef<CarteTabHandle, {
     };
 
     const handlePinMouseLeave = () => {
+      if (hoverBusinessIdRef.current) {
+        map.removeFeatureState({ source: SOURCE_ID, id: hoverBusinessIdRef.current });
+      }
+      hoverBusinessIdRef.current = null;
+      setHoverBusinessId(null);
       closeHoverPopup();
     };
 
@@ -738,6 +766,44 @@ export const CarteTab = forwardRef<CarteTabHandle, {
     observer.observe(container);
     return () => observer.disconnect();
   }, [mapReady]);
+
+  // Label marker below hovered / selected pin
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    const activeId = hoverBusinessId ?? selectedBusinessId;
+    const activeBiz = activeId ? allBusinesses.find((b) => b.id === activeId) : null;
+
+    labelMarkerRef.current?.remove();
+    labelMarkerRef.current = null;
+
+    if (activeBiz && activeBiz.mapX != null && activeBiz.mapY != null) {
+      const el = document.createElement('div');
+      el.textContent = activeBiz.name;
+      el.style.cssText = [
+        'position:absolute',
+        'font-size:10px',
+        'font-weight:600',
+        'padding:2px 6px',
+        'border-radius:4px',
+        'background:hsl(0 0% 0% / 0.6)',
+        'color:hsl(0 0% 95%)',
+        'backdrop-filter:blur(4px)',
+        'white-space:nowrap',
+        'pointer-events:none',
+        'transform:translateX(-50%)',
+      ].join(';');
+      labelMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'top', offset: [0, 20] })
+        .setLngLat([activeBiz.mapX, activeBiz.mapY])
+        .addTo(map);
+    }
+
+    return () => {
+      labelMarkerRef.current?.remove();
+      labelMarkerRef.current = null;
+    };
+  }, [mapReady, hoverBusinessId, selectedBusinessId, allBusinesses]);
 
   // Cursor style
   useEffect(() => {
@@ -791,6 +857,23 @@ export const CarteTab = forwardRef<CarteTabHandle, {
       {/* Map fills everything */}
       <div ref={mapContainerRef} className="absolute inset-0" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/15 via-transparent to-background/15" />
+
+      {/* Owner filter pills — always visible */}
+      <div className={cn('pointer-events-auto absolute top-3 z-10 flex gap-1.5', embedded ? 'left-3' : 'left-[280px]')}>
+        {(['all', 'mine'] as const).map((f) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => setOwnerFilter(f)}
+            style={ownerFilter === f
+              ? { background: 'hsl(var(--foreground))', color: 'hsl(var(--background))', borderColor: 'hsl(var(--foreground))' }
+              : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'hsl(var(--border) / 0.3)' }}
+            className="rounded-full border px-3 py-1 text-[11px] font-medium transition-all"
+          >
+            {f === 'all' ? 'Tout' : 'À toi'}
+          </button>
+        ))}
+      </div>
 
       {/* Left floating panel — hidden when embedded in dashboard */}
       {!embedded && <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[264px] flex-col gap-2">
@@ -1021,14 +1104,11 @@ export const CarteTab = forwardRef<CarteTabHandle, {
                         <ItemIcon className="h-3.5 w-3.5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start justify-between gap-2">
                           <p className="truncate text-[12px] font-semibold text-foreground">{notification.title}</p>
-                          {!notification.isRead ? <span className="shrink-0 rounded-full bg-foreground px-1.5 py-0.5 text-[9px] font-semibold text-background">Nouveau</span> : null}
+                          <span className="shrink-0 text-[10px] text-muted-foreground/70">{relativeTime(notification.createdAt)}</span>
                         </div>
                         <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{notification.body}</p>
-                        <p className="mt-1 text-[10px] text-muted-foreground/70">
-                          {new Date(notification.createdAt).toLocaleString('fr-FR')}
-                        </p>
                       </div>
                     </div>
                   </div>

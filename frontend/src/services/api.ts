@@ -452,6 +452,7 @@ export interface YouBusiness {
   suggestedShareAmount: number;
   pendingShareholderProposals: YouBusinessShareProposal[];
   transferHistory: YouBusinessTransferHistoryEntry[];
+  revenueHistory?: number[];
   pendingBuyoutOffers: YouBusinessBuyoutOffer[];
   startupProducts: YouStartupProduct[];
   livretEpargneUnlocked?: boolean;

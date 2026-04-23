@@ -1,12 +1,13 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import {
   Brain, Building2, ShieldAlert, Star, TrendingUp, Users,
-  Wallet, MapPin, AlertTriangle, ChevronDown, ChevronRight,
+  Wallet, MapPin, AlertTriangle, ChevronDown, ChevronRight, Plus,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { cn } from '@/lib/utils';
-import { type YouState, type YouSkill, type YouJobOffer, youApi } from '@/services/api';
+import { type YouState, type YouSkill, type YouJobOffer, type YouBusiness, youApi } from '@/services/api';
+import { CreateBusinessModal, ManageBusinessModal } from './components/modals';
 import { BUSINESS_ICON_MAP } from './constants';
 import { getBusinessPinColor, TYPE_EMOJI } from './mapConstants';
 import { isYouNotification, withRouteError } from './utils';
@@ -26,13 +27,14 @@ const SKILL_COLOR_MAP: Record<YouSkill['color'], { icon: string; text: string }>
   rose:    { icon: 'text-rose-400',    text: 'text-rose-400'    },
 };
 
-const SKILL_BG_MAP: Record<YouSkill['color'], string> = {
-  emerald: 'bg-emerald-400/10',
-  purple:  'bg-purple-400/10',
-  sky:     'bg-sky-400/10',
-  pink:    'bg-pink-400/10',
-  amber:   'bg-amber-400/10',
-  rose:    'bg-rose-400/10',
+
+const SKILL_HSL_MAP: Record<YouSkill['color'], string> = {
+  emerald: '152 69% 52%',
+  purple:  '280 93% 75%',
+  sky:     '198 93% 60%',
+  pink:    '330 86% 70%',
+  amber:   '43 96% 56%',
+  rose:    '351 95% 71%',
 };
 
 const SKILL_ICON_MAP: Record<string, typeof Brain> = {
@@ -44,21 +46,42 @@ const SKILL_ICON_MAP: Record<string, typeof Brain> = {
   illegalite: ShieldAlert,
 };
 
+// ---- Sparkline ----
+
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const h = 26;
+  const w = 260;
+  const step = w / (data.length - 1);
+  const pts = data.map((v, i) => `${i * step},${h - ((v - min) / range) * (h - 4) - 2}`);
+  const d = 'M ' + pts.join(' L ');
+  const fillD = `${d} L ${w},${h} L 0,${h} Z`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="mt-2 h-[26px] w-full">
+      <path d={fillD} fill={color} opacity="0.12" />
+      <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // ---- Business tile (owned — left rail) ----
 
-function OwnedBizTile({ b, isSelected, onSelect, onStartPlacing }: {
-  b: YouState['ownedBusinesses'][number];
-  isSelected: boolean;
-  onSelect: () => void;
+function OwnedBizTile({ b, onManage, onStartPlacing }: {
+  b: YouBusiness;
+  onManage: () => void;
   onStartPlacing: (id: string) => void;
 }) {
   const Icon = BUSINESS_ICON_MAP[b.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
   const color = getBusinessPinColor(b.typeKey);
   const net = b.monthlyRevenue - b.monthlyExpenses;
   const isUnplaced = b.mapX == null || b.mapY == null;
+  const sparkData = (b.revenueHistory ?? []).slice(-30);
 
   return (
-    <div className={cn('rounded-xl border transition-all', isSelected ? 'border-border bg-muted/20' : 'border-border/40 bg-card')}>
+    <div className="rounded-xl border border-border/40 bg-card transition-all hover:border-border">
       {/* Placement warning */}
       {isUnplaced && (
         <div className="flex items-center gap-2 rounded-t-xl border-b border-amber-400/20 bg-amber-400/8 px-3 py-1.5">
@@ -76,7 +99,7 @@ function OwnedBizTile({ b, isSelected, onSelect, onStartPlacing }: {
       )}
 
       {/* Tile body */}
-      <button type="button" onClick={onSelect} className="w-full p-3 text-left">
+      <button type="button" onClick={onManage} className="w-full p-3 text-left">
         <div className="mb-2.5 flex items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: `${color}22` }}>
             <Icon className="h-4 w-4" style={{ color }} />
@@ -85,8 +108,7 @@ function OwnedBizTile({ b, isSelected, onSelect, onStartPlacing }: {
             <div className="truncate text-[12px] font-semibold">{b.name}</div>
             <div className="text-[10px] text-muted-foreground">{b.type?.label ?? b.typeKey} · Niv. {b.level}</div>
           </div>
-          {isSelected && <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-          {!isSelected && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />}
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
         </div>
         <div className="grid grid-cols-2 gap-1.5">
           <div>
@@ -100,6 +122,7 @@ function OwnedBizTile({ b, isSelected, onSelect, onStartPlacing }: {
             </div>
           </div>
         </div>
+        <Sparkline data={sparkData} color={color} />
       </button>
     </div>
   );
@@ -140,16 +163,15 @@ function OtherBizRow({ b, onSelect, isSelected }: {
 function SkillCell({ skill }: { skill: YouSkill }) {
   const Icon = SKILL_ICON_MAP[skill.key] ?? Building2;
   const theme = SKILL_COLOR_MAP[skill.color] ?? SKILL_COLOR_MAP.amber;
-  const bg = SKILL_BG_MAP[skill.color] ?? SKILL_BG_MAP.amber;
   const pct = Math.min(100, Math.round((skill.xp / skill.maxXp) * 100));
 
   return (
-    <div title={`${skill.label} · Niv. ${skill.level}`} className="flex cursor-default flex-col items-center rounded-xl border border-border/40 bg-card py-2">
+    <div title={`${skill.label} · Niv. ${skill.level}`} className="flex cursor-pointer flex-col items-center rounded-xl border border-border/40 bg-card p-[10px_8px] transition-colors hover:bg-muted/30">
       <div
-        className={cn('relative mb-1.5 flex h-10 w-10 items-center justify-center rounded-full', bg)}
-        style={{ background: `conic-gradient(hsl(var(--${skill.color}-400, 160 84% 39%)) ${pct}%, transparent 0)` }}
+        className="relative mb-1.5 flex h-10 w-10 items-center justify-center rounded-full"
+        style={{ background: `conic-gradient(hsl(${SKILL_HSL_MAP[skill.color] ?? '43 96% 56%'}) ${pct}%, hsl(var(--muted) / 0.35) 0)` }}
       >
-        <div className={cn('absolute inset-[3px] flex items-center justify-center rounded-full', bg)}>
+        <div className="absolute inset-[3px] flex items-center justify-center rounded-full" style={{ background: 'hsl(var(--card))' }}>
           <Icon className={cn('h-4 w-4', theme.icon)} />
         </div>
       </div>
@@ -161,13 +183,13 @@ function SkillCell({ skill }: { skill: YouSkill }) {
 
 // ---- Left Rail ----
 
-function DashLeftRail({ data, selectedId, onSelectBiz, onStartPlacing }: {
+function DashLeftRail({ data, onManageBiz, onStartPlacing, onCreateBusiness }: {
   data: YouState;
-  selectedId: string | null;
-  onSelectBiz: (id: string | null) => void;
+  onManageBiz: (id: string) => void;
   onStartPlacing: (id: string) => void;
+  onCreateBusiness: () => void;
 }) {
-  const [showOthers, setShowOthers] = useState(false);
+  const [showAllOthers, setShowAllOthers] = useState(false);
   const owned = data.ownedBusinesses;
   const others = useMemo(() => {
     const ownedIds = new Set(owned.map((b) => b.id));
@@ -179,6 +201,9 @@ function DashLeftRail({ data, selectedId, onSelectBiz, onStartPlacing }: {
       }, []);
   }, [data, owned]);
 
+  const previewOtherIdx = useMemo(() => (others.length > 0 ? Math.floor(Math.random() * others.length) : 0), [others.length]);
+  const canCreate = owned.length < data.businessSlots;
+
   const totalTreasury = owned.reduce((s, b) => s + b.treasuryMoney, 0);
   const totalNet = owned.reduce((s, b) => s + b.monthlyRevenue - b.monthlyExpenses, 0);
 
@@ -187,7 +212,7 @@ function DashLeftRail({ data, selectedId, onSelectBiz, onStartPlacing }: {
       {/* Empire header */}
       <div className="mb-3 flex items-center justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Ton empire</span>
-        <span className="rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{owned.length}</span>
+        <span className="rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{owned.length}/{data.businessSlots}</span>
       </div>
 
       {owned.length > 0 && (
@@ -209,8 +234,7 @@ function DashLeftRail({ data, selectedId, onSelectBiz, onStartPlacing }: {
           <OwnedBizTile
             key={b.id}
             b={b}
-            isSelected={selectedId === b.id}
-            onSelect={() => onSelectBiz(selectedId === b.id ? null : b.id)}
+            onManage={() => onManageBiz(b.id)}
             onStartPlacing={onStartPlacing}
           />
         ))}
@@ -221,31 +245,46 @@ function DashLeftRail({ data, selectedId, onSelectBiz, onStartPlacing }: {
         )}
       </div>
 
-      {/* Other businesses */}
+      {/* Create button */}
+      {canCreate && (
+        <button
+          type="button"
+          onClick={onCreateBusiness}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/50 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Créer un business
+        </button>
+      )}
+
+      {/* Other businesses — one preview + expand */}
       {others.length > 0 && (
         <div className="mt-4">
-          <button
-            type="button"
-            onClick={() => setShowOthers((v) => !v)}
-            className="mb-2 flex w-full items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-          >
+          <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             <span>Autres businesses</span>
-            <span className="flex items-center gap-1">
-              <span className="rounded-full bg-muted/50 px-2 py-0.5 font-medium text-muted-foreground">{others.length}</span>
-              {showOthers ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-            </span>
-          </button>
-          {showOthers && (
-            <div className="rounded-xl border border-border/40 bg-card">
-              {others.slice(0, 20).map((b) => (
-                <OtherBizRow
-                  key={b.id}
-                  b={b}
-                  isSelected={selectedId === b.id}
-                  onSelect={() => onSelectBiz(selectedId === b.id ? null : b.id)}
-                />
-              ))}
-            </div>
+            <span className="rounded-full bg-muted/50 px-2 py-0.5 font-medium text-muted-foreground">{others.length}</span>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-card">
+            <OtherBizRow
+              key={others[previewOtherIdx]?.id}
+              b={others[previewOtherIdx]}
+              isSelected={false}
+              onSelect={() => {}}
+            />
+            {showAllOthers && others.filter((_, i) => i !== previewOtherIdx).slice(0, 19).map((b) => (
+              <OtherBizRow key={b.id} b={b} isSelected={false} onSelect={() => {}} />
+            ))}
+          </div>
+          {others.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setShowAllOthers((v) => !v)}
+              className="mt-1.5 flex w-full items-center justify-center gap-1.5 text-[10px] font-medium text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+            >
+              {showAllOthers
+                ? <><ChevronDown className="h-3 w-3" /> Réduire</>
+                : <><Plus className="h-3 w-3" /> {others.length - 1} autre{others.length > 2 ? 's' : ''}</>}
+            </button>
           )}
         </div>
       )}
@@ -263,7 +302,17 @@ function DashLeftRail({ data, selectedId, onSelectBiz, onStartPlacing }: {
 
 // ---- Right Rail (feed — real FeedCard with actions) ----
 
+const FEED_TABS = [
+  { key: 'all',    label: 'Tout'     },
+  { key: 'biz',    label: 'Business' },
+  { key: 'money',  label: 'Argent'   },
+  { key: 'social', label: 'Social'   },
+] as const;
+
+type FeedTab = typeof FEED_TABS[number]['key'];
+
 function DashRightRail({ data, userId, onReload }: { data: YouState; userId: string; onReload: () => Promise<void> }) {
+  const [tab, setTab] = useState<FeedTab>('all');
   const { notifications } = useNotifications();
   const youNotifs = useMemo(() => notifications.filter(isYouNotification).slice(0, 6), [notifications]);
 
@@ -321,21 +370,46 @@ function DashRightRail({ data, userId, onReload }: { data: YouState; userId: str
     await onReload();
   };
 
+  const filtered = tab === 'all' ? feedItems
+    : tab === 'biz'    ? feedItems.filter((f) => f.kind === 'job_offer')
+    : tab === 'money'  ? feedItems.filter((f) => f.kind === 'active_loan')
+    : feedItems.filter((f) => f.kind === 'marriage_proposal' || f.kind === 'divorce_proposal' || f.kind === 'relationship');
+
   return (
     <div className="you-dash-right-rail border-l border-border/40 px-3 py-4">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Fil d'actualité</span>
-        {feedItems.length > 0 && (
-          <span className="rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{feedItems.length}</span>
+        {filtered.length > 0 && (
+          <span className="rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{filtered.length}</span>
         )}
       </div>
-      {feedItems.length === 0 ? (
+
+      {/* Tab strip */}
+      <div className="mb-3.5 flex gap-0.5 rounded-xl bg-muted/30 p-0.5">
+        {FEED_TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={cn(
+              'flex-1 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-all',
+              tab === key
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/40 py-6 text-center text-xs text-muted-foreground">
           Aucun événement récent
         </div>
       ) : (
         <div className="space-y-2">
-          {feedItems.map((item) => (
+          {filtered.map((item) => (
             <FeedCard
               key={item.id}
               item={item}
@@ -405,33 +479,56 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
   onReload: () => Promise<void>;
 }) {
   const carteRef = useRef<CarteTabHandle>(null);
-  const [selectedBizId, setSelectedBizId] = useState<string | null>(null);
+  const [managedBizId, setManagedBizId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const managedBusiness = managedBizId
+    ? (data.ownedBusinesses.find((b) => b.id === managedBizId) ?? null)
+    : null;
 
   function handleStartPlacing(id: string) {
     carteRef.current?.startPlacing(id);
   }
 
   return (
-    <div className="you-dash">
-      <DashLeftRail
-        data={data}
-        selectedId={selectedBizId}
-        onSelectBiz={setSelectedBizId}
-        onStartPlacing={handleStartPlacing}
-      />
-      <div className="you-dash-map">
-        <CarteTab
-          ref={carteRef}
+    <>
+      <div className="you-dash">
+        <DashLeftRail
           data={data}
-          userId={userId}
-          isAdmin={isAdmin}
-          onReload={onReload}
-          embedded
-          externalSelectedId={selectedBizId}
+          onManageBiz={setManagedBizId}
+          onStartPlacing={handleStartPlacing}
+          onCreateBusiness={() => setCreateOpen(true)}
         />
+        <div className="you-dash-map">
+          <CarteTab
+            ref={carteRef}
+            data={data}
+            userId={userId}
+            isAdmin={isAdmin}
+            onReload={onReload}
+            embedded
+          />
+        </div>
+        <DashRightRail data={data} userId={userId} onReload={onReload} />
+        <DashTicker data={data} />
       </div>
-      <DashRightRail data={data} userId={userId} onReload={onReload} />
-      <DashTicker data={data} />
-    </div>
+
+      <ManageBusinessModal
+        open={Boolean(managedBusiness)}
+        onClose={() => setManagedBizId(null)}
+        business={managedBusiness}
+        players={data.players}
+        currentUserId={userId}
+        onInviteRequested={() => {}}
+        onSubmitted={onReload}
+      />
+      <CreateBusinessModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        businessTypes={data.businessTypes}
+        unlockedBusinessLevel={data.unlockedBusinessLevel ?? 0}
+        onCreated={onReload}
+      />
+    </>
   );
 }
