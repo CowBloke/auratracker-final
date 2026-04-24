@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RESOURCE_META, type ResourceType } from '@/lib/resources';
+import { type YouBusiness } from '@/services/api';
+import { ManageBusinessModal } from '../components/modals';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -126,6 +128,52 @@ const INITIAL_BUSINESSES: Business[] = [
     ],
   },
 ];
+
+const MOCK_OWNER = { id: 'mock-user-1', username: 'toi', firstName: null, profilePicture: null, bio: null, aura: 1000, money: 50000 } as const;
+
+const MOCK_YOU_BUSINESSES: YouBusiness[] = INITIAL_BUSINESSES.map((b) => ({
+  id: b.id,
+  name: b.name,
+  typeKey: b.typeKey,
+  type: null,
+  ownerId: 'mock-user-1',
+  owner: MOCK_OWNER,
+  ownerKind: 'you' as const,
+  verified: true,
+  description: null,
+  logoUrl: null,
+  location: null,
+  mapX: null,
+  mapY: null,
+  foundedAt: '2026-01-01T00:00:00.000Z',
+  foundedLabel: 'Janvier 2026',
+  hiring: false,
+  startingCapital: 0,
+  treasuryMoney: b.invUsed * 10,
+  monthlyRevenue: b.ratePerHour * 720,
+  monthlyExpenses: 0,
+  satisfaction: 100,
+  memberCount: 1,
+  level: 1,
+  actions: ['deposit', 'withdraw'] as YouBusiness['actions'],
+  members: [],
+  pendingInvitations: [],
+  recentLoans: [],
+  recentInvestments: [],
+  shareholders: [],
+  ownerSharePercent: 100,
+  isShared: false,
+  viewerSharePercent: 100,
+  viewerInvestedAmount: 0,
+  suggestedShareAmount: 0,
+  pendingShareholderProposals: [],
+  transferHistory: [],
+  revenueHistory: [],
+  pendingBuyoutOffers: [],
+  startupProducts: [],
+  avgRating: null,
+  ratingCount: 0,
+}));
 
 const NEW_PROJECT_OPTIONS = [
   { id: 'bank',      kind: 'build'   as const, icon: 'BK', name: 'Banque',             inputs: [['CONCRETE',40],['STEEL',20],['PAPER',15],['WOOD',25]] as [ResourceType,number][] },
@@ -659,11 +707,12 @@ function BusinessOutboundView({ biz }: { biz: Business }) {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-function Sidebar({ projects, selection, onSelect, onNewProject }: {
+function Sidebar({ projects, selection, onSelect, onNewProject, onManage }: {
   projects: Project[];
   selection: Selection;
   onSelect: (s: Selection) => void;
   onNewProject: () => void;
+  onManage: (id: string) => void;
 }) {
   return (
     <nav className="flex w-52 shrink-0 flex-col gap-1 border-r border-white/10 pr-3">
@@ -702,23 +751,32 @@ function Sidebar({ projects, selection, onSelect, onNewProject }: {
         const isActive = selection?.kind === 'business' && selection.id === b.id;
         const pendingCount = b.demands.filter(d => d.status === 'pending').length;
         return (
-          <button key={b.id}
-            onClick={() => onSelect({ kind: 'business', id: b.id })}
-            className={cn('flex items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors',
-              isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white')}>
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 font-mono text-[10px] font-bold text-white/70">
-              {BIZ_MONO[b.typeKey] ?? '??'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[11px] font-medium">{b.name}</p>
-              <p className="text-[10px] text-white/40">{RESOURCE_META[b.produces].label}</p>
-            </div>
-            {pendingCount > 0 && (
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-[9px] font-bold text-amber-300">
-                {pendingCount}
-              </span>
-            )}
-          </button>
+          <div key={b.id} className="flex items-center gap-0.5">
+            <button
+              onClick={() => onSelect({ kind: 'business', id: b.id })}
+              className={cn('flex flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors',
+                isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white')}>
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 font-mono text-[10px] font-bold text-white/70">
+                {BIZ_MONO[b.typeKey] ?? '??'}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11px] font-medium">{b.name}</p>
+                <p className="text-[10px] text-white/40">{RESOURCE_META[b.produces].label}</p>
+              </div>
+              {pendingCount > 0 && (
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-[9px] font-bold text-amber-300">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => onManage(b.id)}
+              title="Gérer"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/25 transition-colors hover:bg-white/5 hover:text-white/60"
+            >
+              <Settings size={11} />
+            </button>
+          </div>
         );
       })}
     </nav>
@@ -731,6 +789,8 @@ export function SupplyTab() {
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
   const [selection, setSelection] = useState<Selection>({ kind: 'project', id: 'p1' });
   const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [managingBizId, setManagingBizId] = useState<string | null>(null);
+  const managingBiz = managingBizId ? (MOCK_YOU_BUSINESSES.find((b) => b.id === managingBizId) ?? null) : null;
 
   function handleCreate(opt: typeof NEW_PROJECT_OPTIONS[0]) {
     const id = `p${Date.now()}`;
@@ -766,6 +826,7 @@ export function SupplyTab() {
         selection={selection}
         onSelect={setSelection}
         onNewProject={() => setNewProjectOpen(true)}
+        onManage={setManagingBizId}
       />
       <div className="flex-1 overflow-auto pl-5">
         {activeProject && <ProjectGraphView key={activeProject.id} project={activeProject} />}
@@ -781,6 +842,15 @@ export function SupplyTab() {
       {newProjectOpen && (
         <NewProjectModal onClose={() => setNewProjectOpen(false)} onCreate={handleCreate} />
       )}
+      <ManageBusinessModal
+        open={Boolean(managingBiz)}
+        onClose={() => setManagingBizId(null)}
+        business={managingBiz}
+        players={[]}
+        currentUserId="mock-user-1"
+        onInviteRequested={() => {}}
+        onSubmitted={async () => {}}
+      />
     </div>
   );
 }

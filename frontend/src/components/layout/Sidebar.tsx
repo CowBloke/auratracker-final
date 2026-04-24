@@ -22,6 +22,7 @@ import {
   Coins,
   Info,
   MessagesSquare,
+  Boxes,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -61,13 +62,8 @@ const economyItems: SidebarRouteItem[] = [
 ];
 
 const youNavItems = [
-  { tab: 'carte',    label: t('sidebar_you_map'),      icon: Map            },
-  { tab: 'overview', label: t('sidebar_you_overview'), icon: LayoutDashboard },
-  { tab: 'travail',  label: t('sidebar_you_work'),     icon: Briefcase      },
-  { tab: 'social',   label: t('sidebar_you_social'),   icon: Users          },
-  { tab: 'explore',  label: t('sidebar_you_explore'),  icon: BarChart3      },
-  { tab: 'finance',  label: t('sidebar_you_finance'),  icon: Landmark       },
-  { tab: 'marche-actions', label: t('sidebar_you_share_market'), icon: Coins },
+  { tab: 'carte',  label: t('sidebar_you_map'),    icon: Map   },
+  { tab: 'supply', label: t('sidebar_you_supply'), icon: Boxes },
 ];
 
 export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...props }: ComponentProps<typeof Sidebar>) {

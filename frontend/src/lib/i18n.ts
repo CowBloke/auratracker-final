@@ -32,6 +32,7 @@ const fr = {
   sidebar_you_map: 'Carte',
   sidebar_you_finance: 'Finance',
   sidebar_you_share_market: 'Marche actions',
+  sidebar_you_supply: 'Approvisionnement',
   sidebar_logo_back_to_dashboard: 'Retour au tableau de bord',
   sidebar_logo_go_to_you: 'Accéder à Moi',
   sidebar_logo_go_to_dashboard: 'Accéder au tableau de bord',

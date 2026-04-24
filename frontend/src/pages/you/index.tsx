@@ -13,6 +13,7 @@ import { SocialTab } from './tabs/SocialTab';
 import { TravailTab } from './tabs/TravailTab';
 import { PublicitesTab } from './tabs/PublicitesTab';
 import { ShareMarketTab } from './tabs/ShareMarketTab';
+import { SupplyTab } from './tabs/SupplyTab';
 import { YouDashboard } from './YouDashboard';
 
 export default function You() {
@@ -42,7 +43,7 @@ export default function You() {
   const tab = params.get('tab');
   const currentTab = tab === 'banques'
     ? 'finance'
-    : tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' || tab === 'overview' || tab === 'marche-actions'
+    : tab === 'travail' || tab === 'social' || tab === 'explore' || tab === 'finance' || tab === 'carte' || tab === 'publicites' || tab === 'overview' || tab === 'marche-actions' || tab === 'supply'
       ? tab
       : 'carte';
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
@@ -70,6 +71,14 @@ export default function You() {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
         <YouDashboard data={data} userId={user.id} isAdmin={Boolean(user.isAdmin)} onReload={loadState} />
+      </div>
+    );
+  }
+
+  if (currentTab === 'supply') {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <SupplyTab />
       </div>
     );
   }
