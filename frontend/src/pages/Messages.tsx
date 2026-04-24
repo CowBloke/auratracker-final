@@ -770,6 +770,8 @@ export default function MessagesPage() {
     const receivedNewMessage = !conversationChanged && currentMessageCount > previousMessageCount;
     const shouldAutoScroll = conversationChanged || (receivedNewMessage && isMessagesAtBottom);
 
+    if (convLoading) return;
+
     previousSelectedConversationRef.current = selectedIdSafe;
     previousMessageCountRef.current = currentMessageCount;
 
@@ -780,7 +782,7 @@ export default function MessagesPage() {
       window.setTimeout(scrollMessagesToBottom, 0);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [detail?.messages.length, selectedIdSafe, isMessagesAtBottom]);
+  }, [detail?.messages.length, selectedIdSafe, isMessagesAtBottom, convLoading]);
 
   // Load court case when switching to a court conversation
   useEffect(() => {

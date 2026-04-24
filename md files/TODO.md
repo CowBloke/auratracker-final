@@ -16,7 +16,6 @@
 - deux fois pubs mm page
 - pas de conv ouverte par defaut quand ouverture message
 - export strictement tous les messages du chat main
-- scroll haut page message conv
 - historique des grandes actions sur le site, ex : rachat d'entreprise
 - on peut pas voir les screens uploadés lors de la création de la plainte
 - amendes pour admin prélevé directement sur le compte : andrew tate 1k+10k
@@ -35,8 +34,6 @@
 - busniesses pas notables
 - fusion aquisition
 - frais coin
-- scroll messages
-- bug bug barre de scroll
 - supp messages que viduel pour les utilisateurs mais restent stockés
 - remettre controles jeux
 - voirniv des gens
@@ -46,3 +43,4 @@
 - limites business et auracoin
 - graph pour les entreprises heatmap
 - sidebar 04
+- bug page mesage redirection en haut de la page
