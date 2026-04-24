@@ -86,16 +86,3 @@ For a complete mechanics and content reference (systems, progression, economy, s
 ## License
 
 Private project. All rights reserved.
-
-
-You
-Access CowBloke/auratracker-final on Github for the repo. I havez recently redesigned the business system to be mainly resource-producing oriented, and I would like to see that idea expanded on, but especially made very clear on the UI side for the business UI. Come up with different ways these resources can be transferred, represented and produced, come up first with the wireframe for browsing your businesses, seeing how much they produce, storing their goods etc...
-Wireframe
-AuraTracker Design System (design system)
-You
-In the repo, you can find the relevant sections in frontend/src/pages/you, and in the backend under backend/modules/you.
-
-
-
-I like the shop layout in the first slide. However, too much info : I think the main system should be production speed. When it is linked to an order, through the graph system, it fills up slowly (or instantly based on what is in the inventory, the inventory is limited for each business too so they can't stockpile infinetely.
-In fact, the whole system should be very SIMPLE, since our users aren't super smart or seasoned gamers. For that, we base everything on the node based graphs that you made earlier : separate it into multiple graphs : either "projects", which are the buildings you are trying to make, like a new bank etc... When you select a bank, a new project is created and you already have a premade graph with all the materials, but you need to select sources for the materials, that are player-owned businesses. The orders fill up at the speed that the business is capable of producing (and based on the production speed of the source too.
