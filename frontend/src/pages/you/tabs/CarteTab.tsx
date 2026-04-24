@@ -395,7 +395,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
   const selectedTypeSet = useMemo(() => new Set(selectedTypeFilters), [selectedTypeFilters]);
 
   const visibleBusinesses = useMemo(() => {
-    let filtered = ownedBusinesses;
+    let filtered = ownerFilter === 'mine' ? ownedBusinesses : allBusinesses;
     if (selectedTypeSet.size > 0) {
       filtered = filtered.filter((b) => selectedTypeSet.has(b.typeKey));
     }
@@ -404,7 +404,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
     return filtered.filter((b) =>
       [b.name, b.owner.username, b.type?.label ?? b.typeKey, b.typeKey, b.location ?? ''].join(' ').toLowerCase().includes(q),
     );
-  }, [ownedBusinesses, searchQuery, selectedTypeSet]);
+  }, [ownerFilter, ownedBusinesses, allBusinesses, searchQuery, selectedTypeSet]);
 
   const placedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX != null && b.mapY != null), [visibleBusinesses]);
   const unplacedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX == null || b.mapY == null), [visibleBusinesses]);
@@ -531,7 +531,8 @@ export const CarteTab = forwardRef<CarteTabHandle, {
           type: 'geojson',
           data: sourceData,
           cluster: true,
-          clusterMaxZoom: 9,
+          // Keep merge clusters at low zoom, but reveal individual badges sooner.
+          clusterMaxZoom: 6,
           clusterRadius: 25,
           promoteId: 'id',
         } as any);

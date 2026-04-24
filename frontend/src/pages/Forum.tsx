@@ -230,14 +230,14 @@ function CreatePostDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          {/* Subreddit selector */}
+          {/* Subforum selector */}
           {!subredditName && (
             <select
               value={selectedSub}
               onChange={(e) => setSelectedSub(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             >
-              <option value="">Choisir un subreddit...</option>
+              <option value="">Choisir un subforum...</option>
               {subreddits.map((s) => (
                 <option key={s.id} value={s.name}>r/{s.name}</option>
               ))}
@@ -296,7 +296,7 @@ function CreatePostDialog({
   );
 }
 
-// ─── Create subreddit dialog ──────────────────────────────────────────────────
+// ─── Create subforum dialog ──────────────────────────────────────────────────
 
 function CreateSubredditDialog({
   open,
@@ -338,7 +338,7 @@ function CreateSubredditDialog({
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Créer un subreddit</DialogTitle>
+          <DialogTitle>Créer un subforum</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -351,7 +351,7 @@ function CreateSubredditDialog({
             <p className="mt-1 text-xs text-muted-foreground">3–21 caractères, lettres, chiffres et underscores uniquement</p>
           </div>
           <Textarea
-            placeholder="Description du subreddit..."
+            placeholder="Description du subforum..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
@@ -402,7 +402,7 @@ export default function Forum() {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreateSub, setShowCreateSub] = useState(false);
 
-  // Load subreddits
+  // Load subforums
   useEffect(() => {
     forumApi.getSubreddits().then(({ data }) => {
       setSubreddits(data);
@@ -410,7 +410,7 @@ export default function Forum() {
     });
   }, []);
 
-  // Load current subreddit info
+  // Load current subforum info
   useEffect(() => {
     if (!subredditName) {
       setCurrentSub(null);
@@ -497,7 +497,7 @@ export default function Forum() {
       <div className="flex gap-6">
         {/* ── Main feed ── */}
         <div className="min-w-0 flex-1">
-          {/* Subreddit header */}
+          {/* Subforum header */}
           {currentSub && (
             <div className="mb-4 rounded-lg border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
@@ -623,14 +623,14 @@ export default function Forum() {
             </Button>
             <Button variant="outline" className="w-full" onClick={() => setShowCreateSub(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Créer un subreddit
+              Créer un subforum
             </Button>
           </div>
 
-          {/* My subreddits */}
+          {/* My subforums */}
           {joinedSubs.length > 0 && (
             <div className="mb-4 rounded-lg border bg-card p-4">
-              <h3 className="mb-3 text-sm font-semibold">Mes subreddits</h3>
+              <h3 className="mb-3 text-sm font-semibold">Mes subforums</h3>
               <ul className="space-y-1">
                 {joinedSubs.map((s) => (
                   <li key={s.id}>
@@ -652,15 +652,15 @@ export default function Forum() {
             </div>
           )}
 
-          {/* Popular subreddits */}
+          {/* Popular subforums */}
           <div className="rounded-lg border bg-card p-4">
-            <h3 className="mb-3 text-sm font-semibold">Subreddits populaires</h3>
+            <h3 className="mb-3 text-sm font-semibold">Subforums populaires</h3>
             {loadingSubs ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
               </div>
             ) : popularSubs.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Aucun subreddit pour l'instant.</p>
+              <p className="text-xs text-muted-foreground">Aucun subforum pour l'instant.</p>
             ) : (
               <ul className="space-y-2">
                 {popularSubs.map((s, idx) => (
