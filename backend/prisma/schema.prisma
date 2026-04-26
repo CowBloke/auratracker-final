@@ -14,6 +14,7 @@ model User {
   id                      String    @id @default(uuid())
   username                String    @unique
   firstName               String? // Real first name
+  school                  String? // School name entered at registration
   schoolLevel             String? // Seconde, Premiere, Terminale
   classLetter             String? // A-G
   email                   String    @unique
@@ -238,6 +239,7 @@ model RegistrationReview {
   registrationUserId    String   @unique
   username              String
   firstName             String?
+  school                String?
   schoolLevel           String?
   classLetter           String?
   email                 String
@@ -2406,14 +2408,18 @@ model MessageConversationMessage {
   imageUrl       String?
   type           String   @default("TEXT") // TEXT | SYSTEM | REPORT_NOTICE | COURT_SYSTEM
   courtRole      String?  // when admin sends as a court role (JUDGE | PUBLIC_DEFENDER_PLAINTIFF | PUBLIC_DEFENDER_DEFENDANT)
+  replyToId      String?
   createdAt      DateTime @default(now())
 
-  conversation MessageConversation         @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User?                       @relation("MessageConversationSender", fields: [senderId], references: [id], onDelete: SetNull)
+  conversation MessageConversation          @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?                        @relation("MessageConversationSender", fields: [senderId], references: [id], onDelete: SetNull)
+  replyTo      MessageConversationMessage?  @relation("MessageConversationReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      MessageConversationMessage[] @relation("MessageConversationReply")
   reactions    MessageConversationReaction[]
 
   @@index([conversationId, createdAt])
   @@index([senderId, createdAt])
+  @@index([replyToId])
 }
 
 model MessageConversationReaction {

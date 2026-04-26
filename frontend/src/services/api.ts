@@ -52,7 +52,7 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  register: (data: { username: string; firstName: string; schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE'; classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'; email: string; password: string; motivationMessage: string; referralCode?: string }) =>
+  register: (data: { username: string; firstName: string; school: string; schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE'; classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G'; email: string; password: string; motivationMessage: string; referralCode?: string }) =>
     api.post('/auth/register', data),
   login: (data: { username: string; password: string }) =>
     api.post('/auth/login', data),
@@ -2347,6 +2347,7 @@ export interface PendingUser {
   id: string;
   username: string;
   firstName: string | null;
+  school: string | null;
   schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE' | null;
   classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | null;
   email: string;
@@ -2359,6 +2360,7 @@ export interface RegistrationReview {
   registrationUserId: string;
   username: string;
   firstName: string | null;
+  school: string | null;
   schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE' | null;
   classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | null;
   email: string;
@@ -3407,6 +3409,12 @@ export interface MessagingConversationMessage {
   type: string;
   imageUrl?: string | null;
   courtRole: string | null;
+  replyTo?: {
+    id: string;
+    body: string;
+    senderId: string | null;
+    sender: { id: string; username: string; profilePicture: string | null; usernameColor: string | null } | null;
+  } | null;
   createdAt: string;
   sender: {
     id: string;
@@ -3484,8 +3492,8 @@ export const supportApi = {
   getConversation: (conversationId: string) => api.get<MessagingConversationDetail>(`/support/conversations/${conversationId}`),
   createConversation: (data: { type: 'DM' | 'GROUP'; title?: string; description?: string; participantIds: string[]; body?: string }) =>
     api.post<{ conversation: MessagingConversationSummary; alreadyExisted: boolean }>('/support/conversations', data),
-  sendConversationMessage: (conversationId: string, body: string, courtRole?: string | null, imageUrl?: string | null) =>
-    api.post<{ message: MessagingConversationDetail['messages'][number] }>(`/support/conversations/${conversationId}/messages`, { body, courtRole, imageUrl }),
+  sendConversationMessage: (conversationId: string, body: string, courtRole?: string | null, imageUrl?: string | null, replyToId?: string | null) =>
+    api.post<{ message: MessagingConversationDetail['messages'][number] }>(`/support/conversations/${conversationId}/messages`, { body, courtRole, imageUrl, replyToId }),
   markConversationRead: (conversationId: string) =>
     api.post<{ success: boolean }>(`/support/conversations/${conversationId}/read`),
   reportConversation: (conversationId: string, reason?: string) =>

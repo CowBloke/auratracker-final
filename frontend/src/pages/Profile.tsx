@@ -75,6 +75,15 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   agency: 'Agence',
 };
 
+const YOU_SKILL_META: Record<string, { label: string; bar: string; text: string }> = {
+  affaires:      { label: 'Affaires',      bar: 'bg-emerald-500', text: 'text-emerald-500' },
+  social:        { label: 'Social',        bar: 'bg-purple-500',  text: 'text-purple-500' },
+  intelligence:  { label: 'Intelligence',  bar: 'bg-sky-500',     text: 'text-sky-500' },
+  charisme:      { label: 'Charisme',      bar: 'bg-pink-500',    text: 'text-pink-500' },
+  finance:       { label: 'Finance',       bar: 'bg-amber-500',   text: 'text-amber-500' },
+  illegalite:    { label: 'Illégalité',    bar: 'bg-rose-500',    text: 'text-rose-500' },
+};
+
 const profileEconomyChartConfig = {
   aura: {
     label: 'Aura',
@@ -130,6 +139,7 @@ interface ProfileUser {
     marriedAt: string | null;
   } | null;
   ownedBusinesses?: Array<{ id: string; name: string; typeKey: string }>;
+  youSkills?: Array<{ key: string; level: number; xp: number }>;
 }
 
 interface Rankings {
@@ -927,6 +937,28 @@ export default function Profile() {
                       </div>
                     </div>
                   ) : null}
+                </SidebarPanel>
+              ) : null}
+
+              {profileUser.youSkills && profileUser.youSkills.length > 0 ? (
+                <SidebarPanel title="You · Compétences">
+                  <div className="grid grid-cols-2 gap-2">
+                    {profileUser.youSkills.map((skill) => {
+                      const meta = YOU_SKILL_META[skill.key] ?? { label: skill.key, bar: 'bg-amber-500', text: 'text-amber-500' };
+                      const pct = Math.round((skill.xp / 100) * 100);
+                      return (
+                        <div key={skill.key} className="rounded-2xl border border-border/60 bg-background/40 px-3 py-2">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="truncate text-xs text-muted-foreground">{meta.label}</span>
+                            <span className={cn('shrink-0 text-xs font-semibold tabular-nums', meta.text)}>Niv.{skill.level}</span>
+                          </div>
+                          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted/60">
+                            <div className={cn('h-full', meta.bar)} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </SidebarPanel>
               ) : null}
 

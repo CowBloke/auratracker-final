@@ -229,6 +229,7 @@ export const mapRegistrationReviewToArchivedRegistration = (review: Registration
   id: review.registrationUserId,
   username: review.username,
   firstName: review.firstName,
+  school: review.school,
   schoolLevel: review.schoolLevel,
   classLetter: review.classLetter,
   email: review.email,

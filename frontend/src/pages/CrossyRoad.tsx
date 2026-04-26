@@ -337,6 +337,14 @@ export default function CrossyRoad() {
               <p>
                 Ton meilleur score est enregistré automatiquement à chaque fin de run.
               </p>
+              <div className="mt-4">
+                <div className="font-semibold mb-1">Contrôles</div>
+                <ul className="list-disc list-inside text-sm space-y-1">
+                  <li><strong>Flèches directionnelles</strong> : se déplacer</li>
+                  <li><strong>Espace</strong> : avancer</li>
+                  <li><strong>P</strong> : pause</li>
+                </ul>
+              </div>
             </CardContent>
           </Card>
         )}

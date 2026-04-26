@@ -441,6 +441,10 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
               totalPlayed: true,
             },
           },
+          youSkills: {
+            select: { key: true, level: true, xp: true },
+            orderBy: { createdAt: 'asc' as const },
+          },
           _count: {
             select: {
               followers: true,

@@ -135,7 +135,8 @@
       "Bash(cp \"C:\\\\Users\\\\cowbloke\\\\.claude\\\\projects\\\\C--Users-cowbloke-Programming-Repositories-auratracker-final\\\\40cc81a5-ab17-4eb9-8697-1da31643d10a\\\\tool-results\\\\webfetch-1777049192726-sb2zv7.bin\" /tmp/design.gz)",
       "Bash(gunzip -c /tmp/design.gz)",
       "Bash(tar -tf /tmp/design_out.tar)",
-      "Bash(tar -xf /tmp/design_out.tar -C /tmp/)"
+      "Bash(tar -xf /tmp/design_out.tar -C /tmp/)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx|py|json\\)$\")"
     ]
   },
   "outputStyle": "default"

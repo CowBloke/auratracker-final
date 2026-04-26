@@ -22,6 +22,7 @@ import {
   MoreVertical,
   Pin,
   Plus,
+  Reply,
   Scale,
   Search,
   SendHorizonal,
@@ -86,6 +87,9 @@ import SanctionModal from '@/components/sanctions/SanctionModal';
 const POLL_INTERVAL_MS = 15000;
 
 const REACTION_OPTIONS = ['❤️', '👍', '😂', '😮', '😢', '🔥'];
+
+const getSnippet = (text: string, maxLen = 80) =>
+  text.length > maxLen ? `${text.slice(0, maxLen)}…` : text;
 
 const COURT_ROLE_LABELS: Record<string, string> = {
   JUDGE: 'Juge',
@@ -345,6 +349,7 @@ export default function MessagesPage() {
   const [detail, setDetail] = useState<MessagingConversationDetail | null>(null);
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
+  const [replyTarget, setReplyTarget] = useState<{ id: string; body: string; senderUsername: string; senderColor?: string | null } | null>(null);
   const [imageUrlToSend, setImageUrlToSend] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [pinnedDmIds, setPinnedDmIds] = useState<Set<string>>(new Set());
@@ -1027,9 +1032,11 @@ export default function MessagesPage() {
       if (!selectedIdSafe || (!draft.trim() && !imageUrlToSend) || sending || isUploadingImage || isCourtChatLocked) return;
       const body = draft.trim();
       const currentImageUrl = imageUrlToSend;
+      const currentReplyToId = replyTarget?.id ?? null;
       setSending(true);
       setDraft('');
       setImageUrlToSend('');
+      setReplyTarget(null);
       if (selectedConversation?.type === 'DM') {
         socket?.emit('messaging:typing', { conversationId: selectedIdSafe, isTyping: false });
         lastTypingConversationRef.current = null;
@@ -1050,7 +1057,7 @@ export default function MessagesPage() {
           const roleToSend = isCourtConversation
             ? (isAdminViewer ? (selectedCourtRole ?? 'JUDGE') : myCourtRole)
             : null;
-          await supportApi.sendConversationMessage(selectedIdSafe, body, roleToSend, currentImageUrl || null);
+          await supportApi.sendConversationMessage(selectedIdSafe, body, roleToSend, currentImageUrl || null, currentReplyToId);
         }
         await Promise.all([refreshConversations(), loadConversation(selectedIdSafe, false, false)]);
       } catch (error: any) {
@@ -2591,6 +2598,16 @@ export default function MessagesPage() {
                                             : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
                                         isBlocked && !isOwn && 'opacity-50'
                                       )}>
+                                        {(msg as any).replyTo && (
+                                          <div className={cn('mb-1.5 rounded-lg border-l-2 pl-2 pr-1 py-1 text-[11px]', isOwn ? 'border-primary-foreground/40 bg-primary-foreground/10' : 'border-border/60 bg-muted/40')}>
+                                            <p className={cn('font-semibold truncate', isOwn ? 'text-primary-foreground/70' : 'text-foreground/70')}>
+                                              {(msg as any).replyTo.sender?.username ?? 'Inconnu'}
+                                            </p>
+                                            <p className={cn('truncate', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                              {getSnippet((msg as any).replyTo.body || '[image]')}
+                                            </p>
+                                          </div>
+                                        )}
                                         {supportImages.length > 0 && (
                                           <div className="mb-1.5 flex flex-wrap gap-1">
                                             {supportImages.map((img, i) => {
@@ -2627,6 +2644,15 @@ export default function MessagesPage() {
                                             {emoji}
                                           </button>
                                         ))}
+                                        <div className="mx-1 h-5 w-px bg-border/60" />
+                                        <button
+                                          type="button"
+                                          onClick={() => setReplyTarget({ id: msg.id, body: msg.body || (supportImages.length > 0 ? '[image]' : ''), senderUsername: msg.sender?.username ?? 'Inconnu', senderColor: msg.sender?.usernameColor })}
+                                          className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted/60"
+                                          title="Répondre"
+                                        >
+                                          <Reply className="h-4 w-4 text-muted-foreground" />
+                                        </button>
                                       </div>
                                     </PopoverContent>
                                   </Popover>
@@ -2640,6 +2666,33 @@ export default function MessagesPage() {
                                         : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
                                     isBlocked && !isOwn && 'opacity-50'
                                   )}>
+                                    {msg.replyTo && (
+                                      <div className={cn('mb-1.5 rounded-lg border-l-2 pl-2 pr-1 py-1 text-[11px]', isOwn ? 'border-primary-foreground/40 bg-primary-foreground/10' : 'border-border/60 bg-muted/40')}>
+                                        <p className={cn('font-semibold truncate', isOwn ? 'text-primary-foreground/70' : 'text-foreground/70')}>
+                                          {msg.replyTo.sender?.username ?? 'Inconnu'}
+                                        </p>
+                                        <p className={cn('truncate', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                          {msg.replyTo.body && msg.replyTo.body.length > 60 ? msg.replyTo.body.slice(0, 60) + '…' : (msg.replyTo.body || '[image]')}
+                                        </p>
+                                      </div>
+                                    )}
+                                    {/* Bouton reply (hover) */}
+                                    <button
+                                      type="button"
+                                      className="absolute right-2 top-2 z-10 hidden rounded p-1 text-muted-foreground hover:bg-muted/60 group-hover:block"
+                                      title="Répondre"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setReplyTarget({
+                                          id: msg.id,
+                                          body: msg.body || (supportImages.length > 0 ? '[image]' : ''),
+                                          senderUsername: msg.sender?.username ?? 'Inconnu',
+                                          senderColor: msg.sender?.usernameColor ?? undefined,
+                                        });
+                                      }}
+                                    >
+                                      <Reply className="h-4 w-4" />
+                                    </button>
                                     {supportImages.length > 0 && (
                                       <div className="mb-1.5 flex flex-wrap gap-1">
                                         {supportImages.map((img, i) => {
@@ -2709,6 +2762,16 @@ export default function MessagesPage() {
 
                 {/* Input bar */}
                 <div className="border-t border-border/60 bg-card px-3 py-2.5 sm:px-4">
+                  {replyTarget && (
+                    <div className="flex items-center gap-2 border-l-4 border-primary/40 bg-muted/40 px-3 py-1 text-xs text-muted-foreground mb-1 rounded">
+                      <Reply className="h-3.5 w-3.5 mr-1" />
+                      <span className="font-semibold" style={{ color: replyTarget.senderColor ?? undefined }}>{replyTarget.senderUsername}</span>
+                      <span className="ml-1">{replyTarget.body.length > 60 ? replyTarget.body.slice(0, 60) + '…' : replyTarget.body}</span>
+                      <button className="ml-auto p-1 hover:text-destructive" title="Annuler la réponse" onClick={() => setReplyTarget(null)}>
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                   {dmTypingUser && (
                     <p className="mb-2 text-[11px] text-muted-foreground">{dmTypingUser.username} est en train d'écrire...</p>
                   )}

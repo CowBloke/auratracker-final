@@ -75,6 +75,8 @@ import {
 } from '../utils/dailyTax.js';
 
 const router = Router();
+
+const getCryptoBuyFeeMaxPercentage = (key: string) => (key === CHAOS_COIN_BUY_FEE_PERCENTAGE_KEY ? 1 : 0.5);
 const CHAT_BLOCK_ENABLED_KEY = 'chat_block_enabled';
 const CHAT_BLOCK_MESSAGE_KEY = 'chat_block_message';
 const CHAT_AUTO_BLOCK_ENABLED_KEY = 'chat_auto_block_enabled';
@@ -683,6 +685,7 @@ const serializeRegistrationReview = (review: {
   registrationUserId: string;
   username: string;
   firstName: string | null;
+  school: string | null;
   schoolLevel: string | null;
   classLetter: string | null;
   email: string;
@@ -706,6 +709,7 @@ type RegistrationReviewImportEntry = {
   registrationUserId: string;
   username: string;
   firstName: string | null;
+  school: string | null;
   schoolLevel: string | null;
   classLetter: string | null;
   email: string;
@@ -736,6 +740,7 @@ router.get('/pending-users', authMiddleware, requireAdmin, async (req: AuthReque
         id: true,
         username: true,
         firstName: true,
+        school: true,
         schoolLevel: true,
         classLetter: true,
         email: true,
@@ -792,6 +797,7 @@ router.post('/registration-reviews/import-local', authMiddleware, requireAdmin, 
           registrationUserId,
           username,
           firstName: typeof candidate.firstName === 'string' && candidate.firstName.trim() ? candidate.firstName.trim() : null,
+          school: typeof candidate.school === 'string' && candidate.school.trim() ? candidate.school.trim() : null,
           schoolLevel: typeof candidate.schoolLevel === 'string' && candidate.schoolLevel.trim() ? candidate.schoolLevel.trim() : null,
           classLetter: typeof candidate.classLetter === 'string' && candidate.classLetter.trim() ? candidate.classLetter.trim() : null,
           email,
@@ -1143,6 +1149,7 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
         id: true,
         username: true,
         firstName: true,
+        school: true,
         schoolLevel: true,
         classLetter: true,
         email: true,
@@ -1181,6 +1188,7 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
         update: {
           username: existingUser.username,
           firstName: existingUser.firstName,
+          school: existingUser.school,
           schoolLevel: existingUser.schoolLevel,
           classLetter: existingUser.classLetter,
           email: existingUser.email,
@@ -1195,6 +1203,7 @@ router.post('/users/:id/approve', authMiddleware, requireAdmin, async (req: Auth
           registrationUserId: id,
           username: existingUser.username,
           firstName: existingUser.firstName,
+          school: existingUser.school,
           schoolLevel: existingUser.schoolLevel,
           classLetter: existingUser.classLetter,
           email: existingUser.email,
@@ -1344,6 +1353,7 @@ router.post('/users/:id/reject', authMiddleware, requireAdmin, async (req: AuthR
         update: {
           username: user.username,
           firstName: user.firstName,
+          school: user.school,
           schoolLevel: user.schoolLevel,
           classLetter: user.classLetter,
           email: user.email,
@@ -1358,6 +1368,7 @@ router.post('/users/:id/reject', authMiddleware, requireAdmin, async (req: AuthR
           registrationUserId: id,
           username: user.username,
           firstName: user.firstName,
+          school: user.school,
           schoolLevel: user.schoolLevel,
           classLetter: user.classLetter,
           email: user.email,
@@ -3837,8 +3848,9 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
 
     if ([AURACOIN_BUY_FEE_PERCENTAGE_KEY, STABLE_COIN_BUY_FEE_PERCENTAGE_KEY, CHAOS_COIN_BUY_FEE_PERCENTAGE_KEY].includes(key)) {
       const numValue = Number.parseFloat(normalizedValue);
-      if (!Number.isFinite(numValue) || numValue < 0 || numValue > 0.5) {
-        return res.status(400).json({ error: 'Crypto buy fee must be between 0 and 0.5' });
+      const maxPercentage = getCryptoBuyFeeMaxPercentage(key);
+      if (!Number.isFinite(numValue) || numValue < 0 || numValue > maxPercentage) {
+        return res.status(400).json({ error: `Crypto buy fee must be between 0 and ${maxPercentage}` });
       }
     }
 
@@ -4008,8 +4020,9 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
 
       if ([AURACOIN_BUY_FEE_PERCENTAGE_KEY, STABLE_COIN_BUY_FEE_PERCENTAGE_KEY, CHAOS_COIN_BUY_FEE_PERCENTAGE_KEY].includes(key)) {
         const numValue = Number.parseFloat(normalizedValue);
-        if (!Number.isFinite(numValue) || numValue < 0 || numValue > 0.5) {
-          errors.push(`${key}: Crypto buy fee must be between 0 and 0.5`);
+        const maxPercentage = getCryptoBuyFeeMaxPercentage(key);
+        if (!Number.isFinite(numValue) || numValue < 0 || numValue > maxPercentage) {
+          errors.push(`${key}: Crypto buy fee must be between 0 and ${maxPercentage}`);
           continue;
         }
       }

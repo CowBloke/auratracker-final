@@ -8,6 +8,7 @@ interface User {
   id: string;
   username: string;
   firstName?: string | null;
+  school?: string | null;
   schoolLevel?: 'SECONDE' | 'PREMIERE' | 'TERMINALE' | null;
   classLetter?: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | null;
   email: string;
@@ -32,7 +33,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, firstName: string, schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE', classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G', email: string, password: string, motivationMessage: string, referralCode?: string) => Promise<void>;
+  register: (username: string, firstName: string, school: string, schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE', classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G', email: string, password: string, motivationMessage: string, referralCode?: string) => Promise<void>;
   logout: () => void;
   updateBalance: (aura: number, money: number) => void;
   refreshUser: () => Promise<void>;
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (
     username: string,
     firstName: string,
+    school: string,
     schoolLevel: 'SECONDE' | 'PREMIERE' | 'TERMINALE',
     classLetter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G',
     email: string,
@@ -100,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     motivationMessage: string,
     referralCode?: string
   ) => {
-    await authApi.register({ username, firstName, schoolLevel, classLetter, email, password, motivationMessage, referralCode });
+    await authApi.register({ username, firstName, school, schoolLevel, classLetter, email, password, motivationMessage, referralCode });
   };
 
   const logout = () => {

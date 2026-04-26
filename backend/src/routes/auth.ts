@@ -94,7 +94,7 @@ const generateToken = (userId: string, email: string): string => {
 
 router.post('/register', validate(registerSchema), async (req, res) => {
   try {
-    const { username, firstName, schoolLevel, classLetter, email, password, motivationMessage } = req.body;
+    const { username, firstName, school, schoolLevel, classLetter, email, password, motivationMessage } = req.body;
     const referralsEnabled = await isReferralEnabled();
     const referralCode = referralsEnabled ? normalizeReferralCode(req.body.referralCode) : null;
 
@@ -135,6 +135,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       data: {
         username,
         firstName: typeof firstName === 'string' ? firstName.trim() : firstName,
+        school: typeof school === 'string' ? school.trim() : school,
         schoolLevel,
         classLetter,
         email,
@@ -151,7 +152,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       },
     });
 
-    logAuth('register', undefined, username, { email, isAdmin, isSuperAdmin, schoolLevel, classLetter, referredById: referrerId }, getIpAddress(req));
+    logAuth('register', undefined, username, { email, isAdmin, isSuperAdmin, school, schoolLevel, classLetter, referredById: referrerId }, getIpAddress(req));
 
     res.status(201).json({
       success: true,
@@ -240,6 +241,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         id: user.id,
         username: user.username,
         firstName: user.firstName,
+        school: user.school,
         schoolLevel: user.schoolLevel,
         classLetter: user.classLetter,
         email: user.email,
@@ -292,6 +294,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         id: true,
         username: true,
         firstName: true,
+        school: true,
         schoolLevel: true,
         classLetter: true,
         email: true,

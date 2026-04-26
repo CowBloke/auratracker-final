@@ -300,7 +300,7 @@ export function SettingsTab(props: SettingsTabProps) {
                 id="chaos-coin-buy-fee"
                 type="number"
                 min={0}
-                max={0.5}
+                max={1}
                 step={0.0001}
                 value={chaosCoinBuyFeePercentage}
                 onChange={(event) => setChaosCoinBuyFeePercentage(event.target.value)}

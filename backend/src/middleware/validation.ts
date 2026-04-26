@@ -28,6 +28,7 @@ export const validate = (schema: ZodSchema) => {
 export const registerSchema = z.object({
   username: z.string().min(3).max(20),
   firstName: z.string().trim().min(1).max(50),
+  school: z.string().trim().min(1).max(100),
   schoolLevel: schoolLevelSchema,
   classLetter: classLetterSchema,
   email: z.string().email(),

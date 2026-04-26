@@ -456,6 +456,7 @@ export function InboxTab(props: InboxTabProps) {
                           <h3 className="text-lg font-semibold">{u.username}</h3>
                           <p className="text-sm text-muted-foreground">{u.email}</p>
                           {u.firstName && <p className="text-sm text-muted-foreground">Prénom : {u.firstName}</p>}
+                          {u.school && <p className="text-sm text-muted-foreground">École : {u.school}</p>}
                           {(u.schoolLevel || u.classLetter) && (
                             <p className="text-sm text-muted-foreground">
                               Classe : {[u.schoolLevel === 'SECONDE' ? 'Seconde' : u.schoolLevel === 'PREMIERE' ? 'Première' : u.schoolLevel === 'TERMINALE' ? 'Terminale' : null, u.classLetter].filter(Boolean).join(' ')}

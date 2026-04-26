@@ -129,6 +129,12 @@ function serializeConversationMessage(message: {
   type: string;
   imageUrl?: string | null;
   courtRole?: string | null;
+  replyTo?: {
+    id: string;
+    body: string;
+    senderId: string | null;
+    sender?: BasicUser | null;
+  } | null;
   createdAt: Date;
   sender?: BasicUser | null;
 }) {
@@ -140,6 +146,14 @@ function serializeConversationMessage(message: {
     type: message.type,
     imageUrl: message.imageUrl ?? null,
     courtRole: message.courtRole ?? null,
+    replyTo: message.replyTo
+      ? {
+          id: message.replyTo.id,
+          body: message.replyTo.body,
+          senderId: message.replyTo.senderId,
+          sender: message.replyTo.sender ? serializeBasicUser(message.replyTo.sender) : null,
+        }
+      : null,
     createdAt: message.createdAt instanceof Date ? message.createdAt.toISOString() : message.createdAt,
     sender: message.sender ? serializeBasicUser(message.sender) : null,
   };
@@ -548,6 +562,9 @@ router.get('/conversations/:conversationId', authMiddleware, async (req: AuthReq
                 reactions: {
                   include: { user: { select: { id: true, username: true } } },
                 },
+                replyTo: {
+                  include: { sender: { select: USER_PREVIEW_SELECT } },
+                },
               },
               orderBy: { createdAt: 'asc' },
             },
@@ -573,6 +590,7 @@ router.get('/conversations/:conversationId', authMiddleware, async (req: AuthReq
           type: message.type,
             imageUrl: (message as any).imageUrl ?? null,
           courtRole: (message as any).courtRole ?? null,
+          replyTo: (message as any).replyTo ?? null,
           createdAt: message.createdAt,
           sender: message.sender,
         }),
@@ -725,6 +743,7 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
     const body = typeof req.body?.body === 'string' ? req.body.body.trim() : '';
     const imageUrl = typeof req.body?.imageUrl === 'string' ? req.body.imageUrl.trim() : null;
     const courtRole = typeof req.body?.courtRole === 'string' ? req.body.courtRole : null;
+    const replyToId = typeof req.body?.replyToId === 'string' ? req.body.replyToId : null;
 
     if (!body && !imageUrl) {
       return res.status(400).json({ error: 'Message body or image is required' });
@@ -822,6 +841,12 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
           type: 'TEXT',
           imageUrl: imageUrl || null,
           ...(effectiveCourtRole ? { courtRole: effectiveCourtRole } : {}),
+          ...(replyToId ? { replyToId } : {}),
+        },
+        include: {
+          replyTo: {
+            include: { sender: { select: USER_PREVIEW_SELECT } },
+          },
         },
       });
 
@@ -851,6 +876,7 @@ router.post('/conversations/:conversationId/messages', authMiddleware, async (re
       type: message.type,
             imageUrl: (message as any).imageUrl ?? null,
       courtRole: (message as any).courtRole ?? null,
+      replyTo: (message as any).replyTo ?? null,
       createdAt: message.createdAt,
       sender: {
         id: user.id,

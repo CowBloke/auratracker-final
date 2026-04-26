@@ -122,11 +122,11 @@ const isCoinKey = (value: string): value is CoinKey => value in COIN_CONFIGS;
 
 const getCoinConfig = (coinKey: string): CoinConfig | null => (isCoinKey(coinKey) ? COIN_CONFIGS[coinKey] : null);
 
-const parseFeePercentage = (rawValue: string | null | undefined, fallback: number) => {
+const parseFeePercentage = (rawValue: string | null | undefined, fallback: number, maxPercentage: number) => {
   if (!rawValue) return fallback;
   const parsed = Number.parseFloat(rawValue);
   if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(0.5, Math.max(0, parsed));
+  return Math.min(maxPercentage, Math.max(0, parsed));
 };
 
 const getCoinFeePercentage = async (config: CoinConfig) => {
@@ -134,7 +134,7 @@ const getCoinFeePercentage = async (config: CoinConfig) => {
     where: { key: config.feeSettingKey },
     select: { value: true },
   });
-  return parseFeePercentage(setting?.value, config.defaultFeePercentage);
+  return parseFeePercentage(setting?.value, config.defaultFeePercentage, config.key === 'chaos-coin' ? 1 : 0.5);
 };
 
 const getDynamicSpread = (config: CoinConfig, state: CoinRuntime) => {

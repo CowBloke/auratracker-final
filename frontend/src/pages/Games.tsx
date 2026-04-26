@@ -895,12 +895,12 @@ export default function Games() {
     navigate(link);
   };
 
-  const injectAdsIntoGrid = (nodes: JSX.Element[]): JSX.Element[] => {
+  const injectAdsIntoGrid = (nodes: JSX.Element[], startAdIdx = 0): { elements: JSX.Element[]; nextAdIdx: number } => {
     const cardAds = adPool.filter((ad) => ad.isActive);
-    if (cardAds.length === 0 || user?.hasAdblock) return nodes;
+    if (cardAds.length === 0 || user?.hasAdblock) return { elements: nodes, nextAdIdx: startAdIdx };
 
     const result: JSX.Element[] = [];
-    let adIdx = 0;
+    let adIdx = startAdIdx;
 
     nodes.forEach((node, i) => {
       result.push(node);
@@ -910,7 +910,7 @@ export default function Games() {
       }
     });
 
-    return result;
+    return { elements: result, nextAdIdx: adIdx };
   };
 
   const multiplayerGamesToRender = activeMultiplayerTab === 'duel'
@@ -1174,39 +1174,45 @@ export default function Games() {
           )}
 
           {activeTab === 'all' ? (
-            <div className="space-y-8">
-              <section className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Solo</h2>
-                  <div className="h-px flex-1 bg-border/70" />
-                </div>
-                {soloGames.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                    {injectAdsIntoGrid(soloGames.map(renderGameCard))}
-                  </div>
-                ) : (
-                  renderEmptyState()
-                )}
-              </section>
+            (() => {
+              const soloGrid = injectAdsIntoGrid(soloGames.map(renderGameCard), 0);
+              const multiGrid = injectAdsIntoGrid(multiplayerGames.map(renderGameCard), soloGrid.nextAdIdx);
+              return (
+                <div className="space-y-8">
+                  <section className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Solo</h2>
+                      <div className="h-px flex-1 bg-border/70" />
+                    </div>
+                    {soloGames.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+                        {soloGrid.elements}
+                      </div>
+                    ) : (
+                      renderEmptyState()
+                    )}
+                  </section>
 
-              <section className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Multijoueur</h2>
-                  <div className="h-px flex-1 bg-border/70" />
+                  <section className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Multijoueur</h2>
+                      <div className="h-px flex-1 bg-border/70" />
+                    </div>
+                    {multiplayerGames.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+                        {multiGrid.elements}
+                      </div>
+                    ) : (
+                      renderEmptyState()
+                    )}
+                  </section>
                 </div>
-                {multiplayerGames.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                    {injectAdsIntoGrid(multiplayerGames.map(renderGameCard))}
-                  </div>
-                ) : (
-                  renderEmptyState()
-                )}
-              </section>
-            </div>
+              );
+            })()
           ) : (
             gamesToRender.length > 0 ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                {injectAdsIntoGrid(gamesToRender.map(renderGameCard))}
+                {injectAdsIntoGrid(gamesToRender.map(renderGameCard)).elements}
               </div>
             ) : (
               renderEmptyState()

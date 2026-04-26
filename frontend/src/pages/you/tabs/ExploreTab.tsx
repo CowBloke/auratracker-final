@@ -12,6 +12,8 @@ import {
   GraduationCap,
   HandCoins,
   Landmark,
+  LayoutGrid,
+  List,
   MessageSquare,
   PiggyBank,
   Plus,
@@ -1541,6 +1543,207 @@ function FilePlainteModal({
 
 // --- Main ExploreTab ---
 
+// ── Heatmap helpers ──────────────────────────────────────────────────────────
+
+function getValuation(b: YouBusiness): number {
+  return Math.max(100, (b.startingCapital || 0) + (b.treasuryMoney || 0) + (b.monthlyRevenue || 0) * 12);
+}
+
+function getHeatmapColor(satisfaction: number | null): string {
+  if (satisfaction == null) return '#1e293b';
+  const s = Math.max(0, Math.min(100, satisfaction));
+  if (s < 50) {
+    const t = s / 50;
+    const r = Math.round(159 - 79 * t);
+    const g = Math.round(28 + 13 * t);
+    const b2 = Math.round(28 + 19 * t);
+    return `rgb(${r},${g},${b2})`;
+  }
+  const t = (s - 50) / 50;
+  const r = Math.round(80 - 60 * t);
+  const g = Math.round(41 + 44 * t);
+  const b2 = Math.round(47 - 2 * t);
+  return `rgb(${r},${g},${b2})`;
+}
+
+interface TreemapItem { id: string; value: number }
+interface TreemapRect extends TreemapItem { x: number; y: number; w: number; h: number }
+
+function binaryTreemap(items: TreemapItem[], x: number, y: number, w: number, h: number): TreemapRect[] {
+  if (items.length === 0) return [];
+  if (items.length === 1) return [{ ...items[0], x, y, w, h }];
+  const total = items.reduce((s, i) => s + i.value, 0);
+  const sorted = [...items].sort((a, b) => b.value - a.value);
+  let cumSum = 0;
+  let splitIdx = 1;
+  for (let i = 0; i < sorted.length - 1; i++) {
+    cumSum += sorted[i].value;
+    splitIdx = i + 1;
+    if (cumSum >= total / 2) break;
+  }
+  const left = sorted.slice(0, splitIdx);
+  const right = sorted.slice(splitIdx);
+  const leftSum = left.reduce((s, i) => s + i.value, 0);
+  const ratio = leftSum / total;
+  if (w >= h) {
+    return [
+      ...binaryTreemap(left, x, y, w * ratio, h),
+      ...binaryTreemap(right, x + w * ratio, y, w * (1 - ratio), h),
+    ];
+  }
+  return [
+    ...binaryTreemap(left, x, y, w, h * ratio),
+    ...binaryTreemap(right, x, y + h * ratio, w, h * (1 - ratio)),
+  ];
+}
+
+function formatShortMoney(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M €`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k €`;
+  return `${n} €`;
+}
+
+function BusinessHeatmap({
+  businesses,
+  onSelect,
+}: {
+  businesses: YouBusiness[];
+  onSelect: (id: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dims, setDims] = useState({ w: 800, h: 520 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([entry]) => {
+      setDims({ w: entry.contentRect.width, h: entry.contentRect.height });
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const groups = useMemo(() => {
+    const byType = new Map<string, YouBusiness[]>();
+    for (const b of businesses) {
+      if (!byType.has(b.typeKey)) byType.set(b.typeKey, []);
+      byType.get(b.typeKey)!.push(b);
+    }
+    return Array.from(byType.entries())
+      .map(([typeKey, items]) => ({
+        typeKey,
+        businesses: items,
+        totalValue: items.reduce((sum, b) => sum + getValuation(b), 0),
+      }))
+      .sort((a, b) => b.totalValue - a.totalValue);
+  }, [businesses]);
+
+  const groupLayout = useMemo(
+    () => binaryTreemap(groups.map((g) => ({ id: g.typeKey, value: g.totalValue })), 0, 0, dims.w, dims.h),
+    [groups, dims],
+  );
+
+  const GAP = 1;
+  const HEADER = 18;
+
+  return (
+    <div className="space-y-3">
+      <div ref={containerRef} className="relative w-full" style={{ height: 520 }}>
+        {groupLayout.map((gr) => {
+          const group = groups.find((g) => g.typeKey === gr.id)!;
+          const meta = SECTION_META[gr.id as keyof typeof SECTION_META];
+          const style = BUSINESS_STYLE_MAP[gr.id as keyof typeof BUSINESS_STYLE_MAP];
+          const innerX = gr.x + GAP;
+          const innerY = gr.y + GAP + HEADER;
+          const innerW = gr.w - GAP * 2;
+          const innerH = gr.h - GAP * 2 - HEADER;
+          const bizLayout = binaryTreemap(
+            group.businesses.map((b) => ({ id: b.id, value: getValuation(b) })),
+            innerX, innerY, innerW, innerH,
+          );
+
+          return (
+            <div key={gr.id}>
+              {/* Group label */}
+              <div
+                className="absolute flex items-center gap-1 overflow-hidden px-2"
+                style={{ left: gr.x + GAP, top: gr.y + GAP, width: gr.w - GAP * 2, height: HEADER }}
+              >
+                <span className={`text-[10px] font-bold uppercase tracking-wide truncate ${style?.icon ?? 'text-white/50'}`}>
+                  {meta?.label ?? gr.id}
+                </span>
+                <span className="ml-auto shrink-0 text-[9px] text-white/30 tabular-nums">
+                  {formatShortMoney(group.totalValue)}
+                </span>
+              </div>
+
+              {/* Business cells */}
+              {bizLayout.map((br) => {
+                const business = businesses.find((b) => b.id === br.id)!;
+                const showLabel = br.w > 64 && br.h > 36;
+                const showRevenue = br.w > 80 && br.h > 52;
+                return (
+                  <button
+                    key={br.id}
+                    type="button"
+                    onClick={() => onSelect(br.id)}
+                    title={`${business.name} — ${formatShortMoney(getValuation(business))}`}
+                    className="absolute overflow-hidden transition-[filter] hover:brightness-125 focus:outline-none"
+                    style={{
+                      left: br.x + 1,
+                      top: br.y + 1,
+                      width: br.w - 2,
+                      height: br.h - 2,
+                      backgroundColor: getHeatmapColor(business.satisfaction),
+                    }}
+                  >
+                    {showLabel ? (
+                      <div className="flex h-full flex-col items-center justify-center gap-0.5 px-1">
+                        <span className="max-w-full truncate text-[11px] font-bold leading-tight text-white">
+                          {business.name}
+                        </span>
+                        {showRevenue ? (
+                          <span className="text-[10px] text-white/60 tabular-nums">
+                            {formatShortMoney(getValuation(business))}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+
+        {businesses.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+            Aucune entreprise ne correspond à tes filtres.
+          </div>
+        ) : null}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+        <span>Satisfaction :</span>
+        <div className="flex h-3 w-32 overflow-hidden rounded-sm">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex-1"
+              style={{ backgroundColor: getHeatmapColor((i / 19) * 100) }}
+            />
+          ))}
+        </div>
+        <span>Faible → Élevée</span>
+        <span className="ml-2 text-white/30">· Taille = Valorisation</span>
+      </div>
+    </div>
+  );
+}
+
+// ── ExploreTab ────────────────────────────────────────────────────────────────
+
 export function ExploreTab({
   data,
   players,
@@ -1566,6 +1769,7 @@ export function ExploreTab({
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'you' | 'player'>('all');
   const [sortMode, setSortMode] = useState<'best' | 'most_reviews' | 'recent' | 'oldest' | 'revenue'>('best');
   const [filtersOpen, setFiltersOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<'list' | 'heatmap'>('list');
 
   // Which business's interaction modal is open
   const [detailBusinessId, setDetailBusinessId] = useState<string | null>(null);
@@ -1906,9 +2110,37 @@ export function ExploreTab({
               <div className="text-xs text-muted-foreground">
                 {filteredBusinesses.length} resultat{filteredBusinesses.length > 1 ? 's' : ''}
               </div>
+              <div className="flex items-center gap-1 rounded-lg border border-border/40 bg-background p-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={cn('flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors', viewMode === 'list' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                >
+                  <List className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('heatmap')}
+                  className={cn('flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors', viewMode === 'heatmap' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </CardContent>
           </Card>
 
+          {viewMode === 'heatmap' ? (
+            <Card className="overflow-hidden">
+              <CardContent className="p-4">
+                <BusinessHeatmap
+                  businesses={filteredBusinesses}
+                  onSelect={(id) => setDetailBusinessId(id)}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {viewMode === 'list' ? (
           <Card className="overflow-hidden">
             <CardContent className="p-0">
               <div className="max-h-[calc(100vh-16rem)] overflow-y-auto px-4 py-4">
@@ -2045,6 +2277,7 @@ export function ExploreTab({
               </div>
             </CardContent>
           </Card>
+          ) : null}
         </div>
       </div>
 

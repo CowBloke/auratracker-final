@@ -2989,8 +2989,8 @@ export default function Admin() {
   const saveChaosCoinBuyFee = async () => {
     try {
       const parsed = Number.parseFloat(chaosCoinBuyFeePercentage);
-      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 0.5) {
-        showMessage('error', 'Les frais Chaos Coin doivent etre compris entre 0% et 50%');
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
+        showMessage('error', 'Les frais Chaos Coin doivent etre compris entre 0% et 100%');
         return;
       }
 

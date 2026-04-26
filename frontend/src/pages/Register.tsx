@@ -29,6 +29,11 @@ const SCHOOL_LEVELS = [
   { value: 'TERMINALE', label: t('register_school_level_terminale') },
 ] as const;
 
+const SCHOOL_OPTIONS = [
+  { value: 'SAINT_DOMINIQUE', label: 'Saint-Dominique' },
+  { value: 'OTHER', label: t('register_school_other_option') },
+] as const;
+
 const CLASS_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const;
 
 const registerSchema = z.object({
@@ -36,6 +41,11 @@ const registerSchema = z.object({
     .trim()
     .min(1, t('register_first_name_required'))
     .max(50, t('register_max_50_chars')),
+  schoolChoice: z.enum(['SAINT_DOMINIQUE', 'OTHER']),
+  school: z.string()
+    .trim()
+    .min(1, t('register_school_required'))
+    .max(100, t('register_max_100_chars')),
   schoolLevel: z.enum(['SECONDE', 'PREMIERE', 'TERMINALE']),
   classLetter: z.enum(['A', 'B', 'C', 'D', 'E', 'F', 'G']),
   username: z.string()
@@ -73,6 +83,8 @@ export default function Register() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       firstName: '',
+      schoolChoice: 'SAINT_DOMINIQUE',
+      school: 'Saint-Dominique',
       schoolLevel: undefined,
       classLetter: undefined,
       username: '',
@@ -91,6 +103,7 @@ export default function Register() {
       const response = await authApi.register({
         username: data.username,
         firstName: data.firstName,
+        school: data.school.trim(),
         schoolLevel: data.schoolLevel,
         classLetter: data.classLetter,
         email: data.email,
@@ -186,6 +199,58 @@ export default function Register() {
                   </FormItem>
                 )}
               />
+
+              <div className="space-y-3">
+                <FormField
+                  control={form.control}
+                  name="schoolChoice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            form.setValue('school', value === 'SAINT_DOMINIQUE' ? 'Saint-Dominique' : '', { shouldValidate: true });
+                          }}
+                          value={field.value}
+                        >
+                          <SelectTrigger className="h-12 border-border/50 text-center">
+                            <SelectValue placeholder={t('register_school_placeholder')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SCHOOL_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage className="text-center" />
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch('schoolChoice') === 'OTHER' && (
+                  <FormField
+                    control={form.control}
+                    name="school"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            placeholder={t('register_school_other_placeholder')}
+                            className="h-12 border-border/50 text-center"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <FormField
