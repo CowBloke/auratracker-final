@@ -51,6 +51,7 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 10;
 const SOURCE_ID = 'you-businesses-source';
 const LAYER_ID = 'you-businesses-layer';
+const CORE_LAYER_ID = 'you-businesses-layer-core';
 const CLUSTER_LAYER_ID = 'you-businesses-cluster';
 const PIN_SIZE = 40;
 const CLUSTER_SIZE = 44;
@@ -588,6 +589,31 @@ export const CarteTab = forwardRef<CarteTabHandle, {
           },
         });
 
+        // Visible round pin body so pins remain readable even if icon rendering is flaky.
+        map.addLayer({
+          id: CORE_LAYER_ID,
+          type: 'circle',
+          source: SOURCE_ID,
+          filter: ['!', ['has', 'point_count']],
+          paint: {
+            'circle-radius': [
+              'case',
+              ['boolean', ['get', 'selected'], false], 14,
+              ['boolean', ['feature-state', 'hovered'], false], 13,
+              12,
+            ],
+            'circle-color': ['get', 'pinColor'],
+            'circle-opacity': 0.95,
+            'circle-stroke-color': 'rgba(255,255,255,0.95)',
+            'circle-stroke-width': [
+              'case',
+              ['boolean', ['get', 'selected'], false], 2.8,
+              ['boolean', ['feature-state', 'hovered'], false], 2.4,
+              2.1,
+            ],
+          },
+        });
+
         // Emoji pin icons — individual pins only
         map.addLayer({
           id: LAYER_ID,
@@ -595,16 +621,17 @@ export const CarteTab = forwardRef<CarteTabHandle, {
           source: SOURCE_ID,
           filter: ['!', ['has', 'point_count']],
           layout: {
-            'icon-image': [
+            'text-field': ['get', 'emoji'],
+            'text-size': [
               'case',
-              ['boolean', ['get', 'selected'], false],
-              ['concat', 'pin-', ['get', 'typeKey'], '-sel'],
-              ['concat', 'pin-', ['get', 'typeKey']],
+              ['boolean', ['get', 'selected'], false], 16,
+              ['boolean', ['feature-state', 'hovered'], false], 15,
+              14,
             ],
-            'icon-size': ['case', ['boolean', ['feature-state', 'hovered'], false], 1.12, 1],
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true,
-            'icon-anchor': 'center',
+            'text-font': ['Segoe UI Emoji', 'Apple Color Emoji', 'Arial Unicode MS Regular'],
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+            'text-anchor': 'center',
           },
         });
       }
@@ -635,7 +662,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
 
     const handleMapClick = async (event: maplibregl.MapMouseEvent) => {
       if (!placingBusinessId) return;
-      if (map.queryRenderedFeatures(event.point, { layers: [LAYER_ID, CLUSTER_LAYER_ID] }).length > 0) return;
+      if (map.queryRenderedFeatures(event.point, { layers: [LAYER_ID, CORE_LAYER_ID, CLUSTER_LAYER_ID] }).length > 0) return;
 
       const target = allBusinesses.find((b) => b.id === placingBusinessId);
       if (!target || !canUserPlaceBusiness(target, userId, isAdmin)) {
@@ -760,20 +787,30 @@ export const CarteTab = forwardRef<CarteTabHandle, {
     const handleMouseLeave = () => { map.getCanvas().style.cursor = placingBusinessId ? 'crosshair' : ''; };
 
     map.on('click', LAYER_ID, handlePinClick);
+    map.on('click', CORE_LAYER_ID, handlePinClick);
     map.on('mouseenter', LAYER_ID, handlePinMouseEnter);
+    map.on('mouseenter', CORE_LAYER_ID, handlePinMouseEnter);
     map.on('mouseleave', LAYER_ID, handlePinMouseLeave);
+    map.on('mouseleave', CORE_LAYER_ID, handlePinMouseLeave);
     map.on('click', CLUSTER_LAYER_ID, handleClusterClick);
     map.on('mouseenter', LAYER_ID, handleMouseEnter);
+    map.on('mouseenter', CORE_LAYER_ID, handleMouseEnter);
     map.on('mouseleave', LAYER_ID, handleMouseLeave);
+    map.on('mouseleave', CORE_LAYER_ID, handleMouseLeave);
     map.on('mouseenter', CLUSTER_LAYER_ID, handleMouseEnter);
     map.on('mouseleave', CLUSTER_LAYER_ID, handleMouseLeave);
     return () => {
       map.off('click', LAYER_ID, handlePinClick);
+      map.off('click', CORE_LAYER_ID, handlePinClick);
       map.off('mouseenter', LAYER_ID, handlePinMouseEnter);
+      map.off('mouseenter', CORE_LAYER_ID, handlePinMouseEnter);
       map.off('mouseleave', LAYER_ID, handlePinMouseLeave);
+      map.off('mouseleave', CORE_LAYER_ID, handlePinMouseLeave);
       map.off('click', CLUSTER_LAYER_ID, handleClusterClick);
       map.off('mouseenter', LAYER_ID, handleMouseEnter);
+      map.off('mouseenter', CORE_LAYER_ID, handleMouseEnter);
       map.off('mouseleave', LAYER_ID, handleMouseLeave);
+      map.off('mouseleave', CORE_LAYER_ID, handleMouseLeave);
       map.off('mouseenter', CLUSTER_LAYER_ID, handleMouseEnter);
       map.off('mouseleave', CLUSTER_LAYER_ID, handleMouseLeave);
       closeHoverPopup();

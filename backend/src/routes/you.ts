@@ -70,7 +70,7 @@ import {
   cancelBusinessShareProposal,
   respondToBusinessShareProposal,
   getUserBusinessPurchases,
-  getYouTemporaryEffects,
+  getGlobalTemporaryEffects,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 
@@ -407,7 +407,7 @@ router.get('/skills', authMiddleware, requireYouAccess, async (req: AuthRequest,
 
 router.get('/temporary-effects', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
-    const effects = await getYouTemporaryEffects(req.user!.id);
+    const effects = await getGlobalTemporaryEffects(req.user!.id);
     res.json({ effects });
   } catch (error) {
     handleRouteError(error, res, 'Get temporary effects error');

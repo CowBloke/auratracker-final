@@ -330,7 +330,6 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
             money: sharedBalance?.money ?? user.money,
             clanEffects,
             hasAdblock: user.youAdblockExpiresAt != null && user.youAdblockExpiresAt > new Date(),
-            youAdblockExpiresAt: undefined,
           }
         : null,
     });

@@ -495,7 +495,7 @@ function ProjectCanvas({ project }: { project: Project }) {
   const totalH = project.inputs.length * (CARD_SIZE + CARD_GAP) - CARD_GAP;
   initPos['goal'] = { x: 24 + CARD_SIZE + CONN_GAP, y: Math.max(0, (totalH - CARD_SIZE) / 2) + 24 };
 
-  const { positions, pan, canvasRef, startDrag, onCanvasDown, onMove, stopAll, screenPos } = useDragCanvas(initPos);
+  const { pan, canvasRef, startDrag, onCanvasDown, onMove, stopAll, screenPos } = useDragCanvas(initPos);
 
   const goalSP = screenPos('goal');
   const links: Link[] = inputs.map(inp => {
@@ -541,7 +541,7 @@ function BusinessCanvas({ biz }: { biz: Business }) {
     initPos[`dest-${d.id}`] = { x: 24 + CARD_SIZE + CONN_GAP, y: 24 + i * (CARD_SIZE + CARD_GAP) };
   });
 
-  const { positions, pan, canvasRef, startDrag, onCanvasDown, onMove, stopAll, screenPos } = useDragCanvas(initPos);
+  const { pan, canvasRef, startDrag, onCanvasDown, onMove, stopAll, screenPos } = useDragCanvas(initPos);
 
   const srcSP = screenPos('src-biz');
   const links: Link[] = demands.map(d => {

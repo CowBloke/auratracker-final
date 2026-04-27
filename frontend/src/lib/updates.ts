@@ -46,6 +46,34 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-27-map-pins-restored',
+    date: '2026-04-27',
+    title: 'Carte — pins restaurés',
+    summary: 'Les pins des entreprises sur la carte sont de nouveau visibles avec leur pastille et leur icone emoji.',
+    sections: [
+      {
+        category: 'BUG_FIX',
+        items: [
+          { id: '2026-04-27-map-pins-restored-1', text: '**Carte · Marqueurs entreprises** — Les pins d entreprises s affichent de nouveau avec une pastille ronde lisible et une icone emoji au centre, au lieu d un simple petit halo.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: '2026-04-27-global-adblock',
+    date: '2026-04-27',
+    title: 'Adblock global',
+    summary: 'Les effets adblock ne sont plus limités à la page You et s appliquent maintenant sur tout le site.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-04-27-global-adblock-1', text: '**Adblock · Globalisé** — L effet adblock s applique désormais à toutes les pages du site, et les libellés affichés côté joueur parlent maintenant d un adblock global plutôt que d un effet lié à You.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-27-login-error-no-reload',
     date: '2026-04-27',
     title: 'Connexion — erreurs conservées à l’écran',

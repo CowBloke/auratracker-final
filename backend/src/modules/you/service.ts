@@ -1259,7 +1259,7 @@ export async function getYouState(userId: string) {
     ? Math.max(baseBusinessSlots, ownedBusinessesWithProducts.length + 1)
     : baseBusinessSlots;
   const unlockedBusinessLevel = viewerUser?.unlockedBusinessLevel ?? 0;
-  const temporaryEffects = serializeYouTemporaryEffects(viewerUser?.youAdblockExpiresAt ?? null);
+  const temporaryEffects = serializeGlobalTemporaryEffects(viewerUser?.youAdblockExpiresAt ?? null);
 
   const data = {
     businessTypes: BUSINESS_TYPES,
@@ -1310,18 +1310,18 @@ export async function getYouState(userId: string) {
   return data;
 }
 
-function serializeYouTemporaryEffects(youAdblockExpiresAt: Date | null) {
+function serializeGlobalTemporaryEffects(adblockExpiresAt: Date | null) {
   const now = Date.now();
   const effects: Array<{ key: string; label: string; description: string; expiresAt: string; remainingMs: number }> = [];
 
-  if (youAdblockExpiresAt) {
-    const remainingMs = youAdblockExpiresAt.getTime() - now;
+  if (adblockExpiresAt) {
+    const remainingMs = adblockExpiresAt.getTime() - now;
     if (remainingMs > 0) {
       effects.push({
-        key: 'YOU_ADBLOCK',
-        label: 'Adblock actif',
+        key: 'GLOBAL_ADBLOCK',
+        label: 'Adblock global actif',
         description: 'Masque les interfaces publicitaires sur tout le site.',
-        expiresAt: youAdblockExpiresAt.toISOString(),
+        expiresAt: adblockExpiresAt.toISOString(),
         remainingMs,
       });
     }
@@ -1330,13 +1330,13 @@ function serializeYouTemporaryEffects(youAdblockExpiresAt: Date | null) {
   return effects;
 }
 
-export async function getYouTemporaryEffects(userId: string) {
+export async function getGlobalTemporaryEffects(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { youAdblockExpiresAt: true },
   });
 
-  return serializeYouTemporaryEffects(user?.youAdblockExpiresAt ?? null);
+  return serializeGlobalTemporaryEffects(user?.youAdblockExpiresAt ?? null);
 }
 
 export async function getYouSkills(userId: string) {

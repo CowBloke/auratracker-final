@@ -20,12 +20,12 @@ function formatRemaining(expiresAt: string, nowTs: number) {
 }
 
 function getEffectIcon(effect: YouTemporaryEffect) {
-  if (effect.key === 'YOU_ADBLOCK') return ShieldOff;
+  if (effect.key === 'YOU_ADBLOCK' || effect.key === 'GLOBAL_ADBLOCK') return ShieldOff;
   return Clock3;
 }
 
 function getEffectBadgeClass(effect: YouTemporaryEffect) {
-  if (effect.key === 'YOU_ADBLOCK') {
+  if (effect.key === 'YOU_ADBLOCK' || effect.key === 'GLOBAL_ADBLOCK') {
     return 'border-emerald-500/35 bg-emerald-500/10 text-emerald-500';
   }
 
@@ -33,8 +33,8 @@ function getEffectBadgeClass(effect: YouTemporaryEffect) {
 }
 
 function getEffectTypeLabel(effect: YouTemporaryEffect) {
-  if (effect.key === 'YOU_ADBLOCK') {
-    return 'Adblock';
+  if (effect.key === 'YOU_ADBLOCK' || effect.key === 'GLOBAL_ADBLOCK') {
+    return 'Adblock global';
   }
 
   return effect.key;

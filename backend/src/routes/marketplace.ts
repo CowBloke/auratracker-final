@@ -23,8 +23,8 @@ const DEFAULT_SHOP_CATEGORIES = [
 
 const CLAN_BASE_MAX_MEMBERS = 5;
 const CLAN_SLOT_UPGRADE_MAX_MEMBERS = CLAN_BASE_MAX_MEMBERS + 2;
-const DEFAULT_YOU_ADBLOCK_DURATION_MINUTES = 60;
-const MAX_YOU_ADBLOCK_DURATION_MINUTES = 60 * 24 * 30;
+const DEFAULT_GLOBAL_ADBLOCK_DURATION_MINUTES = 60;
+const MAX_GLOBAL_ADBLOCK_DURATION_MINUTES = 60 * 24 * 30;
 
 const normalizeItemType = (value: unknown): string =>
   typeof value === 'string' ? value.trim().toUpperCase() : '';
@@ -590,16 +590,16 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
       }
     }
     
-    // YOU_ADBLOCK — handled first, regardless of item type
-    if (effect?.type === 'YOU_ADBLOCK' || effect?.type === 'ADBLOCK_YOU') {
+    // Global adblock — handled first, regardless of item type
+    if (effect?.type === 'GLOBAL_ADBLOCK' || effect?.type === 'YOU_ADBLOCK' || effect?.type === 'ADBLOCK_YOU') {
       const durationMinutesValue =
         effect.durationMinutes ??
         effect.durationMins ??
-        (effect.durationHours != null ? effect.durationHours * 60 : DEFAULT_YOU_ADBLOCK_DURATION_MINUTES);
+        (effect.durationHours != null ? effect.durationHours * 60 : DEFAULT_GLOBAL_ADBLOCK_DURATION_MINUTES);
       const rawDuration = Number.parseInt(String(durationMinutesValue), 10);
       const durationMinutes = Number.isFinite(rawDuration)
-        ? Math.min(Math.max(rawDuration, 1), MAX_YOU_ADBLOCK_DURATION_MINUTES)
-        : DEFAULT_YOU_ADBLOCK_DURATION_MINUTES;
+        ? Math.min(Math.max(rawDuration, 1), MAX_GLOBAL_ADBLOCK_DURATION_MINUTES)
+        : DEFAULT_GLOBAL_ADBLOCK_DURATION_MINUTES;
 
       const currentUser = await prisma.user.findUnique({
         where: { id: req.user.id },
@@ -631,7 +631,7 @@ router.post('/use-item', authMiddleware, validate(useItemSchema), async (req: Au
 
       return res.json({
         success: true,
-        effect: { type: 'YOU_ADBLOCK', expiresAt: activatedYouAdblockUntil.toISOString() },
+        effect: { type: 'GLOBAL_ADBLOCK', expiresAt: activatedYouAdblockUntil.toISOString() },
       });
     }
 
