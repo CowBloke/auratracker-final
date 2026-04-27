@@ -46,6 +46,20 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-27-map-pins-restored',
+    date: '2026-04-27',
+    title: 'Carte — pins restaurés',
+    summary: 'Les pins des entreprises sur la carte sont de nouveau visibles avec leur pastille et leur icone emoji.',
+    sections: [
+      {
+        category: 'BUG_FIX',
+        items: [
+          { id: '2026-04-27-map-pins-restored-1', text: '**Carte · Marqueurs entreprises** — Les pins d entreprises s affichent de nouveau avec une pastille ronde lisible et une icone emoji au centre, au lieu d un simple petit halo.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-27-global-adblock',
     date: '2026-04-27',
     title: 'Adblock global',
