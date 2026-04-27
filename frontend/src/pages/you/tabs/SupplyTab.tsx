@@ -18,9 +18,9 @@ type Positions = Record<string, Vec2>;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CARD_SIZE = 144;
-const CONN_GAP = 190;
-const CARD_GAP = 16;
+const CARD_SIZE = 116;
+const CONN_GAP = 160;
+const CARD_GAP = 14;
 
 // ─── Colors / glyphs ─────────────────────────────────────────────────────────
 
@@ -67,8 +67,8 @@ const AVAILABLE_SOURCES: Partial<Record<ResourceType, Source[]>> = {
     { id: 's7', name: 'Scierie Vallée', mine: false, rate: 5, stock: 40, price: 30 },
   ],
   STONE: [{ id: 's8', name: 'Carrière Pierroux', mine: true, rate: 7, stock: 180 }],
-  IRON:  [{ id: 's9', name: 'Mine de Fer Vallée', mine: true, rate: 6, stock: 95 }],
-  FOOD:  [{ id: 's10', name: 'Ferme de Saint-Clair', mine: true, rate: 10, stock: 280 }],
+  IRON: [{ id: 's9', name: 'Mine de Fer Vallée', mine: true, rate: 6, stock: 95 }],
+  FOOD: [{ id: 's10', name: 'Ferme de Saint-Clair', mine: true, rate: 10, stock: 280 }],
 };
 
 const INITIAL_PROJECTS: Project[] = [
@@ -123,7 +123,7 @@ const MOCK_YOU_BUSINESSES: YouBusiness[] = INITIAL_BUSINESSES.map((b) => ({
   recentLoans: [], recentInvestments: [], shareholders: [], ownerSharePercent: 100,
   isShared: false, viewerSharePercent: 100, viewerInvestedAmount: 0, suggestedShareAmount: 0,
   pendingShareholderProposals: [], transferHistory: [], revenueHistory: [], pendingBuyoutOffers: [],
-  startupProducts: [], avgRating: null, ratingCount: 0,
+  startupProducts: [], avgRating: null, ratingCount: 0, ratings: [], canRate: false, isStateOwned: false,
 }));
 
 const NEW_PROJECT_OPTIONS = [
@@ -134,6 +134,72 @@ const NEW_PROJECT_OPTIONS = [
   { id: 'warehouse', kind: 'upgrade' as const, icon: '▣', name: 'Entrepôt', inputs: [['CONCRETE', 30], ['STEEL', 10]] as [ResourceType, number][] },
   { id: 'gift', kind: 'goods' as const, icon: '✧', name: 'Boîte cadeau luxe', inputs: [['LUXURY_GOODS', 2], ['PAPER', 1]] as [ResourceType, number][] },
 ];
+
+// ─── Drag + Pan hook ─────────────────────────────────────────────────────────
+
+function useDragCanvas(initPositions: Positions) {
+  const [positions, setPositions] = useState<Positions>(initPositions);
+  const [pan, setPan] = useState<Vec2>({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Use refs for values needed inside event handlers to avoid stale closures
+  const panRef = useRef(pan);
+  panRef.current = pan;
+  const modeRef = useRef<'idle' | 'card' | 'pan'>('idle');
+  const activeIdRef = useRef<string | null>(null);
+  const offsetRef = useRef<Vec2>({ x: 0, y: 0 });
+  const panStartRef = useRef<Vec2>({ x: 0, y: 0 });
+  const panOriginRef = useRef<Vec2>({ x: 0, y: 0 });
+
+  function startDrag(id: string, e: React.MouseEvent) {
+    const rect = canvasRef.current?.getBoundingClientRect() ?? { left: 0, top: 0 };
+    const pos = positions[id] ?? { x: 0, y: 0 };
+    // Mouse position in canvas-local coordinates (before pan)
+    const mx = e.clientX - rect.left - panRef.current.x;
+    const my = e.clientY - rect.top - panRef.current.y;
+    offsetRef.current = { x: mx - pos.x, y: my - pos.y };
+    modeRef.current = 'card';
+    activeIdRef.current = id;
+    e.preventDefault();
+    e.stopPropagation(); // prevent canvas onMouseDown from firing
+  }
+
+  function onCanvasDown(e: React.MouseEvent) {
+    if (modeRef.current !== 'idle') return;
+    modeRef.current = 'pan';
+    panStartRef.current = { x: e.clientX, y: e.clientY };
+    panOriginRef.current = { ...panRef.current };
+    e.preventDefault();
+  }
+
+  function onMove(e: React.MouseEvent) {
+    if (modeRef.current === 'card' && activeIdRef.current) {
+      const rect = canvasRef.current?.getBoundingClientRect() ?? { left: 0, top: 0 };
+      const mx = e.clientX - rect.left - panRef.current.x;
+      const my = e.clientY - rect.top - panRef.current.y;
+      const id = activeIdRef.current;
+      setPositions(prev => ({ ...prev, [id]: { x: mx - offsetRef.current.x, y: my - offsetRef.current.y } }));
+    } else if (modeRef.current === 'pan') {
+      setPan({
+        x: panOriginRef.current.x + (e.clientX - panStartRef.current.x),
+        y: panOriginRef.current.y + (e.clientY - panStartRef.current.y),
+      });
+    }
+  }
+
+  function stopAll() {
+    modeRef.current = 'idle';
+    activeIdRef.current = null;
+  }
+
+  // Positions adjusted by pan for rendering
+  function screenPos(id: string): Vec2 {
+    const p = positions[id] ?? { x: 0, y: 0 };
+    return { x: p.x + pan.x, y: p.y + pan.y };
+  }
+
+  return { positions, pan, canvasRef, startDrag, onCanvasDown, onMove, stopAll, screenPos };
+}
 
 // ─── Connectors SVG ───────────────────────────────────────────────────────────
 
@@ -148,11 +214,11 @@ function Connectors({ links }: { links: Link[] }) {
         return (
           <g key={i}>
             <path d={path} fill="none"
-              stroke={l.color} strokeOpacity={l.active ? 0.45 : 0.18}
+              stroke={l.color} strokeOpacity={l.active ? 0.45 : 0.2}
               strokeDasharray={l.active ? undefined : '5 4'}
-              strokeWidth={2} strokeLinecap="round" />
+              strokeWidth={1.5} strokeLinecap="round" />
             {l.active && (
-              <circle r="3" fill={l.color} opacity="0.75">
+              <circle r="2.5" fill={l.color} opacity="0.8">
                 <animateMotion dur="2.5s" repeatCount="indefinite" path={path} />
               </circle>
             )}
@@ -163,29 +229,6 @@ function Connectors({ links }: { links: Link[] }) {
   );
 }
 
-// ─── Drag helpers ─────────────────────────────────────────────────────────────
-
-function useDragCanvas(initPositions: Positions) {
-  const [positions, setPositions] = useState<Positions>(initPositions);
-  const draggingRef = useRef<string | null>(null);
-  const offsetRef = useRef<Vec2>({ x: 0, y: 0 });
-
-  function startDrag(id: string, e: React.MouseEvent) {
-    const pos = positions[id] ?? { x: 0, y: 0 };
-    offsetRef.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-    draggingRef.current = id;
-    e.preventDefault();
-  }
-  function onMove(e: React.MouseEvent) {
-    if (!draggingRef.current) return;
-    const id = draggingRef.current;
-    setPositions(prev => ({ ...prev, [id]: { x: e.clientX - offsetRef.current.x, y: e.clientY - offsetRef.current.y } }));
-  }
-  function stopDrag() { draggingRef.current = null; }
-
-  return { positions, startDrag, onMove, stopDrag };
-}
-
 // ─── Cards ────────────────────────────────────────────────────────────────────
 
 function SourceCard({ inp, pos, onDragStart, onPick }: {
@@ -193,38 +236,40 @@ function SourceCard({ inp, pos, onDragStart, onPick }: {
   onDragStart: (e: React.MouseEvent) => void;
   onPick: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   const c = resColor(inp.type);
   const pct = inp.needed ? Math.round(inp.filled / inp.needed * 100) : 0;
   const done = inp.filled >= inp.needed;
   return (
-    <div className="group absolute" style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: 10 }}>
-      <div className="rounded-xl border bg-card overflow-hidden cursor-grab active:cursor-grabbing select-none"
+    <div className="absolute" style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: hovered ? 50 : 10 }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      <div className="rounded-xl border bg-card overflow-visible cursor-grab active:cursor-grabbing select-none shadow-sm"
         style={{ borderColor: c + '55' }} onMouseDown={onDragStart}>
-        <div className="flex flex-col items-center justify-center gap-2 p-4" style={{ height: CARD_SIZE }}>
-          <span style={{ fontSize: 34, color: c, lineHeight: 1 }}>{GLYPH[inp.type]}</span>
-          <p className="text-[11px] font-semibold text-foreground text-center leading-tight line-clamp-2 w-full">
+        <div className="flex flex-col items-center justify-center gap-1.5 p-3" style={{ height: CARD_SIZE }}>
+          <span style={{ fontSize: 28, color: c, lineHeight: 1 }}>{GLYPH[inp.type]}</span>
+          <p className="text-[10px] font-semibold text-foreground text-center leading-tight line-clamp-2 w-full">
             {inp.source ? inp.source.name : RESOURCE_META[inp.type].label}
           </p>
-          <p className="text-[11px] text-muted-foreground">
-            {inp.source ? `${inp.source.rate} u/h` : 'Sans source'}
-          </p>
+          <p className="text-[10px] text-muted-foreground">{inp.source ? `${inp.source.rate} u/h` : 'Sans source'}</p>
         </div>
-        <div className="hidden group-hover:block border-t border-border px-3 pb-3 pt-2">
-          <div className="flex justify-between text-[10px] mb-1">
-            <span className="text-muted-foreground">Remplissage</span>
-            <span className={done ? 'text-emerald-500' : 'text-foreground'}>{inp.filled}/{inp.needed}</span>
+        {hovered && (
+          <div className="border-t border-border px-2.5 pb-2.5 pt-2 bg-card rounded-b-xl">
+            <div className="flex justify-between text-[9px] mb-1">
+              <span className="text-muted-foreground">Remplissage</span>
+              <span className={done ? 'text-emerald-500' : 'text-foreground'}>{inp.filled}/{inp.needed}</span>
+            </div>
+            <div className="h-1 rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${pct}%`, background: done ? '#10b981' : c }} />
+            </div>
+            {inp.source?.stock != null && (
+              <p className="mt-1 text-[9px] text-muted-foreground">{inp.source.stock} u en stock</p>
+            )}
+            <button onMouseDown={e => e.stopPropagation()} onClick={onPick}
+              className="mt-1.5 w-full text-[9px] rounded-md border border-border bg-muted/50 py-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              {inp.source ? 'Changer source' : '+ Choisir source'}
+            </button>
           </div>
-          <div className="h-1 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${pct}%`, background: done ? '#10b981' : c }} />
-          </div>
-          {inp.source?.stock != null && (
-            <p className="mt-1.5 text-[10px] text-muted-foreground">{inp.source.stock} u en stock</p>
-          )}
-          <button onMouseDown={e => e.stopPropagation()} onClick={onPick}
-            className="mt-2 w-full text-[10px] rounded-md border border-border bg-muted/50 py-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            {inp.source ? 'Changer source' : '+ Choisir source'}
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -234,28 +279,31 @@ function GoalCard({ project, pos, onDragStart }: {
   project: Project; pos: Vec2;
   onDragStart: (e: React.MouseEvent) => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   const totalNeeded = project.inputs.reduce((s, i) => s + i.needed, 0);
   const totalFilled = project.inputs.reduce((s, i) => s + i.filled, 0);
   const pct = totalNeeded ? Math.round(totalFilled / totalNeeded * 100) : 0;
-  const kindLabel = project.kind === 'build' ? 'Construction' : project.kind === 'upgrade' ? 'Amélioration' : 'Lot de biens';
   return (
-    <div className="group absolute" style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: 10 }}>
-      <div className="rounded-xl border border-border bg-card overflow-hidden cursor-grab active:cursor-grabbing select-none"
+    <div className="absolute" style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: hovered ? 50 : 10 }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      <div className="rounded-xl border border-border bg-card overflow-visible cursor-grab active:cursor-grabbing select-none shadow-sm"
         onMouseDown={onDragStart}>
-        <div className="flex flex-col items-center justify-center gap-2 p-4" style={{ height: CARD_SIZE }}>
-          <div className="w-12 h-12 rounded-lg border border-border bg-muted flex items-center justify-center font-mono text-base font-bold text-foreground">
+        <div className="flex flex-col items-center justify-center gap-1.5 p-3" style={{ height: CARD_SIZE }}>
+          <div className="w-10 h-10 rounded-lg border border-border bg-muted flex items-center justify-center font-mono text-sm font-bold text-foreground">
             {project.icon}
           </div>
-          <p className="text-[11px] font-semibold text-foreground text-center leading-tight line-clamp-2 w-full">{project.name}</p>
-          <p className="text-sm font-bold text-primary">{pct}%</p>
+          <p className="text-[10px] font-semibold text-foreground text-center leading-tight line-clamp-2 w-full">{project.name}</p>
+          <p className="text-xs font-bold text-primary">{pct}%</p>
         </div>
-        <div className="hidden group-hover:block border-t border-border px-3 pb-3 pt-2">
-          <div className="h-1 rounded-full bg-muted overflow-hidden mb-2">
-            <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+        {hovered && (
+          <div className="border-t border-border px-2.5 pb-2.5 pt-2 bg-card rounded-b-xl">
+            <div className="h-1 rounded-full bg-muted overflow-hidden mb-1.5">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="text-[9px] text-muted-foreground">ETA: {project.eta}</p>
+            <p className="text-[9px] text-muted-foreground">{totalFilled}/{totalNeeded} matériaux</p>
           </div>
-          <p className="text-[10px] text-muted-foreground">{kindLabel} · {project.eta}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">{totalFilled}/{totalNeeded} matériaux</p>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -265,29 +313,33 @@ function BizSourceCard({ biz, pos, onDragStart }: {
   biz: Business; pos: Vec2;
   onDragStart: (e: React.MouseEvent) => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   const c = BIZ_COLOR[biz.typeKey] ?? '#9ca3af';
   const invPct = Math.round(biz.invUsed / biz.invCap * 100);
   return (
-    <div className="group absolute" style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: 10 }}>
-      <div className="rounded-xl border bg-card overflow-hidden cursor-grab active:cursor-grabbing select-none"
+    <div className="absolute" style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: hovered ? 50 : 10 }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      <div className="rounded-xl border bg-card overflow-visible cursor-grab active:cursor-grabbing select-none shadow-sm"
         style={{ borderColor: c + '55' }} onMouseDown={onDragStart}>
-        <div className="flex flex-col items-center justify-center gap-2 p-4" style={{ height: CARD_SIZE }}>
-          <div className="w-12 h-12 rounded-lg flex items-center justify-center font-mono text-base font-bold"
+        <div className="flex flex-col items-center justify-center gap-1.5 p-3" style={{ height: CARD_SIZE }}>
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center font-mono text-sm font-bold"
             style={{ background: c + '22', color: c }}>
             {BIZ_MONO[biz.typeKey] ?? '??'}
           </div>
-          <p className="text-[11px] font-semibold text-foreground text-center leading-tight line-clamp-2 w-full">{biz.name}</p>
-          <p className="text-[11px] text-muted-foreground">{biz.ratePerHour} u/h</p>
+          <p className="text-[10px] font-semibold text-foreground text-center leading-tight line-clamp-2 w-full">{biz.name}</p>
+          <p className="text-[10px] text-muted-foreground">{biz.ratePerHour} u/h</p>
         </div>
-        <div className="hidden group-hover:block border-t border-border px-3 pb-3 pt-2">
-          <div className="flex justify-between text-[10px] mb-1">
-            <span className="text-muted-foreground">Inventaire</span>
-            <span className="text-foreground">{biz.invUsed}/{biz.invCap}</span>
+        {hovered && (
+          <div className="border-t border-border px-2.5 pb-2.5 pt-2 bg-card rounded-b-xl">
+            <div className="flex justify-between text-[9px] mb-1">
+              <span className="text-muted-foreground">Inventaire</span>
+              <span className="text-foreground">{biz.invUsed}/{biz.invCap}</span>
+            </div>
+            <div className="h-1 rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${invPct}%`, background: invPct > 85 ? '#f59e0b' : c }} />
+            </div>
           </div>
-          <div className="h-1 rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${invPct}%`, background: invPct > 85 ? '#f59e0b' : c }} />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -298,45 +350,49 @@ function DestCard({ d, pos, onDragStart, onAccept, onReject }: {
   onDragStart: (e: React.MouseEvent) => void;
   onAccept: () => void; onReject: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   const pct = d.needed ? Math.round(d.filled / d.needed * 100) : 0;
   const pending = d.status === 'pending';
   const c = pending ? '#f59e0b' : '#38bdf8';
   return (
-    <div className="group absolute" style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: 10 }}>
-      <div className="rounded-xl border bg-card overflow-hidden cursor-grab active:cursor-grabbing select-none"
+    <div className="absolute" style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: hovered ? 50 : 10 }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      <div className="rounded-xl border bg-card overflow-visible cursor-grab active:cursor-grabbing select-none shadow-sm"
         style={{ borderColor: c + '44' }} onMouseDown={onDragStart}>
-        <div className="flex flex-col items-center justify-center gap-2 p-4" style={{ height: CARD_SIZE }}>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold"
+        <div className="flex flex-col items-center justify-center gap-1.5 p-3" style={{ height: CARD_SIZE }}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold"
             style={{ background: c + '22', color: c }}>
             {d.npc ? '⚙' : d.mine ? '★' : d.fromName[0]}
           </div>
-          <p className="text-[11px] font-semibold text-foreground text-center leading-tight line-clamp-2 w-full">{d.projectName}</p>
+          <p className="text-[10px] font-semibold text-foreground text-center leading-tight line-clamp-2 w-full">{d.projectName}</p>
           <p className="text-[10px] text-muted-foreground">{d.needed}u{d.offerPrice ? ` · ${d.offerPrice}₽/u` : ''}</p>
         </div>
-        <div className="hidden group-hover:block border-t border-border px-3 pb-3 pt-2">
-          {!pending ? (
-            <>
-              <div className="flex justify-between text-[10px] mb-1">
-                <span className="text-muted-foreground">Remplissage</span>
-                <span className="text-foreground">{d.filled}/{d.needed}</span>
+        {hovered && (
+          <div className="border-t border-border px-2.5 pb-2.5 pt-2 bg-card rounded-b-xl">
+            {!pending ? (
+              <>
+                <div className="flex justify-between text-[9px] mb-1">
+                  <span className="text-muted-foreground">Remplissage</span>
+                  <span className="text-foreground">{d.filled}/{d.needed}</span>
+                </div>
+                <div className="h-1 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c }} />
+                </div>
+              </>
+            ) : (
+              <div className="flex gap-1.5">
+                <button onMouseDown={e => e.stopPropagation()} onClick={onReject}
+                  className="flex-1 text-[9px] rounded-md border border-border bg-muted/50 py-1 text-muted-foreground hover:bg-muted transition-colors">
+                  Refuser
+                </button>
+                <button onMouseDown={e => e.stopPropagation()} onClick={onAccept}
+                  className="flex-1 text-[9px] rounded-md bg-primary py-1 text-primary-foreground hover:bg-primary/90 transition-colors">
+                  Accepter
+                </button>
               </div>
-              <div className="h-1 rounded-full bg-muted overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: c }} />
-              </div>
-            </>
-          ) : (
-            <div className="flex gap-1.5">
-              <button onMouseDown={e => e.stopPropagation()} onClick={onReject}
-                className="flex-1 text-[10px] rounded-md border border-border bg-muted/50 py-1 text-muted-foreground hover:bg-muted transition-colors">
-                Refuser
-              </button>
-              <button onMouseDown={e => e.stopPropagation()} onClick={onAccept}
-                className="flex-1 text-[10px] rounded-md bg-primary py-1 text-primary-foreground hover:bg-primary/90 transition-colors">
-                Accepter
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -350,16 +406,12 @@ function PickSourceModal({ type, onClose, onPick }: {
   const candidates = AVAILABLE_SOURCES[type] ?? [];
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-[420px] max-w-[90vw] rounded-xl border border-border bg-card p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="w-[400px] max-w-[90vw] rounded-xl border border-border bg-card p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Choisir une source</p>
-            <p className="text-sm font-semibold text-foreground">
-              {RESOURCE_META[type].label}
-              <span className="ml-2" style={{ color: resColor(type) }}>{GLYPH[type]}</span>
-            </p>
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none px-2">×</button>
+          <p className="text-sm font-semibold text-foreground">
+            Source · <span style={{ color: resColor(type) }}>{GLYPH[type]}</span> {RESOURCE_META[type].label}
+          </p>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none px-1">×</button>
         </div>
         {candidates.length === 0 ? (
           <p className="py-6 text-center text-[11px] text-muted-foreground">Aucune source disponible.</p>
@@ -368,18 +420,18 @@ function PickSourceModal({ type, onClose, onPick }: {
             {candidates.map(c => (
               <button key={c.id} onClick={() => { onPick(c); onClose(); }}
                 className="flex w-full items-center gap-3 rounded-lg border border-border bg-muted/30 p-3 text-left hover:bg-muted transition-colors">
-                <div className="w-8 h-8 shrink-0 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-foreground">
+                <div className="w-7 h-7 shrink-0 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-foreground">
                   {c.mine ? '★' : c.name[0]}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <p className="truncate text-xs font-semibold text-foreground">{c.name}</p>
-                    {c.mine && <span className="text-[9px] text-primary border border-primary/30 rounded-full px-1.5 py-0.5">à toi</span>}
+                    {c.mine && <span className="text-[9px] text-primary border border-primary/30 rounded-full px-1.5 py-0.5 shrink-0">à toi</span>}
                   </div>
-                  <p className="text-[10px] text-muted-foreground">{c.stock} u en stock · {c.rate} u/h</p>
+                  <p className="text-[10px] text-muted-foreground">{c.stock} u · {c.rate} u/h</p>
                 </div>
-                <p className="font-mono text-sm font-bold" style={{ color: c.mine ? '#10b981' : '#f59e0b' }}>
-                  {c.mine ? 'gratuit' : `${c.price} ₽/u`}
+                <p className="font-mono text-sm font-bold shrink-0" style={{ color: c.mine ? '#10b981' : '#f59e0b' }}>
+                  {c.mine ? 'gratuit' : `${c.price}₽`}
                 </p>
               </button>
             ))}
@@ -393,50 +445,44 @@ function PickSourceModal({ type, onClose, onPick }: {
 function NewProjectModal({ onClose, onCreate }: {
   onClose: () => void; onCreate: (opt: typeof NEW_PROJECT_OPTIONS[0]) => void;
 }) {
-  const sections = [
-    { key: 'build' as const, label: 'Nouvelle entreprise' },
-    { key: 'upgrade' as const, label: 'Amélioration' },
-    { key: 'goods' as const, label: 'Lot de biens' },
-  ];
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-[520px] max-w-[90vw] rounded-xl border border-border bg-card p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="w-[500px] max-w-[90vw] rounded-xl border border-border bg-card p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm font-semibold text-foreground">Nouveau projet</p>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none px-2">×</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none px-1">×</button>
         </div>
-        {sections.map(sec => (
-          <div key={sec.key} className="mb-4">
-            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{sec.label}</p>
-            <div className="grid grid-cols-2 gap-2">
-              {NEW_PROJECT_OPTIONS.filter(o => o.kind === sec.key).map(opt => (
-                <button key={opt.id} onClick={() => { onCreate(opt); onClose(); }}
-                  className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3 text-left hover:bg-muted transition-colors">
-                  <div className="w-9 h-9 shrink-0 rounded-lg border border-border bg-muted flex items-center justify-center font-mono text-sm font-bold text-foreground">
-                    {opt.icon}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-foreground">{opt.name}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {opt.inputs.map(([t, q]) => `${q} ${RESOURCE_META[t as ResourceType].label}`).join(', ')}
-                    </p>
-                  </div>
-                </button>
-              ))}
+        {(['build', 'upgrade', 'goods'] as const).map(kind => {
+          const opts = NEW_PROJECT_OPTIONS.filter(o => o.kind === kind);
+          const label = kind === 'build' ? 'Nouvelle entreprise' : kind === 'upgrade' ? 'Amélioration' : 'Lot de biens';
+          return (
+            <div key={kind} className="mb-4">
+              <p className="mb-2 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {opts.map(opt => (
+                  <button key={opt.id} onClick={() => { onCreate(opt); onClose(); }}
+                    className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/30 p-2.5 text-left hover:bg-muted transition-colors">
+                    <div className="w-8 h-8 shrink-0 rounded-lg border border-border bg-muted flex items-center justify-center font-mono text-xs font-bold text-foreground">
+                      {opt.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground">{opt.name}</p>
+                      <p className="text-[9px] text-muted-foreground mt-0.5">
+                        {opt.inputs.map(([t, q]) => `${q} ${RESOURCE_META[t as ResourceType].label}`).join(', ')}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
 // ─── Canvases ─────────────────────────────────────────────────────────────────
-
-const DOT_BG = {
-  backgroundImage: 'radial-gradient(circle, hsl(var(--border) / 0.7) 1px, transparent 1px)',
-  backgroundSize: '24px 24px',
-};
 
 function ProjectCanvas({ project }: { project: Project }) {
   const [inputs, setInputs] = useState<InputMaterial[]>(project.inputs);
@@ -449,14 +495,14 @@ function ProjectCanvas({ project }: { project: Project }) {
   const totalH = project.inputs.length * (CARD_SIZE + CARD_GAP) - CARD_GAP;
   initPos['goal'] = { x: 24 + CARD_SIZE + CONN_GAP, y: Math.max(0, (totalH - CARD_SIZE) / 2) + 24 };
 
-  const { positions, startDrag, onMove, stopDrag } = useDragCanvas(initPos);
+  const { positions, pan, canvasRef, startDrag, onCanvasDown, onMove, stopAll, screenPos } = useDragCanvas(initPos);
 
-  const goalPos = positions['goal'] ?? initPos['goal'];
+  const goalSP = screenPos('goal');
   const links: Link[] = inputs.map(inp => {
-    const sp = positions[`src-${inp.id}`] ?? { x: 0, y: 0 };
+    const sp = screenPos(`src-${inp.id}`);
     return {
       from: { x: sp.x + CARD_SIZE, y: sp.y + CARD_SIZE / 2 },
-      to: { x: goalPos.x, y: goalPos.y + CARD_SIZE / 2 },
+      to: { x: goalSP.x, y: goalSP.y + CARD_SIZE / 2 },
       color: inp.source ? resColor(inp.type) : '#555',
       active: !!inp.source,
     };
@@ -465,16 +511,17 @@ function ProjectCanvas({ project }: { project: Project }) {
   const pickingInput = inputs.find(i => i.id === pickingId);
 
   return (
-    <div className="relative flex-1 overflow-hidden" style={DOT_BG}
-      onMouseMove={onMove} onMouseUp={stopDrag} onMouseLeave={stopDrag}>
+    <div ref={canvasRef} className="relative flex-1 overflow-hidden"
+      style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--border) / 0.7) 1px, transparent 1px)', backgroundSize: '24px 24px', backgroundPosition: `${pan.x % 24}px ${pan.y % 24}px`, cursor: 'default' }}
+      onMouseDown={onCanvasDown} onMouseMove={onMove} onMouseUp={stopAll} onMouseLeave={stopAll}>
       <Connectors links={links} />
       {inputs.map(inp => (
         <SourceCard key={inp.id} inp={inp}
-          pos={positions[`src-${inp.id}`] ?? { x: 0, y: 0 }}
+          pos={screenPos(`src-${inp.id}`)}
           onDragStart={e => startDrag(`src-${inp.id}`, e)}
           onPick={() => setPickingId(inp.id)} />
       ))}
-      <GoalCard project={{ ...project, inputs }} pos={goalPos}
+      <GoalCard project={{ ...project, inputs }} pos={goalSP}
         onDragStart={e => startDrag('goal', e)} />
       {pickingInput && (
         <PickSourceModal type={pickingInput.type}
@@ -494,13 +541,13 @@ function BusinessCanvas({ biz }: { biz: Business }) {
     initPos[`dest-${d.id}`] = { x: 24 + CARD_SIZE + CONN_GAP, y: 24 + i * (CARD_SIZE + CARD_GAP) };
   });
 
-  const { positions, startDrag, onMove, stopDrag } = useDragCanvas(initPos);
+  const { positions, pan, canvasRef, startDrag, onCanvasDown, onMove, stopAll, screenPos } = useDragCanvas(initPos);
 
-  const srcPos = positions['src-biz'] ?? initPos['src-biz'];
+  const srcSP = screenPos('src-biz');
   const links: Link[] = demands.map(d => {
-    const dp = positions[`dest-${d.id}`] ?? { x: 400, y: 24 };
+    const dp = screenPos(`dest-${d.id}`);
     return {
-      from: { x: srcPos.x + CARD_SIZE, y: srcPos.y + CARD_SIZE / 2 },
+      from: { x: srcSP.x + CARD_SIZE, y: srcSP.y + CARD_SIZE / 2 },
       to: { x: dp.x, y: dp.y + CARD_SIZE / 2 },
       color: d.status === 'pending' ? '#f59e0b' : '#38bdf8',
       active: d.status === 'active',
@@ -508,13 +555,14 @@ function BusinessCanvas({ biz }: { biz: Business }) {
   });
 
   return (
-    <div className="relative flex-1 overflow-hidden" style={DOT_BG}
-      onMouseMove={onMove} onMouseUp={stopDrag} onMouseLeave={stopDrag}>
+    <div ref={canvasRef} className="relative flex-1 overflow-hidden"
+      style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--border) / 0.7) 1px, transparent 1px)', backgroundSize: '24px 24px', backgroundPosition: `${pan.x % 24}px ${pan.y % 24}px`, cursor: 'default' }}
+      onMouseDown={onCanvasDown} onMouseMove={onMove} onMouseUp={stopAll} onMouseLeave={stopAll}>
       <Connectors links={links} />
-      <BizSourceCard biz={biz} pos={srcPos} onDragStart={e => startDrag('src-biz', e)} />
+      <BizSourceCard biz={biz} pos={srcSP} onDragStart={e => startDrag('src-biz', e)} />
       {demands.map(d => (
         <DestCard key={d.id} d={d}
-          pos={positions[`dest-${d.id}`] ?? { x: 400, y: 24 }}
+          pos={screenPos(`dest-${d.id}`)}
           onDragStart={e => startDrag(`dest-${d.id}`, e)}
           onAccept={() => setDemands(prev => prev.map(x => x.id === d.id ? { ...x, status: 'active' as const } : x))}
           onReject={() => setDemands(prev => prev.filter(x => x.id !== d.id))} />
@@ -606,26 +654,26 @@ function OffersPanel({ businesses, onAccept, onReject }: {
           </div>
         ) : offers.map(d => (
           <div key={d.id} className="rounded-xl border border-border bg-card p-3">
-            <div className="flex items-center gap-2 mb-2.5">
+            <div className="flex items-center gap-2 mb-2">
               <div className="w-6 h-6 rounded-full bg-amber-500/15 flex items-center justify-center text-[9px] font-bold text-amber-400">
                 {d.npc ? '⚙' : d.fromName[0]}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold text-foreground truncate">{d.projectName}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{d.bizName}</p>
+                <p className="text-[9px] text-muted-foreground truncate">{d.bizName}</p>
               </div>
               {d.offerPrice && (
-                <span className="text-[11px] font-mono font-bold text-emerald-500 shrink-0">{d.offerPrice}₽</span>
+                <span className="text-[10px] font-mono font-bold text-emerald-500 shrink-0">{d.offerPrice}₽</span>
               )}
             </div>
-            <p className="text-[10px] text-muted-foreground mb-2">{d.needed}u de {RESOURCE_META[d.resourceType].label}</p>
+            <p className="text-[9px] text-muted-foreground mb-2">{d.needed}u de {RESOURCE_META[d.resourceType].label}</p>
             <div className="flex gap-1.5">
               <button onClick={() => onReject(d.bizId, d.id)}
-                className="flex-1 text-[10px] rounded-md border border-border bg-muted/50 py-1 text-muted-foreground hover:bg-muted transition-colors">
+                className="flex-1 text-[9px] rounded-md border border-border bg-muted/50 py-1 text-muted-foreground hover:bg-muted transition-colors">
                 Refuser
               </button>
               <button onClick={() => onAccept(d.bizId, d.id)}
-                className="flex-1 text-[10px] rounded-md bg-primary py-1 text-primary-foreground hover:bg-primary/90 transition-colors">
+                className="flex-1 text-[9px] rounded-md bg-primary py-1 text-primary-foreground hover:bg-primary/90 transition-colors">
                 Accepter
               </button>
             </div>
@@ -661,15 +709,13 @@ export function SupplyTab() {
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background text-foreground">
-      <Sidebar
-        projects={projects} businesses={businesses}
+    <div className="flex flex-1 min-h-0 w-full overflow-hidden bg-background text-foreground">
+      <Sidebar projects={projects} businesses={businesses}
         selection={selection} onSelect={setSelection}
         onNewProject={() => setNewProjectOpen(true)} />
 
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        {/* Topbar */}
-        <div className="flex items-center gap-3 border-b border-border px-4 py-2 shrink-0 h-10">
+        <div className="flex items-center gap-3 border-b border-border px-4 shrink-0 h-10">
           <p className="text-sm font-medium text-foreground">
             {activeProject ? activeProject.name : activeBiz ? activeBiz.name : 'Approvisionnement'}
           </p>
@@ -686,11 +732,11 @@ export function SupplyTab() {
           )}
         </div>
 
-        {/* Canvas */}
         {activeProject && <ProjectCanvas key={activeProject.id} project={activeProject} />}
         {activeBiz && <BusinessCanvas key={activeBiz.id} biz={activeBiz} />}
         {!activeProject && !activeBiz && (
-          <div className="flex flex-1 items-center justify-center" style={DOT_BG}>
+          <div className="flex flex-1 items-center justify-center"
+            style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--border) / 0.7) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
             <p className="text-sm text-muted-foreground">Sélectionne un projet ou une entreprise.</p>
           </div>
         )}

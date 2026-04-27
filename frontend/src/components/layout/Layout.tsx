@@ -54,7 +54,7 @@ export default function Layout() {
   const keyboardShortcuts = useKeyboardShortcuts();
   const isMessagesPage = location.pathname === '/messages';
   const youTab = new URLSearchParams(location.search).get('tab');
-  const isCartePage = location.pathname === '/you' && (youTab === 'carte' || youTab === null);
+  const isCartePage = location.pathname === '/you' && (youTab === 'carte' || youTab === null || youTab === 'supply');
 
   useEffect(() => {
     if (connected) {
