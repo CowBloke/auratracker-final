@@ -2362,6 +2362,14 @@ export default function MessagesPage() {
                           <p className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap text-xs text-foreground/90">
                             {courtCase.plainte.description}
                           </p>
+                          {courtCase.plainte.evidence && (
+                            <>
+                              <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Preuves</p>
+                              <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-xs text-foreground/90">
+                                {courtCase.plainte.evidence}
+                              </p>
+                            </>
+                          )}
                         </PopoverContent>
                       </Popover>
                     )}

@@ -108,7 +108,7 @@ function serializeCourtCase(c: any) {
       courtRole: party.courtRole,
       user: party.user ? { id: party.user.id, username: party.user.username, profilePicture: party.user.profilePicture, usernameColor: party.user.usernameColor } : null,
     })) ?? [],
-    plainte: c.plainte ? { id: c.plainte.id, title: c.plainte.title, description: c.plainte.description } : null,
+    plainte: c.plainte ? { id: c.plainte.id, title: c.plainte.title, description: c.plainte.description, evidence: c.plainte.evidence ?? null } : null,
     createdAt: c.createdAt instanceof Date ? c.createdAt.toISOString() : c.createdAt,
     updatedAt: c.updatedAt instanceof Date ? c.updatedAt.toISOString() : c.updatedAt,
   };

@@ -824,6 +824,35 @@ function BusinessInteractionModal({
                 </div>
               ) : null}
 
+              {business.recentInvestments.length > 0 ? (
+                <div className="rounded-xl border border-sky-400/20 bg-sky-400/8 px-4 py-3">
+                  <p className="text-xs font-semibold text-sky-300">Investisseurs</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{business.recentInvestments.length} investissement(s) reçu(s)</p>
+                  <div className="mt-3 space-y-2">
+                    {business.recentInvestments.map((inv) => {
+                      const riskColor = inv.riskLevel === 'low' ? 'bg-emerald-400/15 text-emerald-400'
+                        : inv.riskLevel === 'high' ? 'bg-rose-400/15 text-rose-400'
+                        : 'bg-amber-400/15 text-amber-400';
+                      return (
+                        <div key={inv.id} className="rounded-lg border border-sky-400/15 bg-background/50 px-3 py-2">
+                          <div className="flex items-center justify-between gap-2 text-xs">
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-3 w-3 text-sky-400" />
+                              <span className="font-medium">{inv.investor.username}</span>
+                              <Pill label={inv.riskLevel} color={riskColor} />
+                            </div>
+                            <span className="font-semibold text-sky-300">{formatMoney(inv.amount)}</span>
+                          </div>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Retour estimé : {formatMoney(inv.expectedReturnMin)}–{formatMoney(inv.expectedReturnMax)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
               {business.typeKey === 'bank' && business.livretEpargneUnlocked ? (
                 <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2 text-xs text-amber-300">
                   <Sparkles className="h-3.5 w-3.5 shrink-0" />
