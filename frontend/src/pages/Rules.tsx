@@ -26,6 +26,7 @@ const sections: RuleSection[] = [
       t('rules_behavior_2'),
       t('rules_behavior_3'),
       t('rules_behavior_4'),
+      t('rules_behavior_5'),
     ],
   },
   {

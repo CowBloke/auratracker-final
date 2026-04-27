@@ -312,6 +312,7 @@ const fr = {
   rules_behavior_2: 'Tout harcèlement, insulte ou discrimination est strictement interdit.',
   rules_behavior_3: "L'usurpation d'identité est prohibée.",
   rules_behavior_4: 'Les messages dans le chat doivent rester appropriés et respectueux.',
+  rules_behavior_5: 'Chaque utilisateur doit décliner sa véritable identité. Tout compte dont l\'identité réelle ne peut être établie pourra être suspendu.',
   rules_donations_title: 'Système de dons',
   rules_donations_1: "Chaque utilisateur dispose d'une limite quotidienne de dons d'aura.",
   rules_donations_2: 'Les dons sont définitifs et ne peuvent pas être annulés.',
