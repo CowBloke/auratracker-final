@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
@@ -741,8 +741,36 @@ export default function Admin() {
   const [newThreadBody, setNewThreadBody] = useState('');
   const [newThreadSending, setNewThreadSending] = useState(false);
   const [newThreadSearch, setNewThreadSearch] = useState('');
+  const [surveys, setSurveys] = useState<AdminSurvey[]>([]);
+  const [surveysLoading, setSurveysLoading] = useState(false);
+  const [surveyDialogOpen, setSurveyDialogOpen] = useState(false);
+  const [surveyTitle, setSurveyTitle] = useState('');
+  const [surveyDescription, setSurveyDescription] = useState('');
+  const [surveyAudienceType, setSurveyAudienceType] = useState<AdminSurvey['audienceType']>('ALL_USERS');
+  const [surveyPopupDelaySeconds, setSurveyPopupDelaySeconds] = useState(45);
+  const [surveyOptions, setSurveyOptions] = useState<Array<{ label: string; color: string }>>([
+    { label: '', color: '#6366f1' },
+    { label: '', color: '#22c55e' },
+  ]);
+  const [surveyTargetSearch, setSurveyTargetSearch] = useState('');
+  const [surveySelectedUserIds, setSurveySelectedUserIds] = useState<string[]>([]);
+  const [creatingSurvey, setCreatingSurvey] = useState(false);
+  const [archivingSurveyId, setArchivingSurveyId] = useState<string | null>(null);
 
   const supportUnread = supportThreads.reduce((total, thread) => total + (thread.unreadCount ?? 0), 0);
+
+  const resetSurveyForm = () => {
+    setSurveyTitle('');
+    setSurveyDescription('');
+    setSurveyAudienceType('ALL_USERS');
+    setSurveyPopupDelaySeconds(45);
+    setSurveyOptions([
+      { label: '', color: '#6366f1' },
+      { label: '', color: '#22c55e' },
+    ]);
+    setSurveyTargetSearch('');
+    setSurveySelectedUserIds([]);
+  };
 
   const openPrismaStudio = async () => {
     if (openingPrisma) {
@@ -779,6 +807,19 @@ export default function Admin() {
       setSupportReports(res.data.reports);
     } catch { /* non-critical */ }
     finally { setSupportReportsLoading(false); }
+  };
+
+  const fetchSurveys = async () => {
+    try {
+      setSurveysLoading(true);
+      const res = await adminApi.getSurveys();
+      setSurveys(res.data.surveys);
+    } catch (error: any) {
+      console.error('Failed to fetch surveys:', error);
+      showMessage('error', error.response?.data?.error || 'Erreur lors du chargement des sondages');
+    } finally {
+      setSurveysLoading(false);
+    }
   };
 
   const openSupportThread = async (userId: string) => {
@@ -1478,6 +1519,7 @@ export default function Admin() {
     fetchGamesLeaderboard();
     fetchSupportThreads();
     fetchSupportReports();
+    fetchSurveys();
   }, [isReadOnlyInspectionUser]);
 
   useEffect(() => {
@@ -2181,6 +2223,65 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la suppression');
     } finally {
       setDeletingWarning(null);
+    }
+  };
+
+  const createSurvey = async () => {
+    const trimmedTitle = surveyTitle.trim();
+    const trimmedDescription = surveyDescription.trim();
+    const cleanedOptions = surveyOptions
+      .map((option) => ({
+        label: option.label.trim(),
+        color: option.color,
+      }))
+      .filter((option) => option.label);
+
+    if (trimmedTitle.length < 3) {
+      showMessage('error', 'Le titre du sondage est requis');
+      return;
+    }
+    if (cleanedOptions.length < 2) {
+      showMessage('error', 'Ajoute au moins 2 options');
+      return;
+    }
+    if (surveyAudienceType === 'SELECTED_USERS' && surveySelectedUserIds.length === 0) {
+      showMessage('error', 'Sélectionne au moins un utilisateur');
+      return;
+    }
+
+    try {
+      setCreatingSurvey(true);
+      const res = await adminApi.createSurvey({
+        title: trimmedTitle,
+        description: trimmedDescription || null,
+        audienceType: surveyAudienceType,
+        popupDelaySeconds: surveyPopupDelaySeconds,
+        options: cleanedOptions,
+        selectedUserIds: surveyAudienceType === 'SELECTED_USERS' ? surveySelectedUserIds : [],
+      });
+      setSurveys((prev) => [res.data.survey, ...prev]);
+      setSurveyDialogOpen(false);
+      resetSurveyForm();
+      showMessage('success', 'Sondage créé');
+    } catch (error: any) {
+      console.error('Failed to create survey:', error);
+      showMessage('error', error.response?.data?.error || 'Erreur lors de la création du sondage');
+    } finally {
+      setCreatingSurvey(false);
+    }
+  };
+
+  const archiveSurvey = async (surveyId: string) => {
+    try {
+      setArchivingSurveyId(surveyId);
+      const res = await adminApi.archiveSurvey(surveyId);
+      setSurveys((prev) => prev.map((survey) => (survey.id === surveyId ? res.data.survey : survey)));
+      showMessage('success', 'Sondage archivé');
+    } catch (error: any) {
+      console.error('Failed to archive survey:', error);
+      showMessage('error', error.response?.data?.error || 'Erreur lors de l’archivage du sondage');
+    } finally {
+      setArchivingSurveyId(null);
     }
   };
 
@@ -5101,6 +5202,30 @@ export default function Admin() {
         />
 
         <CommunicationTab
+          surveys={surveys}
+          surveysLoading={surveysLoading}
+          fetchSurveys={fetchSurveys}
+          surveyDialogOpen={surveyDialogOpen}
+          setSurveyDialogOpen={setSurveyDialogOpen}
+          surveyTitle={surveyTitle}
+          setSurveyTitle={setSurveyTitle}
+          surveyDescription={surveyDescription}
+          setSurveyDescription={setSurveyDescription}
+          surveyAudienceType={surveyAudienceType}
+          setSurveyAudienceType={setSurveyAudienceType}
+          surveyPopupDelaySeconds={surveyPopupDelaySeconds}
+          setSurveyPopupDelaySeconds={setSurveyPopupDelaySeconds}
+          surveyOptions={surveyOptions}
+          setSurveyOptions={setSurveyOptions}
+          surveyTargetSearch={surveyTargetSearch}
+          setSurveyTargetSearch={setSurveyTargetSearch}
+          surveySelectedUserIds={surveySelectedUserIds}
+          setSurveySelectedUserIds={setSurveySelectedUserIds}
+          creatingSurvey={creatingSurvey}
+          createSurvey={createSurvey}
+          resetSurveyForm={resetSurveyForm}
+          archiveSurvey={archiveSurvey}
+          archivingSurveyId={archivingSurveyId}
           newThreadOpen={newThreadOpen}
           setNewThreadOpen={setNewThreadOpen}
           setNewThreadUserId={setNewThreadUserId}
@@ -5143,13 +5268,6 @@ export default function Admin() {
     </>
   );
 }
-
-
-
-
-
-
-
 
 
 

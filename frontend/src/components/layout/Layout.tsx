@@ -3,6 +3,7 @@ import { useEffect, useRef, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
 import AdminWarningModal from './AdminWarningModal';
+import SurveyPopupModal from './SurveyPopupModal';
 import { TutorialProvider } from '@/components/tutorial/TutorialContext';
 import { TutorialOverlay } from '@/components/tutorial/TutorialOverlay';
 import { TutorialWelcomeModal } from '@/components/tutorial/TutorialWelcomeModal';
@@ -227,6 +228,7 @@ export default function Layout() {
         )}
 
         <AdminWarningModal />
+        <SurveyPopupModal />
         <TutorialOverlay />
         <TutorialWelcomeModal />
       </div>

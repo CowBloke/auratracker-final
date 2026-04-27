@@ -12,6 +12,47 @@ import { getParisDayKey, getParisDayStart } from '../utils/dailyAura.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';
+const SURVEY_AUDIENCE_TYPES = ['ALL_USERS', 'BETA_TESTERS', 'ADMINS', 'SELECTED_USERS'] as const;
+type SurveyAudienceType = typeof SURVEY_AUDIENCE_TYPES[number];
+
+const buildSurveyAudienceEligibility = (user: {
+  id: string;
+  isApproved?: boolean;
+  isBetaTester?: boolean;
+  isAdmin?: boolean;
+  isSuperAdmin?: boolean;
+}) => ({
+  ALL_USERS: Boolean(user.isApproved ?? true),
+  BETA_TESTERS: Boolean(user.isApproved ?? true) && Boolean(user.isBetaTester),
+  ADMINS: Boolean(user.isApproved ?? true) && Boolean(user.isAdmin || user.isSuperAdmin),
+});
+
+const serializePendingSurvey = (survey: {
+  id: string;
+  title: string;
+  description: string | null;
+  popupDelaySeconds: number;
+  createdAt: Date;
+  options: Array<{
+    id: string;
+    label: string;
+    color: string;
+    sortOrder: number;
+  }>;
+}) => ({
+  id: survey.id,
+  title: survey.title,
+  description: survey.description,
+  popupDelaySeconds: survey.popupDelaySeconds,
+  createdAt: survey.createdAt.toISOString(),
+  options: survey.options
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((option) => ({
+      id: option.id,
+      label: option.label,
+      color: option.color,
+    })),
+});
 
 const toNumericValue = (value: unknown): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -669,6 +710,149 @@ router.post('/name-change-request', authMiddleware, async (req: AuthRequest, res
   } catch (error) {
     console.error('Name change request error:', error);
     res.status(500).json({ error: 'Failed to submit name change request' });
+  }
+});
+
+// ========== SURVEYS ==========
+
+router.get('/surveys/pending', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const viewer = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: {
+        id: true,
+        isApproved: true,
+        isBetaTester: true,
+        isAdmin: true,
+        isSuperAdmin: true,
+      },
+    });
+
+    if (!viewer) {
+      return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+
+    const audienceEligibility = buildSurveyAudienceEligibility(viewer);
+
+    const pendingSurvey = await prisma.survey.findFirst({
+      where: {
+        status: 'ACTIVE',
+        responses: {
+          none: {
+            userId: viewer.id,
+          },
+        },
+        OR: [
+          ...(audienceEligibility.ALL_USERS ? [{ audienceType: 'ALL_USERS' }] : []),
+          ...(audienceEligibility.BETA_TESTERS ? [{ audienceType: 'BETA_TESTERS' }] : []),
+          ...(audienceEligibility.ADMINS ? [{ audienceType: 'ADMINS' }] : []),
+          {
+            audienceType: 'SELECTED_USERS',
+            targetUsers: {
+              some: {
+                userId: viewer.id,
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        options: true,
+      },
+      orderBy: [
+        { createdAt: 'asc' },
+      ],
+    });
+
+    res.json({ survey: pendingSurvey ? serializePendingSurvey(pendingSurvey) : null });
+  } catch (error) {
+    console.error('Get pending survey error:', error);
+    res.status(500).json({ error: 'Erreur lors du chargement du sondage.' });
+  }
+});
+
+router.post('/surveys/:id/respond', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const surveyId = req.params.id;
+    const optionId = typeof req.body?.optionId === 'string' ? req.body.optionId.trim() : '';
+    if (!optionId) {
+      return res.status(400).json({ error: 'Option requise.' });
+    }
+
+    const viewer = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: {
+        id: true,
+        isApproved: true,
+        isBetaTester: true,
+        isAdmin: true,
+        isSuperAdmin: true,
+      },
+    });
+
+    if (!viewer) {
+      return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+
+    const survey = await prisma.survey.findUnique({
+      where: { id: surveyId },
+      include: {
+        options: true,
+        targetUsers: {
+          where: {
+            userId: viewer.id,
+          },
+          select: {
+            userId: true,
+          },
+        },
+      },
+    });
+
+    if (!survey || survey.status !== 'ACTIVE') {
+      return res.status(404).json({ error: 'Sondage introuvable ou archivé.' });
+    }
+
+    const typedAudience = (survey.audienceType.toUpperCase() as SurveyAudienceType);
+    const audienceEligibility = buildSurveyAudienceEligibility(viewer);
+    const canAnswer = typedAudience === 'SELECTED_USERS'
+      ? survey.targetUsers.length > 0
+      : audienceEligibility[typedAudience];
+
+    if (!canAnswer) {
+      return res.status(403).json({ error: 'Ce sondage ne vous est pas destiné.' });
+    }
+
+    const selectedOption = survey.options.find((option) => option.id === optionId);
+    if (!selectedOption) {
+      return res.status(400).json({ error: 'Option de sondage invalide.' });
+    }
+
+    const existingResponse = await prisma.surveyResponse.findUnique({
+      where: {
+        surveyId_userId: {
+          surveyId,
+          userId: viewer.id,
+        },
+      },
+    });
+
+    if (existingResponse) {
+      return res.json({ success: true, alreadyAnswered: true });
+    }
+
+    await prisma.surveyResponse.create({
+      data: {
+        surveyId,
+        userId: viewer.id,
+        optionId: selectedOption.id,
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Respond survey error:', error);
+    res.status(500).json({ error: 'Erreur lors de la réponse au sondage.' });
   }
 });
 

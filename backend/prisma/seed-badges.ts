@@ -346,9 +346,9 @@ const BADGES = [
   },
   {
     key: 'TOP_BADGES_COUNT',
-    name: 'Collectionneur Supreme',
-    description: 'Detient actuellement le plus grand nombre de badges.',
-    howToObtain: 'Avoir plus de badges que tout le monde (egalite possible).',
+    name: 'A le plus de badges',
+    description: 'Attribue automatiquement au joueur, ou aux joueurs en cas d\'egalite, qui detiennent le plus de badges.',
+    howToObtain: 'Detenir le plus de badges sur la plateforme. En cas d\'egalite, le badge est attribue a tous les premiers.',
     icon: '👑',
     iconColor: '#fde68a',
     backgroundType: 'gradient',

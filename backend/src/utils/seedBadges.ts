@@ -994,10 +994,10 @@ const NEW_ACHIEVEMENT_BADGES: BadgeDef[] = [
   // Plus grand nombre de badges possédés
   {
     autoConditionKey: 'TOP_BADGES_COUNT',
-    name: 'Collection Royale',
-    description: 'Fait partie des joueurs avec le plus de badges débloqués.',
-    howToObtain: 'Avoir le plus grand nombre de badges possédés.',
-    icon: '🏆',
+    name: 'A le plus de badges',
+    description: 'Attribué automatiquement au joueur, ou aux joueurs en cas d\'égalité, qui détiennent le plus de badges.',
+    howToObtain: 'Détenir le plus de badges sur la plateforme. En cas d\'égalité, le badge est attribué à tous les premiers.',
+    icon: '👑',
     category: 'special',
     backgroundType: 'gradient',
     backgroundGradient: GRAD('#78350f', '#f59e0b'),
@@ -1182,7 +1182,27 @@ export const ensureDefaultBadges = async (): Promise<void> => {
         where: { autoConditionKey: def.autoConditionKey },
         select: { id: true },
       });
-      if (!existing) {
+      if (existing) {
+        if (def.autoConditionKey === 'TOP_BADGES_COUNT') {
+          await prisma.badge.update({
+            where: { id: existing.id },
+            data: {
+              name: def.name,
+              description: def.description,
+              howToObtain: def.howToObtain,
+              icon: def.icon,
+              backgroundType: def.backgroundType,
+              backgroundColor: def.backgroundColor,
+              backgroundGradient: def.backgroundGradient ?? null,
+              iconColor: def.iconColor,
+              borderColor: def.borderColor,
+              category: def.category,
+              rarity: def.rarity,
+              isHidden: def.isHidden ?? false,
+            },
+          });
+        }
+      } else {
         await prisma.badge.create({
           data: {
             name: def.name,

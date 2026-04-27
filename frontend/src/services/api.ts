@@ -91,6 +91,9 @@ export const usersApi = {
   update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
   requestNameChange: (data: { requestedUsername: string; reason?: string }) =>
     api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
+  getPendingSurvey: () => api.get<{ survey: UserPendingSurvey | null }>('/users/surveys/pending'),
+  respondSurvey: (surveyId: string, optionId: string) =>
+    api.post<{ success: boolean; alreadyAnswered?: boolean }>(`/users/surveys/${surveyId}/respond`, { optionId }),
   // Admin warnings (user-facing)
   getPendingWarnings: () => api.get<{ warnings: UserPendingWarning[] }>('/users/warnings/pending'),
   acknowledgeWarning: (id: string) => api.post<{ success: boolean; message: string }>(`/users/warnings/${id}/acknowledge`),
@@ -107,6 +110,21 @@ export interface UserPendingWarning {
     id: string;
     username: string;
   };
+}
+
+export interface UserPendingSurveyOption {
+  id: string;
+  label: string;
+  color: string;
+}
+
+export interface UserPendingSurvey {
+  id: string;
+  title: string;
+  description: string | null;
+  popupDelaySeconds: number;
+  createdAt: string;
+  options: UserPendingSurveyOption[];
 }
 
 export interface SocialRelationship {
@@ -2472,6 +2490,43 @@ export interface AdminWarning {
   };
 }
 
+export type AdminSurveyAudienceType = 'ALL_USERS' | 'BETA_TESTERS' | 'ADMINS' | 'SELECTED_USERS';
+export type AdminSurveyStatus = 'ACTIVE' | 'ARCHIVED';
+
+export interface AdminSurveyOption {
+  id: string;
+  label: string;
+  color: string;
+  sortOrder: number;
+  responseCount: number;
+}
+
+export interface AdminSurveySelectedUser {
+  id: string;
+  username: string;
+}
+
+export interface AdminSurvey {
+  id: string;
+  title: string;
+  description: string | null;
+  audienceType: AdminSurveyAudienceType;
+  status: AdminSurveyStatus;
+  popupDelaySeconds: number;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: {
+    id: string;
+    username: string;
+  };
+  options: AdminSurveyOption[];
+  selectedUsers: AdminSurveySelectedUser[];
+  totalResponses: number;
+  totalTargets: number | null;
+  pendingTargets: number | null;
+}
+
 export interface PlaytimeLeaderboardEntry {
   rank: number;
   userId: string;
@@ -2915,6 +2970,16 @@ export const adminApi = {
   createWarning: (data: { userId: string; type?: 'AVERTISSEMENT' | 'AMENDE'; message: string; severity?: 'LOW' | 'MEDIUM' | 'HIGH'; amount?: number }) =>
     api.post<{ warning: AdminWarning; message: string }>('/admin/warnings', data),
   deleteWarning: (id: string) => api.delete<{ success: boolean; message: string }>(`/admin/warnings/${id}`),
+  getSurveys: () => api.get<{ surveys: AdminSurvey[] }>('/admin/surveys'),
+  createSurvey: (data: {
+    title: string;
+    description?: string | null;
+    audienceType: AdminSurveyAudienceType;
+    popupDelaySeconds: number;
+    options: Array<{ label: string; color: string }>;
+    selectedUserIds?: string[];
+  }) => api.post<{ survey: AdminSurvey }>('/admin/surveys', data),
+  archiveSurvey: (id: string) => api.post<{ survey: AdminSurvey }>(`/admin/surveys/${id}/archive`, {}),
   backfillScoreHistory: () => api.post<{ success: boolean; inserted: number; skipped: number }>('/admin/backfill-score-history'),
   // Platform stats (aggregated platform-wide data)
   getPlatformStats: () => api.get<{
@@ -3380,7 +3445,10 @@ export interface SupportMessage {
   images?: string | null; // JSON array of image URLs
   fromAdmin: boolean;
   isRead: boolean;
+  deletedAt?: string | null;
+  deletedByUserId?: string | null;
   createdAt: string;
+  reactions?: MessagingReaction[];
 }
 
 export interface SupportThread {
@@ -3412,6 +3480,8 @@ export interface MessagingConversationMessage {
   type: string;
   imageUrl?: string | null;
   courtRole: string | null;
+  deletedAt?: string | null;
+  deletedByUserId?: string | null;
   replyTo?: {
     id: string;
     body: string;
@@ -3527,6 +3597,8 @@ export const supportApi = {
   reply: (userId: string, body: string, images?: string[]) =>
     api.post<{ message: SupportMessage }>(`/support/admin/reply/${userId}`, { body, images }),
   markThreadRead: (userId: string) => api.post<{ success: boolean }>(`/support/admin/threads/${userId}/read`),
+  reactToSupportMessage: (userId: string, messageId: string, emoji: string) =>
+    api.post<{ added: boolean }>(`/support/admin/threads/${userId}/messages/${messageId}/react`, { emoji }),
   getReports: () => api.get<{ reports: MessagingReport[] }>('/support/admin/reports'),
   reviewReport: (reportId: string, data: { action: 'ACTION_TAKEN' | 'DISMISSED'; reviewerNote?: string }) =>
     api.post<{ report: { id: string; status: string; reviewerNote: string | null; reviewedAt: string | null } }>(`/support/admin/reports/${reportId}/review`, data),

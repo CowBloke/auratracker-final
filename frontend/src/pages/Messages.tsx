@@ -200,7 +200,12 @@ const isSameCalendarDay = (left: string, right: string) => {
 };
 
 const getInitials = (name?: string | null) => ((name ?? '?').trim().slice(0, 2) || '?').toUpperCase();
-const getPreview = (c: MessagingConversationSummary) => c.lastMessage?.body || 'Commence la discussion.';
+const getPreview = (c: MessagingConversationSummary) => {
+  const lastMessage = c.lastMessage;
+  if (!lastMessage) return 'Commence la discussion.';
+  if ('deletedAt' in lastMessage && lastMessage.deletedAt) return '';
+  return lastMessage.body || 'Commence la discussion.';
+};
 const getLastOutgoingMessageReadState = (
   conversation: MessagingConversationSummary,
   currentUserId: string | null | undefined,
@@ -369,6 +374,7 @@ export default function MessagesPage() {
   // Modals
   const [createOpen, setCreateOpen] = useState(false);
   const [createMode, setCreateMode] = useState<'DM' | 'GROUP'>('DM');
+  const [createSendAs, setCreateSendAs] = useState<'perso' | 'support'>('perso');
   const [createTitle, setCreateTitle] = useState('');
   const [createSearch, setCreateSearch] = useState('');
   const [createParticipantIds, setCreateParticipantIds] = useState<string[]>([]);
@@ -465,8 +471,9 @@ export default function MessagesPage() {
   const hasCourtRepresentation = !isEligibleCourtClient || Boolean(assignedLawyer || hasAssignedPublicDefender);
   const selectedIdSafe = selectedConversation?.id ?? null;
   const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
-  const conversationReactionsEnabled = selectedConversation?.type === 'DM' || selectedConversation?.type === 'GROUP';
+  const conversationReactionsEnabled = selectedConversation?.type === 'DM' || selectedConversation?.type === 'GROUP' || selectedConversation?.type === 'SUPPORT';
   const currentMessages = detail?.messages ?? [];
+  const visibleMessages = currentMessages.filter((message) => !message.deletedAt);
   const dmTypingUser = selectedConversation?.type === 'DM' && selectedIdSafe
     ? (typingByConversation[selectedIdSafe] ?? null)
     : null;
@@ -518,15 +525,15 @@ export default function MessagesPage() {
           supportApi.getThread(adminSupportUserId),
           isAdminViewer ? supportApi.getThreads() : Promise.resolve({ data: { threads: [] as SupportThread[] } }),
         ]);
-        const latestMessage = threadRes.data.messages[threadRes.data.messages.length - 1];
+        const latestVisibleMessage = [...threadRes.data.messages].reverse().find((message) => !message.deletedAt);
         const matchingThread =
           supportThreadsRes.data.threads.find((thread) => thread.userId === adminSupportUserId) ??
           adminSupportThreads.find((thread) => thread.userId === adminSupportUserId) ?? {
             userId: adminSupportUserId,
             user: threadRes.data.user,
-            lastBody: latestMessage?.body ?? '',
-            lastFromAdmin: latestMessage?.fromAdmin ?? false,
-            lastCreatedAt: latestMessage?.createdAt ?? new Date(0).toISOString(),
+            lastBody: latestVisibleMessage?.body ?? '',
+            lastFromAdmin: latestVisibleMessage?.fromAdmin ?? false,
+            lastCreatedAt: latestVisibleMessage?.createdAt ?? new Date(0).toISOString(),
             unreadCount: 0,
           };
 
@@ -547,7 +554,7 @@ export default function MessagesPage() {
                   usernameColor: threadRes.data.user?.usernameColor ?? null,
                 },
             courtRole: null,
-            reactions: [],
+            reactions: message.reactions ?? [],
           })),
         });
         if (markRead) {
@@ -768,7 +775,7 @@ export default function MessagesPage() {
   }, [socket, selectedIdSafe]);
 
   useEffect(() => {
-    const currentMessageCount = detail?.messages.length ?? 0;
+    const currentMessageCount = visibleMessages.length;
     const previousConversationId = previousSelectedConversationRef.current;
     const previousMessageCount = previousMessageCountRef.current;
     const conversationChanged = previousConversationId !== selectedIdSafe;
@@ -787,7 +794,7 @@ export default function MessagesPage() {
       window.setTimeout(scrollMessagesToBottom, 0);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [detail?.messages.length, selectedIdSafe, isMessagesAtBottom, convLoading]);
+  }, [visibleMessages.length, selectedIdSafe, isMessagesAtBottom, convLoading]);
 
   // Load court case when switching to a court conversation
   useEffect(() => {
@@ -1091,13 +1098,21 @@ export default function MessagesPage() {
     if (createMode === 'DM' && createParticipantIds.length !== 1) return;
     if (createMode === 'GROUP' && createParticipantIds.length < 2) return;
     try {
+      if (isAdminViewer && createMode === 'DM' && createSendAs === 'support') {
+        const targetUserId = createParticipantIds[0];
+        setCreateOpen(false);
+        setCreateMode('DM'); setCreateTitle(''); setCreateSearch(''); setCreateParticipantIds([]); setCreateSendAs('perso');
+        const supportConvId = getAdminSupportConversationId(targetUserId);
+        setSelectedId(supportConvId);
+        return;
+      }
       const r = await supportApi.createConversation({
         type: createMode,
         title: createMode === 'GROUP' ? createTitle.trim() : undefined,
         participantIds: createParticipantIds,
       });
       setCreateOpen(false);
-      setCreateMode('DM'); setCreateTitle(''); setCreateSearch(''); setCreateParticipantIds([]);
+      setCreateMode('DM'); setCreateTitle(''); setCreateSearch(''); setCreateParticipantIds([]); setCreateSendAs('perso');
       await refreshConversations();
       setSelectedId(r.data.conversation.id);
     } catch {
@@ -1234,7 +1249,11 @@ export default function MessagesPage() {
   const handleReact = async (messageId: string, emoji: string) => {
     if (!selectedIdSafe || !conversationReactionsEnabled) return;
     try {
-      await supportApi.reactToMessage(selectedIdSafe, messageId, emoji);
+      if (selectedAdminSupportUserId) {
+        await supportApi.reactToSupportMessage(selectedAdminSupportUserId, messageId, emoji);
+      } else {
+        await supportApi.reactToMessage(selectedIdSafe, messageId, emoji);
+      }
       await loadConversation(selectedIdSafe, false, false);
     } catch {
       toast({ title: 'Erreur', variant: 'destructive' });
@@ -1465,7 +1484,7 @@ export default function MessagesPage() {
       ? null
       : selectedConversation?.participants.find((entry) => entry.user.id === user?.id)?.lastReadAt ?? null;
   const firstUnreadMessageId =
-    currentMessages.find((message) => {
+    visibleMessages.find((message) => {
       const isOwnSupportMessage = selectedConversation?.type === 'SUPPORT'
         ? Boolean(selectedAdminSupportUserId ? message.fromAdmin : !message.fromAdmin)
         : (message.senderId ?? message.userId) === user?.id;
@@ -1488,7 +1507,7 @@ export default function MessagesPage() {
     updateIsAtBottom();
     viewport.addEventListener('scroll', updateIsAtBottom);
     return () => viewport.removeEventListener('scroll', updateIsAtBottom);
-  }, [selectedIdSafe, convLoading, currentMessages.length]);
+  }, [selectedIdSafe, convLoading, visibleMessages.length]);
 
   if (loading) {
     return (
@@ -1565,7 +1584,7 @@ export default function MessagesPage() {
       </Dialog>
 
       {/* ── Create conversation modal ── */}
-      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateSearch(''); setCreateParticipantIds([]); setCreateTitle(''); setCreateMode('DM'); } }}>
+      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateSearch(''); setCreateParticipantIds([]); setCreateTitle(''); setCreateMode('DM'); setCreateSendAs('perso'); } }}>
         <DialogContent className="max-w-md gap-0 p-0 overflow-hidden">
           <div className="border-b border-border/60 px-4 py-3">
             <DialogTitle className="text-sm font-semibold">Nouvelle conversation</DialogTitle>
@@ -1573,13 +1592,25 @@ export default function MessagesPage() {
           <div className="flex border-b border-border/60">
             {(['DM', 'GROUP'] as const).map((mode) => (
               <button key={mode} type="button"
-                onClick={() => { setCreateMode(mode); setCreateParticipantIds([]); }}
+                onClick={() => { setCreateMode(mode); setCreateParticipantIds([]); setCreateSendAs('perso'); }}
                 className={cn('flex-1 py-2 text-xs font-medium transition-colors', createMode === mode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50')}
               >
                 {mode === 'DM' ? 'Message privé' : 'Groupe'}
               </button>
             ))}
           </div>
+          {isAdminViewer && createMode === 'DM' && (
+            <div className="flex border-b border-border/60">
+              {(['perso', 'support'] as const).map((sender) => (
+                <button key={sender} type="button"
+                  onClick={() => setCreateSendAs(sender)}
+                  className={cn('flex-1 py-1.5 text-xs font-medium transition-colors', createSendAs === sender ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted/50')}
+                >
+                  {sender === 'perso' ? 'Mon compte' : 'Support'}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="space-y-2 p-3">
             {createMode === 'GROUP' && (
               <Input value={createTitle} onChange={(e) => setCreateTitle(e.target.value)} placeholder="Nom du groupe (optionnel)" className="h-8 text-sm" />
@@ -2472,7 +2503,7 @@ export default function MessagesPage() {
                         <div className="py-2">
                           <ListSkeleton rows={4} showAvatar={false} />
                         </div>
-                      ) : currentMessages.length === 0 ? (
+                      ) : visibleMessages.length === 0 ? (
                         <div className="flex flex-col items-center py-12 text-center">
                           <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-card">
                             <MessagesSquare className="h-5 w-5 text-muted-foreground" />
@@ -2480,7 +2511,7 @@ export default function MessagesPage() {
                           <p className="mt-3 text-sm font-medium">Lance la conversation</p>
                           <p className="mt-1 text-xs text-muted-foreground">Envoie un premier message.</p>
                         </div>
-                      ) : currentMessages.map((msg, index) => {
+                      ) : visibleMessages.map((msg, index) => {
                         // System messages render as centered announcements.
                         if (msg.type === 'COURT_SYSTEM' || msg.type === 'SYSTEM') {
                           const witnessRequest = msg.type === 'COURT_SYSTEM' ? parseCourtWitnessRequest(msg.body) : null;
@@ -2513,8 +2544,8 @@ export default function MessagesPage() {
                         const isOwn = selectedConversation.type === 'SUPPORT'
                           ? Boolean(selectedAdminSupportUserId ? msg.fromAdmin : !msg.fromAdmin)
                           : (msg.sender?.id ?? msg.senderId ?? msg.userId) === user?.id && !msg.fromAdmin;
-                        const prevMsg = currentMessages[index - 1];
-                        const nextMsg = currentMessages[index + 1];
+                        const prevMsg = visibleMessages[index - 1];
+                        const nextMsg = visibleMessages[index + 1];
                         const prevIsOwn = prevMsg
                           ? selectedConversation.type === 'SUPPORT'
                             ? Boolean(selectedAdminSupportUserId ? prevMsg.fromAdmin : !prevMsg.fromAdmin)

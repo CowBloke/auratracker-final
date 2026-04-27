@@ -92,6 +92,168 @@ const toOptionalTrimmedString = (value: unknown) => {
   return trimmed === '' ? null : trimmed;
 };
 
+const SURVEY_AUDIENCE_TYPES = ['ALL_USERS', 'BETA_TESTERS', 'ADMINS', 'SELECTED_USERS'] as const;
+type SurveyAudienceType = typeof SURVEY_AUDIENCE_TYPES[number];
+const SURVEY_STATUS_ACTIVE = 'ACTIVE';
+const SURVEY_STATUS_ARCHIVED = 'ARCHIVED';
+
+const buildSurveyAudienceUserWhere = (audienceType: SurveyAudienceType) => {
+  switch (audienceType) {
+    case 'ALL_USERS':
+      return { isApproved: true };
+    case 'BETA_TESTERS':
+      return { isApproved: true, isBetaTester: true };
+    case 'ADMINS':
+      return { isApproved: true, OR: [{ isAdmin: true }, { isSuperAdmin: true }] };
+    case 'SELECTED_USERS':
+    default:
+      return null;
+  }
+};
+
+const normalizeSurveyInput = (body: Record<string, unknown>): (
+  {
+    title: string;
+    description: string | null;
+    audienceType: SurveyAudienceType;
+    popupDelaySeconds: number;
+    options: Array<{ label: string; color: string; sortOrder: number }>;
+    selectedUserIds: string[];
+  } | { error: string }
+) => {
+  const title = typeof body.title === 'string' ? body.title.trim() : '';
+  if (title.length < 3 || title.length > 120) {
+    return { error: 'Le titre du sondage doit contenir entre 3 et 120 caractères.' };
+  }
+
+  const description = toOptionalTrimmedString(body.description);
+  if (description && description.length > 1000) {
+    return { error: 'La description du sondage est trop longue (max 1000 caractères).' };
+  }
+
+  const audienceType = typeof body.audienceType === 'string'
+    ? body.audienceType.trim().toUpperCase()
+    : 'ALL_USERS';
+  if (!SURVEY_AUDIENCE_TYPES.includes(audienceType as SurveyAudienceType)) {
+    return { error: 'Audience de sondage invalide.' };
+  }
+
+  const popupDelaySeconds = Number.parseInt(String(body.popupDelaySeconds ?? '45'), 10);
+  if (!Number.isInteger(popupDelaySeconds) || popupDelaySeconds < 10 || popupDelaySeconds > 300) {
+    return { error: 'Le délai d’affichage doit être un entier entre 10 et 300 secondes.' };
+  }
+
+  if (!Array.isArray(body.options) || body.options.length < 2 || body.options.length > 8) {
+    return { error: 'Le sondage doit avoir entre 2 et 8 options.' };
+  }
+
+  const options: Array<{ label: string; color: string; sortOrder: number }> = [];
+  for (const [index, rawOption] of body.options.entries()) {
+    if (!rawOption || typeof rawOption !== 'object') {
+      return { error: `L’option #${index + 1} est invalide.` };
+    }
+
+    const option = rawOption as Record<string, unknown>;
+    const label = typeof option.label === 'string' ? option.label.trim() : '';
+    const color = typeof option.color === 'string' ? option.color.trim() : '';
+
+    if (label.length < 1 || label.length > 80) {
+      return { error: `L’option #${index + 1} doit avoir un libellé entre 1 et 80 caractères.` };
+    }
+    if (!/^#([0-9a-fA-F]{6})$/.test(color)) {
+      return { error: `La couleur de l’option "${label || `#${index + 1}`}" est invalide.` };
+    }
+
+    options.push({
+      label,
+      color,
+      sortOrder: index,
+    });
+  }
+
+  if (new Set(options.map((option) => option.label.toLowerCase())).size !== options.length) {
+    return { error: 'Chaque option doit avoir un libellé différent.' };
+  }
+
+  const selectedUserIds = Array.isArray(body.selectedUserIds)
+    ? [...new Set(body.selectedUserIds.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean))]
+    : [];
+
+  if (audienceType === 'SELECTED_USERS' && selectedUserIds.length === 0) {
+    return { error: 'Choisis au moins un utilisateur pour un sondage ciblé.' };
+  }
+
+  return {
+    title,
+    description,
+    audienceType: audienceType as SurveyAudienceType,
+    popupDelaySeconds,
+    options,
+    selectedUserIds,
+  };
+};
+
+const serializeAdminSurvey = async (survey: {
+  id: string;
+  title: string;
+  description: string | null;
+  audienceType: string;
+  status: string;
+  popupDelaySeconds: number;
+  archivedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: { id: string; username: string };
+  options: Array<{
+    id: string;
+    label: string;
+    color: string;
+    sortOrder: number;
+    _count: { responses: number };
+  }>;
+  targetUsers: Array<{
+    user: { id: string; username: string };
+  }>;
+  _count: { responses: number };
+}) => {
+  const typedAudience = (survey.audienceType.toUpperCase() as SurveyAudienceType);
+  const selectedUsers = survey.targetUsers.map((entry) => entry.user);
+  let totalTargets: number | null = null;
+
+  if (typedAudience === 'SELECTED_USERS') {
+    totalTargets = selectedUsers.length;
+  } else {
+    const where = buildSurveyAudienceUserWhere(typedAudience);
+    totalTargets = where ? await prisma.user.count({ where }) : null;
+  }
+
+  return {
+    id: survey.id,
+    title: survey.title,
+    description: survey.description,
+    audienceType: typedAudience,
+    status: survey.status,
+    popupDelaySeconds: survey.popupDelaySeconds,
+    archivedAt: survey.archivedAt?.toISOString() ?? null,
+    createdAt: survey.createdAt.toISOString(),
+    updatedAt: survey.updatedAt.toISOString(),
+    createdBy: survey.createdBy,
+    options: survey.options
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((option) => ({
+        id: option.id,
+        label: option.label,
+        color: option.color,
+        sortOrder: option.sortOrder,
+        responseCount: option._count.responses,
+      })),
+    selectedUsers,
+    totalResponses: survey._count.responses,
+    totalTargets,
+    pendingTargets: totalTargets === null ? null : Math.max(0, totalTargets - survey._count.responses),
+  };
+};
+
 const parseJsonString = (value: unknown): string | null | { error: string } => {
   if (value == null) return null;
   if (typeof value === 'string') {
@@ -4967,6 +5129,251 @@ router.get('/online-stats', authMiddleware, requireAdmin, async (req: AuthReques
   } catch (error) {
     console.error('Online stats error:', error);
     res.status(500).json({ error: 'Failed to fetch online stats' });
+  }
+});
+
+// ========== ADMIN SURVEYS ==========
+
+router.get('/surveys', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const surveys = await prisma.survey.findMany({
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        options: {
+          include: {
+            _count: {
+              select: {
+                responses: true,
+              },
+            },
+          },
+        },
+        targetUsers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            responses: true,
+          },
+        },
+      },
+      orderBy: [
+        { status: 'asc' },
+        { createdAt: 'desc' },
+      ],
+    });
+
+    const serialized = await Promise.all(surveys.map((survey) => serializeAdminSurvey(survey)));
+    res.json({ surveys: serialized });
+  } catch (error) {
+    console.error('Admin get surveys error:', error);
+    res.status(500).json({ error: 'Erreur lors du chargement des sondages.' });
+  }
+});
+
+router.post('/surveys', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const normalized = normalizeSurveyInput(req.body as Record<string, unknown>);
+    if ('error' in normalized) {
+      return res.status(400).json({ error: normalized.error });
+    }
+
+    const { title, description, audienceType, popupDelaySeconds, options, selectedUserIds } = normalized;
+
+    if (audienceType === 'SELECTED_USERS') {
+      const selectedUsersCount = await prisma.user.count({
+        where: {
+          id: { in: selectedUserIds },
+        },
+      });
+
+      if (selectedUsersCount !== selectedUserIds.length) {
+        return res.status(400).json({ error: 'Au moins un utilisateur sélectionné est introuvable.' });
+      }
+    }
+
+    const survey = await prisma.survey.create({
+      data: {
+        title,
+        description,
+        audienceType,
+        popupDelaySeconds,
+        createdById: req.user!.id,
+        options: {
+          create: options,
+        },
+        ...(audienceType === 'SELECTED_USERS'
+          ? {
+              targetUsers: {
+                create: selectedUserIds.map((userId) => ({ userId })),
+              },
+            }
+          : {}),
+      },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        options: {
+          include: {
+            _count: {
+              select: {
+                responses: true,
+              },
+            },
+          },
+        },
+        targetUsers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            responses: true,
+          },
+        },
+      },
+    });
+
+    const targetUserIds = audienceType === 'SELECTED_USERS'
+      ? selectedUserIds
+      : (await prisma.user.findMany({
+          where: buildSurveyAudienceUserWhere(audienceType) ?? undefined,
+          select: { id: true },
+        })).map((user) => user.id);
+
+    for (const userId of targetUserIds) {
+      io.to(`user:${userId}`).emit('survey:available', { surveyId: survey.id });
+    }
+
+    res.status(201).json({ survey: await serializeAdminSurvey(survey) });
+  } catch (error) {
+    console.error('Admin create survey error:', error);
+    res.status(500).json({ error: 'Erreur lors de la création du sondage.' });
+  }
+});
+
+router.post('/surveys/:id/archive', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await prisma.survey.findUnique({
+      where: { id: req.params.id },
+      include: {
+        createdBy: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+        options: {
+          include: {
+            _count: {
+              select: {
+                responses: true,
+              },
+            },
+          },
+        },
+        targetUsers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            responses: true,
+          },
+        },
+      },
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Sondage introuvable.' });
+    }
+
+    const updated = existing.status === SURVEY_STATUS_ARCHIVED
+      ? existing
+      : await prisma.survey.update({
+          where: { id: existing.id },
+          data: {
+            status: SURVEY_STATUS_ARCHIVED,
+            archivedAt: new Date(),
+          },
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+            options: {
+              include: {
+                _count: {
+                  select: {
+                    responses: true,
+                  },
+                },
+              },
+            },
+            targetUsers: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    username: true,
+                  },
+                },
+              },
+            },
+            _count: {
+              select: {
+                responses: true,
+              },
+            },
+          },
+        });
+
+    const typedAudience = updated.audienceType.toUpperCase() as SurveyAudienceType;
+    const targetUserIds = typedAudience === 'SELECTED_USERS'
+      ? updated.targetUsers.map((entry) => entry.user.id)
+      : (await prisma.user.findMany({
+          where: buildSurveyAudienceUserWhere(typedAudience) ?? undefined,
+          select: { id: true },
+        })).map((user) => user.id);
+
+    for (const userId of targetUserIds) {
+      io.to(`user:${userId}`).emit('survey:archived', { surveyId: updated.id });
+    }
+
+    res.json({ survey: await serializeAdminSurvey(updated) });
+  } catch (error) {
+    console.error('Admin archive survey error:', error);
+    res.status(500).json({ error: 'Erreur lors de l’archivage du sondage.' });
   }
 });
 

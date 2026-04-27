@@ -1,16 +1,42 @@
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Loader2, Plus, RefreshCw, Send, Upload, X } from 'lucide-react';
+import { Archive, Loader2, Plus, RefreshCw, Send, Upload, X } from 'lucide-react';
 
 export type CommunicationTabProps = Record<string, unknown>;
 
 export function CommunicationTab(props: CommunicationTabProps) {
   const {
+    surveys,
+    surveysLoading,
+    fetchSurveys,
+    surveyDialogOpen,
+    setSurveyDialogOpen,
+    surveyTitle,
+    setSurveyTitle,
+    surveyDescription,
+    setSurveyDescription,
+    surveyAudienceType,
+    setSurveyAudienceType,
+    surveyPopupDelaySeconds,
+    setSurveyPopupDelaySeconds,
+    surveyOptions,
+    setSurveyOptions,
+    surveyTargetSearch,
+    setSurveyTargetSearch,
+    surveySelectedUserIds,
+    setSurveySelectedUserIds,
+    creatingSurvey,
+    createSurvey,
+    resetSurveyForm,
+    archiveSurvey,
+    archivingSurveyId,
     newThreadOpen,
     setNewThreadOpen,
     setNewThreadUserId,
@@ -45,6 +71,18 @@ export function CommunicationTab(props: CommunicationTabProps) {
     setSupportReply,
     handleSupportReply,
   } = props as any;
+
+  const audienceLabelMap: Record<string, string> = {
+    ALL_USERS: 'Tous les utilisateurs',
+    BETA_TESTERS: 'Bêta testeurs',
+    ADMINS: 'Admins',
+    SELECTED_USERS: 'Utilisateurs choisis',
+  };
+
+  const filteredSurveyUsers = users
+    .filter((u: any) => !surveySelectedUserIds.includes(u.id))
+    .filter((u: any) => u.username.toLowerCase().includes(surveyTargetSearch.toLowerCase()))
+    .slice(0, 10);
 
   return (
     <TabsContent value="communication" className={"space-y-8"}>
@@ -103,7 +141,317 @@ export function CommunicationTab(props: CommunicationTabProps) {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={surveyDialogOpen}
+        onOpenChange={(open) => {
+          setSurveyDialogOpen(open);
+          if (!open) {
+            resetSurveyForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Nouveau sondage</DialogTitle>
+            <DialogDescription>
+              Le pop-up sera affiché avec un délai, puis seulement aux utilisateurs ciblés qui n'ont pas encore répondu.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Titre</label>
+                <Input
+                  value={surveyTitle}
+                  onChange={(e) => setSurveyTitle(e.target.value)}
+                  placeholder="Ex: Quelle fonctionnalité veux-tu en premier ?"
+                  maxLength={120}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Audience</label>
+                <Select value={surveyAudienceType} onValueChange={setSurveyAudienceType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_USERS">Tous les utilisateurs</SelectItem>
+                    <SelectItem value="BETA_TESTERS">Bêta testeurs</SelectItem>
+                    <SelectItem value="ADMINS">Admins</SelectItem>
+                    <SelectItem value="SELECTED_USERS">Utilisateurs choisis</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Description</label>
+                <Textarea
+                  value={surveyDescription}
+                  onChange={(e) => setSurveyDescription(e.target.value)}
+                  placeholder="Contexte, objectif, ou ce qu'on attend des joueurs."
+                  rows={3}
+                  maxLength={1000}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Délai avant pop-up (sec)</label>
+                <Input
+                  type="number"
+                  min={10}
+                  max={300}
+                  value={surveyPopupDelaySeconds}
+                  onChange={(e) => setSurveyPopupDelaySeconds(Number(e.target.value) || 45)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Options</label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSurveyOptions((prev: Array<{ label: string; color: string }>) => (
+                    prev.length >= 8 ? prev : [...prev, { label: '', color: '#f59e0b' }]
+                  ))}
+                  disabled={surveyOptions.length >= 8}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Ajouter
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {surveyOptions.map((option: { label: string; color: string }, index: number) => (
+                  <div key={index} className="grid gap-2 md:grid-cols-[1fr_90px_40px]">
+                    <Input
+                      value={option.label}
+                      onChange={(e) => setSurveyOptions((prev: Array<{ label: string; color: string }>) => prev.map((entry, entryIndex) => (
+                        entryIndex === index ? { ...entry, label: e.target.value } : entry
+                      )))}
+                      placeholder={`Option ${index + 1}`}
+                      maxLength={80}
+                    />
+                    <Input
+                      type="color"
+                      value={option.color}
+                      onChange={(e) => setSurveyOptions((prev: Array<{ label: string; color: string }>) => prev.map((entry, entryIndex) => (
+                        entryIndex === index ? { ...entry, color: e.target.value } : entry
+                      )))}
+                      className="h-10 p-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSurveyOptions((prev: Array<{ label: string; color: string }>) => (
+                        prev.length <= 2 ? prev : prev.filter((_, entryIndex) => entryIndex !== index)
+                      ))}
+                      disabled={surveyOptions.length <= 2}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {surveyAudienceType === 'SELECTED_USERS' && (
+              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Utilisateurs ciblés</label>
+                  <Input
+                    value={surveyTargetSearch}
+                    onChange={(e) => setSurveyTargetSearch(e.target.value)}
+                    placeholder="Rechercher un utilisateur..."
+                  />
+                </div>
+
+                {surveySelectedUserIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {surveySelectedUserIds.map((userId: string) => {
+                      const selectedUser = users.find((user: any) => user.id === userId);
+                      if (!selectedUser) return null;
+                      return (
+                        <button
+                          key={userId}
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1 text-xs"
+                          onClick={() => setSurveySelectedUserIds((prev: string[]) => prev.filter((id) => id !== userId))}
+                        >
+                          {selectedUser.username}
+                          <X className="h-3 w-3" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {surveyTargetSearch.trim() && (
+                  <div className="max-h-40 overflow-y-auto rounded-md border border-border bg-background">
+                    {filteredSurveyUsers.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">Aucun utilisateur trouvé.</p>
+                    ) : (
+                      filteredSurveyUsers.map((user: any) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          className="w-full border-b border-border/50 px-3 py-2 text-left text-sm hover:bg-muted/50 last:border-b-0"
+                          onClick={() => setSurveySelectedUserIds((prev: string[]) => [...prev, user.id])}
+                        >
+                          {user.username}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSurveyDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={createSurvey} disabled={creatingSurvey}>
+              {creatingSurvey ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Publier
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className={TYPOGRAPHY.H4}>Sondages utilisateurs</h3>
+                <CardDescription>
+                  Crée un sondage, cible une audience, puis archive-le quand tu veux arrêter sa diffusion.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={fetchSurveys}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+                <Button size="sm" onClick={() => setSurveyDialogOpen(true)}>
+                  <Plus className="mr-1 h-4 w-4" />
+                  Nouveau sondage
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {surveysLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : surveys.length === 0 ? (
+              <p className={cn(TYPOGRAPHY.MUTED, 'py-6 text-center')}>Aucun sondage pour le moment.</p>
+            ) : (
+              <div className="space-y-3">
+                {surveys.map((survey: any) => {
+                  const totalVotes = survey.totalResponses || 0;
+                  return (
+                    <div key={survey.id} className="rounded-lg border border-border/60 bg-background p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="text-sm font-semibold">{survey.title}</h4>
+                            <span className={cn(
+                              'rounded-full px-2 py-1 text-[10px] font-semibold',
+                              survey.status === 'ACTIVE'
+                                ? 'bg-emerald-500/15 text-emerald-400'
+                                : 'bg-muted text-muted-foreground'
+                            )}>
+                              {survey.status === 'ACTIVE' ? 'Actif' : 'Archivé'}
+                            </span>
+                            <span className="rounded-full border border-border px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                              {audienceLabelMap[survey.audienceType] || survey.audienceType}
+                            </span>
+                          </div>
+                          {survey.description && (
+                            <p className="text-sm text-muted-foreground">{survey.description}</p>
+                          )}
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            <span>{totalVotes} réponse{totalVotes > 1 ? 's' : ''}</span>
+                            {survey.totalTargets !== null && (
+                              <span>{survey.pendingTargets} restant{survey.pendingTargets > 1 ? 's' : ''} / {survey.totalTargets}</span>
+                            )}
+                            <span>Délai: {survey.popupDelaySeconds}s</span>
+                            <span>Créé le {new Date(survey.createdAt).toLocaleString('fr-FR')}</span>
+                          </div>
+                          {survey.selectedUsers?.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {survey.selectedUsers.slice(0, 8).map((selectedUser: any) => (
+                                <span key={selectedUser.id} className="rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground">
+                                  {selectedUser.username}
+                                </span>
+                              ))}
+                              {survey.selectedUsers.length > 8 && (
+                                <span className="rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground">
+                                  +{survey.selectedUsers.length - 8}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {survey.status === 'ACTIVE' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => archiveSurvey(survey.id)}
+                            disabled={archivingSurveyId === survey.id}
+                          >
+                            {archivingSurveyId === survey.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Archive className="mr-1 h-4 w-4" />
+                                Archiver
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="mt-4 grid gap-2">
+                        {survey.options.map((option: any) => {
+                          const percent = totalVotes > 0 ? Math.round((option.responseCount / totalVotes) * 100) : 0;
+                          return (
+                            <div key={option.id} className="space-y-1">
+                              <div className="flex items-center justify-between gap-2 text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: option.color }} />
+                                  <span className="font-medium text-foreground">{option.label}</span>
+                                </div>
+                                <span className="text-muted-foreground">
+                                  {option.responseCount} vote{option.responseCount > 1 ? 's' : ''} · {percent}%
+                                </span>
+                              </div>
+                              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{ width: `${percent}%`, backgroundColor: option.color }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="rounded-lg border border-border bg-muted/10 p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>

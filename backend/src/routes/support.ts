@@ -109,7 +109,28 @@ function serializeBasicUser(user: BasicUser) {
   };
 }
 
-function serializeSupportMessage(msg: { id: string; userId: string; body: string; images?: string | null; fromAdmin: boolean; isRead: boolean; createdAt: Date }) {
+function groupSupportReactions(reactions: Array<{ emoji: string; userId: string; user: { id: string; username: string } }>, viewerId: string) {
+  const grouped: Record<string, { emoji: string; count: number; users: string[]; myReaction: boolean }> = {};
+  for (const r of reactions) {
+    if (!grouped[r.emoji]) grouped[r.emoji] = { emoji: r.emoji, count: 0, users: [], myReaction: false };
+    grouped[r.emoji].count++;
+    grouped[r.emoji].users.push(r.user.username);
+    if (r.userId === viewerId) grouped[r.emoji].myReaction = true;
+  }
+  return Object.values(grouped);
+}
+
+function serializeSupportMessage(msg: {
+  id: string;
+  userId: string;
+  body: string;
+  images?: string | null;
+  fromAdmin: boolean;
+  isRead: boolean;
+  deletedAt?: Date | null;
+  deletedByUserId?: string | null;
+  createdAt: Date;
+}) {
   return {
     id: msg.id,
     userId: msg.userId,
@@ -117,6 +138,8 @@ function serializeSupportMessage(msg: { id: string; userId: string; body: string
     images: msg.images ?? null,
     fromAdmin: msg.fromAdmin,
     isRead: msg.isRead,
+    deletedAt: msg.deletedAt?.toISOString() ?? null,
+    deletedByUserId: msg.deletedByUserId ?? null,
     createdAt: msg.createdAt instanceof Date ? msg.createdAt.toISOString() : msg.createdAt,
   };
 }
@@ -129,6 +152,8 @@ function serializeConversationMessage(message: {
   type: string;
   imageUrl?: string | null;
   courtRole?: string | null;
+  deletedAt?: Date | null;
+  deletedByUserId?: string | null;
   replyTo?: {
     id: string;
     body: string;
@@ -146,6 +171,8 @@ function serializeConversationMessage(message: {
     type: message.type,
     imageUrl: message.imageUrl ?? null,
     courtRole: message.courtRole ?? null,
+    deletedAt: message.deletedAt?.toISOString() ?? null,
+    deletedByUserId: message.deletedByUserId ?? null,
     replyTo: message.replyTo
       ? {
           id: message.replyTo.id,
@@ -245,11 +272,11 @@ async function notifyUserOfSupportReply(userId: string, body: string) {
 async function buildSupportConversationSummary(userId: string) {
   const [lastMessage, unreadCount] = await Promise.all([
     prisma.supportMessage.findFirst({
-      where: { userId },
+      where: { userId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.supportMessage.count({
-      where: { userId, fromAdmin: true, isRead: false },
+      where: { userId, fromAdmin: true, isRead: false, deletedAt: null },
     }),
   ]);
 
@@ -294,6 +321,7 @@ async function buildConversationSummaryForUser(conversationId: string, currentUs
           },
           messages: {
             include: { sender: { select: USER_PREVIEW_SELECT } },
+            where: { deletedAt: null },
             orderBy: { createdAt: 'desc' },
             take: 1,
           },
@@ -309,6 +337,7 @@ async function buildConversationSummaryForUser(conversationId: string, currentUs
   const unreadCount = await prisma.messageConversationMessage.count({
     where: {
       conversationId,
+      deletedAt: null,
       createdAt: participant.lastReadAt ? { gt: participant.lastReadAt } : undefined,
       senderId: { not: currentUserId },
     },
@@ -364,6 +393,7 @@ async function listMessagingConversationsForUser(userId: string) {
           },
           messages: {
             include: { sender: { select: USER_PREVIEW_SELECT } },
+            where: { deletedAt: null },
             orderBy: { createdAt: 'desc' },
             take: 1,
           },
@@ -378,6 +408,7 @@ async function listMessagingConversationsForUser(userId: string) {
       const unreadCount = await prisma.messageConversationMessage.count({
         where: {
           conversationId: membership.conversationId,
+          deletedAt: null,
           createdAt: membership.lastReadAt ? { gt: membership.lastReadAt } : undefined,
           senderId: { not: userId },
         },
@@ -590,6 +621,8 @@ router.get('/conversations/:conversationId', authMiddleware, async (req: AuthReq
           type: message.type,
             imageUrl: (message as any).imageUrl ?? null,
           courtRole: (message as any).courtRole ?? null,
+          deletedAt: (message as any).deletedAt ?? null,
+          deletedByUserId: (message as any).deletedByUserId ?? null,
           replyTo: (message as any).replyTo ?? null,
           createdAt: message.createdAt,
           sender: message.sender,
@@ -1397,7 +1430,7 @@ router.delete('/conversations/:conversationId/messages/:messageId', authMiddlewa
     if (conversationId === SUPPORT_CONVERSATION_ID || isAdminSupportConversation) {
       const supportMessage = await prisma.supportMessage.findUnique({
         where: { id: messageId },
-        select: { id: true, userId: true },
+        select: { id: true, userId: true, deletedAt: true },
       });
 
       if (!supportMessage) {
@@ -1411,7 +1444,15 @@ router.delete('/conversations/:conversationId/messages/:messageId', authMiddlewa
         }
       }
 
-      await prisma.supportMessage.delete({ where: { id: supportMessage.id } });
+      if (!supportMessage.deletedAt) {
+        await prisma.supportMessage.update({
+          where: { id: supportMessage.id },
+          data: {
+            deletedAt: new Date(),
+            deletedByUserId: user.id,
+          },
+        });
+      }
 
       io.to('admin:support').emit('support:message', {
         message: null,
@@ -1424,37 +1465,22 @@ router.delete('/conversations/:conversationId/messages/:messageId', authMiddlewa
 
     const targetMessage = await prisma.messageConversationMessage.findUnique({
       where: { id: messageId },
-      select: { id: true, conversationId: true },
+      select: { id: true, conversationId: true, deletedAt: true },
     });
 
     if (!targetMessage || targetMessage.conversationId !== conversationId) {
       return res.status(404).json({ error: 'Message not found' });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.messageConversationMessage.delete({ where: { id: targetMessage.id } });
-
-      const [latestMessage, conversation] = await Promise.all([
-        tx.messageConversationMessage.findFirst({
-          where: { conversationId },
-          orderBy: { createdAt: 'desc' },
-          select: { createdAt: true },
-        }),
-        tx.messageConversation.findUnique({
-          where: { id: conversationId },
-          select: { createdAt: true },
-        }),
-      ]);
-
-      if (conversation) {
-        await tx.messageConversation.update({
-          where: { id: conversationId },
-          data: {
-            lastMessageAt: latestMessage?.createdAt ?? conversation.createdAt,
-          },
-        });
-      }
-    }, { timeout: 15000, maxWait: 5000 });
+    if (!targetMessage.deletedAt) {
+      await prisma.messageConversationMessage.update({
+        where: { id: targetMessage.id },
+        data: {
+          deletedAt: new Date(),
+          deletedByUserId: user.id,
+        },
+      });
+    }
 
     await emitConversationToParticipants(conversationId, 'messaging:conversation', { conversationId });
     res.json({ success: true });
@@ -1522,7 +1548,7 @@ router.get('/unread-count', authMiddleware, async (req: AuthRequest, res: Respon
 
     const [supportUnreadCount, memberships] = await Promise.all([
       prisma.supportMessage.count({
-        where: { userId: user.id, fromAdmin: true, isRead: false },
+        where: { userId: user.id, fromAdmin: true, isRead: false, deletedAt: null },
       }),
       prisma.messageConversationParticipant.findMany({
         where: { userId: user.id },
@@ -1535,6 +1561,7 @@ router.get('/unread-count', authMiddleware, async (req: AuthRequest, res: Respon
         prisma.messageConversationMessage.count({
           where: {
             conversationId: membership.conversationId,
+            deletedAt: null,
             createdAt: membership.lastReadAt ? { gt: membership.lastReadAt } : undefined,
             senderId: { not: user.id },
           },
@@ -1553,25 +1580,45 @@ router.get('/admin/threads', authMiddleware, async (req: AuthRequest, res: Respo
   try {
     if (!requireAdmin(req, res)) return;
 
-    const threads = await prisma.$queryRaw<
-      Array<{
-        userId: string;
-        lastBody: string;
-        lastFromAdmin: number;
-        lastCreatedAt: string;
-        unreadCount: number;
-      }>
-    >`
-      SELECT
-        sm.userId,
-        (SELECT body FROM SupportMessage WHERE userId = sm.userId ORDER BY createdAt DESC LIMIT 1) as lastBody,
-        (SELECT fromAdmin FROM SupportMessage WHERE userId = sm.userId ORDER BY createdAt DESC LIMIT 1) as lastFromAdmin,
-        (SELECT createdAt FROM SupportMessage WHERE userId = sm.userId ORDER BY createdAt DESC LIMIT 1) as lastCreatedAt,
-        SUM(CASE WHEN sm.fromAdmin = 0 AND sm.isRead = 0 THEN 1 ELSE 0 END) as unreadCount
-      FROM SupportMessage sm
-      GROUP BY sm.userId
-      ORDER BY lastCreatedAt DESC
-    `;
+    const userRows = await prisma.supportMessage.findMany({
+      distinct: ['userId'],
+      select: { userId: true },
+    });
+
+    const threads = (await Promise.all(
+      userRows.map(async ({ userId }) => {
+        const [lastVisibleMessage, unreadCount] = await Promise.all([
+          prisma.supportMessage.findFirst({
+            where: { userId, deletedAt: null },
+            orderBy: { createdAt: 'desc' },
+            select: { body: true, fromAdmin: true, createdAt: true },
+          }),
+          prisma.supportMessage.count({
+            where: { userId, fromAdmin: false, isRead: false, deletedAt: null },
+          }),
+        ]);
+
+        if (!lastVisibleMessage) {
+          return null;
+        }
+
+        return {
+          userId,
+          lastBody: lastVisibleMessage.body,
+          lastFromAdmin: lastVisibleMessage.fromAdmin,
+          lastCreatedAt: lastVisibleMessage.createdAt.toISOString(),
+          unreadCount,
+        };
+      })
+    )).filter((thread): thread is {
+      userId: string;
+      lastBody: string;
+      lastFromAdmin: boolean;
+      lastCreatedAt: string;
+      unreadCount: number;
+    } => thread !== null);
+
+    threads.sort((a, b) => Date.parse(b.lastCreatedAt) - Date.parse(a.lastCreatedAt));
 
     if (!threads.length) {
       return res.json({ threads: [] });
@@ -1588,9 +1635,9 @@ router.get('/admin/threads', authMiddleware, async (req: AuthRequest, res: Respo
         userId: thread.userId,
         user: userMap.get(thread.userId) ?? null,
         lastBody: thread.lastBody,
-        lastFromAdmin: Boolean(thread.lastFromAdmin),
+        lastFromAdmin: thread.lastFromAdmin,
         lastCreatedAt: thread.lastCreatedAt,
-        unreadCount: Number(thread.unreadCount),
+        unreadCount: thread.unreadCount,
       })),
     });
   } catch (error) {
@@ -1603,11 +1650,15 @@ router.get('/admin/threads/:userId', authMiddleware, async (req: AuthRequest, re
   try {
     if (!requireAdmin(req, res)) return;
 
+    const adminId = req.user!.id;
     const { userId } = req.params;
     const [messages, user] = await Promise.all([
       prisma.supportMessage.findMany({
         where: { userId },
         orderBy: { createdAt: 'asc' },
+        include: {
+          reactions: { include: { user: { select: { id: true, username: true } } } },
+        },
       }),
       prisma.user.findUnique({
         where: { id: userId },
@@ -1615,10 +1666,48 @@ router.get('/admin/threads/:userId', authMiddleware, async (req: AuthRequest, re
       }),
     ]);
 
-    res.json({ messages: messages.map(serializeSupportMessage), user });
+    res.json({
+      messages: messages.map((msg) => ({
+        ...serializeSupportMessage(msg),
+        reactions: groupSupportReactions(msg.reactions, adminId),
+      })),
+      user,
+    });
   } catch (error) {
     console.error('Get support thread error:', error);
     res.status(500).json({ error: 'Failed to get thread' });
+  }
+});
+
+router.post('/admin/threads/:userId/messages/:messageId/react', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+
+    const adminId = req.user!.id;
+    const { messageId } = req.params;
+    const emoji = typeof req.body?.emoji === 'string' ? req.body.emoji.trim().slice(0, 8) : '';
+    if (!emoji) return res.status(400).json({ error: 'emoji required' });
+
+    const message = await prisma.supportMessage.findUnique({ where: { id: messageId }, select: { id: true } });
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+
+    const existing = await prisma.supportMessageReaction.findFirst({
+      where: { messageId, userId: adminId, emoji },
+    });
+
+    let added: boolean;
+    if (existing) {
+      await prisma.supportMessageReaction.delete({ where: { id: existing.id } });
+      added = false;
+    } else {
+      await prisma.supportMessageReaction.create({ data: { messageId, userId: adminId, emoji } });
+      added = true;
+    }
+
+    res.json({ added });
+  } catch (error) {
+    console.error('React to support message error:', error);
+    res.status(500).json({ error: 'Failed to react' });
   }
 });
 
