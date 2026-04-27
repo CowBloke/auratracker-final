@@ -627,7 +627,7 @@ export interface YouState {
 }
 
 export interface YouTemporaryEffect {
-  key: 'YOU_ADBLOCK' | string;
+  key: 'YOU_ADBLOCK' | 'GLOBAL_ADBLOCK' | string;
   label: string;
   description: string;
   expiresAt: string;

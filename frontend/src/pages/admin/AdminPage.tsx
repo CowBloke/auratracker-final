@@ -3520,6 +3520,7 @@ export default function Admin() {
       if (effect.bonusAura !== undefined) effectType = 'BONUS_AURA';
       if (effect.bonusMoney !== undefined) effectType = 'BONUS_MONEY';
       if (effectType === 'ADBLOCK_YOU') effectType = 'YOU_ADBLOCK';
+      if (effectType === 'GLOBAL_ADBLOCK') effectType = 'YOU_ADBLOCK';
 
       return {
         type: effectType,
@@ -3673,9 +3674,9 @@ export default function Admin() {
         });
       } else if (itemForm.effectType === 'AWARD_BADGE') {
         effect = JSON.stringify({ type: 'AWARD_BADGE', badgeId: itemForm.badgeId || '' });
-      } else if (itemForm.effectType === 'YOU_ADBLOCK') {
+      } else if (itemForm.effectType === 'YOU_ADBLOCK' || itemForm.effectType === 'GLOBAL_ADBLOCK') {
         effect = JSON.stringify({
-          type: 'YOU_ADBLOCK',
+          type: itemForm.effectType === 'GLOBAL_ADBLOCK' ? 'GLOBAL_ADBLOCK' : 'YOU_ADBLOCK',
           durationMinutes: Math.max(1, parseInt(String(itemForm.durationMinutes || 60), 10) || 60),
         });
       } else if (

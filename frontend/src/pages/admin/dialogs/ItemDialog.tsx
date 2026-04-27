@@ -278,7 +278,7 @@ export function ItemDialog({
                 </div>
               )}
 
-              {itemForm.effectType === 'YOU_ADBLOCK' && (
+              {(itemForm.effectType === 'YOU_ADBLOCK' || itemForm.effectType === 'GLOBAL_ADBLOCK') && (
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Durée de l'effet (minutes)</label>
                   <Input

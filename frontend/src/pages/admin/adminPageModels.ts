@@ -24,7 +24,8 @@ export const EFFECT_TYPES = [
   { value: 'CLAN_BANNER', label: 'Bannière de clan', description: 'Objet de clan: acheté avec la banque du clan, puis le chef téléverse une image pour l\'afficher en haut de la page clan.' },
   { value: 'AWARD_BADGE', label: 'Badge', description: 'Donne un badge spécifique au joueur lors de l\'utilisation. L\'image boutique est générée automatiquement.' },
   { value: 'CUSTOM_BADGE', label: 'Badge personnalisé', description: 'Permet au joueur de concevoir son propre badge. La demande est envoyée aux admins pour validation. Remboursement automatique si refusée.' },
-  { value: 'YOU_ADBLOCK', label: 'Adblock You (temporaire)', description: 'Masque les interfaces publicitaires dans la page You pendant une durée configurable.' },
+  { value: 'YOU_ADBLOCK', label: 'Adblock global (temporaire)', description: 'Masque les interfaces publicitaires sur tout le site pendant une durée configurable.' },
+  { value: 'GLOBAL_ADBLOCK', label: 'Adblock global (temporaire)', description: 'Masque les interfaces publicitaires sur tout le site pendant une durée configurable.' },
 ];
 
 export const EFFECT_TYPES_WITHOUT_VALUE = new Set([
@@ -38,6 +39,7 @@ export const EFFECT_TYPES_WITHOUT_VALUE = new Set([
   'AWARD_BADGE',
   'CUSTOM_BADGE',
   'YOU_ADBLOCK',
+  'GLOBAL_ADBLOCK',
 ]);
 
 export const generateBadgeSvgDataUrl = (badge: Badge): string => {
@@ -344,6 +346,7 @@ export const parseEffect = (effectStr: string | null): { type: string; value: st
     if (effect.bonusAura !== undefined) effectType = 'BONUS_AURA';
     if (effect.bonusMoney !== undefined) effectType = 'BONUS_MONEY';
     if (effectType === 'ADBLOCK_YOU') effectType = 'YOU_ADBLOCK';
+    if (effectType === 'GLOBAL_ADBLOCK') effectType = 'YOU_ADBLOCK';
 
     return {
       type: effectType,
