@@ -49,3 +49,5 @@ coverage/
 backend/uploads/
 backend/prisma/dev.db-shm
 backend/prisma/dev.db-wal
+.github/agents/teaching.agent.md
+learning-progress.md
