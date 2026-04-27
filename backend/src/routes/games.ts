@@ -40,7 +40,7 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   hexgl: 'HexGL',
 };
 
-const CASINO_HOUSE_EDGE_RATE = 0.04;
+const CASINO_HOUSE_EDGE_RATE = 0;
 const CASINO_ROUND_TTL_MS = 10 * 60 * 1000;
 const MAX_CASINO_PAYOUT_MULTIPLIER = 50;
 

@@ -198,6 +198,18 @@ function createClusterImageData(count: number, size: number): ImageData {
   return ctx.getImageData(0, 0, size, size);
 }
 
+async function isOnLand(lat: number, lon: number): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`
+    );
+    const data = await res.json();
+    return Boolean(data.countryCode);
+  } catch {
+    return true;
+  }
+}
+
 function formatCoordinates(lon: number, lat: number): string {
   const latDir = lat >= 0 ? 'N' : 'S';
   const lonDir = lon >= 0 ? 'E' : 'O';
@@ -633,6 +645,16 @@ export const CarteTab = forwardRef<CarteTabHandle, {
 
       const lon = clamp(event.lngLat.lng, WORLD_LONGITUDE_LIMITS.min, WORLD_LONGITUDE_LIMITS.max);
       const lat = clamp(event.lngLat.lat, WORLD_LATITUDE_LIMITS.min, WORLD_LATITUDE_LIMITS.max);
+
+      const onLand = await isOnLand(lat, lon);
+      if (!onLand) {
+        toast({
+          title: 'Emplacement invalide',
+          description: 'Les businesses ne peuvent être placés que sur la terre ferme.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
       setSavingPlacementBusinessId(target.id);
       try {
