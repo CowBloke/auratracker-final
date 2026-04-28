@@ -626,7 +626,6 @@ return (
                 )}
               </div>
             </div>
-          </div>
 
           <div className={cn('space-y-3', isFullscreen ? 'w-auto max-w-[28rem]' : 'w-full')}>
             <div className={cn('grid gap-2', isFullscreen ? 'grid-cols-5' : 'grid-cols-5 sm:grid-cols-10')}>

@@ -567,12 +567,10 @@ export default function Inventory() {
         {/* Main tab: Inventaire / Achats */}
         <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as 'inventory' | 'purchases')}>
           <TabsList className="border-border/60 bg-muted/20">
-            <TabsTrigger value="inventory" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground flex items-center gap-2">
-              <Package className="h-4 w-4" />
+            <TabsTrigger value="inventory" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
               Inventaire
             </TabsTrigger>
-            <TabsTrigger value="purchases" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground flex items-center gap-2">
-              <ShoppingBag className="h-4 w-4" />
+            <TabsTrigger value="purchases" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
               Achats
             </TabsTrigger>
           </TabsList>

@@ -7,15 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ChevronUp,
   ChevronDown,
   MessageSquare,
   Plus,
-  Flame,
-  Clock,
-  TrendingUp,
   Users,
   ExternalLink,
   Trash2,
@@ -373,12 +371,6 @@ function CreateSubredditDialog({
 
 type SortMode = 'hot' | 'new' | 'top';
 
-const SORT_ICONS = {
-  hot: Flame,
-  new: Clock,
-  top: TrendingUp,
-};
-
 const SORT_LABELS = {
   hot: 'Tendance',
   new: 'Nouveau',
@@ -533,24 +525,15 @@ export default function Forum() {
 
           {/* Sort bar + Create post */}
           <div className="mb-3 flex items-center gap-2">
-            <div className="flex rounded-md border bg-card">
-              {(Object.keys(SORT_ICONS) as SortMode[]).map((s) => {
-                const Icon = SORT_ICONS[s];
-                return (
-                  <button
-                    key={s}
-                    onClick={() => setSort(s)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors first:rounded-l-md last:rounded-r-md',
-                      sort === s ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50'
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
+            <Tabs value={sort} onValueChange={(v) => setSort(v as SortMode)}>
+              <TabsList className="border-border/60 bg-muted/20">
+                {(Object.keys(SORT_LABELS) as SortMode[]).map((s) => (
+                  <TabsTrigger key={s} value={s} className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
                     {SORT_LABELS[s]}
-                  </button>
-                );
-              })}
-            </div>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
             <Button
               size="sm"
               className="ml-auto"

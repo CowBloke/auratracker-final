@@ -1315,9 +1315,9 @@ export default function Clans() {
       <PageShell size="wide">
         <div className={SPACING.PAGE_CONTENT}>
           <Tabs value={clansPageTab} onValueChange={(v) => setClansPageTab(v as 'current' | 'trophies')}>
-            <TabsList className="mb-4 grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="current">Actuel</TabsTrigger>
-              <TabsTrigger value="trophies">Classement trophées</TabsTrigger>
+            <TabsList className="border-border/60 bg-muted/20 mb-4">
+              <TabsTrigger value="current" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">Actuel</TabsTrigger>
+              <TabsTrigger value="trophies" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">Classement trophées</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -1630,41 +1630,41 @@ export default function Clans() {
 
                   {/* Tabs: Infos / Chat / Tag / Nation */}
                   <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages')}>
-                    <TabsList className="w-full">
-                      <TabsTrigger value="info" className="flex-1">
+                    <TabsList className="border-border/60 bg-muted/20">
+                      <TabsTrigger value="info" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
                         Infos
                       </TabsTrigger>
                       {featuredEvent ? (
-                        <TabsTrigger value="event" className="flex-1">
+                        <TabsTrigger value="event" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
                           Événement
                         </TabsTrigger>
                       ) : null}
                       {selectedClan.viewer.isMember ? (
-                        <TabsTrigger value="bank" className="flex-1">
+                        <TabsTrigger value="bank" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
                           Banque
                         </TabsTrigger>
                       ) : null}
                       {selectedClan.viewer.isMember ? (
-                        <TabsTrigger value="inventory" className="flex-1">
+                        <TabsTrigger value="inventory" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
                           Inventaire
                         </TabsTrigger>
                       ) : null}
                       {selectedClan.viewer.isMember ? (
-                        <TabsTrigger value="chat" className="flex-1">
+                        <TabsTrigger value="chat" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
                           Chat
                         </TabsTrigger>
                       ) : null}
                       {selectedClan.viewer.isLeader && selectedClan.tagUnlocked ? (
-                        <TabsTrigger value="tag" className="flex-1">
+                        <TabsTrigger value="tag" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
                           Tag
                         </TabsTrigger>
                       ) : null}
                       {selectedClan.viewer.isMember ? (
-                        <TabsTrigger value="messages" className="flex-1">
+                        <TabsTrigger value="messages" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
                           Messages
                         </TabsTrigger>
                       ) : null}
-                      <TabsTrigger value="guerre" className="flex-1">
+                      <TabsTrigger value="guerre" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
                         Nation
                         {selectedWar && selectedWar.status !== 'COMPLETED' ? (
                           <Badge variant={getStatusVariant(selectedWar.status)} className="ml-2 h-4 px-1 text-[10px]">
