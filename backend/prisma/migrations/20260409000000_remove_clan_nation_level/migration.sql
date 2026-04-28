@@ -1,2 +1,0 @@
-ALTER TABLE "Clan" DROP COLUMN IF EXISTS "nationTier";
-ALTER TABLE "Clan" DROP COLUMN IF EXISTS "hierarchyName";

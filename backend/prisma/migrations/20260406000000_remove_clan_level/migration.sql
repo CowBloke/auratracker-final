@@ -1,1 +1,0 @@
-ALTER TABLE "Clan" DROP COLUMN IF EXISTS "level";
