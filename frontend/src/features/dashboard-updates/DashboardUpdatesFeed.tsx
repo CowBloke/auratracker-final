@@ -436,15 +436,9 @@ export function DashboardUpdatesFeed({
 
   const mappedEntries = useMemo(() => feedEntries.map(mapEntry), [feedEntries]);
 
-  const teamNote = useMemo(
-    () => mappedEntries.find((entry) => entry.id === 'mock-dashboard-team-note') ?? null,
-    [mappedEntries]
-  );
-
-  const regularEntries = useMemo(
-    () => mappedEntries.filter((entry) => entry.id !== 'mock-dashboard-team-note'),
-    [mappedEntries]
-  );
+  // Suppression du mock data : on ne filtre plus sur 'mock-dashboard-team-note'
+  const teamNote = null;
+  const regularEntries = mappedEntries;
 
   const filteredEntries = useMemo(() => {
     if (tab === 'tout') {

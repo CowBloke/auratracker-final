@@ -31,6 +31,7 @@ type SeedEntry = {
   sections: SeedSection[];
 };
 
+// Suppression des entrées mock : tableau vide
 const DASHBOARD_SEED_ENTRIES: SeedEntry[] = [];
 
 export async function ensureDashboardSeedEntries() {
