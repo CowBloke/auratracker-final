@@ -4,8 +4,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import GradientButton from '@/components/ui/button-1';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -128,25 +129,14 @@ export default function Login() {
         </Form>
 
         {showRegisterCta && (
-          <Button
-            asChild
-            size="lg"
-            className={cn(
-              "group relative h-auto w-full overflow-hidden rounded-2xl border border-amber-200/50",
-              "bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 px-6 py-6 text-lg font-black tracking-[0.08em] text-white",
-              "shadow-[0_18px_50px_rgba(251,146,60,0.45)] transition-transform duration-300 hover:scale-[1.02] hover:shadow-[0_24px_70px_rgba(244,114,182,0.45)]",
-              "animate-pulse"
-            )}
+          <GradientButton
+            width="100%"
+            height="60px"
+            onClick={() => navigate('/register')}
+            className="text-lg font-black tracking-[0.08em]"
           >
-            <Link to="/register">
-              <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.38)_50%,transparent_80%)] bg-[length:220%_100%] animate-[shimmer_2.8s_linear_infinite]" />
-              <span className="relative flex w-full items-center justify-center gap-3 text-center">
-                <Sparkles className="h-6 w-6 animate-bounce" />
-                <span>{t('login_register_cta')}</span>
-                <ArrowRight className="h-6 w-6 transition-transform duration-300 group-hover:translate-x-1" />
-              </span>
-            </Link>
-          </Button>
+            {t('login_register_cta')}
+          </GradientButton>
         )}
 
         <p className={cn(TYPOGRAPHY.SMALL, "text-center text-muted-foreground")}>

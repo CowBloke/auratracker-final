@@ -1322,6 +1322,7 @@ export default function MessagesPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    toast({ title: `${detail.messages.length} message(s) exporté(s)` });
   };
 
   const handleChangeStatus = async (status: string) => {

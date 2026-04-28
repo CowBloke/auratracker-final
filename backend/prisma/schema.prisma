@@ -2295,6 +2295,7 @@ model Survey {
   id                String    @id @default(uuid())
   title             String
   description       String?
+  imageUrl          String?
   audienceType      String    @default("ALL_USERS") // ALL_USERS | BETA_TESTERS | ADMINS | SELECTED_USERS
   status            String    @default("ACTIVE") // ACTIVE | ARCHIVED
   popupDelaySeconds Int       @default(45)
@@ -2317,6 +2318,7 @@ model SurveyOption {
   surveyId  String
   label     String
   color     String
+  imageUrl  String?
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
 

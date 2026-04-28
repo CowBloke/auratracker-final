@@ -116,12 +116,14 @@ export interface UserPendingSurveyOption {
   id: string;
   label: string;
   color: string;
+  imageUrl: string | null;
 }
 
 export interface UserPendingSurvey {
   id: string;
   title: string;
   description: string | null;
+  imageUrl: string | null;
   popupDelaySeconds: number;
   createdAt: string;
   options: UserPendingSurveyOption[];
@@ -2497,6 +2499,7 @@ export interface AdminSurveyOption {
   id: string;
   label: string;
   color: string;
+  imageUrl: string | null;
   sortOrder: number;
   responseCount: number;
 }
@@ -2510,6 +2513,7 @@ export interface AdminSurvey {
   id: string;
   title: string;
   description: string | null;
+  imageUrl: string | null;
   audienceType: AdminSurveyAudienceType;
   status: AdminSurveyStatus;
   popupDelaySeconds: number;
@@ -2974,9 +2978,10 @@ export const adminApi = {
   createSurvey: (data: {
     title: string;
     description?: string | null;
+    imageUrl?: string | null;
     audienceType: AdminSurveyAudienceType;
     popupDelaySeconds: number;
-    options: Array<{ label: string; color: string }>;
+    options: Array<{ label: string; color: string; imageUrl?: string | null }>;
     selectedUserIds?: string[];
   }) => api.post<{ survey: AdminSurvey }>('/admin/surveys', data),
   archiveSurvey: (id: string) => api.post<{ survey: AdminSurvey }>(`/admin/surveys/${id}/archive`, {}),

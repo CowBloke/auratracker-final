@@ -748,12 +748,18 @@ export default function Admin() {
   const [surveyDescription, setSurveyDescription] = useState('');
   const [surveyAudienceType, setSurveyAudienceType] = useState<AdminSurvey['audienceType']>('ALL_USERS');
   const [surveyPopupDelaySeconds, setSurveyPopupDelaySeconds] = useState(45);
-  const [surveyOptions, setSurveyOptions] = useState<Array<{ label: string; color: string }>>([
-    { label: '', color: '#6366f1' },
-    { label: '', color: '#22c55e' },
+  const [surveyOptions, setSurveyOptions] = useState<Array<{ label: string; color: string; imageUrl: string | null }>>([
+    { label: '', color: '#6366f1', imageUrl: null },
+    { label: '', color: '#22c55e', imageUrl: null },
   ]);
   const [surveyTargetSearch, setSurveyTargetSearch] = useState('');
   const [surveySelectedUserIds, setSurveySelectedUserIds] = useState<string[]>([]);
+  const [surveyImageUrl, setSurveyImageUrl] = useState<string | null>(null);
+  const [surveyUploadingImage, setSurveyUploadingImage] = useState(false);
+  const surveyImageInputRef = useRef<HTMLInputElement>(null);
+  const [surveyOptionUploadingIndex, setSurveyOptionUploadingIndex] = useState<number | null>(null);
+  const surveyOptionImageInputRef = useRef<HTMLInputElement>(null);
+  const surveyOptionUploadIndexRef = useRef<number | null>(null);
   const [creatingSurvey, setCreatingSurvey] = useState(false);
   const [archivingSurveyId, setArchivingSurveyId] = useState<string | null>(null);
 
@@ -765,11 +771,55 @@ export default function Admin() {
     setSurveyAudienceType('ALL_USERS');
     setSurveyPopupDelaySeconds(45);
     setSurveyOptions([
-      { label: '', color: '#6366f1' },
-      { label: '', color: '#22c55e' },
+      { label: '', color: '#6366f1', imageUrl: null },
+      { label: '', color: '#22c55e', imageUrl: null },
     ]);
     setSurveyTargetSearch('');
     setSurveySelectedUserIds([]);
+    setSurveyImageUrl(null);
+  };
+
+  const handleSurveyImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.currentTarget.files?.[0];
+    if (!file) return;
+    setSurveyUploadingImage(true);
+    try {
+      const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+      const { data } = await uploadUserImage({ base64Data, mimeType });
+      setSurveyImageUrl(data.imageUrl);
+    } catch {
+      showMessage('error', 'Erreur lors du téléversement de l\'image');
+    } finally {
+      setSurveyUploadingImage(false);
+      if (surveyImageInputRef.current) {
+        surveyImageInputRef.current.value = '';
+      }
+    }
+  };
+
+  const triggerSurveyOptionImageUpload = (index: number) => {
+    surveyOptionUploadIndexRef.current = index;
+    surveyOptionImageInputRef.current?.click();
+  };
+
+  const handleSurveyOptionImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.currentTarget.files?.[0];
+    const index = surveyOptionUploadIndexRef.current;
+    if (!file || index === null) return;
+    setSurveyOptionUploadingIndex(index);
+    try {
+      const { base64Data, mimeType } = await prepareImageUploadPayload(file);
+      const { data } = await uploadUserImage({ base64Data, mimeType });
+      setSurveyOptions((prev) => prev.map((opt, i) => i === index ? { ...opt, imageUrl: data.imageUrl } : opt));
+    } catch {
+      showMessage('error', 'Erreur lors du téléversement de l\'image');
+    } finally {
+      setSurveyOptionUploadingIndex(null);
+      surveyOptionUploadIndexRef.current = null;
+      if (surveyOptionImageInputRef.current) {
+        surveyOptionImageInputRef.current.value = '';
+      }
+    }
   };
 
   const openPrismaStudio = async () => {
@@ -2233,6 +2283,7 @@ export default function Admin() {
       .map((option) => ({
         label: option.label.trim(),
         color: option.color,
+        imageUrl: option.imageUrl,
       }))
       .filter((option) => option.label);
 
@@ -2254,6 +2305,7 @@ export default function Admin() {
       const res = await adminApi.createSurvey({
         title: trimmedTitle,
         description: trimmedDescription || null,
+        imageUrl: surveyImageUrl,
         audienceType: surveyAudienceType,
         popupDelaySeconds: surveyPopupDelaySeconds,
         options: cleanedOptions,
@@ -4057,6 +4109,9 @@ export default function Admin() {
     try {
       const res = await adminApi.exportChat(day);
       const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: 'application/json' });
+      const text = await blob.text();
+      const parsed = JSON.parse(text) as { messageCount?: number };
+      const messageCount = parsed.messageCount ?? 0;
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       const contentDisposition = res.headers?.['content-disposition'] as string | undefined;
@@ -4067,7 +4122,7 @@ export default function Admin() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      showMessage('success', day ? `Export du chat du ${day} téléchargé` : 'Export du chat téléchargé');
+      showMessage('success', day ? `Export du ${day} : ${messageCount} message(s) exporté(s)` : `Export : ${messageCount} message(s) exporté(s)`);
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur lors de l’export du chat');
     } finally {
@@ -5221,6 +5276,15 @@ export default function Admin() {
           setSurveyTargetSearch={setSurveyTargetSearch}
           surveySelectedUserIds={surveySelectedUserIds}
           setSurveySelectedUserIds={setSurveySelectedUserIds}
+          surveyImageUrl={surveyImageUrl}
+          setSurveyImageUrl={setSurveyImageUrl}
+          surveyUploadingImage={surveyUploadingImage}
+          surveyImageInputRef={surveyImageInputRef}
+          handleSurveyImageUpload={handleSurveyImageUpload}
+          surveyOptionUploadingIndex={surveyOptionUploadingIndex}
+          surveyOptionImageInputRef={surveyOptionImageInputRef}
+          triggerSurveyOptionImageUpload={triggerSurveyOptionImageUpload}
+          handleSurveyOptionImageUpload={handleSurveyOptionImageUpload}
           creatingSurvey={creatingSurvey}
           createSurvey={createSurvey}
           resetSurveyForm={resetSurveyForm}

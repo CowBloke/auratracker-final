@@ -30,8 +30,8 @@
   const HOST_SOURCE = 'aura-crossy-road-host';
   const GAME_SOURCE = 'aura-crossy-road';
   const TILE = 48;
-  const COLS = 13;
-  const HALF_COLS = Math.floor(COLS / 2);
+  let COLS = 13;
+  let HALF_COLS = Math.floor(COLS / 2);
   const HOP_DURATION = 0.12;
   const IDLE_TIMEOUT = 7.0;
   const EAGLE_SWOOP_DURATION = 1.2;
@@ -205,6 +205,9 @@
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     vw = window.innerWidth;
     vh = window.innerHeight;
+    // Compute COLS so the playable area covers the full viewport width
+    COLS = Math.ceil(vw / TILE) | 1; // always odd so HALF_COLS is an integer
+    HALF_COLS = (COLS - 1) / 2;
     canvas.width = Math.floor(vw * dpr);
     canvas.height = Math.floor(vh * dpr);
     canvas.style.width = vw + 'px';
@@ -214,7 +217,7 @@
 
   // ── World coordinate → screen ──
   function toScreen(wx, wy) {
-    const screenX = vw / 2 + (wx - HALF_COLS / 2) * TILE - TILE / 2;
+    const screenX = vw / 2 + wx * TILE - TILE / 2;
     const screenY = vh * 0.75 - (wy - camera.y) * TILE;
     return { x: screenX, y: screenY };
   }
@@ -442,7 +445,7 @@
       right: [1, 0],
     };
     const [dx, dy] = deltas[dir];
-    const nx = player.x + dx;
+    const nx = Math.round(player.x) + dx;
     const ny = player.y + dy;
 
     // Can't go below camera

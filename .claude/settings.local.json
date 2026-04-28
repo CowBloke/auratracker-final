@@ -137,7 +137,8 @@
       "Bash(tar -tf /tmp/design_out.tar)",
       "Bash(tar -xf /tmp/design_out.tar -C /tmp/)",
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx|py|json\\)$\")",
-      "Bash(grep -E \"\\\\.\\(ts|tsx|js\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx|js\\)$\")",
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")"
     ]
   },
   "outputStyle": "default"

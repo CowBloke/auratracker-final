@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+@property --r {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes rotating-gradient {
+  to { --r: 360deg; }
+}
+
+.rotatingGradient {
+  background: conic-gradient(from var(--r), #fb923c, #f472b6, #a855f7, #22d3ee, #4ade80, #fb923c);
+  animation: rotating-gradient 3s linear infinite;
+  --color-background: hsl(var(--card));
+  --color-text: hsl(var(--card-foreground));
+}
+
 @layer base {
   :root {
     --background: 223.8136 -172.5242% 100.0000%;

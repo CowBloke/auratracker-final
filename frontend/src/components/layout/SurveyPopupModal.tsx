@@ -132,6 +132,14 @@ export default function SurveyPopupModal() {
           )}
         </DialogHeader>
 
+        {pendingSurvey.imageUrl && (
+          <img
+            src={pendingSurvey.imageUrl}
+            alt={pendingSurvey.title}
+            className="w-full max-h-48 rounded-lg object-cover border border-border"
+          />
+        )}
+
         <div className="space-y-3">
           {pendingSurvey.options.map((option) => {
             const active = selectedOptionId === option.id;
@@ -147,10 +155,10 @@ export default function SurveyPopupModal() {
                 }}
               >
                 <div className="flex items-center gap-3">
-                  <span
-                    className="inline-block h-3 w-3 rounded-full"
-                    style={{ backgroundColor: option.color }}
-                  />
+                  {option.imageUrl
+                    ? <img src={option.imageUrl} alt={option.label} className="h-8 w-8 rounded object-cover border border-border shrink-0" />
+                    : <span className="inline-block h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: option.color }} />
+                  }
                   <span className="text-sm font-medium">{option.label}</span>
                 </div>
               </button>

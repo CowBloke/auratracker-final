@@ -115,9 +115,10 @@ const normalizeSurveyInput = (body: Record<string, unknown>): (
   {
     title: string;
     description: string | null;
+    imageUrl: string | null;
     audienceType: SurveyAudienceType;
     popupDelaySeconds: number;
-    options: Array<{ label: string; color: string; sortOrder: number }>;
+    options: Array<{ label: string; color: string; imageUrl: string | null; sortOrder: number }>;
     selectedUserIds: string[];
   } | { error: string }
 ) => {
@@ -129,6 +130,11 @@ const normalizeSurveyInput = (body: Record<string, unknown>): (
   const description = toOptionalTrimmedString(body.description);
   if (description && description.length > 1000) {
     return { error: 'La description du sondage est trop longue (max 1000 caractères).' };
+  }
+
+  const imageUrl = toOptionalTrimmedString(body.imageUrl);
+  if (imageUrl && imageUrl.length > 2000) {
+    return { error: 'L\'URL de l\'image du sondage est trop longue.' };
   }
 
   const audienceType = typeof body.audienceType === 'string'
@@ -147,7 +153,7 @@ const normalizeSurveyInput = (body: Record<string, unknown>): (
     return { error: 'Le sondage doit avoir entre 2 et 8 options.' };
   }
 
-  const options: Array<{ label: string; color: string; sortOrder: number }> = [];
+  const options: Array<{ label: string; color: string; imageUrl: string | null; sortOrder: number }> = [];
   for (const [index, rawOption] of body.options.entries()) {
     if (!rawOption || typeof rawOption !== 'object') {
       return { error: `L’option #${index + 1} est invalide.` };
@@ -156,6 +162,7 @@ const normalizeSurveyInput = (body: Record<string, unknown>): (
     const option = rawOption as Record<string, unknown>;
     const label = typeof option.label === 'string' ? option.label.trim() : '';
     const color = typeof option.color === 'string' ? option.color.trim() : '';
+    const optionImageUrl = typeof option.imageUrl === 'string' && option.imageUrl.trim() ? option.imageUrl.trim() : null;
 
     if (label.length < 1 || label.length > 80) {
       return { error: `L’option #${index + 1} doit avoir un libellé entre 1 et 80 caractères.` };
@@ -163,10 +170,14 @@ const normalizeSurveyInput = (body: Record<string, unknown>): (
     if (!/^#([0-9a-fA-F]{6})$/.test(color)) {
       return { error: `La couleur de l’option "${label || `#${index + 1}`}" est invalide.` };
     }
+    if (optionImageUrl && optionImageUrl.length > 2000) {
+      return { error: `L’URL de l’image de l’option "${label}" est trop longue.` };
+    }
 
     options.push({
       label,
       color,
+      imageUrl: optionImageUrl,
       sortOrder: index,
     });
   }
@@ -186,6 +197,7 @@ const normalizeSurveyInput = (body: Record<string, unknown>): (
   return {
     title,
     description,
+    imageUrl,
     audienceType: audienceType as SurveyAudienceType,
     popupDelaySeconds,
     options,
@@ -197,6 +209,7 @@ const serializeAdminSurvey = async (survey: {
   id: string;
   title: string;
   description: string | null;
+  imageUrl: string | null;
   audienceType: string;
   status: string;
   popupDelaySeconds: number;
@@ -208,6 +221,7 @@ const serializeAdminSurvey = async (survey: {
     id: string;
     label: string;
     color: string;
+    imageUrl: string | null;
     sortOrder: number;
     _count: { responses: number };
   }>;
@@ -231,6 +245,7 @@ const serializeAdminSurvey = async (survey: {
     id: survey.id,
     title: survey.title,
     description: survey.description,
+    imageUrl: survey.imageUrl,
     audienceType: typedAudience,
     status: survey.status,
     popupDelaySeconds: survey.popupDelaySeconds,
@@ -244,6 +259,7 @@ const serializeAdminSurvey = async (survey: {
         id: option.id,
         label: option.label,
         color: option.color,
+        imageUrl: option.imageUrl,
         sortOrder: option.sortOrder,
         responseCount: option._count.responses,
       })),
@@ -5190,7 +5206,7 @@ router.post('/surveys', authMiddleware, requireAdmin, async (req: AuthRequest, r
       return res.status(400).json({ error: normalized.error });
     }
 
-    const { title, description, audienceType, popupDelaySeconds, options, selectedUserIds } = normalized;
+    const { title, description, imageUrl, audienceType, popupDelaySeconds, options, selectedUserIds } = normalized;
 
     if (audienceType === 'SELECTED_USERS') {
       const selectedUsersCount = await prisma.user.count({
@@ -5208,6 +5224,7 @@ router.post('/surveys', authMiddleware, requireAdmin, async (req: AuthRequest, r
       data: {
         title,
         description,
+        imageUrl,
         audienceType,
         popupDelaySeconds,
         createdById: req.user!.id,

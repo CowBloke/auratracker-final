@@ -31,18 +31,21 @@ const serializePendingSurvey = (survey: {
   id: string;
   title: string;
   description: string | null;
+  imageUrl: string | null;
   popupDelaySeconds: number;
   createdAt: Date;
   options: Array<{
     id: string;
     label: string;
     color: string;
+    imageUrl: string | null;
     sortOrder: number;
   }>;
 }) => ({
   id: survey.id,
   title: survey.title,
   description: survey.description,
+  imageUrl: survey.imageUrl,
   popupDelaySeconds: survey.popupDelaySeconds,
   createdAt: survey.createdAt.toISOString(),
   options: survey.options
@@ -51,6 +54,7 @@ const serializePendingSurvey = (survey: {
       id: option.id,
       label: option.label,
       color: option.color,
+      imageUrl: option.imageUrl,
     })),
 });
 

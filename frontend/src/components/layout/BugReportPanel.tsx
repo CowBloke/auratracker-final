@@ -128,7 +128,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
-      <SheetContent side="right" className="w-full sm:max-w-xl">
+      <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col">
         <SheetHeader>
           <SheetTitle>{t('bug_report_title')}</SheetTitle>
           <SheetDescription>
@@ -136,7 +136,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6">
+        <div className="mt-6 flex-1 overflow-y-auto pr-1">
           {submitted ? (
             <div className={SPACING.SECTION_SPACING}>
               <div className={SPACING.CARD_SPACING}>

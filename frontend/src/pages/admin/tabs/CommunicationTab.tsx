@@ -32,6 +32,15 @@ export function CommunicationTab(props: CommunicationTabProps) {
     setSurveyTargetSearch,
     surveySelectedUserIds,
     setSurveySelectedUserIds,
+    surveyImageUrl,
+    setSurveyImageUrl,
+    surveyUploadingImage,
+    surveyImageInputRef,
+    handleSurveyImageUpload,
+    surveyOptionUploadingIndex,
+    surveyOptionImageInputRef,
+    triggerSurveyOptionImageUpload,
+    handleSurveyOptionImageUpload,
     creatingSurvey,
     createSurvey,
     resetSurveyForm,
@@ -215,8 +224,8 @@ export function CommunicationTab(props: CommunicationTabProps) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setSurveyOptions((prev: Array<{ label: string; color: string }>) => (
-                    prev.length >= 8 ? prev : [...prev, { label: '', color: '#f59e0b' }]
+                  onClick={() => setSurveyOptions((prev: Array<{ label: string; color: string; imageUrl: string | null }>) => (
+                    prev.length >= 8 ? prev : [...prev, { label: '', color: '#f59e0b', imageUrl: null }]
                   ))}
                   disabled={surveyOptions.length >= 8}
                 >
@@ -224,38 +233,121 @@ export function CommunicationTab(props: CommunicationTabProps) {
                   Ajouter
                 </Button>
               </div>
+              <input
+                ref={surveyOptionImageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleSurveyOptionImageUpload}
+                className="hidden"
+              />
               <div className="space-y-2">
-                {surveyOptions.map((option: { label: string; color: string }, index: number) => (
-                  <div key={index} className="grid gap-2 md:grid-cols-[1fr_90px_40px]">
-                    <Input
-                      value={option.label}
-                      onChange={(e) => setSurveyOptions((prev: Array<{ label: string; color: string }>) => prev.map((entry, entryIndex) => (
-                        entryIndex === index ? { ...entry, label: e.target.value } : entry
-                      )))}
-                      placeholder={`Option ${index + 1}`}
-                      maxLength={80}
-                    />
-                    <Input
-                      type="color"
-                      value={option.color}
-                      onChange={(e) => setSurveyOptions((prev: Array<{ label: string; color: string }>) => prev.map((entry, entryIndex) => (
-                        entryIndex === index ? { ...entry, color: e.target.value } : entry
-                      )))}
-                      className="h-10 p-1"
-                    />
+                {surveyOptions.map((option: { label: string; color: string; imageUrl: string | null }, index: number) => (
+                  <div key={index} className="space-y-1.5">
+                    <div className="grid gap-2 md:grid-cols-[1fr_90px_36px_36px]">
+                      <Input
+                        value={option.label}
+                        onChange={(e) => setSurveyOptions((prev: Array<{ label: string; color: string; imageUrl: string | null }>) => prev.map((entry, entryIndex) => (
+                          entryIndex === index ? { ...entry, label: e.target.value } : entry
+                        )))}
+                        placeholder={`Option ${index + 1}`}
+                        maxLength={80}
+                      />
+                      <Input
+                        type="color"
+                        value={option.color}
+                        onChange={(e) => setSurveyOptions((prev: Array<{ label: string; color: string; imageUrl: string | null }>) => prev.map((entry, entryIndex) => (
+                          entryIndex === index ? { ...entry, color: e.target.value } : entry
+                        )))}
+                        className="h-10 p-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 w-9 shrink-0"
+                        title="Ajouter une image"
+                        disabled={surveyOptionUploadingIndex === index}
+                        onClick={() => triggerSurveyOptionImageUpload(index)}
+                      >
+                        {surveyOptionUploadingIndex === index
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Upload className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-9 shrink-0"
+                        onClick={() => setSurveyOptions((prev: Array<{ label: string; color: string; imageUrl: string | null }>) => (
+                          prev.length <= 2 ? prev : prev.filter((_, entryIndex) => entryIndex !== index)
+                        ))}
+                        disabled={surveyOptions.length <= 2}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {option.imageUrl && (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={option.imageUrl}
+                          alt={`Option ${index + 1}`}
+                          className="h-12 w-12 rounded border border-border object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs text-muted-foreground"
+                          onClick={() => setSurveyOptions((prev: Array<{ label: string; color: string; imageUrl: string | null }>) => prev.map((entry, entryIndex) => (
+                            entryIndex === index ? { ...entry, imageUrl: null } : entry
+                          )))}
+                        >
+                          <X className="mr-1 h-3 w-3" />
+                          Supprimer l'image
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Image du sondage <span className="text-muted-foreground font-normal">(optionnel)</span></label>
+              <div className="flex items-center gap-3">
+                {surveyImageUrl ? (
+                  <div className="flex items-center gap-2">
+                    <img src={surveyImageUrl} alt="Aperçu" className="h-16 w-16 rounded border border-border object-cover" />
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
-                      onClick={() => setSurveyOptions((prev: Array<{ label: string; color: string }>) => (
-                        prev.length <= 2 ? prev : prev.filter((_, entryIndex) => entryIndex !== index)
-                      ))}
-                      disabled={surveyOptions.length <= 2}
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground"
+                      onClick={() => setSurveyImageUrl(null)}
                     >
-                      <X className="h-4 w-4" />
+                      <X className="mr-1 h-3 w-3" />
+                      Supprimer
                     </Button>
                   </div>
-                ))}
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={surveyUploadingImage}
+                    onClick={() => surveyImageInputRef.current?.click()}
+                  >
+                    {surveyUploadingImage ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5" />}
+                    Ajouter une image
+                  </Button>
+                )}
+                <input
+                  ref={surveyImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleSurveyImageUpload}
+                  className="hidden"
+                />
               </div>
             </div>
 
@@ -420,6 +512,13 @@ export function CommunicationTab(props: CommunicationTabProps) {
                         )}
                       </div>
 
+                      {survey.imageUrl && (
+                        <img
+                          src={survey.imageUrl}
+                          alt={survey.title}
+                          className="mt-3 max-h-32 w-full rounded-md border border-border object-cover"
+                        />
+                      )}
                       <div className="mt-4 grid gap-2">
                         {survey.options.map((option: any) => {
                           const percent = totalVotes > 0 ? Math.round((option.responseCount / totalVotes) * 100) : 0;
@@ -427,7 +526,10 @@ export function CommunicationTab(props: CommunicationTabProps) {
                             <div key={option.id} className="space-y-1">
                               <div className="flex items-center justify-between gap-2 text-xs">
                                 <div className="flex items-center gap-2">
-                                  <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: option.color }} />
+                                  {option.imageUrl
+                                    ? <img src={option.imageUrl} alt={option.label} className="h-5 w-5 rounded object-cover border border-border" />
+                                    : <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: option.color }} />
+                                  }
                                   <span className="font-medium text-foreground">{option.label}</span>
                                 </div>
                                 <span className="text-muted-foreground">
