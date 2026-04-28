@@ -220,6 +220,7 @@ export function DashboardUpdatesManagerDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'apercu' | 'fiche'>('apercu');
@@ -341,6 +342,21 @@ export function DashboardUpdatesManagerDialog({
       toast.error('Impossible de supprimer cette mise à jour.');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const deleteAllEntries = async () => {
+    try {
+      setDeletingAll(true);
+      await Promise.all(entries.map((entry) => dashboardUpdatesApi.deleteEntry(entry.id)));
+      toast.success('Toutes les mises à jour ont été supprimées.');
+      resetForm();
+      await loadEntries();
+      onUpdated?.();
+    } catch {
+      toast.error('Impossible de supprimer toutes les mises à jour.');
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -709,9 +725,22 @@ export function DashboardUpdatesManagerDialog({
                 </DialogTitle>
                 <DialogDescription>Édite ou supprime une mise à jour existante.</DialogDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={() => void loadEntries()} disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarRange className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-2">
+                {entries.length > 0 ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                    onClick={() => void deleteAllEntries()}
+                    disabled={deletingAll}
+                  >
+                    {deletingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  </Button>
+                ) : null}
+                <Button variant="outline" size="sm" onClick={() => void loadEntries()} disabled={loading}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarRange className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
           </DialogHeader>
 
