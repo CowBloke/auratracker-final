@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { initSocket } from '../services/socket';
 
 interface NotificationContextValue {
   notifications: Notification[];
@@ -138,7 +139,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [showSeedPromptModal, setShowSeedPromptModal] = useState(false);
   const [seedPromptVersion, setSeedPromptVersion] = useState<number | null>(null);
   const [seedPromptLoading, setSeedPromptLoading] = useState(false);
-  const socketRef = useRef<ReturnType<typeof import('../services/socket').initSocket> | null>(null);
+  const socketRef = useRef<ReturnType<typeof initSocket> | null>(null);
   const serviceWorkerRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const notificationsRef = useRef<Notification[]>([]);
   const archivedNotificationsRef = useRef<Notification[]>([]);
@@ -458,111 +459,117 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!user) return;
 
-    let cancelled = false;
-    import('../services/socket').then(({ initSocket }) => {
-      if (cancelled) return;
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      const socket = initSocket();
-      socketRef.current = socket;
+    const socket = initSocket();
+    socketRef.current = socket;
 
-      socket.on('notification:new', (n: Notification) => {
-        applyNotificationUpdate(n);
-        knownNotificationIdsRef.current.add(n.id);
-        setUnreadCount((current) => {
-          const alreadyTracked = notificationsRef.current.some((item) => item.id === n.id)
-            || archivedNotificationsRef.current.some((item) => item.id === n.id);
-          if (alreadyTracked) return current;
+    const handleNew = (n: Notification) => {
+      applyNotificationUpdate(n);
+      knownNotificationIdsRef.current.add(n.id);
+      setUnreadCount((current) => {
+        const alreadyTracked = notificationsRef.current.some((item) => item.id === n.id)
+          || archivedNotificationsRef.current.some((item) => item.id === n.id);
+        if (alreadyTracked) return current;
+        return n.isRead || n.isArchived ? current : current + 1;
+      });
+      notifyIncomingNotification(n);
+    };
+
+    const handleUpdated = (n: Notification) => {
+      setUnreadCount((current) => {
+        const previous = notificationsRef.current.find((item) => item.id === n.id)
+          ?? archivedNotificationsRef.current.find((item) => item.id === n.id);
+
+        if (!previous) {
           return n.isRead || n.isArchived ? current : current + 1;
-        });
-        notifyIncomingNotification(n);
-      });
+        }
 
-      socket.on('notification:updated', (n: Notification) => {
-        setUnreadCount((current) => {
-          const previous = notificationsRef.current.find((item) => item.id === n.id)
-            ?? archivedNotificationsRef.current.find((item) => item.id === n.id);
-
-          if (!previous) {
-            return n.isRead || n.isArchived ? current : current + 1;
-          }
-
-          if (!previous.isRead && (n.isRead || n.isArchived)) {
-            return Math.max(0, current - 1);
-          }
-
-          if ((previous.isRead || previous.isArchived) && !n.isRead && !n.isArchived) {
-            return current + 1;
-          }
-
-          return current;
-        });
-
-        applyNotificationUpdate(n);
-      });
-
-      socket.on('notification:deleted', ({ id }: { id: string }) => {
-        setUnreadCount((current) => {
-          const previous = notificationsRef.current.find((item) => item.id === id)
-            ?? archivedNotificationsRef.current.find((item) => item.id === id);
-          if (!previous || previous.isRead || previous.isArchived) return current;
+        if (!previous.isRead && (n.isRead || n.isArchived)) {
           return Math.max(0, current - 1);
-        });
-        removeNotificationById(id);
+        }
+
+        if ((previous.isRead || previous.isArchived) && !n.isRead && !n.isArchived) {
+          return current + 1;
+        }
+
+        return current;
       });
 
-      socket.on('notification:read-all', ({ ids, readAt }: { ids: string[]; readAt: string }) => {
-        if (ids.length === 0) return;
-        const idsSet = new Set(ids);
-        const affectedUnread = notificationsRef.current.filter((item) => idsSet.has(item.id) && !item.isRead).length;
-        setNotifications((prev) => prev.map((item) => (
-          idsSet.has(item.id) ? { ...item, isRead: true, readAt } : item
-        )));
-        setUnreadCount((current) => Math.max(0, current - affectedUnread));
+      applyNotificationUpdate(n);
+    };
+
+    const handleDeleted = ({ id }: { id: string }) => {
+      setUnreadCount((current) => {
+        const previous = notificationsRef.current.find((item) => item.id === id)
+          ?? archivedNotificationsRef.current.find((item) => item.id === id);
+        if (!previous || previous.isRead || previous.isArchived) return current;
+        return Math.max(0, current - 1);
       });
+      removeNotificationById(id);
+    };
 
-      socket.on('notification:archive-all-read', ({ ids, archivedAt }: { ids: string[]; archivedAt: string }) => {
-        if (ids.length === 0) return;
+    const handleReadAll = ({ ids, readAt }: { ids: string[]; readAt: string }) => {
+      if (ids.length === 0) return;
+      const idsSet = new Set(ids);
+      const affectedUnread = notificationsRef.current.filter((item) => idsSet.has(item.id) && !item.isRead).length;
+      setNotifications((prev) => prev.map((item) => (
+        idsSet.has(item.id) ? { ...item, isRead: true, readAt } : item
+      )));
+      setUnreadCount((current) => Math.max(0, current - affectedUnread));
+    };
 
-        const idsSet = new Set(ids);
-        setNotifications((prev) => {
-          const toArchive = prev
-            .filter((item) => idsSet.has(item.id))
-            .map((item) => ({ ...item, isArchived: true, archivedAt }));
+    const handleArchiveAllRead = ({ ids, archivedAt }: { ids: string[]; archivedAt: string }) => {
+      if (ids.length === 0) return;
 
-          if (toArchive.length > 0) {
-            setArchivedNotifications((current) => sortNotifications([...toArchive, ...current.filter((item) => !idsSet.has(item.id))]));
-          }
+      const idsSet = new Set(ids);
+      setNotifications((prev) => {
+        const toArchive = prev
+          .filter((item) => idsSet.has(item.id))
+          .map((item) => ({ ...item, isArchived: true, archivedAt }));
 
-          return prev.filter((item) => !idsSet.has(item.id));
-        });
+        if (toArchive.length > 0) {
+          setArchivedNotifications((current) => sortNotifications([...toArchive, ...current.filter((item) => !idsSet.has(item.id))]));
+        }
+
+        return prev.filter((item) => !idsSet.has(item.id));
       });
+    };
 
-      socket.on('connect', () => {
-        refreshCount();
-        setPage(1);
-        setHasMore(true);
-        fetchNotifications({ reset: true });
-      });
+    const handleConnect = () => {
+      refreshCount();
+      setPage(1);
+      setHasMore(true);
+      fetchNotifications({ reset: true });
+    };
 
-      socket.on('notification:broadcast', (data: { title: string; body: string }) => {
-        toast(data.title, { description: data.body, duration: 6000 });
-        refreshCount();
-        setPage(1);
-        setHasMore(true);
-        fetchNotifications({ reset: true });
-      });
-    });
+    const handleBroadcast = (data: { title: string; body: string }) => {
+      toast(data.title, { description: data.body, duration: 6000 });
+      refreshCount();
+      setPage(1);
+      setHasMore(true);
+      fetchNotifications({ reset: true });
+    };
+
+    socket.on('notification:new', handleNew);
+    socket.on('notification:updated', handleUpdated);
+    socket.on('notification:deleted', handleDeleted);
+    socket.on('notification:read-all', handleReadAll);
+    socket.on('notification:archive-all-read', handleArchiveAllRead);
+    socket.on('connect', handleConnect);
+    socket.on('notification:broadcast', handleBroadcast);
+
+    // Socket already connected (mounted after SocketProvider) — sync count immediately
+    if (socket.connected) {
+      refreshCount();
+    }
 
     return () => {
-      cancelled = true;
-      socketRef.current?.off('notification:new');
-      socketRef.current?.off('notification:updated');
-      socketRef.current?.off('notification:deleted');
-      socketRef.current?.off('notification:read-all');
-      socketRef.current?.off('notification:archive-all-read');
-      socketRef.current?.off('connect');
-      socketRef.current?.off('notification:broadcast');
+      socket.off('notification:new', handleNew);
+      socket.off('notification:updated', handleUpdated);
+      socket.off('notification:deleted', handleDeleted);
+      socket.off('notification:read-all', handleReadAll);
+      socket.off('notification:archive-all-read', handleArchiveAllRead);
+      socket.off('connect', handleConnect);
+      socket.off('notification:broadcast', handleBroadcast);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyNotificationUpdate, notifyIncomingNotification, refreshCount, removeNotificationById, user?.id]);

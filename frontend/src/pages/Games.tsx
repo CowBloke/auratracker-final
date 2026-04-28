@@ -923,6 +923,11 @@ export default function Games() {
       ? soloGames
       : multiplayerGamesToRender;
 
+  const activeCardAds = adPool.filter((ad) => ad.isActive);
+  const multiplayerTabAdOffset = activeCardAds.length > 1
+    ? Math.floor(soloGames.length / 6) % activeCardAds.length
+    : 0;
+
   const renderEmptyState = () => (
     <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
       Aucun jeu ne correspond à ta recherche.
@@ -1212,7 +1217,10 @@ export default function Games() {
           ) : (
             gamesToRender.length > 0 ? (
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-                {injectAdsIntoGrid(gamesToRender.map(renderGameCard)).elements}
+                {injectAdsIntoGrid(
+                  gamesToRender.map(renderGameCard),
+                  activeTab === 'multiplayer' ? multiplayerTabAdOffset : 0
+                ).elements}
               </div>
             ) : (
               renderEmptyState()
