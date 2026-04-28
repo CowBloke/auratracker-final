@@ -3,13 +3,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { RotateCcw, Target, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { GameTopBar } from '@/components/game/GameTopBar';
 
 const CANVAS_SIZE = 420;
 const CENTER = CANVAS_SIZE / 2;
@@ -436,6 +435,7 @@ export default function KnifeHit() {
   const [knifeSkinIndex, setKnifeSkinIndex] = useState(0);
   const [logSkinIndex, setLogSkinIndex] = useState(0);
   const [replayButtonSlotIndex, setReplayButtonSlotIndex] = useState(0);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const palette = useMemo(() => WORLD_PALETTES[worldIndex], [worldIndex]);
   const knifeSkin = useMemo(() => KNIFE_SKINS[knifeSkinIndex], [knifeSkinIndex]);
@@ -1086,158 +1086,127 @@ export default function KnifeHit() {
 
   return (
     <PageShell size="wide">
-      <div className={cn(
-        'grid items-start gap-4 px-4 pb-4',
-        isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
-      )}>
-        <div className={cn('flex flex-col gap-4', isFullscreen && 'hidden')}>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Score</p>
-                  <p className="text-xl font-semibold">{score}</p>
+      <div
+        ref={gameContainerRef}
+        className={cn(
+          'flex flex-col items-center gap-4 px-4 pb-4',
+          isFullscreen && 'min-h-screen w-screen justify-start bg-background px-4 py-4'
+        )}
+      >
+        <GameTopBar
+          title="Knife Hit"
+          score={score}
+          highScore={highScore}
+          isNewHighScore={isNewHighScore}
+          rewards={rewards}
+          controls={
+            <div className="space-y-2 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-border/60 p-2 text-center">
+                  <p className="text-[10px] text-muted-foreground">Niveau</p>
+                  <p className="text-sm font-semibold">{level}</p>
                 </div>
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Record</p>
-                  <p className="text-xl font-semibold">{highScore}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Niveau</p>
-                  <p className="text-xl font-semibold">{level}</p>
-                </div>
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Restants</p>
-                  <p className="text-xl font-semibold">{knivesLeft}</p>
+                <div className="rounded-lg border border-border/60 p-2 text-center">
+                  <p className="text-[10px] text-muted-foreground">Restants</p>
+                  <p className="text-sm font-semibold">{knivesLeft}</p>
                 </div>
               </div>
               <div
-                className="rounded-xl border p-3 text-center transition-colors"
+                className="rounded-lg border p-2 text-center transition-colors"
                 style={{
                   borderColor: `${palette.accent}55`,
                   background: `linear-gradient(135deg, ${palette.bgA}, ${palette.bgB})`,
                   color: palette.text,
                 }}
               >
-                <p className="text-xs" style={{ color: palette.subtext }}>
-                  Monde
-                </p>
+                <p className="text-[10px]" style={{ color: palette.subtext }}>Monde</p>
                 <p className="text-sm font-semibold">{palette.name}</p>
               </div>
-              <div className="rounded-xl border border-border/60 p-3 text-center">
-                <p className="text-xs text-muted-foreground">Rotation</p>
+              <div className="rounded-lg border border-border/60 p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">Rotation</p>
                 <p className="text-sm font-semibold">{directionLabel}</p>
                 {directionChangeInMs !== null && (
-                  <p className="text-xs text-muted-foreground">change dans {(directionChangeInMs / 1000).toFixed(1)}s</p>
+                  <p className="text-[10px] text-muted-foreground">change dans {(directionChangeInMs / 1000).toFixed(1)}s</p>
                 )}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-4 space-y-2">
-              <Button
-                className="w-full justify-start"
-                onClick={started && !gameOver ? throwKnife : startGame}
-              >
-                {started && !gameOver ? <Zap className="mr-2 h-4 w-4" /> : <Target className="mr-2 h-4 w-4" />}
-                {started && !gameOver ? 'Lancer' : 'Commencer'}
-              </Button>
-              {(started || gameOver) && (
-                <Button variant="outline" className="w-full justify-start" onClick={startGame}>
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Rejouer
+              <div className="flex gap-2 pt-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={started && !gameOver ? throwKnife : startGame}
+                >
+                  {started && !gameOver ? <Zap className="mr-1 h-3 w-3" /> : <Target className="mr-1 h-3 w-3" />}
+                  {started && !gameOver ? 'Lancer' : 'Commencer'}
                 </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                {(started || gameOver) && (
+                  <Button size="sm" variant="outline" onClick={startGame}>
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          }
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          showLeaderboard={showLeaderboard}
+          onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+        />
 
-        <div
-          ref={gameContainerRef}
-          className={cn(
-            'flex flex-col items-center gap-4',
-            isFullscreen && 'min-h-screen w-screen justify-start bg-background px-4 py-4'
-          )}
-        >
-          <GameFullscreenToolbar
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={toggleFullscreen}
-            className="w-full max-w-[420px]"
-          >
-            {isFullscreen && (
-              <Button size="sm" variant="outline" onClick={started && !gameOver ? throwKnife : startGame}>
-                {started && !gameOver ? <Zap className="mr-2 h-4 w-4" /> : <Target className="mr-2 h-4 w-4" />}
-                {started && !gameOver ? 'Lancer' : 'Commencer'}
-              </Button>
-            )}
-            {isFullscreen && (started || gameOver) && (
-              <Button size="sm" variant="outline" onClick={startGame}>
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Rejouer
-              </Button>
-            )}
-          </GameFullscreenToolbar>
+        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_SIZE} baseHeight={CANVAS_SIZE}>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_SIZE}
+            height={CANVAS_SIZE}
+            className="h-full w-full rounded-[28px] border border-border/40"
+            onClick={() => {
+              if (!started || gameOver) {
+                startGame();
+                return;
+              }
+              throwKnife();
+            }}
+          />
 
-          <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_SIZE} baseHeight={CANVAS_SIZE}>
-            <canvas
-              ref={canvasRef}
-              width={CANVAS_SIZE}
-              height={CANVAS_SIZE}
-              className="h-full w-full rounded-[28px] border border-border/40"
-              onClick={() => {
-                if (!started || gameOver) {
-                  startGame();
-                  return;
-                }
-                throwKnife();
-              }}
-            />
-
-            {gameOver && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/50 backdrop-blur-sm">
-                <div className="w-full max-w-xs rounded-2xl border border-border/60 bg-background/95 p-6 text-center shadow-xl">
-                  <p className="text-sm text-muted-foreground">Run terminee</p>
-                  <p className="mt-1 text-4xl font-bold">{score}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">couteaux places avant collision</p>
-                  {isNewHighScore && <p className="mt-3 text-sm font-medium text-amber-500">Nouveau record</p>}
-                  {rewards && (
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      +${rewards.money} · +{rewards.aura} aura
-                    </p>
-                  )}
-                  <div className="relative mt-4 h-28">
-                    <Button
-                      className="absolute w-[46%] min-w-[132px]"
-                      style={replayButtonSlot}
-                      onClick={startGame}
-                    >
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Nouvelle run
-                    </Button>
-                  </div>
+          {gameOver && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/50 backdrop-blur-sm">
+              <div className="w-full max-w-xs rounded-2xl border border-border/60 bg-background/95 p-6 text-center shadow-xl">
+                <p className="text-sm text-muted-foreground">Run terminee</p>
+                <p className="mt-1 text-4xl font-bold">{score}</p>
+                <p className="mt-1 text-sm text-muted-foreground">couteaux places avant collision</p>
+                {isNewHighScore && <p className="mt-3 text-sm font-medium text-amber-500">Nouveau record</p>}
+                {rewards && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    +${rewards.money} · +{rewards.aura} aura
+                  </p>
+                )}
+                <div className="relative mt-4 h-28">
+                  <Button
+                    className="absolute w-[46%] min-w-[132px]"
+                    style={replayButtonSlot}
+                    onClick={startGame}
+                  >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Nouvelle run
+                  </Button>
                 </div>
               </div>
-            )}
-          </GameFullscreenStage>
-        </div>
+            </div>
+          )}
+        </GameFullscreenStage>
 
-        <GameLeaderboard
-          entries={leaderboard}
-          currentUserId={user?.id}
-          personalHighScore={highScore}
-          isAdmin={user?.isAdmin}
-          onDeleteScore={handleDeleteScore}
-          maxHeight={420}
-          hidden={isFullscreen}
-        />
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              isAdmin={user?.isAdmin}
+              onDeleteScore={handleDeleteScore}
+              maxHeight={500}
+              hidden={false}
+            />
+          </div>
+        )}
       </div>
     </PageShell>
   );

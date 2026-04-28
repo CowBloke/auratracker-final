@@ -3,14 +3,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Brain, Eraser, RefreshCcw, Target } from 'lucide-react';
-import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { GameTopBar } from '@/components/game/GameTopBar';
 
 type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 type Grid = number[][];
@@ -270,6 +269,7 @@ export default function Sudoku() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const currentScore = getCompletionScore(difficulty, elapsedSeconds, hintsUsed, mistakesFound);
   const canPause = !completed;
@@ -513,44 +513,25 @@ export default function Sudoku() {
     }
   };
 
-  return (
+return (
     <PageShell size="wide">
 
-      <div className={cn(
-        'grid gap-4 items-start px-4 pb-6',
-        isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
-      )}>
-        {/* LEFT: Options / Score */}
-        <div className={cn('flex flex-col gap-4', isFullscreen && 'hidden')}>
-          {/* 1. Time & Score */}
-          <Card>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Temps</p>
-                  <p className="text-xl font-semibold">{formatDuration(elapsedSeconds)}</p>
-                </div>
-                {completed ? (
-                  <div className="rounded-xl border border-border/60 p-3">
-                    <p className="text-xs text-muted-foreground">Score</p>
-                    <p className="text-xl font-semibold">{currentScore}</p>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-border/60 p-3">
-                    <p className="text-xs text-muted-foreground">Record</p>
-                    <p className="text-xl font-semibold">{highScore}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 2. Difficulty + New grid */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Difficulte</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+      <div
+        ref={gameContainerRef}
+        className={cn(
+          'flex flex-col items-center gap-4 px-4 pb-6',
+          isFullscreen && 'min-h-screen w-screen justify-center bg-background px-4 py-6'
+        )}
+      >
+        <GameTopBar
+          title="Sudoku"
+          score={completed ? currentScore : 0}
+          highScore={highScore}
+          isNewHighScore={isNewHighScore}
+          rewards={rewards}
+          controls={
+            <div className="space-y-2 text-xs">
+              <p className="font-medium text-foreground">Difficulte: {difficultyConfig[difficulty].label}</p>
               <Select value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -563,90 +544,57 @@ export default function Sudoku() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="outline" className="w-full" onClick={() => generateNewPuzzle(difficulty)}>
-                <RefreshCcw className="mr-2 h-4 w-4" />
-                Nouvelle grille
-              </Button>
-            </CardContent>
-          </Card>
+              <div className="flex gap-2 pt-2">
+                <Button type="button" variant="outline" size="sm" onClick={validateGrid} disabled={completed}>
+                  <Target className="mr-1 h-3 w-3" />
+                  Verifier
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={useHint}
+                  disabled={completed || hintsUsed >= 3}
+                >
+                  <Brain className="mr-1 h-3 w-3" />
+                  Indice
+                </Button>
+              </div>
+            </div>
+          }
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          showLeaderboard={showLeaderboard}
+          onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+        />
 
-          {/* 3. Actions */}
-          <Card>
-            <CardContent className="pt-4 space-y-2">
-              <Button type="button" variant="outline" className="w-full justify-start" onClick={validateGrid} disabled={completed}>
+        <div className="flex w-full max-w-[42rem] justify-between gap-2">
+          {isFullscreen && (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={validateGrid} disabled={completed}>
                 <Target className="mr-2 h-4 w-4" />
                 Verifier
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start"
-                onClick={useHint}
-                disabled={completed || hintsUsed >= 3}
-              >
+              <Button type="button" variant="outline" onClick={useHint} disabled={completed || hintsUsed >= 3}>
                 <Brain className="mr-2 h-4 w-4" />
-                Indice ({3 - hintsUsed} restant{3 - hintsUsed !== 1 ? 's' : ''})
+                Indice
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => {
-                  setDraftGrid(cloneGrid(initialGrid));
-                  setShowConflicts(false);
-                  setMistakesFound(0);
-                  setHintsUsed(0);
-                  setElapsedSeconds(0);
-                  setCompleted(false);
-                  setRewards(null);
-                  submitLockRef.current = false;
-                }}
-              >
+              <Button type="button" variant="outline" onClick={() => generateNewPuzzle(difficulty)}>
                 <RefreshCcw className="mr-2 h-4 w-4" />
-                Recommencer
-      </Button>
-    </CardContent>
-  </Card>
-</div>
-
-        {/* CENTER: Game Board */}
-        <div
-          ref={gameContainerRef}
-          className={cn(
-            'flex flex-col items-center gap-4',
-            isFullscreen && 'min-h-screen w-screen justify-center bg-background px-4 py-6'
+                Nouvelle grille
+              </Button>
+            </div>
           )}
-        >
-          <div className="flex w-full max-w-[42rem] justify-between gap-2">
-            {isFullscreen ? (
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={validateGrid} disabled={completed}>
-                  <Target className="mr-2 h-4 w-4" />
-                  Verifier
-                </Button>
-                <Button type="button" variant="outline" onClick={useHint} disabled={completed || hintsUsed >= 3}>
-                  <Brain className="mr-2 h-4 w-4" />
-                  Indice
-                </Button>
-                <Button type="button" variant="outline" onClick={() => generateNewPuzzle(difficulty)}>
-                  <RefreshCcw className="mr-2 h-4 w-4" />
-                  Nouvelle grille
-                </Button>
-              </div>
-            ) : (
-              <div />
-            )}
-            <GameFullscreenButton isFullscreen={isFullscreen} onClick={toggleFullscreen} />
-          </div>
+        </div>
 
-          <div className="relative rounded-[2rem] border border-stone-300 bg-[linear-gradient(180deg,#fdfcf8,#f4efe4)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-6">
-            <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
-            <div className="rounded-sm border-[3px] border-stone-900 bg-white shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
-              <div className="grid grid-cols-9">
-                {draftGrid.map((row, rowIndex) =>
-                  row.map((value, columnIndex) => {
-                    const isGiven = initialGrid[rowIndex][columnIndex] !== 0;
-                    const isSelected = selectedCell.row === rowIndex && selectedCell.column === columnIndex;
+        <div className="relative rounded-[2rem] border border-stone-300 bg-[linear-gradient(180deg,#fdfcf8,#f4efe4)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-6">
+          <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
+          <div className="rounded-sm border-[3px] border-stone-900 bg-white shadow-[0_8px_18px_rgba(0,0,0,0.08)]">
+            <div className="grid grid-cols-9">
+              {draftGrid.map((row, rowIndex) =>
+                row.map((value, columnIndex) => {
+                  const isGiven = initialGrid[rowIndex][columnIndex] !== 0;
+                  const isSelected = selectedCell.row === rowIndex && selectedCell.column === columnIndex;
                     const isPeer = selectedCell.row === rowIndex || selectedCell.column === columnIndex ||
                       (
                         Math.floor(selectedCell.row / BOX_SIZE) === Math.floor(rowIndex / BOX_SIZE) &&
@@ -708,17 +656,19 @@ export default function Sudoku() {
           )}
         </div>
 
-        {/* RIGHT: Leaderboard */}
-        <GameLeaderboard
-          entries={leaderboard}
-          currentUserId={user?.id}
-          personalHighScore={highScore}
-          isAdmin={user?.isAdmin}
-          onDeleteScore={handleDeleteScore}
-          title="Classement"
-          maxHeight={420}
-          hidden={isFullscreen}
-        />
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              isAdmin={user?.isAdmin}
+              onDeleteScore={handleDeleteScore}
+              maxHeight={500}
+              hidden={false}
+            />
+          </div>
+        )}
       </div>
     </PageShell>
   );

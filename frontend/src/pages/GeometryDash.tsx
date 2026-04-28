@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -247,8 +247,15 @@ export default function GeometryDash() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const canPause = started && !gameOver;
+  const leaderboardVisible = showLeaderboard && !hideGameLeaderboards;
+  useEffect(() => {
+    if (hideGameLeaderboards) {
+      setShowLeaderboard(false);
+    }
+  }, [hideGameLeaderboards]);
 
   const fetchStats = useCallback(async () => {
     if (!user?.id) return;
@@ -730,12 +737,12 @@ export default function GeometryDash() {
         isFullscreen
           ? '2xl:grid-cols-1'
           : hideGameLeftInfo
-            ? hideGameLeaderboards
-              ? '2xl:grid-cols-1'
-              : '2xl:grid-cols-[minmax(0,1fr)_280px]'
-            : hideGameLeaderboards
-              ? '2xl:grid-cols-[280px_minmax(0,1fr)]'
-              : '2xl:grid-cols-[280px_minmax(0,1fr)_280px]'
+            ? leaderboardVisible
+              ? '2xl:grid-cols-[minmax(0,1fr)_280px]'
+              : '2xl:grid-cols-1'
+            : leaderboardVisible
+              ? '2xl:grid-cols-[280px_minmax(0,1fr)_280px]'
+              : '2xl:grid-cols-[280px_minmax(0,1fr)]'
       )}>
         {!hideGameLeftInfo && (
         <div className={cn('space-y-4', isFullscreen && 'hidden')}>
@@ -800,13 +807,27 @@ export default function GeometryDash() {
             isFullscreen && 'min-h-screen w-screen items-center justify-center bg-background px-4 py-4'
           )}
         >
-          <GameFullscreenToolbar
+          <GameTopBar
+            title="Geometry Dash"
+            score={score}
+            highScore={highScore}
+            isNewHighScore={isNewHighScore}
+            rewards={rewards}
+            controls={(
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Espace, ↑ ou W pour sauter.</p>
+                <p className="text-xs text-muted-foreground">Clic ou tap pour jouer sur mobile.</p>
+                <p className="text-xs text-muted-foreground">Le cube avance tout seul.</p>
+              </div>
+            )}
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
+            showLeaderboard={leaderboardVisible}
+            onToggleLeaderboard={() => setShowLeaderboard((value) => !value)}
             className="w-full max-w-[960px]"
           >
             <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
-          </GameFullscreenToolbar>
+          </GameTopBar>
 
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
             <canvas
@@ -869,7 +890,7 @@ export default function GeometryDash() {
           </GameFullscreenStage>
         </div>
 
-        {!hideGameLeaderboards && (
+        {leaderboardVisible && (
         <div className={cn('w-full', !isFullscreen && '2xl:max-w-[280px]')}>
           <GameLeaderboard
             entries={leaderboard}

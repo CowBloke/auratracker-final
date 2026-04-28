@@ -3,7 +3,7 @@ import { RotateCcw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
-import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -195,6 +195,8 @@ export default function Solitaire() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [cardWidth, setCardWidth] = useState(96);
   const [isPaused, setIsPaused] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const leaderboardVisible = showLeaderboard && !hideGameLeaderboards;
 
   const score = useMemo(() => computeScore(moves, seconds), [moves, seconds]);
   const completedCards = useMemo(
@@ -253,6 +255,12 @@ export default function Solitaire() {
     }, 1000);
     return () => window.clearInterval(interval);
   }, [isPaused, isWon]);
+
+  useEffect(() => {
+    if (hideGameLeaderboards) {
+      setShowLeaderboard(false);
+    }
+  }, [hideGameLeaderboards]);
 
   const submitResult = async (won: boolean, finalScore: number) => {
     if (hasSubmittedResult || !user) {
@@ -535,12 +543,12 @@ export default function Solitaire() {
       isFullscreen
         ? 'justify-items-center'
         : hideGameLeftInfo
-          ? hideGameLeaderboards
-            ? 'justify-items-center'
-            : 'xl:grid-cols-[1fr_320px]'
-          : hideGameLeaderboards
-            ? 'xl:grid-cols-[280px_1fr]'
-            : 'xl:grid-cols-[280px_1fr_320px]'
+          ? leaderboardVisible
+            ? 'xl:grid-cols-[1fr_320px]'
+            : 'justify-items-center'
+          : leaderboardVisible
+            ? 'xl:grid-cols-[280px_1fr_320px]'
+            : 'xl:grid-cols-[280px_1fr]'
     )}>
       {!hideGameLeftInfo && (
       <div className={cn('flex flex-col gap-3', isFullscreen && 'hidden')}>
@@ -593,41 +601,53 @@ export default function Solitaire() {
       </div>
       )}
 
-      <Card
+      <div
         ref={gameContainerRef}
-        className={cn(
-          isFullscreen && 'w-screen min-h-screen rounded-none border-0 bg-background shadow-none'
-        )}
+        className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4')}
       >
-        <CardHeader className="px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle className="text-sm font-medium">Solitaire</CardTitle>
-            <div className="flex items-center gap-2">
-              {isFullscreen && (
-                <Button variant="outline" size="sm" type="button" onClick={startNewGame}>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Nouvelle partie
-                </Button>
-              )}
-              <GameFullscreenButton isFullscreen={isFullscreen} onClick={toggleFullscreen} />
+        <GameTopBar
+          title="Solitaire"
+          score={score}
+          highScore={highScore}
+          isNewHighScore={isNewHighScore}
+          rewards={rewards}
+          controls={(
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Glisse-dépose pour déplacer les cartes.</p>
+              <p className="text-xs text-muted-foreground">Double-clic pour tenter un move automatique.</p>
+              <p className="text-xs text-muted-foreground">Le score baisse avec les coups et le temps.</p>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-3 md:p-4">
-          <div
-            ref={boardRef}
-            style={
-              {
-                '--card-w': `${cardWidth}px`,
-                '--pile-gap': `${boardGap}px`,
-                '--stack-faceup': `${stackOffsetFaceUp}px`,
-                '--stack-facedown': `${stackOffsetFaceDown}px`,
-                '--pile-pad': `${pilePadding}px`,
-                '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
-              } as CSSProperties
-            }
-            className="relative"
-          >
+          )}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          showLeaderboard={leaderboardVisible}
+          onToggleLeaderboard={() => setShowLeaderboard((value) => !value)}
+          className="w-full max-w-[1100px]"
+        >
+          {isFullscreen && (
+            <Button variant="outline" size="sm" type="button" onClick={startNewGame}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Nouvelle partie
+            </Button>
+          )}
+        </GameTopBar>
+
+        <Card className={cn(isFullscreen && 'w-screen min-h-screen rounded-none border-0 bg-background shadow-none')}>
+          <CardContent className="p-3 md:p-4">
+            <div
+              ref={boardRef}
+              style={
+                {
+                  '--card-w': `${cardWidth}px`,
+                  '--pile-gap': `${boardGap}px`,
+                  '--stack-faceup': `${stackOffsetFaceUp}px`,
+                  '--stack-facedown': `${stackOffsetFaceDown}px`,
+                  '--pile-pad': `${pilePadding}px`,
+                  '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
+                } as CSSProperties
+              }
+              className="relative"
+            >
           <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
           <div className="mb-4 flex items-start justify-between gap-[var(--pile-gap)]">
             <div className="flex gap-[var(--pile-gap)]">
@@ -792,7 +812,6 @@ export default function Solitaire() {
               );
             })}
           </div>
-          </div>
           {isWon && (
             <div className="mt-4 rounded-xl border border-primary/30 bg-primary/10 p-4 text-center">
               <div className="text-lg font-semibold">Partie gagnée</div>
@@ -807,10 +826,12 @@ export default function Solitaire() {
               )}
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
+    </div>
 
-      {!hideGameLeaderboards && (
+      {leaderboardVisible && (
         <GameLeaderboard
           entries={leaderboard}
           currentUserId={user?.id}

@@ -3,13 +3,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { GameTopBar } from '@/components/game/GameTopBar';
 
 // ============================================
 // CONSTANTS
@@ -151,6 +150,7 @@ export default function FruitNinja() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [fruitsSliced, setFruitsSliced] = useState(0);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const fetchStats = useCallback(async () => {
     if (!user?.id) return;
@@ -826,88 +826,46 @@ export default function FruitNinja() {
   const isPlaying = started && !gameOver;
 
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
-
-      {/* ── Left column ── */}
-      <div className="flex flex-col gap-3">
-
-        {/* Score */}
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Score</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-4">
-            <div>
-              <p className="text-3xl font-light tabular-nums">{score.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Score actuel</p>
-            </div>
-            <Separator />
-            <div>
-              <p className="text-xl font-medium tabular-nums">{highScore.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Record</p>
-            </div>
-            {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-            {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-              <p className="text-sm text-muted-foreground">
-                {rewards.money > 0 && `+$${rewards.money}`}
-                {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                {rewards.aura > 0 && `+${rewards.aura} aura`}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Lives */}
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Vies</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className="flex gap-2 text-2xl">
-              {Array.from({ length: MAX_LIVES }, (_, i) => (
-                <span key={i} style={{ opacity: i < lives ? 1 : 0.2 }}>❤️</span>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Stats */}
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Stats</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Fruits tranchés</span>
-              <span className="text-sm tabular-nums">🍉 {fruitsSliced}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Combo</span>
-              <span className={`text-sm tabular-nums font-medium ${
-                combo >= 5 ? 'text-red-400' : combo >= 3 ? 'text-orange-400' : combo >= 2 ? 'text-yellow-400' : ''
-              }`}>
-                {combo >= 2 ? `×${combo} 🔥` : '—'}
+    <div
+      ref={gameContainerRef}
+      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
+    >
+      <GameTopBar
+        title="Fruit Ninja"
+        score={score}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Vies:</span>
+              <span className="text-lg">
+                {Array.from({ length: MAX_LIVES }, (_, i) => (
+                  <span key={i} style={{ opacity: i < lives ? 1 : 0.2 }}>❤️</span>
+                ))}
               </span>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Controls */}
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Contrôles</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-2 text-xs text-muted-foreground">
-            <p>🖱️ Déplace la souris rapidement à travers les fruits pour les trancher.</p>
-            <p><kbd className="px-1 py-0.5 border border-border/50 rounded">R</kbd> pour rejouer.</p>
-            <Separator />
-            <p>💣 Évite les bombes — elles coûtent une vie.</p>
-            <p>❌ Laisser tomber un fruit coûte une vie.</p>
-            <p>🔥 Enchaîne les tranches pour un multiplicateur ×2 / ×3.</p>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <label htmlFor="fps-mode" className="text-xs text-muted-foreground cursor-pointer select-none">
-                Mode FPS <span className="text-muted-foreground/60">(sans particules)</span>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-border/60 p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">Fruits</p>
+                <p className="text-sm font-semibold">🍉 {fruitsSliced}</p>
+              </div>
+              <div className="rounded-lg border border-border/60 p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">Combo</p>
+                <p className={`text-sm font-semibold ${
+                  combo >= 5 ? 'text-red-400' : combo >= 3 ? 'text-orange-400' : combo >= 2 ? 'text-yellow-400' : ''
+                }`}>
+                  {combo >= 2 ? `×${combo}` : '—'}
+                </p>
+              </div>
+            </div>
+            <Separator className="my-2" />
+            <p className="text-muted-foreground">🖱️ Tranche les fruits avec la souris.</p>
+            <p className="text-muted-foreground">💣 Évite les bombes.</p>
+            <div className="flex items-center justify-between pt-2">
+              <label htmlFor="fps-mode" className="text-[10px] text-muted-foreground cursor-pointer select-none">
+                Mode FPS
               </label>
               <Switch
                 id="fps-mode"
@@ -915,91 +873,80 @@ export default function FruitNinja() {
                 onCheckedChange={setFpsMode}
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        }
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+      />
 
-      </div>
-
-      {/* ── Center column — canvas ── */}
-      <div
-        ref={gameContainerRef}
-        className={`relative flex flex-col gap-3 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
-      >
-        <GameFullscreenToolbar
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          className="w-full max-w-[400px]"
+      <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          className="block h-full w-full rounded-lg border border-border/30"
+          style={{ cursor: isPlaying ? 'none' : 'default' }}
         />
 
-        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            className="block h-full w-full rounded-lg border border-border/30"
-            style={{ cursor: isPlaying ? 'none' : 'default' }}
-          />
+        {!started && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 rounded-lg bg-background/90">
+            <div className="text-5xl tracking-widest select-none">🍉🍊🍋🍇🍓</div>
+            <h2 className="text-2xl font-light">Fruit Ninja</h2>
+            <Button
+              variant="ghost"
+              onClick={initGame}
+              className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Jouer
+            </Button>
+          </div>
+        )}
 
-          {/* Start screen */}
-          {!started && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 rounded-lg bg-background/90">
-              <div className="text-5xl tracking-widest select-none">🍉🍊🍋🍇🍓</div>
-              <h2 className="text-2xl font-light">Fruit Ninja</h2>
+        {gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+            <div className="text-center space-y-6">
+              <div>
+                <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
+                <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground mt-1">🍉 {fruitsSliced} fruits tranchés</p>
+              </div>
+              {isNewHighScore && <p className="text-sm text-foreground">✨ Nouveau record !</p>}
+              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                <p className="text-sm text-muted-foreground">
+                  {rewards.money > 0 && `+$${rewards.money}`}
+                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                  {rewards.aura > 0 && `+${rewards.aura} aura`}
+                </p>
+              )}
               <Button
                 variant="ghost"
                 onClick={initGame}
-                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
               >
-                <Play className="w-4 h-4" />
-                Jouer
+                <RotateCcw className="w-4 h-4" />
+                Rejouer
               </Button>
             </div>
-          )}
+          </div>
+        )}
+      </GameFullscreenStage>
 
-          {/* Game over */}
-          {gameOver && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-              <div className="text-center space-y-6">
-                <div>
-                  <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                  <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground mt-1">🍉 {fruitsSliced} fruits tranchés</p>
-                </div>
-                {isNewHighScore && <p className="text-sm text-foreground">✨ Nouveau record !</p>}
-                {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                  <p className="text-sm text-muted-foreground">
-                    {rewards.money > 0 && `+$${rewards.money}`}
-                    {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                    {rewards.aura > 0 && `+${rewards.aura} aura`}
-                  </p>
-                )}
-                <Button
-                  variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Rejouer
-                </Button>
-              </div>
-            </div>
-          )}
-        </GameFullscreenStage>
-      </div>
-
-      {/* ── Right column ── */}
-      <div className="flex flex-col gap-3">
-        <GameLeaderboard
-          entries={leaderboard}
-          currentUserId={user?.id}
-          personalHighScore={highScore}
-          isAdmin={user?.isAdmin}
-          onDeleteScore={handleDeleteScore}
-          title="Classement"
-          maxHeight={420}
-        />
-      </div>
-
+      {showLeaderboard && !isFullscreen && (
+        <div className="w-[240px] shrink-0 hidden lg:block">
+          <GameLeaderboard
+            entries={leaderboard}
+            currentUserId={user?.id}
+            personalHighScore={highScore}
+            isAdmin={user?.isAdmin}
+            onDeleteScore={handleDeleteScore}
+            maxHeight={500}
+            hidden={false}
+          />
+        </div>
+      )}
     </div>
   );
 }

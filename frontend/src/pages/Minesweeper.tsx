@@ -3,13 +3,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Bomb, Flag, RotateCcw } from 'lucide-react';
-import { GameFullscreenButton } from '@/components/game/GameFullscreenButton';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { GameTopBar } from '@/components/game/GameTopBar';
 
 type DifficultyKey = 'debutant' | 'intermediaire' | 'expert';
 type GameStatus = 'ready' | 'playing' | 'won' | 'lost';
@@ -224,6 +224,7 @@ export default function Minesweeper() {
   const [lastScore, setLastScore] = useState(0);
   const [flagMode, setFlagMode] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -486,221 +487,204 @@ export default function Minesweeper() {
     [config.columns]
   );
 
-  return (
+return (
     <PageShell size="full">
-      <div className={cn(
-        'grid gap-4 items-start px-4 pb-4',
-        isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
-      )}>
-        {/* LEFT: Options / Score */}
-        <div className={cn('flex flex-col gap-4', isFullscreen && 'hidden')}>
-          {/* 1. Stats */}
-          <Card>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Temps</p>
-                  <p className="text-xl font-semibold tabular-nums">{elapsedSeconds}s</p>
+      <div
+        ref={gameContainerRef}
+        className={cn(
+          'flex flex-col items-center gap-4 px-4 pb-4',
+          isFullscreen && 'min-h-screen w-screen justify-center bg-background px-4 py-6'
+        )}
+      >
+        <GameTopBar
+          title="Démineur"
+          score={status === 'won' || status === 'lost' ? lastScore : 0}
+          highScore={highScore}
+          isNewHighScore={isNewHighScore}
+          rewards={rewards}
+          controls={
+            <div className="space-y-2 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-border/60 p-2 text-center">
+                  <p className="text-[10px] text-muted-foreground">Temps</p>
+                  <p className="text-sm font-semibold tabular-nums">{elapsedSeconds}s</p>
                 </div>
-                {status === 'won' || status === 'lost' ? (
-                  <div className="rounded-xl border border-border/60 p-3">
-                    <p className="text-xs text-muted-foreground">Score</p>
-                    <p className="text-xl font-semibold tabular-nums">{lastScore}</p>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-border/60 p-3">
-                    <p className="text-xs text-muted-foreground">Mines</p>
-                    <p className="text-xl font-semibold tabular-nums">{minesLeft}</p>
-                  </div>
-                )}
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Record</p>
-                  <p className="text-xl font-semibold tabular-nums">{isSpeedrunDisplay ? (highScore > 0 ? formatDuration(highScore) : '--') : highScore}</p>
+                <div className="rounded-lg border border-border/60 p-2 text-center">
+                  <p className="text-[10px] text-muted-foreground">Mines</p>
+                  <p className="text-sm font-semibold tabular-nums">{minesLeft}</p>
                 </div>
-                <div className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs text-muted-foreground">Taux de victoire</p>
-                  <p className="text-xl font-semibold tabular-nums">{winRate}%</p>
+                <div className="rounded-lg border border-border/60 p-2 text-center">
+                  <p className="text-[10px] text-muted-foreground">Record</p>
+                  <p className="text-sm font-semibold tabular-nums">{isSpeedrunDisplay ? (highScore > 0 ? formatDuration(highScore) : '--') : highScore}</p>
+                </div>
+                <div className="rounded-lg border border-border/60 p-2 text-center">
+                  <p className="text-[10px] text-muted-foreground">Win</p>
+                  <p className="text-sm font-semibold tabular-nums">{winRate}%</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* 2. Difficulty + New game */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Mode</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button
-                type="button"
-                variant={mode === 'score' ? 'default' : 'outline'}
-                className="w-full justify-start"
-                disabled={status === 'playing'}
-                onClick={() => setMode('score')}
-              >
-                Score classique
-              </Button>
-              <Button
-                type="button"
-                variant={mode === 'speedrun' ? 'default' : 'outline'}
-                className="w-full justify-start"
-                disabled={status === 'playing'}
-                onClick={() => setMode('speedrun')}
-              >
-                Speedrun (meilleur temps)
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Difficulte</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+              <Separator className="my-2" />
+              <div className="space-y-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mode === 'score' ? 'default' : 'outline'}
+                  className="w-full justify-start text-xs"
+                  disabled={status === 'playing'}
+                  onClick={() => setMode('score')}
+                >
+                  Score classique
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={mode === 'speedrun' ? 'default' : 'outline'}
+                  className="w-full justify-start text-xs"
+                  disabled={status === 'playing'}
+                  onClick={() => setMode('speedrun')}
+                >
+                  Speedrun
+                </Button>
+              </div>
               <Select value={difficulty} onValueChange={(value) => setDifficulty(value as DifficultyKey)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.keys(DIFFICULTIES) as DifficultyKey[]).map((level) => (
-                    <SelectItem key={level} value={level}>
-                      {DIFFICULTIES[level].label} — {DIFFICULTIES[level].rows}×{DIFFICULTIES[level].columns} · {DIFFICULTIES[level].mines} mines
+                    <SelectItem key={level} value={level} className="text-xs">
+                      {DIFFICULTIES[level].label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button type="button" variant="outline" className="w-full" onClick={() => resetBoard()}>
+              <Button
+                type="button"
+                size="sm"
+                variant={flagMode ? 'default' : 'outline'}
+                className="w-full justify-start text-xs"
+                onClick={() => setFlagMode((current) => !current)}
+              >
+                <Flag className="mr-1 h-3 w-3" />
+                {flagMode ? 'Drapeau' : 'Reveler'}
+              </Button>
+            </div>
+          }
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          showLeaderboard={showLeaderboard}
+          onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+        />
+
+        <div className="flex w-full max-w-[42rem] justify-between gap-2">
+          {isFullscreen && (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={() => resetBoard()}>
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Nouvelle partie
               </Button>
-            </CardContent>
-          </Card>
-
-          {/* 3. Actions */}
-          <Card>
-            <CardContent className="pt-4">
               <Button
                 type="button"
                 variant={flagMode ? 'default' : 'outline'}
-                className="w-full justify-start"
                 onClick={() => setFlagMode((current) => !current)}
               >
                 <Flag className="mr-2 h-4 w-4" />
                 {flagMode ? 'Mode drapeau' : 'Mode reveal'}
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </div>
 
-        {/* CENTER: Game Board */}
-        <div
-          ref={gameContainerRef}
-          className={cn(
-            'flex flex-col items-center gap-4',
-            isFullscreen && 'min-h-screen w-screen justify-center bg-background px-4 py-6'
-          )}
-        >
-          <div className="flex w-full max-w-[42rem] justify-between gap-2">
-            {isFullscreen ? (
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" onClick={() => resetBoard()}>
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Nouvelle partie
-                </Button>
-                <Button
-                  type="button"
-                  variant={flagMode ? 'default' : 'outline'}
-                  onClick={() => setFlagMode((current) => !current)}
-                >
-                  <Flag className="mr-2 h-4 w-4" />
-                  {flagMode ? 'Mode drapeau' : 'Mode reveal'}
-                </Button>
-              </div>
-            ) : (
-              <div />
-            )}
-            <GameFullscreenButton isFullscreen={isFullscreen} onClick={toggleFullscreen} />
-          </div>
-
-          <div className="rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
-            <div className="relative rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
-              <div className="grid gap-1" style={boardStyle}>
-                {board.flat().map((cell) => {
-                  const isExplodedMine = status === 'lost' && cell.isMine;
-                  return (
-                    <button
-                      key={`${cell.row}-${cell.column}`}
-                      type="button"
-                      onClick={() => handleCellAction(cell.row, cell.column)}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        toggleFlagAt(cell.row, cell.column);
-                      }}
+        <div className="rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
+          <div className="relative rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
+            <div className="grid gap-1" style={boardStyle}>
+              {board.flat().map((cell) => {
+                const isExplodedMine = status === 'lost' && cell.isMine;
+                return (
+                  <button
+                    key={`${cell.row}-${cell.column}`}
+                    type="button"
+                    onClick={() => handleCellAction(cell.row, cell.column)}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      toggleFlagAt(cell.row, cell.column);
+                    }}
+                    disabled={status === 'won' || status === 'lost'}
+                    className={cn(
+                      'relative flex items-center justify-center text-xs font-bold transition-all',
+                      cell.isRevealed
+                        ? cell.isMine
+                          ? 'bg-red-500 text-white'
+                          : cell.adjacentMines === 0
+                            ? 'bg-slate-200 text-transparent'
+                            : CELL_COLORS[cell.adjacentMines as keyof typeof CELL_COLORS] || 'bg-slate-300'
+                        : cell.isFlagged
+                          ? 'bg-yellow-100'
+                          : isExplodedMine
+                            ? 'bg-red-600'
+                            : 'bg-gradient-to-b from-slate-300 to-slate-400 hover:from-slate-200 hover:to-slate-300',
+                      cell.isRevealed && cell.isMine && !isExplodedMine && 'bg-red-500'
+                    )}
+                  >
+                    <span
                       className={cn(
-                        'flex aspect-square items-center justify-center rounded-md border text-sm font-black transition-all select-none',
-                        cell.isRevealed
-                          ? 'border-slate-300 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]'
-                          : 'border-slate-400 bg-[linear-gradient(180deg,#e2e8f0,#cbd5e1)] hover:-translate-y-px hover:shadow-sm',
-                        !cell.isRevealed && 'active:translate-y-0',
-                        isExplodedMine && 'border-red-400 bg-red-100 text-red-700',
-                        status === 'won' && cell.isMine && 'border-emerald-400 bg-emerald-100 text-emerald-700'
+                        'absolute inset-0 rounded-sm',
+                        cell.isRevealed && cell.adjacentMines > 0 && 'bg-transparent'
                       )}
-                      style={{ width: getCellSize(config.columns) }}
-                    >
-                      {cell.isRevealed ? (
-                        cell.isMine ? (
-                          <Bomb className="h-4 w-4" />
-                        ) : cell.adjacentMines > 0 ? (
-                          <span className={NUMBER_COLORS[cell.adjacentMines]}>{cell.adjacentMines}</span>
-                        ) : null
-                      ) : cell.isFlagged ? (
-                        <Flag className="h-4 w-4 text-rose-600" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
+                    />
+                    {cell.isFlagged && !cell.isRevealed && (
+                      <Flag className="h-3 w-3 text-yellow-500" />
+                    )}
+                    {cell.isRevealed && cell.adjacentMines > 0 && !cell.isMine && (
+                      <span>{cell.adjacentMines}</span>
+                    )}
+                    {isExplodedMine && <Bomb className="h-4 w-4" />}
+                    {cell.isRevealed && cell.isMine && !isExplodedMine && <Bomb className="h-3 w-3" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
-
-          {status === 'won' && (
-            <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-              <p className="font-medium">Grille nettoyee.</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {isSpeedrunDisplay
-                  ? `Temps ${formatDuration(lastScore)} · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`
-                  : `Score ${lastScore} · temps ${elapsedSeconds}s · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`}
-              </p>
-              {rewards && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Recompenses: +${rewards.money} · +{rewards.aura} aura{isNewHighScore ? ' · nouveau record' : ''}.
-                </p>
-              )}
-            </div>
-          )}
-
-          {status === 'lost' && (
-            <div className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
-              <p className="font-medium">Bombe declenchee.</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {progress}% de progression apres {elapsedSeconds}s.
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* RIGHT: Leaderboard */}
-        <GameLeaderboard
-          entries={leaderboard}
-          currentUserId={user?.id}
-          personalHighScore={highScore}
-          scoreFormatter={isSpeedrunDisplay ? formatDuration : undefined}
-          isAdmin={user?.isAdmin}
-          onDeleteScore={(userId) => handleDeleteScore(userId)}
-          title={`Classement Démineur — ${displayMode === 'speedrun' ? 'Speedrun' : 'Score'}`}
-          maxHeight={420}
-          hidden={isFullscreen}
-        />
+        {status === 'won' && (
+          <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+            <p className="font-medium">Grille nettoyee.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {isSpeedrunDisplay
+                ? `Temps ${formatDuration(lastScore)} · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`
+                : `Score ${lastScore} · temps ${elapsedSeconds}s · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`}
+            </p>
+            {rewards && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Recompenses: +${rewards.money} · +${rewards.aura} aura{isNewHighScore ? ' · nouveau record' : ''}.
+              </p>
+            )}
+          </div>
+        )}
+
+        {status === 'lost' && (
+          <div className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
+            <p className="font-medium">Bombe declenchee.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {progress}% de progression apres {elapsedSeconds}s.
+            </p>
+          </div>
+        )}
+
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              scoreFormatter={isSpeedrunDisplay ? formatDuration : undefined}
+              isAdmin={user?.isAdmin}
+              onDeleteScore={(userId) => handleDeleteScore(userId)}
+              maxHeight={500}
+              hidden={false}
+            />
+          </div>
+        )}
       </div>
     </PageShell>
   );

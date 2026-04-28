@@ -46,12 +46,6 @@ import { ReferralSummary, authApi, usersApi } from '@/services/api';
 import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
 import { toast } from '@/hooks/use-toast';
 import {
-  setHideGameLeaderboardsPreference,
-  setHideGameLeftInfoPreference,
-  useHideGameLeaderboards,
-  useHideGameLeftInfo,
-} from '@/lib/game-preferences';
-import {
   useSoundEnabled,
   useSoundVolume,
   setSoundEnabled,
@@ -451,8 +445,6 @@ function PersonnalisationSection({
   themeVars,
   customTheme,
   setCustomTheme,
-  hideGameLeaderboards,
-  hideGameLeftInfo,
 }: {
   theme: string;
   setTheme: (t: 'light' | 'dark') => void;
@@ -462,8 +454,6 @@ function PersonnalisationSection({
   themeVars: Record<string, Record<string, string>>;
   customTheme: CustomThemeConfig;
   setCustomTheme: (value: CustomThemeConfig) => void;
-  hideGameLeaderboards: boolean;
-  hideGameLeftInfo: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -515,31 +505,6 @@ function PersonnalisationSection({
         </SettingsCard>
       </div>
 
-      {/* Jeux */}
-      <div>
-        <SettingsGroupLabel>{t('settings_games_group')}</SettingsGroupLabel>
-        <SettingsCard>
-          <SettingsRow
-            label={t('settings_hide_leaderboards')}
-            description={t('settings_hide_leaderboards_description')}
-          >
-            <Switch
-              checked={hideGameLeaderboards}
-              onCheckedChange={() => setHideGameLeaderboardsPreference(!hideGameLeaderboards)}
-            />
-          </SettingsRow>
-          <SettingsRow
-            label={t('settings_hide_left_info')}
-            description={t('settings_hide_left_info_description')}
-            last
-          >
-            <Switch
-              checked={hideGameLeftInfo}
-              onCheckedChange={() => setHideGameLeftInfoPreference(!hideGameLeftInfo)}
-            />
-          </SettingsRow>
-        </SettingsCard>
-      </div>
     </div>
   );
 }
@@ -1090,8 +1055,6 @@ export default function Settings() {
   const [referralSummary, setReferralSummary] = useState<ReferralSummary | null>(null);
   const [referralClaimOpen, setReferralClaimOpen] = useState(false);
   const [referralLoading, setReferralLoading] = useState(false);
-  const hideGameLeaderboards = useHideGameLeaderboards();
-  const hideGameLeftInfo = useHideGameLeftInfo();
   const keyboardShortcuts = useKeyboardShortcuts();
   const [capturingShortcutId, setCapturingShortcutId] = useState<KeyboardShortcutActionId | null>(
     null
@@ -1297,8 +1260,6 @@ export default function Settings() {
               themeVars={themeVars}
               customTheme={customTheme}
               setCustomTheme={setCustomTheme}
-              hideGameLeaderboards={hideGameLeaderboards}
-              hideGameLeftInfo={hideGameLeftInfo}
             />
           )}
 

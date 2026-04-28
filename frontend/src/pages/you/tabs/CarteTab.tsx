@@ -2,9 +2,10 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import { useNavigate } from 'react-router-dom';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { BellRing, Check, ChevronDown, ExternalLink, LocateFixed, MapPin, Minus, Plus, Search, Wallet, X } from 'lucide-react';
+import { BellRing, Building2, ChevronDown, ExternalLink, LocateFixed, MapPin, Minus, Plus, Search, Wallet, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -358,6 +359,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
   embedded = false,
   externalSelectedId,
 },  ref) {
+  const navigate = useNavigate();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const hoverPopupRef = useRef<maplibregl.Popup | null>(null);
@@ -365,15 +367,15 @@ export const CarteTab = forwardRef<CarteTabHandle, {
   const { notifications, unreadCount } = useNotifications();
   const [mapReady, setMapReady] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
-  const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>([]);
-  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [placingBusinessId, setPlacingBusinessId] = useState<string | null>(null);
   const [savingPlacementBusinessId, setSavingPlacementBusinessId] = useState<string | null>(null);
   const [tickerOffset, setTickerOffset] = useState(0);
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'mine'>('all');
   const [hoverBusinessId, setHoverBusinessId] = useState<string | null>(null);
   const hoverBusinessIdRef = useRef<string | null>(null);
+  const [showBrowserModal, setShowBrowserModal] = useState(false);
+  const [modalSearch, setModalSearch] = useState('');
+  const [modalTypeFilters, setModalTypeFilters] = useState<string[]>([]);
 
   useImperativeHandle(ref, () => ({
     startPlacing: (id: string) => handleStartPlacement(id),
@@ -405,22 +407,16 @@ export const CarteTab = forwardRef<CarteTabHandle, {
     return chips;
   }, [allBusinesses]);
 
-  const selectedTypeSet = useMemo(() => new Set(selectedTypeFilters), [selectedTypeFilters]);
-
-  const visibleBusinesses = useMemo(() => {
-    let filtered = ownerFilter === 'mine' ? ownedBusinesses : allBusinesses;
-    if (selectedTypeSet.size > 0) {
-      filtered = filtered.filter((b) => selectedTypeSet.has(b.typeKey));
-    }
-    const q = searchQuery.trim().toLowerCase();
+  const modalTypeSet = useMemo(() => new Set(modalTypeFilters), [modalTypeFilters]);
+  const modalVisibleBusinesses = useMemo(() => {
+    let filtered = allBusinesses;
+    if (modalTypeSet.size > 0) filtered = filtered.filter((b) => modalTypeSet.has(b.typeKey));
+    const q = modalSearch.trim().toLowerCase();
     if (!q) return filtered;
     return filtered.filter((b) =>
-      [b.name, b.owner.username, b.type?.label ?? b.typeKey, b.typeKey, b.location ?? ''].join(' ').toLowerCase().includes(q),
+      [b.name, b.owner.username, b.type?.label ?? b.typeKey, b.location ?? ''].join(' ').toLowerCase().includes(q),
     );
-  }, [ownerFilter, ownedBusinesses, allBusinesses, searchQuery, selectedTypeSet]);
-
-  const placedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX != null && b.mapY != null), [visibleBusinesses]);
-  const unplacedBusinesses = useMemo(() => visibleBusinesses.filter((b) => b.mapX == null || b.mapY == null), [visibleBusinesses]);
+  }, [allBusinesses, modalSearch, modalTypeSet]);
 
   const pins = useMemo(() => {
     const source = ownerFilter === 'mine' ? ownedBusinesses : allBusinesses;
@@ -430,14 +426,6 @@ export const CarteTab = forwardRef<CarteTabHandle, {
 
   const selectedBusiness = allBusinesses.find((b) => b.id === selectedBusinessId) ?? null;
   const placingBusiness = allBusinesses.find((b) => b.id === placingBusinessId) ?? null;
-  const selectedTypeLabels = useMemo(() => {
-    if (selectedTypeFilters.length === 0) return 'Tous les types';
-    const labels = selectedTypeFilters.map((key) => {
-      const chip = typeChips.find((entry) => entry.key === key);
-      return chip ? `${chip.emoji} ${chip.label}` : key;
-    });
-    return labels.join(', ');
-  }, [selectedTypeFilters, typeChips]);
   const legendEntries = useMemo(() => {
     const counts = new Map<string, number>();
     allBusinesses.forEach((business) => {
@@ -919,7 +907,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/15 via-transparent to-background/15" />
 
       {/* Owner filter pills — always visible */}
-      <div className={cn('pointer-events-auto absolute top-3 z-10 flex gap-1.5', embedded ? 'left-3' : 'left-[280px]')}>
+      <div className={cn('pointer-events-auto absolute top-3 z-10 flex gap-1.5', embedded ? 'left-3' : 'left-[236px]')}>
         {(['all', 'mine'] as const).map((f) => (
           <button
             key={f}
@@ -936,190 +924,180 @@ export const CarteTab = forwardRef<CarteTabHandle, {
       </div>
 
       {/* Left floating panel — hidden when embedded in dashboard */}
-      {!embedded && <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[264px] flex-col gap-2">
-
-        {/* Search + filters */}
-        <div className="pointer-events-auto relative z-30 rounded-xl border border-border bg-popover p-2.5 text-popover-foreground shadow-lg">
-          <label className="flex items-center gap-2 rounded-lg border border-input bg-background px-2.5 py-1.5">
-            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher..."
-              className="h-5 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-muted-foreground hover:text-foreground">
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </label>
-          <div
-            className="relative mt-2"
-            onMouseEnter={() => setShowTypeDropdown(true)}
-            onMouseLeave={() => setShowTypeDropdown(false)}
+      {!embedded && (
+        <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[220px] flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setShowBrowserModal(true)}
+            className="pointer-events-auto flex items-center gap-3 rounded-xl border border-border/70 bg-background/95 px-4 py-3.5 shadow-lg backdrop-blur-sm transition-all hover:border-border hover:bg-background hover:shadow-xl active:scale-[0.98]"
           >
-            <button
-              type="button"
-              onClick={() => setShowTypeDropdown((prev) => !prev)}
-              className="flex w-full items-center justify-between rounded-lg border border-input bg-background px-2.5 py-1.5 text-left hover:bg-accent/40"
-            >
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Types de business</p>
-                <p className="truncate text-xs font-medium text-foreground">{selectedTypeLabels}</p>
-              </div>
-              <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', showTypeDropdown && 'rotate-180')} />
-            </button>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Building2 className="h-4.5 w-4.5" />
+            </div>
+            <div className="min-w-0 text-left">
+              <p className="text-[13px] font-semibold text-foreground">Entreprises</p>
+              <p className="text-[11px] text-muted-foreground">{allBusinesses.length} sur la carte</p>
+            </div>
+            <ChevronDown className="ml-auto h-3.5 w-3.5 shrink-0 -rotate-90 text-muted-foreground" />
+          </button>
+        </div>
+      )}
 
-            {showTypeDropdown && (
-              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-56 overflow-auto rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-xl">
+      {/* Business browser modal */}
+      <Dialog open={showBrowserModal} onOpenChange={(open) => { setShowBrowserModal(open); if (!open) { setModalSearch(''); setModalTypeFilters([]); } }}>
+        <DialogContent className="flex h-[82vh] max-h-[820px] w-full max-w-3xl flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Building2 className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-semibold">Entreprises</DialogTitle>
+                <p className="text-[12px] text-muted-foreground">{modalVisibleBusinesses.length} résultat{modalVisibleBusinesses.length !== 1 ? 's' : ''}</p>
+              </div>
+              <label className="ml-auto flex items-center gap-2 rounded-lg border border-input bg-muted/30 px-3 py-1.5">
+                <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <Input
+                  value={modalSearch}
+                  onChange={(e) => setModalSearch(e.target.value)}
+                  placeholder="Rechercher…"
+                  className="h-5 w-48 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
+                />
+                {modalSearch && (
+                  <button onClick={() => setModalSearch('')} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </label>
+            </div>
+
+            {/* Type filter chips */}
+            {typeChips.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 {typeChips.map((chip) => {
-                  const isActive = selectedTypeSet.has(chip.key);
+                  const active = modalTypeSet.has(chip.key);
                   return (
                     <button
                       key={chip.key}
                       type="button"
-                      onClick={() => {
-                        setSelectedTypeFilters((prev) => prev.includes(chip.key) ? prev.filter((key) => key !== chip.key) : [...prev, chip.key]);
-                      }}
+                      onClick={() => setModalTypeFilters((prev) => active ? prev.filter((k) => k !== chip.key) : [...prev, chip.key])}
                       className={cn(
-                        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors',
-                        isActive ? 'bg-accent text-accent-foreground' : 'text-popover-foreground/80 hover:bg-accent hover:text-accent-foreground',
+                        'flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-all',
+                        active
+                          ? 'border-primary/40 bg-primary/10 text-primary'
+                          : 'border-border/50 bg-muted/30 text-muted-foreground hover:border-border hover:text-foreground',
                       )}
                     >
-                      <span className={cn('inline-flex h-3.5 w-3.5 items-center justify-center rounded border', isActive ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background')}>
-                        {isActive ? <Check className="h-2.5 w-2.5" /> : null}
-                      </span>
                       <span>{chip.emoji}</span>
-                      <span className="truncate">{chip.label}</span>
+                      <span>{chip.label}</span>
+                      {active && <X className="ml-0.5 h-2.5 w-2.5" />}
                     </button>
                   );
                 })}
-
-                <div className="mt-1 border-t border-border pt-1">
+                {modalTypeFilters.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setSelectedTypeFilters([])}
-                    className="w-full rounded-md px-2 py-1.5 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => setModalTypeFilters([])}
+                    className="rounded-full border border-border/40 px-2.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
                   >
-                    Tout réinitialiser
+                    Tout effacer
                   </button>
-                </div>
+                )}
               </div>
             )}
-          </div>
-        </div>
+          </DialogHeader>
 
-        {/* Business list + info card */}
-        <div className="pointer-events-auto relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-lg">
           <ScrollArea className="min-h-0 flex-1">
-            <div className="py-1">
-
-              {/* Unplaced section */}
-              {unplacedBusinesses.length > 0 && (
-                <>
-                  <div className="flex items-center gap-1.5 px-3 pb-1 pt-2.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      À placer ({unplacedBusinesses.length})
-                    </span>
-                  </div>
-                  {unplacedBusinesses.map((business) => {
-                    const isSelected = selectedBusinessId === business.id;
-                    const canPlace = canUserPlaceBusiness(business, userId, isAdmin);
-                    const isBeingPlaced = placingBusinessId === business.id;
-
-                    return (
-                      <button
-                        key={business.id}
-                        type="button"
-                        onClick={() => handleSelectBusiness(business)}
-                        className={cn(
-                          'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors',
-                          isSelected ? 'bg-accent' : 'hover:bg-muted/50',
-                        )}
+            <div className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2">
+              {modalVisibleBusinesses.length === 0 && (
+                <div className="col-span-2 py-16 text-center text-sm text-muted-foreground">Aucune entreprise trouvée.</div>
+              )}
+              {modalVisibleBusinesses.map((business) => {
+                const isPlaced = business.mapX != null && business.mapY != null;
+                const pinColor = getBusinessPinColor(business.typeKey);
+                return (
+                  <div
+                    key={business.id}
+                    className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-border hover:shadow-md"
+                  >
+                    {/* Card header */}
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl shadow-sm"
+                        style={{ backgroundColor: pinColor + '20', border: `1.5px solid ${pinColor}40` }}
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-sm">
-                          {TYPE_EMOJI[business.typeKey] ?? '📍'}
+                        {TYPE_EMOJI[business.typeKey] ?? '📍'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-semibold text-foreground">{business.name}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">{business.type?.label ?? business.typeKey} · @{business.owner.username}</p>
+                        <div className="mt-1 flex items-center gap-1.5">
+                          {business.verified && (
+                            <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0 text-[10px] text-emerald-600">✓ Vérifié</Badge>
+                          )}
+                          {isPlaced ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              Placé
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                              Non placé
+                            </span>
+                          )}
+                          {business.avgRating != null && business.ratingCount > 0 && (
+                            <span className="text-[11px] text-amber-500">★ {business.avgRating.toFixed(1)}</span>
+                          )}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-[12px] font-medium text-foreground">{business.name}</div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="truncate text-[10px] text-muted-foreground">{business.type?.label ?? business.typeKey}</span>
-                            {business.avgRating != null && business.ratingCount > 0 && (
-                              <span className="shrink-0 text-[10px] text-amber-500">★ {business.avgRating.toFixed(1)}</span>
-                            )}
-                          </div>
-                        </div>
-                        {canPlace && (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleStartPlacement(business.id); }}
-                            className={cn(
-                              'shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors',
-                              isBeingPlaced
-                                ? 'bg-primary/15 text-primary hover:bg-primary/25'
-                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-                            )}
-                          >
-                            {isBeingPlaced ? 'Annuler' : 'Placer'}
-                          </button>
-                        )}
-                      </button>
-                    );
-                  })}
-                </>
-              )}
+                      </div>
+                    </div>
 
-              {/* Placed section */}
-              {placedBusinesses.length > 0 && (
-                <>
-                  <div className="flex items-center gap-1.5 px-3 pb-1 pt-2.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      Sur la carte ({placedBusinesses.length})
-                    </span>
-                  </div>
-                  {placedBusinesses.map((business) => {
-                    const isSelected = selectedBusinessId === business.id;
+                    {/* Stats row */}
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <div className="rounded-lg bg-muted/40 px-2 py-1.5 text-center">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Tréso.</p>
+                        <p className="mt-0.5 text-[11px] font-semibold tabular-nums text-foreground">{formatCompactMoney(business.treasuryMoney)}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 px-2 py-1.5 text-center">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Membres</p>
+                        <p className="mt-0.5 text-[11px] font-semibold tabular-nums text-foreground">{business.memberCount}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/40 px-2 py-1.5 text-center">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Satisfaction</p>
+                        <p className="mt-0.5 text-[11px] font-semibold tabular-nums text-foreground">{business.satisfaction}%</p>
+                      </div>
+                    </div>
 
-                    return (
-                      <button
-                        key={business.id}
-                        type="button"
-                        onClick={() => handleSelectBusiness(business)}
-                        className={cn(
-                          'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors',
-                          isSelected ? 'bg-accent' : 'hover:bg-muted/50',
-                        )}
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      {isPlaced && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 text-xs"
+                          onClick={() => { handleSelectBusiness(business); setShowBrowserModal(false); setModalSearch(''); setModalTypeFilters([]); }}
+                        >
+                          <MapPin className="mr-1.5 h-3 w-3" />
+                          Voir sur la carte
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        className={cn('text-xs', isPlaced ? '' : 'flex-1')}
+                        onClick={() => { navigate(`/you?tab=explore&business=${business.id}`); setShowBrowserModal(false); }}
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-sm">
-                          {TYPE_EMOJI[business.typeKey] ?? '📍'}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-[12px] font-medium text-foreground">{business.name}</div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="truncate text-[10px] text-muted-foreground">@{business.owner.username}</span>
-                            {business.avgRating != null && business.ratingCount > 0 && (
-                              <span className="shrink-0 text-[10px] text-amber-500">★ {business.avgRating.toFixed(1)}</span>
-                            )}
-                          </div>
-                        </div>
-                        {isSelected && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
-                      </button>
-                    );
-                  })}
-                </>
-              )}
-
-              {visibleBusinesses.length === 0 && (
-                <div className="px-3 py-6 text-center text-xs text-muted-foreground">Aucun résultat</div>
-              )}
+                        <ExternalLink className="mr-1.5 h-3 w-3" />
+                        Interagir
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </ScrollArea>
-        </div>
-      </div>
-      }
+        </DialogContent>
+      </Dialog>
 
       {/* Right floating info panel */}
       {selectedBusiness && (
@@ -1233,7 +1211,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
       </div>
 
       {legendEntries.length > 0 && (
-        <div className={cn('pointer-events-none absolute bottom-3 z-10 rounded-xl border border-border/50 bg-background/85 px-3 py-2.5 shadow-lg backdrop-blur-sm', embedded ? 'left-3' : 'left-[278px]')}>
+        <div className={cn('pointer-events-none absolute bottom-3 z-10 rounded-xl border border-border/50 bg-background/85 px-3 py-2.5 shadow-lg backdrop-blur-sm', embedded ? 'left-3' : 'left-[234px]')}>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground">Légende</p>
           <div className="mt-1.5 space-y-1">
             {legendEntries.map((entry) => (

@@ -7,12 +7,11 @@ import { resolveImageUrl } from '@/lib/images';
 import { Play, RotateCcw, Eye, EyeOff, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { SpectateEffectBar, type SpectateFloatingMessage } from '@/components/spectate/SpectateEffectBar';
 
 // ============================================
@@ -270,6 +269,7 @@ export default function DoodleJump() {
   const [spectateMessages, setSpectateMessages] = useState<SpectateFloatingMessage[]>([]);
   const spectateMessageIdRef = useRef(0);
   const [multiplayerRoster, setMultiplayerRoster] = useState<DoodleMultiplayerRosterItem[]>([]);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const spectateHostUserIdFromRoute = ((location.state as { spectateHostUserId?: string } | null)?.spectateHostUserId) ?? null;
   const selectedGameType: DoodleGameType = isMortSubite ? 'doodle_jump_mort_subite' : 'doodle_jump';
@@ -1566,64 +1566,33 @@ export default function DoodleJump() {
   // ============================================
   const isPlaying = started && !gameOver;
 
-  return (
-    <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8">
-
-      {/* ── Left column ── */}
-      <div className="flex flex-col gap-3">
-
-        {/* Score */}
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Score</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-4">
-            <div>
-              <p className="text-3xl font-light tabular-nums">{score.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Score actuel</p>
+return (
+    <div
+      ref={gameContainerRef}
+      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
+    >
+      <GameTopBar
+        title="Doodle Jump"
+        score={score}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <kbd className="px-2 py-0.5 border border-border/50 rounded">←</kbd>
+              <span>Gauche</span>
+              <kbd className="px-2 py-0.5 border border-border/50 rounded">→</kbd>
+              <span>Droite</span>
             </div>
-            <Separator />
-            <div>
-              <p className="text-xl font-medium tabular-nums">{highScore.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Record — {displayMode === 'mort_subite' ? 'Mort subite' : 'Classique'}</p>
-            </div>
-            {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-            {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-              <p className="text-sm text-muted-foreground">
-                {rewards.money > 0 && `+$${rewards.money}`}
-                {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                {rewards.aura > 0 && `+${rewards.aura} aura`}
-              </p>
-            )}
-            {isPlaying && !spectatingHost && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Eye className="h-3 w-3" />
-                <span>{spectatorCount} spectateur{spectatorCount !== 1 ? 's' : ''}</span>
-              </div>
-            )}
-            {spectatingHost && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Eye className="h-3 w-3" />
-                <span>
-                  Spectate : {spectatingHost.hostUsername} · {spectatorCount} spectateur{spectatorCount !== 1 ? 's' : ''}
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Mode */}
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Mode</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-2">
+            <Separator className="my-2" />
             <Button
               variant="ghost"
               type="button"
+              size="sm"
               onClick={() => setIsMortSubite(prev => !prev)}
               disabled={isPlaying}
-              className={`w-full justify-start px-3 py-2 h-auto text-sm border transition-colors ${
+              className={`w-full justify-start px-2 py-1 h-auto text-xs border transition-colors ${
                 isMortSubite
                   ? 'border-red-500 bg-red-500/10 text-red-500 hover:bg-red-500/15 hover:text-red-500'
                   : 'border-border/50 text-muted-foreground hover:text-foreground'
@@ -1634,9 +1603,10 @@ export default function DoodleJump() {
             <Button
               variant="ghost"
               type="button"
+              size="sm"
               onClick={() => setIsMultiplayer(prev => !prev)}
               disabled={isPlaying}
-              className={`w-full justify-start px-3 py-2 h-auto text-sm border transition-colors ${
+              className={`w-full justify-start px-2 py-1 h-auto text-xs border transition-colors ${
                 isMultiplayer
                   ? 'border-sky-500 bg-sky-500/10 text-sky-500 hover:bg-sky-500/15 hover:text-sky-500'
                   : 'border-border/50 text-muted-foreground hover:text-foreground'
@@ -1644,32 +1614,20 @@ export default function DoodleJump() {
             >
               Multijoueur quotidien : {isMultiplayer ? 'Oui' : 'Non'}
             </Button>
-            {isMultiplayer && !spectatingHost && (
-              <p className="text-xs text-muted-foreground px-1">Seed partagé du jour</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Skin selector */}
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Apparence</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <div className={`grid grid-cols-4 gap-1.5 ${isPlaying ? 'opacity-40 pointer-events-none' : ''}`}>
-              {allSkins.map((skin) => (
+            <div className={`grid grid-cols-4 gap-1 pt-2 ${isPlaying ? 'opacity-40 pointer-events-none' : ''}`}>
+              {allSkins.slice(0, 8).map((skin) => (
                 <button
                   key={skin.id}
                   type="button"
                   onClick={() => setSelectedSkin(skin.id)}
-                  className={`flex flex-col items-center gap-1 p-1.5 rounded-lg border-2 transition-all hover:scale-105 ${
+                  className={`flex flex-col items-center gap-0.5 p-1 rounded border-2 transition-all ${
                     selectedSkin === skin.id
                       ? 'border-foreground bg-muted'
                       : 'border-transparent hover:border-border/50'
                   }`}
                   title={skin.name}
                 >
-                  <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center bg-muted/30">
+                  <div className="w-5 h-5 rounded overflow-hidden flex items-center justify-center bg-muted/30">
                     <img
                       src={resolveImageUrl(skin.imageUrl)}
                       alt={skin.name}
@@ -1677,213 +1635,132 @@ export default function DoodleJump() {
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   </div>
-                  <span className="text-[9px] text-muted-foreground truncate w-full text-center leading-tight">{skin.name}</span>
                 </button>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        }
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+      />
 
-        {/* Controls + Legend */}
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Contrôles</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-3">
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <kbd className="px-2 py-0.5 border border-border/50 rounded">←</kbd>
-                <span>Gauche</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <kbd className="px-2 py-0.5 border border-border/50 rounded">→</kbd>
-                <span>Droite</span>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-1.5">
-              {displayMode === 'mort_subite' ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-2 rounded-sm shrink-0" style={{ backgroundColor: MORT_SUBITE_PLATFORM_COLOR }} />
-                  <span className="text-xs text-muted-foreground">Mort subite — disparition instantanée</span>
-                </div>
+      {isPlaying && isMultiplayer && !spectatingHost && (
+        <div className="absolute left-2 right-2 top-[72px] z-20 rounded-md border bg-background/80 px-2 py-1 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <Users className="h-3 w-3 shrink-0" />
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+              {multiplayerRoster.length === 0 ? (
+                <span>Connexion…</span>
               ) : (
-                <>
-                  {[
-                    { color: colors.platformNormal, label: 'Normal' },
-                    { color: colors.platformMoving, label: 'Mobile' },
-                    { color: colors.platformConveyor, label: 'Tapis roulant' },
-                    { color: colors.platformBounce, label: 'Trampoline', round: true },
-                    { color: colors.platformDisappear, label: 'Fragile' },
-                  ].map(({ color, label, round }) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <div className={`w-4 h-2 shrink-0 ${round ? 'rounded-full' : 'rounded-sm'}`} style={{ backgroundColor: color }} />
-                      <span className="text-xs text-muted-foreground">{label}</span>
-                    </div>
-                  ))}
-                </>
+                multiplayerRoster.map((player) => (
+                  <span
+                    key={player.userId}
+                    className={`whitespace-nowrap ${player.isDead ? 'line-through opacity-50' : ''}`}
+                    style={player.usernameColor ? { color: player.usernameColor } : undefined}
+                  >
+                    {player.username} ({player.score})
+                  </span>
+                ))
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      )}
 
-        {/* Spectate — quit button */}
-        {spectatingHost && (
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => {
-              socket?.emit('doodle:spectate-leave');
-              clearSpectateState(true);
-            }}
-            className="flex items-center gap-2 w-full"
-          >
-            <EyeOff className="h-4 w-4" />
-            Quitter spectate
-          </Button>
-        )}
-      </div>
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[400px] flex-col">
+          <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
+            <canvas
+              ref={canvasRef}
+              width={CANVAS_WIDTH}
+              height={CANVAS_HEIGHT}
+              className="block h-full w-full rounded-lg border border-border/30"
+              style={{ imageRendering: 'pixelated' }}
+            />
 
-      {/* ── Center column — canvas ── */}
-      <div
-        ref={gameContainerRef}
-        className={`relative flex flex-col gap-3 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
-      >
-        <GameFullscreenToolbar
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          className="w-full max-w-[400px]"
-        />
+            {(spectatingHost || (isPlaying && spectateMessages.length > 0)) && (
+              <SpectateEffectBar
+                messages={spectateMessages}
+                onSend={sendSpectateMessage}
+                onConfetti={spectatingHost ? emitSpectateConfetti : undefined}
+                showInput={!!spectatingHost}
+              />
+            )}
 
-        {/* Multiplayer live roster bar */}
-        {isPlaying && isMultiplayer && !spectatingHost && (
-          <div className="absolute left-2 right-2 top-2 z-20 rounded-md border bg-background/80 px-2 py-1 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-              <Users className="h-3 w-3 shrink-0" />
-              <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
-                {multiplayerRoster.length === 0 ? (
-                  <span>Connexion…</span>
-                ) : (
-                  multiplayerRoster.map((player) => (
-                    <span
-                      key={player.userId}
-                      className={`whitespace-nowrap ${player.isDead ? 'line-through opacity-50' : ''}`}
-                      style={player.usernameColor ? { color: player.usernameColor } : undefined}
-                    >
-                      {player.username} ({player.score})
-                    </span>
-                  ))
-                )}
+            {!started && !spectatingHost && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+                <Button
+                  variant="ghost"
+                  onClick={initGame}
+                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                >
+                  <Play className="w-4 h-4" />
+                  Jouer
+                </Button>
               </div>
-            </div>
+            )}
+
+            {gameOver && !spectatingHost && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+                <div className="text-center space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
+                    <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
+                  </div>
+                  {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+                  {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                    <p className="text-sm text-muted-foreground">
+                      {rewards.money > 0 && `+$${rewards.money}`}
+                      {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                      {rewards.aura > 0 && `+${rewards.aura} aura`}
+                    </p>
+                  )}
+                <Button
+                  variant="ghost"
+                  onClick={initGame}
+                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Rejouer
+                </Button>
+                </div>
+              </div>
+            )}
+          </GameFullscreenStage>
+        </div>
+
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              isAdmin={user?.isAdmin}
+              onDeleteScore={handleDeleteScore}
+              maxHeight={500}
+              hidden={false}
+            />
           </div>
         )}
-
-        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            className="block h-full w-full rounded-lg border border-border/30"
-            style={{ imageRendering: 'pixelated' }}
-          />
-
-          {/* Spectate effect bar — spectators get input, host just sees floating messages */}
-          {(spectatingHost || (isPlaying && spectateMessages.length > 0)) && (
-            <SpectateEffectBar
-              messages={spectateMessages}
-              onSend={sendSpectateMessage}
-              onConfetti={spectatingHost ? emitSpectateConfetti : undefined}
-              showInput={!!spectatingHost}
-            />
-          )}
-
-          {/* Start Screen */}
-          {!started && !spectatingHost && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-              <Button
-                variant="ghost"
-                onClick={initGame}
-                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-              >
-                <Play className="w-4 h-4" />
-                Jouer
-              </Button>
-            </div>
-          )}
-
-          {/* Game Over Screen */}
-          {gameOver && !spectatingHost && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-              <div className="text-center space-y-6">
-                <div>
-                  <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                  <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-                </div>
-                {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-                {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                  <p className="text-sm text-muted-foreground">
-                    {rewards.money > 0 && `+$${rewards.money}`}
-                    {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                    {rewards.aura > 0 && `+${rewards.aura} aura`}
-                  </p>
-                )}
-              <Button
-                variant="ghost"
-                onClick={initGame}
-                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Rejouer
-              </Button>
-              </div>
-            </div>
-          )}
-        </GameFullscreenStage>
       </div>
 
-      {/* ── Right column ── */}
-      <div className="flex flex-col gap-3">
-
-        {/* Leaderboard */}
-        <GameLeaderboard
-          entries={leaderboard}
-          currentUserId={user?.id}
-          personalHighScore={highScore}
-          isAdmin={user?.isAdmin}
-          onDeleteScore={handleDeleteScore}
-          title={`Classement — ${displayMode === 'mort_subite' ? 'Mort subite' : 'Classique'}`}
-          maxHeight={420}
-        />
-
-        {/* Multiplayer roster */}
-        {isMultiplayer && multiplayerRoster.length > 0 && (
-          <Card>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                Joueurs en ligne
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-border/20 max-h-[200px] overflow-y-auto">
-                {multiplayerRoster.map((player) => (
-                  <div key={player.userId} className="flex items-center justify-between px-4 py-2">
-                    <span
-                      className={`text-sm truncate ${player.isDead ? 'line-through opacity-50' : ''}`}
-                      style={player.usernameColor ? { color: player.usernameColor } : undefined}
-                    >
-                      {player.username}
-                    </span>
-                    <span className="text-xs tabular-nums text-muted-foreground shrink-0 ml-2">{player.score.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-      </div>
+      {spectatingHost && (
+        <Button
+          variant="outline"
+          type="button"
+          size="sm"
+          onClick={() => {
+            socket?.emit('doodle:spectate-leave');
+            clearSpectateState(true);
+          }}
+          className="absolute bottom-4 right-4"
+        >
+          <EyeOff className="h-4 w-4 mr-2" />
+          Quitter spectate
+        </Button>
+      )}
     </div>
   );
 }

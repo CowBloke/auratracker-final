@@ -4,16 +4,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
 import { Play, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
-import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
 
 // ============================================
 // GAME CONSTANTS
@@ -238,8 +235,7 @@ const getTextColor = (value: number, theme: 'light' | 'dark'): string => {
 export default function Game2048() {
   const { theme } = useTheme();
   const { user, refreshUser } = useAuth();
-  const hideGameLeaderboards = useHideGameLeaderboards();
-  const hideGameLeftInfo = useHideGameLeftInfo();
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
 
   const [tiles, setTiles] = useState<Tile[]>(createEmptyTiles());
@@ -472,218 +468,148 @@ export default function Game2048() {
     touchStartRef.current = null;
   };
   
-  return (
-    <div className={cn(
-      'grid items-start gap-4 px-4 pb-6 lg:px-6 lg:pb-8',
-      isFullscreen
-        ? 'grid-cols-1 justify-items-center'
-        : hideGameLeftInfo
-          ? hideGameLeaderboards
-            ? 'grid-cols-1 justify-items-center'
-            : 'grid-cols-1 justify-items-center xl:grid-cols-[auto_minmax(220px,1fr)] xl:justify-items-stretch'
-          : hideGameLeaderboards
-            ? 'grid-cols-1 justify-items-center xl:grid-cols-[minmax(220px,1fr)_auto] xl:justify-items-stretch'
-            : 'grid-cols-1 justify-items-center xl:grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] xl:justify-items-stretch'
-    )}>
-
-      {/* ── Left column ── */}
-      {!hideGameLeftInfo && (
-      <div
-        className={cn(
-          'order-2 flex w-full max-w-[390px] flex-col gap-3 xl:order-1 xl:max-w-none',
-          isFullscreen && 'hidden'
-        )}
-      >
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Score</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-4">
-            <div>
-              <p className="text-3xl font-light tabular-nums">{score.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Score actuel</p>
-            </div>
-            <Separator />
-            <div>
-              <p className="text-xl font-medium tabular-nums">{highScore.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Meilleur score</p>
-            </div>
-            {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-            {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-              <p className="text-sm text-muted-foreground">
-                {rewards.money > 0 && `+$${rewards.money}`}
-                {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                {rewards.aura > 0 && `+${rewards.aura} aura`}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Contrôles</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-2">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowUp className="w-3 h-3" /></kbd>
-              <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowDown className="w-3 h-3" /></kbd>
-              <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowLeft className="w-3 h-3" /></kbd>
-              <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowRight className="w-3 h-3" /></kbd>
-            </div>
-            <p className="text-xs text-muted-foreground">ou <kbd className="px-1.5 py-0.5 border border-border/50 rounded">zqsd</kbd></p>
-            <p className="text-xs text-muted-foreground">ou glisser sur mobile</p>
-            <p className="text-xs text-muted-foreground pt-1"><kbd className="px-1.5 py-0.5 border border-border/50 rounded">R</kbd> pour rejouer</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="px-4 py-4">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Fusionne les tuiles pour atteindre <span className="font-medium text-foreground">2048</span> et gagner des récompenses !
-            </p>
-          </CardContent>
-        </Card>
+  const controls2048 = (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowUp className="w-3 h-3" /></kbd>
+        <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowDown className="w-3 h-3" /></kbd>
+        <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowLeft className="w-3 h-3" /></kbd>
+        <kbd className="px-1.5 py-0.5 border border-border/50 rounded flex items-center"><ArrowRight className="w-3 h-3" /></kbd>
       </div>
-      )}
+      <p className="text-xs text-muted-foreground">ou <kbd className="px-1.5 py-0.5 border border-border/50 rounded">zqsd</kbd></p>
+      <p className="text-xs text-muted-foreground">ou glisser sur mobile</p>
+      <p className="text-xs text-muted-foreground"><kbd className="px-1.5 py-0.5 border border-border/50 rounded">R</kbd> pour rejouer</p>
+      <p className="text-xs text-muted-foreground"><kbd className="px-1.5 py-0.5 border border-border/50 rounded">P</kbd> pour pause</p>
+    </div>
+  );
 
-      {/* ── Center column — board ── */}
-      <div
-        ref={gameContainerRef}
-        className={cn(
-          'order-1 flex w-full max-w-[390px] flex-col gap-3 xl:order-2 xl:max-w-none',
-          isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-        )}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        <GameFullscreenToolbar
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          className="w-full max-w-[390px]"
-        >
-          <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
-        </GameFullscreenToolbar>
-
-        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={BOARD_SIZE} baseHeight={BOARD_SIZE}>
-          <div
-            className="relative h-full w-full border border-border/30 rounded-lg bg-muted/20 p-2"
-          >
-          <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
-          {/* Background grid */}
-          <div className="absolute inset-2 grid grid-cols-4 gap-2.5">
-            {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => (
-              <div key={i} className="bg-muted/30 rounded" />
-            ))}
-          </div>
-
-          {/* Tiles */}
-          <div className="absolute inset-2">
-            {tiles.map((tile) => {
-              const responsiveCellSize = `calc(${100 / GRID_SIZE}% - ${((GRID_SIZE - 1) * CELL_GAP) / GRID_SIZE}px)`;
-              const left = `calc(${tile.col * (100 / GRID_SIZE)}% + ${tile.col * (CELL_GAP / GRID_SIZE)}px)`;
-              const top = `calc(${tile.row * (100 / GRID_SIZE)}% + ${tile.row * (CELL_GAP / GRID_SIZE)}px)`;
-              return (
-                <div
-                  key={tile.id}
-                  className={cn(
-                    'absolute rounded flex items-center justify-center font-bold',
-                    'transition-all duration-150 ease-out',
-                    tile.isNew && 'animate-tile-appear',
-                    tile.isMerged && 'animate-tile-merge'
-                  )}
-                  style={{
-                    top,
-                    left,
-                    width: responsiveCellSize,
-                    height: responsiveCellSize,
-                    backgroundColor: getTileColor(tile.value, theme),
-                    color: getTextColor(tile.value, theme),
-                    fontSize: tile.value >= 1024 ? '1.5rem' : tile.value >= 128 ? '1.75rem' : '2rem',
-                    zIndex: tile.isMerged ? 10 : 1,
-                  }}
-                >
-                  {tile.value}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Start Screen */}
-          {!started && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-              <Button
-                variant="ghost"
-                onClick={initGame}
-                className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+  const board = (
+    <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={BOARD_SIZE} baseHeight={BOARD_SIZE}>
+      <div className="relative h-full w-full border border-border/30 rounded-lg bg-muted/20 p-2">
+        <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
+        <div className="absolute inset-2 grid grid-cols-4 gap-2.5">
+          {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => (
+            <div key={i} className="bg-muted/30 rounded" />
+          ))}
+        </div>
+        <div className="absolute inset-2">
+          {tiles.map((tile) => {
+            const responsiveCellSize = `calc(${100 / GRID_SIZE}% - ${((GRID_SIZE - 1) * CELL_GAP) / GRID_SIZE}px)`;
+            const left = `calc(${tile.col * (100 / GRID_SIZE)}% + ${tile.col * (CELL_GAP / GRID_SIZE)}px)`;
+            const top = `calc(${tile.row * (100 / GRID_SIZE)}% + ${tile.row * (CELL_GAP / GRID_SIZE)}px)`;
+            return (
+              <div
+                key={tile.id}
+                className={cn(
+                  'absolute rounded flex items-center justify-center font-bold',
+                  'transition-all duration-150 ease-out',
+                  tile.isNew && 'animate-tile-appear',
+                  tile.isMerged && 'animate-tile-merge'
+                )}
+                style={{
+                  top, left,
+                  width: responsiveCellSize,
+                  height: responsiveCellSize,
+                  backgroundColor: getTileColor(tile.value, theme),
+                  color: getTextColor(tile.value, theme),
+                  fontSize: tile.value >= 1024 ? '1.5rem' : tile.value >= 128 ? '1.75rem' : '2rem',
+                  zIndex: tile.isMerged ? 10 : 1,
+                }}
               >
-                <Play className="w-4 h-4" />
-                Jouer
+                {tile.value}
+              </div>
+            );
+          })}
+        </div>
+        {!started && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
+            <Button variant="ghost" onClick={initGame} className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors">
+              <Play className="w-4 h-4" />
+              Jouer
+            </Button>
+          </div>
+        )}
+        {showWinMessage && !gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+            <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
+              <h2 className="text-2xl font-light">Tu as atteint 2048 !</h2>
+              <Button variant="ghost" onClick={() => setShowWinMessage(false)} className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors">
+                Continuer
               </Button>
             </div>
-          )}
-
-          {/* Win Screen */}
-          {showWinMessage && !gameOver && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
-              <div className="text-center space-y-4 bg-card border border-border/50 rounded-lg p-6">
-                <h2 className="text-2xl font-light">Tu as atteint 2048 !</h2>
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowWinMessage(false)}
-                  className="px-4 py-2 text-sm border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                >
-                  Continuer
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Game Over Screen */}
-          {gameOver && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
-              <div className="text-center space-y-6">
-                <div>
-                  <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
-                  <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
-                </div>
-                {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-                {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-                  <p className="text-sm text-muted-foreground">
-                    {rewards.money > 0 && `+$${rewards.money}`}
-                    {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                    {rewards.aura > 0 && `+${rewards.aura} aura`}
-                  </p>
-                )}
-                <Button
-                  variant="ghost"
-                  onClick={initGame}
-                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Rejouer
-                </Button>
-              </div>
-            </div>
-          )}
           </div>
-        </GameFullscreenStage>
+        )}
+        {gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/90 rounded-lg">
+            <div className="text-center space-y-6">
+              <div>
+                <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
+                <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
+              </div>
+              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+              {rewards && (rewards.money > 0 || rewards.aura > 0) && (
+                <p className="text-sm text-muted-foreground">
+                  {rewards.money > 0 && `+$${rewards.money}`}
+                  {rewards.money > 0 && rewards.aura > 0 && ' · '}
+                  {rewards.aura > 0 && `+${rewards.aura} aura`}
+                </p>
+              )}
+              <Button variant="ghost" onClick={initGame} className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto">
+                <RotateCcw className="w-4 h-4" />
+                Rejouer
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
+    </GameFullscreenStage>
+  );
 
-      {/* ── Right column — leaderboard ── */}
-      {!hideGameLeaderboards && (
-      <div className={cn('order-3 w-full max-w-[390px] xl:max-w-none', isFullscreen && 'hidden')}>
-        <GameLeaderboard
-          entries={leaderboard}
-          currentUserId={user?.id}
-          personalHighScore={highScore}
-          isAdmin={user?.isAdmin}
-          onDeleteScore={handleDeleteScore}
-          maxHeight={350}
-          hidden={isFullscreen}
-        />
-      </div>
+  return (
+    <div
+      ref={gameContainerRef}
+      className={cn(
+        'flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4'
       )}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* ── Top bar — full width ── */}
+      <GameTopBar
+        title="2048"
+        score={score}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={controls2048}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+      >
+        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
+      </GameTopBar>
 
+      {/* ── Game + leaderboard row ── */}
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[500px] flex-col">
+          {board}
+        </div>
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              isAdmin={user?.isAdmin}
+              onDeleteScore={handleDeleteScore}
+              maxHeight={500}
+              hidden={false}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

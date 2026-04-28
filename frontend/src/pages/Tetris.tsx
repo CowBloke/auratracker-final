@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { RotateCcw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { GameTopBar } from '@/components/game/GameTopBar';
 
 interface TetrisGameEndMessage {
   type: 'AURA_TETRIS_GAME_END';
@@ -36,6 +32,7 @@ export default function Tetris() {
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const lastSubmittedRef = useRef<string>('');
 
   const fetchStats = useCallback(async () => {
@@ -142,105 +139,63 @@ export default function Tetris() {
   }, []);
 
   return (
-    <div className={cn(
-      'grid items-start gap-4 px-4 pb-6 lg:px-6 lg:pb-8',
-      isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
-    )}>
-
-      {/* ── Left column ── */}
-      <div className={cn('flex flex-col gap-3', isFullscreen && 'hidden')}>
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Statistiques</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-4">
-            <div>
-              <p className="text-3xl font-light tabular-nums">{highScore.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Record personnel</p>
-            </div>
-            {lastScore !== null && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-xl font-medium tabular-nums">{lastScore.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Dernier score</p>
-                </div>
-              </>
-            )}
-            {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-            {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-              <p className="text-sm text-muted-foreground">
-                {rewards.money > 0 && `+$${rewards.money}`}
-                {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                {rewards.aura > 0 && `+${rewards.aura} aura`}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Mode</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-sm text-muted-foreground">Sprint — tetr.js</p>
-          </CardContent>
-        </Card>
-
-        <Button
-          variant="outline"
-          onClick={restartSession}
-          className="flex items-center gap-2 w-full"
-        >
-          <RotateCcw className="w-4 h-4" />
-          Recharger
-        </Button>
-      </div>
-
-      {/* ── Center column — iframe ── */}
-      <div
-        ref={gameContainerRef}
-        className={cn(
-          'flex flex-col gap-3',
-          isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-        )}
+    <div
+      ref={gameContainerRef}
+      className={cn(
+        'flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="Tetris"
+        score={lastScore ?? 0}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={
+          <div className="space-y-2 text-xs">
+            <p className="font-medium text-foreground">Sprint — tetr.js</p>
+            <p className="text-muted-foreground">Complète les lignes le plus vite possible!</p>
+          </div>
+        }
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
-        <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
-          <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
-          {isFullscreen && (
-            <Button size="sm" variant="outline" onClick={restartSession}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Recharger
-            </Button>
-          )}
-        </GameFullscreenToolbar>
+        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!lastScore} />
+      </GameTopBar>
 
-        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={GAME_WIDTH} baseHeight={GAME_HEIGHT}>
-          <iframe
-            key={sessionKey}
-            src={`/tetrjs/index.html?k=${sessionKey}`}
-            title="Tetris"
-            className="block h-full w-full rounded-lg border border-border/30 bg-black"
-          />
-          <GamePauseOverlay
-            visible={isPaused}
-            onResume={() => setIsPaused(false)}
-            description="La surface du jeu est verrouillée jusqu'à la reprise."
-          />
-        </GameFullscreenStage>
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[640px] flex-col">
+          <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={GAME_WIDTH} baseHeight={GAME_HEIGHT}>
+            <iframe
+              key={sessionKey}
+              src={`/tetrjs/index.html?k=${sessionKey}`}
+              title="Tetris"
+              className="block h-full w-full rounded-lg border border-border/30 bg-black"
+            />
+            <GamePauseOverlay
+              visible={isPaused}
+              onResume={() => setIsPaused(false)}
+              description="La surface du jeu est verrouillée jusqu'à la reprise."
+            />
+          </GameFullscreenStage>
+        </div>
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              isAdmin={user?.isAdmin}
+              onDeleteScore={handleDeleteScore}
+              maxHeight={500}
+              hidden={false}
+            />
+          </div>
+        )}
       </div>
-
-      {/* ── Right column — leaderboard ── */}
-      <GameLeaderboard
-        entries={leaderboard}
-        currentUserId={user?.id}
-        personalHighScore={highScore}
-        isAdmin={user?.isAdmin}
-        onDeleteScore={handleDeleteScore}
-        maxHeight={GAME_HEIGHT - 56}
-        hidden={isFullscreen}
-      />
-
     </div>
   );
 }

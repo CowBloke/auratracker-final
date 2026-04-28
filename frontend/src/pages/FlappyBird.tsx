@@ -4,15 +4,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
 import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { GameTopBar } from '@/components/game/GameTopBar';
 
 // ============================================
 // GAME CONSTANTS
@@ -100,6 +98,7 @@ export default function FlappyBird() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [isPaused, setIsPaused] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const canPause = started && !gameOver;
 
   // Fetch stats and leaderboard on mount
@@ -468,35 +467,21 @@ export default function FlappyBird() {
   // RENDER
   // ============================================
   return (
-    <div className={cn(
-      'grid items-start gap-4 px-4 pb-6 lg:px-6 lg:pb-8',
-      isFullscreen ? 'grid-cols-1 justify-items-center' : 'grid-cols-[1fr_auto_1fr]'
-    )}>
-
-      {/* ── Left column ── */}
-      <div className={cn('flex flex-col gap-3', isFullscreen && 'hidden')}>
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Score</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-4">
-            <div>
-              <p className="text-3xl font-light tabular-nums">{score}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Score actuel</p>
-            </div>
-            <Separator />
-            <div>
-              <p className="text-xl font-medium tabular-nums">{highScore}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Meilleur score</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Contrôles</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-1.5">
+    <div
+      ref={gameContainerRef}
+      className={cn(
+        'flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="Flappy Bird"
+        score={score}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={
+          <div className="space-y-2 text-xs">
             <div className="flex items-center gap-2 flex-wrap">
               <kbd className="px-2 py-0.5 border border-border/50 rounded text-xs">Espace</kbd>
               <span className="text-xs text-muted-foreground">·</span>
@@ -504,84 +489,75 @@ export default function FlappyBird() {
               <span className="text-xs text-muted-foreground">·</span>
               <span className="text-xs text-muted-foreground">Clic</span>
             </div>
-            <p className="text-xs text-muted-foreground">pour sauter</p>
+            <p className="text-muted-foreground">pour sauter</p>
             <div className="flex items-center gap-2 flex-wrap pt-1">
               <kbd className="px-2 py-0.5 border border-border/50 rounded text-xs">R</kbd>
             </div>
-            <p className="text-xs text-muted-foreground">pour rejouer</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Center column — canvas ── */}
-      <div
-        ref={gameContainerRef}
-        className={cn(
-          'flex flex-col gap-3',
-          isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-        )}
+            <p className="text-muted-foreground">pour rejouer</p>
+          </div>
+        }
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
-        <GameFullscreenToolbar
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          className="w-full max-w-[400px]"
-        >
-          <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
-        </GameFullscreenToolbar>
+        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
+      </GameTopBar>
 
-        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            className="block h-full w-full cursor-pointer rounded-lg border border-border"
-            style={{ imageRendering: 'auto' }}
+      <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          className="block h-full w-full cursor-pointer rounded-lg border border-border"
+          style={{ imageRendering: 'auto' }}
+        />
+        <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
+        {!started && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">
+            <div className="text-center space-y-4">
+              <Button onClick={initGame} variant="outline" className="border-foreground">
+                <Play className="h-4 w-4 mr-2" />
+                Commencer
+              </Button>
+            </div>
+          </div>
+        )}
+        {gameOver && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+            <div className="text-center space-y-4 p-6">
+              <p className="text-2xl font-light">Partie terminée</p>
+              <p className="text-3xl tabular-nums">{score}</p>
+              {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+              {rewards && (
+                <p className="text-sm text-muted-foreground">
+                  {rewards.aura > 0 && `+${rewards.aura} aura`}
+                  {rewards.aura > 0 && rewards.money > 0 && ' · '}
+                  {rewards.money > 0 && `+${rewards.money}$`}
+                </p>
+              )}
+              <Button onClick={initGame} variant="outline" className="border-foreground">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Rejouer
+              </Button>
+            </div>
+          </div>
+        )}
+      </GameFullscreenStage>
+
+      {showLeaderboard && !isFullscreen && (
+        <div className="w-[240px] shrink-0 hidden lg:block">
+          <GameLeaderboard
+            entries={leaderboard}
+            currentUserId={user?.id}
+            personalHighScore={highScore}
+            isAdmin={user?.isAdmin}
+            onDeleteScore={handleDeleteScore}
+            maxHeight={500}
+            hidden={false}
           />
-          <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
-          {!started && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">
-              <div className="text-center space-y-4">
-                <Button onClick={initGame} variant="outline" className="border-foreground">
-                  <Play className="h-4 w-4 mr-2" />
-                  Commencer
-                </Button>
-              </div>
-            </div>
-          )}
-          {gameOver && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
-              <div className="text-center space-y-4 p-6">
-                <p className="text-2xl font-light">Partie terminée</p>
-                <p className="text-3xl tabular-nums">{score}</p>
-                {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-                {rewards && (
-                  <p className="text-sm text-muted-foreground">
-                    {rewards.aura > 0 && `+${rewards.aura} aura`}
-                    {rewards.aura > 0 && rewards.money > 0 && ' · '}
-                    {rewards.money > 0 && `+${rewards.money}$`}
-                  </p>
-                )}
-                <Button onClick={initGame} variant="outline" className="border-foreground">
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Rejouer
-                </Button>
-              </div>
-            </div>
-          )}
-        </GameFullscreenStage>
-      </div>
-
-      {/* ── Right column — leaderboard ── */}
-      <GameLeaderboard
-        entries={leaderboard}
-        currentUserId={user?.id}
-        personalHighScore={highScore}
-        isAdmin={user?.isAdmin}
-        onDeleteScore={handleDeleteScore}
-        maxHeight={560}
-        hidden={isFullscreen}
-      />
-
+        </div>
+      )}
     </div>
   );
 }
