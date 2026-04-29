@@ -12,7 +12,8 @@ export type LogType =
   | 'ADMIN'      // Admin actions (user edits, item management)
   | 'BAN'        // Bans created, removed
   | 'AURACOIN'   // AuraCoin buy/sell
-  | 'BUSINESS';  // Business, bank, formation, and relationship actions
+  | 'BUSINESS'   // Business, bank, formation, and relationship actions
+  | 'FORUM';     // Forum subreddits, posts, comments
 
 // Log actions by type
 export type AuthAction = 'login' | 'logout' | 'register' | 'login_failed' | 'login_banned';
@@ -35,6 +36,15 @@ export type BanAction = 'ban_create' | 'ban_remove';
 export type AuraCoinAction =
   | 'auracoin_buy'
   | 'auracoin_sell';
+export type ForumAction =
+  | 'subreddit_create'
+  | 'subreddit_join'
+  | 'subreddit_leave'
+  | 'forum_post_create'
+  | 'forum_post_delete'
+  | 'forum_comment_create'
+  | 'forum_comment_delete';
+
 export type BusinessAction =
   | 'business_create' | 'business_delete' | 'business_invite' | 'business_loan_request'
   | 'business_loan_decision' | 'business_loan_repay' | 'business_deposit' | 'business_withdraw'
@@ -53,7 +63,7 @@ export type BusinessAction =
   | 'relationship_force_divorce' | 'relationship_mistress' | 'relationship_cheating_report'
   | 'relationship_court_case' | 'couple_deposit' | 'couple_withdraw';
 
-export type LogAction = AuthAction | ChatAction | GameAction | EconomyAction | PartyAction | SuggestionAction | MarketplaceAction | AdminAction | BanAction | AuraCoinAction | BusinessAction;
+export type LogAction = AuthAction | ChatAction | GameAction | EconomyAction | PartyAction | SuggestionAction | MarketplaceAction | AdminAction | BanAction | AuraCoinAction | BusinessAction | ForumAction;
 
 export interface LogEntry {
   type: LogType;
@@ -131,3 +141,6 @@ export const logAuraCoin = (action: AuraCoinAction, userId?: string | null, user
 
 export const logBusiness = (action: BusinessAction, userId?: string | null, username?: string | null, targetId?: string | null, targetName?: string | null, details?: Record<string, unknown>) =>
   createLog({ type: 'BUSINESS', action, userId, username, targetId, targetName, details });
+
+export const logForum = (action: ForumAction, userId?: string | null, username?: string | null, details?: Record<string, unknown>) =>
+  createLog({ type: 'FORUM', action, userId, username, details });

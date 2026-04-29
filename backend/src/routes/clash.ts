@@ -487,16 +487,13 @@ router.post('/upgrade', authMiddleware, async (req: AuthRequest, res: Response) 
         throw new HttpError(400, 'Tu dois d’abord créer ton village');
       }
 
-      const user = await tx.user.findUnique({ where: { id: req.user!.id }, select: { id: true, username: true, money: true } });
-      if (!user) throw new HttpError(404, 'Utilisateur introuvable');
-
       const buildings = parseBuildings(village.buildingsJson);
       const target = getBuilding(buildings, buildingType);
       if (!target) throw new HttpError(400, 'Bâtiment introuvable');
 
       const cost = getUpgradeCost(buildingType, target.level);
-      if (user.money < cost) {
-        throw new HttpError(400, 'Argent insuffisant pour cette amélioration');
+      if (village.moneyInStorage < cost) {
+        throw new HttpError(400, 'Monnaie de village insuffisante pour cette amélioration');
       }
 
       target.level += 1;
@@ -515,14 +512,8 @@ router.post('/upgrade', authMiddleware, async (req: AuthRequest, res: Response) 
         data: {
           townHallLevel: nextTownHallLevel,
           buildingsJson: JSON.stringify(buildings),
-          moneyInStorage: Math.min(village.moneyInStorage, maxStorage),
+          moneyInStorage: Math.min(village.moneyInStorage, maxStorage) - cost,
         },
-      });
-
-      const updatedUser = await tx.user.update({
-        where: { id: user.id },
-        data: { money: { decrement: cost } },
-        select: { money: true },
       });
 
       await tx.clashActivity.create({
@@ -545,7 +536,7 @@ router.post('/upgrade', authMiddleware, async (req: AuthRequest, res: Response) 
 
       return {
         village: updatedVillage,
-        newBalance: updatedUser,
+        newBalance: { moneyInStorage: updatedVillage.moneyInStorage },
         buildingType,
         cost,
       };

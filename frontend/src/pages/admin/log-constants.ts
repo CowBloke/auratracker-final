@@ -1,4 +1,4 @@
-import { Briefcase, Coins, Gamepad2, Gavel, Lightbulb, LogIn, MessageCircle, Shield, Store, TrendingUp, Users } from 'lucide-react';
+import { Briefcase, Coins, Gamepad2, Gavel, Lightbulb, LogIn, MessageCircle, Newspaper, Shield, Store, TrendingUp, Users } from 'lucide-react';
 
 export type LogTypeConfigEntry = {
   label: string;
@@ -20,6 +20,7 @@ export const LOG_TYPE_CONFIG: Record<string, LogTypeConfigEntry> = {
   SUGGESTION: { label: 'Suggestions', color: 'text-cyan-400', bgColor: 'bg-cyan-500', borderColor: 'border-cyan-500', icon: Lightbulb },
   AURACOIN: { label: 'AuraCoin', color: 'text-amber-400', bgColor: 'bg-amber-500', borderColor: 'border-amber-500', icon: TrendingUp },
   BUSINESS: { label: 'Business', color: 'text-emerald-400', bgColor: 'bg-emerald-600', borderColor: 'border-emerald-600', icon: Briefcase },
+  FORUM: { label: 'Forum', color: 'text-indigo-400', bgColor: 'bg-indigo-500', borderColor: 'border-indigo-500', icon: Newspaper },
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -122,4 +123,84 @@ export const ACTION_LABELS: Record<string, string> = {
   ban_remove: 'Bannissement levé',
   auracoin_buy: 'Achat AuraCoin',
   auracoin_sell: 'Vente AuraCoin',
+  // Economy
+  gift_aura: 'Don d\'aura',
+  quest_reward: 'Récompense quête',
+  // Game
+  casino_start: 'Casino démarré',
+  // Party
+  party_update: 'Groupe modifié',
+  // Suggestion
+  suggestion_status: 'Statut suggestion modifié',
+  suggestion_rating: 'Suggestion notée',
+  // Marketplace
+  listing_create: 'Listing créé',
+  listing_sold: 'Listing vendu',
+  listing_cancel: 'Listing annulé',
+  // Admin – users
+  registration_reviews_import: 'Inscriptions importées',
+  item_update: 'Objet modifié',
+  item_image_upload: 'Image objet téléchargée',
+  shop_categories_update: 'Catégories boutique modifiées',
+  badge_create: 'Badge créé',
+  badge_assign: 'Badge attribué',
+  badge_remove: 'Badge retiré',
+  badge_equip: 'Badge équipé',
+  setting_update: 'Paramètre modifié',
+  settings_bulk_update: 'Paramètres modifiés en masse',
+  tax_brackets_update: 'Tranches fiscales modifiées',
+  tax_manual_run: 'Taxe déclenchée manuellement',
+  daily_tax_run: 'Taxe journalière exécutée',
+  extreme_aura_reset: 'Aura extrême réinitialisée',
+  deploy_trigger: 'Déploiement déclenché',
+  polymarket_event_create: 'Événement Polymarket créé',
+  polymarket_event_update: 'Événement Polymarket modifié',
+  polymarket_event_resolve: 'Événement Polymarket résolu',
+  polymarket_event_delete: 'Événement Polymarket supprimé',
+  polymarket_suggestion_approve: 'Suggestion Polymarket approuvée',
+  polymarket_suggestion_reject: 'Suggestion Polymarket refusée',
+  gift_template_create: 'Modèle cadeau créé',
+  gift_template_update: 'Modèle cadeau modifié',
+  gift_template_delete: 'Modèle cadeau supprimé',
+  bombparty_prompts_recalculate: 'Prompts BombParty recalculés',
+  bug_report_update: 'Bug report modifié',
+  bug_report_delete: 'Bug report supprimé',
+  online_snapshot_create: 'Snapshot en ligne créé',
+  appeal_reject: 'Appel refusé',
+  username_change: 'Pseudo changé',
+  username_change_reject: 'Changement de pseudo refusé',
+  user_follow: 'Suivi utilisateur',
+  user_unfollow: 'Désabonnement utilisateur',
+  name_change_request: 'Demande de changement de pseudo',
+  // Admin – clans
+  clan_create: 'Clan créé',
+  clan_join: 'Rejoint clan',
+  clan_leave: 'Quitté clan',
+  clan_kick: 'Expulsé du clan',
+  clan_promote: 'Membre promu',
+  clan_demote: 'Membre rétrogradé',
+  clan_war_declare: 'Guerre de clan déclarée',
+  clan_war_attack: 'Attaque de guerre de clan',
+  clan_war_fortify: 'Fortification guerre de clan',
+  clan_war_game: 'Jeu de guerre de clan',
+  clan_bank_deposit: 'Dépôt banque de clan',
+  // Admin – modération
+  warning_create: 'Avertissement créé',
+  warning_delete: 'Avertissement supprimé',
+  skill_train: 'Compétence entraînée',
+  business_share_proposal_create: 'Proposition actionnaire créée',
+  business_share_proposal_review: 'Proposition actionnaire évaluée',
+  bank_daily_revenue: 'Revenu bancaire journalier',
+  formation_product_review: 'Produit formation évalué',
+  ad_approve: 'Publicité approuvée',
+  ad_reject: 'Publicité refusée',
+  ad_delete_forever: 'Publicité supprimée définitivement',
+  // Forum
+  subreddit_create: 'Subreddit créé',
+  subreddit_join: 'Rejoint subreddit',
+  subreddit_leave: 'Quitté subreddit',
+  forum_post_create: 'Post créé',
+  forum_post_delete: 'Post supprimé',
+  forum_comment_create: 'Commentaire créé',
+  forum_comment_delete: 'Commentaire supprimé',
 };

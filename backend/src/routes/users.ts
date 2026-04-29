@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
+import { logAdmin } from '../utils/logger.js';
 import {
   SOCIAL_USER_SELECT,
   getFriendIds,
@@ -287,6 +288,8 @@ router.post('/social/follow/:targetUserId', authMiddleware, async (req: AuthRequ
     const relationship = await getRelationshipWithViewer(followerId, targetUserId);
     const stats = await getUserSocialStats(targetUserId);
 
+    logAdmin('user_follow', followerId, req.user!.username, targetUserId, target.username, {});
+
     if (relationship.isConnection) {
       await createNotification({
         userId: targetUserId,
@@ -332,6 +335,7 @@ router.delete('/social/follow/:targetUserId', authMiddleware, async (req: AuthRe
     const relationship = await getRelationshipWithViewer(followerId, targetUserId);
     const stats = await getUserSocialStats(targetUserId);
 
+    logAdmin('user_unfollow', followerId, req.user!.username, targetUserId, null, {});
     res.json({
       relationship,
       stats,

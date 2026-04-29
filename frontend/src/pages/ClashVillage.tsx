@@ -174,7 +174,7 @@ function BuildingInspector({
           </div>
           <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Coût suivant</p>
-            <p className="mt-1 font-semibold">{formatMoney(cost)} $</p>
+            <p className="mt-1 font-semibold">{formatMoney(cost)} 🪙</p>
           </div>
           {typeof building.storageCapacity === 'number' ? (
             <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
@@ -202,10 +202,10 @@ function BuildingInspector({
             onClick={() => onUpgrade(building.type)}
             disabled={!canAfford || isLoading}
           >
-            {isLoading ? 'Amélioration...' : `Améliorer pour ${formatMoney(cost)} $`}
+            {isLoading ? 'Amélioration...' : `Améliorer pour ${formatMoney(cost)} 🪙`}
           </Button>
           {!canAfford ? (
-            <p className="text-xs text-amber-600">Solde insuffisant sur ton compte global.</p>
+            <p className="text-xs text-amber-600">Monnaie de village insuffisante. Attaque pour en gagner !</p>
           ) : null}
         </div>
       </CardContent>
@@ -665,7 +665,7 @@ export default function ClashVillage() {
               {selectedBuilding ? (
                 <BuildingInspector
                   building={selectedBuilding}
-                  canAfford={(user?.money ?? 0) >= getBuildingUpgradeCost(selectedBuilding)}
+                  canAfford={(village?.moneyInStorage ?? 0) >= getBuildingUpgradeCost(selectedBuilding)}
                   isLoading={upgradeLoading === selectedBuilding.type}
                   onUpgrade={(buildingType) => void handleUpgrade(buildingType)}
                 />

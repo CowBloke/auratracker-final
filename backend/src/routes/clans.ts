@@ -18,6 +18,7 @@ import {
 } from '../utils/clanEvents.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { BLACK_MARKET_WEAPONS, NATION_TERRITORIES } from '../config/clan-defaults.js';
+import { logAdmin } from '../utils/logger.js';
 
 const router = Router();
 
@@ -1340,6 +1341,7 @@ router.post('/:id/bank/deposit', authMiddleware, async (req: AuthRequest, res: R
       amount,
     });
 
+    logAdmin('clan_bank_deposit', userId, req.user!.username, null, null, { clanId: id, amount });
     res.json({
       success: true,
       deposited: amount,
@@ -2257,6 +2259,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       return created;
     });
 
+    logAdmin('clan_create', userId, req.user!.username, null, null, { clanName: clan.name, clanId: clan.id });
     res.json({ clan: mapClanSummary(clan) });
   } catch (error) {
     if (error instanceof Error) {
@@ -2329,6 +2332,7 @@ router.post('/:id/join', authMiddleware, async (req: AuthRequest, res: Response)
         return { status: 'joined' as const };
       });
 
+      logAdmin('clan_join', userId, req.user!.username, null, null, { clanId: clan.id });
       return res.json(result);
     }
 
@@ -2463,6 +2467,8 @@ router.post('/:id/war/declare', authMiddleware, async (req: AuthRequest, res: Re
     });
 
     const war = await getCurrentWarForClan(id);
+
+    logAdmin('clan_war_declare', userId, req.user!.username, null, null, { attackerClan: attackerClan.name, defenderClan: defenderClan.name, clanId: id });
 
     createNotification({
       userId: defenderClan.owner.id,
@@ -2610,6 +2616,7 @@ router.post('/:id/war/fortify', authMiddleware, async (req: AuthRequest, res: Re
       defenseType: rawDefenseType,
       warId: refreshedWar?.id ?? null,
     });
+    logAdmin('clan_war_fortify', userId, req.user!.username, null, null, { clanId: id, defenseType: rawDefenseType });
     res.json({ war: refreshedWar ? await mapWar(refreshedWar, id, userId) : null });
   } catch (error) {
     console.error('Fortify clan war error:', error);
@@ -2744,6 +2751,7 @@ router.post('/:id/war/attack', authMiddleware, async (req: AuthRequest, res: Res
       finalPoints,
       warId: war.id,
     });
+    logAdmin('clan_war_attack', userId, req.user!.username, null, null, { clanId: id, attackType: rawAttackType, finalPoints });
     if (!refreshedWar) {
       const completedWar = await prisma.clanWar.findUnique({
         where: { id: war.id },
@@ -2839,6 +2847,7 @@ router.post('/:id/requests/:requestId/accept', authMiddleware, async (req: AuthR
       icon: 'users',
     }).catch(() => {});
 
+    logAdmin('clan_join', request.userId, null, null, null, { clanId: id, clanName: clan.name, acceptedBy: userId });
     res.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === 'CLAN_FULL') {
@@ -2977,6 +2986,7 @@ router.post('/:id/members/:targetUserId/promote', authMiddleware, async (req: Au
       icon: 'sparkles',
     }).catch(() => {});
 
+    logAdmin('clan_promote', userId, req.user!.username, targetUserId, null, { clanId: id, clanName: clanInfo?.name });
     res.json({ success: true });
   } catch (error) {
     console.error('Promote clan member error:', error);
@@ -3057,6 +3067,7 @@ router.post('/:id/members/:targetUserId/demote', authMiddleware, async (req: Aut
       icon: 'shield',
     }).catch(() => {});
 
+    logAdmin('clan_demote', userId, req.user!.username, targetUserId, null, { clanId: id, clanName: clanInfo?.name });
     res.json({ success: true });
   } catch (error) {
     console.error('Demote clan member error:', error);
@@ -3145,6 +3156,7 @@ router.post('/:id/members/:targetUserId/transfer-leadership', authMiddleware, as
       icon: 'crown',
     }).catch(() => {});
 
+    logAdmin('clan_transfer_leadership', userId, req.user!.username, targetUserId, null, { clanId: id, clanName: clan.name });
     res.json({ success: true });
   } catch (error) {
     console.error('Transfer clan leadership error:', error);
@@ -3246,6 +3258,7 @@ router.delete('/:id/leave', authMiddleware, async (req: AuthRequest, res: Respon
       }).catch(() => {});
     }
 
+    logAdmin('clan_leave', userId, req.user!.username, null, null, { clanId: id });
     res.json({ success: true });
   } catch (error) {
     console.error('Leave clan error:', error);
@@ -3324,6 +3337,7 @@ router.delete('/:id/members/:targetUserId', authMiddleware, async (req: AuthRequ
       icon: 'shield-x',
     }).catch(() => {});
 
+    logAdmin('clan_kick', userId, req.user!.username, targetUserId, targetUser?.username ?? null, { clanId: id, clanName: clanInfo?.name });
     res.json({ success: true });
   } catch (error) {
     console.error('Remove clan member error:', error);

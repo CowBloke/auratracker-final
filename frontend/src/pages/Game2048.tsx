@@ -485,9 +485,9 @@ export default function Game2048() {
 
   const board = (
     <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={BOARD_SIZE} baseHeight={BOARD_SIZE}>
-      <div className="relative h-full w-full border border-border/30 rounded-lg bg-muted/20 p-2">
+      <div className="relative aspect-square w-full border border-border/30 rounded-lg bg-muted/20 p-2">
         <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
-        <div className="absolute inset-2 grid grid-cols-4 gap-2.5">
+        <div className="absolute inset-2 grid grid-cols-4 grid-rows-4 gap-2.5">
           {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, i) => (
             <div key={i} className="bg-muted/30 rounded" />
           ))}
@@ -509,7 +509,7 @@ export default function Game2048() {
                 style={{
                   top, left,
                   width: responsiveCellSize,
-                  height: responsiveCellSize,
+                  aspectRatio: '1 / 1',
                   backgroundColor: getTileColor(tile.value, theme),
                   color: getTextColor(tile.value, theme),
                   fontSize: tile.value >= 1024 ? '1.5rem' : tile.value >= 128 ? '1.75rem' : '2rem',

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { logForum } from '../utils/logger.js';
 
 const router = Router();
 
@@ -105,6 +106,7 @@ router.post('/subreddits', authMiddleware, async (req: AuthRequest, res: Respons
       include: { creator: { select: userSelect }, _count: { select: { members: true, posts: true } } },
     });
 
+    logForum('subreddit_create', req.user!.id, req.user!.username, { subredditName: sub.name });
     res.status(201).json({
       id: sub.id,
       name: sub.name,
@@ -166,9 +168,11 @@ router.post('/subreddits/:name/join', authMiddleware, async (req: AuthRequest, r
       await prisma.forumSubredditMember.delete({
         where: { userId_subredditId: { userId: req.user!.id, subredditId: sub.id } },
       });
+      logForum('subreddit_leave', req.user!.id, req.user!.username, { subredditName: sub.name });
       res.json({ joined: false });
     } else {
       await prisma.forumSubredditMember.create({ data: { userId: req.user!.id, subredditId: sub.id } });
+      logForum('subreddit_join', req.user!.id, req.user!.username, { subredditName: sub.name });
       res.json({ joined: true });
     }
   } catch {
@@ -263,6 +267,7 @@ router.post('/posts', authMiddleware, async (req: AuthRequest, res: Response) =>
       },
     });
 
+    logForum('forum_post_create', req.user!.id, req.user!.username, { postId: post.id, title: post.title, subreddit: post.subreddit.name });
     res.status(201).json({
       id: post.id,
       title: post.title,
@@ -351,6 +356,7 @@ router.delete('/posts/:postId', authMiddleware, async (req: AuthRequest, res: Re
       return res.status(403).json({ error: 'Non autorisé' });
     }
     await prisma.forumPost.delete({ where: { id: req.params.postId } });
+    logForum('forum_post_delete', req.user!.id, req.user!.username, { postId: post.id, title: post.title });
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -429,6 +435,7 @@ router.post('/posts/:postId/comments', authMiddleware, async (req: AuthRequest, 
       include: { author: { select: userSelect } },
     });
 
+    logForum('forum_comment_create', req.user!.id, req.user!.username, { commentId: comment.id, postId: post.id });
     res.status(201).json({ ...comment, votes: [], children: [], userVote: 0 });
   } catch {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -493,6 +500,7 @@ router.delete('/comments/:commentId', authMiddleware, async (req: AuthRequest, r
       where: { id: req.params.commentId },
       data: { body: '[supprimé]', authorId: req.user!.id },
     });
+    logForum('forum_comment_delete', req.user!.id, req.user!.username, { commentId: comment.id, postId: comment.postId });
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Erreur serveur' });
