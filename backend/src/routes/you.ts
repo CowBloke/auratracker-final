@@ -73,6 +73,13 @@ import {
   getGlobalTemporaryEffects,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
+import {
+  cancelSupplyContract,
+  getSupplyState,
+  requestSupplyContract,
+  respondToSupplyContract,
+  upsertSupplyOffer,
+} from '../modules/you/supply.js';
 
 const router = Router();
 const YOU_LOGO_ADMIN_ONLY_KEY = 'you_logo_admin_only';
@@ -89,6 +96,9 @@ const ERROR_STATUS: Record<string, number> = {
   USER_NOT_FOUND: 404,
   BUSINESS_NOT_FOUND: 404,
   BUSINESS_SLOT_LIMIT_REACHED: 400,
+  BUSINESS_UNDER_CONSTRUCTION: 400,
+  CONSTRUCTION_PROJECT_NOT_FOUND: 404,
+  CONSTRUCTION_RESOURCE_NOT_REQUIRED: 400,
   BUSINESS_TYPE_ADMIN_ONLY: 403,
   BUSINESS_RATING_NOT_ALLOWED: 403,
   BUSINESS_LIQUIDATION_FORBIDDEN: 403,
@@ -221,6 +231,11 @@ const ERROR_STATUS: Record<string, number> = {
   SHARE_MARKET_BUY_OWN_LISTING: 400,
   SHARE_MARKET_ALREADY_RESOLVED: 400,
   SHARE_MARKET_SELLER_NO_LONGER_HAS_SHARES: 400,
+  SUPPLY_RESOURCE_NOT_FOUND: 404,
+  SUPPLY_OFFER_NOT_FOUND: 404,
+  SUPPLY_CONTRACT_NOT_FOUND: 404,
+  SUPPLY_CONTRACT_SELF_FORBIDDEN: 400,
+  SUPPLY_CONTRACT_ALREADY_DECIDED: 400,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -356,6 +371,14 @@ const ERROR_MESSAGE: Record<string, string> = {
   SHARE_MARKET_BUY_OWN_LISTING: 'Tu ne peux pas acheter ta propre annonce.',
   SHARE_MARKET_ALREADY_RESOLVED: 'Cette annonce n est plus disponible.',
   SHARE_MARKET_SELLER_NO_LONGER_HAS_SHARES: 'Le vendeur ne detient plus suffisamment de parts.',
+  BUSINESS_UNDER_CONSTRUCTION: 'Cette entreprise est encore en chantier.',
+  CONSTRUCTION_PROJECT_NOT_FOUND: 'Chantier introuvable.',
+  CONSTRUCTION_RESOURCE_NOT_REQUIRED: 'Cette ressource n est pas requise pour ce chantier.',
+  SUPPLY_RESOURCE_NOT_FOUND: 'Cette ressource n est pas disponible pour ce business.',
+  SUPPLY_OFFER_NOT_FOUND: 'Offre de ressource introuvable.',
+  SUPPLY_CONTRACT_NOT_FOUND: 'Contrat de ressource introuvable.',
+  SUPPLY_CONTRACT_SELF_FORBIDDEN: 'Tu ne peux pas demander des ressources a ce meme business.',
+  SUPPLY_CONTRACT_ALREADY_DECIDED: 'Ce contrat a deja ete traite.',
   CANNOT_LEAVE_OWN_BUSINESS: 'Tu ne peux pas quitter une entreprise dont tu es proprietaire.',
 };
 
@@ -411,6 +434,61 @@ router.get('/temporary-effects', authMiddleware, requireYouAccess, async (req: A
     res.json({ effects });
   } catch (error) {
     handleRouteError(error, res, 'Get temporary effects error');
+  }
+});
+
+router.get('/supply/state', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const state = await getSupplyState(req.user!.id);
+    res.json(state);
+  } catch (error) {
+    handleRouteError(error, res, 'Get supply state error');
+  }
+});
+
+router.put('/businesses/:businessId/supply-offers', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const offer = await upsertSupplyOffer(req.user!.id, req.params.businessId, {
+      resourceType: String(req.body?.resourceType ?? ''),
+      unitPrice: Number(req.body?.unitPrice ?? 0),
+      autoAccept: Boolean(req.body?.autoAccept),
+      ...(req.body?.isActive !== undefined ? { isActive: Boolean(req.body.isActive) } : {}),
+    });
+    res.json({ offer });
+  } catch (error) {
+    handleRouteError(error, res, 'Upsert supply offer error');
+  }
+});
+
+router.post('/businesses/:businessId/supply-contracts', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const contract = await requestSupplyContract(req.user!.id, req.params.businessId, {
+      offerId: String(req.body?.offerId ?? ''),
+      quantity: Number(req.body?.quantity ?? 0),
+      constructionProjectId: req.body?.constructionProjectId ? String(req.body.constructionProjectId) : null,
+    });
+    res.status(201).json({ contract });
+  } catch (error) {
+    handleRouteError(error, res, 'Request supply contract error');
+  }
+});
+
+router.post('/supply-contracts/:contractId/respond', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const decision = req.body?.decision === 'accept' ? 'accept' : 'reject';
+    const contract = await respondToSupplyContract(req.user!.id, req.params.contractId, decision);
+    res.json({ contract });
+  } catch (error) {
+    handleRouteError(error, res, 'Respond supply contract error');
+  }
+});
+
+router.delete('/supply-contracts/:contractId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const contract = await cancelSupplyContract(req.user!.id, req.params.contractId);
+    res.json({ contract });
+  } catch (error) {
+    handleRouteError(error, res, 'Cancel supply contract error');
   }
 });
 

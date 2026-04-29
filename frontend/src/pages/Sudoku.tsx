@@ -3,9 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Brain, Eraser, RefreshCcw, Target } from 'lucide-react';
+import { Brain, Eraser, RefreshCcw, SlidersHorizontal, Target } from 'lucide-react';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
@@ -270,6 +271,7 @@ export default function Sudoku() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
   const currentScore = getCompletionScore(difficulty, elapsedSeconds, hintsUsed, mistakesFound);
   const canPause = !completed;
@@ -513,6 +515,40 @@ export default function Sudoku() {
     }
   };
 
+  const topBarControls = (
+    <div className="space-y-2 text-xs">
+      <p className="font-medium text-foreground">Difficulte: {difficultyConfig[difficulty].label}</p>
+      <Select value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.keys(difficultyConfig) as Difficulty[]).map((level) => (
+            <SelectItem key={level} value={level}>
+              {difficultyConfig[level].label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <div className="flex gap-2 pt-2">
+        <Button type="button" variant="outline" size="sm" onClick={validateGrid} disabled={completed}>
+          <Target className="mr-1 h-3 w-3" />
+          Verifier
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={useHint}
+          disabled={completed || hintsUsed >= 3}
+        >
+          <Brain className="mr-1 h-3 w-3" />
+          Indice
+        </Button>
+      </div>
+    </div>
+  );
+
 return (
     <PageShell size="wide">
 
@@ -529,44 +565,32 @@ return (
           highScore={highScore}
           isNewHighScore={isNewHighScore}
           rewards={rewards}
-          controls={
-            <div className="space-y-2 text-xs">
-              <p className="font-medium text-foreground">Difficulte: {difficultyConfig[difficulty].label}</p>
-              <Select value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(difficultyConfig) as Difficulty[]).map((level) => (
-                    <SelectItem key={level} value={level}>
-                      {difficultyConfig[level].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex gap-2 pt-2">
-                <Button type="button" variant="outline" size="sm" onClick={validateGrid} disabled={completed}>
-                  <Target className="mr-1 h-3 w-3" />
-                  Verifier
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={useHint}
-                  disabled={completed || hintsUsed >= 3}
-                >
-                  <Brain className="mr-1 h-3 w-3" />
-                  Indice
-                </Button>
-              </div>
-            </div>
-          }
+          controls={topBarControls}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           showLeaderboard={showLeaderboard}
           onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
-        />
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-full"
+            onClick={() => setShowSettingsDialog(true)}
+            title="Parametres"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+          </Button>
+        </GameTopBar>
+
+        <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Parametres Sudoku</DialogTitle>
+            </DialogHeader>
+            {topBarControls}
+          </DialogContent>
+        </Dialog>
 
         <div className="flex w-full max-w-[42rem] justify-between gap-2">
           {isFullscreen && (

@@ -41,6 +41,8 @@ type BusinessFeatureProperties = {
   description: string | null;
   emoji: string;
   pinColor: string;
+  underConstruction: boolean;
+  constructionProgress: number;
   selected: boolean;
   isOwned: boolean;
   canPlace: boolean;
@@ -56,6 +58,7 @@ const CORE_LAYER_ID = 'you-businesses-layer-core';
 const CLUSTER_LAYER_ID = 'you-businesses-cluster';
 const PIN_SIZE = 40;
 const CLUSTER_SIZE = 44;
+const CONSTRUCTION_STRIPES = 'repeating-linear-gradient(135deg, #facc15 0 8px, #111827 8px 16px)';
 
 function uniqueBusinesses(data: YouState): YouBusiness[] {
   const map = new Map<string, YouBusiness>();
@@ -102,6 +105,8 @@ function buildSourceData(
         description: pin.business.description,
         emoji: TYPE_EMOJI[pin.business.typeKey] ?? '📍',
         pinColor: pin.pinColor,
+        underConstruction: Boolean(pin.business.underConstruction),
+        constructionProgress: pin.business.constructionProject?.progress.percent ?? 0,
         selected: selectedId === pin.business.id,
         isOwned: pin.isOwned,
         canPlace: pin.canPlace,
@@ -239,9 +244,11 @@ function BusinessInfoPanel({
   const navigate = useNavigate();
   const isOwner = business.ownerId === userId;
   const isPlaced = business.mapX != null && business.mapY != null;
+  const underConstruction = Boolean(business.underConstruction && business.constructionProject);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-background shadow-xl">
+      {underConstruction && <div className="h-2" style={{ background: CONSTRUCTION_STRIPES }} />}
       {/* Header */}
       <div className="flex items-start gap-3 p-4 pb-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
@@ -251,6 +258,7 @@ function BusinessInfoPanel({
           <p className="truncate text-sm font-semibold text-foreground">{business.name}</p>
           <p className="truncate text-xs text-muted-foreground">{business.type?.label ?? business.typeKey}</p>
           <p className="truncate text-xs text-muted-foreground">@{business.owner.username}</p>
+          {underConstruction && <p className="mt-1 text-[10px] font-semibold text-amber-500">Chantier {business.constructionProject?.progress.percent ?? 0}%</p>}
         </div>
         <button
           onClick={onClose}
@@ -590,9 +598,17 @@ export const CarteTab = forwardRef<CarteTabHandle, {
               ['boolean', ['feature-state', 'hovered'], false], 13,
               12,
             ],
-            'circle-color': ['get', 'pinColor'],
+            'circle-color': [
+              'case',
+              ['boolean', ['get', 'underConstruction'], false], '#111827',
+              ['get', 'pinColor'],
+            ],
             'circle-opacity': 0.95,
-            'circle-stroke-color': 'rgba(255,255,255,0.95)',
+            'circle-stroke-color': [
+              'case',
+              ['boolean', ['get', 'underConstruction'], false], '#facc15',
+              'rgba(255,255,255,0.95)',
+            ],
             'circle-stroke-width': [
               'case',
               ['boolean', ['get', 'selected'], false], 2.8,
@@ -1015,11 +1031,13 @@ export const CarteTab = forwardRef<CarteTabHandle, {
               {modalVisibleBusinesses.map((business) => {
                 const isPlaced = business.mapX != null && business.mapY != null;
                 const pinColor = getBusinessPinColor(business.typeKey);
+                const underConstruction = Boolean(business.underConstruction && business.constructionProject);
                 return (
                   <div
                     key={business.id}
-                    className="group flex flex-col gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-border hover:shadow-md"
+                    className="group flex flex-col gap-3 overflow-hidden rounded-xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-border hover:shadow-md"
                   >
+                    {underConstruction && <div className="-mx-4 -mt-4 h-2" style={{ background: CONSTRUCTION_STRIPES }} />}
                     {/* Card header */}
                     <div className="flex items-start gap-3">
                       <div
@@ -1034,6 +1052,12 @@ export const CarteTab = forwardRef<CarteTabHandle, {
                         <div className="mt-1 flex items-center gap-1.5">
                           {business.verified && (
                             <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0 text-[10px] text-emerald-600">✓ Vérifié</Badge>
+                          )}
+                          {underConstruction && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                              Chantier {business.constructionProject?.progress.percent ?? 0}%
+                            </span>
                           )}
                           {isPlaced ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">

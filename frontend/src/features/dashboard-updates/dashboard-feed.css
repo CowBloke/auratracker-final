@@ -199,6 +199,7 @@
   overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.9fr);
+  align-items: center;
   min-height: 400px;
   border-radius: 28px;
   background: #080808;
@@ -212,6 +213,14 @@
 }
 
 .db-hero__media img,
+.db-hero__media {
+  position: relative;
+  max-height: clamp(220px, 50vh, 520px);
+  overflow: hidden;
+  background: linear-gradient(135deg, #120b07, #22140d 45%, #080808);
+}
+
+.db-hero__media img,
 .db-hero__wash {
   width: 100%;
   height: 100%;
@@ -219,16 +228,12 @@
 
 .db-hero__media img {
   display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   filter: saturate(1.05);
 }
 
-.db-hero__media::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 46%, rgba(0, 0, 0, 0.08) 100%);
-}
 
 .db-hero__wash {
   background:

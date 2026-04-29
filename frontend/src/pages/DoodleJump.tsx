@@ -4,9 +4,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { gamesApi, marketplaceApi } from '../services/api';
 import { resolveImageUrl } from '@/lib/images';
-import { Play, RotateCcw, Eye, EyeOff, Users } from 'lucide-react';
+import { Play, RotateCcw, Eye, EyeOff, Users, SlidersHorizontal } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -270,6 +271,7 @@ export default function DoodleJump() {
   const spectateMessageIdRef = useRef(0);
   const [multiplayerRoster, setMultiplayerRoster] = useState<DoodleMultiplayerRosterItem[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const spectateHostUserIdFromRoute = ((location.state as { spectateHostUserId?: string } | null)?.spectateHostUserId) ?? null;
   const selectedGameType: DoodleGameType = isMortSubite ? 'doodle_jump_mort_subite' : 'doodle_jump';
@@ -1565,6 +1567,69 @@ export default function DoodleJump() {
   // RENDER
   // ============================================
   const isPlaying = started && !gameOver;
+  const topBarControls = (
+    <div className="space-y-2 text-xs">
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <kbd className="px-2 py-0.5 border border-border/50 rounded">←</kbd>
+        <span>Gauche</span>
+        <kbd className="px-2 py-0.5 border border-border/50 rounded">→</kbd>
+        <span>Droite</span>
+      </div>
+      <Separator className="my-2" />
+      <Button
+        variant="ghost"
+        type="button"
+        size="sm"
+        onClick={() => setIsMortSubite(prev => !prev)}
+        disabled={isPlaying}
+        className={`w-full justify-start px-2 py-1 h-auto text-xs border transition-colors ${
+          isMortSubite
+            ? 'border-red-500 bg-red-500/10 text-red-500 hover:bg-red-500/15 hover:text-red-500'
+            : 'border-border/50 text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        Mort subite : {isMortSubite ? 'Oui' : 'Non'}
+      </Button>
+      <Button
+        variant="ghost"
+        type="button"
+        size="sm"
+        onClick={() => setIsMultiplayer(prev => !prev)}
+        disabled={isPlaying}
+        className={`w-full justify-start px-2 py-1 h-auto text-xs border transition-colors ${
+          isMultiplayer
+            ? 'border-sky-500 bg-sky-500/10 text-sky-500 hover:bg-sky-500/15 hover:text-sky-500'
+            : 'border-border/50 text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        Multijoueur quotidien : {isMultiplayer ? 'Oui' : 'Non'}
+      </Button>
+      <div className={`grid grid-cols-4 gap-1 pt-2 ${isPlaying ? 'opacity-40 pointer-events-none' : ''}`}>
+        {allSkins.slice(0, 8).map((skin) => (
+          <button
+            key={skin.id}
+            type="button"
+            onClick={() => setSelectedSkin(skin.id)}
+            className={`flex flex-col items-center gap-0.5 p-1 rounded border-2 transition-all ${
+              selectedSkin === skin.id
+                ? 'border-foreground bg-muted'
+                : 'border-transparent hover:border-border/50'
+            }`}
+            title={skin.name}
+          >
+            <div className="w-5 h-5 rounded overflow-hidden flex items-center justify-center bg-muted/30">
+              <img
+                src={resolveImageUrl(skin.imageUrl)}
+                alt={skin.name}
+                className="w-full h-full object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
 return (
     <div
@@ -1577,74 +1642,32 @@ return (
         highScore={highScore}
         isNewHighScore={isNewHighScore}
         rewards={rewards}
-        controls={
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <kbd className="px-2 py-0.5 border border-border/50 rounded">←</kbd>
-              <span>Gauche</span>
-              <kbd className="px-2 py-0.5 border border-border/50 rounded">→</kbd>
-              <span>Droite</span>
-            </div>
-            <Separator className="my-2" />
-            <Button
-              variant="ghost"
-              type="button"
-              size="sm"
-              onClick={() => setIsMortSubite(prev => !prev)}
-              disabled={isPlaying}
-              className={`w-full justify-start px-2 py-1 h-auto text-xs border transition-colors ${
-                isMortSubite
-                  ? 'border-red-500 bg-red-500/10 text-red-500 hover:bg-red-500/15 hover:text-red-500'
-                  : 'border-border/50 text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Mort subite : {isMortSubite ? 'Oui' : 'Non'}
-            </Button>
-            <Button
-              variant="ghost"
-              type="button"
-              size="sm"
-              onClick={() => setIsMultiplayer(prev => !prev)}
-              disabled={isPlaying}
-              className={`w-full justify-start px-2 py-1 h-auto text-xs border transition-colors ${
-                isMultiplayer
-                  ? 'border-sky-500 bg-sky-500/10 text-sky-500 hover:bg-sky-500/15 hover:text-sky-500'
-                  : 'border-border/50 text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Multijoueur quotidien : {isMultiplayer ? 'Oui' : 'Non'}
-            </Button>
-            <div className={`grid grid-cols-4 gap-1 pt-2 ${isPlaying ? 'opacity-40 pointer-events-none' : ''}`}>
-              {allSkins.slice(0, 8).map((skin) => (
-                <button
-                  key={skin.id}
-                  type="button"
-                  onClick={() => setSelectedSkin(skin.id)}
-                  className={`flex flex-col items-center gap-0.5 p-1 rounded border-2 transition-all ${
-                    selectedSkin === skin.id
-                      ? 'border-foreground bg-muted'
-                      : 'border-transparent hover:border-border/50'
-                  }`}
-                  title={skin.name}
-                >
-                  <div className="w-5 h-5 rounded overflow-hidden flex items-center justify-center bg-muted/30">
-                    <img
-                      src={resolveImageUrl(skin.imageUrl)}
-                      alt={skin.name}
-                      className="w-full h-full object-contain"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        }
+        controls={topBarControls}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
         showLeaderboard={showLeaderboard}
         onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
-      />
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          onClick={() => setShowSettingsDialog(true)}
+          title="Parametres"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+        </Button>
+      </GameTopBar>
+
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Parametres Doodle Jump</DialogTitle>
+          </DialogHeader>
+          {topBarControls}
+        </DialogContent>
+      </Dialog>
 
       {isPlaying && isMultiplayer && !spectatingHost && (
         <div className="absolute left-2 right-2 top-[72px] z-20 rounded-md border bg-background/80 px-2 py-1 backdrop-blur-sm">

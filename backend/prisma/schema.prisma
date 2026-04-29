@@ -211,6 +211,7 @@ model User {
   reviewEligibilities       ReviewEligibility[]            @relation("ReviewEligibilityUser")
   lawyerReviewEligibilities ReviewEligibility[]            @relation("ReviewEligibilityLawyer")
   businessPurchasedItems    BusinessPurchasedItem[]
+  requestedSupplyContracts  BusinessSupplyContract[]        @relation("SupplyContractRequester")
   // Braquage Légal
   isBraquageLegalOwner       Boolean                       @default(false)
   braquageLegalWins          BraquageLegalSession[]        @relation("BraquageLegalWinner")
@@ -597,6 +598,11 @@ model Business {
   defendantCourtCases  CourtCase[]                     @relation("CourtCaseDefendantLawFirm")
   ads                  Ad[]                            @relation("BusinessAds")
   purchasedItems       BusinessPurchasedItem[]
+  resourceInventories  BusinessResourceInventory[]
+  supplyOffers         BusinessSupplyOffer[]
+  supplyContractsAsSupplier BusinessSupplyContract[]        @relation("SupplyContractSupplier")
+  supplyContractsAsBuyer    BusinessSupplyContract[]        @relation("SupplyContractBuyer")
+  constructionProject BusinessConstructionProject?
 
   @@index([ownerId])
   @@index([supportAgentId])
@@ -2675,6 +2681,105 @@ model BusinessTransaction {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@index([businessId, createdAt])
+}
+
+model BusinessResourceInventory {
+  id                    String   @id @default(uuid())
+  businessId            String
+  resourceType          String
+  quantity              Int      @default(0)
+  capacity              Int
+  productionRatePerHour Int      @default(0)
+  lastProducedAt        DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, resourceType])
+  @@index([businessId])
+  @@index([resourceType])
+}
+
+model BusinessSupplyOffer {
+  id           String   @id @default(uuid())
+  businessId   String
+  resourceType String
+  unitPrice    Int
+  autoAccept   Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, resourceType])
+  @@index([resourceType, isActive])
+  @@index([businessId])
+}
+
+model BusinessSupplyContract {
+  id                 String    @id @default(uuid())
+  supplierBusinessId String
+  buyerBusinessId    String
+  constructionProjectId String?
+  requesterId        String
+  resourceType       String
+  totalQuantity      Int
+  deliveredQuantity  Int       @default(0)
+  unitPrice          Int
+  status             String    @default("PENDING")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  acceptedAt         DateTime?
+  completedAt        DateTime?
+  rejectedAt         DateTime?
+
+  supplier Business @relation("SupplyContractSupplier", fields: [supplierBusinessId], references: [id], onDelete: Cascade)
+  buyer    Business @relation("SupplyContractBuyer", fields: [buyerBusinessId], references: [id], onDelete: Cascade)
+  constructionProject BusinessConstructionProject? @relation(fields: [constructionProjectId], references: [id], onDelete: SetNull)
+  requester User    @relation("SupplyContractRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@index([supplierBusinessId, status])
+  @@index([buyerBusinessId, status])
+  @@index([constructionProjectId, status])
+  @@index([requesterId, status])
+  @@index([resourceType, status])
+}
+
+model BusinessConstructionProject {
+  id          String    @id @default(uuid())
+  businessId  String    @unique
+  typeKey     String
+  recipeKey   String
+  status      String    @default("UNDER_CONSTRUCTION") // UNDER_CONSTRUCTION | COMPLETED
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  materials BusinessConstructionMaterial[]
+  supplyContracts BusinessSupplyContract[]
+
+  @@index([status, createdAt])
+  @@index([typeKey, status])
+}
+
+model BusinessConstructionMaterial {
+  id                String   @id @default(uuid())
+  projectId         String
+  resourceType      String
+  requiredQuantity  Int
+  deliveredQuantity Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  project BusinessConstructionProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, resourceType])
+  @@index([projectId])
+  @@index([resourceType])
 }
 
 // ============================================

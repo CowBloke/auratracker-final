@@ -3,10 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { Bomb, Flag, RotateCcw } from 'lucide-react';
+import { Bomb, Flag, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { GameTopBar } from '@/components/game/GameTopBar';
@@ -225,6 +226,7 @@ export default function Minesweeper() {
   const [flagMode, setFlagMode] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -487,6 +489,74 @@ export default function Minesweeper() {
     [config.columns]
   );
 
+  const topBarControls = (
+    <div className="space-y-2 text-xs">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground">Temps</p>
+          <p className="text-sm font-semibold tabular-nums">{elapsedSeconds}s</p>
+        </div>
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground">Mines</p>
+          <p className="text-sm font-semibold tabular-nums">{minesLeft}</p>
+        </div>
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground">Record</p>
+          <p className="text-sm font-semibold tabular-nums">{isSpeedrunDisplay ? (highScore > 0 ? formatDuration(highScore) : '--') : highScore}</p>
+        </div>
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground">Win</p>
+          <p className="text-sm font-semibold tabular-nums">{winRate}%</p>
+        </div>
+      </div>
+      <Separator className="my-2" />
+      <div className="space-y-1">
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === 'score' ? 'default' : 'outline'}
+          className="w-full justify-start text-xs"
+          disabled={status === 'playing'}
+          onClick={() => setMode('score')}
+        >
+          Score classique
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === 'speedrun' ? 'default' : 'outline'}
+          className="w-full justify-start text-xs"
+          disabled={status === 'playing'}
+          onClick={() => setMode('speedrun')}
+        >
+          Speedrun
+        </Button>
+      </div>
+      <Select value={difficulty} onValueChange={(value) => setDifficulty(value as DifficultyKey)}>
+        <SelectTrigger className="h-7 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.keys(DIFFICULTIES) as DifficultyKey[]).map((level) => (
+            <SelectItem key={level} value={level} className="text-xs">
+              {DIFFICULTIES[level].label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        type="button"
+        size="sm"
+        variant={flagMode ? 'default' : 'outline'}
+        className="w-full justify-start text-xs"
+        onClick={() => setFlagMode((current) => !current)}
+      >
+        <Flag className="mr-1 h-3 w-3" />
+        {flagMode ? 'Drapeau' : 'Reveler'}
+      </Button>
+    </div>
+  );
+
 return (
     <PageShell size="full">
       <div
@@ -502,78 +572,32 @@ return (
           highScore={highScore}
           isNewHighScore={isNewHighScore}
           rewards={rewards}
-          controls={
-            <div className="space-y-2 text-xs">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-border/60 p-2 text-center">
-                  <p className="text-[10px] text-muted-foreground">Temps</p>
-                  <p className="text-sm font-semibold tabular-nums">{elapsedSeconds}s</p>
-                </div>
-                <div className="rounded-lg border border-border/60 p-2 text-center">
-                  <p className="text-[10px] text-muted-foreground">Mines</p>
-                  <p className="text-sm font-semibold tabular-nums">{minesLeft}</p>
-                </div>
-                <div className="rounded-lg border border-border/60 p-2 text-center">
-                  <p className="text-[10px] text-muted-foreground">Record</p>
-                  <p className="text-sm font-semibold tabular-nums">{isSpeedrunDisplay ? (highScore > 0 ? formatDuration(highScore) : '--') : highScore}</p>
-                </div>
-                <div className="rounded-lg border border-border/60 p-2 text-center">
-                  <p className="text-[10px] text-muted-foreground">Win</p>
-                  <p className="text-sm font-semibold tabular-nums">{winRate}%</p>
-                </div>
-              </div>
-              <Separator className="my-2" />
-              <div className="space-y-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={mode === 'score' ? 'default' : 'outline'}
-                  className="w-full justify-start text-xs"
-                  disabled={status === 'playing'}
-                  onClick={() => setMode('score')}
-                >
-                  Score classique
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={mode === 'speedrun' ? 'default' : 'outline'}
-                  className="w-full justify-start text-xs"
-                  disabled={status === 'playing'}
-                  onClick={() => setMode('speedrun')}
-                >
-                  Speedrun
-                </Button>
-              </div>
-              <Select value={difficulty} onValueChange={(value) => setDifficulty(value as DifficultyKey)}>
-                <SelectTrigger className="h-7 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(DIFFICULTIES) as DifficultyKey[]).map((level) => (
-                    <SelectItem key={level} value={level} className="text-xs">
-                      {DIFFICULTIES[level].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                size="sm"
-                variant={flagMode ? 'default' : 'outline'}
-                className="w-full justify-start text-xs"
-                onClick={() => setFlagMode((current) => !current)}
-              >
-                <Flag className="mr-1 h-3 w-3" />
-                {flagMode ? 'Drapeau' : 'Reveler'}
-              </Button>
-            </div>
-          }
+          controls={topBarControls}
           isFullscreen={isFullscreen}
           onToggleFullscreen={toggleFullscreen}
           showLeaderboard={showLeaderboard}
           onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
-        />
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-full"
+            onClick={() => setShowSettingsDialog(true)}
+            title="Parametres"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+          </Button>
+        </GameTopBar>
+
+        <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Parametres Démineur</DialogTitle>
+            </DialogHeader>
+            {topBarControls}
+          </DialogContent>
+        </Dialog>
 
         <div className="flex w-full max-w-[42rem] justify-between gap-2">
           {isFullscreen && (

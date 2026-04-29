@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { getBusinessRevenueSnapshot } from '../modules/you/service.js';
+import { CONSTRUCTION_STATUS_UNDER_CONSTRUCTION } from '../modules/you/construction.js';
 import { getParisDayKey } from './dailyAura.js';
 import { createNotification } from './notifications.js';
 import { emitSharedBalanceUpdatesForUserIds } from './sharedBalance.js';
@@ -23,8 +24,16 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
     where: {
       typeKey: { not: 'bank' },
       OR: [
-        { lastBusinessRevenueDate: null },
-        { lastBusinessRevenueDate: { not: todayKey } },
+        { constructionProject: { is: null } },
+        { constructionProject: { is: { status: { not: CONSTRUCTION_STATUS_UNDER_CONSTRUCTION } } } },
+      ],
+      AND: [
+        {
+          OR: [
+            { lastBusinessRevenueDate: null },
+            { lastBusinessRevenueDate: { not: todayKey } },
+          ],
+        },
       ],
     },
     select: {

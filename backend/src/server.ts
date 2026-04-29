@@ -79,6 +79,7 @@ import { recomputeOverallClassement, startOverallClassementScheduler, stopOveral
 import { startDailyBankRevenueScheduler, stopDailyBankRevenueScheduler } from './utils/dailyBankRevenue.js';
 import { startDailyBusinessRevenueScheduler, stopDailyBusinessRevenueScheduler } from './utils/dailyBusinessRevenue.js';
 import { startDailyBusinessSalaryScheduler, stopDailyBusinessSalaryScheduler } from './utils/dailyBusinessSalaries.js';
+import { startSupplyProductionScheduler, stopSupplyProductionScheduler } from './utils/supplyProduction.js';
 import { runDailyTax, startDailyTaxScheduler, stopDailyTaxScheduler } from './utils/dailyTax.js';
 import { advanceClanEventsState } from './utils/clanEvents.js';
 import {
@@ -435,6 +436,7 @@ const start = async () => {
     startDailyBankRevenueScheduler(prisma);
     startDailyBusinessRevenueScheduler(prisma);
     startDailyBusinessSalaryScheduler(prisma);
+    startSupplyProductionScheduler(prisma);
     await runDailyTax(prisma);
     startDailyTaxScheduler(prisma);
     await runDailyRacerRewards(prisma);
@@ -486,6 +488,7 @@ process.on('SIGINT', async () => {
   stopDailyBankRevenueScheduler();
   stopDailyBusinessRevenueScheduler();
   stopDailyBusinessSalaryScheduler();
+  stopSupplyProductionScheduler();
   stopDailyTaxScheduler();
   stopDailyRacerRewardsScheduler();
   if (clanEventsTimer) clearInterval(clanEventsTimer);
@@ -502,6 +505,7 @@ process.on('SIGTERM', async () => {
   stopDailyBankRevenueScheduler();
   stopDailyBusinessRevenueScheduler();
   stopDailyBusinessSalaryScheduler();
+  stopSupplyProductionScheduler();
   stopDailyTaxScheduler();
   stopDailyRacerRewardsScheduler();
   if (clanEventsTimer) clearInterval(clanEventsTimer);

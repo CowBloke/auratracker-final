@@ -8,7 +8,7 @@ import path from 'node:path';
 
 const prisma = new PrismaClient();
 const prismaAny = prisma as any;
-const SEED_DATA_VERSION = 4; // Increment this whenever the seed data changes.
+const SEED_DATA_VERSION = 5; // Increment this whenever the seed data changes.
 const SEED_VERSION_MARKER_PATH = path.resolve('prisma', '.seed-version.json');
 
 const writeSeedVersionMarker = async () => {
@@ -251,6 +251,21 @@ async function clearMockData(mockUsernames: string[], existingTables: Set<string
   }
   if (existingTables.has('BusinessTransaction')) {
     await prisma.businessTransaction.deleteMany();
+  }
+  if (existingTables.has('BusinessSupplyContract')) {
+    await prisma.businessSupplyContract.deleteMany();
+  }
+  if (existingTables.has('BusinessSupplyOffer')) {
+    await prisma.businessSupplyOffer.deleteMany();
+  }
+  if (existingTables.has('BusinessResourceInventory')) {
+    await prisma.businessResourceInventory.deleteMany();
+  }
+  if (existingTables.has('BusinessConstructionMaterial')) {
+    await prismaAny.businessConstructionMaterial.deleteMany();
+  }
+  if (existingTables.has('BusinessConstructionProject')) {
+    await prismaAny.businessConstructionProject.deleteMany();
   }
   if (existingTables.has('BusinessStartupProduct')) {
     await prisma.businessStartupProduct.deleteMany();
@@ -1106,6 +1121,122 @@ async function main() {
         isStateOwned: true,
         createdAt: daysAgo(60, 10),
       },
+      ...(process.env.NODE_ENV !== 'production' ? [
+        {
+          ownerId: userByName.get('ava')!.id,
+          name: 'Ferme Basse Plaine',
+          typeKey: 'farm',
+          description: 'Production alimentaire bon marche pour les chantiers locaux.',
+          logoUrl: MOCK_IMAGE.cardE,
+          location: 'Plaine Sud',
+          mapX: 18,
+          mapY: 46,
+          verified: true,
+          hiring: true,
+          startingCapital: 1200,
+          treasuryMoney: 3400,
+          monthlyRevenue: 700,
+          monthlyExpenses: 180,
+          satisfaction: 81,
+          lastBusinessRevenueDate: startOfDay().toISOString(),
+          createdAt: daysAgo(7, 10),
+        },
+        {
+          ownerId: userByName.get('yanis')!.id,
+          name: 'Scierie Yanis',
+          typeKey: 'sawmill',
+          description: 'Bois de chantier a prix bas.',
+          logoUrl: MOCK_IMAGE.cardF,
+          location: 'Foret Est',
+          mapX: 12,
+          mapY: 64,
+          verified: true,
+          hiring: true,
+          startingCapital: 1800,
+          treasuryMoney: 3900,
+          monthlyRevenue: 900,
+          monthlyExpenses: 260,
+          satisfaction: 79,
+          lastBusinessRevenueDate: startOfDay().toISOString(),
+          createdAt: daysAgo(6, 11),
+        },
+        {
+          ownerId: userByName.get('jade')!.id,
+          name: 'Carriere Jade',
+          typeKey: 'quarry',
+          description: 'Pierre et beton disponibles pour les nouveaux commerces.',
+          logoUrl: MOCK_IMAGE.cardG,
+          location: 'Falaises Ouest',
+          mapX: 44,
+          mapY: 30,
+          verified: true,
+          hiring: true,
+          startingCapital: 2200,
+          treasuryMoney: 4300,
+          monthlyRevenue: 980,
+          monthlyExpenses: 310,
+          satisfaction: 80,
+          lastBusinessRevenueDate: startOfDay().toISOString(),
+          createdAt: daysAgo(6, 14),
+        },
+        {
+          ownerId: userByName.get('theo')!.id,
+          name: 'Mine Theo',
+          typeKey: 'iron_mine',
+          description: 'Fer et acier pour les structures avancees.',
+          logoUrl: MOCK_IMAGE.cardA,
+          location: 'Mont Nord',
+          mapX: 66,
+          mapY: 48,
+          verified: true,
+          hiring: true,
+          startingCapital: 2600,
+          treasuryMoney: 5100,
+          monthlyRevenue: 1100,
+          monthlyExpenses: 360,
+          satisfaction: 78,
+          lastBusinessRevenueDate: startOfDay().toISOString(),
+          createdAt: daysAgo(5, 9),
+        },
+        {
+          ownerId: userByName.get('camille')!.id,
+          name: 'Textile Camille',
+          typeKey: 'textile_mill',
+          description: 'Tissu en gros pour boutiques et agences.',
+          logoUrl: MOCK_IMAGE.cardB,
+          location: 'Ateliers Centre',
+          mapX: 58,
+          mapY: 70,
+          verified: true,
+          hiring: true,
+          startingCapital: 1900,
+          treasuryMoney: 3600,
+          monthlyRevenue: 820,
+          monthlyExpenses: 240,
+          satisfaction: 82,
+          lastBusinessRevenueDate: startOfDay().toISOString(),
+          createdAt: daysAgo(5, 15),
+        },
+        {
+          ownerId: admin.id,
+          name: 'Depot Serveur Materiaux',
+          typeKey: 'quarry',
+          description: 'Offres serveur de secours pour tous les materiaux de chantier.',
+          logoUrl: MOCK_IMAGE.market,
+          location: 'Infrastructure serveur',
+          mapX: 4,
+          mapY: 12,
+          verified: true,
+          hiring: false,
+          startingCapital: 0,
+          treasuryMoney: 100000,
+          monthlyRevenue: 0,
+          monthlyExpenses: 0,
+          satisfaction: 100,
+          isStateOwned: true,
+          createdAt: daysAgo(4, 10),
+        },
+      ] : []),
     ],
     select: {
       id: true,
@@ -1114,6 +1245,64 @@ async function main() {
   });
 
   const businessByName = new Map(businesses.map((business) => [business.name, business]));
+
+  if (process.env.NODE_ENV !== 'production') {
+    const supplySeeds: Array<{ name: string; resources: Array<{ resourceType: string; quantity: number; capacity: number; rate: number; price: number }> }> = [
+      { name: 'Ferme Basse Plaine', resources: [{ resourceType: 'FOOD', quantity: 420, capacity: 500, rate: 8, price: 3 }] },
+      { name: 'Scierie Yanis', resources: [{ resourceType: 'WOOD', quantity: 360, capacity: 450, rate: 7, price: 4 }] },
+      { name: 'Carriere Jade', resources: [
+        { resourceType: 'STONE', quantity: 340, capacity: 450, rate: 7, price: 3 },
+        { resourceType: 'CONCRETE', quantity: 240, capacity: 320, rate: 3, price: 6 },
+      ] },
+      { name: 'Mine Theo', resources: [
+        { resourceType: 'IRON', quantity: 280, capacity: 360, rate: 5, price: 5 },
+        { resourceType: 'STEEL', quantity: 180, capacity: 260, rate: 2, price: 8 },
+      ] },
+      { name: 'Textile Camille', resources: [{ resourceType: 'CLOTH', quantity: 260, capacity: 330, rate: 5, price: 4 }] },
+      { name: 'Nova Labs', resources: [{ resourceType: 'DATA', quantity: 220, capacity: 300, rate: 3, price: 5 }] },
+      { name: 'Campus Skills', resources: [{ resourceType: 'PAPER', quantity: 260, capacity: 340, rate: 2, price: 3 }] },
+      { name: 'Burger Pulse', resources: [{ resourceType: 'FOOD', quantity: 180, capacity: 260, rate: 4, price: 4 }] },
+      { name: 'Depot Serveur Materiaux', resources: [
+        { resourceType: 'WOOD', quantity: 1000, capacity: 1200, rate: 0, price: 5 },
+        { resourceType: 'STONE', quantity: 1000, capacity: 1200, rate: 0, price: 4 },
+        { resourceType: 'IRON', quantity: 800, capacity: 1000, rate: 0, price: 6 },
+        { resourceType: 'FOOD', quantity: 1000, capacity: 1200, rate: 0, price: 4 },
+        { resourceType: 'CLOTH', quantity: 700, capacity: 900, rate: 0, price: 5 },
+        { resourceType: 'CONCRETE', quantity: 800, capacity: 1000, rate: 0, price: 7 },
+        { resourceType: 'STEEL', quantity: 600, capacity: 800, rate: 0, price: 9 },
+        { resourceType: 'FUEL', quantity: 500, capacity: 700, rate: 0, price: 7 },
+        { resourceType: 'PAPER', quantity: 700, capacity: 900, rate: 0, price: 4 },
+        { resourceType: 'LUXURY_GOODS', quantity: 400, capacity: 600, rate: 0, price: 10 },
+        { resourceType: 'MEDICINE', quantity: 400, capacity: 600, rate: 0, price: 9 },
+        { resourceType: 'DATA', quantity: 600, capacity: 800, rate: 0, price: 6 },
+        { resourceType: 'CONTRABAND', quantity: 250, capacity: 400, rate: 0, price: 12 },
+      ] },
+    ];
+
+    for (const seed of supplySeeds) {
+      const business = businessByName.get(seed.name);
+      if (!business) continue;
+      await prisma.businessResourceInventory.createMany({
+        data: seed.resources.map((resource) => ({
+          businessId: business.id,
+          resourceType: resource.resourceType,
+          quantity: resource.quantity,
+          capacity: resource.capacity,
+          productionRatePerHour: resource.rate,
+          lastProducedAt: hoursAgo(1),
+        })),
+      });
+      await prisma.businessSupplyOffer.createMany({
+        data: seed.resources.map((resource) => ({
+          businessId: business.id,
+          resourceType: resource.resourceType,
+          unitPrice: resource.price,
+          autoAccept: true,
+          isActive: true,
+        })),
+      });
+    }
+  }
 
   await prisma.businessMember.createMany({
     data: [

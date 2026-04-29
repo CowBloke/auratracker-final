@@ -39,6 +39,12 @@ import {
   type IllegalBusinessCustomData,
   type YouMenuItem,
 } from './helpers.js';
+import {
+  CONSTRUCTION_STATUS_UNDER_CONSTRUCTION,
+  getConstructionRecipe,
+  isConstructionActive,
+  serializeConstructionProject,
+} from './construction.js';
 
 const FORMATION_FILE_UPLOAD_DIR = 'uploads/formation-files';
 const MAX_FORMATION_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -180,6 +186,13 @@ const BUSINESS_BASE_INCLUDE = {
   },
   lawyerRatings: {
     orderBy: { updatedAt: 'desc' as const },
+  },
+  constructionProject: {
+    include: {
+      materials: {
+        orderBy: { resourceType: 'asc' as const },
+      },
+    },
   },
 } as const;
 
@@ -725,6 +738,8 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
   const illegalData = business.typeKey === 'illegal_market'
     ? getIllegalBusinessCustomData(business.customData)
     : null;
+  const constructionProject = serializeConstructionProject(business.constructionProject);
+  const underConstruction = isConstructionActive(business.constructionProject);
 
   return {
     id: business.id,
@@ -745,11 +760,13 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     hiring: business.hiring,
     startingCapital: business.startingCapital,
     treasuryMoney,
-    monthlyRevenue,
-    monthlyExpenses,
+    monthlyRevenue: underConstruction ? 0 : monthlyRevenue,
+    monthlyExpenses: underConstruction ? 0 : monthlyExpenses,
     satisfaction: business.satisfaction,
+    constructionProject,
+    underConstruction,
     memberCount: business.members.length,
-    actions: type?.actions ?? [],
+    actions: underConstruction ? [] : (type?.actions ?? []),
     members: business.members.map((member: any) => ({
       id: member.id,
       role: member.role,
@@ -1452,6 +1469,7 @@ export async function createBusiness(userId: string, input: { name: string; type
 
   const creationCost = callerIsAdmin ? 0 : type.creationFee;
   const startingCapital = type.key === 'bank' ? 0 : input.capital;
+  const constructionRecipe = callerIsAdmin || type.isStateOwned ? null : getConstructionRecipe(type.key);
   let unlockedBusinessLevel = 0;
 
   if (!callerIsAdmin) {
@@ -1519,6 +1537,23 @@ export async function createBusiness(userId: string, input: { name: string; type
           : null,
       },
     });
+
+    if (constructionRecipe) {
+      await tx.businessConstructionProject.create({
+        data: {
+          businessId: createdBusiness.id,
+          typeKey: type.key,
+          recipeKey: constructionRecipe.key,
+          materials: {
+            create: constructionRecipe.materials.map((material) => ({
+              resourceType: material.resourceType,
+              requiredQuantity: material.quantity,
+              deliveredQuantity: 0,
+            })),
+          },
+        },
+      });
+    }
 
     if (type.key === 'startup') {
       await Promise.all(
@@ -3531,6 +3566,9 @@ export async function executeBusinessAction(userId: string, businessId: string, 
 
   if (!business) {
     throw new Error('BUSINESS_NOT_FOUND');
+  }
+  if (isConstructionActive(business.constructionProject)) {
+    throw new Error('BUSINESS_UNDER_CONSTRUCTION');
   }
 
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);

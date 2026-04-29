@@ -460,6 +460,8 @@ export interface YouBusiness {
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
+  constructionProject?: YouConstructionProject | null;
+  underConstruction?: boolean;
   memberCount: number;
   level: number;
   actions: Array<'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item'>;
@@ -646,6 +648,158 @@ export interface YouState {
   myShareMarketListings: YouShareMarketListing[];
 }
 
+export type YouSupplyResourceType =
+  | 'WOOD' | 'STONE' | 'IRON' | 'FOOD' | 'CLOTH'
+  | 'CONCRETE' | 'STEEL' | 'FUEL' | 'PAPER'
+  | 'LUXURY_GOODS' | 'MEDICINE' | 'DATA' | 'CONTRABAND';
+
+export interface YouSupplyInventory {
+  id: string;
+  businessId: string;
+  resourceType: YouSupplyResourceType;
+  quantity: number;
+  capacity: number;
+  productionRatePerHour: number;
+  lastProducedAt: string | null;
+}
+
+export interface YouSupplyOffer {
+  id: string;
+  businessId: string;
+  resourceType: YouSupplyResourceType;
+  unitPrice: number;
+  autoAccept: boolean;
+  isActive: boolean;
+  availableQuantity?: number;
+  business?: {
+    id: string;
+    name: string;
+    typeKey: string;
+    ownerId: string;
+    owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  };
+}
+
+export interface YouSupplyContract {
+  id: string;
+  supplierBusinessId: string;
+  buyerBusinessId: string;
+  constructionProjectId: string | null;
+  requesterId: string;
+  resourceType: YouSupplyResourceType;
+  totalQuantity: number;
+  deliveredQuantity: number;
+  unitPrice: number;
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'REJECTED' | 'CANCELLED' | string;
+  createdAt: string | null;
+  acceptedAt: string | null;
+  completedAt: string | null;
+  rejectedAt: string | null;
+  supplier: {
+    id: string;
+    name: string;
+    typeKey: string;
+    ownerId: string;
+    owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  } | null;
+  buyer: {
+    id: string;
+    name: string;
+    typeKey: string;
+    ownerId: string;
+    owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  } | null;
+  requester: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+}
+
+export interface YouConstructionMaterial {
+  id: string;
+  projectId: string;
+  resourceType: YouSupplyResourceType;
+  requiredQuantity: number;
+  deliveredQuantity: number;
+}
+
+export interface YouConstructionProject {
+  id: string;
+  businessId: string;
+  typeKey: string;
+  recipeKey: string;
+  status: 'UNDER_CONSTRUCTION' | 'COMPLETED' | string;
+  startedAt: string | null;
+  completedAt: string | null;
+  materials: YouConstructionMaterial[];
+  progress: {
+    required: number;
+    delivered: number;
+    percent: number;
+    complete: boolean;
+  };
+}
+
+export interface YouSupplyLoanNode {
+  id: string;
+  businessId: string;
+  kind: 'loan';
+  title: string;
+  status: string;
+  amount: number;
+  totalOwed: number;
+  repaidAmount: number;
+  interestRate: number;
+  collateralAura: number;
+  collateralAuraHeld: number;
+  termDays: number;
+  createdAt: string | null;
+  decidedAt: string | null;
+  borrower: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+}
+
+export interface YouSupplyCaseNode {
+  id: string;
+  businessId: string;
+  kind: 'case';
+  title: string;
+  status: string;
+  side: 'PLAINTIFF' | 'DEFENDANT' | string;
+  verdict: string | null;
+  sentencing: string | null;
+  createdAt: string | null;
+  plaintif: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+  defendant: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+  lawyer: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+  plainte: { id: string; title: string; description: string } | null;
+}
+
+export interface YouSupplyBusiness {
+  id: string;
+  name: string;
+  typeKey: string;
+  ownerId: string;
+  owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  treasuryMoney: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+  satisfaction: number;
+  constructionProject: YouConstructionProject | null;
+  underConstruction: boolean;
+  inventories: YouSupplyInventory[];
+  offers: YouSupplyOffer[];
+  loans: YouSupplyLoanNode[];
+  cases: YouSupplyCaseNode[];
+  formationProducts: Array<{ id: string; title: string; status: string; price: number; createdAt: string | null }>;
+  startupProducts: Array<{ id: string; slotIndex: number; name: string; deployedLevel: number; activeResearchLevel: number | null; researchEndsAt: string | null }>;
+  bankAccounts: Array<{ id: string; accountType: string; balance: number; user: Omit<YouPlayer, 'alreadyInRelationship'>; createdAt: string | null }>;
+  transferHistory: YouBusinessTransferHistoryEntry[];
+  members: YouBusinessMember[];
+}
+
+export interface YouSupplyState {
+  businesses: YouSupplyBusiness[];
+  marketOffers: YouSupplyOffer[];
+  contracts: YouSupplyContract[];
+}
+
 export interface YouTemporaryEffect {
   key: 'YOU_ADBLOCK' | 'GLOBAL_ADBLOCK' | string;
   label: string;
@@ -656,6 +810,15 @@ export interface YouTemporaryEffect {
 
 export const youApi = {
   getState: () => api.get<YouState>('/you/state'),
+  getSupplyState: () => api.get<YouSupplyState>('/you/supply/state'),
+  upsertSupplyOffer: (businessId: string, data: { resourceType: YouSupplyResourceType; unitPrice: number; autoAccept: boolean; isActive?: boolean }) =>
+    api.put<{ offer: YouSupplyOffer }>(`/you/businesses/${businessId}/supply-offers`, data),
+  requestSupplyContract: (businessId: string, data: { offerId: string; quantity: number; constructionProjectId?: string | null }) =>
+    api.post<{ contract: YouSupplyContract }>(`/you/businesses/${businessId}/supply-contracts`, data),
+  respondToSupplyContract: (contractId: string, decision: 'accept' | 'reject') =>
+    api.post<{ contract: YouSupplyContract }>(`/you/supply-contracts/${contractId}/respond`, { decision }),
+  cancelSupplyContract: (contractId: string) =>
+    api.delete<{ contract: YouSupplyContract }>(`/you/supply-contracts/${contractId}`),
   getTemporaryEffects: () => api.get<{ effects: YouTemporaryEffect[] }>('/you/temporary-effects'),
   getSkills: () => api.get<{ skills: YouSkill[] }>('/you/skills'),
   trainSkill: (skillKey: string) =>
