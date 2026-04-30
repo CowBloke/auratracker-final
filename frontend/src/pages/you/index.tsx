@@ -78,7 +78,7 @@ export default function You() {
   if (currentTab === 'supply') {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <SupplyTab />
+        <SupplyTab businessTypes={data.businessTypes} unlockedBusinessLevel={data.unlockedBusinessLevel ?? 0} ownedBusinesses={data.ownedBusinesses} players={data.players} userId={user.id} onReload={() => loadState()} />
       </div>
     );
   }

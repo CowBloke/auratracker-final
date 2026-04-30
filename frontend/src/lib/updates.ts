@@ -46,6 +46,32 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-04-30-supply-ux',
+    date: '2026-04-30',
+    title: 'Supply — canvas dépôts, chantier et navigation',
+    summary: 'Les inventaires deviennent des dépôts sur la droite avec chaîne vers les offres, animation rideau à la fin du chantier, bouton Gérer, et nœuds terminés qui disparaissent.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-04-30-supply-ux-1', text: '**Supply · Créer une entreprise** — Un bouton "+" dans la barre latérale et dans l\'écran vide pour créer une entreprise directement depuis l\'onglet Supply.' },
+          { id: '2026-04-30-supply-ux-5', text: '**Supply · Animation fin de chantier** — Quand la construction se termine, deux rideaux s\'écartent pour révéler le nom, le type et la description de l\'entreprise.' },
+          { id: '2026-04-30-supply-ux-6', text: '**Supply · Dépôts** — Les inventaires apparaissent comme "Dépôts" sur la droite du bâtiment. Les offres et contrats sortants se chaînent depuis leur dépôt, plus loin à droite.' },
+          { id: '2026-04-30-supply-ux-7', text: '**Supply · Gérer** — Un bouton "Gérer" dans la barre de titre du canvas renvoie directement au tableau de bord de l\'entreprise.' },
+        ],
+      },
+      {
+        category: 'BUG_FIX',
+        items: [
+          { id: '2026-04-30-supply-ux-2', text: '**Supply · Chantier — sens des contrats** — Les contrats entrants s\'affichent à gauche du bâtiment. Le contrat de livraison est fusionné dans le nœud matériau (plus de doublon).' },
+          { id: '2026-04-30-supply-ux-3', text: '**Supply · Badges chantier** — Les badges BUILD et "Chantier X%" utilisent un fond ambre uni, le texte est lisible.' },
+          { id: '2026-04-30-supply-ux-4', text: '**Supply · Détails & source** — Le panneau de détail et la modale de source affichent les infos ligne par ligne avec icônes et couleurs.' },
+          { id: '2026-04-30-supply-ux-8', text: '**Supply · Contrats terminés** — Les contrats COMPLETED/REJECTED/CANCELLED ne s\'affichent plus sur le canvas après la fin du chantier.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-27-map-pins-restored',
     date: '2026-04-27',
     title: 'Carte — pins restaurés',
