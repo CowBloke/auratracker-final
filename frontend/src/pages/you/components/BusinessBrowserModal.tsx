@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Activity, ArrowLeftRight, Building2, CalendarDays, ChevronLeft, ChevronRight,
   GraduationCap, HandCoins, Landmark, LayoutGrid,
-  List as ListIcon, MapPin, Search, ShieldAlert, ShoppingBasket, ShoppingCart,
-  Star, Store, TrendingUp, UserCheck, Users, Utensils, X,
+  List as ListIcon, MapPin, Search, ShoppingCart,
+  Star, TrendingUp, UserCheck, Users, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
