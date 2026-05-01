@@ -214,7 +214,7 @@ function BuildingInspector({
 }
 
 export default function ClashVillage() {
-  const { user, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
   const { confirm } = useAppDialog();
   const hideGameLeaderboards = useHideGameLeaderboards();
   const [activeTab, setActiveTab] = useState<TabId>('village');

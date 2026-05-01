@@ -114,15 +114,6 @@ export default function Tetris() {
     };
   }, [user, refreshUser, fetchLeaderboard, fetchStats]);
 
-  const restartSession = () => {
-    lastSubmittedRef.current = '';
-    setRewards(null);
-    setIsNewHighScore(false);
-    setLastScore(null);
-    setIsPaused(false);
-    setSessionKey((prev) => prev + 1);
-  };
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'r' || e.key === 'R') {

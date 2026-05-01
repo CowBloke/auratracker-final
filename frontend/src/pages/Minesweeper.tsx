@@ -640,7 +640,7 @@ return (
                           ? 'bg-red-500 text-white'
                           : cell.adjacentMines === 0
                             ? 'bg-slate-200 text-transparent'
-                            : CELL_COLORS[cell.adjacentMines as keyof typeof CELL_COLORS] || 'bg-slate-300'
+                            : NUMBER_COLORS[cell.adjacentMines as keyof typeof NUMBER_COLORS] || 'bg-slate-300'
                         : cell.isFlagged
                           ? 'bg-yellow-100'
                           : isExplodedMine

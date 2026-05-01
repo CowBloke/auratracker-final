@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSocketBase } from '../contexts/SocketContext';
 import { gamesApi, marketplaceApi } from '../services/api';
 import { resolveImageUrl } from '@/lib/images';
-import { Play, RotateCcw, Eye, EyeOff, Users, SlidersHorizontal } from 'lucide-react';
+import { Play, RotateCcw, EyeOff, Users, SlidersHorizontal } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -265,7 +265,7 @@ export default function DoodleJump() {
   const skinImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const [isMortSubite, setIsMortSubite] = useState(false);
   const [isMultiplayer, setIsMultiplayer] = useState(true);
-  const [spectatorCount, setSpectatorCount] = useState(0);
+  const [, setSpectatorCount] = useState(0);
   const [spectatingHost, setSpectatingHost] = useState<{ hostUserId: string; hostUsername: string } | null>(null);
   const [spectateMessages, setSpectateMessages] = useState<SpectateFloatingMessage[]>([]);
   const spectateMessageIdRef = useRef(0);
@@ -276,7 +276,6 @@ export default function DoodleJump() {
   const spectateHostUserIdFromRoute = ((location.state as { spectateHostUserId?: string } | null)?.spectateHostUserId) ?? null;
   const selectedGameType: DoodleGameType = isMortSubite ? 'doodle_jump_mort_subite' : 'doodle_jump';
   const selectedMode: DoodleGameMode = isMortSubite ? 'mort_subite' : 'classic';
-  const displayMode: DoodleGameMode = started ? activeModeRef.current : selectedMode;
 
   useEffect(() => {
     const img = new Image();
