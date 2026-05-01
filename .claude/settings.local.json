@@ -138,7 +138,11 @@
       "Bash(tar -xf /tmp/design_out.tar -C /tmp/)",
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx|py|json\\)$\")",
       "Bash(grep -E \"\\\\.\\(ts|tsx|js\\)$\")",
-      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
+      "Bash(rtk ls *)",
+      "Bash(rtk grep *)",
+      "Bash(rtk tsc *)",
+      "Bash(rtk read *)"
     ]
   },
   "outputStyle": "default"

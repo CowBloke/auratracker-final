@@ -1,7 +1,8 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import {
-  Brain, Building2, ShieldAlert, Star, TrendingUp, Users,
-  Wallet, MapPin, AlertTriangle, ChevronDown, ChevronRight, Plus,
+  Brain, Building2,
+  ShieldAlert, Star,
+  TrendingUp, Users, Wallet, MapPin, AlertTriangle, ChevronRight, Plus,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -9,12 +10,19 @@ import { cn } from '@/lib/utils';
 import { type YouState, type YouSkill, type YouJobOffer, type YouBusiness, youApi } from '@/services/api';
 import { CreateBusinessModal, ManageBusinessModal } from './components/modals';
 import { BUSINESS_ICON_MAP } from './constants';
-import { getBusinessPinColor, TYPE_EMOJI } from './mapConstants';
+import { getBusinessPinColor } from './mapConstants';
 import { isYouNotification, withRouteError } from './utils';
 import { FeedCard } from './components/ui';
 import { type FeedItem } from './types';
 import { CarteTab, type CarteTabHandle } from './tabs/CarteTab';
+import { BusinessBrowserModal } from './components/BusinessBrowserModal';
 import './dashboard.css';
+
+const CONSTRUCTION_STRIPES = 'repeating-linear-gradient(135deg, #facc15 0 8px, #111827 8px 16px)';
+
+function formatCompactMoney(amount: number): string {
+  return `${Math.round(amount).toLocaleString('fr-FR')} €`;
+}
 
 // ---- Skill color maps ----
 
@@ -128,35 +136,6 @@ function OwnedBizTile({ b, onManage, onStartPlacing }: {
   );
 }
 
-// ---- Other business row ----
-
-function OtherBizRow({ b, onSelect, isSelected }: {
-  b: YouState['exploreBusinesses'][number];
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  const emoji = TYPE_EMOJI[b.typeKey] ?? '📍';
-  const color = getBusinessPinColor(b.typeKey);
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors',
-        isSelected ? 'bg-muted/30' : 'hover:bg-muted/20',
-      )}
-    >
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sm" style={{ background: `${color}22` }}>
-        {emoji}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[11px] font-medium">{b.name}</div>
-        <div className="truncate text-[10px] text-muted-foreground">@{b.owner.username} · {b.type?.label ?? b.typeKey}</div>
-      </div>
-      <div className="shrink-0 text-[10px] tabular-nums text-muted-foreground">{b.treasuryMoney.toLocaleString('fr-FR')}€</div>
-    </button>
-  );
-}
 
 // ---- Skill cell ----
 
@@ -183,26 +162,21 @@ function SkillCell({ skill }: { skill: YouSkill }) {
 
 // ---- Left Rail ----
 
-function DashLeftRail({ data, onManageBiz, onStartPlacing, onCreateBusiness }: {
+function DashLeftRail({ data, onManageBiz, onStartPlacing, onCreateBusiness, onOpenBrowser }: {
   data: YouState;
   onManageBiz: (id: string) => void;
   onStartPlacing: (id: string) => void;
   onCreateBusiness: () => void;
+  onOpenBrowser: () => void;
 }) {
-  const [showAllOthers, setShowAllOthers] = useState(false);
   const owned = data.ownedBusinesses;
-  const others = useMemo(() => {
-    const ownedIds = new Set(owned.map((b) => b.id));
-    return [...data.exploreBusinesses, ...data.memberBusinesses, ...data.shareholderBusinesses]
-      .filter((b) => !ownedIds.has(b.id))
-      .reduce<typeof data.exploreBusinesses>((acc, b) => {
-        if (!acc.some((x) => x.id === b.id)) acc.push(b);
-        return acc;
-      }, []);
-  }, [data, owned]);
-
-  const previewOtherIdx = useMemo(() => (others.length > 0 ? Math.floor(Math.random() * others.length) : 0), [others.length]);
   const canCreate = owned.length < data.businessSlots;
+  const allCount = useMemo(() => {
+    const ids = new Set<string>();
+    [data.ownedBusinesses, data.exploreBusinesses, data.memberBusinesses, data.shareholderBusinesses]
+      .forEach((g) => g.forEach((b) => ids.add(b.id)));
+    return ids.size;
+  }, [data]);
 
   const totalTreasury = owned.reduce((s, b) => s + b.treasuryMoney, 0);
   const totalNet = owned.reduce((s, b) => s + b.monthlyRevenue - b.monthlyExpenses, 0);
@@ -257,37 +231,21 @@ function DashLeftRail({ data, onManageBiz, onStartPlacing, onCreateBusiness }: {
         </button>
       )}
 
-      {/* Other businesses — one preview + expand */}
-      {others.length > 0 && (
-        <div className="mt-4">
-          <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-            <span>Autres businesses</span>
-            <span className="rounded-full bg-muted/50 px-2 py-0.5 font-medium text-muted-foreground">{others.length}</span>
-          </div>
-          <div className="rounded-xl border border-border/40 bg-card">
-            <OtherBizRow
-              key={others[previewOtherIdx]?.id}
-              b={others[previewOtherIdx]}
-              isSelected={false}
-              onSelect={() => {}}
-            />
-            {showAllOthers && others.filter((_, i) => i !== previewOtherIdx).slice(0, 19).map((b) => (
-              <OtherBizRow key={b.id} b={b} isSelected={false} onSelect={() => {}} />
-            ))}
-          </div>
-          {others.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setShowAllOthers((v) => !v)}
-              className="mt-1.5 flex w-full items-center justify-center gap-1.5 text-[10px] font-medium text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-            >
-              {showAllOthers
-                ? <><ChevronDown className="h-3 w-3" /> Réduire</>
-                : <><Plus className="h-3 w-3" /> {others.length - 1} autre{others.length > 2 ? 's' : ''}</>}
-            </button>
-          )}
+      {/* Browse all businesses button */}
+      <button
+        type="button"
+        onClick={onOpenBrowser}
+        className="mt-4 flex w-full items-center gap-3 rounded-xl border border-border/50 bg-card px-3 py-3 text-left transition-all hover:border-border hover:bg-muted/20 active:scale-[0.98]"
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Building2 className="h-4 w-4" />
         </div>
-      )}
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-semibold text-foreground">Entreprises</p>
+          <p className="text-[10px] text-muted-foreground">{allCount} disponibles</p>
+        </div>
+        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+      </button>
 
       {/* Skills */}
       <div className="mt-5">
@@ -481,10 +439,18 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
   const carteRef = useRef<CarteTabHandle>(null);
   const [managedBizId, setManagedBizId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [showBrowserModal, setShowBrowserModal] = useState(false);
 
   const managedBusiness = managedBizId
     ? (data.ownedBusinesses.find((b) => b.id === managedBizId) ?? null)
     : null;
+
+  const allBusinesses = useMemo(() => {
+    const map = new Map<string, YouBusiness>();
+    [data.ownedBusinesses, data.exploreBusinesses, data.memberBusinesses, data.shareholderBusinesses]
+      .forEach((g) => g.forEach((b) => map.set(b.id, b)));
+    return Array.from(map.values());
+  }, [data]);
 
   function handleStartPlacing(id: string) {
     carteRef.current?.startPlacing(id);
@@ -498,6 +464,7 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
           onManageBiz={setManagedBizId}
           onStartPlacing={handleStartPlacing}
           onCreateBusiness={() => setCreateOpen(true)}
+          onOpenBrowser={() => setShowBrowserModal(true)}
         />
         <div className="you-dash-map">
           <CarteTab
@@ -512,6 +479,14 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
         <DashRightRail data={data} userId={userId} onReload={onReload} />
         <DashTicker data={data} />
       </div>
+
+      <BusinessBrowserModal
+        open={showBrowserModal}
+        onClose={() => setShowBrowserModal(false)}
+        businesses={allBusinesses}
+        userId={userId}
+        onReload={onReload}
+      />
 
       <ManageBusinessModal
         open={Boolean(managedBusiness)}
@@ -529,6 +504,7 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
         unlockedBusinessLevel={data.unlockedBusinessLevel ?? 0}
         onCreated={onReload}
       />
+
     </>
   );
 }
