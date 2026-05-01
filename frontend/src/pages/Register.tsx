@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { authApi } from '../services/api';
-import { Loader2, CheckCircle2, Send } from 'lucide-react';
+import { Loader2, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -70,7 +70,91 @@ const registerSchema = z.object({
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
+interface OnboardingStep {
+  id: string;
+  type: 'profile' | 'education' | 'credentials' | 'motivation';
+  title: string;
+  description: string;
+  fields: (keyof RegisterForm)[];
+}
+
+const STEPS: OnboardingStep[] = [
+  {
+    id: 'profile',
+    type: 'profile',
+    title: 'Profil',
+    description: 'Commençons par ton nom et pseudo',
+    fields: ['firstName', 'username'],
+  },
+  {
+    id: 'education',
+    type: 'education',
+    title: 'Études',
+    description: 'Dis-nous où tu étudies',
+    fields: ['schoolChoice', 'school', 'schoolLevel', 'classLetter'],
+  },
+  {
+    id: 'credentials',
+    type: 'credentials',
+    title: 'Compte',
+    description: 'Email et mot de passe',
+    fields: ['email', 'password', 'confirmPassword'],
+  },
+  {
+    id: 'motivation',
+    type: 'motivation',
+    title: 'Finalisation',
+    description: 'Aide-nous à comprendre tes objectifs',
+    fields: ['motivationMessage', 'referralCode'],
+  },
+];
+
+// Progress step indicator component
+function StepIndicator({ steps, currentStep }: { steps: OnboardingStep[]; currentStep: number }) {
+  return (
+    <div className="space-y-4">
+      {/* Progress bar */}
+      <div className="flex gap-1">
+        {steps.map((_, index) => (
+          <div
+            key={index}
+            className={cn(
+              'h-1 flex-1 rounded-full transition-colors',
+              index <= currentStep ? 'bg-foreground' : 'bg-border'
+            )}
+          />
+        ))}
+      </div>
+      
+      {/* Step labels */}
+      <div className="flex items-center justify-between gap-2">
+        {steps.map((step, index) => (
+          <div
+            key={step.id}
+            className={cn(
+              'flex flex-col items-center gap-1 flex-1 text-center',
+              index <= currentStep && 'opacity-100',
+              index > currentStep && 'opacity-50'
+            )}
+          >
+            <div
+              className={cn(
+                'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors',
+                index < currentStep ? 'bg-foreground text-background' : index === currentStep ? 'bg-foreground text-background' : 'bg-border text-muted-foreground'
+              )}
+            >
+              {index < currentStep ? '✓' : index + 1}
+            </div>
+            <span className={cn(TYPOGRAPHY.XS, 'hidden sm:inline')}>{step.title}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Register() {
+  const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -94,7 +178,42 @@ export default function Register() {
       motivationMessage: '',
       referralCode: searchParams.get('ref') || '',
     },
+    mode: 'onChange',
   });
+
+  const steps = useMemo(() => {
+    if (referralEnabled) return STEPS;
+    // Remove referralCode from motivation step if referral is disabled
+    return STEPS.map(step =>
+      step.id === 'motivation'
+        ? { ...step, fields: ['motivationMessage'] as (keyof RegisterForm)[] }
+        : step
+    );
+  }, [referralEnabled]);
+
+  const currentStepData = steps[currentStep];
+
+  const handleNextStep = async () => {
+    const fieldsToValidate = currentStepData.fields;
+    const isValid = await form.trigger(fieldsToValidate);
+    
+    if (isValid) {
+      setError('');
+      if (currentStep < steps.length - 1) {
+        setCurrentStep(currentStep + 1);
+      } else {
+        // Submit form
+        await onSubmit(form.getValues());
+      }
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+      setError('');
+    }
+  };
 
   const onSubmit = async (data: RegisterForm) => {
     try {
@@ -149,98 +268,34 @@ export default function Register() {
   return (
     <CenteredShell widthClassName="max-w-sm">
       <Card>
-        <CardHeader className="space-y-2 text-center">
-          <CardTitle className={TYPOGRAPHY.H1}>{t('register_title')}</CardTitle>
-          <CardDescription>{t('register_description')}</CardDescription>
+        <CardHeader className="space-y-4 text-center pb-6">
+          <StepIndicator steps={steps} currentStep={currentStep} />
+          
+          <div className="space-y-2">
+            <CardTitle className={TYPOGRAPHY.H2}>{currentStepData.title}</CardTitle>
+            <CardDescription>{currentStepData.description}</CardDescription>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+
+        <CardContent className="space-y-6">
           {error && (
             <p className={cn(TYPOGRAPHY.SMALL, 'text-destructive text-center')}>{error}</p>
           )}
 
-          <p className={cn(TYPOGRAPHY.XS, 'rounded border border-border/30 p-3 text-center text-muted-foreground')}>
-            {t('register_review_notice')}
-          </p>
-
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="firstName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder={t('register_first_name_placeholder')}
-                        className="h-12 border-border/50 text-center"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        placeholder={t('register_username_placeholder')}
-                        className="h-12 border-border/50 text-center"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
-
-              <div className="space-y-3">
-                <FormField
-                  control={form.control}
-                  name="schoolChoice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            form.setValue('school', value === 'SAINT_DOMINIQUE' ? 'Saint-Dominique' : '', { shouldValidate: true });
-                          }}
-                          value={field.value}
-                        >
-                          <SelectTrigger className="h-12 border-border/50 text-center">
-                            <SelectValue placeholder={t('register_school_placeholder')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SCHOOL_OPTIONS.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage className="text-center" />
-                    </FormItem>
-                  )}
-                />
-
-                {form.watch('schoolChoice') === 'OTHER' && (
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+              {/* Step 0: Profile */}
+              {currentStep === 0 && (
+                <>
                   <FormField
                     control={form.control}
-                    name="school"
+                    name="firstName"
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
                           <Input
                             type="text"
-                            placeholder={t('register_school_other_placeholder')}
+                            placeholder={t('register_first_name_placeholder')}
                             className="h-12 border-border/50 text-center"
                             {...field}
                           />
@@ -249,169 +304,270 @@ export default function Register() {
                       </FormItem>
                     )}
                   />
-                )}
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <FormField
-                  control={form.control}
-                  name="schoolLevel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-12 border-border/50">
-                            <SelectValue placeholder={t('register_school_level_placeholder')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SCHOOL_LEVELS.map((level) => (
-                              <SelectItem key={level.value} value={level.value}>
-                                {level.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage className="text-center" />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="classLetter"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-12 border-border/50">
-                            <SelectValue placeholder={t('register_class_letter_placeholder')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CLASS_LETTERS.map((letter) => (
-                              <SelectItem key={letter} value={letter}>
-                                {letter}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage className="text-center" />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder={t('register_email_placeholder')}
-                        className="h-12 border-border/50 text-center"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
-
-              {!maintenanceLoading && referralEnabled && (
-                <FormField
-                  control={form.control}
-                  name="referralCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input
-                          type="text"
-                            placeholder={t('register_referral_placeholder')}
-                          className="h-12 border-border/50 text-center uppercase tracking-[0.24em]"
-                          {...field}
-                          value={field.value || ''}
-                          onChange={(event) => field.onChange(event.target.value.toUpperCase())}
-                        />
-                      </FormControl>
-                      <FormMessage className="text-center" />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            placeholder={t('register_username_placeholder')}
+                            className="h-12 border-border/50 text-center"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
 
-              <FormField
-                control={form.control}
-                name="motivationMessage"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Textarea
-                        placeholder={t('register_motivation_placeholder')}
-                        className="min-h-28 border-border/50"
-                        maxLength={500}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
+              {/* Step 1: Education */}
+              {currentStep === 1 && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="schoolChoice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              form.setValue('school', value === 'SAINT_DOMINIQUE' ? 'Saint-Dominique' : '', { shouldValidate: true });
+                            }}
+                            value={field.value}
+                          >
+                            <SelectTrigger className="h-12 border-border/50 text-center">
+                              <SelectValue placeholder={t('register_school_placeholder')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {SCHOOL_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder={t('register_password_placeholder')}
-                        className="h-12 border-border/50 text-center"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
+                  {form.watch('schoolChoice') === 'OTHER' && (
+                    <FormField
+                      control={form.control}
+                      name="school"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder={t('register_school_other_placeholder')}
+                              className="h-12 border-border/50 text-center"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-center" />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder={t('register_confirm_password_placeholder')}
-                        className="h-12 border-border/50 text-center"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-center" />
-                  </FormItem>
-                )}
-              />
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name="schoolLevel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className="h-12 border-border/50">
+                                <SelectValue placeholder={t('register_school_level_placeholder')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SCHOOL_LEVELS.map((level) => (
+                                  <SelectItem key={level.value} value={level.value}>
+                                    {level.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage className="text-center" />
+                        </FormItem>
+                      )}
+                    />
 
-              <Button
-                type="submit"
-                disabled={loading}
-                className="h-12 w-full"
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    {t('register_send_request')}
-                  </>
-                )}
-              </Button>
+                    <FormField
+                      control={form.control}
+                      name="classLetter"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger className="h-12 border-border/50">
+                                <SelectValue placeholder={t('register_class_letter_placeholder')} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CLASS_LETTERS.map((letter) => (
+                                  <SelectItem key={letter} value={letter}>
+                                    {letter}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage className="text-center" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Step 2: Credentials */}
+              {currentStep === 2 && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder={t('register_email_placeholder')}
+                            className="h-12 border-border/50 text-center"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder={t('register_password_placeholder')}
+                            className="h-12 border-border/50 text-center"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder={t('register_confirm_password_placeholder')}
+                            className="h-12 border-border/50 text-center"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              {/* Step 3: Motivation */}
+              {currentStep === 3 && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="motivationMessage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Textarea
+                            placeholder={t('register_motivation_placeholder')}
+                            className="min-h-28 border-border/50"
+                            maxLength={500}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-center" />
+                      </FormItem>
+                    )}
+                  />
+
+                  {!maintenanceLoading && referralEnabled && (
+                    <FormField
+                      control={form.control}
+                      name="referralCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder={t('register_referral_placeholder')}
+                              className="h-12 border-border/50 text-center uppercase tracking-[0.24em]"
+                              {...field}
+                              value={field.value || ''}
+                              onChange={(event) => field.onChange(event.target.value.toUpperCase())}
+                            />
+                          </FormControl>
+                          <FormMessage className="text-center" />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </>
+              )}
             </form>
           </Form>
+
+          {/* Navigation Buttons */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={handlePrevStep}
+              disabled={currentStep === 0 || loading}
+              className="h-12 flex-1"
+            >
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Précédent
+            </Button>
+
+            <Button
+              onClick={handleNextStep}
+              disabled={loading}
+              className="h-12 flex-1"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : currentStep === steps.length - 1 ? (
+                <>
+                  Envoyer
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  Suivant
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </div>
 
           <p className={cn(TYPOGRAPHY.SMALL, 'text-center text-muted-foreground')}>
             {t('register_have_account')}{' '}

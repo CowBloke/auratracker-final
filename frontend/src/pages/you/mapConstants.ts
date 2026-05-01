@@ -55,6 +55,37 @@ export const TYPE_COLORS: Record<string, string> = {
   illegal_market: '#d946ef',
   law_firm: '#64748b',
   supreme_court: '#f97316',
+  farm: '#4ade80',
+  sawmill: '#fbbf24',
+  quarry: '#94a3b8',
+  iron_mine: '#71717a',
+  fuel_refinery: '#fb923c',
+  textile_mill: '#fb7185',
+  medecins: '#2dd4bf',
+  youtube: '#f87171',
+};
+
+export const TYPE_LABELS_FR: Record<string, string> = {
+  startup: 'Startup',
+  bank: 'Banque',
+  agency: 'Agence',
+  formation: 'Centre de formation',
+  transfer: 'Service de transfert',
+  lemonade: 'Stand de limonade',
+  farm: 'Ferme',
+  sawmill: 'Scierie',
+  quarry: 'Carrière',
+  iron_mine: 'Mine de fer',
+  fuel_refinery: 'Raffinerie',
+  textile_mill: 'Usine textile',
+  epicerie: 'Épicerie',
+  restaurant: 'Restaurant',
+  coffee_shop: 'Café',
+  youtube: 'Chaîne YouTube',
+  medecins: 'Cabinet médical',
+  illegal_market: 'Marché illégal',
+  supreme_court: 'Cour suprême',
+  law_firm: 'Cabinet juridique',
 };
 
 const FALLBACK_COLORS = ['#f59e0b', '#22c55e', '#38bdf8', '#c084fc', '#818cf8', '#f472b6', '#fb7185'];

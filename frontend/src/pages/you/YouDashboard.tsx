@@ -2,7 +2,7 @@ import { useMemo, useRef, useEffect, useState } from 'react';
 import {
   Brain, Building2,
   ShieldAlert, Star,
-  TrendingUp, Users, Wallet, MapPin, AlertTriangle, ChevronRight, Plus,
+  TrendingUp, Users, Wallet, MapPin, AlertTriangle, ChevronRight,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -17,12 +17,6 @@ import { type FeedItem } from './types';
 import { CarteTab, type CarteTabHandle } from './tabs/CarteTab';
 import { BusinessBrowserModal } from './components/BusinessBrowserModal';
 import './dashboard.css';
-
-const CONSTRUCTION_STRIPES = 'repeating-linear-gradient(135deg, #facc15 0 8px, #111827 8px 16px)';
-
-function formatCompactMoney(amount: number): string {
-  return `${Math.round(amount).toLocaleString('fr-FR')} €`;
-}
 
 // ---- Skill color maps ----
 
@@ -162,15 +156,13 @@ function SkillCell({ skill }: { skill: YouSkill }) {
 
 // ---- Left Rail ----
 
-function DashLeftRail({ data, onManageBiz, onStartPlacing, onCreateBusiness, onOpenBrowser }: {
+function DashLeftRail({ data, onManageBiz, onStartPlacing, onOpenBrowser }: {
   data: YouState;
   onManageBiz: (id: string) => void;
   onStartPlacing: (id: string) => void;
-  onCreateBusiness: () => void;
   onOpenBrowser: () => void;
 }) {
   const owned = data.ownedBusinesses;
-  const canCreate = owned.length < data.businessSlots;
   const allCount = useMemo(() => {
     const ids = new Set<string>();
     [data.ownedBusinesses, data.exploreBusinesses, data.memberBusinesses, data.shareholderBusinesses]
@@ -218,19 +210,6 @@ function DashLeftRail({ data, onManageBiz, onStartPlacing, onCreateBusiness, onO
           </div>
         )}
       </div>
-
-      {/* Create button */}
-      {canCreate && (
-        <button
-          type="button"
-          onClick={onCreateBusiness}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/50 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-border hover:text-foreground"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Créer un business
-        </button>
-      )}
-
       {/* Browse all businesses button */}
       <button
         type="button"
@@ -463,7 +442,6 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
           data={data}
           onManageBiz={setManagedBizId}
           onStartPlacing={handleStartPlacing}
-          onCreateBusiness={() => setCreateOpen(true)}
           onOpenBrowser={() => setShowBrowserModal(true)}
         />
         <div className="you-dash-map">
@@ -485,6 +463,7 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
         onClose={() => setShowBrowserModal(false)}
         businesses={allBusinesses}
         userId={userId}
+        players={data.players}
         onReload={onReload}
       />
 

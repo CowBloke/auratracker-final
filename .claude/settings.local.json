@@ -142,7 +142,8 @@
       "Bash(rtk ls *)",
       "Bash(rtk grep *)",
       "Bash(rtk tsc *)",
-      "Bash(rtk read *)"
+      "Bash(rtk read *)",
+      "Bash(rtk find *)"
     ]
   },
   "outputStyle": "default"
