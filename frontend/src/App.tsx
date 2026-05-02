@@ -299,8 +299,8 @@ function App() {
         <Route path="braquage-legal" element={<Navigate to="/loto" replace />} />
         <Route path="you" element={<You />} />
         <Route path="forum" element={<Forum />} />
-        <Route path="forum/r/:subredditName" element={<Forum />} />
-        <Route path="forum/r/:subredditName/post/:postId" element={<ForumPost />} />
+        <Route path="forum/c/:subredditName" element={<Forum />} />
+        <Route path="forum/c/:subredditName/post/:postId" element={<ForumPost />} />
       </Route>
     </Routes>
   );

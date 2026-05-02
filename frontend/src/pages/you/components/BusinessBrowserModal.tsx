@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Activity, ArrowLeftRight, Building2, CalendarDays, ChevronLeft, ChevronRight,
   GraduationCap, HandCoins, Landmark, LayoutGrid,
-  List as ListIcon, MapPin, Search, ShoppingCart,
-  Star, TrendingUp, UserCheck, Users, X,
+  List as ListIcon, MapPin, MessageSquare, Search, ShoppingCart,
+  Sparkles, Star, TrendingUp, UserCheck, Users, X, Scale, Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,10 +13,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { type YouBusiness, type YouPlayer, youApi } from '@/services/api';
+import { type YouBusiness, type YouPlayer, youApi, justiceApi } from '@/services/api';
 import {
   BankAccountModal, BuyoutOfferModal, FormationCatalogModal,
-  InvestModal, LoanModal, ShareholderProposalModal, TransferBusinessModal,
+  InvestModal, LoanModal, ShareholderProposalModal, TeamRosterModal, TransferBusinessModal,
 } from './modals';
 import { FieldRow, ModalWrap } from './ui';
 import { getBusinessPinColor, TYPE_LABELS_FR } from '../mapConstants';
@@ -72,7 +73,7 @@ function getBizLabel(b: YouBusiness) {
 
 type SortMode = 'default' | 'treasury_desc' | 'date_desc' | 'date_asc' | 'rating_desc' | 'name_asc';
 type ViewMode = 'grid' | 'list';
-type ActionType = 'bank' | 'loan' | 'invest' | 'formation' | 'buyout' | 'shareholder' | 'transfer' | 'apply' | 'purchase';
+type ActionType = 'bank' | 'loan' | 'invest' | 'formation' | 'buyout' | 'shareholder' | 'transfer' | 'apply' | 'purchase' | 'plainte';
 
 const SORT_OPTIONS: Array<{ key: SortMode; label: string; Icon: React.ComponentType<{ className?: string }> }> = [
   { key: 'default',       label: 'Par type',  Icon: LayoutGrid   },
@@ -219,6 +220,9 @@ function GridCard({ business, onClick }: { business: YouBusiness; onClick: () =>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-semibold leading-tight text-foreground">{business.name}</p>
             <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{getBizLabel(business)}</p>
+            {business.isStateOwned && (
+              <span className="mt-1 inline-flex items-center rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">État</span>
+            )}
             <p className="truncate text-[10px] text-muted-foreground/70">@{business.owner.username}</p>
           </div>
           <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-muted-foreground" />
@@ -290,6 +294,7 @@ function ListRow({ business, onClick }: { business: YouBusiness; onClick: () => 
           @{business.owner.username}
           <span className="mx-1 text-muted-foreground/40">·</span>
           {getBizLabel(business)}
+          {business.isStateOwned ? <span className="ml-1 rounded-full bg-muted/50 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">État</span> : null}
         </p>
       </div>
 
@@ -321,25 +326,186 @@ function ListRow({ business, onClick }: { business: YouBusiness; onClick: () => 
   );
 }
 
-// ── Type section header ───────────────────────────────────────────────────────
+// ── Shareholders modal ────────────────────────────────────────────────────────
 
-function TypeSectionHeader({ typeKey, label, count }: { typeKey: string; label: string; count: number }) {
-  const color = getBusinessPinColor(typeKey);
-  const BizIcon = getBizIcon(typeKey);
+function ShareholdersModal({ open, onClose, business, userId }: {
+  open: boolean; onClose: () => void; business: YouBusiness | null; userId: string;
+}) {
+  if (!business) return null;
   return (
-    <div className="col-span-full flex items-center gap-2.5 pb-2 pt-5 first:pt-0">
-      <div
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-        style={{ backgroundColor: color + '25', border: `1px solid ${color}50` }}
-      >
-        <BizIcon className="h-3.5 w-3.5" style={{ color }} />
+    <ModalWrap
+      open={open}
+      onClose={onClose}
+      title={`Capital · ${business.name}`}
+      desc={`${business.shareholders.length + 1} actionnaire(s)${business.viewerSharePercent > 0 ? ` · ta part : ${business.viewerSharePercent.toFixed(2)}%` : ''}`}
+    >
+      <div className="space-y-1.5">
+        <div className="rounded-lg border border-amber-400/15 bg-muted/10 px-3 py-2.5">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">{business.owner.username}{business.ownerId === userId ? ' · toi' : ''}</span>
+            <span className="font-bold text-amber-300">{business.ownerSharePercent.toFixed(2)}%</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/40">
+            <div className="h-full rounded-full bg-amber-400/70" style={{ width: `${Math.max(0, Math.min(100, business.ownerSharePercent))}%` }} />
+          </div>
+        </div>
+        {business.shareholders.length === 0 ? (
+          <p className="py-3 text-center text-sm text-muted-foreground">Aucun actionnaire externe.</p>
+        ) : business.shareholders.map((s) => (
+          <div key={s.id} className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">{s.user.username}{s.user.id === userId ? ' · toi' : ''}</span>
+              <span className="font-bold">{s.sharePercent.toFixed(2)}%</span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/40">
+              <div className="h-full rounded-full bg-amber-300/70" style={{ width: `${Math.max(0, Math.min(100, s.sharePercent))}%` }} />
+            </div>
+          </div>
+        ))}
       </div>
-      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color }}>
-        {label}
-      </span>
-      <span className="rounded-full bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{count}</span>
-      <div className="ml-1 flex-1 border-t border-border/30" />
-    </div>
+    </ModalWrap>
+  );
+}
+
+// --- File Plainte Modal (copied/adapted from ExploreTab) ---
+
+function FilePlainteModal({
+  business,
+  userId,
+  players,
+  open,
+  onClose,
+  onSubmitted,
+}: {
+  business: YouBusiness | null;
+  userId: string;
+  players: YouPlayer[];
+  open: boolean;
+  onClose: () => void;
+  onSubmitted: () => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [evidence, setEvidence] = useState('');
+  const [defendantId, setDefendantId] = useState('');
+  const [defendantSearch, setDefendantSearch] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const filteredPlayers = useMemo(
+    () => players.filter((p) => p.id !== userId && p.username.toLowerCase().includes(defendantSearch.toLowerCase())).slice(0, 10),
+    [players, userId, defendantSearch],
+  );
+
+  const selectedPlayer = players.find((p) => p.id === defendantId);
+
+  const submit = async () => {
+    if (!business) return;
+    setSubmitting(true);
+    try {
+      await justiceApi.filePlainte({
+        courtId: business.id,
+        title: title.trim(),
+        description: description.trim(),
+        evidence: evidence.trim() || undefined,
+        defendantId: defendantId || undefined,
+      });
+      toast.success('Plainte déposée. Les juges vont l\'examiner.');
+      setTitle(''); setDescription(''); setEvidence(''); setDefendantId(''); setDefendantSearch('');
+      onSubmitted();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error ?? 'Impossible de déposer la plainte.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Déposer une plainte" desc={business ? `Cour suprême · ${business.name}` : 'Cour suprême'}>
+      {business ? (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Scale className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+              <span>Déposer une plainte contre un joueur ou un business.</span>
+            </div>
+          </div>
+
+          <FieldRow label="Titre de la plainte *">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={100}
+              placeholder="Ex: Arnaque lors d'un échange de monnaie"
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground/50">{title.length}/100</p>
+          </FieldRow>
+
+          <FieldRow label="Description des faits *">
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={2000}
+              rows={4}
+              placeholder="Décrivez les faits en détail : que s'est-il passé, quand, et pourquoi c'est une violation des règles..."
+            />
+            <p className="mt-1 text-[10px] text-muted-foreground/50">{description.length}/2000</p>
+          </FieldRow>
+
+          <FieldRow label="Coupable (optionnel)">
+            {selectedPlayer ? (
+              <div className="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/10 px-3 py-2">
+                <span className="flex-1 text-sm font-medium">{selectedPlayer.username}</span>
+                <button type="button" className="text-xs text-muted-foreground hover:text-foreground" onClick={() => { setDefendantId(''); setDefendantSearch(''); }}>✕</button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  value={defendantSearch}
+                  onChange={(e) => setDefendantSearch(e.target.value)}
+                  placeholder="Rechercher un joueur..."
+                />
+                {defendantSearch.length > 0 && filteredPlayers.length > 0 && (
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-border/40 bg-background">
+                    {filteredPlayers.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => { setDefendantId(p.id); setDefendantSearch(''); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/20 first:rounded-t-lg last:rounded-b-lg"
+                      >
+                        <span>{p.username}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </FieldRow>
+
+          <FieldRow label="Preuves (optionnel)">
+            <Textarea
+              value={evidence}
+              onChange={(e) => setEvidence(e.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder="Captures d'écran, liens, témoignages..."
+            />
+          </FieldRow>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button>
+            <Button
+              size="sm"
+              onClick={() => void submit()}
+              disabled={submitting || title.trim().length < 5 || description.trim().length < 20}
+            >
+              {submitting ? 'Dépôt...' : 'Déposer'}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </ModalWrap>
   );
 }
 
@@ -351,12 +517,18 @@ function DetailPanel({
   onBack,
   onAction,
   onSelectOnMap,
+  onOpenSupport,
+  onShowTeam,
+  onShowShareholders,
 }: {
   business: YouBusiness;
   userId: string;
   onBack: () => void;
   onAction: (id: string, action: ActionType) => void;
   onSelectOnMap?: (b: YouBusiness) => void;
+  onOpenSupport?: () => void;
+  onShowTeam?: () => void;
+  onShowShareholders?: () => void;
 }) {
   const pinColor = getBusinessPinColor(business.typeKey);
   const BizIcon = getBizIcon(business.typeKey);
@@ -364,138 +536,237 @@ function DetailPanel({
   const isOwned = business.ownerId === userId;
   const underConstruction = Boolean(business.underConstruction && business.constructionProject);
   const net = business.monthlyRevenue - business.monthlyExpenses;
-
   const isEmployee = business.members.some((m) => m.user.id === userId);
   const hasPendingApplication = business.pendingInvitations.some((inv) => inv.employee.id === userId);
   const canApply = !isOwned && !isEmployee && !hasPendingApplication && business.hiring;
-  const canPurchase = !isOwned && PURCHASE_TYPES.includes(business.typeKey);
-
-  const primaryAction = (() => {
-    const b = business;
-    if (b.typeKey === 'bank')      return { label: 'Gérer mes comptes',       sub: `Taux d'emprunt : ${b.loanInterestRate ?? 4}%`,                              key: 'bank' as const,     Icon: Landmark,      tone: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' };
-    if (b.typeKey === 'transfer')  return { label: "Envoyer de l'argent",     sub: `Frais de service : ${b.transferFeeRate ?? 2}%`,                             key: 'transfer' as const, Icon: ArrowLeftRight, tone: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400' };
-    if (b.typeKey === 'formation') return { label: 'Accéder aux formations',  sub: `${b.formationProducts?.length ?? 0} formation(s) disponible(s)`,           key: 'formation' as const, Icon: GraduationCap, tone: 'border-amber-500/20 bg-amber-500/10 text-amber-400' };
-    return { label: 'Investir', sub: 'Le rendement dépend du niveau de risque choisi.', key: 'invest' as const, Icon: TrendingUp, tone: 'border-sky-500/20 bg-sky-500/10 text-sky-400' };
-  })();
-
-  const stats = [
-    { label: 'Trésorerie',   value: fmt(business.treasuryMoney),              bg: pinColor + '18', border: pinColor + '35', textStyle: { color: pinColor } },
-    { label: 'Rev. mensuel', value: fmt(business.monthlyRevenue),              bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.25)', textStyle: { color: '#4ade80' } },
-    { label: 'Net /mois',    value: (net >= 0 ? '+' : '') + fmt(net),         bg: net >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)', border: net >= 0 ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)', textStyle: { color: net >= 0 ? '#4ade80' : '#f87171' } },
-    { label: 'Membres',      value: String(business.memberCount),             bg: 'rgba(139,92,246,0.10)', border: 'rgba(139,92,246,0.25)', textStyle: { color: '#a78bfa' } },
-  ];
 
   return (
     <>
       <DialogTitle className="sr-only">{business.name}</DialogTitle>
       {underConstruction && <div className="h-2 shrink-0" style={{ background: CONSTRUCTION_STRIPES }} />}
 
-      {/* Header bar */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-border/50 px-4 py-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
+      {/* Nav bar */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-border/30 px-4 py-2.5">
+        <button type="button" onClick={onBack}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <p className="truncate text-[12px] text-muted-foreground">{getBizLabel(business)}</p>
-        {business.verified && (
-          <span className="ml-auto shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">✓ Vérifié</span>
-        )}
+        <p className="truncate text-[11px] text-muted-foreground">{getBizLabel(business)}</p>
       </div>
 
-      {/* Hero section */}
-      <div className="shrink-0 flex flex-col items-center gap-3 px-6 py-6" style={{ background: `linear-gradient(to bottom, ${pinColor}08, transparent)` }}>
+      {/* Hero: icon + info left, action pills right */}
+      <div
+        className="shrink-0 flex items-start gap-4 px-4 pb-4 pt-3"
+        style={{ background: `linear-gradient(to bottom, ${pinColor}0a, transparent)` }}
+      >
+        {/* Icon */}
         <div
-          className="flex h-16 w-16 items-center justify-center rounded-xl shadow-md"
+          className="mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl shadow-md"
           style={{ backgroundColor: pinColor + '22', border: `2px solid ${pinColor}50` }}
         >
-          <BizIcon className="h-8 w-8" style={{ color: pinColor }} />
+          <BizIcon className="h-7 w-7" style={{ color: pinColor }} />
         </div>
-        <div className="text-center">
-          <p className="text-[18px] font-bold leading-tight text-foreground">{business.name}</p>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">@{business.owner.username}</p>
+
+        {/* Info */}
+        <div className="min-w-0 flex-1">
+          <p className="text-[17px] font-bold leading-tight text-foreground">{business.name}</p>
+          <p className="text-[12px] text-muted-foreground">@{business.owner.username}</p>
+          {business.description && (
+            <p className="mt-1.5 line-clamp-2 text-[11px] italic text-muted-foreground/70">{business.description}</p>
+          )}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {business.avgRating != null && business.ratingCount > 0 && (
+              <div className="flex items-center gap-1 rounded-lg border border-amber-400/30 bg-amber-400/15 px-2.5 py-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} className={cn('h-3.5 w-3.5',
+                    i <= Math.floor(business.avgRating!) ? 'fill-amber-400 text-amber-400'
+                    : i === Math.ceil(business.avgRating!) && business.avgRating! % 1 >= 0.3 ? 'fill-amber-400/40 text-amber-400'
+                    : 'text-amber-400/20',
+                  )} />
+                ))}
+                <span className="ml-1 text-[13px] font-bold text-amber-400">{business.avgRating.toFixed(1)}</span>
+                <span className="text-[10px] text-amber-400/50 ml-0.5">/ 5</span>
+              </div>
+            )}
+            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold',
+              business.satisfaction >= 70 ? 'bg-emerald-500/15 text-emerald-400'
+              : business.satisfaction >= 40 ? 'bg-amber-500/15 text-amber-400'
+              : 'bg-red-500/15 text-red-400',
+            )}>
+              <Activity className="mr-1 h-2.5 w-2.5" />{business.satisfaction}%
+            </span>
+            {underConstruction && (
+              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500">
+                🏗 {business.constructionProject?.progress.percent ?? 0}%
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap justify-center gap-1.5">
-          {underConstruction && (
-            <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-amber-500">
-              🏗 {business.constructionProject?.progress.percent ?? 0}%
-            </span>
+
+        {/* Right: action pills */}
+        <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
+          {onShowTeam && (
+            <button type="button" onClick={onShowTeam}
+              className="flex items-center gap-1.5 rounded-lg border border-violet-400/25 bg-violet-400/10 px-2.5 py-1.5 text-[11px] font-medium text-violet-400 transition-colors hover:bg-violet-400/20">
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              <span>{business.memberCount} membres</span>
+            </button>
           )}
-          {business.avgRating != null && business.ratingCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-2.5 py-0.5 text-[11px] font-bold text-amber-400">
-              <Star className="h-3 w-3 fill-amber-400/40" />{business.avgRating.toFixed(1)}
-              <span className="font-normal text-amber-400/60 ml-0.5">({business.ratingCount})</span>
-            </span>
+          {!isOwned && business.supportEnabled && onOpenSupport && (
+            <button type="button" onClick={onOpenSupport}
+              className="flex items-center gap-1.5 rounded-lg border border-teal-500/25 bg-teal-500/10 px-2.5 py-1.5 text-[11px] font-medium text-teal-400 transition-colors hover:bg-teal-500/20">
+              <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+              <span>Support</span>
+            </button>
           )}
-          <span className={cn(
-            'inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold',
-            business.satisfaction >= 70 ? 'bg-emerald-500/15 text-emerald-400'
-            : business.satisfaction >= 40 ? 'bg-amber-500/15 text-amber-400'
-            : 'bg-red-500/15 text-red-400',
-          )}>
-            <Activity className="mr-1 h-2.5 w-2.5" />{business.satisfaction}%
-          </span>
+          {canApply ? (
+            <button type="button" onClick={() => onAction(business.id, 'apply')}
+              className="flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/15 px-2.5 py-1.5 text-[11px] font-semibold text-violet-300 transition-colors hover:bg-violet-500/25">
+              <UserCheck className="h-3.5 w-3.5 shrink-0" />
+              <span>Postuler</span>
+            </button>
+          ) : !isOwned && hasPendingApplication ? (
+            <span className="rounded-lg border border-violet-400/20 bg-violet-400/5 px-2.5 py-1.5 text-[10px] text-muted-foreground">
+              Candidature en attente
+            </span>
+          ) : null}
         </div>
       </div>
 
       {/* Body */}
       <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-5 px-5 pb-6">
-          {business.description && (
-            <p className="border-l-2 pl-3 text-sm italic text-muted-foreground" style={{ borderColor: pinColor + '60' }}>
-              "{business.description}"
-            </p>
-          )}
+        <div className="space-y-4 px-5 pb-6">
 
-          {/* Stats as color-coded pastilles */}
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            {stats.map(({ label, value, bg, border, textStyle }) => (
-              <div
-                key={label}
-                className="flex flex-col items-center rounded-xl px-3 py-3"
-                style={{ backgroundColor: bg, border: `1px solid ${border}` }}
-              >
-                <p className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</p>
-                <p className="mt-0.5 text-[13px] font-bold tabular-nums" style={textStyle}>{value}</p>
+          {/* Stats */}
+          <div className="space-y-2">
+            {/* Trésorerie — always green on black */}
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-4">
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-emerald-500">Trésorerie</p>
+              <p className="mt-1 text-[22px] font-bold tabular-nums leading-tight text-emerald-400">{fmt(business.treasuryMoney)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-emerald-500/8 border border-emerald-500/20 px-3 py-3">
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Rev. mensuel</p>
+                <p className="mt-1 text-[13px] font-bold tabular-nums text-emerald-400">{fmt(business.monthlyRevenue)}</p>
               </div>
-            ))}
+              <div className={cn('rounded-xl border px-3 py-3', net >= 0 ? 'bg-emerald-500/8 border-emerald-500/20' : 'bg-red-500/8 border-red-500/20')}>
+                <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Net / mois</p>
+                <p className={cn('mt-1 text-[13px] font-bold tabular-nums', net >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                  {net >= 0 ? '+' : ''}{fmt(net)}
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Actions */}
+          {/* Livret épargne */}
+          {business.typeKey === 'bank' && business.livretEpargneUnlocked && (
+            <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2 text-xs text-amber-300">
+              <Sparkles className="h-3.5 w-3.5 shrink-0" />
+              <span>Livret épargne disponible</span>
+            </div>
+          )}
+
+          {/* Startup products */}
+          {business.typeKey === 'startup' && business.startupProducts.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Produits</p>
+              {business.startupProducts.map((product) => (
+                <div key={product.id} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[12px] font-medium">{product.name}</p>
+                      <p className="text-[10px] text-muted-foreground">Niv. {product.deployedLevel}/10</p>
+                    </div>
+                    <p className="text-[11px] font-semibold text-sky-300">+{product.currentRevenue.toLocaleString('fr-FR')} €</p>
+                  </div>
+                  {(product.isResearchActive || product.canDeploy) && (
+                    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted/40">
+                      <div className="h-full rounded-full bg-sky-400" style={{ width: `${product.progressPercent}%` }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Primary actions */}
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Services disponibles</p>
 
-            {/* Primary action */}
-            <button
-              type="button"
-              disabled={primaryAction.key === 'formation' && (business.formationProducts?.length ?? 0) === 0}
-              onClick={() => onAction(business.id, primaryAction.key)}
-              className={cn('flex w-full items-center gap-3 rounded-lg border px-4 py-4 text-left transition-all disabled:opacity-40 hover:opacity-90 active:scale-[0.99]', primaryAction.tone)}
-            >
-              <primaryAction.Icon className="h-5 w-5 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold">{primaryAction.label}</p>
-                <p className="text-[11px] opacity-70">{primaryAction.sub}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-            </button>
+            {(() => {
+              if (business.typeKey === 'bank') return (
+                <button type="button" onClick={() => onAction(business.id, 'bank')}
+                  className="flex w-full items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-4 text-left text-emerald-400 transition-all hover:opacity-90 active:scale-[0.99]">
+                  <Landmark className="h-5 w-5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">Gérer mes comptes</p>
+                    <p className="text-[11px] opacity-70">Taux d'emprunt : {business.loanInterestRate ?? 4}%</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              );
+              if (business.typeKey === 'transfer') return (
+                <button type="button" onClick={() => onAction(business.id, 'transfer')}
+                  className="flex w-full items-center gap-3 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-4 py-4 text-left text-cyan-400 transition-all hover:opacity-90 active:scale-[0.99]">
+                  <ArrowLeftRight className="h-5 w-5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">Envoyer de l'argent</p>
+                    <p className="text-[11px] opacity-70">Frais de service : {business.transferFeeRate ?? 2}%</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              );
+              if (business.typeKey === 'formation') return (
+                <button type="button"
+                  disabled={(business.formationProducts?.length ?? 0) === 0}
+                  onClick={() => onAction(business.id, 'formation')}
+                  className="flex w-full items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-left text-amber-400 transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
+                  <GraduationCap className="h-5 w-5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">Accéder aux formations</p>
+                    <p className="text-[11px] opacity-70">{business.formationProducts?.length ?? 0} formation(s) disponible(s)</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              );
+              if (PURCHASE_TYPES.includes(business.typeKey)) return (
+                <button type="button"
+                  disabled={isOwned}
+                  onClick={() => { if (!isOwned) onAction(business.id, 'purchase'); }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-4 text-left text-yellow-400 transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
+                  <ShoppingCart className="h-5 w-5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">{isOwned ? 'Achat indisponible' : 'Acheter'}</p>
+                    <p className="text-[11px] opacity-70">{isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Parcourir les articles disponibles'}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              );
+              if (business.typeKey === 'supreme_court') return (
+                <button type="button" onClick={() => onAction(business.id, 'plainte')}
+                  className="flex w-full items-center gap-3 rounded-lg border border-indigo-500/20 bg-indigo-500/10 px-4 py-4 text-left text-indigo-400 transition-all hover:opacity-90 active:scale-[0.99]">
+                  <Scale className="h-5 w-5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">Déposer une plainte</p>
+                    <p className="text-[11px] opacity-70">Soumettre une plainte formelle aux juges</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              );
+              if (!business.isStateOwned) return (
+                <button type="button" onClick={() => onAction(business.id, 'invest')}
+                  className="flex w-full items-center gap-3 rounded-lg border border-sky-500/20 bg-sky-500/10 px-4 py-4 text-left text-sky-400 transition-all hover:opacity-90 active:scale-[0.99]">
+                  <TrendingUp className="h-5 w-5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">Investir</p>
+                    <p className="text-[11px] opacity-70">Le rendement dépend du niveau de risque choisi.</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
+                </button>
+              );
+              return null;
+            })()}
 
-            {/* Purchase action for shop-type businesses */}
-            {canPurchase && (
-              <button type="button" onClick={() => onAction(business.id, 'purchase')}
-                className="flex w-full items-center gap-3 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-4 text-left text-yellow-400 transition-all hover:opacity-90 active:scale-[0.99]">
-                <ShoppingCart className="h-5 w-5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold">Acheter</p>
-                  <p className="text-[11px] opacity-70">Parcourir les articles disponibles</p>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-              </button>
-            )}
-
-            {/* Bank loan */}
             {business.typeKey === 'bank' && (
               <button type="button" onClick={() => onAction(business.id, 'loan')}
                 className="flex w-full items-center gap-3 rounded-lg border border-violet-500/20 bg-violet-500/10 px-4 py-4 text-left text-violet-400 transition-all hover:opacity-90 active:scale-[0.99]">
@@ -507,51 +778,55 @@ function DetailPanel({
                 <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
               </button>
             )}
-
-            {/* Shareholder */}
-            {business.isShared && !isOwned && (
-              <button type="button" onClick={() => onAction(business.id, 'shareholder')}
-                className="flex w-full items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-left text-amber-400 transition-all hover:opacity-90 active:scale-[0.99]">
-                <TrendingUp className="h-5 w-5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold">{business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}</p>
-                  <p className="text-[11px] opacity-70">Proposer un pourcentage et une somme au propriétaire</p>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-              </button>
-            )}
-
-            {/* Apply */}
-            {canApply && (
-              <button type="button" onClick={() => onAction(business.id, 'apply')}
-                className="flex w-full items-center gap-3 rounded-lg border border-violet-500/20 bg-violet-500/10 px-4 py-4 text-left text-violet-400 transition-all hover:opacity-90 active:scale-[0.99]">
-                <UserCheck className="h-5 w-5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold">Postuler</p>
-                  <p className="text-[11px] opacity-70">Envoyer une proposition de rôle et de salaire</p>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-              </button>
-            )}
-            {!isOwned && hasPendingApplication && (
-              <div className="rounded-lg border border-violet-400/20 bg-violet-400/5 px-4 py-3 text-xs text-muted-foreground">
-                Une candidature est déjà en attente pour toi dans ce business.
-              </div>
-            )}
-
-            {/* Buyout */}
-            {!isOwned && !business.isStateOwned && !['supreme_court', 'law_firm'].includes(business.typeKey) && (
-              <button type="button" onClick={() => onAction(business.id, 'buyout')}
-                className="flex w-full items-center gap-3 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-4 text-left text-rose-400 transition-all hover:opacity-90 active:scale-[0.99]">
-                <HandCoins className="h-5 w-5 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold">Faire une offre de rachat</p>
-                  <p className="text-[11px] opacity-70">Le montant est bloqué jusqu'à la décision du propriétaire</p>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-              </button>
-            )}
           </div>
+
+          {/* Capital partagé — compact button */}
+          {business.isShared && onShowShareholders && (
+            <button type="button" onClick={onShowShareholders}
+              className="flex w-full items-center gap-3 rounded-lg border border-amber-400/20 bg-amber-400/8 px-4 py-3 text-left text-amber-300 transition-all hover:opacity-90">
+              <TrendingUp className="h-4 w-4 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] font-semibold">Capital partagé</p>
+                <p className="text-[11px] opacity-70">{business.shareholders.length + 1} actionnaire(s){business.viewerSharePercent > 0 ? ` · ta part : ${business.viewerSharePercent.toFixed(2)}%` : ''}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
+            </button>
+          )}
+
+          {/* Recent investments */}
+          {business.recentInvestments.length > 0 && (
+            <div className="rounded-xl border border-sky-400/20 bg-sky-400/8 px-4 py-3 space-y-2">
+              <p className="text-xs font-semibold text-sky-300">{business.recentInvestments.length} investissement(s) reçu(s)</p>
+              <div className="space-y-1.5">
+                {business.recentInvestments.map((inv) => {
+                  const riskColor = inv.riskLevel === 'low' ? 'text-emerald-400' : inv.riskLevel === 'high' ? 'text-rose-400' : 'text-amber-400';
+                  return (
+                    <div key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-sky-400/15 bg-background/50 px-3 py-2 text-xs">
+                      <span className="font-medium">{inv.investor.username}</span>
+                      <span className={cn('font-semibold', riskColor)}>{fmt(inv.amount)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Always-available actions — subdued, at the bottom */}
+          {!business.isStateOwned && !isOwned && (
+            <div className="space-y-1.5 border-t border-border/20 pt-3">
+              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">Autres options</p>
+              <button type="button" onClick={() => onAction(business.id, 'shareholder')}
+                className="flex w-full items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-3 py-2 text-left text-muted-foreground transition-all hover:bg-muted/15 hover:text-foreground">
+                <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+                <span className="text-[12px]">{business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}</span>
+              </button>
+              <button type="button" onClick={() => onAction(business.id, 'buyout')}
+                className="flex w-full items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-3 py-2 text-left text-muted-foreground transition-all hover:bg-muted/15 hover:text-rose-400">
+                <HandCoins className="h-3.5 w-3.5 shrink-0" />
+                <span className="text-[12px]">Faire une offre de rachat</span>
+              </button>
+            </div>
+          )}
 
           {/* Map link */}
           {isPlaced && onSelectOnMap && (
@@ -584,11 +859,14 @@ export function BusinessBrowserModal({
   onReload: () => Promise<void>;
   onSelectOnMap?: (business: YouBusiness) => void;
 }) {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [typeFilters, setTypeFilters] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [detailBusinessId, setDetailBusinessId] = useState<string | null>(null);
+  const [teamRosterBusinessId, setTeamRosterBusinessId] = useState<string | null>(null);
+  const [shareholdersViewBusinessId, setShareholdersViewBusinessId] = useState<string | null>(null);
   const [bankBusinessId, setBankBusinessId] = useState<string | null>(null);
   const [loanBusinessId, setLoanBusinessId] = useState<string | null>(null);
   const [investBusinessId, setInvestBusinessId] = useState<string | null>(null);
@@ -598,6 +876,7 @@ export function BusinessBrowserModal({
   const [transferBusinessId, setTransferBusinessId] = useState<string | null>(null);
   const [applyBusinessId, setApplyBusinessId] = useState<string | null>(null);
   const [purchaseBusinessId, setPurchaseBusinessId] = useState<string | null>(null);
+  const [plainteBusinessId, setPlainteBusinessId] = useState<string | null>(null);
 
   function handleClose() {
     onClose();
@@ -607,19 +886,16 @@ export function BusinessBrowserModal({
   }
 
   function handleAction(businessId: string, action: ActionType) {
-    onClose();
-    setDetailBusinessId(null);
-    setTimeout(() => {
-      if (action === 'bank')         setBankBusinessId(businessId);
-      else if (action === 'loan')    setLoanBusinessId(businessId);
-      else if (action === 'invest')  setInvestBusinessId(businessId);
-      else if (action === 'formation') setFormationBusinessId(businessId);
-      else if (action === 'buyout')  setBuyoutBusinessId(businessId);
-      else if (action === 'shareholder') setShareholderBusinessId(businessId);
-      else if (action === 'transfer') setTransferBusinessId(businessId);
-      else if (action === 'apply')   setApplyBusinessId(businessId);
-      else if (action === 'purchase') setPurchaseBusinessId(businessId);
-    }, 150);
+    if (action === 'bank')              setBankBusinessId(businessId);
+    else if (action === 'loan')         setLoanBusinessId(businessId);
+    else if (action === 'invest')       setInvestBusinessId(businessId);
+    else if (action === 'formation')    setFormationBusinessId(businessId);
+    else if (action === 'buyout')       setBuyoutBusinessId(businessId);
+    else if (action === 'shareholder')  setShareholderBusinessId(businessId);
+    else if (action === 'transfer')     setTransferBusinessId(businessId);
+    else if (action === 'apply')        setApplyBusinessId(businessId);
+    else if (action === 'purchase')     setPurchaseBusinessId(businessId);
+    else if (action === 'plainte')      setPlainteBusinessId(businessId);
   }
 
   const typeChips = useMemo(() => {
@@ -646,7 +922,16 @@ export function BusinessBrowserModal({
     return result;
   }, [businesses, search, typeSet]);
 
-  const sorted = useMemo(() => sortBusinesses(filtered, sortMode), [filtered, sortMode]);
+  const showStateInstitutions = businesses.some((b) => b.isStateOwned) && typeFilters.length === 0 && !search;
+
+  const contentBusinesses = useMemo(
+    () => (businesses.some((business) => business.isStateOwned) && typeFilters.length === 0 && !search
+      ? filtered.filter((business) => !business.isStateOwned)
+      : filtered),
+    [businesses, filtered, search, typeFilters],
+  );
+
+  const sorted = useMemo(() => sortBusinesses(contentBusinesses, sortMode), [contentBusinesses, sortMode]);
 
   const grouped = useMemo(() => {
     if (sortMode !== 'default') return null;
@@ -664,7 +949,11 @@ export function BusinessBrowserModal({
     return Array.from(groups.values()).sort((a, b) => b.businesses.length - a.businesses.length);
   }, [sorted, sortMode]);
 
+  const plainteBusiness = plainteBusinessId ? businesses.find((b) => b.id === plainteBusinessId) ?? null : null;
+
   const detailBusiness = detailBusinessId ? businesses.find((b) => b.id === detailBusinessId) ?? null : null;
+  const teamRosterBusiness = teamRosterBusinessId ? businesses.find((b) => b.id === teamRosterBusinessId) ?? null : null;
+  const shareholdersViewBusiness = shareholdersViewBusinessId ? businesses.find((b) => b.id === shareholdersViewBusinessId) ?? null : null;
   const bankBusiness = bankBusinessId ? businesses.find((b) => b.id === bankBusinessId) ?? null : null;
   const loanBusiness = loanBusinessId ? businesses.find((b) => b.id === loanBusinessId) ?? null : null;
   const investBusiness = investBusinessId ? businesses.find((b) => b.id === investBusinessId) ?? null : null;
@@ -686,6 +975,20 @@ export function BusinessBrowserModal({
               onBack={() => setDetailBusinessId(null)}
               onAction={handleAction}
               onSelectOnMap={onSelectOnMap ? (b) => { onSelectOnMap(b); handleClose(); } : undefined}
+              onShowTeam={() => setTeamRosterBusinessId(detailBusiness.id)}
+              onShowShareholders={() => setShareholdersViewBusinessId(detailBusiness.id)}
+              onOpenSupport={
+                !detailBusiness.isStateOwned && detailBusiness.supportEnabled
+                  ? () => {
+                      void youApi.openBusinessSupportConversation(detailBusiness.id).then((res) => {
+                        handleClose();
+                        navigate(`/messages?conversation=${res.data.result.conversationId}`);
+                      }).catch(() => {
+                        toast({ title: 'Impossible d\'ouvrir le support.', variant: 'destructive' });
+                      });
+                    }
+                  : undefined
+              }
             />
           ) : (
             <>
@@ -794,55 +1097,88 @@ export function BusinessBrowserModal({
 
               {/* ── Content ── */}
               <ScrollArea className="min-h-0 flex-1">
-                {filtered.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <Search className="mb-3 h-10 w-10 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">Aucune entreprise ne correspond à tes filtres.</p>
-                  </div>
-                ) : viewMode === 'grid' ? (
-                  <div className="p-5">
-                    {grouped ? (
-                      grouped.map((group) => (
-                        <div key={group.typeKey} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          <TypeSectionHeader typeKey={group.typeKey} label={group.label} count={group.businesses.length} />
-                          {group.businesses.map((b) => (
+                <div className="space-y-5 px-5 pb-5 pt-4">
+                  {showStateInstitutions ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-3.5 w-3.5 shrink-0 text-indigo-300" />
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-300">Institutions de l'État</span>
+                        <span className="text-[10px] text-muted-foreground">{businesses.filter((b) => b.isStateOwned).length}</span>
+                        <div className="ml-1 flex-1 border-t border-border/30" />
+                      </div>
+                      {viewMode === 'grid' ? (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {businesses.filter((b) => b.isStateOwned).map((business) => (
+                            <GridCard key={business.id} business={business} onClick={() => setDetailBusinessId(business.id)} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div>
+                          {businesses.filter((b) => b.isStateOwned).map((business) => (
+                            <ListRow key={business.id} business={business} onClick={() => setDetailBusinessId(business.id)} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {filtered.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center">
+                      <Search className="mb-3 h-10 w-10 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">Aucune entreprise ne correspond à tes filtres.</p>
+                    </div>
+                  ) : viewMode === 'grid' ? (
+                    <div className="space-y-3">
+                      {grouped ? (
+                        grouped.map((group) => (
+                          <div key={group.typeKey} className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              {(() => { const G = getBizIcon(group.typeKey); return <G className="h-3.5 w-3.5 shrink-0" style={{ color: getBusinessPinColor(group.typeKey) }} />; })()}
+                              <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: getBusinessPinColor(group.typeKey) }}>{group.label}</span>
+                              <span className="text-[10px] text-muted-foreground">{group.businesses.length}</span>
+                              <div className="ml-1 flex-1 border-t border-border/30" />
+                            </div>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                              {group.businesses.map((b) => (
+                                <GridCard key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {sorted.map((b) => (
                             <GridCard key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
                           ))}
                         </div>
-                      ))
-                    ) : (
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {sorted.map((b) => (
-                          <GridCard key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-4">
-                    {grouped ? (
-                      grouped.map((group) => (
-                        <div key={group.typeKey}>
-                          <div className="flex items-center gap-2 pb-2 pt-4 first:pt-0">
-                            {(() => { const G = getBizIcon(group.typeKey); return <G className="h-3.5 w-3.5 shrink-0" style={{ color: getBusinessPinColor(group.typeKey) }} />; })()}
-                            <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: getBusinessPinColor(group.typeKey) }}>{group.label}</span>
-                            <span className="text-[10px] text-muted-foreground">{group.businesses.length}</span>
-                            <div className="ml-1 flex-1 border-t border-border/30" />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {grouped ? (
+                        grouped.map((group) => (
+                          <div key={group.typeKey}>
+                            <div className="flex items-center gap-2 pb-2 pt-4 first:pt-0">
+                              {(() => { const G = getBizIcon(group.typeKey); return <G className="h-3.5 w-3.5 shrink-0" style={{ color: getBusinessPinColor(group.typeKey) }} />; })()}
+                              <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: getBusinessPinColor(group.typeKey) }}>{group.label}</span>
+                              <span className="text-[10px] text-muted-foreground">{group.businesses.length}</span>
+                              <div className="ml-1 flex-1 border-t border-border/30" />
+                            </div>
+                            <div>
+                              {group.businesses.map((b) => (
+                                <ListRow key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
+                              ))}
+                            </div>
                           </div>
-                          <div>
-                            {group.businesses.map((b) => (
-                              <ListRow key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
-                            ))}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      sorted.map((b) => (
-                        <ListRow key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
-                      ))
-                    )}
-                  </div>
-                )}
+                        ))
+                      ) : (
+                        sorted.map((b) => (
+                          <ListRow key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </ScrollArea>
             </>
           )}
@@ -859,6 +1195,9 @@ export function BusinessBrowserModal({
       <TransferBusinessModal open={Boolean(transferBusiness)} onClose={() => setTransferBusinessId(null)} business={transferBusiness} players={players} currentUserId={userId} onSubmitted={onReload} />
       <ApplyBusinessModal open={Boolean(applyBusiness)} onClose={() => setApplyBusinessId(null)} business={applyBusiness} onSubmitted={onReload} />
       <PurchaseItemModal open={Boolean(purchaseBusiness)} onClose={() => setPurchaseBusinessId(null)} business={purchaseBusiness} onSubmitted={onReload} />
+      <TeamRosterModal open={Boolean(teamRosterBusiness)} onClose={() => setTeamRosterBusinessId(null)} business={teamRosterBusiness} />
+      <ShareholdersModal open={Boolean(shareholdersViewBusiness)} onClose={() => setShareholdersViewBusinessId(null)} business={shareholdersViewBusiness} userId={userId} />
+      <FilePlainteModal open={Boolean(plainteBusiness)} onClose={() => setPlainteBusinessId(null)} business={plainteBusiness} userId={userId} players={players} onSubmitted={() => void onReload()} />
     </>
   );
 }

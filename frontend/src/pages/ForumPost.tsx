@@ -119,7 +119,7 @@ function CommentNode({
               className="font-semibold hover:underline"
               style={{ color: comment.author.usernameColor ?? undefined }}
             >
-              u/{comment.author.username}
+              @{comment.author.username}
             </Link>
           ) : (
             <span className="font-semibold italic text-muted-foreground">supprimé</span>
@@ -213,7 +213,7 @@ export default function ForumPost() {
     forumApi
       .getPost(postId)
       .then(({ data }) => setPost(data))
-      .catch(() => navigate(`/forum/r/${subredditName}`))
+      .catch(() => navigate(`/forum/c/${subredditName}`))
       .finally(() => setLoading(false));
   }, [postId, subredditName, navigate]);
 
@@ -307,7 +307,7 @@ export default function ForumPost() {
     if (!post || !confirm('Supprimer ce post ?')) return;
     try {
       await forumApi.deletePost(post.id);
-      navigate(`/forum/r/${subredditName}`);
+      navigate(`/forum/c/${subredditName}`);
     } catch {}
   };
 
@@ -318,11 +318,11 @@ export default function ForumPost() {
     <PageShell size="default" className="pb-10">
       {/* Back link */}
       <button
-        onClick={() => navigate(`/forum/r/${subredditName}`)}
+        onClick={() => navigate(`/forum/c/${subredditName}`)}
         className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
-        Retour à r/{subredditName}
+        Retour à #{subredditName}
       </button>
 
       {loading ? (
@@ -348,8 +348,8 @@ export default function ForumPost() {
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                <Link to={`/forum/r/${post.subreddit.name}`} className="font-semibold text-foreground hover:underline">
-                  r/{post.subreddit.name}
+                <Link to={`/forum/c/${post.subreddit.name}`} className="font-semibold text-foreground hover:underline">
+                  #{post.subreddit.name}
                 </Link>
                 <span>
                   posté par{' '}
@@ -358,7 +358,7 @@ export default function ForumPost() {
                     className="hover:underline"
                     style={{ color: post.author.usernameColor ?? undefined }}
                   >
-                    u/{post.author.username}
+                    @{post.author.username}
                   </Link>
                 </span>
                 <span>
@@ -406,7 +406,7 @@ export default function ForumPost() {
           <div className="rounded-lg border bg-card p-4">
             <p className="mb-2 text-sm text-muted-foreground">
               Commenter en tant que{' '}
-              <span className="font-semibold text-foreground">u/{user!.username}</span>
+              <span className="font-semibold text-foreground">@{user!.username}</span>
             </p>
             <Textarea
               ref={textareaRef}

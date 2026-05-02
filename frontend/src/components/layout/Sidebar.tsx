@@ -208,7 +208,7 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
 
             {/* Dashboard */}
             {!isOnYou && !isDisabled('/') && (
-              <SidebarMenuItem>
+              <SidebarMenuItem data-tutorial-id="nav-dashboard">
                 <SidebarMenuButton
                   asChild
                   isActive={location.pathname === '/' || location.pathname === '/dashboard'}
@@ -255,7 +255,19 @@ export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...p
             {mainOrderedItems.map((item) => {
               const ItemIcon = item.icon;
               const isActive = isPathActive(item.to);
-              const NAV_TUTORIAL_IDS: Record<string, string> = { '/marketplace': 'nav-marketplace', '/leaderboards': 'nav-leaderboards', '/clans': 'nav-clans', '/tutoriels': 'nav-tutoriels' };
+              const NAV_TUTORIAL_IDS: Record<string, string> = {
+                '/leaderboards': 'nav-leaderboards',
+                '/clans': 'nav-clans',
+                '/polymarket': 'nav-polymarket',
+                '/market': 'nav-market',
+                '/inventory': 'nav-inventory',
+                '/marketplace': 'nav-marketplace',
+                '/party': 'nav-party',
+                '/quests': 'nav-quests',
+                '/forum': 'nav-forum',
+                '/suggestions': 'nav-suggestions',
+                '/tutoriels': 'nav-tutoriels',
+              };
               const tutorialId = NAV_TUTORIAL_IDS[item.to];
               return (
                 <SidebarMenuItem key={item.to} data-tutorial-id={tutorialId}>

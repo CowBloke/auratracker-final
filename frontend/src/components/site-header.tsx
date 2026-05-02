@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronDown,
   Crosshair,
@@ -31,7 +31,6 @@ import {
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
@@ -68,6 +67,7 @@ export function SiteHeader() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [messagesUnread, setMessagesUnread] = useState(0);
   const [temporaryEffects, setTemporaryEffects] = useState<YouTemporaryEffect[]>([]);
+  const titleTrailCloseTimer = useRef<number | null>(null);
   const canViewConnectedStatus = Boolean(user?.isAdmin || user?.isSuperAdmin);
 
   useEffect(() => {
@@ -169,6 +169,33 @@ export function SiteHeader() {
     }
   }, [location.pathname]);
 
+  useEffect(() => {
+    return () => {
+      if (titleTrailCloseTimer.current !== null) {
+        window.clearTimeout(titleTrailCloseTimer.current);
+      }
+    };
+  }, []);
+
+  const openTitleTrail = () => {
+    if (titleTrailCloseTimer.current !== null) {
+      window.clearTimeout(titleTrailCloseTimer.current);
+      titleTrailCloseTimer.current = null;
+    }
+    setShowTitleTrail(true);
+  };
+
+  const closeTitleTrailSoon = () => {
+    if (titleTrailCloseTimer.current !== null) {
+      window.clearTimeout(titleTrailCloseTimer.current);
+    }
+
+    titleTrailCloseTimer.current = window.setTimeout(() => {
+      setShowTitleTrail(false);
+      titleTrailCloseTimer.current = null;
+    }, 120);
+  };
+
   const doodleSpectateSessionMap = useMemo(
     () => new Map(doodleSpectateSessions.map((session) => [session.hostUserId, session])),
     [doodleSpectateSessions]
@@ -237,12 +264,18 @@ export function SiteHeader() {
   const titleControl = (
     <div
       className="relative min-w-0"
-      onMouseEnter={() => setShowTitleTrail(true)}
-      onMouseLeave={() => setShowTitleTrail(false)}
+      onMouseEnter={openTitleTrail}
+      onMouseLeave={closeTitleTrailSoon}
     >
       <button
         type="button"
-        onClick={() => setShowTitleTrail((open) => !open)}
+        onClick={() => {
+          if (showTitleTrail) {
+            closeTitleTrailSoon();
+          } else {
+            openTitleTrail();
+          }
+        }}
         className="group flex min-w-0 items-center gap-2 rounded-2xl px-1 py-1 text-left transition-colors hover:text-foreground"
         aria-expanded={showTitleTrail}
         aria-label="Afficher le chemin de navigation"
@@ -251,14 +284,17 @@ export function SiteHeader() {
         <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', showTitleTrail && 'rotate-180')} />
       </button>
       {showTitleTrail && breadcrumbItems.length > 1 ? (
-        <div className="absolute left-0 top-full z-50 mt-2 min-w-[16rem] max-w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-border/70 bg-background/95 p-3 shadow-xl backdrop-blur-xl">
+        <div
+          className="absolute left-0 top-full z-50 mt-2 min-w-[16rem] max-w-[min(30rem,calc(100vw-2rem))] rounded-2xl border border-border/70 bg-background/95 p-3 shadow-xl backdrop-blur-xl"
+          onMouseEnter={openTitleTrail}
+          onMouseLeave={closeTitleTrailSoon}
+        >
           <Breadcrumb>
-            <BreadcrumbList className="flex-wrap gap-y-2">
+            <BreadcrumbList className="flex flex-col items-start gap-1.5">
               {breadcrumbItems.map((item, index) => {
                 const isLast = index === breadcrumbItems.length - 1;
                 return (
-                  <div key={item.path} className="flex items-center gap-1.5">
-                    {index > 0 && <BreadcrumbSeparator />}
+                  <div key={item.path} className="flex w-full items-center gap-2 text-left">
                     <BreadcrumbItem>
                       {isLast ? (
                         <BreadcrumbPage>{item.label}</BreadcrumbPage>

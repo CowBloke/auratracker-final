@@ -97,11 +97,11 @@ function PostCard({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           {showSubreddit && (
             <Link
-              to={`/forum/r/${post.subreddit.name}`}
+              to={`/forum/c/${post.subreddit.name}`}
               className="font-semibold text-foreground hover:underline"
               onClick={(e) => e.stopPropagation()}
             >
-              r/{post.subreddit.name}
+              #{post.subreddit.name}
             </Link>
           )}
           <span>
@@ -112,7 +112,7 @@ function PostCard({
               onClick={(e) => e.stopPropagation()}
               style={{ color: post.author.usernameColor ?? undefined }}
             >
-              u/{post.author.username}
+              @{post.author.username}
             </Link>
           </span>
           <span>{age}</span>
@@ -120,7 +120,7 @@ function PostCard({
 
         <button
           className="mt-1 w-full text-left"
-          onClick={() => navigate(`/forum/r/${post.subreddit.name}/post/${post.id}`)}
+          onClick={() => navigate(`/forum/c/${post.subreddit.name}/post/${post.id}`)}
         >
           <h3 className="text-sm font-semibold leading-snug">{post.title}</h3>
           {post.type === 'link' && post.url && (
@@ -143,7 +143,7 @@ function PostCard({
         <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
           <button
             className="flex items-center gap-1 rounded px-2 py-1 hover:bg-muted"
-            onClick={() => navigate(`/forum/r/${post.subreddit.name}/post/${post.id}`)}
+            onClick={() => navigate(`/forum/c/${post.subreddit.name}/post/${post.id}`)}
           >
             <MessageSquare className="h-4 w-4" />
             {post.commentCount} commentaire{post.commentCount !== 1 ? 's' : ''}
@@ -228,16 +228,16 @@ function CreatePostDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          {/* Subforum selector */}
+          {/* forum selector */}
           {!subredditName && (
             <select
               value={selectedSub}
               onChange={(e) => setSelectedSub(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             >
-              <option value="">Choisir un subforum...</option>
+              <option value="">Choisir un forum...</option>
               {subreddits.map((s) => (
-                <option key={s.id} value={s.name}>r/{s.name}</option>
+                <option key={s.id} value={s.name}>#{s.name}</option>
               ))}
             </select>
           )}
@@ -294,7 +294,7 @@ function CreatePostDialog({
   );
 }
 
-// ─── Create subforum dialog ──────────────────────────────────────────────────
+// ─── Create forum dialog ──────────────────────────────────────────────────
 
 function CreateSubredditDialog({
   open,
@@ -336,7 +336,7 @@ function CreateSubredditDialog({
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Créer un subforum</DialogTitle>
+          <DialogTitle>Créer un forum</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -349,7 +349,7 @@ function CreateSubredditDialog({
             <p className="mt-1 text-xs text-muted-foreground">3–21 caractères, lettres, chiffres et underscores uniquement</p>
           </div>
           <Textarea
-            placeholder="Description du subforum..."
+            placeholder="Description du forum..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
@@ -394,7 +394,7 @@ export default function Forum() {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreateSub, setShowCreateSub] = useState(false);
 
-  // Load subforums
+  // Load forums
   useEffect(() => {
     forumApi.getSubreddits().then(({ data }) => {
       setSubreddits(data);
@@ -402,7 +402,7 @@ export default function Forum() {
     });
   }, []);
 
-  // Load current subforum info
+  // Load current forum info
   useEffect(() => {
     if (!subredditName) {
       setCurrentSub(null);
@@ -465,14 +465,14 @@ export default function Forum() {
 
   const handleSubCreated = (sub: ForumSubreddit) => {
     setSubreddits((prev) => [sub, ...prev]);
-    navigate(`/forum/r/${sub.name}`);
+    navigate(`/forum/c/${sub.name}`);
   };
 
   const handlePostCreated = (post: ForumPost) => {
     if (sort === 'new') {
       setPosts((prev) => [post, ...prev]);
     }
-    navigate(`/forum/r/${post.subreddit.name}/post/${post.id}`);
+    navigate(`/forum/c/${post.subreddit.name}/post/${post.id}`);
   };
 
   const loadMore = () => {
@@ -489,7 +489,7 @@ export default function Forum() {
       <div className="flex gap-6">
         {/* ── Main feed ── */}
         <div className="min-w-0 flex-1">
-          {/* Subforum header */}
+          {/* forum header */}
           {currentSub && (
             <div className="mb-4 rounded-lg border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
@@ -502,7 +502,7 @@ export default function Forum() {
                     )}
                   </div>
                   <div>
-                    <h1 className="text-xl font-bold">r/{currentSub.name}</h1>
+                    <h1 className="text-xl font-bold">#{currentSub.name}</h1>
                     <p className="text-sm text-muted-foreground">{currentSub.description}</p>
                   </div>
                 </div>
@@ -606,19 +606,19 @@ export default function Forum() {
             </Button>
             <Button variant="outline" className="w-full" onClick={() => setShowCreateSub(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Créer un subforum
+              Créer un forum
             </Button>
           </div>
 
-          {/* My subforums */}
+          {/* My forums */}
           {joinedSubs.length > 0 && (
             <div className="mb-4 rounded-lg border bg-card p-4">
-              <h3 className="mb-3 text-sm font-semibold">Mes subforums</h3>
+              <h3 className="mb-3 text-sm font-semibold">Mes forums</h3>
               <ul className="space-y-1">
                 {joinedSubs.map((s) => (
                   <li key={s.id}>
                     <Link
-                      to={`/forum/r/${s.name}`}
+                      to={`/forum/c/${s.name}`}
                       className={cn(
                         'flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-muted',
                         subredditName === s.name && 'bg-muted font-medium'
@@ -627,7 +627,7 @@ export default function Forum() {
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
                         {s.name[0].toUpperCase()}
                       </span>
-                      r/{s.name}
+                      #{s.name}
                     </Link>
                   </li>
                 ))}
@@ -635,21 +635,21 @@ export default function Forum() {
             </div>
           )}
 
-          {/* Popular subforums */}
+          {/* Popular forums */}
           <div className="rounded-lg border bg-card p-4">
-            <h3 className="mb-3 text-sm font-semibold">Subforums populaires</h3>
+            <h3 className="mb-3 text-sm font-semibold">Forums populaires</h3>
             {loadingSubs ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
               </div>
             ) : popularSubs.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Aucun subforum pour l'instant.</p>
+              <p className="text-xs text-muted-foreground">Aucun forum pour l'instant.</p>
             ) : (
               <ul className="space-y-2">
                 {popularSubs.map((s, idx) => (
                   <li key={s.id}>
                     <Link
-                      to={`/forum/r/${s.name}`}
+                      to={`/forum/c/${s.name}`}
                       className={cn(
                         'flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-muted',
                         subredditName === s.name && 'bg-muted font-medium'
@@ -659,7 +659,7 @@ export default function Forum() {
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
                         {s.name[0].toUpperCase()}
                       </span>
-                      <span className="min-w-0 flex-1 truncate">r/{s.name}</span>
+                      <span className="min-w-0 flex-1 truncate">#{s.name}</span>
                       <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                         <Users className="h-3 w-3" />
                         {s.memberCount}

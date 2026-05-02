@@ -320,7 +320,7 @@ function Sidebar({
   onCreateClick: () => void;
 }) {
   return (
-    <nav className="flex w-56 shrink-0 flex-col overflow-hidden border-r border-border bg-card">
+    <nav className="flex w-56 shrink-0 flex-col overflow-hidden border-r border-border bg-card" data-tutorial-id="supply-businesses-sidebar">
       <div className="flex items-center justify-between border-b border-border px-3 py-3">
         <div>
           <p className="mb-0.5 text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50">Registre</p>
@@ -1001,7 +1001,7 @@ function OffersPanel({
   const resources = Array.from(new Set(marketOffers.map((offer) => offer.resourceType)));
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col overflow-hidden border-l border-border bg-card">
+    <aside className="flex w-64 shrink-0 flex-col overflow-hidden border-l border-border bg-card" data-tutorial-id="supply-orders-sidebar">
       <div className="border-b border-border px-3 py-3">
         <p className="mb-0.5 text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50">Demandes</p>
         <div className="flex items-center justify-between gap-2">
@@ -1307,7 +1307,7 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
       />
       <Sidebar businesses={state?.businesses ?? []} selection={selection} onSelect={(next) => { setSelection(next); setNodeSelection(null); }} onCreateClick={() => setCreateOpen(true)} />
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden" data-tutorial-id="supply-nodes-pane">
         <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-border px-4">
           {activeBusiness ? (
             <>

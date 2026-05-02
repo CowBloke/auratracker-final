@@ -904,7 +904,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
   return (
     <div className={cn('relative flex h-full min-h-0 w-full flex-1 overflow-hidden', !embedded && 'rounded-2xl border border-border/60 shadow-xl')}>
       {/* Map fills everything */}
-      <div ref={mapContainerRef} className="absolute inset-0" />
+      <div ref={mapContainerRef} className="absolute inset-0" data-tutorial-id="carte-map-pane" />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/15 via-transparent to-background/15" />
 
       {/* Owner filter pills — always visible */}
@@ -926,7 +926,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
 
       {/* Left floating panel — hidden when embedded in dashboard */}
       {!embedded && (
-        <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[220px] flex-col gap-2">
+        <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-10 flex w-[220px] flex-col gap-2" data-tutorial-id="carte-browse-section">
           <button
             type="button"
             onClick={() => setShowBrowserModal(true)}
@@ -968,7 +968,7 @@ export const CarteTab = forwardRef<CarteTabHandle, {
       )}
 
       {!embedded && (
-      <div className="pointer-events-auto absolute bottom-14 right-3 top-3 z-10 w-[300px] rounded-xl border border-border/60 bg-background/95 shadow-xl backdrop-blur-sm">
+      <div className="pointer-events-auto absolute bottom-14 right-3 top-3 z-10 w-[300px] rounded-xl border border-border/60 bg-background/95 shadow-xl backdrop-blur-sm" data-tutorial-id="carte-notifications-pane">
         <div className="flex h-full min-h-0 flex-col">
           <div className="flex items-center justify-between p-3 pb-2">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Notifications</p>

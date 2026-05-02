@@ -5,9 +5,9 @@ export const youOnboarding: TutorialFlow = {
   title: 'Bienvenue sur AuraTracker',
   description: 'Découvre la navigation, la section YOU et les outils essentiels en quelques étapes.',
   sections: [
-    { id: 'navigation', title: 'Navigation', startIndex: 0, endIndex: 7 },
-    { id: 'you-section', title: 'Section YOU', startIndex: 8, endIndex: 13 },
-    { id: 'aide', title: 'Aide & outils', startIndex: 14, endIndex: 15 },
+    { id: 'navigation', title: 'Navigation', startIndex: 0, endIndex: 15 },
+    { id: 'you-section', title: 'Section YOU', startIndex: 16, endIndex: 18 },
+    { id: 'aide', title: 'Aide & outils', startIndex: 19, endIndex: 20 },
   ],
   steps: [
     // ── Navigation (0–7) ─────────────────────────────────────────────────────
@@ -16,9 +16,26 @@ export const youOnboarding: TutorialFlow = {
       placement: 'center',
       title: 'Bienvenue sur AuraTracker !',
       content: (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p>AuraTracker est une simulation économique multijoueur où tu gères des entreprises, investis, formes des alliances et accumules des richesses.</p>
           <p className="text-muted-foreground">Ce tutoriel te présente les éléments essentiels. Tu peux le quitter ou passer une section à tout moment.</p>
+
+          <div className="rounded-xl border border-border/30 p-3 bg-muted/5">
+            <h4 className="text-sm font-semibold">Principales onglets (barre gauche)</h4>
+            <div className="mt-2 grid gap-2">
+              <div className="text-xs"><strong>Dashboard</strong> — Vue d'ensemble : statistiques, fil d'activité et notifications.</div>
+              <div className="text-xs"><strong>YOU</strong> — Le coeur du jeu : ton profil, entreprises, investissements et onglets associés.</div>
+              <div className="text-xs"><strong>Jeux</strong> — Mini-jeux pour gagner de l'Aura ou de l'argent.</div>
+              <div className="text-xs"><strong>Classements</strong> — Meilleurs joueurs par richesse, Aura et performances.</div>
+              <div className="text-xs"><strong>Clans</strong> — Rejoins ou crée un clan pour jouer en équipe.</div>
+              <div className="text-xs"><strong>Marketplace</strong> — Achetez et vendez ressources, objets et actions entre joueurs.</div>
+              <div className="text-xs"><strong>Boutique / Shop</strong> — Achats directs de ressources et objets.</div>
+              <div className="text-xs"><strong>Inventaire</strong> — Tes objets et biens personnels.</div>
+              <div className="text-xs"><strong>Quêtes & Événements</strong> — Missions et récompenses temporaires.</div>
+              <div className="text-xs"><strong>Forum / Suggestions</strong> — Communauté, idées et retours.</div>
+              <div className="text-xs"><strong>Tutoriels</strong> — Tous les guides et tutoriels disponibles.</div>
+            </div>
+          </div>
         </div>
       ),
     },
@@ -42,6 +59,16 @@ export const youOnboarding: TutorialFlow = {
       ),
     },
     {
+      id: 'nav-dashboard',
+      targetId: 'nav-dashboard',
+      placement: 'right',
+      title: 'Dashboard',
+      content: (
+        <p>Le <strong>Dashboard</strong> te donne un aperçu global : activité récente, notifications importantes et raccourcis vers tes actions principales.</p>
+      ),
+      route: '/dashboard',
+    },
+    {
       id: 'nav-games',
       targetId: 'nav-games',
       placement: 'right',
@@ -49,6 +76,7 @@ export const youOnboarding: TutorialFlow = {
       content: (
         <p>Accède à des dizaines de mini-jeux pour gagner de l'argent ou de l'<strong>Aura</strong>. Tu peux défier d'autres joueurs en duel ou rejoindre une partie via le salon de jeu.</p>
       ),
+      route: '/games',
     },
     {
       id: 'nav-leaderboards',
@@ -58,6 +86,7 @@ export const youOnboarding: TutorialFlow = {
       content: (
         <p>Les <strong>Classements</strong> affichent les meilleurs joueurs par richesse, Aura, performances en jeux et bien d'autres catégories. Un bon repère pour mesurer ta progression.</p>
       ),
+      route: '/leaderboards',
     },
     {
       id: 'nav-clans',
@@ -67,93 +96,140 @@ export const youOnboarding: TutorialFlow = {
       content: (
         <p>Rejoins ou crée un <strong>Clan</strong> pour collaborer avec d'autres joueurs. Les clans participent à des guerres, partagent des ressources et gagnent des effets collectifs.</p>
       ),
+      route: '/clans',
+    },
+    {
+      id: 'nav-polymarket',
+      targetId: 'nav-polymarket',
+      placement: 'right',
+      title: 'PolyMarket',
+      content: (
+        <p>Le <strong>PolyMarket</strong> te permet de spéculer sur les prix des ressources, des actions et des événements futurs. Gagne de l'argent en prédisant les tendances du marché.</p>
+      ),
+      route: '/polymarket',
+    },
+    {
+      id: 'nav-market',
+      targetId: 'nav-market',
+      placement: 'right',
+      title: 'Boutique',
+      content: (
+        <p>La <strong>Boutique</strong> (Shop) te permet d'acheter des ressources et objets directement. Utile pour compléter tes activités in-game rapidement.</p>
+      ),
+      route: '/market',
+    },
+    {
+      id: 'nav-inventory',
+      targetId: 'nav-inventory',
+      placement: 'right',
+      title: 'Inventaire',
+      content: (
+        <p>L'<strong>Inventaire</strong> contient tous tes objets, consommables et biens achetés. Tu peux les utiliser ou les vendre depuis cette page.</p>
+      ),
+      route: '/inventory',
     },
     {
       id: 'nav-marketplace',
       targetId: 'nav-marketplace',
       placement: 'right',
-      title: 'Le Marketplace',
+      title: 'Marketplace',
       content: (
-        <p>La place de marché du jeu : achète et vends des <strong>ressources</strong>, des objets et des actions d'entreprises entre joueurs en temps réel.</p>
+        <p>La <strong>Marketplace</strong> est la place de marche du jeu : achete et vends des <strong>ressources</strong>, des objets et des actions d'entreprises entre joueurs en temps reel.</p>
       ),
+      route: '/marketplace',
     },
     {
-      id: 'nav-tutoriels',
-      targetId: 'nav-tutoriels',
+      id: 'nav-party',
+      targetId: 'nav-party',
       placement: 'right',
-      title: 'Tutoriels',
+      title: 'Party',
       content: (
-        <p>Cette section regroupe tous les guides du jeu, écrits et interactifs. Tu peux relancer n'importe quel tutoriel à tout moment depuis ici.</p>
+        <p>La section <strong>Party</strong> rassemble tes groupes et événements sociaux : organise des rencontres et participe à des activités collectives.</p>
       ),
+      route: '/party',
+    },
+    {
+      id: 'nav-quests',
+      targetId: 'nav-quests',
+      placement: 'right',
+      title: 'Quêtes',
+      content: (
+        <p>Les <strong>Quêtes</strong> offrent des objectifs avec récompenses. Elles sont une excellente manière de gagner de l'argent ou de l'Aura rapidement.</p>
+      ),
+      route: '/quests',
+    },
+    {
+      id: 'nav-forum',
+      targetId: 'nav-forum',
+      placement: 'right',
+      title: 'Forum',
+      content: (
+        <p>Le <strong>Forum</strong> est l'espace communautaire pour discuter, poser des questions et partager des guides avec d'autres joueurs.</p>
+      ),
+      route: '/forum',
+    },
+    {
+      id: 'nav-suggestions',
+      targetId: 'nav-suggestions',
+      placement: 'right',
+      title: 'Suggestions',
+      content: (
+        <p>Envie d'améliorations ? La page <strong>Suggestions</strong> te permet de proposer des idées ou de voter pour celles des autres.</p>
+      ),
+      route: '/suggestions',
+    },
+    {
+      id: 'nav-rules',
+      targetId: 'nav-rules',
+      placement: 'right',
+      title: 'Règles & Info',
+      content: (
+        <p>La section <strong>Règles</strong> contient les informations essentielles sur le fonctionnement de la plateforme et les règles en vigueur.</p>
+      ),
+      route: '/rules',
     },
 
-    // ── Section YOU (8–13) ───────────────────────────────────────────────────
+    // ── Section YOU (16–19) ─────────────────────────────────────────────────
     {
       id: 'you-intro',
       placement: 'center',
       title: 'La section YOU',
       content: (
         <div className="space-y-2">
-          <p>La section <strong>YOU</strong> est le centre de ton expérience AuraTracker. Elle se divise en plusieurs onglets accessibles depuis la barre de navigation gauche.</p>
-          <p className="text-muted-foreground">Clique sur le logo pour y accéder — les prochaines étapes te guident onglet par onglet.</p>
+          <p>La section <strong>YOU</strong> est le centre de ton expérience AuraTracker. Elle contient deux onglets : <strong>Carte</strong> et <strong>Supply</strong>.</p>
+          <p className="text-muted-foreground">Clique sur le logo pour y accéder — les prochaines étapes te guident à travers chaque onglet.</p>
         </div>
       ),
-      route: '/you?tab=overview',
+      route: '/you?tab=carte',
     },
     {
-      id: 'you-tab-overview',
-      targetId: 'you-tab-overview',
+      id: 'you-tab-carte-nav',
+      targetId: 'you-tab-carte',
       placement: 'right',
-      title: 'Vue d\'ensemble',
-      content: (
-        <p>Ton tableau de bord personnel : statistiques globales, fil d'activité récent et notifications importantes en un coup d'œil.</p>
-      ),
-      route: '/you?tab=overview',
-    },
-    {
-      id: 'you-tab-travail',
-      targetId: 'you-tab-travail',
-      placement: 'right',
-      title: 'Travail',
+      title: 'Onglet Carte',
       content: (
         <div className="space-y-2">
-          <p>Le centre de ton empire économique. Crée des entreprises, gère tes employés, produis des ressources et accepte des offres de travail d'autres joueurs.</p>
+          <p>L'onglet <strong>Carte</strong> affiche la vue interactive de la ville avec tous les quartiers et entreprises répartis par secteur.</p>
+          <p className="text-xs text-muted-foreground"><strong>À gauche :</strong> Parcourir les entreprises · <strong>Au centre :</strong> La carte interactive · <strong>À droite :</strong> Notifications en temps réel</p>
         </div>
       ),
-      route: '/you?tab=travail',
+      route: '/you?tab=carte',
     },
     {
-      id: 'you-tab-explore',
-      targetId: 'you-tab-explore',
+      id: 'you-tab-supply-nav',
+      targetId: 'you-tab-supply',
       placement: 'right',
-      title: 'Explorer',
+      title: 'Onglet Supply',
       content: (
-        <p>Parcours les entreprises des autres joueurs : investis en tant qu'actionnaire, emprunte du capital, transfère des fonds ou achète des formations.</p>
+        <div className="space-y-2">
+          <p>L'onglet <strong>Supply</strong> contient le système de ressources et de chaînes de production.</p>
+          <p className="text-xs text-muted-foreground"><strong>À gauche :</strong> Tes entreprises · <strong>Au centre :</strong> Graphe de production · <strong>À droite :</strong> Tes commandes et offres</p>
+        </div>
       ),
-      route: '/you?tab=explore',
-    },
-    {
-      id: 'you-tab-social',
-      targetId: 'you-tab-social',
-      placement: 'right',
-      title: 'Social',
-      content: (
-        <p>Gère tes <strong>relations</strong> avec les autres joueurs : amitié, mariage, liaison. Certains liens donnent des bonus économiques ou d'Aura.</p>
-      ),
-      route: '/you?tab=social',
-    },
-    {
-      id: 'you-tab-finance',
-      targetId: 'you-tab-finance',
-      placement: 'right',
-      title: 'Finance',
-      content: (
-        <p>Vue financière complète : comptes bancaires, épargne, historique de transactions, AuraCoin et suivi de tes revenus passifs.</p>
-      ),
-      route: '/you?tab=finance',
+      route: '/you?tab=supply',
     },
 
-    // ── Aide & outils (14–15) ────────────────────────────────────────────────
+    // ── Aide & outils (20–21) ───────────────────────────────────────────────
     {
       id: 'bug-report',
       targetId: 'nav-bug-report',
@@ -165,7 +241,7 @@ export const youOnboarding: TutorialFlow = {
           <p className="text-muted-foreground">Tu peux joindre des captures d'écran pour aider à reproduire le problème.</p>
         </div>
       ),
-      route: '/you?tab=overview',
+      route: '/dashboard',
     },
     {
       id: 'conclusion',
@@ -173,8 +249,8 @@ export const youOnboarding: TutorialFlow = {
       title: 'Tu es prêt à jouer !',
       content: (
         <div className="space-y-2">
-          <p>Tu connais maintenant l'essentiel d'AuraTracker. La prochaine étape naturelle est de <strong>créer ta première entreprise</strong> dans l'onglet Travail.</p>
-          <p className="text-muted-foreground">D'autres tutoriels interactifs sont disponibles sur la page Tutoriels pour aller plus loin : jeux, clans, marketplace…</p>
+          <p>Excellent ! Tu maîtrises maintenant l'essentiel d'AuraTracker. Tu connais tous les principaux onglets et tu sais comment naviguer.</p>
+          <p className="text-muted-foreground">D'autres tutoriels interactifs sont disponibles sur la page Tutoriels pour approfondir : jeux, clans, marketplace, et bien plus…</p>
         </div>
       ),
     },
