@@ -618,6 +618,21 @@ function serializeCaseNode(courtCase: any, businessId: string) {
   };
 }
 
+function serializePlainteNode(plainte: any) {
+  return {
+    id: plainte.id,
+    businessId: plainte.courtId,
+    kind: 'plainte',
+    title: plainte.title,
+    status: plainte.status,
+    description: plainte.description,
+    evidence: plainte.evidence ?? null,
+    createdAt: serializeDate(plainte.createdAt),
+    plaintif: plainte.plaintif ?? null,
+    defendant: plainte.defendant ?? null,
+  };
+}
+
 export async function getSupplyState(userId: string) {
   await completeReadyConstructionProjects(prisma);
   await accrueBusinessSupply(prisma);
@@ -671,7 +686,8 @@ export async function getSupplyState(userId: string) {
   );
 
   const businessIds = businesses.map((business) => business.id);
-  const [contracts, marketOffers, courtCases, supplyLinks] = await Promise.all([
+  const supremeCourtIds = businesses.filter((business) => business.typeKey === 'supreme_court').map((business) => business.id);
+  const [contracts, marketOffers, courtCases, supplyLinks, plaintes] = await Promise.all([
     prisma.businessSupplyContract.findMany({
       where: {
         OR: [
@@ -728,6 +744,19 @@ export async function getSupplyState(userId: string) {
       },
       orderBy: { createdAt: 'asc' },
     }),
+    supremeCourtIds.length > 0
+      ? prisma.plainte.findMany({
+        where: {
+          courtId: { in: supremeCourtIds },
+          status: 'PENDING',
+        },
+        include: {
+          plaintif: { select: USER_PREVIEW_SELECT },
+          defendant: { select: USER_PREVIEW_SELECT },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+      : Promise.resolve([]),
   ]);
 
   const caseNodes = courtCases.flatMap((courtCase) => {
@@ -774,6 +803,7 @@ export async function getSupplyState(userId: string) {
       offers: business.supplyOffers.map(serializeOffer),
       loans: business.loans.map(serializeLoanNode),
       cases: caseNodes.filter((node) => node.businessId === business.id),
+      plaintes: plaintes.filter((plainte: any) => plainte.courtId === business.id).map(serializePlainteNode),
       formationProducts: business.formationProducts.map((product) => ({
         id: product.id,
         title: product.title,

@@ -3,6 +3,7 @@ import {
   Banknote,
   Briefcase,
   Building2,
+  CalendarDays,
   Check,
   Gavel,
   GraduationCap,
@@ -10,6 +11,7 @@ import {
   Landmark,
   Loader2,
   Package,
+  Percent,
   Play,
   Plus,
   RefreshCw,
@@ -23,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { PRODUCER_TYPES, RESOURCE_META, type ResourceType } from '@/lib/resources';
 import {
   youApi,
+  justiceApi,
   type YouBusiness,
   type YouBusinessMember,
   type YouBusinessType,
@@ -32,9 +35,11 @@ import {
   type YouSupplyContract,
   type YouSupplyInventory,
   type YouSupplyOffer,
+  type YouSupplyPlainteNode,
   type YouSupplyResourceType,
   type YouSupplyState,
 } from '@/services/api';
+import { toast } from '@/hooks/use-toast';
 import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '../components/modals';
 
 type Selection = { kind: 'business'; id: string } | null;
@@ -43,6 +48,7 @@ type NodeSelection =
   | { kind: 'construction-material'; business: YouSupplyBusiness; material: YouConstructionMaterial }
   | { kind: 'offer'; business: YouSupplyBusiness; offer: YouSupplyOffer }
   | { kind: 'contract'; business: YouSupplyBusiness; contract: YouSupplyContract }
+  | { kind: 'plainte'; business: YouSupplyBusiness; plainte: YouSupplyPlainteNode }
   | { kind: 'loan' | 'case' | 'formation' | 'startup' | 'account' | 'transfer' | 'team'; business: YouSupplyBusiness; item: any }
   | null;
 type Vec2 = { x: number; y: number };
@@ -160,28 +166,36 @@ function businessColor(typeKey: string) {
 function useDragCanvas(initPositions: Positions) {
   const [positions, setPositions] = useState<Positions>(initPositions);
   const [pan, setPan] = useState<Vec2>({ x: 0, y: 0 });
+  const [scale, setScale] = useState(1);
   const canvasRef = useRef<HTMLDivElement>(null);
   const panRef = useRef(pan);
   panRef.current = pan;
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
   const modeRef = useRef<'idle' | 'card' | 'pan'>('idle');
   const activeIdRef = useRef<string | null>(null);
   const offsetRef = useRef<Vec2>({ x: 0, y: 0 });
   const panStartRef = useRef<Vec2>({ x: 0, y: 0 });
   const panOriginRef = useRef<Vec2>({ x: 0, y: 0 });
+  const dragStartMouseRef = useRef<Vec2>({ x: 0, y: 0 });
+  const draggedRef = useRef(false);
+  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     setPositions(initPositions);
-    setPan({ x: 0, y: 0 });
+    setPan((current) => current);
   }, [initPositions]);
 
   function startDrag(id: string, e: React.MouseEvent) {
     const rect = canvasRef.current?.getBoundingClientRect() ?? { left: 0, top: 0 };
     const pos = positions[id] ?? { x: 0, y: 0 };
-    const mx = e.clientX - rect.left - panRef.current.x;
-    const my = e.clientY - rect.top - panRef.current.y;
+    const mx = (e.clientX - rect.left - panRef.current.x) / scaleRef.current;
+    const my = (e.clientY - rect.top - panRef.current.y) / scaleRef.current;
     offsetRef.current = { x: mx - pos.x, y: my - pos.y };
     modeRef.current = 'card';
     activeIdRef.current = id;
+    dragStartMouseRef.current = { x: e.clientX, y: e.clientY };
+    draggedRef.current = false;
     e.preventDefault();
     e.stopPropagation();
   }
@@ -197,9 +211,12 @@ function useDragCanvas(initPositions: Positions) {
   function onMove(e: React.MouseEvent) {
     if (modeRef.current === 'card' && activeIdRef.current) {
       const rect = canvasRef.current?.getBoundingClientRect() ?? { left: 0, top: 0 };
-      const mx = e.clientX - rect.left - panRef.current.x;
-      const my = e.clientY - rect.top - panRef.current.y;
+      const mx = (e.clientX - rect.left - panRef.current.x) / scaleRef.current;
+      const my = (e.clientY - rect.top - panRef.current.y) / scaleRef.current;
       const id = activeIdRef.current;
+      if (Math.abs(e.clientX - dragStartMouseRef.current.x) > 3 || Math.abs(e.clientY - dragStartMouseRef.current.y) > 3) {
+        draggedRef.current = true;
+      }
       setPositions((prev) => ({ ...prev, [id]: { x: mx - offsetRef.current.x, y: my - offsetRef.current.y } }));
     } else if (modeRef.current === 'pan') {
       setPan({
@@ -210,16 +227,48 @@ function useDragCanvas(initPositions: Positions) {
   }
 
   function stopAll() {
+    if (modeRef.current === 'card' && draggedRef.current) {
+      suppressClickRef.current = true;
+    }
     modeRef.current = 'idle';
     activeIdRef.current = null;
   }
 
   function screenPos(id: string): Vec2 {
     const p = positions[id] ?? { x: 0, y: 0 };
-    return { x: p.x + pan.x, y: p.y + pan.y };
+    return { x: p.x * scale + pan.x, y: p.y * scale + pan.y };
   }
 
-  return { positions, pan, canvasRef, startDrag, onCanvasDown, onMove, stopAll, screenPos };
+  function zoomAt(clientX: number, clientY: number, nextScale: number) {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const clamped = Math.max(0.45, Math.min(1.8, nextScale));
+    const mouseX = clientX - rect.left;
+    const mouseY = clientY - rect.top;
+    const worldX = (mouseX - panRef.current.x) / scaleRef.current;
+    const worldY = (mouseY - panRef.current.y) / scaleRef.current;
+    setScale(clamped);
+    setPan({
+      x: mouseX - worldX * clamped,
+      y: mouseY - worldY * clamped,
+    });
+  }
+
+  function onWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 0.92 : 1.08;
+    zoomAt(e.clientX, e.clientY, scaleRef.current * factor);
+  }
+
+  function consumeSuppressClick() {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return true;
+    }
+    return false;
+  }
+
+  return { positions, pan, scale, setScale, setPan, canvasRef, startDrag, onCanvasDown, onMove, onWheel, stopAll, screenPos, consumeSuppressClick };
 }
 
 interface Link { from: Vec2; to: Vec2; color: string; active: boolean; }
@@ -240,6 +289,8 @@ function NodeCard({
   showHandles,
   onHandleMouseDown,
   badge,
+  shouldSuppressClick,
+  scale = 1,
 }: {
   pos: Vec2;
   accent: string;
@@ -261,17 +312,20 @@ function NodeCard({
     accent: string;
     onClick: () => void;
   };
+  shouldSuppressClick?: () => boolean;
+  scale?: number;
 }) {
   const cardAccent = workWarning ? '#f97316' : accent;
   return (
     <div
       className="absolute select-none cursor-grab active:cursor-grabbing"
-      style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: 10 }}
+      style={{ left: 0, top: 0, width: CARD_SIZE, zIndex: 10, transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, transformOrigin: 'top left' }}
       onMouseDown={onDragStart}
       onMouseEnter={() => onHoverChange?.(true)}
       onMouseLeave={() => onHoverChange?.(false)}
       onClick={(e) => {
         e.stopPropagation();
+        if (shouldSuppressClick?.()) return;
         onClick();
       }}
     >
@@ -419,7 +473,7 @@ function Sidebar({
 type GraphMode = 'single' | 'full';
 type LinkHandleSide = 'top' | 'right' | 'bottom' | 'left';
 type GraphNodeGroup = 'business' | 'left' | 'depot' | 'right' | 'market' | 'bottom';
-type GraphNodeKind = 'business' | 'inventory' | 'construction-material' | 'contract' | 'loan' | 'case' | 'formation' | 'startup' | 'account' | 'transfer' | 'team' | 'global-market';
+type GraphNodeKind = 'business' | 'inventory' | 'construction-material' | 'contract' | 'loan' | 'case' | 'plainte' | 'formation' | 'startup' | 'account' | 'transfer' | 'team' | 'global-market';
 
 type GraphNodeModel = {
   id: string;
@@ -484,11 +538,12 @@ function beadDuration(ratePerHour: number) {
   return `${Math.max(0.9, Math.min(4.8, 8 / Math.max(1, ratePerHour))).toFixed(2)}s`;
 }
 
-function getHandlePosition(pos: Vec2, side: LinkHandleSide): Vec2 {
-  if (side === 'top') return { x: pos.x + CARD_SIZE / 2, y: pos.y };
-  if (side === 'right') return { x: pos.x + CARD_SIZE, y: pos.y + CARD_SIZE / 2 };
-  if (side === 'bottom') return { x: pos.x + CARD_SIZE / 2, y: pos.y + CARD_SIZE };
-  return { x: pos.x, y: pos.y + CARD_SIZE / 2 };
+function getHandlePosition(pos: Vec2, side: LinkHandleSide, scale = 1): Vec2 {
+  const size = CARD_SIZE * scale;
+  if (side === 'top') return { x: pos.x + size / 2, y: pos.y };
+  if (side === 'right') return { x: pos.x + size, y: pos.y + size / 2 };
+  if (side === 'bottom') return { x: pos.x + size / 2, y: pos.y + size };
+  return { x: pos.x, y: pos.y + size / 2 };
 }
 
 function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[]) {
@@ -561,18 +616,20 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
       });
     });
 
-    nodes.push({
-      id: globalMarketNodeId(business.id),
-      businessId: business.id,
-      kind: 'global-market',
-      accent: '#f97316',
-      icon: <Banknote size={18} />,
-      title: 'Marché global',
-      subtitle: 'Vente de secours',
-      footer: business.inventories[0] ? `≈ ${business.inventories[0].globalMarketUnitPrice}/u` : 'Prix fixe',
-      selection: null,
-      group: 'market',
-    });
+    if (PRODUCER_TYPES.has(business.typeKey)) {
+      nodes.push({
+        id: globalMarketNodeId(business.id),
+        businessId: business.id,
+        kind: 'global-market',
+        accent: '#f97316',
+        icon: <Banknote size={18} />,
+        title: 'Marché global',
+        subtitle: 'Vente de secours',
+        footer: business.inventories[0] ? `≈ ${business.inventories[0].globalMarketUnitPrice}/u` : 'Prix fixe',
+        selection: null,
+        group: 'market',
+      });
+    }
   }
 
   contracts
@@ -639,6 +696,21 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
       footer: caseNode.lawyer?.username ?? 'Non assigne',
       selection: { kind: 'case', business, item: caseNode },
       group: 'bottom',
+    }));
+  }
+
+  if (business.typeKey === 'supreme_court') {
+    business.plaintes.forEach((plainte) => nodes.push({
+      id: `plainte:${plainte.id}`,
+      businessId: business.id,
+      kind: 'plainte',
+      accent: '#f97316',
+      icon: <Gavel size={17} />,
+      title: plainte.title,
+      subtitle: plainte.defendant?.username ? `vs ${plainte.defendant.username}` : 'Sans défendeur',
+      footer: 'En attente',
+      selection: { kind: 'plainte', business, plainte },
+      group: 'right',
     }));
   }
 
@@ -837,22 +909,28 @@ function BusinessCanvas({
 }) {
   const graph = useMemo(() => layoutBusinesses(businesses, contracts, mode), [businesses, contracts, mode]);
   const drag = useDragCanvas(graph.positions);
+  const nodeSize = CARD_SIZE * drag.scale;
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [draft, setDraft] = useState<LinkDraft | null>(null);
   const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
   const [linkMenuPinned, setLinkMenuPinned] = useState<string | null>(null);
   const nodesById = useMemo(() => new Map(graph.nodes.map((node) => [node.id, node])), [graph.nodes]);
 
+  useEffect(() => {
+    drag.setScale(mode === 'full' ? 0.62 : 1);
+    drag.setPan({ x: mode === 'full' ? 24 : 0, y: mode === 'full' ? 18 : 0 });
+  }, [mode, businesses.length]);
+
   const hoveredTargetId = useMemo(() => {
     if (!draft) return null;
     const point = draft.current;
     for (const node of graph.nodes) {
       const pos = drag.screenPos(node.id);
-      const within = point.x >= pos.x && point.x <= pos.x + CARD_SIZE && point.y >= pos.y && point.y <= pos.y + CARD_SIZE;
+      const within = point.x >= pos.x && point.x <= pos.x + nodeSize && point.y >= pos.y && point.y <= pos.y + nodeSize;
       if (within) return node.id;
     }
     return null;
-  }, [draft, graph.nodes, drag]);
+  }, [draft, graph.nodes, drag, nodeSize]);
 
   const hoveredLink = useMemo(
     () => supplyLinks.find((link) => link.id === (linkMenuPinned ?? hoveredLinkId)) ?? null,
@@ -861,7 +939,7 @@ function BusinessCanvas({
 
   const renderedLinks = useMemo<CanvasLink[]>(() => {
     const structural = graph.nodes
-      .filter((node) => node.kind !== 'business')
+      .filter((node) => node.kind !== 'business' && node.kind !== 'global-market')
       .map((node) => {
         const nodePos = drag.screenPos(node.id);
         const connectorId = node.connectsTo ?? businessNodeId(node.businessId);
@@ -870,8 +948,8 @@ function BusinessCanvas({
           return {
             id: `struct:${node.id}`,
             kind: 'structural' as const,
-            from: { x: nodePos.x + CARD_SIZE, y: nodePos.y + CARD_SIZE / 2 },
-            to: { x: connectorPos.x, y: connectorPos.y + CARD_SIZE / 2 },
+            from: { x: nodePos.x + nodeSize, y: nodePos.y + nodeSize / 2 },
+            to: { x: connectorPos.x, y: connectorPos.y + nodeSize / 2 },
             color: node.accent,
             active: true,
             ratePerHour: node.resourceType && node.kind === 'construction-material' ? 2 : 1,
@@ -881,8 +959,8 @@ function BusinessCanvas({
           return {
             id: `struct:${node.id}`,
             kind: 'structural' as const,
-            from: { x: connectorPos.x + CARD_SIZE, y: connectorPos.y + CARD_SIZE / 2 },
-            to: { x: nodePos.x, y: nodePos.y + CARD_SIZE / 2 },
+            from: { x: connectorPos.x + nodeSize, y: connectorPos.y + nodeSize / 2 },
+            to: { x: nodePos.x, y: nodePos.y + nodeSize / 2 },
             color: node.accent,
             active: false,
           };
@@ -890,8 +968,8 @@ function BusinessCanvas({
         return {
           id: `struct:${node.id}`,
           kind: 'structural' as const,
-          from: { x: connectorPos.x + CARD_SIZE, y: connectorPos.y + CARD_SIZE / 2 },
-          to: { x: nodePos.x, y: nodePos.y + CARD_SIZE / 2 },
+          from: { x: connectorPos.x + nodeSize, y: connectorPos.y + nodeSize / 2 },
+          to: { x: nodePos.x, y: nodePos.y + nodeSize / 2 },
           color: node.accent,
           active: node.kind !== 'global-market',
           ratePerHour: node.inventory?.productionRatePerHour ?? 2,
@@ -926,25 +1004,26 @@ function BusinessCanvas({
         return {
           id: link.id,
           kind: 'supply' as const,
-          from: { x: fromPos.x + CARD_SIZE, y: fromPos.y + CARD_SIZE / 2 },
-          to: { x: toPos.x, y: toPos.y + CARD_SIZE / 2 },
+          from: { x: fromPos.x + nodeSize, y: fromPos.y + nodeSize / 2 },
+          to: { x: toPos.x, y: toPos.y + nodeSize / 2 },
           color: link.targetKind === 'GLOBAL_MARKET' ? '#f97316' : '#60a5fa',
           active: true,
           ratePerHour,
           etaLabel,
           removable: true,
-          midpoint: { x: (fromPos.x + CARD_SIZE + toPos.x) / 2, y: (fromPos.y + toPos.y) / 2 + CARD_SIZE / 2 },
+          midpoint: { x: (fromPos.x + nodeSize + toPos.x) / 2, y: (fromPos.y + toPos.y) / 2 + nodeSize / 2 },
         };
       })
       .filter((entry): entry is CanvasLink => entry !== null);
 
     if (draft) {
       const sourcePos = drag.screenPos(draft.sourceNodeId);
+      const snappedTo = hoveredTargetId ? drag.screenPos(hoveredTargetId) : null;
       structural.push({
         id: 'draft-link',
         kind: 'structural',
-        from: getHandlePosition(sourcePos, draft.side),
-        to: draft.current,
+        from: getHandlePosition(sourcePos, draft.side, drag.scale),
+        to: snappedTo ? { x: snappedTo.x + nodeSize / 2, y: snappedTo.y + nodeSize / 2 } : draft.current,
         color: hoveredTargetId
           ? (getLinkCompatibility(nodesById.get(draft.sourceNodeId), nodesById.get(hoveredTargetId)).ok ? '#22c55e' : '#ef4444')
           : '#94a3b8',
@@ -953,7 +1032,7 @@ function BusinessCanvas({
     }
 
     return [...structural, ...supply];
-  }, [graph.nodes, drag, supplyLinks, nodesById, draft, hoveredTargetId]);
+  }, [graph.nodes, drag, supplyLinks, nodesById, draft, hoveredTargetId, nodeSize]);
 
   const compatibility = draft && hoveredTargetId
     ? getLinkCompatibility(nodesById.get(draft.sourceNodeId), nodesById.get(hoveredTargetId))
@@ -996,10 +1075,11 @@ function BusinessCanvas({
       }}
       onMouseUp={() => { void finishDraft(); drag.stopAll(); }}
       onMouseLeave={() => { setDraft(null); drag.stopAll(); }}
+      onWheel={drag.onWheel}
       onClick={() => onNodeSelect(null)}
       style={{
         backgroundImage: 'radial-gradient(circle, hsl(var(--border) / 0.65) 1px, transparent 1px)',
-        backgroundSize: '24px 24px',
+        backgroundSize: `${24 * drag.scale}px ${24 * drag.scale}px`,
         backgroundPosition: `${drag.pan.x}px ${drag.pan.y}px`,
       }}
     >
@@ -1028,6 +1108,7 @@ function BusinessCanvas({
             active={node.kind === 'business'}
             construction={node.construction}
             workWarning={workWarning && node.kind === 'inventory'}
+            scale={drag.scale}
             onDragStart={(event) => drag.startDrag(node.id, event)}
             onClick={() => {
               if (node.kind === 'business') {
@@ -1041,7 +1122,7 @@ function BusinessCanvas({
             showHandles={hoveredNodeId === node.id || draft?.sourceNodeId === node.id}
             onHandleMouseDown={(side, event) => {
               event.stopPropagation();
-              const start = getHandlePosition(pos, side);
+              const start = getHandlePosition(pos, side, drag.scale);
               setDraft({
                 sourceNodeId: node.id,
                 sourceBusinessId: node.businessId,
@@ -1051,6 +1132,7 @@ function BusinessCanvas({
               });
               setHoveredNodeId(node.id);
             }}
+            shouldSuppressClick={drag.consumeSuppressClick}
             badge={node.kind === 'inventory' ? {
               icon: <Tag size={11} />,
               title: node.offer?.isActive ? `Offre ${node.offer.unitPrice}/u` : 'Configurer la vente',
@@ -1126,20 +1208,40 @@ function DetailPanel({
   onClose,
   onSaveOffer,
   onChooseSource,
+  onUpdateMember,
+  onRespondLoan,
+  onRemindLoan,
+  onClaimLoan,
+  onAcceptPlainte,
 }: {
   selection: NodeSelection;
   onClose: () => void;
   onSaveOffer: (businessId: string, resourceType: YouSupplyResourceType, unitPrice: number, autoAccept: boolean, isActive?: boolean) => Promise<void>;
   onChooseSource: (business: YouSupplyBusiness, material: YouConstructionMaterial) => void;
+  onUpdateMember: (businessId: string, memberId: string, data: { role: string; salary: number; title: string | null }) => Promise<void>;
+  onRespondLoan: (loanId: string, decision: 'accept' | 'reject') => Promise<void>;
+  onRemindLoan: (loanId: string) => Promise<void>;
+  onClaimLoan: (loanId: string) => Promise<void>;
+  onAcceptPlainte: (plainteId: string) => Promise<void>;
 }) {
   const [price, setPrice] = useState(10);
   const [autoAccept, setAutoAccept] = useState(false);
+  const [memberRole, setMemberRole] = useState('');
+  const [memberSalary, setMemberSalary] = useState(0);
+  const [memberTitle, setMemberTitle] = useState('');
 
   useEffect(() => {
     if (selection?.kind === 'inventory') {
       const existing = selection.business.offers.find((o) => o.resourceType === selection.inventory.resourceType);
       setPrice(existing?.unitPrice ?? 10);
       setAutoAccept(existing?.autoAccept ?? false);
+      return;
+    }
+    if (selection?.kind === 'team') {
+      const member = selection.item as YouBusinessMember;
+      setMemberRole(member.role ?? '');
+      setMemberSalary(member.salary ?? 0);
+      setMemberTitle(member.specialty ?? '');
     }
   }, [selection]);
 
@@ -1163,6 +1265,7 @@ function DetailPanel({
     resMeta?.Icon ??
     (selection.kind === 'loan' ? Landmark :
      selection.kind === 'case' ? Gavel :
+     selection.kind === 'plainte' ? Gavel :
      selection.kind === 'team' ? User :
      selection.kind === 'formation' ? GraduationCap :
      selection.kind === 'startup' ? Play :
@@ -1174,6 +1277,7 @@ function DetailPanel({
     selection.kind === 'construction-material' ? resourceLabel(selection.material.resourceType) :
     selection.kind === 'offer' ? `Offre ${resourceLabel(selection.offer.resourceType)}` :
     selection.kind === 'contract' ? resourceLabel(selection.contract.resourceType) :
+    selection.kind === 'plainte' ? selection.plainte.title :
     selection.kind === 'team' ? (selection.item as YouBusinessMember).user.username :
     selection.item.title ?? selection.business.name;
 
@@ -1181,6 +1285,7 @@ function DetailPanel({
     selection.kind === 'inventory' ? 'Dépôt' :
     selection.kind === 'construction-material' ? 'Chantier · materiau' :
     selection.kind === 'offer' ? 'Offre de vente' :
+    selection.kind === 'plainte' ? 'Plainte en attente' :
     selection.kind === 'team' ? 'Employé' :
     selection.kind === 'contract'
       ? (selection.contract.supplierBusinessId === selection.business.id ? 'Contrat sortant →' : '← Contrat entrant')
@@ -1381,11 +1486,125 @@ function DetailPanel({
                 )}
                 <Row icon={User} label="Aura" value={Number(u.aura).toLocaleString('fr-FR')} />
               </div>
+              <div className="rounded-lg border border-border p-3">
+                <p className="mb-2.5 text-[11px] font-semibold text-foreground">Modifier ce membre</p>
+                <label className="mb-1.5 block text-[10px] text-muted-foreground">Rôle</label>
+                <input
+                  value={memberRole}
+                  onChange={(e) => setMemberRole(e.target.value)}
+                  className="mb-3 h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none"
+                />
+                <label className="mb-1.5 block text-[10px] text-muted-foreground">Salaire / jour</label>
+                <input
+                  value={memberSalary}
+                  onChange={(e) => setMemberSalary(Number(e.target.value))}
+                  type="number"
+                  min={0}
+                  className="mb-3 h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none"
+                />
+                <label className="mb-1.5 block text-[10px] text-muted-foreground">Titre / spécialité</label>
+                <input
+                  value={memberTitle}
+                  onChange={(e) => setMemberTitle(e.target.value)}
+                  className="mb-3 h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none"
+                />
+                <button
+                  onClick={() => onUpdateMember(selection.business.id, member.id, { role: memberRole, salary: memberSalary, title: memberTitle || null })}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-medium text-white"
+                >
+                  <Check size={12} /> Enregistrer
+                </button>
+              </div>
             </div>
           );
         })()}
 
-        {selection.kind !== 'inventory' && selection.kind !== 'construction-material' && selection.kind !== 'offer' && selection.kind !== 'contract' && selection.kind !== 'team' && (
+        {selection.kind === 'loan' && (() => {
+          const loan = selection.item;
+          const remaining = Math.max(0, loan.totalOwed - loan.repaidAmount);
+          return (
+            <div className="space-y-3">
+              <div className="divide-y divide-border rounded-lg border border-border px-3">
+                <Row icon={User} label="Emprunteur" value={loan.borrower?.username ?? '—'} />
+                <Row icon={Banknote} label="Montant" value={money(loan.amount)} />
+                <Row icon={Percent} label="Taux" value={`${loan.interestRate}%`} />
+                <Row icon={TrendingUp} label="Reste" value={money(remaining)} />
+                <Row icon={CalendarDays} label="Statut" value={loan.status} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {loan.status === 'PENDING' && (
+                  <>
+                    <button onClick={() => onRespondLoan(loan.id, 'reject')} className="rounded-md border border-border px-3 py-2 text-[11px] text-muted-foreground hover:bg-muted">Refuser</button>
+                    <button onClick={() => onRespondLoan(loan.id, 'accept')} className="rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-medium text-white">Accepter</button>
+                  </>
+                )}
+                {loan.status !== 'PENDING' && (
+                  <>
+                    <button onClick={() => onRemindLoan(loan.id)} className="rounded-md border border-border px-3 py-2 text-[11px] text-muted-foreground hover:bg-muted">Relancer</button>
+                    <button onClick={() => onClaimLoan(loan.id)} className="rounded-md bg-amber-500 px-3 py-2 text-[11px] font-medium text-black">Saisir / recouvrer</button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {selection.kind === 'account' && (() => {
+          const account = selection.item;
+          return (
+            <div className="divide-y divide-border rounded-lg border border-border px-3">
+              <Row icon={User} label="Titulaire" value={account.user?.username ?? '—'} />
+              <Row icon={Briefcase} label="Type" value={account.accountType} />
+              <Row icon={Banknote} label="Solde" value={money(account.balance)} />
+              <Row icon={CalendarDays} label="Ouvert" value={account.createdAt ? new Date(account.createdAt).toLocaleDateString('fr-FR') : '—'} />
+            </div>
+          );
+        })()}
+
+        {selection.kind === 'case' && (() => {
+          const courtCase = selection.item;
+          return (
+            <div className="space-y-3">
+              <div className="divide-y divide-border rounded-lg border border-border px-3">
+                <Row icon={Gavel} label="Dossier" value={courtCase.title} />
+                <Row icon={CalendarDays} label="Statut" value={courtCase.status} />
+                <Row icon={User} label="Partie" value={courtCase.side} />
+                <Row icon={Briefcase} label="Avocat" value={courtCase.lawyer?.username ?? 'Non assigné'} />
+                <Row icon={User} label="Plaignant" value={courtCase.plaintif?.username ?? '—'} />
+                <Row icon={User} label="Défendeur" value={courtCase.defendant?.username ?? '—'} />
+              </div>
+              {courtCase.plainte && (
+                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  <p className="text-[11px] font-semibold text-foreground">{courtCase.plainte.title}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">{courtCase.plainte.description}</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {selection.kind === 'plainte' && (
+          <div className="space-y-3">
+            <div className="divide-y divide-border rounded-lg border border-border px-3">
+              <Row icon={User} label="Plaignant" value={selection.plainte.plaintif?.username ?? '—'} />
+              <Row icon={User} label="Défendeur" value={selection.plainte.defendant?.username ?? '—'} />
+              <Row icon={CalendarDays} label="Statut" value={selection.plainte.status} />
+            </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-[11px] font-semibold text-foreground">{selection.plainte.title}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{selection.plainte.description}</p>
+              {selection.plainte.evidence && <p className="mt-2 text-[10px] text-muted-foreground">Preuve: {selection.plainte.evidence}</p>}
+            </div>
+            <button
+              onClick={() => onAcceptPlainte(selection.plainte.id)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-medium text-white"
+            >
+              <Check size={12} /> Accepter le dossier
+            </button>
+          </div>
+        )}
+
+        {selection.kind !== 'inventory' && selection.kind !== 'construction-material' && selection.kind !== 'offer' && selection.kind !== 'contract' && selection.kind !== 'team' && selection.kind !== 'loan' && selection.kind !== 'account' && selection.kind !== 'case' && selection.kind !== 'plainte' && (
           <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-[10px] text-muted-foreground">
             {JSON.stringify(selection.item, null, 2)}
           </pre>
@@ -1727,6 +1946,40 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
     });
   }
 
+  async function updateMember(businessId: string, memberId: string, data: { role: string; salary: number; title: string | null }) {
+    await mutate(async () => {
+      await youApi.updateMemberRole(businessId, memberId, data.role);
+      await youApi.updateMemberSalary(businessId, memberId, Math.max(0, Math.floor(data.salary || 0)));
+      await youApi.updateMemberProfile(businessId, memberId, data.title);
+    });
+  }
+
+  async function respondLoan(loanId: string, decision: 'accept' | 'reject') {
+    await mutate(async () => {
+      await youApi.respondToBusinessLoan(loanId, decision);
+    });
+  }
+
+  async function remindLoan(loanId: string) {
+    await mutate(async () => {
+      await youApi.remindLoan(loanId);
+      toast.success('Relance envoyée');
+    });
+  }
+
+  async function claimLoan(loanId: string) {
+    await mutate(async () => {
+      await youApi.repayLoan(loanId);
+    });
+  }
+
+  async function acceptPlainte(plainteId: string) {
+    await mutate(async () => {
+      await justiceApi.acceptPlainte(plainteId);
+      setNodeSelection(null);
+    });
+  }
+
   async function createLink(input: { sourceBusinessId: string; sourceResourceType: YouSupplyResourceType; targetBusinessId?: string | null; targetResourceType?: YouSupplyResourceType | null; targetKind: 'BUSINESS' | 'GLOBAL_MARKET' }) {
     await mutate(async () => {
       await youApi.createSupplyLink(input.sourceBusinessId, input);
@@ -1831,6 +2084,11 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
               onClose={() => setNodeSelection(null)}
               onSaveOffer={saveOffer}
               onChooseSource={(business, material) => setSourceTarget({ business, material })}
+              onUpdateMember={updateMember}
+              onRespondLoan={respondLoan}
+              onRemindLoan={remindLoan}
+              onClaimLoan={claimLoan}
+              onAcceptPlainte={acceptPlainte}
             />
             <SourceModal
               target={sourceTarget}

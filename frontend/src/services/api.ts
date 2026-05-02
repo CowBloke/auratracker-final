@@ -799,6 +799,19 @@ export interface YouSupplyCaseNode {
   plainte: { id: string; title: string; description: string } | null;
 }
 
+export interface YouSupplyPlainteNode {
+  id: string;
+  businessId: string;
+  kind: 'plainte';
+  title: string;
+  status: string;
+  description: string;
+  evidence: string | null;
+  createdAt: string | null;
+  plaintif: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+  defendant: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+}
+
 export interface YouSupplyBusiness {
   id: string;
   name: string;
@@ -815,6 +828,7 @@ export interface YouSupplyBusiness {
   offers: YouSupplyOffer[];
   loans: YouSupplyLoanNode[];
   cases: YouSupplyCaseNode[];
+  plaintes: YouSupplyPlainteNode[];
   formationProducts: Array<{ id: string; title: string; status: string; price: number; createdAt: string | null }>;
   startupProducts: Array<{ id: string; slotIndex: number; name: string; deployedLevel: number; activeResearchLevel: number | null; researchEndsAt: string | null }>;
   bankAccounts: Array<{ id: string; accountType: string; balance: number; user: Omit<YouPlayer, 'alreadyInRelationship'>; createdAt: string | null }>;
@@ -979,6 +993,8 @@ export const youApi = {
     api.patch<{ result: { memberId: string; role: string; specialty: string | null; isPrimaryLawyer: boolean; displayOrder: number; user: Omit<YouPlayer, 'alreadyInRelationship'> } }>(`/you/businesses/${businessId}/members/${memberId}/lawyer-profile`, data),
   updateMemberSalary: (businessId: string, memberId: string, salary: number) =>
     api.patch<{ result: { salary: number } }>(`/you/businesses/${businessId}/members/${memberId}/salary`, { salary }),
+  updateMemberRole: (businessId: string, memberId: string, role: string) =>
+    api.patch<{ result: { memberId: string; role: string } }>(`/you/businesses/${businessId}/members/${memberId}/role`, { role }),
   updateMemberProfile: (businessId: string, memberId: string, title: string | null) =>
     api.patch<{ result: { memberId: string; title: string | null } }>(`/you/businesses/${businessId}/members/${memberId}/profile`, { title }),
   sackMember: (businessId: string, memberId: string) =>
@@ -987,6 +1003,8 @@ export const youApi = {
     api.post<{ result: { ok: boolean } }>(`/you/businesses/${businessId}/leave`, {}),
   repayLoan: (loanId: string) =>
     api.post<{ result: { repaid: number; totalOwed: number; collateralClaimed: number; status: string } }>(`/you/loans/${loanId}/repay`, {}),
+  remindLoan: (loanId: string) =>
+    api.post<{ result: { ok: boolean; remaining: number } }>(`/you/loans/${loanId}/remind`, {}),
   borrowerRepayLoan: (loanId: string, percentage: number = 100) =>
     api.post<{ result: { repaid: number; totalOwed: number; collateralClaimed: number; status: string } }>(`/you/loans/${loanId}/borrower-repay`, { percentage }),
   purchaseItem: (businessId: string, itemKey: string) =>

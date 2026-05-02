@@ -56,11 +56,13 @@ import {
   setBusinessSupportAgent,
   updateLawFirmMemberMetadata,
   updateMemberProfile,
+  updateMemberRole,
   updateMemberSalary,
   sackMember,
   leaveBusinessJob,
   repayLoan,
   repayLoanByBorrower,
+  sendLoanRepaymentReminder,
   rateBusiness,
   createBusinessShareProposal,
   createShareMarketListing,
@@ -1226,6 +1228,15 @@ router.patch('/businesses/:businessId/members/:memberId/profile', authMiddleware
   }
 });
 
+router.patch('/businesses/:businessId/members/:memberId/role', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await updateMemberRole(req.user!.id, req.params.businessId, req.params.memberId, String(req.body?.role ?? ''));
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Update member role error');
+  }
+});
+
 router.delete('/businesses/:businessId/members/:memberId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
   try {
     const result = await sackMember(req.user!.id, req.params.businessId, req.params.memberId);
@@ -1251,6 +1262,15 @@ router.post('/loans/:loanId/repay', authMiddleware, requireYouAccess, async (req
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Loan repay error');
+  }
+});
+
+router.post('/loans/:loanId/remind', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await sendLoanRepaymentReminder(req.user!.id, req.params.loanId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Loan reminder error');
   }
 });
 

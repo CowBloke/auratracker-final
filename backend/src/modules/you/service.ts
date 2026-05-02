@@ -6371,6 +6371,40 @@ export async function updateMemberProfile(ownerId: string, businessId: string, m
   return { memberId, title };
 }
 
+export async function updateMemberRole(ownerId: string, businessId: string, memberId: string, role: string) {
+  const nextRole = String(role ?? '').trim();
+  if (!nextRole || nextRole.length > 40) throw new Error('INVALID_ROLE');
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (!(await isBusinessManager(business.id, ownerId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  const member = await prisma.businessMember.findUnique({
+    where: { id: memberId },
+    include: { user: { select: USER_PREVIEW_SELECT } },
+  });
+  if (!member || member.businessId !== businessId) throw new Error('MEMBER_NOT_FOUND');
+
+  await prisma.businessMember.update({
+    where: { id: memberId },
+    data: { role: nextRole },
+  });
+
+  await createNotification({
+    userId: member.user.id,
+    type: 'SYSTEM',
+    title: 'Role modifie',
+    body: `${member.user.username}, ton role devient ${nextRole}.`,
+    link: '/you?tab=travail',
+    icon: 'briefcase-business',
+  });
+
+  return { memberId, role: nextRole };
+}
+
 export async function updateMemberSalary(ownerId: string, businessId: string, memberId: string, salary: number) {
   if (!Number.isInteger(salary) || salary < 0) throw new Error('INVALID_SALARY');
 
@@ -6403,6 +6437,38 @@ export async function updateMemberSalary(ownerId: string, businessId: string, me
     salary,
   });
   return { salary };
+}
+
+export async function sendLoanRepaymentReminder(userId: string, loanId: string) {
+  const loan = await prisma.businessLoan.findUnique({
+    where: { id: loanId },
+    include: {
+      borrower: { select: USER_PREVIEW_SELECT },
+      business: {
+        include: {
+          owner: { select: USER_PREVIEW_SELECT },
+        },
+      },
+    },
+  });
+  if (!loan) throw new Error('BUSINESS_LOAN_NOT_FOUND');
+  if (!(await isBusinessManager(loan.businessId, userId, loan.business.ownerId))) {
+    throw new Error('BUSINESS_EDIT_FORBIDDEN');
+  }
+
+  const totalOwed = Math.ceil(loan.amount * (1 + (loan.interestRate ?? 0) / 100));
+  const remaining = Math.max(0, totalOwed - (loan.repaidAmount ?? 0));
+
+  await createNotification({
+    userId: loan.borrower.id,
+    type: 'SYSTEM',
+    title: `Rappel de remboursement · ${loan.business.name}`,
+    body: `Il reste ${remaining.toLocaleString('fr-FR')} money a rembourser a ${loan.business.name}.`,
+    link: '/you?tab=travail',
+    icon: 'landmark',
+  });
+
+  return { ok: true, remaining };
 }
 
 export async function sackMember(ownerId: string, businessId: string, memberId: string) {
@@ -6641,5 +6707,4 @@ export async function adminResetBusinessUnlockLevels() {
   await prisma.user.updateMany({ data: { unlockedBusinessLevel: 0 } });
   return { ok: true };
 }
-
 
