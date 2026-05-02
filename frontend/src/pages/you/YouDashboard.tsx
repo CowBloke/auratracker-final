@@ -1,14 +1,15 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import {
-  Brain, Building2,
-  ShieldAlert, Star,
-  TrendingUp, Users, Wallet, MapPin, AlertTriangle, ChevronRight,
+  Building2,
+  Wallet, MapPin, AlertTriangle, ChevronRight, Hammer,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { cn } from '@/lib/utils';
-import { type YouState, type YouSkill, type YouJobOffer, type YouBusiness, youApi } from '@/services/api';
+import { type YouState, type YouJobOffer, type YouBusiness, youApi } from '@/services/api';
+import { PRODUCER_TYPES } from '@/lib/resources';
 import { CreateBusinessModal, ManageBusinessModal } from './components/modals';
+import { ProductionModal } from './components/ProductionModal';
 import { BUSINESS_ICON_MAP } from './constants';
 import { getBusinessPinColor } from './mapConstants';
 import { isYouNotification, withRouteError } from './utils';
@@ -18,35 +19,6 @@ import { CarteTab, type CarteTabHandle } from './tabs/CarteTab';
 import { BusinessBrowserModal } from './components/BusinessBrowserModal';
 import './dashboard.css';
 
-// ---- Skill color maps ----
-
-const SKILL_COLOR_MAP: Record<YouSkill['color'], { icon: string; text: string }> = {
-  emerald: { icon: 'text-emerald-400', text: 'text-emerald-400' },
-  purple:  { icon: 'text-purple-400',  text: 'text-purple-400'  },
-  sky:     { icon: 'text-sky-400',     text: 'text-sky-400'     },
-  pink:    { icon: 'text-pink-400',    text: 'text-pink-400'    },
-  amber:   { icon: 'text-amber-400',   text: 'text-amber-400'   },
-  rose:    { icon: 'text-rose-400',    text: 'text-rose-400'    },
-};
-
-
-const SKILL_HSL_MAP: Record<YouSkill['color'], string> = {
-  emerald: '152 69% 52%',
-  purple:  '280 93% 75%',
-  sky:     '198 93% 60%',
-  pink:    '330 86% 70%',
-  amber:   '43 96% 56%',
-  rose:    '351 95% 71%',
-};
-
-const SKILL_ICON_MAP: Record<string, typeof Brain> = {
-  affaires: Building2,
-  social: Users,
-  intelligence: Brain,
-  charisme: Star,
-  finance: TrendingUp,
-  illegalite: ShieldAlert,
-};
 
 // ---- Sparkline ----
 
@@ -71,16 +43,21 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
 
 // ---- Business tile (owned — left rail) ----
 
-function OwnedBizTile({ b, onManage, onStartPlacing }: {
+function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
   b: YouBusiness;
   onManage: () => void;
+  onWork: () => void;
   onStartPlacing: (id: string) => void;
+  currentUserId: string;
 }) {
   const Icon = BUSINESS_ICON_MAP[b.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
   const color = getBusinessPinColor(b.typeKey);
   const net = b.monthlyRevenue - b.monthlyExpenses;
   const isUnplaced = b.mapX == null || b.mapY == null;
   const sparkData = (b.revenueHistory ?? []).slice(-30);
+  const isProducer = PRODUCER_TYPES.has(b.typeKey);
+  const myMember = b.members.find((m) => m.user.id === currentUserId);
+  const needsWork = isProducer && myMember != null && !myMember.workedToday && !b.underConstruction;
 
   return (
     <div className="rounded-xl border border-border/40 bg-card transition-all hover:border-border">
@@ -96,6 +73,22 @@ function OwnedBizTile({ b, onManage, onStartPlacing }: {
           >
             <MapPin className="h-2.5 w-2.5" />
             Placer
+          </button>
+        </div>
+      )}
+
+      {/* Work reminder banner */}
+      {needsWork && (
+        <div className="flex items-center gap-2 border-b border-orange-500/20 bg-orange-500/8 px-3 py-2">
+          <Hammer className="h-3 w-3 shrink-0 text-orange-400" />
+          <span className="min-w-0 flex-1 text-[10px] text-orange-400">Travail journalier requis</span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onWork(); }}
+            className="flex shrink-0 items-center gap-1 rounded-md bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400 transition-colors hover:bg-orange-500/25"
+          >
+            <Hammer className="h-2.5 w-2.5" />
+            Travailler
           </button>
         </div>
       )}
@@ -131,38 +124,64 @@ function OwnedBizTile({ b, onManage, onStartPlacing }: {
 }
 
 
-// ---- Skill cell ----
+// ---- Member business tile (employee — left rail) ----
 
-function SkillCell({ skill }: { skill: YouSkill }) {
-  const Icon = SKILL_ICON_MAP[skill.key] ?? Building2;
-  const theme = SKILL_COLOR_MAP[skill.color] ?? SKILL_COLOR_MAP.amber;
-  const pct = Math.min(100, Math.round((skill.xp / skill.maxXp) * 100));
+function MemberBizTile({ b, currentUserId, onOpen, onWork }: {
+  b: YouBusiness;
+  currentUserId: string;
+  onOpen: () => void;
+  onWork: () => void;
+}) {
+  const Icon = BUSINESS_ICON_MAP[b.typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+  const color = getBusinessPinColor(b.typeKey);
+  const isProducer = PRODUCER_TYPES.has(b.typeKey);
+  const myMember = b.members.find((m) => m.user.id === currentUserId);
+  const needsWork = isProducer && myMember != null && !myMember.workedToday && !b.underConstruction;
 
   return (
-    <div title={`${skill.label} · Niv. ${skill.level}`} className="flex cursor-pointer flex-col items-center rounded-xl border border-border/40 bg-card p-[10px_8px] transition-colors hover:bg-muted/30">
-      <div
-        className="relative mb-1.5 flex h-10 w-10 items-center justify-center rounded-full"
-        style={{ background: `conic-gradient(hsl(${SKILL_HSL_MAP[skill.color] ?? '43 96% 56%'}) ${pct}%, hsl(var(--muted) / 0.35) 0)` }}
-      >
-        <div className="absolute inset-[3px] flex items-center justify-center rounded-full" style={{ background: 'hsl(var(--card))' }}>
-          <Icon className={cn('h-4 w-4', theme.icon)} />
+    <div className="rounded-xl border border-border/40 bg-card transition-all hover:border-border">
+      {needsWork && (
+        <div className="flex items-center gap-2 border-b border-orange-500/20 bg-orange-500/8 px-3 py-2">
+          <Hammer className="h-3 w-3 shrink-0 text-orange-400" />
+          <span className="min-w-0 flex-1 text-[10px] text-orange-400">Travail journalier requis</span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onWork(); }}
+            className="flex shrink-0 items-center gap-1 rounded-md bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400 transition-colors hover:bg-orange-500/25"
+          >
+            <Hammer className="h-2.5 w-2.5" />
+            Travailler
+          </button>
         </div>
-      </div>
-      <div className={cn('text-[11px] font-bold tabular-nums', theme.text)}>Niv. {skill.level}</div>
-      <div className="text-[9px] text-muted-foreground">{skill.label}</div>
+      )}
+      <button type="button" onClick={onOpen} className="w-full p-3 text-left">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `${color}22` }}>
+            <Icon className="h-3.5 w-3.5" style={{ color }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12px] font-semibold">{b.name}</div>
+            <div className="text-[10px] text-muted-foreground">@{b.owner.username} · {b.type?.label ?? b.typeKey}</div>
+          </div>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
+        </div>
+      </button>
     </div>
   );
 }
 
 // ---- Left Rail ----
 
-function DashLeftRail({ data, onManageBiz, onStartPlacing, onOpenBrowser }: {
+function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlacing, onOpenBrowser }: {
   data: YouState;
+  currentUserId: string;
   onManageBiz: (id: string) => void;
+  onWorkBiz: (id: string) => void;
   onStartPlacing: (id: string) => void;
   onOpenBrowser: () => void;
 }) {
   const owned = data.ownedBusinesses;
+  const memberOnly = data.memberBusinesses;
   const allCount = useMemo(() => {
     const ids = new Set<string>();
     [data.ownedBusinesses, data.exploreBusinesses, data.memberBusinesses, data.shareholderBusinesses]
@@ -174,64 +193,82 @@ function DashLeftRail({ data, onManageBiz, onStartPlacing, onOpenBrowser }: {
   const totalNet = owned.reduce((s, b) => s + b.monthlyRevenue - b.monthlyExpenses, 0);
 
   return (
-    <div className="you-dash-left-rail border-r border-border/40 px-3 py-4">
-      {/* Empire header */}
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Ton empire</span>
-        <span className="rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{owned.length}/{data.businessSlots}</span>
-      </div>
-
-      {owned.length > 0 && (
-        <div className="mb-3 rounded-xl border border-border/40 bg-card p-3">
-          <div className="mb-1 flex items-baseline justify-between">
-            <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Valeur totale</span>
-            <span className={cn('text-[10px] font-medium tabular-nums', totalNet >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-              {totalNet >= 0 ? '+' : ''}{totalNet.toLocaleString('fr-FR')}€ /mois
-            </span>
-          </div>
-          <div className="text-2xl font-semibold tabular-nums">
-            {totalTreasury.toLocaleString('fr-FR')}<span className="ml-1 text-sm text-muted-foreground">€</span>
-          </div>
+    <div className="you-dash-left-rail border-r border-border/40">
+      {/* Scrollable content */}
+      <div className="you-dash-left-scroll px-3 py-4">
+        {/* Empire header */}
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Ton empire</span>
+          <span className="rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{owned.length}/{data.businessSlots}</span>
         </div>
-      )}
 
-      <div className="mb-1.5 space-y-2">
-        {owned.map((b) => (
-          <OwnedBizTile
-            key={b.id}
-            b={b}
-            onManage={() => onManageBiz(b.id)}
-            onStartPlacing={onStartPlacing}
-          />
-        ))}
-        {owned.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border/40 py-6 text-center text-xs text-muted-foreground">
-            Aucun business pour le moment
+        {owned.length > 0 && (
+          <div className="mb-3 rounded-xl border border-border/40 bg-card p-3">
+            <div className="mb-1 flex items-baseline justify-between">
+              <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Valeur totale</span>
+              <span className={cn('text-[10px] font-medium tabular-nums', totalNet >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                {totalNet >= 0 ? '+' : ''}{totalNet.toLocaleString('fr-FR')}€ /mois
+              </span>
+            </div>
+            <div className="text-2xl font-semibold tabular-nums">
+              {totalTreasury.toLocaleString('fr-FR')}<span className="ml-1 text-sm text-muted-foreground">€</span>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {owned.map((b) => (
+            <OwnedBizTile
+              key={b.id}
+              b={b}
+              onManage={() => onManageBiz(b.id)}
+              onWork={() => onWorkBiz(b.id)}
+              onStartPlacing={onStartPlacing}
+              currentUserId={currentUserId}
+            />
+          ))}
+          {owned.length === 0 && (
+            <div className="rounded-xl border border-dashed border-border/40 py-6 text-center text-xs text-muted-foreground">
+              Aucun business pour le moment
+            </div>
+          )}
+        </div>
+
+        {/* Employee businesses */}
+        {memberOnly.length > 0 && (
+          <div className="mt-5">
+            <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Employé</div>
+            <div className="space-y-2">
+              {memberOnly.map((b) => (
+                <MemberBizTile
+                  key={b.id}
+                  b={b}
+                  currentUserId={currentUserId}
+                  onOpen={() => onManageBiz(b.id)}
+                  onWork={() => onWorkBiz(b.id)}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
-      {/* Browse all businesses button */}
-      <button
-        type="button"
-        onClick={onOpenBrowser}
-        className="mt-4 flex w-full items-center gap-3 rounded-xl border border-border/50 bg-card px-3 py-3 text-left transition-all hover:border-border hover:bg-muted/20 active:scale-[0.98]"
-      >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Building2 className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[12px] font-semibold text-foreground">Entreprises</p>
-          <p className="text-[10px] text-muted-foreground">{allCount} disponibles</p>
-        </div>
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
-      </button>
 
-      {/* Skills */}
-      <div className="mt-5">
-        <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Compétences</div>
-        <div className="grid grid-cols-3 gap-1.5">
-          {data.skills.map((sk) => <SkillCell key={sk.key} skill={sk} />)}
-        </div>
+      {/* Sticky browse button */}
+      <div className="shrink-0 border-t border-border/40 px-3 py-3">
+        <button
+          type="button"
+          onClick={onOpenBrowser}
+          className="flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-primary/8 px-3 py-3 text-left transition-all hover:border-primary/50 hover:bg-primary/12 active:scale-[0.98]"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Building2 className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-semibold text-foreground">Parcourir les entreprises</p>
+            <p className="text-[10px] text-muted-foreground">{allCount} disponibles</p>
+          </div>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+        </button>
       </div>
     </div>
   );
@@ -417,11 +454,18 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
 }) {
   const carteRef = useRef<CarteTabHandle>(null);
   const [managedBizId, setManagedBizId] = useState<string | null>(null);
+  const [productionBizId, setProductionBizId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [showBrowserModal, setShowBrowserModal] = useState(false);
 
   const managedBusiness = managedBizId
-    ? (data.ownedBusinesses.find((b) => b.id === managedBizId) ?? null)
+    ? (data.ownedBusinesses.find((b) => b.id === managedBizId) ??
+       data.memberBusinesses.find((b) => b.id === managedBizId) ?? null)
+    : null;
+
+  const productionBusiness = productionBizId
+    ? (data.ownedBusinesses.find((b) => b.id === productionBizId) ??
+       data.memberBusinesses.find((b) => b.id === productionBizId) ?? null)
     : null;
 
   const allBusinesses = useMemo(() => {
@@ -440,7 +484,9 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
       <div className="you-dash">
         <DashLeftRail
           data={data}
+          currentUserId={userId}
           onManageBiz={setManagedBizId}
+          onWorkBiz={setProductionBizId}
           onStartPlacing={handleStartPlacing}
           onOpenBrowser={() => setShowBrowserModal(true)}
         />
@@ -476,6 +522,16 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
         onInviteRequested={() => {}}
         onSubmitted={onReload}
       />
+
+      {productionBusiness && (
+        <ProductionModal
+          open
+          onClose={() => setProductionBizId(null)}
+          business={productionBusiness}
+          currentUserId={userId}
+          onReload={onReload}
+        />
+      )}
       <CreateBusinessModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}

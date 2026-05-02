@@ -47,6 +47,38 @@ export const BUSINESS_STYLE_MAP = {
   law_firm: { card: 'border-purple-400/30 bg-purple-400/10', badge: 'bg-purple-400/15 text-purple-400', iconWrap: 'bg-purple-400/15', icon: 'text-purple-400' },
 } as const;
 
+export const BUSINESS_COLOR_HEX: Record<string, string> = {
+  lemonade: '#22c55e',
+  farm: '#22c55e',
+  sawmill: '#f59e0b',
+  quarry: '#64748b',
+  iron_mine: '#71717a',
+  fuel_refinery: '#f97316',
+  textile_mill: '#fb7185',
+  restaurant: '#e11d48',
+  coffee_shop: '#a16207',
+  epicerie: '#84cc16',
+  youtube: '#ef4444',
+  medecins: '#10b981',
+  startup: '#3b82f6',
+  agency: '#8b5cf6',
+  bank: '#eab308',
+  transfer: '#14b8a6',
+  formation: '#6366f1',
+  law_firm: '#06b6d4',
+  illegal_market: '#dc2626',
+  supreme_court: '#4f46e5',
+};
+
+export const BUSINESS_MONO_MAP: Record<string, string> = {
+  lemonade: 'LM', farm: 'FM', sawmill: 'SW', quarry: 'QR',
+  iron_mine: 'IR', fuel_refinery: 'RF', textile_mill: 'TX',
+  restaurant: 'RS', coffee_shop: 'CF', epicerie: 'EP',
+  youtube: 'YT', medecins: 'MD', startup: 'ST', agency: 'AG',
+  bank: 'BK', transfer: 'TR', formation: 'FO', law_firm: 'LW',
+  illegal_market: 'IM', supreme_court: 'SC',
+};
+
 export const ACTION_META: Record<BusinessAction, { label: string; help: string; icon: typeof UserPlus; tone: string }> = {
   invite: { label: 'Inviter des joueurs', help: 'Envoyer des invitations de recrutement.', icon: UserPlus, tone: 'bg-purple-400/15 text-purple-400' },
   loan: { label: 'Demander un pret', help: 'Envoyer une demande de pret au proprietaire du business.', icon: CreditCard, tone: 'bg-amber-400/15 text-amber-400' },

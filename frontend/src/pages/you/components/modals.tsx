@@ -17,8 +17,8 @@ import {
   type YouBusinessType, type YouFormationProduct, type YouPlayer, type YouRelationship, type YouStartupProduct, youApi, uploadUserImage,
 } from '@/services/api';
 import { resolveImageUrl } from '@/lib/images';
-import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
-import { PRODUCER_TYPES } from '@/lib/resources';
+import { BUSINESS_COLOR_HEX, BUSINESS_ICON_MAP, BUSINESS_MONO_MAP, BUSINESS_STYLE_MAP } from '../constants';
+import { PRODUCER_TYPES, BUSINESS_PRODUCES, RECIPES, RESOURCE_META, type ResourceType } from '@/lib/resources';
 import { ProductionModal } from './ProductionModal';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';
 import { openFormationAccess } from '../formation-access';
@@ -31,6 +31,74 @@ import {
   getLoanTimeLeftLabel,
 } from './modal-helpers';
 import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, SectionTitle, SelectBox, UserAvatar } from './ui';
+
+const PICKER_DEFAULT_STYLE = { card: 'border-border/40 bg-muted/10', badge: 'bg-muted text-muted-foreground', iconWrap: 'bg-muted/20', icon: 'text-foreground/60' };
+
+function StatRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className={cn('text-[11px] font-semibold tabular-nums', accent ?? 'text-foreground')}>{value}</span>
+    </div>
+  );
+}
+
+function BusinessTypeDetailPanel({ type }: { type: YouBusinessType }) {
+  const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+  const style = BUSINESS_STYLE_MAP[type.key as keyof typeof BUSINESS_STYLE_MAP] ?? PICKER_DEFAULT_STYLE;
+  const color = BUSINESS_COLOR_HEX[type.key] ?? '#9ca3af';
+  const produces = (BUSINESS_PRODUCES[type.key] ?? []) as ResourceType[];
+  const typeRecipes = RECIPES.filter((r) => !r.forTypes.includes('*') && r.forTypes.includes(type.key));
+
+  return (
+    <div className="space-y-3">
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-xl p-4" style={{ background: `${color}14` }}>
+        <div className="pointer-events-none absolute bottom-0 right-0 select-none overflow-hidden">
+          <Icon className="translate-x-5 translate-y-5 h-28 w-28" style={{ color, opacity: 0.12 }} />
+        </div>
+        <div className={cn('mb-3 flex h-11 w-11 items-center justify-center rounded-xl', style.iconWrap)}>
+          <Icon className={cn('h-[22px] w-[22px]', style.icon)} />
+        </div>
+        <p className="font-bold text-foreground">{type.label}</p>
+        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{type.description}</p>
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          <span className={cn('rounded-full px-2 py-0.5 text-[9px] font-semibold', style.badge)}>{type.category}</span>
+          {type.level > 1 && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] text-muted-foreground">Niveau {type.level} requis</span>
+          )}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="divide-y divide-border/40">
+        <StatRow label="Frais de création" value={type.creationFee > 0 ? `${type.creationFee.toLocaleString('fr-FR')} money` : 'Gratuit'} />
+        {type.minCapital > 0 && <StatRow label="Capital minimum" value={`${type.minCapital.toLocaleString('fr-FR')} money`} />}
+        {type.monthlyRevenue > 0 && <StatRow label="Revenus estimés" value={`${type.monthlyRevenue.toLocaleString('fr-FR')} /mois`} accent="text-emerald-500" />}
+        {type.monthlyExpenses > 0 && <StatRow label="Dépenses estimées" value={`${type.monthlyExpenses.toLocaleString('fr-FR')} /mois`} accent="text-red-400" />}
+        {produces.length > 0 && (
+          <div className="flex items-center justify-between gap-3 py-2">
+            <span className="text-[11px] text-muted-foreground">Production</span>
+            <div className="flex flex-wrap justify-end gap-1">
+              {produces.map((r) => {
+                const meta = RESOURCE_META[r];
+                const { Icon: RIcon } = meta;
+                return (
+                  <span key={r} className={cn('flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium', meta.bg, meta.iconColor)}>
+                    <RIcon className="h-2.5 w-2.5" />{meta.label}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {typeRecipes.map((recipe) => (
+          <StatRow key={recipe.id} label={recipe.name} value={recipe.inputs.map((i) => `${i.qty}×${RESOURCE_META[i.resource]?.label ?? i.resource}`).join(' + ')} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function BusinessTypePickerModal({
   open,
@@ -45,36 +113,83 @@ function BusinessTypePickerModal({
   selectedKey: string;
   onSelect: (type: YouBusinessType) => void;
 }) {
+  const [previewKey, setPreviewKey] = useState(selectedKey);
+
+  // Reset preview to current selection each time the modal opens
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) setPreviewKey(selectedKey); }, [open]);
+
+  const previewType = businessTypes.find((bt) => bt.key === previewKey) ?? businessTypes[0];
+
   return (
-    <ModalWrap open={open} onClose={onClose} title="Choisir un type d activite" desc="Selectionne le type de structure a creer.">
-      <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
-        {businessTypes.map((type) => {
-          const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
-          const style = BUSINESS_STYLE_MAP[type.key as keyof typeof BUSINESS_STYLE_MAP] ?? { card: 'border-border/40 bg-muted/10', badge: 'bg-muted text-muted-foreground', iconWrap: 'bg-muted/20', icon: 'text-foreground' };
-          const active = type.key === selectedKey;
-          return (
-            <button
-              key={type.key}
-              type="button"
-              onClick={() => { onSelect(type); onClose(); }}
-              className={cn('w-full rounded-2xl border px-4 py-4 text-left transition-all', active ? style.card : 'border-border/40 bg-muted/10 hover:bg-muted/20')}
-            >
-              <div className="flex items-start gap-4">
-                <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', active ? style.iconWrap : 'bg-muted/20')}>
-                  <Icon className={cn('h-5 w-5', active ? style.icon : 'text-foreground')} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold">{type.label}</p>
-                    <Pill label={type.category} color={active ? style.badge : 'bg-muted text-muted-foreground'} />
+    <ModalWrap open={open} onClose={onClose} title="Choisir un type d'activité" wide>
+      <div className="flex min-h-0 gap-5">
+        {/* Left — flat scrollable grid */}
+        <div className="max-h-[68vh] min-w-0 flex-1 overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 gap-2">
+            {businessTypes.map((type) => {
+              const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+              const style = BUSINESS_STYLE_MAP[type.key as keyof typeof BUSINESS_STYLE_MAP] ?? PICKER_DEFAULT_STYLE;
+              const color = BUSINESS_COLOR_HEX[type.key] ?? '#9ca3af';
+              const isPreviewing = previewKey === type.key;
+              const isConfirmed = selectedKey === type.key;
+              return (
+                <button
+                  key={type.key}
+                  type="button"
+                  onClick={() => setPreviewKey(type.key)}
+                  className={cn(
+                    'relative overflow-hidden rounded-xl border p-3 text-left transition-all',
+                    isPreviewing ? style.card : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+                  )}
+                >
+                  {/* Watermark */}
+                  <div className="pointer-events-none absolute bottom-0 right-0 select-none overflow-hidden">
+                    <Icon className="h-16 w-16 translate-x-4 translate-y-4" style={{ color, opacity: 0.11 }} />
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{type.description}</p>
-                  <p className="mt-3 text-[11px] font-medium text-muted-foreground">Frais: {type.creationFee.toLocaleString('fr-FR')} money{type.minCapital > 0 ? ` · capital min. ${type.minCapital.toLocaleString('fr-FR')}` : ''}</p>
-                </div>
+                  {/* Confirmed dot */}
+                  {isConfirmed && (
+                    <div className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+                  )}
+                  {/* Content */}
+                  <div className="relative flex flex-col gap-2.5">
+                    <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg transition-colors', isPreviewing ? style.iconWrap : 'bg-muted/20')}>
+                      <Icon className={cn('h-[18px] w-[18px] transition-colors', isPreviewing ? style.icon : 'text-foreground/55')} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold leading-tight text-foreground">{type.label}</p>
+                      <p className="mt-0.5 font-mono text-[9px] text-muted-foreground/45">
+                        {type.creationFee > 0 ? type.creationFee.toLocaleString('fr-FR') : 'Gratuit'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="w-px shrink-0 bg-border" />
+
+        {/* Right — detail panel */}
+        <div className="flex w-64 shrink-0 flex-col gap-3">
+          {previewType && (
+            <>
+              <div className="max-h-[calc(68vh-60px)] overflow-y-auto">
+                <BusinessTypeDetailPanel type={previewType} />
               </div>
-            </button>
-          );
-        })}
+              <button
+                type="button"
+                onClick={() => { onSelect(previewType); onClose(); }}
+                className="mt-auto w-full rounded-xl py-3 text-[13px] font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                style={{ background: BUSINESS_COLOR_HEX[previewType.key] ?? '#6366f1' }}
+              >
+                Choisir · {previewType.label}
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </ModalWrap>
   );
@@ -1642,7 +1757,7 @@ export function ManageBusinessModal({
     ) : null}
 
     {business ? (
-      <ProductionModal open={productionOpen} onClose={() => setProductionOpen(false)} business={business} />
+      <ProductionModal open={productionOpen} onClose={() => setProductionOpen(false)} business={business} currentUserId={currentUserId} onReload={onSubmitted} />
     ) : null}
 
     <ModalWrap

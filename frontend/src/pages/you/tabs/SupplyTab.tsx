@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { RESOURCE_META, type ResourceType } from '@/lib/resources';
+import { PRODUCER_TYPES, RESOURCE_META, type ResourceType } from '@/lib/resources';
 import {
   youApi,
   type YouBusiness,
@@ -262,6 +262,7 @@ function NodeCard({
   footer,
   active,
   construction,
+  workWarning,
   onDragStart,
   onClick,
 }: {
@@ -273,9 +274,11 @@ function NodeCard({
   footer?: string;
   active?: boolean;
   construction?: boolean;
+  workWarning?: boolean;
   onDragStart: (e: React.MouseEvent) => void;
   onClick: () => void;
 }) {
+  const cardAccent = workWarning ? '#f97316' : accent;
   return (
     <div
       className="absolute select-none cursor-grab active:cursor-grabbing"
@@ -290,18 +293,22 @@ function NodeCard({
         className="relative overflow-hidden rounded-lg border bg-card p-3 shadow-sm transition-colors hover:bg-accent"
         style={{
           height: CARD_SIZE,
-          borderColor: `${accent}66`,
-          boxShadow: active ? `0 0 0 2px ${accent}26` : undefined,
+          borderColor: workWarning ? '#f9731666' : `${accent}66`,
+          boxShadow: active ? `0 0 0 2px ${cardAccent}26` : workWarning ? `0 0 0 1.5px #f9731640` : undefined,
         }}
       >
         {construction && <div className="absolute inset-x-0 top-0 h-2" style={{ background: CONSTRUCTION_STRIPES }} />}
+        {workWarning && !construction && (
+          <div className="absolute inset-x-0 top-0 h-1.5 rounded-t-lg" style={{ background: 'repeating-linear-gradient(90deg, #f97316 0 6px, #431407 6px 12px)' }} />
+        )}
         <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md" style={{ background: `${accent}18`, color: accent }}>
+          <div className="flex h-9 w-9 items-center justify-center rounded-md" style={{ background: `${cardAccent}18`, color: cardAccent }}>
             {icon}
           </div>
           <p className="line-clamp-2 w-full text-[10px] font-semibold leading-tight text-foreground">{title}</p>
           <p className="line-clamp-1 text-[9px] text-muted-foreground">{subtitle}</p>
-          {footer && <p className="line-clamp-1 text-[9px] font-mono" style={{ color: accent }}>{footer}</p>}
+          {footer && <p className="line-clamp-1 text-[9px] font-mono" style={{ color: cardAccent }}>{footer}</p>}
+          {workWarning && <p className="text-[8px] font-semibold text-orange-400">⚠ Travail requis</p>}
         </div>
       </div>
     </div>
@@ -343,6 +350,9 @@ function Sidebar({
           const pending = business.loans.filter((loan) => loan.status === 'PENDING').length
             + business.cases.filter((caseNode) => caseNode.status !== 'CLOSED').length;
           const underConstruction = Boolean(business.underConstruction && business.constructionProject);
+          const isProducerBiz = PRODUCER_TYPES.has(business.typeKey);
+          const workRatio = business.workRatio ?? 1;
+          const needsWork = isProducerBiz && !underConstruction && workRatio === 0 && business.members.length > 0;
           const storage = business.inventories.reduce((sum, entry) => sum + entry.quantity, 0);
           const capacity = business.inventories.reduce((sum, entry) => sum + entry.capacity, 0);
           const progress = business.constructionProject?.progress.percent ?? 0;
@@ -361,6 +371,7 @@ function Sidebar({
                   <p className={cn('truncate text-[11px] font-semibold', active ? 'text-foreground' : 'text-muted-foreground')}>{business.name}</p>
                   {underConstruction && <span className="rounded-full bg-amber-400 px-1.5 text-[8px] font-bold text-black">BUILD</span>}
                   {pending > 0 && <span className="rounded-full bg-amber-500/15 px-1.5 text-[8px] font-bold text-amber-500">{pending}</span>}
+                  {needsWork && <span className="rounded-full bg-orange-500/15 px-1.5 text-[8px] font-bold text-orange-400">⚠ WORK</span>}
                 </div>
                 <p className="truncate text-[9px] text-muted-foreground/60">{BIZ_LABEL[business.typeKey] ?? business.typeKey}</p>
                 <div className="mt-1.5 h-[3px] overflow-hidden rounded-full bg-muted">
@@ -599,6 +610,8 @@ function BusinessCanvas({
   const initPositions = useMemo(() => makePositions(nodes), [nodes]);
   const drag = useDragCanvas(initPositions);
   const color = businessColor(business.typeKey);
+  const isProducer = PRODUCER_TYPES.has(business.typeKey);
+  const workWarning = isProducer && !business.underConstruction && (business.workRatio ?? 1) === 0 && business.members.length > 0;
   const businessPos = drag.screenPos('business');
   const links = nodes.map((node) => {
     const nodePos = drag.screenPos(node.id);
@@ -654,6 +667,7 @@ function BusinessCanvas({
         footer={business.underConstruction ? `${business.constructionProject?.progress.percent ?? 0}%` : '⚙ Gérer'}
         active
         construction={business.underConstruction}
+        workWarning={workWarning}
         onDragStart={(event) => drag.startDrag('business', event)}
         onClick={() => { onNodeSelect(null); onBusinessClick(); }}
       />
@@ -667,6 +681,7 @@ function BusinessCanvas({
           subtitle={node.subtitle}
           footer={node.footer}
           construction={node.construction}
+          workWarning={workWarning && node.group === 'depot'}
           onDragStart={(event) => drag.startDrag(node.id, event)}
           onClick={() => onNodeSelect(node.selection)}
         />

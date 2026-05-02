@@ -28,7 +28,7 @@ import {
 } from '../../utils/sharedBalance.js';
 import { logAdmin } from '../../utils/logger.js';
 import { writeBase64UploadFile } from '../../utils/uploads.js';
-import { getBusinessBalancing } from '../../config/balancing.js';
+import { BALANCING, getBusinessBalancing } from '../../config/balancing.js';
 import {
   BUSINESS_SHARE_PROPOSAL_CANCEL_DELAY_MS,
   getBusinessSaleItems,
@@ -358,8 +358,9 @@ function serializeSkill(skill: { key: string; level: number; xp: number }) {
 }
 
 function getBusinessSlots(skills: Array<{ key: string; level: number }>) {
+  const { businessLimits } = BALANCING;
   const affairesSkill = skills.find((skill) => skill.key === 'affaires');
-  return Math.max(1, affairesSkill?.level ?? 1);
+  return Math.max(businessLimits.minSlots, affairesSkill?.level ?? businessLimits.minSlots);
 }
 
 async function ensureCanOwnAdditionalBusiness(userId: string) {
@@ -767,16 +768,20 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     underConstruction,
     memberCount: business.members.length,
     actions: underConstruction ? [] : (type?.actions ?? []),
-    members: business.members.map((member: any) => ({
-      id: member.id,
-      role: member.role,
-      specialty: member.specialty ?? null,
-      isPrimaryLawyer: Boolean(member.isPrimaryLawyer),
-      displayOrder: member.displayOrder ?? 0,
-      status: member.status,
-      salary: member.salary ?? 0,
-      user: member.user,
-    })),
+    members: business.members.map((member: any) => {
+      const today = new Date().toISOString().slice(0, 10);
+      return {
+        id: member.id,
+        role: member.role,
+        specialty: member.specialty ?? null,
+        isPrimaryLawyer: Boolean(member.isPrimaryLawyer),
+        displayOrder: member.displayOrder ?? 0,
+        status: member.status,
+        salary: member.salary ?? 0,
+        workedToday: member.lastWorkDate === today,
+        user: member.user,
+      };
+    }),
     pendingInvitations: business.invitations.map((invite: any) => ({
       ...serializeEmploymentInvitation(invite, viewerId),
     })),

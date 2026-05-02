@@ -107,6 +107,64 @@ async function ensureSupplyForBusinesses(db: PrismaClient, businesses: Array<{ i
   }
 }
 
+function getTodayDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function getWorkRatio(db: PrismaClient, businessId: string): Promise<number> {
+  const today = getTodayDate();
+  const members = await db.businessMember.findMany({
+    where: { businessId, status: 'ACTIVE' },
+    select: { lastWorkDate: true },
+  });
+  if (members.length === 0) return 1.0;
+  const workedCount = members.filter((m) => m.lastWorkDate === today).length;
+  if (workedCount >= 4) return 1.25;
+  return workedCount / members.length;
+}
+
+export async function submitBusinessWork(userId: string, businessId: string) {
+  const member = await prisma.businessMember.findFirst({
+    where: { businessId, userId, status: 'ACTIVE' },
+  });
+  if (!member) throw new Error('NOT_BUSINESS_MEMBER');
+
+  const today = getTodayDate();
+  if (member.lastWorkDate === today) throw new Error('WORK_ALREADY_DONE');
+
+  await prisma.businessMember.update({
+    where: { id: member.id },
+    data: { lastWorkDate: today },
+  });
+
+  const workRatio = await getWorkRatio(prisma, businessId);
+  return { workedToday: true, workRatio };
+}
+
+export async function sendWorkReminder(userId: string, businessId: string, memberId: string) {
+  const business = await prisma.business.findFirst({
+    where: { id: businessId, ownerId: userId },
+    select: { id: true, name: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+
+  const member = await prisma.businessMember.findFirst({
+    where: { id: memberId, businessId },
+    select: { userId: true, user: { select: { username: true } } },
+  });
+  if (!member) throw new Error('MEMBER_NOT_FOUND');
+
+  await createNotification({
+    userId: member.userId,
+    type: 'SYSTEM',
+    title: `🔥 ${business.name} vous attend !`,
+    body: 'Le patron s\'impatiente. Faites votre travail quotidien maintenant.',
+    data: { businessId },
+    link: '/you',
+    icon: 'Flame',
+  });
+}
+
 export async function accrueBusinessSupply(db: PrismaClient = prisma) {
   const businesses = await db.business.findMany({
     where: {
@@ -125,11 +183,27 @@ export async function accrueBusinessSupply(db: PrismaClient = prisma) {
   });
   const now = new Date();
 
+  // Batch-fetch work ratios for all businesses that have inventories
+  const businessIdsWithInventory = [...new Set(inventories.map((inv) => inv.businessId))];
+  const today = getTodayDate();
+  const memberRows = await db.businessMember.findMany({
+    where: { businessId: { in: businessIdsWithInventory }, status: 'ACTIVE' },
+    select: { businessId: true, lastWorkDate: true },
+  });
+  const workRatioMap = new Map<string, number>();
+  for (const bizId of businessIdsWithInventory) {
+    const members = memberRows.filter((m) => m.businessId === bizId);
+    if (members.length === 0) { workRatioMap.set(bizId, 1.0); continue; }
+    const workedCount = members.filter((m) => m.lastWorkDate === today).length;
+    workRatioMap.set(bizId, workedCount >= 4 ? 1.25 : workedCount / members.length);
+  }
+
   for (const inventory of inventories) {
     const elapsedMs = now.getTime() - inventory.lastProducedAt.getTime();
     if (elapsedMs < HOUR_MS / Math.max(1, inventory.productionRatePerHour)) continue;
 
-    const produced = Math.floor((elapsedMs / HOUR_MS) * inventory.productionRatePerHour);
+    const workMultiplier = workRatioMap.get(inventory.businessId) ?? 1.0;
+    const produced = Math.floor((elapsedMs / HOUR_MS) * inventory.productionRatePerHour * workMultiplier);
     if (produced <= 0) continue;
 
     const nextQuantity = Math.min(inventory.capacity, inventory.quantity + produced);
@@ -583,15 +657,26 @@ export async function getSupplyState(userId: string) {
         recipient: entry.recipient,
         createdAt: serializeDate(entry.createdAt),
       })),
-      members: business.members.map((member) => ({
-        id: member.id,
-        role: member.role,
-        specialty: member.specialty,
-        isPrimaryLawyer: member.isPrimaryLawyer,
-        displayOrder: member.displayOrder,
-        salary: member.salary,
-        user: member.user,
-      })),
+      members: business.members.map((member) => {
+        const today = getTodayDate();
+        return {
+          id: member.id,
+          role: member.role,
+          specialty: member.specialty,
+          isPrimaryLawyer: member.isPrimaryLawyer,
+          displayOrder: member.displayOrder,
+          salary: member.salary,
+          workedToday: member.lastWorkDate === today,
+          user: member.user,
+        };
+      }),
+      workRatio: (() => {
+        const today = getTodayDate();
+        const activeMembers = business.members;
+        if (activeMembers.length === 0) return 1.0;
+        const workedCount = activeMembers.filter((m) => m.lastWorkDate === today).length;
+        return workedCount >= 4 ? 1.25 : workedCount / activeMembers.length;
+      })(),
     })),
     marketOffers: accessibleMarketOffers,
     contracts: contracts.map(serializeContract),

@@ -213,6 +213,7 @@ export interface YouBusinessMember {
   specialty?: string | null;
   isPrimaryLawyer?: boolean;
   displayOrder?: number;
+  workedToday?: boolean;
   user: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
@@ -792,6 +793,7 @@ export interface YouSupplyBusiness {
   bankAccounts: Array<{ id: string; accountType: string; balance: number; user: Omit<YouPlayer, 'alreadyInRelationship'>; createdAt: string | null }>;
   transferHistory: YouBusinessTransferHistoryEntry[];
   members: YouBusinessMember[];
+  workRatio: number;
 }
 
 export interface YouSupplyState {
@@ -819,6 +821,10 @@ export const youApi = {
     api.post<{ contract: YouSupplyContract }>(`/you/supply-contracts/${contractId}/respond`, { decision }),
   cancelSupplyContract: (contractId: string) =>
     api.delete<{ contract: YouSupplyContract }>(`/you/supply-contracts/${contractId}`),
+  submitWork: (businessId: string) =>
+    api.post<{ workedToday: boolean; workRatio: number }>(`/you/businesses/${businessId}/work`, {}),
+  sendWorkReminder: (businessId: string, memberId: string) =>
+    api.post<{ ok: boolean }>(`/you/businesses/${businessId}/members/${memberId}/work-reminder`, {}),
   getTemporaryEffects: () => api.get<{ effects: YouTemporaryEffect[] }>('/you/temporary-effects'),
   getSkills: () => api.get<{ skills: YouSkill[] }>('/you/skills'),
   trainSkill: (skillKey: string) =>

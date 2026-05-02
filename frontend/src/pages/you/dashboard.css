@@ -12,13 +12,21 @@
 .you-dash-left-rail {
   grid-row: 1;
   grid-column: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.you-dash-left-scroll {
+  flex: 1;
   overflow-y: auto;
   min-height: 0;
 }
 
-.you-dash-left-rail::-webkit-scrollbar { width: 4px; }
-.you-dash-left-rail::-webkit-scrollbar-track { background: transparent; }
-.you-dash-left-rail::-webkit-scrollbar-thumb { background: hsl(0 0% 100% / 0.08); border-radius: 9999px; }
+.you-dash-left-scroll::-webkit-scrollbar { width: 4px; }
+.you-dash-left-scroll::-webkit-scrollbar-track { background: transparent; }
+.you-dash-left-scroll::-webkit-scrollbar-thumb { background: hsl(0 0% 100% / 0.08); border-radius: 9999px; }
 
 .you-dash-map {
   grid-row: 1;

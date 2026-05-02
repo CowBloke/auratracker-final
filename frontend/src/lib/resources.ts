@@ -166,11 +166,14 @@ export const BUSINESS_PRODUCES: Partial<Record<string, ResourceType[]>> = {
 };
 
 // Mini-game type per business
-export type MiniGameType = 'TIMING' | 'FINANCE' | 'MEMORY';
+export type MiniGameType = 'TIMING' | 'FINANCE' | 'MEMORY' | 'TYPING' | 'MATH' | 'SORT';
 
 export function getMiniGameType(typeKey: string): MiniGameType {
   if (typeKey === 'bank' || typeKey === 'transfer') return 'FINANCE';
   if (typeKey === 'formation' || typeKey === 'medecins') return 'MEMORY';
+  if (typeKey === 'sawmill' || typeKey === 'quarry' || typeKey === 'iron_mine' || typeKey === 'fuel_refinery' || typeKey === 'textile_mill') return 'TYPING';
+  if (typeKey === 'startup' || typeKey === 'youtube' || typeKey === 'agency') return 'MATH';
+  if (typeKey === 'illegal_market') return 'SORT';
   return 'TIMING';
 }
 
@@ -180,5 +183,8 @@ export function getMiniGameLabel(typeKey: string): string {
     case 'TIMING': return 'Travail manuel';
     case 'FINANCE': return 'Analyse financière';
     case 'MEMORY': return 'Mémorisation';
+    case 'TYPING': return 'Travail de précision';
+    case 'MATH': return 'Analyse de données';
+    case 'SORT': return 'Gestion des stocks';
   }
 }

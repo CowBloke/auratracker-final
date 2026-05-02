@@ -140,6 +140,10 @@ export const BALANCING = {
     xpPerMonth: 10,
     xpToNextLevel: [0, 100, 250, 500, 1000, 2000, 3500, 5500, 8000, 12000],
   },
+
+  businessLimits: {
+    minSlots: 3,
+  },
 } as const;
 
 export type BalancingBusinessKey = keyof typeof BALANCING.businesses;

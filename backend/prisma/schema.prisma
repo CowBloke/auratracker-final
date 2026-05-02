@@ -690,6 +690,7 @@ model BusinessMember {
   status     String   @default("ACTIVE")
   salary     Int      @default(0)
   lastSalaryPaymentDate String?
+  lastWorkDate          String?   // "YYYY-MM-DD" — set when member completes daily work
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

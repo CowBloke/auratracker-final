@@ -78,6 +78,8 @@ import {
   getSupplyState,
   requestSupplyContract,
   respondToSupplyContract,
+  sendWorkReminder,
+  submitBusinessWork,
   upsertSupplyOffer,
 } from '../modules/you/supply.js';
 
@@ -99,6 +101,8 @@ const ERROR_STATUS: Record<string, number> = {
   BUSINESS_UNDER_CONSTRUCTION: 400,
   CONSTRUCTION_PROJECT_NOT_FOUND: 404,
   CONSTRUCTION_RESOURCE_NOT_REQUIRED: 400,
+  NOT_BUSINESS_MEMBER: 403,
+  WORK_ALREADY_DONE: 400,
   BUSINESS_TYPE_ADMIN_ONLY: 403,
   BUSINESS_RATING_NOT_ALLOWED: 403,
   BUSINESS_LIQUIDATION_FORBIDDEN: 403,
@@ -489,6 +493,24 @@ router.delete('/supply-contracts/:contractId', authMiddleware, requireYouAccess,
     res.json({ contract });
   } catch (error) {
     handleRouteError(error, res, 'Cancel supply contract error');
+  }
+});
+
+router.post('/businesses/:businessId/work', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await submitBusinessWork(req.user!.id, req.params.businessId);
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Submit work error');
+  }
+});
+
+router.post('/businesses/:businessId/members/:memberId/work-reminder', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    await sendWorkReminder(req.user!.id, req.params.businessId, req.params.memberId);
+    res.json({ ok: true });
+  } catch (error) {
+    handleRouteError(error, res, 'Send work reminder error');
   }
 });
 
