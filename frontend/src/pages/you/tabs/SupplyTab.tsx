@@ -224,35 +224,6 @@ function useDragCanvas(initPositions: Positions) {
 
 interface Link { from: Vec2; to: Vec2; color: string; active: boolean; }
 
-function Connectors({ links }: { links: Link[] }) {
-  return (
-    <svg className="absolute inset-0 h-full w-full pointer-events-none" style={{ zIndex: 1 }}>
-      {links.map((link, index) => {
-        const mx = (link.from.x + link.to.x) / 2;
-        const path = `M ${link.from.x} ${link.from.y} C ${mx} ${link.from.y}, ${mx} ${link.to.y}, ${link.to.x} ${link.to.y}`;
-        return (
-          <g key={index}>
-            <path
-              d={path}
-              fill="none"
-              stroke={link.color}
-              strokeOpacity={link.active ? 0.48 : 0.22}
-              strokeDasharray={link.active ? undefined : '5 4'}
-              strokeWidth={1.6}
-              strokeLinecap="round"
-            />
-            {link.active && (
-              <circle r="2.5" fill={link.color} opacity="0.8">
-                <animateMotion dur="2.6s" repeatCount="indefinite" path={path} />
-              </circle>
-            )}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
 function NodeCard({
   pos,
   accent,
@@ -265,6 +236,10 @@ function NodeCard({
   workWarning,
   onDragStart,
   onClick,
+  onHoverChange,
+  showHandles,
+  onHandleMouseDown,
+  badge,
 }: {
   pos: Vec2;
   accent: string;
@@ -277,6 +252,15 @@ function NodeCard({
   workWarning?: boolean;
   onDragStart: (e: React.MouseEvent) => void;
   onClick: () => void;
+  onHoverChange?: (hovering: boolean) => void;
+  showHandles?: boolean;
+  onHandleMouseDown?: (side: LinkHandleSide, e: React.MouseEvent) => void;
+  badge?: {
+    icon: React.ReactNode;
+    title: string;
+    accent: string;
+    onClick: () => void;
+  };
 }) {
   const cardAccent = workWarning ? '#f97316' : accent;
   return (
@@ -284,6 +268,8 @@ function NodeCard({
       className="absolute select-none cursor-grab active:cursor-grabbing"
       style={{ left: pos.x, top: pos.y, width: CARD_SIZE, zIndex: 10 }}
       onMouseDown={onDragStart}
+      onMouseEnter={() => onHoverChange?.(true)}
+      onMouseLeave={() => onHoverChange?.(false)}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
@@ -310,6 +296,41 @@ function NodeCard({
           {footer && <p className="line-clamp-1 text-[9px] font-mono" style={{ color: cardAccent }}>{footer}</p>}
           {workWarning && <p className="text-[8px] font-semibold text-orange-400">⚠ Travail requis</p>}
         </div>
+        {badge && (
+          <button
+            type="button"
+            title={badge.title}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              badge.onClick();
+            }}
+            className="absolute -right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card shadow-lg"
+            style={{ color: badge.accent }}
+          >
+            {badge.icon}
+          </button>
+        )}
+        {showHandles && onHandleMouseDown && (
+          <>
+            {(['top', 'right', 'bottom', 'left'] as LinkHandleSide[]).map((side) => {
+              const sideStyle =
+                side === 'top' ? { left: '50%', top: -7, transform: 'translateX(-50%)' } :
+                side === 'right' ? { right: -7, top: '50%', transform: 'translateY(-50%)' } :
+                side === 'bottom' ? { left: '50%', bottom: -7, transform: 'translateX(-50%)' } :
+                { left: -7, top: '50%', transform: 'translateY(-50%)' };
+              return (
+                <button
+                  key={side}
+                  type="button"
+                  onMouseDown={(event) => onHandleMouseDown(side, event)}
+                  className="absolute h-4 w-4 rounded-full border border-border bg-background shadow"
+                  style={sideStyle}
+                />
+              );
+            })}
+          </>
+        )}
       </div>
     </div>
   );
@@ -395,21 +416,99 @@ function Sidebar({
   );
 }
 
-function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[]) {
-  const nodes: Array<{
-    id: string;
-    accent: string;
-    icon: React.ReactNode;
-    title: string;
-    subtitle: string;
-    footer?: string;
-    selection: NodeSelection;
-    group: 'left' | 'right' | 'depot' | 'bottom';
-    connectsTo?: string;
-    construction?: boolean;
-  }> = [];
+type GraphMode = 'single' | 'full';
+type LinkHandleSide = 'top' | 'right' | 'bottom' | 'left';
+type GraphNodeGroup = 'business' | 'left' | 'depot' | 'right' | 'market' | 'bottom';
+type GraphNodeKind = 'business' | 'inventory' | 'construction-material' | 'contract' | 'loan' | 'case' | 'formation' | 'startup' | 'account' | 'transfer' | 'team' | 'global-market';
+
+type GraphNodeModel = {
+  id: string;
+  businessId: string;
+  kind: GraphNodeKind;
+  accent: string;
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  footer?: string;
+  selection: NodeSelection;
+  group: GraphNodeGroup;
+  connectsTo?: string;
+  construction?: boolean;
+  resourceType?: YouSupplyResourceType;
+  inventory?: YouSupplyInventory;
+  offer?: YouSupplyOffer;
+  globalMarketUnitPrice?: number;
+};
+
+type CanvasLink = Link & {
+  id: string;
+  kind: 'structural' | 'supply';
+  ratePerHour?: number;
+  etaLabel?: string | null;
+  removable?: boolean;
+  midpoint?: Vec2;
+};
+
+type LinkDraft = {
+  sourceNodeId: string;
+  sourceBusinessId: string;
+  sourceResourceType: YouSupplyResourceType;
+  side: LinkHandleSide;
+  current: Vec2;
+};
+
+const BUSINESS_GRAPH_WIDTH = 980;
+const BUSINESS_GRAPH_HEIGHT = 720;
+
+function inventoryNodeId(businessId: string, resourceType: string) {
+  return `inventory:${businessId}:${resourceType}`;
+}
+
+function businessNodeId(businessId: string) {
+  return `business:${businessId}`;
+}
+
+function globalMarketNodeId(businessId: string) {
+  return `market:${businessId}`;
+}
+
+function formatEta(hours: number | null) {
+  if (hours === null || !Number.isFinite(hours)) return null;
+  if (hours <= 0) return 'Plein';
+  if (hours < 1) return `${Math.max(1, Math.ceil(hours * 60))} min`;
+  if (hours < 24) return `${hours.toFixed(1)} h`;
+  return `${Math.ceil(hours / 24)} j`;
+}
+
+function beadDuration(ratePerHour: number) {
+  return `${Math.max(0.9, Math.min(4.8, 8 / Math.max(1, ratePerHour))).toFixed(2)}s`;
+}
+
+function getHandlePosition(pos: Vec2, side: LinkHandleSide): Vec2 {
+  if (side === 'top') return { x: pos.x + CARD_SIZE / 2, y: pos.y };
+  if (side === 'right') return { x: pos.x + CARD_SIZE, y: pos.y + CARD_SIZE / 2 };
+  if (side === 'bottom') return { x: pos.x + CARD_SIZE / 2, y: pos.y + CARD_SIZE };
+  return { x: pos.x, y: pos.y + CARD_SIZE / 2 };
+}
+
+function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[]) {
+  const nodes: GraphNodeModel[] = [];
   const color = businessColor(business.typeKey);
   const skipContractIds = new Set<string>();
+
+  nodes.push({
+    id: businessNodeId(business.id),
+    businessId: business.id,
+    kind: 'business',
+    accent: color,
+    icon: <span className="font-mono text-xs font-bold">{BIZ_MONO[business.typeKey] ?? '??'}</span>,
+    title: business.name,
+    subtitle: business.underConstruction ? 'Chantier' : BIZ_LABEL[business.typeKey] ?? business.typeKey,
+    footer: business.underConstruction ? `${business.constructionProject?.progress.percent ?? 0}%` : '⚙ Gérer',
+    selection: null,
+    group: 'business',
+    construction: business.underConstruction,
+  });
 
   if (business.underConstruction && business.constructionProject) {
     business.constructionProject.materials.forEach((material) => {
@@ -418,12 +517,16 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
       const remaining = Math.max(0, material.requiredQuantity - material.deliveredQuantity);
       const done = remaining === 0;
       const activeContract = contracts.find(
-        (c) => c.buyerBusinessId === business.id && c.resourceType === material.resourceType
-          && c.status !== 'REJECTED' && c.status !== 'CANCELLED',
+        (contract) => contract.buyerBusinessId === business.id
+          && contract.resourceType === material.resourceType
+          && contract.status !== 'REJECTED'
+          && contract.status !== 'CANCELLED',
       );
       if (activeContract) skipContractIds.add(activeContract.id);
       nodes.push({
         id: `material:${material.id}`,
+        businessId: business.id,
+        kind: 'construction-material',
         accent: done ? '#22c55e' : activeContract ? '#38bdf8' : '#facc15',
         icon: <Icon size={17} />,
         title: resourceLabel(material.resourceType),
@@ -432,14 +535,18 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
         selection: { kind: 'construction-material', business, material },
         group: 'left',
         construction: !done,
+        resourceType: material.resourceType,
       });
     });
   } else {
     business.inventories.forEach((inventory) => {
       const meta = RESOURCE_META[inventory.resourceType as ResourceType];
       const Icon = meta?.Icon ?? Package;
+      const offer = business.offers.find((entry) => entry.resourceType === inventory.resourceType);
       nodes.push({
-        id: `inv:${inventory.id}`,
+        id: inventoryNodeId(business.id, inventory.resourceType),
+        businessId: business.id,
+        kind: 'inventory',
         accent: color,
         icon: <Icon size={17} />,
         title: `Dépôt ${resourceLabel(inventory.resourceType)}`,
@@ -447,22 +554,24 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
         footer: `${inventory.quantity}/${inventory.capacity}`,
         selection: { kind: 'inventory', business, inventory },
         group: 'depot',
+        resourceType: inventory.resourceType,
+        inventory,
+        offer,
+        globalMarketUnitPrice: inventory.globalMarketUnitPrice,
       });
     });
 
-    business.offers.forEach((offer) => {
-      const matchingInv = business.inventories.find((inv) => inv.resourceType === offer.resourceType);
-      nodes.push({
-        id: `offer:${offer.id}`,
-        accent: offer.autoAccept ? '#22c55e' : '#f59e0b',
-        icon: <Package size={17} />,
-        title: `Offre ${resourceLabel(offer.resourceType)}`,
-        subtitle: offer.autoAccept ? 'Auto-acceptee' : 'Validation manuelle',
-        footer: `${offer.unitPrice}/u`,
-        selection: { kind: 'offer', business, offer },
-        group: 'right',
-        connectsTo: matchingInv ? `inv:${matchingInv.id}` : undefined,
-      });
+    nodes.push({
+      id: globalMarketNodeId(business.id),
+      businessId: business.id,
+      kind: 'global-market',
+      accent: '#f97316',
+      icon: <Banknote size={18} />,
+      title: 'Marché global',
+      subtitle: 'Vente de secours',
+      footer: business.inventories[0] ? `≈ ${business.inventories[0].globalMarketUnitPrice}/u` : 'Prix fixe',
+      selection: null,
+      group: 'market',
     });
   }
 
@@ -476,11 +585,10 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
     )
     .forEach((contract) => {
       const outgoing = contract.supplierBusinessId === business.id;
-      const matchingInv = outgoing
-        ? business.inventories.find((inv) => inv.resourceType === contract.resourceType)
-        : null;
       nodes.push({
         id: `contract:${contract.id}`,
+        businessId: business.id,
+        kind: 'contract',
         accent: contract.status === 'ACTIVE' ? '#38bdf8' : contract.status === 'PENDING' ? '#f59e0b' : '#94a3b8',
         icon: <Briefcase size={17} />,
         title: outgoing ? contract.buyer?.name ?? 'Client' : contract.supplier?.name ?? 'Fournisseur',
@@ -488,13 +596,15 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
         footer: `${contract.deliveredQuantity}/${contract.totalQuantity}`,
         selection: { kind: 'contract', business, contract },
         group: outgoing ? 'right' : 'left',
-        connectsTo: outgoing && matchingInv ? `inv:${matchingInv.id}` : undefined,
+        connectsTo: outgoing ? inventoryNodeId(business.id, contract.resourceType) : businessNodeId(business.id),
       });
     });
 
   if (business.typeKey === 'bank') {
     business.loans.forEach((loan) => nodes.push({
       id: `loan:${loan.id}`,
+      businessId: business.id,
+      kind: 'loan',
       accent: loan.status === 'ACTIVE' ? '#22c55e' : loan.status === 'PENDING' ? '#f59e0b' : '#94a3b8',
       icon: <Landmark size={17} />,
       title: loan.borrower?.username ?? 'Emprunteur',
@@ -505,6 +615,8 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
     }));
     business.bankAccounts.forEach((account) => nodes.push({
       id: `account:${account.id}`,
+      businessId: business.id,
+      kind: 'account',
       accent: '#eab308',
       icon: <Banknote size={17} />,
       title: account.user.username,
@@ -518,6 +630,8 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
   if (business.typeKey === 'law_firm' || business.typeKey === 'supreme_court') {
     business.cases.forEach((caseNode) => nodes.push({
       id: `case:${caseNode.id}`,
+      businessId: business.id,
+      kind: 'case',
       accent: caseNode.status === 'CLOSED' ? '#94a3b8' : '#06b6d4',
       icon: <Gavel size={17} />,
       title: caseNode.plainte?.title ?? caseNode.title,
@@ -530,6 +644,8 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
 
   business.members.forEach((member) => nodes.push({
     id: `member:${member.id}`,
+    businessId: business.id,
+    kind: 'team',
     accent: member.isPrimaryLawyer ? '#22c55e' : '#8b5cf6',
     icon: <User size={17} />,
     title: member.user.username,
@@ -542,6 +658,8 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
   if (business.typeKey === 'formation') {
     business.formationProducts.forEach((product) => nodes.push({
       id: `formation:${product.id}`,
+      businessId: business.id,
+      kind: 'formation',
       accent: product.status === 'APPROVED' ? '#22c55e' : '#6366f1',
       icon: <GraduationCap size={17} />,
       title: product.title,
@@ -555,6 +673,8 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
   if (business.typeKey === 'startup') {
     business.startupProducts.forEach((product) => nodes.push({
       id: `startup:${product.id}`,
+      businessId: business.id,
+      kind: 'startup',
       accent: product.activeResearchLevel ? '#f59e0b' : '#3b82f6',
       icon: <Play size={17} />,
       title: product.name,
@@ -568,6 +688,8 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
   if (business.typeKey === 'transfer') {
     business.transferHistory.forEach((entry) => nodes.push({
       id: `transfer:${entry.id}`,
+      businessId: business.id,
+      kind: 'transfer',
       accent: '#14b8a6',
       icon: <Banknote size={17} />,
       title: `${entry.sender.username} -> ${entry.recipient.username}`,
@@ -581,75 +703,299 @@ function buildNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[])
   return nodes;
 }
 
-function makePositions(nodes: ReturnType<typeof buildNodes>): Positions {
-  // business at x=240; left inputs at x=50; depot at x=440; right outputs at x=640
-  const positions: Positions = { business: { x: 240, y: 200 } };
-  const left = nodes.filter((n) => n.group === 'left');
-  const depot = nodes.filter((n) => n.group === 'depot');
-  const right = nodes.filter((n) => n.group === 'right');
-  const bottom = nodes.filter((n) => n.group === 'bottom');
-  left.forEach((n, i) => { positions[n.id] = { x: 50, y: 80 + i * 146 }; });
-  depot.forEach((n, i) => { positions[n.id] = { x: 440, y: 80 + i * 146 }; });
-  right.forEach((n, i) => { positions[n.id] = { x: 640, y: 80 + i * 140 }; });
-  bottom.forEach((n, i) => { positions[n.id] = { x: 160 + (i % 4) * 145, y: 400 + Math.floor(i / 4) * 140 }; });
+function makeBusinessPositions(nodes: GraphNodeModel[], origin: Vec2): Positions {
+  const positions: Positions = {};
+  const left = nodes.filter((node) => node.group === 'left');
+  const depot = nodes.filter((node) => node.group === 'depot');
+  const right = nodes.filter((node) => node.group === 'right');
+  const bottom = nodes.filter((node) => node.group === 'bottom');
+  const business = nodes.find((node) => node.group === 'business');
+  const market = nodes.find((node) => node.group === 'market');
+
+  if (business) positions[business.id] = { x: origin.x + 250, y: origin.y + 200 };
+  if (market) positions[market.id] = { x: origin.x + 830, y: origin.y + 200 };
+  left.forEach((node, index) => { positions[node.id] = { x: origin.x + 50, y: origin.y + 80 + index * 146 }; });
+  depot.forEach((node, index) => { positions[node.id] = { x: origin.x + 450, y: origin.y + 80 + index * 146 }; });
+  right.forEach((node, index) => { positions[node.id] = { x: origin.x + 660, y: origin.y + 80 + index * 140 }; });
+  bottom.forEach((node, index) => { positions[node.id] = { x: origin.x + 130 + (index % 5) * 145, y: origin.y + 430 + Math.floor(index / 5) * 140 }; });
   return positions;
 }
 
+function layoutBusinesses(businesses: YouSupplyBusiness[], contracts: YouSupplyContract[], mode: GraphMode) {
+  const columns = mode === 'single' ? 1 : Math.max(1, Math.ceil(Math.sqrt(businesses.length)));
+  const allNodes: GraphNodeModel[] = [];
+  const positions: Positions = {};
+
+  businesses.forEach((business, index) => {
+    const nodes = buildBusinessNodes(business, contracts);
+    allNodes.push(...nodes);
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    Object.assign(positions, makeBusinessPositions(nodes, {
+      x: column * BUSINESS_GRAPH_WIDTH,
+      y: row * BUSINESS_GRAPH_HEIGHT,
+    }));
+  });
+
+  return { nodes: allNodes, positions };
+}
+
+function getLinkCompatibility(source: GraphNodeModel | undefined, target: GraphNodeModel | undefined) {
+  if (!source) return { ok: false, reason: 'Source introuvable.' };
+  if (source.kind !== 'inventory' || !source.inventory || !source.resourceType) {
+    return { ok: false, reason: 'Seuls les dépôts peuvent envoyer une liaison.' };
+  }
+  if (!target) return { ok: false, reason: 'Cible introuvable.' };
+  if (target.id === source.id) return { ok: false, reason: 'Source identique.' };
+  if (target.kind === 'global-market') {
+    if (target.businessId !== source.businessId) return { ok: false, reason: 'Le marché global ne sert que son entreprise.' };
+    return { ok: true, reason: 'Vente au marché global.' };
+  }
+  if (target.kind !== 'inventory' || !target.resourceType) {
+    return { ok: false, reason: 'Cible incompatible.' };
+  }
+  if (target.businessId === source.businessId) return { ok: false, reason: 'Reliez plutôt à une autre entreprise ou au marché global.' };
+  if (target.resourceType !== source.resourceType) {
+    return { ok: false, reason: `${resourceLabel(source.resourceType)} ne va pas vers ${resourceLabel(target.resourceType)}.` };
+  }
+  return { ok: true, reason: 'Compatible.' };
+}
+
+function Connectors({
+  links,
+  hoveredLinkId,
+  onHoverLink,
+  onLeaveLink,
+}: {
+  links: CanvasLink[];
+  hoveredLinkId: string | null;
+  onHoverLink: (link: CanvasLink) => void;
+  onLeaveLink: () => void;
+}) {
+  return (
+    <svg className="absolute inset-0 h-full w-full" style={{ zIndex: 1 }}>
+      {links.map((link) => {
+        const mx = (link.from.x + link.to.x) / 2;
+        const path = `M ${link.from.x} ${link.from.y} C ${mx} ${link.from.y}, ${mx} ${link.to.y}, ${link.to.x} ${link.to.y}`;
+        return (
+          <g key={link.id}>
+            <path
+              d={path}
+              fill="none"
+              stroke={link.color}
+              strokeOpacity={link.active ? 0.48 : 0.2}
+              strokeDasharray={link.active ? undefined : '5 4'}
+              strokeWidth={link.kind === 'supply' && hoveredLinkId === link.id ? 2.6 : 1.8}
+              strokeLinecap="round"
+              pointerEvents="none"
+            />
+            {link.active && (
+              <circle r="2.8" fill={link.color} opacity="0.85">
+                <animateMotion dur={beadDuration(link.ratePerHour ?? 2)} repeatCount="indefinite" path={path} />
+              </circle>
+            )}
+            {link.kind === 'supply' && (
+              <path
+                d={path}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={14}
+                strokeLinecap="round"
+                onMouseEnter={() => onHoverLink(link)}
+                onMouseLeave={onLeaveLink}
+              />
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 function BusinessCanvas({
-  business,
+  businesses,
   contracts,
+  supplyLinks,
+  mode,
+  mutating,
   onNodeSelect,
   onBusinessClick,
+  onOfferClick,
+  onCreateLink,
+  onDeleteLink,
 }: {
-  business: YouSupplyBusiness;
+  businesses: YouSupplyBusiness[];
   contracts: YouSupplyContract[];
+  supplyLinks: YouSupplyState['links'];
+  mode: GraphMode;
+  mutating: boolean;
   onNodeSelect: (selection: NodeSelection) => void;
-  onBusinessClick: () => void;
+  onBusinessClick: (businessId: string) => void;
+  onOfferClick: (selection: Extract<NodeSelection, { kind: 'inventory' | 'offer' }>) => void;
+  onCreateLink: (input: { sourceBusinessId: string; sourceResourceType: YouSupplyResourceType; targetBusinessId?: string | null; targetResourceType?: YouSupplyResourceType | null; targetKind: 'BUSINESS' | 'GLOBAL_MARKET' }) => Promise<void>;
+  onDeleteLink: (linkId: string) => Promise<void>;
 }) {
-  const nodes = useMemo(() => buildNodes(business, contracts), [business, contracts]);
-  const initPositions = useMemo(() => makePositions(nodes), [nodes]);
-  const drag = useDragCanvas(initPositions);
-  const color = businessColor(business.typeKey);
-  const isProducer = PRODUCER_TYPES.has(business.typeKey);
-  const workWarning = isProducer && !business.underConstruction && (business.workRatio ?? 1) === 0 && business.members.length > 0;
-  const businessPos = drag.screenPos('business');
-  const links = nodes.map((node) => {
-    const nodePos = drag.screenPos(node.id);
-    const connectorId = node.connectsTo ?? 'business';
-    const connectorPos = drag.screenPos(connectorId);
-    if (node.group === 'left') {
-      return {
-        from: { x: nodePos.x + CARD_SIZE, y: nodePos.y + CARD_SIZE / 2 },
-        to: { x: connectorPos.x, y: connectorPos.y + CARD_SIZE / 2 },
-        color: node.accent,
+  const graph = useMemo(() => layoutBusinesses(businesses, contracts, mode), [businesses, contracts, mode]);
+  const drag = useDragCanvas(graph.positions);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<LinkDraft | null>(null);
+  const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
+  const [linkMenuPinned, setLinkMenuPinned] = useState<string | null>(null);
+  const nodesById = useMemo(() => new Map(graph.nodes.map((node) => [node.id, node])), [graph.nodes]);
+
+  const hoveredTargetId = useMemo(() => {
+    if (!draft) return null;
+    const point = draft.current;
+    for (const node of graph.nodes) {
+      const pos = drag.screenPos(node.id);
+      const within = point.x >= pos.x && point.x <= pos.x + CARD_SIZE && point.y >= pos.y && point.y <= pos.y + CARD_SIZE;
+      if (within) return node.id;
+    }
+    return null;
+  }, [draft, graph.nodes, drag]);
+
+  const hoveredLink = useMemo(
+    () => supplyLinks.find((link) => link.id === (linkMenuPinned ?? hoveredLinkId)) ?? null,
+    [supplyLinks, hoveredLinkId, linkMenuPinned],
+  );
+
+  const renderedLinks = useMemo<CanvasLink[]>(() => {
+    const structural = graph.nodes
+      .filter((node) => node.kind !== 'business')
+      .map((node) => {
+        const nodePos = drag.screenPos(node.id);
+        const connectorId = node.connectsTo ?? businessNodeId(node.businessId);
+        const connectorPos = drag.screenPos(connectorId);
+        if (node.group === 'left') {
+          return {
+            id: `struct:${node.id}`,
+            kind: 'structural' as const,
+            from: { x: nodePos.x + CARD_SIZE, y: nodePos.y + CARD_SIZE / 2 },
+            to: { x: connectorPos.x, y: connectorPos.y + CARD_SIZE / 2 },
+            color: node.accent,
+            active: true,
+            ratePerHour: node.resourceType && node.kind === 'construction-material' ? 2 : 1,
+          };
+        }
+        if (node.group === 'bottom') {
+          return {
+            id: `struct:${node.id}`,
+            kind: 'structural' as const,
+            from: { x: connectorPos.x + CARD_SIZE, y: connectorPos.y + CARD_SIZE / 2 },
+            to: { x: nodePos.x, y: nodePos.y + CARD_SIZE / 2 },
+            color: node.accent,
+            active: false,
+          };
+        }
+        return {
+          id: `struct:${node.id}`,
+          kind: 'structural' as const,
+          from: { x: connectorPos.x + CARD_SIZE, y: connectorPos.y + CARD_SIZE / 2 },
+          to: { x: nodePos.x, y: nodePos.y + CARD_SIZE / 2 },
+          color: node.accent,
+          active: node.kind !== 'global-market',
+          ratePerHour: node.inventory?.productionRatePerHour ?? 2,
+        };
+      });
+
+    const supply = supplyLinks
+      .map((link): CanvasLink | null => {
+        const sourceNode = nodesById.get(inventoryNodeId(link.sourceBusinessId, link.sourceResourceType));
+        if (!sourceNode?.inventory) return null;
+        const targetNodeId = link.targetKind === 'GLOBAL_MARKET'
+          ? globalMarketNodeId(link.sourceBusinessId)
+          : link.targetBusinessId && link.targetResourceType
+            ? inventoryNodeId(link.targetBusinessId, link.targetResourceType)
+            : null;
+        if (!targetNodeId) return null;
+        const targetNode = nodesById.get(targetNodeId);
+        if (!targetNode) return null;
+        const fromPos = drag.screenPos(sourceNode.id);
+        const toPos = drag.screenPos(targetNode.id);
+        const ratePerHour = Math.max(1, Math.min(
+          sourceNode.inventory.productionRatePerHour,
+          link.maxUnitsPerHour ?? sourceNode.inventory.productionRatePerHour,
+        ));
+
+        let etaLabel: string | null = null;
+        if (targetNode.kind === 'inventory' && targetNode.inventory) {
+          const remaining = Math.max(0, targetNode.inventory.capacity - targetNode.inventory.quantity);
+          etaLabel = formatEta(remaining > 0 ? remaining / ratePerHour : 0);
+        }
+
+        return {
+          id: link.id,
+          kind: 'supply' as const,
+          from: { x: fromPos.x + CARD_SIZE, y: fromPos.y + CARD_SIZE / 2 },
+          to: { x: toPos.x, y: toPos.y + CARD_SIZE / 2 },
+          color: link.targetKind === 'GLOBAL_MARKET' ? '#f97316' : '#60a5fa',
+          active: true,
+          ratePerHour,
+          etaLabel,
+          removable: true,
+          midpoint: { x: (fromPos.x + CARD_SIZE + toPos.x) / 2, y: (fromPos.y + toPos.y) / 2 + CARD_SIZE / 2 },
+        };
+      })
+      .filter((entry): entry is CanvasLink => entry !== null);
+
+    if (draft) {
+      const sourcePos = drag.screenPos(draft.sourceNodeId);
+      structural.push({
+        id: 'draft-link',
+        kind: 'structural',
+        from: getHandlePosition(sourcePos, draft.side),
+        to: draft.current,
+        color: hoveredTargetId
+          ? (getLinkCompatibility(nodesById.get(draft.sourceNodeId), nodesById.get(hoveredTargetId)).ok ? '#22c55e' : '#ef4444')
+          : '#94a3b8',
         active: true,
-      };
+      });
     }
-    if (node.group === 'bottom') {
-      return {
-        from: { x: businessPos.x + CARD_SIZE, y: businessPos.y + CARD_SIZE / 2 },
-        to: { x: nodePos.x, y: nodePos.y + CARD_SIZE / 2 },
-        color: node.accent,
-        active: false,
-      };
+
+    return [...structural, ...supply];
+  }, [graph.nodes, drag, supplyLinks, nodesById, draft, hoveredTargetId]);
+
+  const compatibility = draft && hoveredTargetId
+    ? getLinkCompatibility(nodesById.get(draft.sourceNodeId), nodesById.get(hoveredTargetId))
+    : null;
+
+  async function finishDraft() {
+    if (!draft) return setDraft(null);
+    if (!hoveredTargetId) return setDraft(null);
+    const sourceNode = nodesById.get(draft.sourceNodeId);
+    const targetNode = nodesById.get(hoveredTargetId);
+    const result = getLinkCompatibility(sourceNode, targetNode);
+    if (!result.ok || !sourceNode?.resourceType) {
+      setDraft(null);
+      return;
     }
-    // depot and right: flow from connector (business or depot) to node
-    return {
-      from: { x: connectorPos.x + CARD_SIZE, y: connectorPos.y + CARD_SIZE / 2 },
-      to: { x: nodePos.x, y: nodePos.y + CARD_SIZE / 2 },
-      color: node.accent,
-      active: !node.id.startsWith('offer:'),
-    };
-  });
+    await onCreateLink({
+      sourceBusinessId: sourceNode.businessId,
+      sourceResourceType: sourceNode.resourceType,
+      targetKind: targetNode?.kind === 'global-market' ? 'GLOBAL_MARKET' : 'BUSINESS',
+      targetBusinessId: targetNode?.kind === 'inventory' ? targetNode.businessId : null,
+      targetResourceType: targetNode?.kind === 'inventory' ? targetNode.resourceType ?? null : null,
+    });
+    setDraft(null);
+  }
 
   return (
     <div
       ref={drag.canvasRef}
       className="relative flex-1 overflow-hidden"
       onMouseDown={drag.onCanvasDown}
-      onMouseMove={drag.onMove}
-      onMouseUp={drag.stopAll}
-      onMouseLeave={drag.stopAll}
+      onMouseMove={(event) => {
+        drag.onMove(event);
+        if (draft) {
+          const rect = drag.canvasRef.current?.getBoundingClientRect() ?? { left: 0, top: 0 };
+          setDraft((current) => current ? ({
+            ...current,
+            current: { x: event.clientX - rect.left, y: event.clientY - rect.top },
+          }) : null);
+        }
+      }}
+      onMouseUp={() => { void finishDraft(); drag.stopAll(); }}
+      onMouseLeave={() => { setDraft(null); drag.stopAll(); }}
       onClick={() => onNodeSelect(null)}
       style={{
         backgroundImage: 'radial-gradient(circle, hsl(var(--border) / 0.65) 1px, transparent 1px)',
@@ -657,35 +1003,120 @@ function BusinessCanvas({
         backgroundPosition: `${drag.pan.x}px ${drag.pan.y}px`,
       }}
     >
-      <Connectors links={links} />
-      <NodeCard
-        pos={businessPos}
-        accent={color}
-        icon={<span className="font-mono text-xs font-bold">{BIZ_MONO[business.typeKey] ?? '??'}</span>}
-        title={business.name}
-        subtitle={business.underConstruction ? 'Chantier' : BIZ_LABEL[business.typeKey] ?? business.typeKey}
-        footer={business.underConstruction ? `${business.constructionProject?.progress.percent ?? 0}%` : '⚙ Gérer'}
-        active
-        construction={business.underConstruction}
-        workWarning={workWarning}
-        onDragStart={(event) => drag.startDrag('business', event)}
-        onClick={() => { onNodeSelect(null); onBusinessClick(); }}
+      <Connectors
+        links={renderedLinks}
+        hoveredLinkId={hoveredLinkId}
+        onHoverLink={(link) => setHoveredLinkId(link.id)}
+        onLeaveLink={() => setHoveredLinkId(null)}
       />
-      {nodes.map((node) => (
-        <NodeCard
-          key={node.id}
-          pos={drag.screenPos(node.id)}
-          accent={node.accent}
-          icon={node.icon}
-          title={node.title}
-          subtitle={node.subtitle}
-          footer={node.footer}
-          construction={node.construction}
-          workWarning={workWarning && node.group === 'depot'}
-          onDragStart={(event) => drag.startDrag(node.id, event)}
-          onClick={() => onNodeSelect(node.selection)}
-        />
-      ))}
+
+      {graph.nodes.map((node) => {
+        const pos = drag.screenPos(node.id);
+        const business = businesses.find((entry) => entry.id === node.businessId) ?? null;
+        const workWarning = Boolean(
+          business && PRODUCER_TYPES.has(business.typeKey) && !business.underConstruction && (business.workRatio ?? 1) === 0 && business.members.length > 0,
+        );
+        return (
+          <NodeCard
+            key={node.id}
+            pos={pos}
+            accent={node.accent}
+            icon={node.icon}
+            title={node.title}
+            subtitle={node.subtitle}
+            footer={node.footer}
+            active={node.kind === 'business'}
+            construction={node.construction}
+            workWarning={workWarning && node.kind === 'inventory'}
+            onDragStart={(event) => drag.startDrag(node.id, event)}
+            onClick={() => {
+              if (node.kind === 'business') {
+                onNodeSelect(null);
+                onBusinessClick(node.businessId);
+                return;
+              }
+              onNodeSelect(node.selection);
+            }}
+            onHoverChange={(hovering) => setHoveredNodeId(hovering ? node.id : null)}
+            showHandles={hoveredNodeId === node.id || draft?.sourceNodeId === node.id}
+            onHandleMouseDown={(side, event) => {
+              event.stopPropagation();
+              const start = getHandlePosition(pos, side);
+              setDraft({
+                sourceNodeId: node.id,
+                sourceBusinessId: node.businessId,
+                sourceResourceType: (node.resourceType ?? 'FOOD') as YouSupplyResourceType,
+                side,
+                current: { x: start.x, y: start.y },
+              });
+              setHoveredNodeId(node.id);
+            }}
+            badge={node.kind === 'inventory' ? {
+              icon: <Tag size={11} />,
+              title: node.offer?.isActive ? `Offre ${node.offer.unitPrice}/u` : 'Configurer la vente',
+              accent: node.offer?.isActive ? (node.offer.autoAccept ? '#22c55e' : '#f59e0b') : '#94a3b8',
+              onClick: () => onOfferClick(node.offer ? { kind: 'offer', business: business!, offer: node.offer } : { kind: 'inventory', business: business!, inventory: node.inventory! }),
+            } : undefined}
+          />
+        );
+      })}
+
+      {compatibility && hoveredTargetId && draft && (
+        <div
+          className={cn(
+            'absolute z-30 rounded-md border px-2 py-1 text-[10px] shadow-lg',
+            compatibility.ok ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-red-500/30 bg-red-500/10 text-red-300',
+          )}
+          style={{
+            left: draft.current.x + 12,
+            top: draft.current.y + 12,
+          }}
+        >
+          {compatibility.reason}
+        </div>
+      )}
+
+      {hoveredLink && (() => {
+        const sourceNode = nodesById.get(inventoryNodeId(hoveredLink.sourceBusinessId, hoveredLink.sourceResourceType));
+        const targetNodeId = hoveredLink.targetKind === 'GLOBAL_MARKET'
+          ? globalMarketNodeId(hoveredLink.sourceBusinessId)
+          : hoveredLink.targetBusinessId && hoveredLink.targetResourceType
+            ? inventoryNodeId(hoveredLink.targetBusinessId, hoveredLink.targetResourceType)
+            : null;
+        const targetNode = targetNodeId ? nodesById.get(targetNodeId) : null;
+        const ratePerHour = Math.max(1, Math.min(
+          sourceNode?.inventory?.productionRatePerHour ?? 1,
+          hoveredLink.maxUnitsPerHour ?? sourceNode?.inventory?.productionRatePerHour ?? 1,
+        ));
+        const etaLabel = targetNode?.kind === 'inventory' && targetNode.inventory
+          ? formatEta(Math.max(0, targetNode.inventory.capacity - targetNode.inventory.quantity) / ratePerHour)
+          : null;
+        const linkPosition = renderedLinks.find((entry) => entry.id === hoveredLink.id)?.midpoint ?? { x: 80, y: 80 };
+        return (
+          <div
+            className="absolute z-40 w-52 rounded-lg border border-border bg-card p-3 shadow-2xl"
+            style={{ left: linkPosition.x - 96, top: linkPosition.y - 44 }}
+            onMouseEnter={() => setLinkMenuPinned(hoveredLink.id)}
+            onMouseLeave={() => setLinkMenuPinned(null)}
+          >
+            <p className="text-[10px] font-semibold text-foreground">
+              {sourceNode ? resourceLabel(sourceNode.resourceType ?? hoveredLink.sourceResourceType) : resourceLabel(hoveredLink.sourceResourceType)}
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">Débit: {ratePerHour} u/h</p>
+            {etaLabel && <p className="text-[10px] text-muted-foreground">ETA remplissage: {etaLabel}</p>}
+            {hoveredLink.targetKind === 'GLOBAL_MARKET' && (
+              <p className="text-[10px] text-muted-foreground">Vente auto au prix fixe.</p>
+            )}
+            <button
+              onClick={() => void onDeleteLink(hoveredLink.id)}
+              disabled={mutating}
+              className="mt-2 flex w-full items-center justify-center rounded-md border border-red-500/25 px-2 py-1.5 text-[10px] font-medium text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+            >
+              Casser la liaison
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -1205,6 +1636,7 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
   const [state, setState] = useState<YouSupplyState | null>(null);
   const [selection, setSelection] = useState<Selection>(null);
   const [nodeSelection, setNodeSelection] = useState<NodeSelection>(null);
+  const [viewMode, setViewMode] = useState<GraphMode>('single');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
@@ -1295,6 +1727,22 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
     });
   }
 
+  async function createLink(input: { sourceBusinessId: string; sourceResourceType: YouSupplyResourceType; targetBusinessId?: string | null; targetResourceType?: YouSupplyResourceType | null; targetKind: 'BUSINESS' | 'GLOBAL_MARKET' }) {
+    await mutate(async () => {
+      await youApi.createSupplyLink(input.sourceBusinessId, input);
+    });
+  }
+
+  async function deleteLink(linkId: string) {
+    await mutate(async () => {
+      await youApi.deleteSupplyLink(linkId);
+    });
+  }
+
+  const visibleBusinesses = viewMode === 'full'
+    ? (state?.businesses ?? [])
+    : activeBusiness ? [activeBusiness] : [];
+
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden bg-background text-foreground">
       <CreateBusinessModal
@@ -1339,6 +1787,10 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
               >
                 <Settings size={11} /> Gérer
               </button>
+              <div className="flex rounded-md border border-border p-0.5 text-[10px]">
+                <button className={cn('rounded px-2 py-1', viewMode === 'single' && 'bg-muted text-foreground')} onClick={() => setViewMode('single')}>Entreprise</button>
+                <button className={cn('rounded px-2 py-1', viewMode === 'full' && 'bg-muted text-foreground')} onClick={() => setViewMode('full')}>Vue totale</button>
+              </div>
               <span className="text-[11px] text-muted-foreground">{money(activeBusiness.treasuryMoney)}</span>
             </>
           ) : (
@@ -1359,7 +1811,21 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
           </div>
         ) : activeBusiness ? (
           <div className="relative flex min-h-0 flex-1">
-            <BusinessCanvas business={activeBusiness} contracts={state?.contracts ?? []} onNodeSelect={setNodeSelection} onBusinessClick={() => setManageBusinessId(activeBusiness.id)} />
+            <BusinessCanvas
+              businesses={visibleBusinesses}
+              contracts={state?.contracts ?? []}
+              supplyLinks={state?.links ?? []}
+              mode={viewMode}
+              mutating={mutating}
+              onNodeSelect={setNodeSelection}
+              onBusinessClick={(businessId) => {
+                setSelection({ kind: 'business', id: businessId });
+                setManageBusinessId(businessId);
+              }}
+              onOfferClick={setNodeSelection}
+              onCreateLink={createLink}
+              onDeleteLink={deleteLink}
+            />
             <DetailPanel
               selection={nodeSelection}
               onClose={() => setNodeSelection(null)}

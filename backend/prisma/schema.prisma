@@ -602,6 +602,8 @@ model Business {
   supplyOffers         BusinessSupplyOffer[]
   supplyContractsAsSupplier BusinessSupplyContract[]        @relation("SupplyContractSupplier")
   supplyContractsAsBuyer    BusinessSupplyContract[]        @relation("SupplyContractBuyer")
+  supplyLinksAsSource       BusinessSupplyLink[]            @relation("SupplyLinkSource")
+  supplyLinksAsTarget       BusinessSupplyLink[]            @relation("SupplyLinkTarget")
   constructionProject BusinessConstructionProject?
 
   @@index([ownerId])
@@ -2746,6 +2748,27 @@ model BusinessSupplyContract {
   @@index([constructionProjectId, status])
   @@index([requesterId, status])
   @@index([resourceType, status])
+}
+
+model BusinessSupplyLink {
+  id                   String   @id @default(uuid())
+  sourceBusinessId     String
+  sourceResourceType   String
+  targetBusinessId     String?
+  targetResourceType   String?
+  targetKind           String   @default("BUSINESS") // BUSINESS | GLOBAL_MARKET
+  maxUnitsPerHour      Int?
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  source Business  @relation("SupplyLinkSource", fields: [sourceBusinessId], references: [id], onDelete: Cascade)
+  target Business? @relation("SupplyLinkTarget", fields: [targetBusinessId], references: [id], onDelete: Cascade)
+
+  @@index([sourceBusinessId, isActive])
+  @@index([targetBusinessId, isActive])
+  @@index([sourceResourceType, isActive])
+  @@unique([sourceBusinessId, sourceResourceType, targetBusinessId, targetResourceType, targetKind])
 }
 
 model BusinessConstructionProject {

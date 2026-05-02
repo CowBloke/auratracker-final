@@ -57,6 +57,8 @@ const SUPPLY_PROFILES: Record<string, Array<{ resourceType: ResourceType; rate: 
   fuel_refinery: [{ resourceType: 'FUEL', rate: 3, capacity: 100, price: 48 }],
   textile_mill: [{ resourceType: 'CLOTH', rate: 5, capacity: 130, price: 26 }],
 };
+const GLOBAL_MARKET_PRICE_MULTIPLIER = 0.55;
+const LINK_TRANSFER_INTERVAL_HOURS = 0.25;
 
 const CONTRACT_TERMINAL_STATUSES = new Set(['COMPLETED', 'REJECTED', 'CANCELLED']);
 
@@ -66,6 +68,12 @@ function serializeDate(value: Date | null | undefined) {
 
 function getProfiles(typeKey: string) {
   return SUPPLY_PROFILES[typeKey] ?? [];
+}
+
+function getGlobalMarketUnitPrice(typeKey: string, resourceType: string) {
+  const profile = getProfiles(typeKey).find((entry) => entry.resourceType === resourceType);
+  const basePrice = profile?.price ?? 10;
+  return Math.max(1, Math.floor(basePrice * GLOBAL_MARKET_PRICE_MULTIPLIER));
 }
 
 function sanitizeQuantity(value: number) {
@@ -220,6 +228,7 @@ export async function accrueBusinessSupply(db: PrismaClient = prisma) {
     });
   }
 
+  await processSupplyLinks(db);
   await fulfillActiveSupplyContracts(db);
 }
 
@@ -363,6 +372,98 @@ export async function fulfillActiveSupplyContracts(db: PrismaClient = prisma) {
   }
 }
 
+export async function processSupplyLinks(db: PrismaClient = prisma) {
+  const links = await db.businessSupplyLink.findMany({
+    where: { isActive: true },
+  });
+  if (links.length === 0) return;
+
+  const updatedBusinessIds = new Set<string>();
+  const balanceUserIds = new Set<string>();
+
+  for (const link of links) {
+    const sourceInventory = await db.businessResourceInventory.findUnique({
+      where: {
+        businessId_resourceType: {
+          businessId: link.sourceBusinessId,
+          resourceType: link.sourceResourceType,
+        },
+      },
+      include: {
+        business: { select: { id: true, ownerId: true, typeKey: true } },
+      },
+    });
+    if (!sourceInventory || sourceInventory.quantity <= 0) continue;
+
+    const ratePerHour = Math.max(1, link.maxUnitsPerHour ?? sourceInventory.productionRatePerHour);
+    const transferable = Math.max(1, Math.ceil(ratePerHour * LINK_TRANSFER_INTERVAL_HOURS));
+    if (transferable <= 0) continue;
+
+    if (link.targetKind === 'GLOBAL_MARKET') {
+      const soldQuantity = Math.min(sourceInventory.quantity, transferable);
+      if (soldQuantity <= 0) continue;
+      const unitPrice = getGlobalMarketUnitPrice(sourceInventory.business.typeKey, sourceInventory.resourceType);
+
+      await db.$transaction(async (tx) => {
+        await tx.businessResourceInventory.update({
+          where: { id: sourceInventory.id },
+          data: { quantity: { decrement: soldQuantity } },
+        });
+        await tx.business.update({
+          where: { id: link.sourceBusinessId },
+          data: { treasuryMoney: { increment: soldQuantity * unitPrice } },
+        });
+      });
+
+      updatedBusinessIds.add(link.sourceBusinessId);
+      balanceUserIds.add(sourceInventory.business.ownerId);
+      continue;
+    }
+
+    if (!link.targetBusinessId || !link.targetResourceType) continue;
+
+    const targetInventory = await db.businessResourceInventory.findUnique({
+      where: {
+        businessId_resourceType: {
+          businessId: link.targetBusinessId,
+          resourceType: link.targetResourceType,
+        },
+      },
+      include: {
+        business: { select: { ownerId: true } },
+      },
+    });
+    if (!targetInventory) continue;
+
+    const capacityLeft = Math.max(0, targetInventory.capacity - targetInventory.quantity);
+    const movedQuantity = Math.min(sourceInventory.quantity, transferable, capacityLeft);
+    if (movedQuantity <= 0) continue;
+
+    await db.$transaction(async (tx) => {
+      await tx.businessResourceInventory.update({
+        where: { id: sourceInventory.id },
+        data: { quantity: { decrement: movedQuantity } },
+      });
+      await tx.businessResourceInventory.update({
+        where: { id: targetInventory.id },
+        data: { quantity: { increment: movedQuantity } },
+      });
+    });
+
+    updatedBusinessIds.add(link.sourceBusinessId);
+    updatedBusinessIds.add(link.targetBusinessId);
+    balanceUserIds.add(sourceInventory.business.ownerId);
+    balanceUserIds.add(targetInventory.business.ownerId);
+  }
+
+  for (const businessId of updatedBusinessIds) {
+    io.emit('you:supply-updated', { businessId });
+  }
+  if (balanceUserIds.size > 0) {
+    await emitSharedBalanceUpdatesForUserIds(db, Array.from(balanceUserIds));
+  }
+}
+
 export async function completeReadyConstructionProjects(db: PrismaClient = prisma) {
   const projects = await db.businessConstructionProject.findMany({
     where: { status: CONSTRUCTION_STATUS_UNDER_CONSTRUCTION },
@@ -385,6 +486,7 @@ function serializeInventory(entry: any) {
     quantity: entry.quantity,
     capacity: entry.capacity,
     productionRatePerHour: entry.productionRatePerHour,
+    globalMarketUnitPrice: getGlobalMarketUnitPrice(entry.business?.typeKey ?? '', entry.resourceType),
     lastProducedAt: serializeDate(entry.lastProducedAt),
   };
 }
@@ -438,6 +540,34 @@ function serializeContract(contract: any) {
       owner: contract.buyer.owner,
     } : null,
     requester: contract.requester ?? null,
+  };
+}
+
+function serializeSupplyLink(link: any) {
+  return {
+    id: link.id,
+    sourceBusinessId: link.sourceBusinessId,
+    sourceResourceType: link.sourceResourceType,
+    targetBusinessId: link.targetBusinessId ?? null,
+    targetResourceType: link.targetResourceType ?? null,
+    targetKind: link.targetKind,
+    maxUnitsPerHour: link.maxUnitsPerHour ?? null,
+    isActive: link.isActive,
+    createdAt: serializeDate(link.createdAt),
+    sourceBusiness: link.source ? {
+      id: link.source.id,
+      name: link.source.name,
+      typeKey: link.source.typeKey,
+      ownerId: link.source.ownerId,
+      owner: link.source.owner,
+    } : null,
+    targetBusiness: link.target ? {
+      id: link.target.id,
+      name: link.target.name,
+      typeKey: link.target.typeKey,
+      ownerId: link.target.ownerId,
+      owner: link.target.owner,
+    } : null,
   };
 }
 
@@ -541,7 +671,7 @@ export async function getSupplyState(userId: string) {
   );
 
   const businessIds = businesses.map((business) => business.id);
-  const [contracts, marketOffers, courtCases] = await Promise.all([
+  const [contracts, marketOffers, courtCases, supplyLinks] = await Promise.all([
     prisma.businessSupplyContract.findMany({
       where: {
         OR: [
@@ -585,6 +715,19 @@ export async function getSupplyState(userId: string) {
       },
       orderBy: { createdAt: 'desc' },
     }),
+    prisma.businessSupplyLink.findMany({
+      where: {
+        OR: [
+          { sourceBusinessId: { in: businessIds } },
+          { targetBusinessId: { in: businessIds } },
+        ],
+      },
+      include: {
+        source: { include: { owner: { select: USER_PREVIEW_SELECT } } },
+        target: { include: { owner: { select: USER_PREVIEW_SELECT } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
   ]);
 
   const caseNodes = courtCases.flatMap((courtCase) => {
@@ -622,7 +765,12 @@ export async function getSupplyState(userId: string) {
       satisfaction: business.satisfaction,
       constructionProject: serializeConstructionProject(business.constructionProject),
       underConstruction: isConstructionActive(business.constructionProject),
-      inventories: business.resourceInventories.map(serializeInventory),
+      inventories: business.resourceInventories.map((entry) => ({
+        ...serializeInventory({
+          ...entry,
+          business: { typeKey: business.typeKey },
+        }),
+      })),
       offers: business.supplyOffers.map(serializeOffer),
       loans: business.loans.map(serializeLoanNode),
       cases: caseNodes.filter((node) => node.businessId === business.id),
@@ -680,6 +828,7 @@ export async function getSupplyState(userId: string) {
     })),
     marketOffers: accessibleMarketOffers,
     contracts: contracts.map(serializeContract),
+    links: supplyLinks.map(serializeSupplyLink),
   };
 }
 
@@ -731,6 +880,133 @@ export async function upsertSupplyOffer(userId: string, businessId: string, inpu
 
   io.to(`user:${business.ownerId}`).emit('you:supply-updated', { businessId });
   return serializeOffer(offer);
+}
+
+export async function createSupplyLink(userId: string, sourceBusinessId: string, input: {
+  sourceResourceType: string;
+  targetBusinessId?: string | null;
+  targetResourceType?: string | null;
+  targetKind?: 'BUSINESS' | 'GLOBAL_MARKET';
+  maxUnitsPerHour?: number | null;
+}) {
+  const targetKind = input.targetKind === 'GLOBAL_MARKET' ? 'GLOBAL_MARKET' : 'BUSINESS';
+  const [sourceBusiness, sourceInventory] = await Promise.all([
+    prisma.business.findUnique({
+      where: { id: sourceBusinessId },
+      select: { id: true, ownerId: true, typeKey: true, constructionProject: true },
+    }),
+    prisma.businessResourceInventory.findUnique({
+      where: {
+        businessId_resourceType: {
+          businessId: sourceBusinessId,
+          resourceType: String(input.sourceResourceType ?? ''),
+        },
+      },
+    }),
+  ]);
+  if (!sourceBusiness || !sourceInventory) throw new Error('SUPPLY_RESOURCE_NOT_FOUND');
+  if (!(await isBusinessManager(sourceBusiness.id, userId, sourceBusiness.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+  if (isConstructionActive(sourceBusiness.constructionProject)) throw new Error('BUSINESS_UNDER_CONSTRUCTION');
+
+  let targetBusinessId: string | null = null;
+  let targetResourceType: string | null = null;
+
+  if (targetKind === 'BUSINESS') {
+    targetBusinessId = String(input.targetBusinessId ?? '');
+    targetResourceType = String(input.targetResourceType ?? '');
+    if (!targetBusinessId || !targetResourceType) throw new Error('SUPPLY_LINK_TARGET_REQUIRED');
+    if (targetBusinessId === sourceBusinessId) throw new Error('SUPPLY_LINK_SELF_FORBIDDEN');
+    if (targetResourceType !== sourceInventory.resourceType) throw new Error('SUPPLY_LINK_RESOURCE_MISMATCH');
+
+    const targetBusiness = await prisma.business.findUnique({
+      where: { id: targetBusinessId },
+      select: { id: true, ownerId: true, constructionProject: true },
+    });
+    if (!targetBusiness) throw new Error('BUSINESS_NOT_FOUND');
+    if (!(await isBusinessManager(targetBusiness.id, userId, targetBusiness.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+    if (isConstructionActive(targetBusiness.constructionProject)) throw new Error('BUSINESS_UNDER_CONSTRUCTION');
+
+    const targetInventory = await prisma.businessResourceInventory.findUnique({
+      where: {
+        businessId_resourceType: {
+          businessId: targetBusinessId,
+          resourceType: targetResourceType,
+        },
+      },
+    });
+    if (!targetInventory) throw new Error('SUPPLY_LINK_INCOMPATIBLE');
+  }
+
+  const existing = await prisma.businessSupplyLink.findFirst({
+    where: {
+      sourceBusinessId,
+      sourceResourceType: sourceInventory.resourceType,
+      targetBusinessId,
+      targetResourceType,
+      targetKind,
+      isActive: true,
+    },
+  });
+  if (existing) {
+    const hydrated = await prisma.businessSupplyLink.findUnique({
+      where: { id: existing.id },
+      include: {
+        source: { include: { owner: { select: USER_PREVIEW_SELECT } } },
+        target: { include: { owner: { select: USER_PREVIEW_SELECT } } },
+      },
+    });
+    return serializeSupplyLink(hydrated);
+  }
+
+  const link = await prisma.businessSupplyLink.create({
+    data: {
+      sourceBusinessId,
+      sourceResourceType: sourceInventory.resourceType,
+      targetBusinessId,
+      targetResourceType,
+      targetKind,
+      maxUnitsPerHour: input.maxUnitsPerHour ? Math.max(1, Math.floor(input.maxUnitsPerHour)) : null,
+    },
+    include: {
+      source: { include: { owner: { select: USER_PREVIEW_SELECT } } },
+      target: { include: { owner: { select: USER_PREVIEW_SELECT } } },
+    },
+  });
+
+  await processSupplyLinks(prisma);
+  io.emit('you:supply-updated', { businessId: sourceBusinessId });
+  if (targetBusinessId) {
+    io.emit('you:supply-updated', { businessId: targetBusinessId });
+  }
+  return serializeSupplyLink(link);
+}
+
+export async function deleteSupplyLink(userId: string, linkId: string) {
+  const link = await prisma.businessSupplyLink.findUnique({
+    where: { id: linkId },
+    include: {
+      source: { select: { ownerId: true } },
+      target: { select: { ownerId: true } },
+    },
+  });
+  if (!link) throw new Error('SUPPLY_LINK_NOT_FOUND');
+
+  const canEditSource = await isBusinessManager(link.sourceBusinessId, userId, link.source.ownerId);
+  const canEditTarget = link.targetBusinessId && link.target
+    ? await isBusinessManager(link.targetBusinessId, userId, link.target.ownerId)
+    : false;
+  if (!canEditSource && !canEditTarget) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  await prisma.businessSupplyLink.delete({
+    where: { id: linkId },
+  });
+
+  io.emit('you:supply-updated', { businessId: link.sourceBusinessId });
+  if (link.targetBusinessId) {
+    io.emit('you:supply-updated', { businessId: link.targetBusinessId });
+  }
+
+  return { id: linkId };
 }
 
 export async function requestSupplyContract(userId: string, buyerBusinessId: string, input: {

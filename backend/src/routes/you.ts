@@ -75,6 +75,8 @@ import {
 import type { BusinessActionKey } from '../modules/you/config.js';
 import {
   cancelSupplyContract,
+  createSupplyLink,
+  deleteSupplyLink,
   getSupplyState,
   requestSupplyContract,
   respondToSupplyContract,
@@ -461,6 +463,30 @@ router.put('/businesses/:businessId/supply-offers', authMiddleware, requireYouAc
     res.json({ offer });
   } catch (error) {
     handleRouteError(error, res, 'Upsert supply offer error');
+  }
+});
+
+router.post('/businesses/:businessId/supply-links', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const link = await createSupplyLink(req.user!.id, req.params.businessId, {
+      sourceResourceType: String(req.body?.sourceResourceType ?? ''),
+      targetBusinessId: req.body?.targetBusinessId ? String(req.body.targetBusinessId) : null,
+      targetResourceType: req.body?.targetResourceType ? String(req.body.targetResourceType) : null,
+      targetKind: req.body?.targetKind === 'GLOBAL_MARKET' ? 'GLOBAL_MARKET' : 'BUSINESS',
+      maxUnitsPerHour: req.body?.maxUnitsPerHour !== undefined ? Number(req.body.maxUnitsPerHour) : null,
+    });
+    res.status(201).json({ link });
+  } catch (error) {
+    handleRouteError(error, res, 'Create supply link error');
+  }
+});
+
+router.delete('/supply-links/:linkId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await deleteSupplyLink(req.user!.id, req.params.linkId);
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Delete supply link error');
   }
 });
 

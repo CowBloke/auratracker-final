@@ -17,7 +17,7 @@ import {
   type YouBusinessType, type YouFormationProduct, type YouPlayer, type YouRelationship, type YouStartupProduct, youApi, uploadUserImage,
 } from '@/services/api';
 import { resolveImageUrl } from '@/lib/images';
-import { BUSINESS_COLOR_HEX, BUSINESS_ICON_MAP, BUSINESS_MONO_MAP, BUSINESS_STYLE_MAP } from '../constants';
+import { BUSINESS_COLOR_HEX, BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { PRODUCER_TYPES, BUSINESS_PRODUCES, RECIPES, RESOURCE_META, type ResourceType } from '@/lib/resources';
 import { ProductionModal } from './ProductionModal';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';

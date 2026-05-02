@@ -661,6 +661,7 @@ export interface YouSupplyInventory {
   quantity: number;
   capacity: number;
   productionRatePerHour: number;
+  globalMarketUnitPrice: number;
   lastProducedAt: string | null;
 }
 
@@ -711,6 +712,32 @@ export interface YouSupplyContract {
     owner: Omit<YouPlayer, 'alreadyInRelationship'>;
   } | null;
   requester: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+}
+
+export interface YouSupplyLink {
+  id: string;
+  sourceBusinessId: string;
+  sourceResourceType: YouSupplyResourceType;
+  targetBusinessId: string | null;
+  targetResourceType: YouSupplyResourceType | null;
+  targetKind: 'BUSINESS' | 'GLOBAL_MARKET' | string;
+  maxUnitsPerHour: number | null;
+  isActive: boolean;
+  createdAt: string | null;
+  sourceBusiness: {
+    id: string;
+    name: string;
+    typeKey: string;
+    ownerId: string;
+    owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  } | null;
+  targetBusiness: {
+    id: string;
+    name: string;
+    typeKey: string;
+    ownerId: string;
+    owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  } | null;
 }
 
 export interface YouConstructionMaterial {
@@ -800,6 +827,7 @@ export interface YouSupplyState {
   businesses: YouSupplyBusiness[];
   marketOffers: YouSupplyOffer[];
   contracts: YouSupplyContract[];
+  links: YouSupplyLink[];
 }
 
 export interface YouTemporaryEffect {
@@ -815,6 +843,10 @@ export const youApi = {
   getSupplyState: () => api.get<YouSupplyState>('/you/supply/state'),
   upsertSupplyOffer: (businessId: string, data: { resourceType: YouSupplyResourceType; unitPrice: number; autoAccept: boolean; isActive?: boolean }) =>
     api.put<{ offer: YouSupplyOffer }>(`/you/businesses/${businessId}/supply-offers`, data),
+  createSupplyLink: (businessId: string, data: { sourceResourceType: YouSupplyResourceType; targetBusinessId?: string | null; targetResourceType?: YouSupplyResourceType | null; targetKind?: 'BUSINESS' | 'GLOBAL_MARKET'; maxUnitsPerHour?: number | null }) =>
+    api.post<{ link: YouSupplyLink }>(`/you/businesses/${businessId}/supply-links`, data),
+  deleteSupplyLink: (linkId: string) =>
+    api.delete<{ result: { id: string } }>(`/you/supply-links/${linkId}`),
   requestSupplyContract: (businessId: string, data: { offerId: string; quantity: number; constructionProjectId?: string | null }) =>
     api.post<{ contract: YouSupplyContract }>(`/you/businesses/${businessId}/supply-contracts`, data),
   respondToSupplyContract: (contractId: string, decision: 'accept' | 'reject') =>
