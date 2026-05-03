@@ -146,7 +146,9 @@
       "Bash(rtk find *)",
       "Bash(rtk git *)",
       "Bash(rtk pnpm *)",
-      "Bash(rtk prisma *)"
+      "Bash(rtk prisma *)",
+      "WebFetch(domain:www.mapcn.dev)",
+      "Bash(rtk npx *)"
     ]
   },
   "outputStyle": "default"

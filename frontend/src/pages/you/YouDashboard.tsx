@@ -458,6 +458,13 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
   const [createOpen, setCreateOpen] = useState(false);
   const [showBrowserModal, setShowBrowserModal] = useState(false);
 
+  const allBusinesses = useMemo(() => {
+    const map = new Map<string, YouBusiness>();
+    [data.ownedBusinesses, data.exploreBusinesses, data.memberBusinesses, data.shareholderBusinesses]
+      .forEach((g) => g.forEach((b) => map.set(b.id, b)));
+    return Array.from(map.values());
+  }, [data]);
+
   const managedBusiness = managedBizId
     ? (data.ownedBusinesses.find((b) => b.id === managedBizId) ??
        data.memberBusinesses.find((b) => b.id === managedBizId) ?? null)
@@ -467,13 +474,6 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
     ? (data.ownedBusinesses.find((b) => b.id === productionBizId) ??
        data.memberBusinesses.find((b) => b.id === productionBizId) ?? null)
     : null;
-
-  const allBusinesses = useMemo(() => {
-    const map = new Map<string, YouBusiness>();
-    [data.ownedBusinesses, data.exploreBusinesses, data.memberBusinesses, data.shareholderBusinesses]
-      .forEach((g) => g.forEach((b) => map.set(b.id, b)));
-    return Array.from(map.values());
-  }, [data]);
 
   function handleStartPlacing(id: string) {
     carteRef.current?.startPlacing(id);

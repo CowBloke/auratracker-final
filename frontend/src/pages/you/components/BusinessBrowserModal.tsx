@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Activity, ArrowLeftRight, Building2, CalendarDays, ChevronLeft, ChevronRight,
+  ArrowLeftRight, Building2, CalendarDays, ChevronLeft, ChevronRight,
   GraduationCap, HandCoins, Landmark, LayoutGrid,
   List as ListIcon, MapPin, MessageSquare, Search, ShoppingCart,
   Sparkles, Star, TrendingUp, UserCheck, Users, X, Scale, Crown,
@@ -61,6 +61,12 @@ const ITEMS_CONFIG: Record<string, Array<{ key: string; label: string; price: nu
 
 function fmt(n: number) {
   return `${Math.round(n).toLocaleString('fr-FR')} €`;
+}
+
+function fmtCompact(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M €`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}K €`;
+  return `${Math.round(n)} €`;
 }
 
 function getBizIcon(typeKey: string) {
@@ -326,6 +332,86 @@ function ListRow({ business, onClick }: { business: YouBusiness; onClick: () => 
   );
 }
 
+// ── Finance stats modal ───────────────────────────────────────────────────────
+
+function FinanceModal({ open, onClose, business }: { open: boolean; onClose: () => void; business: YouBusiness }) {
+  const net = business.monthlyRevenue - business.monthlyExpenses;
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Finances" desc={business.name}>
+      <div className="space-y-3">
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-4">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-emerald-500">Trésorerie</p>
+          <p className="mt-1 text-[22px] font-bold tabular-nums leading-tight text-emerald-400">{fmt(business.treasuryMoney)}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-3 py-3">
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Rev. mensuel</p>
+            <p className="mt-1 text-[13px] font-bold tabular-nums text-emerald-400">{fmt(business.monthlyRevenue)}</p>
+          </div>
+          <div className={cn('rounded-xl border px-3 py-3', net >= 0 ? 'bg-emerald-500/8 border-emerald-500/20' : 'bg-red-500/8 border-red-500/20')}>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Net / mois</p>
+            <p className={cn('mt-1 text-[13px] font-bold tabular-nums', net >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+              {net >= 0 ? '+' : ''}{fmt(net)}
+            </p>
+          </div>
+        </div>
+      </div>
+    </ModalWrap>
+  );
+}
+
+// ── Reviews modal ─────────────────────────────────────────────────────────────
+
+function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () => void; business: YouBusiness }) {
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Avis clients" desc={business.name}>
+      {business.avgRating != null && business.ratingCount > 0 ? (
+        <div className="flex items-center gap-4 rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-4">
+          <span className="text-[40px] font-bold text-amber-400 tabular-nums leading-none">{business.avgRating.toFixed(1)}</span>
+          <div>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Star key={i} className={cn('h-4 w-4',
+                  i <= Math.floor(business.avgRating!) ? 'fill-amber-400 text-amber-400'
+                  : i === Math.ceil(business.avgRating!) && business.avgRating! % 1 >= 0.3 ? 'fill-amber-400/40 text-amber-400'
+                  : 'text-amber-400/20',
+                )} />
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">{business.ratingCount} avis · sur 5</p>
+          </div>
+        </div>
+      ) : (
+        <p className="py-4 text-center text-sm text-muted-foreground">Aucun avis pour le moment.</p>
+      )}
+    </ModalWrap>
+  );
+}
+
+// ── Investments modal ─────────────────────────────────────────────────────────
+
+function InvestmentsModal({ open, onClose, business }: { open: boolean; onClose: () => void; business: YouBusiness }) {
+  return (
+    <ModalWrap open={open} onClose={onClose} title="Investissements reçus" desc={business.name}>
+      {business.recentInvestments.length > 0 ? (
+        <div className="space-y-1.5">
+          {business.recentInvestments.map((inv) => {
+            const riskColor = inv.riskLevel === 'low' ? 'text-emerald-400' : inv.riskLevel === 'high' ? 'text-rose-400' : 'text-amber-400';
+            return (
+              <div key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-sky-400/15 bg-muted/10 px-3 py-2 text-xs">
+                <span className="font-medium">{inv.investor.username}</span>
+                <span className={cn('font-semibold', riskColor)}>{fmt(inv.amount)}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="py-4 text-center text-sm text-muted-foreground">Aucun investissement récent.</p>
+      )}
+    </ModalWrap>
+  );
+}
+
 // ── Shareholders modal ────────────────────────────────────────────────────────
 
 function ShareholdersModal({ open, onClose, business, userId }: {
@@ -530,6 +616,10 @@ function DetailPanel({
   onShowTeam?: () => void;
   onShowShareholders?: () => void;
 }) {
+  const [showFinance, setShowFinance] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
+  const [showInvestments, setShowInvestments] = useState(false);
+
   const pinColor = getBusinessPinColor(business.typeKey);
   const BizIcon = getBizIcon(business.typeKey);
   const isPlaced = business.mapX != null && business.mapY != null;
@@ -575,26 +665,34 @@ function DetailPanel({
             <p className="mt-1.5 line-clamp-2 text-[11px] italic text-muted-foreground/70">{business.description}</p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <button type="button" onClick={() => setShowFinance(true)}
+              className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-400 transition-colors hover:bg-emerald-500/25">
+              <TrendingUp className="h-2.5 w-2.5" />{fmtCompact(business.treasuryMoney)}
+            </button>
             {business.avgRating != null && business.ratingCount > 0 && (
-              <div className="flex items-center gap-1 rounded-lg border border-amber-400/30 bg-amber-400/15 px-2.5 py-1">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star key={i} className={cn('h-3.5 w-3.5',
-                    i <= Math.floor(business.avgRating!) ? 'fill-amber-400 text-amber-400'
-                    : i === Math.ceil(business.avgRating!) && business.avgRating! % 1 >= 0.3 ? 'fill-amber-400/40 text-amber-400'
-                    : 'text-amber-400/20',
-                  )} />
-                ))}
-                <span className="ml-1 text-[13px] font-bold text-amber-400">{business.avgRating.toFixed(1)}</span>
-                <span className="text-[10px] text-amber-400/50 ml-0.5">/ 5</span>
-              </div>
+              <button type="button" onClick={() => setShowReviews(true)}
+                className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-400 transition-colors hover:bg-amber-400/25">
+                <Star className="h-2.5 w-2.5 fill-amber-400/40" />{business.avgRating.toFixed(1)}
+              </button>
             )}
-            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold',
-              business.satisfaction >= 70 ? 'bg-emerald-500/15 text-emerald-400'
-              : business.satisfaction >= 40 ? 'bg-amber-500/15 text-amber-400'
-              : 'bg-red-500/15 text-red-400',
-            )}>
-              <Activity className="mr-1 h-2.5 w-2.5" />{business.satisfaction}%
-            </span>
+            {onShowTeam && (
+              <button type="button" onClick={onShowTeam}
+                className="inline-flex items-center gap-1 rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-medium text-violet-400 transition-colors hover:bg-violet-400/25">
+                <Users className="h-2.5 w-2.5" />{business.memberCount}
+              </button>
+            )}
+            {business.isShared && onShowShareholders && (
+              <button type="button" onClick={onShowShareholders}
+                className="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-300 transition-colors hover:bg-amber-400/25">
+                <Crown className="h-2.5 w-2.5" />{business.shareholders.length + 1}
+              </button>
+            )}
+            {business.recentInvestments.length > 0 && (
+              <button type="button" onClick={() => setShowInvestments(true)}
+                className="inline-flex items-center gap-1 rounded-full bg-sky-400/15 px-2 py-0.5 text-[10px] font-medium text-sky-400 transition-colors hover:bg-sky-400/25">
+                <TrendingUp className="h-2.5 w-2.5" />{business.recentInvestments.length}
+              </button>
+            )}
             {underConstruction && (
               <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-500">
                 🏗 {business.constructionProject?.progress.percent ?? 0}%
@@ -605,13 +703,6 @@ function DetailPanel({
 
         {/* Right: action pills */}
         <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
-          {onShowTeam && (
-            <button type="button" onClick={onShowTeam}
-              className="flex items-center gap-1.5 rounded-lg border border-violet-400/25 bg-violet-400/10 px-2.5 py-1.5 text-[11px] font-medium text-violet-400 transition-colors hover:bg-violet-400/20">
-              <Users className="h-3.5 w-3.5 shrink-0" />
-              <span>{business.memberCount} membres</span>
-            </button>
-          )}
           {!isOwned && business.supportEnabled && onOpenSupport && (
             <button type="button" onClick={onOpenSupport}
               className="flex items-center gap-1.5 rounded-lg border border-teal-500/25 bg-teal-500/10 px-2.5 py-1.5 text-[11px] font-medium text-teal-400 transition-colors hover:bg-teal-500/20">
@@ -637,26 +728,6 @@ function DetailPanel({
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-4 px-5 pb-6">
 
-          {/* Stats */}
-          <div className="space-y-2">
-            {/* Trésorerie — always green on black */}
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-4">
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-emerald-500">Trésorerie</p>
-              <p className="mt-1 text-[22px] font-bold tabular-nums leading-tight text-emerald-400">{fmt(business.treasuryMoney)}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-emerald-500/8 border border-emerald-500/20 px-3 py-3">
-                <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Rev. mensuel</p>
-                <p className="mt-1 text-[13px] font-bold tabular-nums text-emerald-400">{fmt(business.monthlyRevenue)}</p>
-              </div>
-              <div className={cn('rounded-xl border px-3 py-3', net >= 0 ? 'bg-emerald-500/8 border-emerald-500/20' : 'bg-red-500/8 border-red-500/20')}>
-                <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Net / mois</p>
-                <p className={cn('mt-1 text-[13px] font-bold tabular-nums', net >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-                  {net >= 0 ? '+' : ''}{fmt(net)}
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* Livret épargne */}
           {business.typeKey === 'bank' && business.livretEpargneUnlocked && (
@@ -780,37 +851,6 @@ function DetailPanel({
             )}
           </div>
 
-          {/* Capital partagé — compact button */}
-          {business.isShared && onShowShareholders && (
-            <button type="button" onClick={onShowShareholders}
-              className="flex w-full items-center gap-3 rounded-lg border border-amber-400/20 bg-amber-400/8 px-4 py-3 text-left text-amber-300 transition-all hover:opacity-90">
-              <TrendingUp className="h-4 w-4 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-semibold">Capital partagé</p>
-                <p className="text-[11px] opacity-70">{business.shareholders.length + 1} actionnaire(s){business.viewerSharePercent > 0 ? ` · ta part : ${business.viewerSharePercent.toFixed(2)}%` : ''}</p>
-              </div>
-              <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-            </button>
-          )}
-
-          {/* Recent investments */}
-          {business.recentInvestments.length > 0 && (
-            <div className="rounded-xl border border-sky-400/20 bg-sky-400/8 px-4 py-3 space-y-2">
-              <p className="text-xs font-semibold text-sky-300">{business.recentInvestments.length} investissement(s) reçu(s)</p>
-              <div className="space-y-1.5">
-                {business.recentInvestments.map((inv) => {
-                  const riskColor = inv.riskLevel === 'low' ? 'text-emerald-400' : inv.riskLevel === 'high' ? 'text-rose-400' : 'text-amber-400';
-                  return (
-                    <div key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-sky-400/15 bg-background/50 px-3 py-2 text-xs">
-                      <span className="font-medium">{inv.investor.username}</span>
-                      <span className={cn('font-semibold', riskColor)}>{fmt(inv.amount)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Always-available actions — subdued, at the bottom */}
           {!business.isStateOwned && !isOwned && (
             <div className="space-y-1.5 border-t border-border/20 pt-3">
@@ -836,6 +876,10 @@ function DetailPanel({
           )}
         </div>
       </ScrollArea>
+
+      <FinanceModal open={showFinance} onClose={() => setShowFinance(false)} business={business} />
+      <ReviewsModal open={showReviews} onClose={() => setShowReviews(false)} business={business} />
+      <InvestmentsModal open={showInvestments} onClose={() => setShowInvestments(false)} business={business} />
     </>
   );
 }
@@ -850,6 +894,7 @@ export function BusinessBrowserModal({
   players = [],
   onReload,
   onSelectOnMap,
+  initialBusinessId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -858,6 +903,7 @@ export function BusinessBrowserModal({
   players?: YouPlayer[];
   onReload: () => Promise<void>;
   onSelectOnMap?: (business: YouBusiness) => void;
+  initialBusinessId?: string | null;
 }) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -865,6 +911,10 @@ export function BusinessBrowserModal({
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [detailBusinessId, setDetailBusinessId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open && initialBusinessId) setDetailBusinessId(initialBusinessId);
+  }, [open, initialBusinessId]);
   const [teamRosterBusinessId, setTeamRosterBusinessId] = useState<string | null>(null);
   const [shareholdersViewBusinessId, setShareholdersViewBusinessId] = useState<string | null>(null);
   const [bankBusinessId, setBankBusinessId] = useState<string | null>(null);

@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Axe, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
+import { Axe, AlertTriangle, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
