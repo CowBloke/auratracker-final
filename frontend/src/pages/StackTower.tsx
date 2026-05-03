@@ -355,6 +355,8 @@ class Game {
 
     this.keydownHandler = (e: KeyboardEvent) => {
       if (e.keyCode === 32) {
+        e.preventDefault();
+        e.stopPropagation();
         this.onAction();
       }
     };

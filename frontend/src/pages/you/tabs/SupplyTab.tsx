@@ -21,6 +21,8 @@ import {
   User,
   X,
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { PRODUCER_TYPES, RESOURCE_META, type ResourceType } from '@/lib/resources';
 import {
@@ -41,6 +43,7 @@ import {
 } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '../components/modals';
+import { BUSINESS_ICON_MAP } from '../constants';
 
 type Selection = { kind: 'business'; id: string } | null;
 type NodeSelection =
@@ -84,28 +87,6 @@ const BIZ_COLOR: Record<string, string> = {
   law_firm: '#06b6d4',
   illegal_market: '#dc2626',
   supreme_court: '#0f172a',
-};
-const BIZ_MONO: Record<string, string> = {
-  lemonade: 'LM',
-  farm: 'FM',
-  sawmill: 'SW',
-  quarry: 'QR',
-  iron_mine: 'IR',
-  fuel_refinery: 'RF',
-  textile_mill: 'TX',
-  restaurant: 'RS',
-  coffee_shop: 'CF',
-  epicerie: 'EP',
-  youtube: 'YT',
-  medecins: 'MD',
-  startup: 'ST',
-  agency: 'AG',
-  bank: 'BK',
-  transfer: 'TR',
-  formation: 'FO',
-  law_firm: 'LW',
-  illegal_market: 'IM',
-  supreme_court: 'SC',
 };
 const BIZ_LABEL: Record<string, string> = {
   lemonade: 'Stand de limonade',
@@ -161,6 +142,10 @@ function resourceLabel(resourceType: string) {
 
 function businessColor(typeKey: string) {
   return BIZ_COLOR[typeKey] ?? '#9ca3af';
+}
+
+function getBizIcon(typeKey: string) {
+  return BUSINESS_ICON_MAP[typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
 }
 
 function useDragCanvas(initPositions: Positions) {
@@ -438,8 +423,11 @@ function Sidebar({
               className="flex w-full gap-2.5 px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
               style={{ borderLeft: `3px solid ${active ? color : 'transparent'}`, background: active ? `${color}10` : undefined }}
             >
-              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md font-mono text-[11px] font-bold" style={{ background: `${color}22`, color }}>
-                {BIZ_MONO[business.typeKey] ?? '??'}
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md" style={{ background: `${color}22`, color }}>
+                {(() => {
+                  const BizIcon = getBizIcon(business.typeKey);
+                  return <BizIcon className="h-4 w-4" />;
+                })()}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
@@ -549,6 +537,7 @@ function getHandlePosition(pos: Vec2, side: LinkHandleSide, scale = 1): Vec2 {
 function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyContract[]) {
   const nodes: GraphNodeModel[] = [];
   const color = businessColor(business.typeKey);
+  const BizIcon = getBizIcon(business.typeKey);
   const skipContractIds = new Set<string>();
 
   nodes.push({
@@ -556,7 +545,7 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
     businessId: business.id,
     kind: 'business',
     accent: color,
-    icon: <span className="font-mono text-xs font-bold">{BIZ_MONO[business.typeKey] ?? '??'}</span>,
+    icon: <BizIcon size={17} />,
     title: business.name,
     subtitle: business.underConstruction ? 'Chantier' : BIZ_LABEL[business.typeKey] ?? business.typeKey,
     footer: business.underConstruction ? `${business.constructionProject?.progress.percent ?? 0}%` : '⚙ Gérer',
@@ -1203,6 +1192,19 @@ function BusinessCanvas({
   );
 }
 
+function StatRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className={cn('text-[11px] font-semibold tabular-nums', accent ?? 'text-foreground')}>{value}</span>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <p className="pb-2 text-[9px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/50">{children}</p>;
+}
+
 function DetailPanel({
   selection,
   onClose,
@@ -1245,393 +1247,434 @@ function DetailPanel({
     }
   }, [selection]);
 
-  if (!selection) return null;
-
   const resourceType =
-    selection.kind === 'inventory' ? selection.inventory.resourceType :
-    selection.kind === 'construction-material' ? selection.material.resourceType :
-    selection.kind === 'offer' ? selection.offer.resourceType :
-    selection.kind === 'contract' ? selection.contract.resourceType : null;
+    selection?.kind === 'inventory' ? selection.inventory.resourceType :
+    selection?.kind === 'construction-material' ? selection.material.resourceType :
+    selection?.kind === 'offer' ? selection.offer.resourceType :
+    selection?.kind === 'contract' ? selection.contract.resourceType : null;
 
-  const iconHex = resourceType
-    ? (RESOURCE_HEX[resourceType] ?? '#94a3b8')
-    : selection.kind === 'team'
-      ? ((selection.item as YouBusinessMember).isPrimaryLawyer ? '#22c55e' : '#8b5cf6')
-      : businessColor(selection.business.typeKey);
+  const iconHex = selection
+    ? (resourceType
+        ? (RESOURCE_HEX[resourceType] ?? '#94a3b8')
+        : selection.kind === 'team'
+          ? ((selection.item as YouBusinessMember).isPrimaryLawyer ? '#22c55e' : '#8b5cf6')
+          : businessColor(selection.business.typeKey))
+    : '#94a3b8';
 
   const resMeta = resourceType ? RESOURCE_META[resourceType as ResourceType] : null;
 
   const HeaderIcon: React.ComponentType<{ size?: number; className?: string }> =
     resMeta?.Icon ??
-    (selection.kind === 'loan' ? Landmark :
-     selection.kind === 'case' ? Gavel :
-     selection.kind === 'plainte' ? Gavel :
-     selection.kind === 'team' ? User :
-     selection.kind === 'formation' ? GraduationCap :
-     selection.kind === 'startup' ? Play :
-     (selection.kind === 'transfer' || selection.kind === 'account') ? Banknote :
+    (selection?.kind === 'loan' ? Landmark :
+     selection?.kind === 'case' ? Gavel :
+     selection?.kind === 'plainte' ? Gavel :
+     selection?.kind === 'team' ? User :
+     selection?.kind === 'formation' ? GraduationCap :
+     selection?.kind === 'startup' ? Play :
+     (selection?.kind === 'transfer' || selection?.kind === 'account') ? Banknote :
      Package);
 
-  const title =
-    selection.kind === 'inventory' ? resourceLabel(selection.inventory.resourceType) :
-    selection.kind === 'construction-material' ? resourceLabel(selection.material.resourceType) :
-    selection.kind === 'offer' ? `Offre ${resourceLabel(selection.offer.resourceType)}` :
-    selection.kind === 'contract' ? resourceLabel(selection.contract.resourceType) :
-    selection.kind === 'plainte' ? selection.plainte.title :
-    selection.kind === 'team' ? (selection.item as YouBusinessMember).user.username :
-    selection.item.title ?? selection.business.name;
+  const title = selection
+    ? (selection.kind === 'inventory' ? resourceLabel(selection.inventory.resourceType) :
+       selection.kind === 'construction-material' ? resourceLabel(selection.material.resourceType) :
+       selection.kind === 'offer' ? `Offre · ${resourceLabel(selection.offer.resourceType)}` :
+       selection.kind === 'contract' ? resourceLabel(selection.contract.resourceType) :
+       selection.kind === 'plainte' ? selection.plainte.title :
+       selection.kind === 'team' ? (selection.item as YouBusinessMember).user.username :
+       selection.item.title ?? selection.business.name)
+    : '';
 
-  const panelLabel =
-    selection.kind === 'inventory' ? 'Dépôt' :
-    selection.kind === 'construction-material' ? 'Chantier · materiau' :
-    selection.kind === 'offer' ? 'Offre de vente' :
-    selection.kind === 'plainte' ? 'Plainte en attente' :
-    selection.kind === 'team' ? 'Employé' :
-    selection.kind === 'contract'
-      ? (selection.contract.supplierBusinessId === selection.business.id ? 'Contrat sortant →' : '← Contrat entrant')
-      : 'Details';
+  const panelLabel = selection
+    ? (selection.kind === 'inventory' ? 'Dépôt de ressource' :
+       selection.kind === 'construction-material' ? 'Matériau · chantier' :
+       selection.kind === 'offer' ? 'Offre de vente' :
+       selection.kind === 'plainte' ? 'Plainte en attente' :
+       selection.kind === 'team' ? 'Employé' :
+       selection.kind === 'contract'
+         ? (selection.contract.supplierBusinessId === selection.business.id ? 'Contrat sortant →' : '← Contrat entrant')
+         : 'Détails')
+    : '';
 
   return (
-    <div className="absolute bottom-4 left-4 z-30 w-[360px] overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ background: `${iconHex}22`, color: iconHex }}>
-          <HeaderIcon size={20} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50">{panelLabel}</p>
-          <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-        </div>
-        <button onClick={onClose} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-muted">
-          <X size={14} />
-        </button>
-      </div>
+    <Dialog open={!!selection} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+        <DialogTitle className="sr-only">{title}</DialogTitle>
 
-      <div className="space-y-3 p-4 text-xs">
-        {selection.kind === 'inventory' && (() => {
-          const pct = selection.inventory.capacity > 0
-            ? Math.min(100, Math.round((selection.inventory.quantity / selection.inventory.capacity) * 100))
-            : 0;
-          const bColor = businessColor(selection.business.typeKey);
-          return (
-            <>
-              <div>
-                <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>Stock</span>
-                  <span className="font-mono text-foreground">{selection.inventory.quantity}/{selection.inventory.capacity}</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: bColor }} />
-                </div>
-              </div>
-              <div className="divide-y divide-border rounded-lg border border-border px-3">
-                <Row icon={Package} label="Stock" value={`${selection.inventory.quantity} / ${selection.inventory.capacity}`} />
-                <Row icon={TrendingUp} label="Production" value={`${selection.inventory.productionRatePerHour} u/h`} />
-                <Row icon={Tag} label="Offres actives" value={String(selection.business.offers.filter((o) => o.resourceType === selection.inventory.resourceType).length)} />
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <p className="mb-2.5 text-[11px] font-semibold text-foreground">Vendre cette ressource</p>
-                <label className="mb-1.5 block text-[10px] text-muted-foreground">Prix par unite</label>
-                <input
-                  value={price}
-                  onChange={(e) => setPrice(Number(e.target.value))}
-                  type="number"
-                  min={1}
-                  className="mb-3 h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none"
-                />
-                <label className="mb-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-                  <input type="checkbox" checked={autoAccept} onChange={(e) => setAutoAccept(e.target.checked)} />
-                  Accepter automatiquement les demandes
-                </label>
-                <button
-                  onClick={() => onSaveOffer(selection.business.id, selection.inventory.resourceType, price, autoAccept, true)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-medium text-white"
-                >
-                  <Check size={12} /> Publier l'offre
-                </button>
-              </div>
-            </>
-          );
-        })()}
-
-        {selection.kind === 'construction-material' && (() => {
-          const { deliveredQuantity, requiredQuantity } = selection.material;
-          const remaining = Math.max(0, requiredQuantity - deliveredQuantity);
-          const pct = requiredQuantity > 0 ? Math.min(100, Math.round((deliveredQuantity / requiredQuantity) * 100)) : 100;
-          const done = remaining === 0;
-          return (
-            <div className="space-y-3">
-              <div>
-                <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>Livraison</span>
-                  <span className="font-mono font-semibold" style={{ color: done ? '#22c55e' : '#fbbf24' }}>{pct}%</span>
-                </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: done ? '#22c55e' : '#fbbf24' }} />
-                </div>
-              </div>
-              <div className="divide-y divide-border rounded-lg border border-border px-3">
-                <Row icon={Check} label="Recu" value={String(deliveredQuantity)} accent={deliveredQuantity > 0 ? '#22c55e' : undefined} />
-                <Row icon={Package} label="Requis" value={String(requiredQuantity)} />
-                <Row icon={Hammer} label="Reste" value={String(remaining)} accent={done ? '#22c55e' : '#f59e0b'} />
-              </div>
-              {done ? (
-                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5">
-                  <Check size={14} className="shrink-0 text-emerald-500" />
-                  <p className="text-[11px] font-semibold text-emerald-500">Materiau pret</p>
-                </div>
-              ) : (
-                <button
-                  onClick={() => onChooseSource(selection.business, selection.material)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-md bg-amber-400 px-3 py-2 text-[11px] font-semibold text-black"
-                >
-                  <Package size={12} /> Choisir une source
-                </button>
-              )}
-            </div>
-          );
-        })()}
-
-        {selection.kind === 'offer' && (
-          <div className="space-y-3">
-            <div className="divide-y divide-border rounded-lg border border-border px-3">
-              <Row icon={Tag} label="Prix par unite" value={`${selection.offer.unitPrice} /u`} />
-              <Row
-                icon={Check}
-                label="Validation"
-                value={selection.offer.autoAccept ? 'Automatique' : 'Manuelle'}
-                accent={selection.offer.autoAccept ? '#22c55e' : '#f59e0b'}
-              />
-              <Row icon={Package} label="Ressource" value={resourceLabel(selection.offer.resourceType)} />
-            </div>
-            <button
-              onClick={() => onSaveOffer(selection.business.id, selection.offer.resourceType, selection.offer.unitPrice, selection.offer.autoAccept, !selection.offer.isActive)}
-              className={cn('flex w-full items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-[11px] font-medium transition-colors',
-                selection.offer.isActive
-                  ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
-                  : 'border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10'
-              )}
-            >
-              {selection.offer.isActive ? 'Desactiver l\'offre' : 'Reactiver l\'offre'}
-            </button>
+        {/* Colored header */}
+        <div
+          className="flex items-center gap-3 border-b border-border/40 px-5 py-4"
+          style={{ background: `linear-gradient(135deg, ${iconHex}14 0%, transparent 60%)` }}
+        >
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: `${iconHex}20`, color: iconHex, border: `1.5px solid ${iconHex}35` }}
+          >
+            <HeaderIcon size={19} />
           </div>
-        )}
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/45">{panelLabel}</p>
+            <p className="truncate text-[15px] font-semibold leading-tight text-foreground">{title}</p>
+            {selection && <p className="truncate text-[10px] text-muted-foreground/55">{selection.business.name}</p>}
+          </div>
+        </div>
 
-        {selection.kind === 'contract' && (() => {
-          const outgoing = selection.contract.supplierBusinessId === selection.business.id;
-          const status = selection.contract.status;
-          const pct = selection.contract.totalQuantity > 0
-            ? Math.min(100, Math.round((selection.contract.deliveredQuantity / selection.contract.totalQuantity) * 100))
-            : 0;
-          const statusColor = status === 'ACTIVE' ? '#38bdf8' : status === 'PENDING' ? '#f59e0b' : '#94a3b8';
-          const counterpart = outgoing ? selection.contract.buyer?.name : selection.contract.supplier?.name;
-          return (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="rounded-full px-2 py-0.5 text-[9px] font-bold" style={{ background: `${statusColor}20`, color: statusColor }}>
-                  {status}
-                </span>
-                <span className="text-[10px] text-muted-foreground">{outgoing ? '→ sortant vers' : '← entrant de'} {counterpart}</span>
-              </div>
-              <div>
-                <div className="mb-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>Livraison</span>
-                  <span className="font-mono">{selection.contract.deliveredQuantity}/{selection.contract.totalQuantity}</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: statusColor }} />
-                </div>
-              </div>
-              <div className="divide-y divide-border rounded-lg border border-border px-3">
-                <Row icon={Briefcase} label={outgoing ? 'Client' : 'Fournisseur'} value={counterpart ?? '—'} />
-                <Row icon={Package} label="Ressource" value={resourceLabel(selection.contract.resourceType)} />
-                <Row icon={Tag} label="Prix" value={`${selection.contract.unitPrice} /u`} />
-                <Row icon={Banknote} label="Total" value={money(selection.contract.totalQuantity * selection.contract.unitPrice)} />
-                <Row icon={TrendingUp} label="Reste" value={String(selection.contract.totalQuantity - selection.contract.deliveredQuantity)} />
-              </div>
-            </div>
-          );
-        })()}
+        {/* Scrollable body */}
+        <ScrollArea className="max-h-[72vh]">
+          <div className="px-5 pb-6 pt-4">
 
-        {selection.kind === 'team' && (() => {
-          const member = selection.item as YouBusinessMember;
-          const u = member.user;
-          const accent = member.isPrimaryLawyer ? '#22c55e' : '#8b5cf6';
-          return (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-                {u.profilePicture ? (
-                  <img src={u.profilePicture} alt={u.username} className="h-12 w-12 shrink-0 rounded-full object-cover" />
-                ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-base font-bold" style={{ background: `${accent}22`, color: accent }}>
-                    {u.username.slice(0, 2).toUpperCase()}
+            {/* ── Inventory ── */}
+            {selection?.kind === 'inventory' && (() => {
+              const pct = selection.inventory.capacity > 0
+                ? Math.min(100, Math.round((selection.inventory.quantity / selection.inventory.capacity) * 100))
+                : 0;
+              const bColor = businessColor(selection.business.typeKey);
+              const existingOffer = selection.business.offers.find((o) => o.resourceType === selection.inventory.resourceType);
+              return (
+                <>
+                  {/* Stock number + bar — no box */}
+                  <div className="mb-4">
+                    <div className="flex items-end justify-between">
+                      <span className="text-[32px] font-bold tabular-nums leading-none" style={{ color: bColor }}>
+                        {selection.inventory.quantity}
+                      </span>
+                      <span className="mb-1 text-[12px] text-muted-foreground">/ {selection.inventory.capacity} u</span>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/40">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: bColor }} />
+                    </div>
+                    <p className="mt-1 text-[10px] text-muted-foreground/50">{pct}% · {selection.inventory.productionRatePerHour} u/h produits</p>
                   </div>
-                )}
-                <div className="min-w-0">
-                  <p className="font-semibold text-foreground">{u.username}</p>
-                  {u.firstName && <p className="text-[10px] text-muted-foreground">{u.firstName}</p>}
-                  {u.bio && <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground/70">{u.bio}</p>}
+
+                  {/* Stats — flat divide-y */}
+                  <div className="divide-y divide-border/40">
+                    <StatRow label="Production" value={`${selection.inventory.productionRatePerHour} u/h`} />
+                    <StatRow label="Capacité" value={`${pct}%`} />
+                    <StatRow
+                      label="Offre active"
+                      value={existingOffer?.isActive ? `${existingOffer.unitPrice} money/u · ${existingOffer.autoAccept ? 'auto' : 'manuelle'}` : 'Aucune'}
+                      accent={existingOffer?.isActive ? 'text-emerald-400' : undefined}
+                    />
+                  </div>
+
+                  {/* Sell section — separated by a border-t, no wrapper box */}
+                  <div className="mt-5 border-t border-border/40 pt-5">
+                    <SectionLabel>{existingOffer ? 'Modifier l\'offre' : 'Vendre cette ressource'}</SectionLabel>
+
+                    <div className="mb-3">
+                      <p className="mb-1.5 text-[11px] text-muted-foreground">Prix par unité</p>
+                      <div className="relative">
+                        <input
+                          value={price}
+                          onChange={(e) => setPrice(Number(e.target.value))}
+                          type="number"
+                          min={1}
+                          className="h-11 w-full rounded-lg border border-border bg-background pl-4 pr-24 text-[16px] font-bold outline-none transition-colors focus:border-amber-400/50"
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[11px] font-medium text-muted-foreground">money / u</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setAutoAccept(!autoAccept)}
+                      className="mb-4 flex w-full items-center justify-between py-2"
+                    >
+                      <span className="text-[12px] text-muted-foreground">Acceptation automatique</span>
+                      <div className={cn('relative h-5 w-9 rounded-full transition-colors duration-200', autoAccept ? 'bg-emerald-500' : 'bg-muted/60')}>
+                        <div
+                          className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all duration-200"
+                          style={{ left: autoAccept ? '19px' : '2px' }}
+                        />
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => void onSaveOffer(selection.business.id, selection.inventory.resourceType, price, autoAccept, true)}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-3 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 active:scale-[0.99]"
+                    >
+                      <Check size={14} />
+                      {existingOffer ? 'Mettre à jour' : 'Publier l\'offre'}
+                    </button>
+
+                    {existingOffer?.isActive && (
+                      <button
+                        onClick={() => void onSaveOffer(selection.business.id, selection.inventory.resourceType, existingOffer.unitPrice, existingOffer.autoAccept, false)}
+                        className="mt-2.5 w-full text-center text-[11px] text-red-400/80 transition-colors hover:text-red-400"
+                      >
+                        Désactiver l'offre
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* ── Construction material ── */}
+            {selection?.kind === 'construction-material' && (() => {
+              const { deliveredQuantity, requiredQuantity } = selection.material;
+              const remaining = Math.max(0, requiredQuantity - deliveredQuantity);
+              const pct = requiredQuantity > 0 ? Math.min(100, Math.round((deliveredQuantity / requiredQuantity) * 100)) : 100;
+              const done = remaining === 0;
+              return (
+                <>
+                  <div className="mb-4">
+                    <div className="mb-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>Livraison</span>
+                      <span className="font-mono font-semibold" style={{ color: done ? '#22c55e' : '#fbbf24' }}>{pct}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted/40">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: done ? '#22c55e' : '#fbbf24' }} />
+                    </div>
+                  </div>
+                  <div className="divide-y divide-border/40">
+                    <StatRow label="Reçu" value={String(deliveredQuantity)} accent={deliveredQuantity > 0 ? 'text-emerald-400' : undefined} />
+                    <StatRow label="Requis" value={String(requiredQuantity)} />
+                    <StatRow label="Reste" value={String(remaining)} accent={done ? 'text-emerald-400' : 'text-amber-400'} />
+                  </div>
+                  <div className="mt-4">
+                    {done ? (
+                      <p className="flex items-center gap-2 text-[12px] font-semibold text-emerald-500">
+                        <Check size={14} /> Matériau prêt
+                      </p>
+                    ) : (
+                      <button
+                        onClick={() => onChooseSource(selection.business, selection.material)}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 py-3 text-[12px] font-semibold text-black transition-opacity hover:opacity-90"
+                      >
+                        <Package size={13} /> Choisir une source
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* ── Offer ── */}
+            {selection?.kind === 'offer' && (
+              <>
+                <div className="divide-y divide-border/40">
+                  <StatRow label="Prix par unité" value={`${selection.offer.unitPrice} money / u`} />
+                  <StatRow
+                    label="Validation"
+                    value={selection.offer.autoAccept ? 'Automatique' : 'Manuelle'}
+                    accent={selection.offer.autoAccept ? 'text-emerald-400' : 'text-amber-400'}
+                  />
+                  <StatRow label="Ressource" value={resourceLabel(selection.offer.resourceType)} />
                 </div>
-              </div>
-              <div className="divide-y divide-border rounded-lg border border-border px-3">
-                <Row icon={Briefcase} label="Rôle" value={member.role} />
-                <Row
-                  icon={TrendingUp}
-                  label="Salaire"
-                  value={member.salary > 0 ? `${member.salary.toLocaleString('fr-FR')} /j` : 'Bénévole'}
-                  accent={member.salary > 0 ? '#22c55e' : undefined}
-                />
-                {member.specialty && <Row icon={Tag} label="Spécialité" value={member.specialty} />}
-                {member.isPrimaryLawyer && (
-                  <Row icon={Check} label="Avocat principal" value="Oui" accent="#22c55e" />
-                )}
-                <Row icon={User} label="Aura" value={Number(u.aura).toLocaleString('fr-FR')} />
-              </div>
-              <div className="rounded-lg border border-border p-3">
-                <p className="mb-2.5 text-[11px] font-semibold text-foreground">Modifier ce membre</p>
-                <label className="mb-1.5 block text-[10px] text-muted-foreground">Rôle</label>
-                <input
-                  value={memberRole}
-                  onChange={(e) => setMemberRole(e.target.value)}
-                  className="mb-3 h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none"
-                />
-                <label className="mb-1.5 block text-[10px] text-muted-foreground">Salaire / jour</label>
-                <input
-                  value={memberSalary}
-                  onChange={(e) => setMemberSalary(Number(e.target.value))}
-                  type="number"
-                  min={0}
-                  className="mb-3 h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none"
-                />
-                <label className="mb-1.5 block text-[10px] text-muted-foreground">Titre / spécialité</label>
-                <input
-                  value={memberTitle}
-                  onChange={(e) => setMemberTitle(e.target.value)}
-                  className="mb-3 h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none"
-                />
-                <button
-                  onClick={() => onUpdateMember(selection.business.id, member.id, { role: memberRole, salary: memberSalary, title: memberTitle || null })}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-medium text-white"
-                >
-                  <Check size={12} /> Enregistrer
-                </button>
-              </div>
-            </div>
-          );
-        })()}
-
-        {selection.kind === 'loan' && (() => {
-          const loan = selection.item;
-          const remaining = Math.max(0, loan.totalOwed - loan.repaidAmount);
-          return (
-            <div className="space-y-3">
-              <div className="divide-y divide-border rounded-lg border border-border px-3">
-                <Row icon={User} label="Emprunteur" value={loan.borrower?.username ?? '—'} />
-                <Row icon={Banknote} label="Montant" value={money(loan.amount)} />
-                <Row icon={Percent} label="Taux" value={`${loan.interestRate}%`} />
-                <Row icon={TrendingUp} label="Reste" value={money(remaining)} />
-                <Row icon={CalendarDays} label="Statut" value={loan.status} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {loan.status === 'PENDING' && (
-                  <>
-                    <button onClick={() => onRespondLoan(loan.id, 'reject')} className="rounded-md border border-border px-3 py-2 text-[11px] text-muted-foreground hover:bg-muted">Refuser</button>
-                    <button onClick={() => onRespondLoan(loan.id, 'accept')} className="rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-medium text-white">Accepter</button>
-                  </>
-                )}
-                {loan.status !== 'PENDING' && (
-                  <>
-                    <button onClick={() => onRemindLoan(loan.id)} className="rounded-md border border-border px-3 py-2 text-[11px] text-muted-foreground hover:bg-muted">Relancer</button>
-                    <button onClick={() => onClaimLoan(loan.id)} className="rounded-md bg-amber-500 px-3 py-2 text-[11px] font-medium text-black">Saisir / recouvrer</button>
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-
-        {selection.kind === 'account' && (() => {
-          const account = selection.item;
-          return (
-            <div className="divide-y divide-border rounded-lg border border-border px-3">
-              <Row icon={User} label="Titulaire" value={account.user?.username ?? '—'} />
-              <Row icon={Briefcase} label="Type" value={account.accountType} />
-              <Row icon={Banknote} label="Solde" value={money(account.balance)} />
-              <Row icon={CalendarDays} label="Ouvert" value={account.createdAt ? new Date(account.createdAt).toLocaleDateString('fr-FR') : '—'} />
-            </div>
-          );
-        })()}
-
-        {selection.kind === 'case' && (() => {
-          const courtCase = selection.item;
-          return (
-            <div className="space-y-3">
-              <div className="divide-y divide-border rounded-lg border border-border px-3">
-                <Row icon={Gavel} label="Dossier" value={courtCase.title} />
-                <Row icon={CalendarDays} label="Statut" value={courtCase.status} />
-                <Row icon={User} label="Partie" value={courtCase.side} />
-                <Row icon={Briefcase} label="Avocat" value={courtCase.lawyer?.username ?? 'Non assigné'} />
-                <Row icon={User} label="Plaignant" value={courtCase.plaintif?.username ?? '—'} />
-                <Row icon={User} label="Défendeur" value={courtCase.defendant?.username ?? '—'} />
-              </div>
-              {courtCase.plainte && (
-                <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <p className="text-[11px] font-semibold text-foreground">{courtCase.plainte.title}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">{courtCase.plainte.description}</p>
+                <div className="mt-4">
+                  <button
+                    onClick={() => void onSaveOffer(selection.business.id, selection.offer.resourceType, selection.offer.unitPrice, selection.offer.autoAccept, !selection.offer.isActive)}
+                    className={cn(
+                      'flex w-full items-center justify-center gap-2 rounded-lg py-3 text-[12px] font-semibold transition-colors',
+                      selection.offer.isActive
+                        ? 'bg-red-500/10 text-red-400 hover:bg-red-500/15'
+                        : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15',
+                    )}
+                  >
+                    {selection.offer.isActive ? 'Désactiver l\'offre' : 'Réactiver l\'offre'}
+                  </button>
                 </div>
-              )}
-            </div>
-          );
-        })()}
+              </>
+            )}
 
-        {selection.kind === 'plainte' && (
-          <div className="space-y-3">
-            <div className="divide-y divide-border rounded-lg border border-border px-3">
-              <Row icon={User} label="Plaignant" value={selection.plainte.plaintif?.username ?? '—'} />
-              <Row icon={User} label="Défendeur" value={selection.plainte.defendant?.username ?? '—'} />
-              <Row icon={CalendarDays} label="Statut" value={selection.plainte.status} />
-            </div>
-            <div className="rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-[11px] font-semibold text-foreground">{selection.plainte.title}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{selection.plainte.description}</p>
-              {selection.plainte.evidence && <p className="mt-2 text-[10px] text-muted-foreground">Preuve: {selection.plainte.evidence}</p>}
-            </div>
-            <button
-              onClick={() => onAcceptPlainte(selection.plainte.id)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-[11px] font-medium text-white"
-            >
-              <Check size={12} /> Accepter le dossier
-            </button>
+            {/* ── Contract ── */}
+            {selection?.kind === 'contract' && (() => {
+              const outgoing = selection.contract.supplierBusinessId === selection.business.id;
+              const status = selection.contract.status;
+              const pct = selection.contract.totalQuantity > 0
+                ? Math.min(100, Math.round((selection.contract.deliveredQuantity / selection.contract.totalQuantity) * 100))
+                : 0;
+              const statusColor = status === 'ACTIVE' ? '#38bdf8' : status === 'PENDING' ? '#f59e0b' : '#94a3b8';
+              const counterpart = outgoing ? selection.contract.buyer?.name : selection.contract.supplier?.name;
+              return (
+                <>
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: `${statusColor}20`, color: statusColor }}>
+                      {status}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">{outgoing ? '→ vers' : '← de'} {counterpart}</span>
+                  </div>
+                  <div className="mb-4">
+                    <div className="mb-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>Livraison</span>
+                      <span className="font-mono">{selection.contract.deliveredQuantity}/{selection.contract.totalQuantity}</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted/40">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: statusColor }} />
+                    </div>
+                  </div>
+                  <div className="divide-y divide-border/40">
+                    <StatRow label={outgoing ? 'Client' : 'Fournisseur'} value={counterpart ?? '—'} />
+                    <StatRow label="Ressource" value={resourceLabel(selection.contract.resourceType)} />
+                    <StatRow label="Prix" value={`${selection.contract.unitPrice} money / u`} />
+                    <StatRow label="Total" value={money(selection.contract.totalQuantity * selection.contract.unitPrice)} />
+                    <StatRow label="Reste à livrer" value={String(selection.contract.totalQuantity - selection.contract.deliveredQuantity)} />
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* ── Team member ── */}
+            {selection?.kind === 'team' && (() => {
+              const member = selection.item as YouBusinessMember;
+              const u = member.user;
+              const accent = member.isPrimaryLawyer ? '#22c55e' : '#8b5cf6';
+              return (
+                <>
+                  {/* Profile — inline, no border box */}
+                  <div className="mb-4 flex items-center gap-3">
+                    {u.profilePicture ? (
+                      <img src={u.profilePicture} alt={u.username} className="h-11 w-11 shrink-0 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold" style={{ background: `${accent}22`, color: accent }}>
+                        {u.username.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground">{u.username}</p>
+                      {u.firstName && <p className="text-[10px] text-muted-foreground">{u.firstName}</p>}
+                      {u.bio && <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground/60">{u.bio}</p>}
+                    </div>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="divide-y divide-border/40">
+                    <StatRow label="Rôle" value={member.role} />
+                    <StatRow label="Salaire" value={member.salary > 0 ? `${member.salary.toLocaleString('fr-FR')} /j` : 'Bénévole'} accent={member.salary > 0 ? 'text-emerald-400' : undefined} />
+                    {member.specialty && <StatRow label="Spécialité" value={member.specialty} />}
+                    {member.isPrimaryLawyer && <StatRow label="Avocat principal" value="Oui" accent="text-emerald-400" />}
+                    <StatRow label="Aura" value={Number(u.aura).toLocaleString('fr-FR')} />
+                  </div>
+
+                  {/* Edit form — separated by border-t, no wrapper box */}
+                  <div className="mt-5 border-t border-border/40 pt-5 space-y-3">
+                    <SectionLabel>Modifier ce membre</SectionLabel>
+                    <div>
+                      <p className="mb-1.5 text-[11px] text-muted-foreground">Rôle</p>
+                      <input value={memberRole} onChange={(e) => setMemberRole(e.target.value)} className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none transition-colors focus:border-primary/40" />
+                    </div>
+                    <div>
+                      <p className="mb-1.5 text-[11px] text-muted-foreground">Salaire / jour</p>
+                      <input value={memberSalary} onChange={(e) => setMemberSalary(Number(e.target.value))} type="number" min={0} className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none transition-colors focus:border-primary/40" />
+                    </div>
+                    <div>
+                      <p className="mb-1.5 text-[11px] text-muted-foreground">Titre / spécialité</p>
+                      <input value={memberTitle} onChange={(e) => setMemberTitle(e.target.value)} className="h-9 w-full rounded-lg border border-border bg-background px-3 text-xs outline-none transition-colors focus:border-primary/40" />
+                    </div>
+                    <button
+                      onClick={() => void onUpdateMember(selection.business.id, member.id, { role: memberRole, salary: memberSalary, title: memberTitle || null })}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+                    >
+                      <Check size={13} /> Enregistrer
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* ── Loan ── */}
+            {selection?.kind === 'loan' && (() => {
+              const loan = selection.item;
+              const remaining = Math.max(0, loan.totalOwed - loan.repaidAmount);
+              return (
+                <>
+                  <div className="divide-y divide-border/40">
+                    <StatRow label="Emprunteur" value={loan.borrower?.username ?? '—'} />
+                    <StatRow label="Montant" value={money(loan.amount)} />
+                    <StatRow label="Taux" value={`${loan.interestRate}%`} />
+                    <StatRow label="Reste" value={money(remaining)} />
+                    <StatRow label="Statut" value={loan.status} />
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {loan.status === 'PENDING' ? (
+                      <>
+                        <button onClick={() => void onRespondLoan(loan.id, 'reject')} className="rounded-lg border border-border py-2.5 text-[12px] text-muted-foreground hover:bg-muted">Refuser</button>
+                        <button onClick={() => void onRespondLoan(loan.id, 'accept')} className="rounded-lg bg-emerald-600 py-2.5 text-[12px] font-semibold text-white hover:opacity-90">Accepter</button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => void onRemindLoan(loan.id)} className="rounded-lg border border-border py-2.5 text-[12px] text-muted-foreground hover:bg-muted">Relancer</button>
+                        <button onClick={() => void onClaimLoan(loan.id)} className="rounded-lg bg-amber-500 py-2.5 text-[12px] font-semibold text-black hover:opacity-90">Saisir</button>
+                      </>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* ── Bank account ── */}
+            {selection?.kind === 'account' && (() => {
+              const account = selection.item;
+              return (
+                <div className="divide-y divide-border/40">
+                  <StatRow label="Titulaire" value={account.user?.username ?? '—'} />
+                  <StatRow label="Type" value={account.accountType} />
+                  <StatRow label="Solde" value={money(account.balance)} />
+                  <StatRow label="Ouvert le" value={account.createdAt ? new Date(account.createdAt).toLocaleDateString('fr-FR') : '—'} />
+                </div>
+              );
+            })()}
+
+            {/* ── Court case ── */}
+            {selection?.kind === 'case' && (() => {
+              const courtCase = selection.item;
+              return (
+                <>
+                  <div className="divide-y divide-border/40">
+                    <StatRow label="Titre" value={courtCase.title} />
+                    <StatRow label="Statut" value={courtCase.status} />
+                    <StatRow label="Partie" value={courtCase.side} />
+                    <StatRow label="Avocat" value={courtCase.lawyer?.username ?? 'Non assigné'} />
+                    <StatRow label="Plaignant" value={courtCase.plaintif?.username ?? '—'} />
+                    <StatRow label="Défendeur" value={courtCase.defendant?.username ?? '—'} />
+                  </div>
+                  {courtCase.plainte && (
+                    <div className="mt-4 border-t border-border/40 pt-4">
+                      <p className="text-[12px] font-semibold text-foreground">{courtCase.plainte.title}</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{courtCase.plainte.description}</p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* ── Plainte ── */}
+            {selection?.kind === 'plainte' && (
+              <>
+                <div className="divide-y divide-border/40">
+                  <StatRow label="Plaignant" value={selection.plainte.plaintif?.username ?? '—'} />
+                  <StatRow label="Défendeur" value={selection.plainte.defendant?.username ?? '—'} />
+                  <StatRow label="Statut" value={selection.plainte.status} />
+                </div>
+                <div className="mt-4 border-t border-border/40 pt-4">
+                  <p className="text-[12px] font-semibold text-foreground">{selection.plainte.title}</p>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{selection.plainte.description}</p>
+                  {selection.plainte.evidence && (
+                    <p className="mt-2 text-[10px] italic text-muted-foreground/50">Preuve : {selection.plainte.evidence}</p>
+                  )}
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={() => void onAcceptPlainte(selection.plainte.id)}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-3 text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+                  >
+                    <Check size={13} /> Accepter le dossier
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* ── Fallback JSON ── */}
+            {selection && selection.kind !== 'inventory' && selection.kind !== 'construction-material' && selection.kind !== 'offer' && selection.kind !== 'contract' && selection.kind !== 'team' && selection.kind !== 'loan' && selection.kind !== 'account' && selection.kind !== 'case' && selection.kind !== 'plainte' && (
+              <pre className="max-h-64 overflow-auto rounded-xl bg-muted p-3 text-[10px] text-muted-foreground">
+                {JSON.stringify(selection.item, null, 2)}
+              </pre>
+            )}
+
           </div>
-        )}
-
-        {selection.kind !== 'inventory' && selection.kind !== 'construction-material' && selection.kind !== 'offer' && selection.kind !== 'contract' && selection.kind !== 'team' && selection.kind !== 'loan' && selection.kind !== 'account' && selection.kind !== 'case' && selection.kind !== 'plainte' && (
-          <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-[10px] text-muted-foreground">
-            {JSON.stringify(selection.item, null, 2)}
-          </pre>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Row({
-  icon: Icon,
-  label,
-  value,
-  accent,
-}: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  icon: React.ComponentType<any>;
-  label: string;
-  value: string;
-  accent?: string;
-}) {
-  return (
-    <div className="flex items-center gap-2.5 py-2">
-      <Icon size={13} className="shrink-0 text-muted-foreground/40" />
-      <span className="text-[10px] text-muted-foreground">{label}</span>
-      <span className="ml-auto text-[11px] font-semibold" style={accent ? { color: accent } : undefined}>{value}</span>
-    </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1816,7 +1859,10 @@ function SourceModal({
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md font-mono text-[10px] font-bold"
                     style={{ background: `${supplierColor}22`, color: supplierColor }}>
-                    {BIZ_MONO[offer.business?.typeKey ?? ''] ?? '??'}
+                    {(() => {
+                      const BizIcon = getBizIcon(offer.business?.typeKey ?? '');
+                      return <BizIcon className="h-4 w-4" />;
+                    })()}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
@@ -2028,7 +2074,10 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
           {activeBusiness ? (
             <>
               <div className="flex h-6 w-6 items-center justify-center rounded font-mono text-[10px] font-bold" style={{ background: `${businessColor(activeBusiness.typeKey)}22`, color: businessColor(activeBusiness.typeKey) }}>
-                {BIZ_MONO[activeBusiness.typeKey] ?? '??'}
+                {(() => {
+                  const BizIcon = getBizIcon(activeBusiness.typeKey);
+                  return <BizIcon className="h-3.5 w-3.5" />;
+                })()}
               </div>
               <p className="text-sm font-medium text-foreground">{activeBusiness.name}</p>
               <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{BIZ_LABEL[activeBusiness.typeKey] ?? activeBusiness.typeKey}</span>
@@ -2133,10 +2182,13 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
             style={{ opacity: curtainOpen ? 1 : 0, transition: 'opacity 0.45s ease', transitionDelay: curtainOpen ? '0.55s' : '0s' }}
           >
             <div
-              className="flex h-24 w-24 items-center justify-center rounded-3xl font-mono text-3xl font-bold shadow-xl"
+              className="flex h-24 w-24 items-center justify-center rounded-3xl shadow-xl"
               style={{ background: `${businessColor(completedBusiness.typeKey)}22`, color: businessColor(completedBusiness.typeKey) }}
             >
-              {BIZ_MONO[completedBusiness.typeKey] ?? '??'}
+              {(() => {
+                const BizIcon = getBizIcon(completedBusiness.typeKey);
+                return <BizIcon className="h-12 w-12" />;
+              })()}
             </div>
             <div>
               <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">{BIZ_LABEL[completedBusiness.typeKey] ?? completedBusiness.typeKey}</p>

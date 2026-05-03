@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, Axe, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
+import { Axe, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -209,34 +209,6 @@ const TAG_PRESET_COLORS = [
   '#a1a1aa', '#374151', '#1f2937', '#111827', '#000000',
 ];
 
-const FLAG_PATTERNS = ['tricolor', 'bicolor', 'cross', 'circle'] as const;
-const FLAG_ICONS = ['star', 'crown', 'shield', 'diamond'] as const;
-
-const NationFlagPreview = ({
-  flag,
-  className = '',
-}: {
-  flag: { primary: string; secondary: string; accent: string; pattern: string; icon: string };
-  className?: string;
-}) => {
-  const background =
-    flag.pattern === 'bicolor'
-      ? `linear-gradient(180deg, ${flag.primary} 0 50%, ${flag.secondary} 50% 100%)`
-      : flag.pattern === 'cross'
-        ? `linear-gradient(90deg, ${flag.primary} 0 38%, ${flag.secondary} 38% 62%, ${flag.primary} 62% 100%)`
-        : flag.pattern === 'circle'
-          ? `radial-gradient(circle at center, ${flag.accent} 0 28%, ${flag.secondary} 29% 45%, ${flag.primary} 46% 100%)`
-          : `linear-gradient(90deg, ${flag.primary} 0 33%, ${flag.secondary} 33% 66%, ${flag.accent} 66% 100%)`;
-  const iconChar = flag.icon === 'crown' ? '♛' : flag.icon === 'shield' ? '⬟' : flag.icon === 'diamond' ? '◆' : '★';
-  return (
-    <div className={cn('relative overflow-hidden rounded-xl border border-border/50', className)} style={{ background }}>
-      <div className="flex h-full w-full items-center justify-center text-xl font-bold text-white/90 drop-shadow-sm">
-        {iconChar}
-      </div>
-    </div>
-  );
-};
-
 export default function Clans() {
   const { user, refreshUser } = useAuth();
   const { confirm } = useAppDialog();
@@ -286,16 +258,6 @@ export default function Clans() {
   const [tagText, setTagText] = useState('');
   const [tagStyle, setTagStyle] = useState<ClanTagStyle>(DEFAULT_CLAN_TAG_STYLE);
   const [savingTag, setSavingTag] = useState(false);
-  const [selectedTerritoryKey, setSelectedTerritoryKey] = useState('');
-  const [nationFlag, setNationFlag] = useState<{ primary: string; secondary: string; accent: string; pattern: string; icon: string }>({
-    primary: '#1d4ed8',
-    secondary: '#f8fafc',
-    accent: '#dc2626',
-    pattern: 'tricolor',
-    icon: 'star',
-  });
-  const [savingNationIdentity, setSavingNationIdentity] = useState(false);
-
   // Tab state
   const [activeTab, setActiveTab] = useState<'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages'>('info');
   const [bankHistoryOpen, setBankHistoryOpen] = useState(false);
@@ -479,10 +441,6 @@ export default function Clans() {
   );
   const canCreateClan = !viewerClanId;
   const canJoinSelectedClan = Boolean(selectedClan && !selectedClan.viewer.isMember && !viewerClanId);
-  const selectedTerritory = selectedClan?.nation.territories.find((territory) => territory.key === selectedTerritoryKey) ?? null;
-  const selectedTerritoryOccupant = selectedTerritory
-    ? clans.find((entry) => entry.nation.territoryKey === selectedTerritory.key) ?? null
-    : null;
   const clanWars = useMemo(() => {
     if (!selectedClan) return [];
     const currentWar = selectedClan.warHub.currentWar ? [selectedClan.warHub.currentWar] : [];
@@ -492,11 +450,6 @@ export default function Clans() {
     return [...currentWar, ...historyWars];
   }, [selectedClan]);
 
-  useEffect(() => {
-    if (!selectedClan) return;
-    setSelectedTerritoryKey(selectedClan.nation.territoryKey);
-    setNationFlag(selectedClan.nation.flag);
-  }, [selectedClan?.id, selectedClan?.nation.territoryKey, selectedClan?.nation.flag]);
   const pendingWarGames = useMemo(() => {
     if (!selectedWar || !isOwnClan || !selectedClan?.viewer.isMember || !gameStatus) return [];
 
@@ -881,7 +834,7 @@ export default function Clans() {
       });
       setDialogOpen(false);
       resetForm();
-      toast({ title: 'Nation créée', description: 'Ton organisation est prête à recruter, négocier et combattre.' });
+      toast({ title: 'Clan créé', description: 'Ton organisation est prête à recruter, négocier et combattre.' });
       await refreshData(res.data.clan.id);
     } catch (error: any) {
       console.error('Failed to create clan:', error);
@@ -1061,20 +1014,6 @@ export default function Clans() {
     }
   };
 
-  const handleAllianceRequest = async (targetClanId: string) => {
-    if (!selectedClan) return;
-    setActionLoading(true);
-    try {
-      await clansApi.requestAlliance(selectedClan.id, targetClanId);
-      toast({ title: "Proposition d'alliance envoyee" });
-      await refreshData(selectedClan.id);
-    } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || "Impossible d'envoyer l'alliance.", variant: 'destructive' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const handleWarAttack = async (attackType: ClanWarActionType['type']) => {
     if (!selectedClan || !selectedWar) return;
     setWarActionKey(`attack:${attackType}`);
@@ -1094,69 +1033,6 @@ export default function Clans() {
       });
     } finally {
       setWarActionKey(null);
-    }
-  };
-
-  const handleAllianceResponse = async (requestClanId: string, decision: 'accept' | 'reject') => {
-    if (!selectedClan) return;
-    setActionLoading(true);
-    try {
-      await clansApi.respondAlliance(selectedClan.id, requestClanId, decision);
-      toast({ title: decision === 'accept' ? 'Alliance forgee' : 'Alliance refusee' });
-      await refreshData(selectedClan.id);
-    } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || "Impossible de repondre a l'alliance.", variant: 'destructive' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleBetrayAlliance = async (allyClanId: string) => {
-    if (!selectedClan) return;
-    setActionLoading(true);
-    try {
-      await clansApi.betrayAlliance(selectedClan.id, allyClanId);
-      toast({ title: 'Trahison executee', description: 'La confiance est rompue, mais votre pression augmente.' });
-      await refreshData(selectedClan.id);
-    } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de trahir cette alliance.', variant: 'destructive' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleBlackMarketBuy = async (itemKey: string, targetClanId?: string, boost = false) => {
-    if (!selectedClan) return;
-    setActionLoading(true);
-    try {
-      await clansApi.buyBlackMarketItem(selectedClan.id, { itemKey, targetClanId, boost });
-      toast({ title: boost ? 'Score hebdomadaire booste' : 'Operation du marche noir validee' });
-      await refreshData(selectedClan.id);
-    } catch (error: any) {
-      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible d utiliser le marche noir.', variant: 'destructive' });
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleSaveNationIdentity = async () => {
-    if (!selectedClan) return;
-    setSavingNationIdentity(true);
-    try {
-      await clansApi.updateNationFoundation(selectedClan.id, {
-        territoryKey: selectedTerritoryKey,
-        flag: nationFlag,
-      });
-      toast({ title: 'Nation mise a jour', description: 'Territoire et drapeau sauvegardes.' });
-      await refreshData(selectedClan.id);
-    } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.response?.data?.error || 'Impossible de mettre a jour la nation.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSavingNationIdentity(false);
     }
   };
 
@@ -1387,83 +1263,81 @@ export default function Clans() {
                 </CardContent>
               </Card>
 
-              <Card className={panelClassName}>
-                <CardContent className="space-y-3 p-4">
-                  <SectionTitle
-                    title="Répertoire"
-                    description="Tous les clans disponibles."
-                    action={
-                      <>
-                        <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums')}>{clans.length}</span>
-                        {canCreateClan ? (
-                          <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Créer
-                          </Button>
-                        ) : null}
-                      </>
-                    }
-                  />
-                  {loading ? (
-                    <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
-                      <ListSkeleton rows={4} />
-                    </div>
-                  ) : clans.length === 0 ? (
-                    <div className={cn(TYPOGRAPHY.MUTED, 'py-6')}>Aucun clan pour le moment.</div>
-                  ) : (
-                    clans.map((clan) => {
-                      const hasTag = clan.tagUnlocked && clan.tagText;
-                      const clanTagStyle = hasTag && clan.tagStyle ? parseClanTagStyle(clan.tagStyle) : null;
-                      return (
-                        <button
-                          key={clan.id}
-                          type="button"
-                          onClick={() => setSelectedClanId(clan.id)}
-                          className={cn(
-                            'w-full rounded-2xl border px-3 py-3 text-left transition-opacity',
-                            clan.id === selectedClanId ? 'opacity-100' : 'opacity-90 hover:opacity-100',
-                            !hasTag && 'border-border/50 hover:bg-muted/30',
-                            !hasTag && clan.id === selectedClanId && 'border-foreground/15 bg-muted/30',
-                          )}
-                          style={clanTagStyle ? {
-                            ...getClanTagBackground(clanTagStyle),
-                            borderColor: clanTagStyle.borderColor,
-                          } : undefined}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-11 w-11">
-                              <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
-                              <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <div
-                                className="truncate font-medium"
-                                style={clanTagStyle ? { color: clanTagStyle.textColor } : undefined}
-                              >
-                                {clan.name}
-                              </div>
-                              <div
-                                className={cn('text-xs', !clanTagStyle && 'text-muted-foreground')}
-                                style={clanTagStyle ? { color: clanTagStyle.textColor, opacity: 0.75 } : undefined}
-                              >
-                                {clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura
-                              </div>
+              <div className="space-y-3">
+                <SectionTitle
+                  title="Répertoire"
+                  description="Tous les clans disponibles."
+                  action={
+                    <>
+                      <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums')}>{clans.length}</span>
+                      {canCreateClan ? (
+                        <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Créer
+                        </Button>
+                      ) : null}
+                    </>
+                  }
+                />
+                {loading ? (
+                  <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
+                    <ListSkeleton rows={4} />
+                  </div>
+                ) : clans.length === 0 ? (
+                  <div className={cn(TYPOGRAPHY.MUTED, 'py-6')}>Aucun clan pour le moment.</div>
+                ) : (
+                  clans.map((clan) => {
+                    const hasTag = clan.tagUnlocked && clan.tagText;
+                    const clanTagStyle = hasTag && clan.tagStyle ? parseClanTagStyle(clan.tagStyle) : null;
+                    return (
+                      <button
+                        key={clan.id}
+                        type="button"
+                        onClick={() => setSelectedClanId(clan.id)}
+                        className={cn(
+                          'w-full rounded-2xl border px-3 py-3 text-left transition-opacity',
+                          clan.id === selectedClanId ? 'opacity-100' : 'opacity-90 hover:opacity-100',
+                          !hasTag && 'border-border/50 hover:bg-muted/30',
+                          !hasTag && clan.id === selectedClanId && 'border-foreground/15 bg-muted/30',
+                        )}
+                        style={clanTagStyle ? {
+                          ...getClanTagBackground(clanTagStyle),
+                          borderColor: clanTagStyle.borderColor,
+                        } : undefined}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-11 w-11">
+                            <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
+                            <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <div
+                              className="truncate font-medium"
+                              style={clanTagStyle ? { color: clanTagStyle.textColor } : undefined}
+                            >
+                              {clan.name}
                             </div>
-                            {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
+                            <div
+                              className={cn('text-xs', !clanTagStyle && 'text-muted-foreground')}
+                              style={clanTagStyle ? { color: clanTagStyle.textColor, opacity: 0.75 } : undefined}
+                            >
+                              {clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura
+                            </div>
                           </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </CardContent>
-              </Card>
+                          {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
 
             <div className="space-y-6">
               {!selectedClanId || !selectedClanSummary ? (
                 <Card className={panelClassName}>
                   <CardContent className="p-10 text-center text-muted-foreground">
-                    Sélectionne une nation pour afficher son quartier général.
+                    Sélectionne un clan pour afficher son quartier général.
                   </CardContent>
                 </Card>
               ) : detailLoading || !selectedClan ? (
@@ -1628,7 +1502,7 @@ export default function Clans() {
                     </CardContent>
                   </Card>
 
-                  {/* Tabs: Infos / Chat / Tag / Nation */}
+                  {/* Tabs: Infos / Chat / Tag / Guerre */}
                   <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages')}>
                     <TabsList className="border-border/60 bg-muted/20">
                       <TabsTrigger value="info" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
@@ -1665,7 +1539,7 @@ export default function Clans() {
                         </TabsTrigger>
                       ) : null}
                       <TabsTrigger value="guerre" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
-                        Nation
+                        Guerre
                         {selectedWar && selectedWar.status !== 'COMPLETED' ? (
                           <Badge variant={getStatusVariant(selectedWar.status)} className="ml-2 h-4 px-1 text-[10px]">
                             {getStatusLabel(selectedWar.status)}
@@ -1676,42 +1550,6 @@ export default function Clans() {
 
                     {/* ── Info tab ── */}
                     <TabsContent value="info" className="mt-4 space-y-4">
-                      <Card className={panelClassName}>
-                        <CardContent className="space-y-4 p-4">
-                          <SectionTitle title="Identité de nation" description="Hiérarchie, influence et contrôle territorial." />
-                          <div className="flex flex-wrap items-center gap-4">
-                            <NationFlagPreview flag={selectedClan.nation.flag} className="h-20 w-32" />
-                            <div className="text-sm text-muted-foreground">
-                              <div>Région: <span className="font-medium text-foreground">{selectedClan.nation.territory.region}</span></div>
-                              <div>Territoire fondateur: <span className="font-medium text-foreground">{selectedClan.nation.territory.label}</span></div>
-                            </div>
-                          </div>
-                          <div className="grid gap-3 md:grid-cols-3">
-                            <div className="rounded-xl border border-border/50 bg-muted/15 p-3">
-                              <div className="text-xs text-muted-foreground">Influence</div>
-                              <div className="text-lg font-semibold">{selectedClan.nation.influence}</div>
-                            </div>
-                            <div className="rounded-xl border border-border/50 bg-muted/15 p-3">
-                              <div className="text-xs text-muted-foreground">Menace</div>
-                              <div className="text-lg font-semibold">{selectedClan.nation.intimidation}</div>
-                            </div>
-                            <div className="rounded-xl border border-border/50 bg-muted/15 p-3">
-                              <div className="text-xs text-muted-foreground">Marché</div>
-                              <div className="text-lg font-semibold">{selectedClan.nation.marketControl}%</div>
-                            </div>
-                          </div>
-                          <div className="rounded-xl border border-border/50 bg-muted/10 p-4">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <div>
-                                <div className="text-sm font-medium">{selectedClan.nation.territory.label}</div>
-                                <div className="text-xs text-muted-foreground">{selectedClan.nation.territory.bonus}</div>
-                              </div>
-                              <Badge variant="outline">Territoire {selectedClan.nation.territory.key}</Badge>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
                       {/* Roster */}
                       <Card className={panelClassName}>
                         <CardContent className="space-y-2 p-4">
@@ -2371,277 +2209,6 @@ export default function Clans() {
 
                     {/* ── Guerre tab ── */}
                     <TabsContent value="guerre" className="mt-4 space-y-4">
-                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-                        <Card className={panelClassName}>
-                          <CardContent className="space-y-4 p-4">
-                            <SectionTitle title="Carte des territoires" description="Lecture rapide du poids territorial des nations." />
-                            <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.16),transparent_20%),radial-gradient(circle_at_70%_30%,rgba(34,197,94,0.14),transparent_18%),radial-gradient(circle_at_40%_70%,rgba(234,179,8,0.12),transparent_22%),linear-gradient(180deg,#07111f_0%,#10233b_100%)] p-4">
-                              <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] [background-size:32px_32px]" />
-                              <div className="relative h-[420px] rounded-xl border border-white/10 bg-white/5">
-                                <svg viewBox="0 0 1000 500" className="pointer-events-none absolute inset-0 h-full w-full opacity-70">
-                                  <g fill="rgba(148, 163, 184, 0.22)" stroke="rgba(255,255,255,0.08)" strokeWidth="3">
-                                    <path d="M101 119l59-29 63 17 22 24 3 35-37 18-17 35-31 7-22-20-48-6-27-38 10-43z" />
-                                    <path d="M237 263l46 14 24 35-10 46-36 74-27-12-11-50 9-44-15-33z" />
-                                    <path d="M424 101l48-20 88 5 40 24 16 36-25 35 12 22-20 10-34-10-41 9-28 35-39 2-31-31 13-31-9-31 16-18-11-23z" />
-                                    <path d="M532 262l37 16 24 34-20 64-50 57-31-15-16-51 19-38z" />
-                                    <path d="M650 118l67-8 70 18 39 34 6 29-41 14-39 20-11 24-45-1-43-27-14-49 13-25z" />
-                                    <path d="M804 273l61 14 56 43-18 36-46 10-42-27-22-44z" />
-                                  </g>
-                                </svg>
-                                {selectedClan.nation.territories.map((territory) => {
-                                  const isOwned = territory.key === selectedTerritoryKey;
-                                  const occupiedBy = clans.find((entry) => entry.nation.territoryKey === territory.key);
-                                  const markerFlag = occupiedBy?.nation.flag ?? (isOwned ? nationFlag : null);
-                                  return (
-                                    <button
-                                      key={territory.key}
-                                      type="button"
-                                      onClick={() => setSelectedTerritoryKey(territory.key)}
-                                      className={cn(
-                                        'absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1',
-                                        'cursor-pointer'
-                                      )}
-                                      style={{ left: `${territory.x}%`, top: `${territory.y}%` }}
-                                    >
-                                      {markerFlag ? (
-                                        <NationFlagPreview
-                                          flag={markerFlag}
-                                          className={cn(
-                                            'h-5 w-8 rounded-md border shadow-lg',
-                                            isOwned ? 'scale-110 border-white' : 'border-white/70'
-                                          )}
-                                        />
-                                      ) : (
-                                        <span className={cn(
-                                          'h-3.5 w-3.5 rounded-full border-2 shadow',
-                                          isOwned ? 'border-white bg-primary scale-125' : occupiedBy ? 'border-white/70 bg-amber-400' : 'border-white/40 bg-sky-300'
-                                        )} />
-                                      )}
-                                      <span className="rounded-md bg-slate-950/70 px-1.5 py-0.5 text-[10px] text-white">
-                                        {territory.label}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                            {selectedTerritory ? (
-                              <div className="grid gap-3 rounded-2xl border border-border/50 bg-slate-950/40 p-4 md:grid-cols-[minmax(0,1fr)_auto]">
-                                <div className="space-y-2">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-sm font-semibold text-foreground">{selectedTerritory.label}</span>
-                                    <Badge variant={selectedTerritoryOccupant?.id === selectedClan.id ? 'default' : selectedTerritoryOccupant ? 'secondary' : 'outline'}>
-                                      {selectedTerritoryOccupant?.id === selectedClan.id
-                                        ? 'Votre territoire'
-                                        : selectedTerritoryOccupant
-                                          ? selectedTerritoryOccupant.name
-                                          : selectedTerritory.region}
-                                    </Badge>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground">{selectedTerritory.bonus}</p>
-                                  {selectedTerritoryOccupant && selectedTerritoryOccupant.id !== selectedClan.id ? (
-                                    <p className="text-xs text-muted-foreground">
-                                      Attaque directe disponible depuis la carte des nations.
-                                    </p>
-                                  ) : null}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {selectedTerritoryOccupant && selectedWar && [selectedWar.attackerClan.id, selectedWar.defenderClan.id].includes(selectedTerritoryOccupant.id) ? (
-                                    <Button variant="outline" onClick={openMyWarDialog} disabled={!isOwnClan || !selectedClan.viewer.isMember}>
-                                      <Swords className="mr-2 h-4 w-4" />
-                                      Ouvrir la guerre
-                                    </Button>
-                                  ) : null}
-                                  {selectedClan.viewer.isLeader && selectedClan.warHub.canDeclareWar && selectedTerritoryOccupant && selectedTerritoryOccupant.id !== selectedClan.id ? (
-                                    <Button
-                                      onClick={() => void handleDeclareWar(selectedTerritoryOccupant.id)}
-                                      disabled={warActionKey === `declare:${selectedTerritoryOccupant.id}`}
-                                    >
-                                      {warActionKey === `declare:${selectedTerritoryOccupant.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Swords className="mr-2 h-4 w-4" />}
-                                      Attaquer cette nation
-                                    </Button>
-                                  ) : null}
-                                </div>
-                              </div>
-                            ) : null}
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              {selectedClan.nation.territories.map((territory) => {
-                                const isOwned = territory.key === selectedTerritoryKey;
-                                const occupiedBy = clans.find((entry) => entry.nation.territoryKey === territory.key);
-                                return (
-                                  <div
-                                    key={territory.key}
-                                    className={cn(
-                                      'rounded-xl border p-3',
-                                      isOwned ? 'border-primary bg-primary/10' : 'border-border/50 bg-muted/10'
-                                    )}
-                                  >
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="text-sm font-medium">{territory.label}</span>
-                                      {isOwned ? <Badge>Votre zone</Badge> : occupiedBy ? <Badge variant="secondary">{occupiedBy.name}</Badge> : <Badge variant="outline">{territory.region}</Badge>}
-                                    </div>
-                                    <p className="mt-1 text-xs text-muted-foreground">{territory.bonus}</p>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            {selectedClan.viewer.isLeader ? (
-                              <div className="space-y-3 rounded-xl border border-border/50 bg-muted/10 p-4">
-                                <SectionTitle title="Drapeau de nation" description="Personnalise les couleurs et l'emblème officiels." />
-                                <div className="flex flex-wrap items-center gap-4">
-                                  <NationFlagPreview flag={nationFlag} className="h-24 w-40" />
-                                  <div className="grid gap-3 sm:grid-cols-3">
-                                    <label className="space-y-1 text-xs text-muted-foreground">
-                                      Primaire
-                                      <input type="color" value={nationFlag.primary} onChange={(e) => setNationFlag((current) => ({ ...current, primary: e.target.value }))} className="h-10 w-16 cursor-pointer rounded border bg-transparent p-0" />
-                                    </label>
-                                    <label className="space-y-1 text-xs text-muted-foreground">
-                                      Secondaire
-                                      <input type="color" value={nationFlag.secondary} onChange={(e) => setNationFlag((current) => ({ ...current, secondary: e.target.value }))} className="h-10 w-16 cursor-pointer rounded border bg-transparent p-0" />
-                                    </label>
-                                    <label className="space-y-1 text-xs text-muted-foreground">
-                                      Accent
-                                      <input type="color" value={nationFlag.accent} onChange={(e) => setNationFlag((current) => ({ ...current, accent: e.target.value }))} className="h-10 w-16 cursor-pointer rounded border bg-transparent p-0" />
-                                    </label>
-                                  </div>
-                                </div>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">Motif</label>
-                                    <select value={nationFlag.pattern} onChange={(e) => setNationFlag((current) => ({ ...current, pattern: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                      {FLAG_PATTERNS.map((pattern) => <option key={pattern} value={pattern}>{pattern}</option>)}
-                                    </select>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-muted-foreground">Emblème</label>
-                                    <select value={nationFlag.icon} onChange={(e) => setNationFlag((current) => ({ ...current, icon: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                                      {FLAG_ICONS.map((icon) => <option key={icon} value={icon}>{icon}</option>)}
-                                    </select>
-                                  </div>
-                                </div>
-                                <Button onClick={() => void handleSaveNationIdentity()} disabled={savingNationIdentity}>
-                                  {savingNationIdentity ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                  Enregistrer territoire et drapeau
-                                </Button>
-                              </div>
-                            ) : null}
-                          </CardContent>
-                        </Card>
-
-                        <div className="space-y-4">
-                          <Card className={panelClassName}>
-                            <CardContent className="space-y-3 p-4">
-                              <SectionTitle title="Alliances" description="Forgez des pactes ou trahissez au bon moment." />
-                              {selectedClan.nation.alliances.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">Aucune alliance active.</p>
-                              ) : (
-                                selectedClan.nation.alliances.map((alliance) => (
-                                  <div key={alliance.clanId} className="rounded-xl border border-border/50 bg-muted/15 p-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                      <div>
-                                        <div className="text-sm font-medium">{alliance.name}</div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {alliance.status === 'ALLY' ? `Forgée ${formatDate(alliance.forgedAt)}` : `Brisée ${formatDate(alliance.betrayedAt ?? alliance.forgedAt)}`}
-                                        </div>
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <Badge variant={alliance.status === 'ALLY' ? 'secondary' : 'destructive'}>{alliance.status}</Badge>
-                                        {selectedClan.viewer.isLeader && alliance.status === 'ALLY' ? (
-                                          <Button size="sm" variant="outline" onClick={() => void handleBetrayAlliance(alliance.clanId)} disabled={actionLoading}>
-                                            Trahir
-                                          </Button>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                              {selectedClan.viewer.isLeader && selectedClan.nation.allianceRequests.length > 0 ? (
-                                <div className="space-y-2">
-                                  {selectedClan.nation.allianceRequests.map((request) => (
-                                    <div key={request.clanId} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/10 p-3">
-                                      <div>
-                                        <div className="text-sm font-medium">{request.name}</div>
-                                        <div className="text-xs text-muted-foreground">Demandée {formatDate(request.requestedAt)}</div>
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <Button size="sm" onClick={() => void handleAllianceResponse(request.clanId, 'accept')} disabled={actionLoading}>Accepter</Button>
-                                        <Button size="sm" variant="outline" onClick={() => void handleAllianceResponse(request.clanId, 'reject')} disabled={actionLoading}>Refuser</Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : null}
-                              {selectedClan.viewer.isLeader ? (
-                                <div className="space-y-2">
-                                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Proposer un pacte</div>
-                                  {clans
-                                    .filter((clan) => clan.id !== selectedClan.id && !selectedClan.nation.alliances.some((entry) => entry.clanId === clan.id && entry.status === 'ALLY'))
-                                    .slice(0, 4)
-                                    .map((clan) => (
-                                      <div key={clan.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/10 p-3">
-                                        <div>
-                                          <div className="text-sm font-medium">{clan.name}</div>
-                                          <div className="text-xs text-muted-foreground">Influence {clan.nation.influence} • Marché {clan.nation.marketControl}%</div>
-                                        </div>
-                                        <Button size="sm" variant="outline" onClick={() => void handleAllianceRequest(clan.id)} disabled={actionLoading}>
-                                          Proposer
-                                        </Button>
-                                      </div>
-                                    ))}
-                                </div>
-                              ) : null}
-                            </CardContent>
-                          </Card>
-
-                          <Card className={panelClassName}>
-                            <CardContent className="space-y-3 p-4">
-                              <SectionTitle title="Marché noir" description="Armes, boosts et pénalités hebdomadaires." />
-                              <div className="space-y-2">
-                                {selectedClan.nation.blackMarketCatalog.map((item) => (
-                                  <div key={item.key} className="rounded-xl border border-border/50 bg-muted/15 p-3">
-                                    <div className="flex items-center justify-between gap-3">
-                                      <div>
-                                        <div className="text-sm font-medium">{item.label}</div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {formatMoney(item.price)} money • neutralise {item.disabledSlots} membre(s) • pénalité {item.penaltyPoints} pts
-                                        </div>
-                                      </div>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        disabled={!selectedClan.viewer.isMember || actionLoading || !selectedWar}
-                                        onClick={() => void handleBlackMarketBuy(item.key, selectedWar ? getWarOpponent(selectedWar, selectedClan.id).id : undefined)}
-                                      >
-                                        Acheter
-                                      </Button>
-                                    </div>
-                                    <div className="mt-2 text-xs text-muted-foreground">Stock: {selectedClan.nation.arsenal[item.key] ?? 0}</div>
-                                  </div>
-                                ))}
-                              </div>
-                              <Button
-                                className="w-full"
-                                variant="secondary"
-                                disabled={!selectedClan.viewer.isMember || actionLoading || !selectedWar}
-                                onClick={() => void handleBlackMarketBuy('BOOST', undefined, true)}
-                              >
-                                Booster le score hebdomadaire • {formatMoney(selectedClan.nationHub.weeklyBoostPrice)}
-                              </Button>
-                              {selectedClan.nation.injuries.length > 0 ? (
-                                <Alert>
-                                  <AlertTriangle className="h-4 w-4" />
-                                  <AlertTitle>Blessés après conflit</AlertTitle>
-                                  <AlertDescription>
-                                    {selectedClan.nation.injuries.length} membre(s) marqués comme blessés. Les entreprises Médecins pourront servir à les remettre sur pied.
-                                  </AlertDescription>
-                                </Alert>
-                              ) : null}
-                            </CardContent>
-                          </Card>
-                        </div>
-                      </div>
-
                       {/* War status bar */}
                       <Card className={panelClassName}>
                         <CardContent className="p-4">

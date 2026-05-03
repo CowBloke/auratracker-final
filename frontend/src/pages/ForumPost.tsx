@@ -14,6 +14,7 @@ import {
   Trash2,
   ExternalLink,
   CornerDownRight,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -316,14 +317,25 @@ export default function ForumPost() {
 
   return (
     <PageShell size="default" className="pb-10">
-      {/* Back link */}
-      <button
-        onClick={() => navigate(`/forum/c/${subredditName}`)}
-        className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Retour à #{subredditName}
-      </button>
+      {/* Back links */}
+      <div className="mb-4 flex items-center gap-2">
+        <button
+          onClick={() => navigate(`/forum/c/${subredditName}`)}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Retour à #{subredditName}
+        </button>
+
+        <button
+          onClick={() => navigate('/forum')}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          title="Retour à la liste des forums"
+        >
+          <Users className="h-4 w-4" />
+          Tous les forums
+        </button>
+      </div>
 
       {loading ? (
         <div className="space-y-4">

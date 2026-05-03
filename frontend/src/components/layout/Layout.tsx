@@ -29,7 +29,7 @@ function ChatBubbleContainer() {
   return (
     <div
       className="fixed bottom-6 z-50 flex items-end gap-3 transition-all"
-      style={{ right: open ? 'calc(20rem + 1.5rem)' : '1.5rem' }}
+      style={{ right: open ? 'calc(16rem + 1.5rem)' : '1.5rem' }}
     >
       <ChatBubble />
     </div>
@@ -40,7 +40,7 @@ function PartyChatFloatingContainer() {
   const { open } = useChatSidebar();
 
   return (
-    <PartyChatFloating rightOffset={open ? 'calc(20rem + 1.5rem)' : '1.5rem'} />
+    <PartyChatFloating rightOffset={open ? 'calc(16rem + 1.5rem)' : '1.5rem'} />
   );
 }
 

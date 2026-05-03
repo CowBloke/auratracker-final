@@ -15,10 +15,10 @@ import {
   WORLD_LATITUDE_LIMITS,
   WORLD_LONGITUDE_LIMITS,
   WORLD_MAP_STYLE,
-  TYPE_EMOJI,
   clamp,
   getBusinessPinColor,
 } from '../mapConstants';
+import { BUSINESS_ICON_MAP } from '../constants';
 import { getYouNotificationMeta, isYouNotification, relativeTime } from '../utils';
 
 interface MapPin {
@@ -38,7 +38,6 @@ type BusinessFeatureProperties = {
   typeKey: string;
   typeLabel: string;
   description: string | null;
-  emoji: string;
   pinColor: string;
   underConstruction: boolean;
   constructionProgress: number;
@@ -46,6 +45,10 @@ type BusinessFeatureProperties = {
   isOwned: boolean;
   canPlace: boolean;
 };
+
+function getBizIcon(typeKey: string) {
+  return BUSINESS_ICON_MAP[typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+}
 
 const DEFAULT_CENTER: [number, number] = [0, 20];
 const DEFAULT_ZOOM = 1.25;
@@ -102,7 +105,6 @@ function buildSourceData(
         typeKey: pin.business.typeKey,
         typeLabel: pin.business.type?.label ?? pin.business.typeKey,
         description: pin.business.description,
-        emoji: TYPE_EMOJI[pin.business.typeKey] ?? '📍',
         pinColor: pin.pinColor,
         underConstruction: Boolean(pin.business.underConstruction),
         constructionProgress: pin.business.constructionProject?.progress.percent ?? 0,
@@ -114,53 +116,41 @@ function buildSourceData(
   };
 }
 
-function createPinImageData(emoji: string, color: string, size: number, selected: boolean): ImageData {
+type LucideIconNode = Array<[string, Record<string, string>]>;
+
+function getIconNode(typeKey: string): LucideIconNode | null {
+  const Icon = getBizIcon(typeKey) as unknown as { iconNode?: LucideIconNode };
+  return Icon.iconNode ?? null;
+}
+
+function iconNodeToSvg(node: LucideIconNode, color: string): string {
+  const body = node.map(([tag, attrs]) => {
+    const attrString = Object.entries(attrs).map(([key, value]) => `${key}="${value}"`).join(' ');
+    return `<${tag} ${attrString} />`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+}
+
+async function createPinIconImageData(typeKey: string, size: number): Promise<ImageData> {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d')!;
 
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = selected ? size * 0.43 : size * 0.37;
+  const iconNode = getIconNode(typeKey);
+  if (!iconNode) return ctx.getImageData(0, 0, size, size);
 
-  // Outer glow ring for selected
-  if (selected) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, size * 0.47, 0, Math.PI * 2);
-    ctx.fillStyle = color + '35';
-    ctx.fill();
-  }
-
-  // Drop shadow
-  ctx.shadowColor = 'rgba(0,0,0,0.28)';
-  ctx.shadowBlur = selected ? 8 : 5;
-  ctx.shadowOffsetY = selected ? 3 : 2;
-
-  // Main circle
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
-
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
-
-  // White border
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = selected ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.9)';
-  ctx.lineWidth = selected ? 2.5 : 1.8;
-  ctx.stroke();
-
-  // Emoji
-  const fontSize = Math.floor(r * 1.05);
-  ctx.font = `${fontSize}px 'Segoe UI Emoji', 'Apple Color Emoji', Arial, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(emoji, cx, cy + 1);
-
+  const svg = iconNodeToSvg(iconNode, '#ffffff');
+  const image = await new Promise<HTMLImageElement | null>((resolve) => {
+    const next = new Image();
+    next.onload = () => resolve(next);
+    next.onerror = () => resolve(null);
+    next.src = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  });
+  if (!image) return ctx.getImageData(0, 0, size, size);
+  const iconSize = Math.round(size * 0.56);
+  const offset = (size - iconSize) / 2;
+  ctx.drawImage(image, offset, offset, iconSize, iconSize);
   return ctx.getImageData(0, 0, size, size);
 }
 
@@ -244,14 +234,19 @@ function BusinessInfoPanel({
   const isOwner = business.ownerId === userId;
   const isPlaced = business.mapX != null && business.mapY != null;
   const underConstruction = Boolean(business.underConstruction && business.constructionProject);
+  const pinColor = getBusinessPinColor(business.typeKey);
+  const BizIcon = getBizIcon(business.typeKey);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-background shadow-xl">
       {underConstruction && <div className="h-2" style={{ background: CONSTRUCTION_STRIPES }} />}
       {/* Header */}
       <div className="flex items-start gap-3 p-4 pb-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
-          {TYPE_EMOJI[business.typeKey] ?? '📍'}
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+          style={{ backgroundColor: pinColor + '20', border: `1.5px solid ${pinColor}40` }}
+        >
+          <BizIcon className="h-5 w-5" style={{ color: pinColor }} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-foreground">{business.name}</p>
@@ -395,22 +390,6 @@ export const CarteTab = forwardRef<CarteTabHandle, {
   const allBusinesses = useMemo(() => uniqueBusinesses(data), [data]);
   const ownedBusinesses = useMemo(() => data.ownedBusinesses, [data.ownedBusinesses]);
 
-  const typeChips = useMemo(() => {
-    const seen = new Set<string>();
-    const chips: Array<{ key: string; emoji: string; label: string }> = [];
-    allBusinesses.forEach((b) => {
-      if (!seen.has(b.typeKey)) {
-        seen.add(b.typeKey);
-        chips.push({
-          key: b.typeKey,
-          emoji: TYPE_EMOJI[b.typeKey] ?? '📍',
-          label: b.type?.label ?? b.typeKey,
-        });
-      }
-    });
-    return chips;
-  }, [allBusinesses]);
-
   const pins = useMemo(() => {
     const source = ownerFilter === 'mine' ? ownedBusinesses : allBusinesses;
     return buildPins(source, userId, isAdmin);
@@ -419,21 +398,6 @@ export const CarteTab = forwardRef<CarteTabHandle, {
 
   const selectedBusiness = allBusinesses.find((b) => b.id === selectedBusinessId) ?? null;
   const placingBusiness = allBusinesses.find((b) => b.id === placingBusinessId) ?? null;
-  const legendEntries = useMemo(() => {
-    const counts = new Map<string, number>();
-    allBusinesses.forEach((business) => {
-      counts.set(business.typeKey, (counts.get(business.typeKey) ?? 0) + 1);
-    });
-    return typeChips
-      .filter((chip) => counts.has(chip.key))
-      .sort((a, b) => (counts.get(b.key) ?? 0) - (counts.get(a.key) ?? 0))
-      .slice(0, 4)
-      .map((chip) => ({
-        ...chip,
-        count: counts.get(chip.key) ?? 0,
-        color: getBusinessPinColor(chip.key),
-      }));
-  }, [allBusinesses, typeChips]);
 
   const youNotifications = useMemo(
     () => notifications.filter(isYouNotification).slice(0, 40),
@@ -499,26 +463,21 @@ export const CarteTab = forwardRef<CarteTabHandle, {
       if (e.id.startsWith('cluster-')) {
         const count = parseInt(e.id.slice('cluster-'.length), 10);
         if (!map.hasImage(e.id)) map.addImage(e.id, createClusterImageData(count, CLUSTER_SIZE));
-        return;
       }
-      const fallbackData = createPinImageData('📍', '#64748b', PIN_SIZE, false);
-      if (!map.hasImage(e.id)) map.addImage(e.id, fallbackData);
     });
 
-    map.on('load', () => {
+    map.on('load', async () => {
       map.resize();
-      // Generate emoji canvas images for each type (normal + selected)
-      [...Object.keys(TYPE_EMOJI), '__default__'].forEach((typeKey) => {
-        const emoji = TYPE_EMOJI[typeKey] ?? '📍';
-        const color = getBusinessPinColor(typeKey === '__default__' ? '' : typeKey);
-
-        if (!map.hasImage(`pin-${typeKey}`)) {
-          map.addImage(`pin-${typeKey}`, createPinImageData(emoji, color, PIN_SIZE, false));
-        }
-        if (!map.hasImage(`pin-${typeKey}-sel`)) {
-          map.addImage(`pin-${typeKey}-sel`, createPinImageData(emoji, color, PIN_SIZE, true));
-        }
-      });
+      // Generate icon images for each business type.
+      const knownTypes = [...Object.keys(BUSINESS_ICON_MAP), '__default__'];
+      await Promise.all(
+        knownTypes.map(async (typeKey) => {
+          const imageData = await createPinIconImageData(typeKey === '__default__' ? '' : typeKey, PIN_SIZE);
+          if (!map.hasImage(`biz-${typeKey}`)) {
+            map.addImage(`biz-${typeKey}`, imageData);
+          }
+        }),
+      );
 
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
@@ -603,24 +562,29 @@ export const CarteTab = forwardRef<CarteTabHandle, {
           },
         });
 
-        // Emoji pin icons — individual pins only
+        const iconMatchExpression: any[] = ['match', ['get', 'typeKey']];
+        Object.keys(BUSINESS_ICON_MAP).forEach((typeKey) => {
+          iconMatchExpression.push(typeKey, `biz-${typeKey}`);
+        });
+        iconMatchExpression.push('biz-__default__');
+
+        // Business icons — individual pins only
         map.addLayer({
           id: LAYER_ID,
           type: 'symbol',
           source: SOURCE_ID,
           filter: ['!', ['has', 'point_count']],
           layout: {
-            'text-field': ['get', 'emoji'],
-            'text-size': [
+            'icon-image': iconMatchExpression as any,
+            'icon-size': [
               'case',
-              ['boolean', ['get', 'selected'], false], 16,
-              ['boolean', ['feature-state', 'hovered'], false], 15,
-              14,
+              ['boolean', ['get', 'selected'], false], 1.08,
+              ['boolean', ['feature-state', 'hovered'], false], 1.02,
+              0.96,
             ],
-            'text-font': ['Segoe UI Emoji', 'Apple Color Emoji', 'Arial Unicode MS Regular'],
-            'text-allow-overlap': true,
-            'text-ignore-placement': true,
-            'text-anchor': 'center',
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+            'icon-anchor': 'center',
           },
         });
       }
@@ -1063,22 +1027,6 @@ export const CarteTab = forwardRef<CarteTabHandle, {
           <LocateFixed className="h-3.5 w-3.5" />
         </Button>
       </div>
-
-      {legendEntries.length > 0 && (
-        <div className={cn('pointer-events-none absolute bottom-3 z-10 rounded-xl border border-border/50 bg-background/85 px-3 py-2.5 shadow-lg backdrop-blur-sm', embedded ? 'left-3' : 'left-[234px]')}>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-foreground">Légende</p>
-          <div className="mt-1.5 space-y-1">
-            {legendEntries.map((entry) => (
-              <div key={entry.key} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                <span>{entry.emoji}</span>
-                <span className="truncate">{entry.label}</span>
-                <span className="tabular-nums text-[10px] text-muted-foreground/70">{entry.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {!embedded && (
       <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/92 backdrop-blur-sm">

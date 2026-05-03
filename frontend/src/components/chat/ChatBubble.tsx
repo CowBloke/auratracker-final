@@ -12,7 +12,7 @@ export default function ChatBubble() {
       title="Toggle Chat"
       variant="outline"
       size="icon"
-      className="relative h-11 w-11 rounded-full shadow-sm"
+      className="relative rounded-full shadow-sm"
     >
       <MessageCircle className="h-5 w-5" />
       {unreadCount > 0 && (

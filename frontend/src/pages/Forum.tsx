@@ -17,6 +17,7 @@ import {
   Users,
   ExternalLink,
   Trash2,
+  ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -502,6 +503,15 @@ export default function Forum() {
                     )}
                   </div>
                   <div>
+                    <div className="mb-2">
+                      <button
+                        onClick={() => navigate('/forum')}
+                        className="flex items-center gap-2 rounded px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Tous les forums
+                      </button>
+                    </div>
                     <h1 className="text-xl font-bold">#{currentSub.name}</h1>
                     <p className="text-sm text-muted-foreground">{currentSub.description}</p>
                   </div>
