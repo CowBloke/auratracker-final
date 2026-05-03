@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Games from './pages/Games';
 import DoodleJump from './pages/DoodleJump';
+import DuckHunt from './pages/DuckHunt';
 import Game2048 from './pages/Game2048';
 import FlappyBird from './pages/FlappyBird';
 import Casino from './pages/Casino';
@@ -67,6 +68,7 @@ import HexGL from './pages/HexGL';
 import OpenGD from './pages/OpenGD';
 import CrossyRoad from './pages/CrossyRoad';
 import BlockBlast from './pages/BlockBlast';
+import Hextris from './pages/Hextris';
 import You from './pages/You';
 import Forum from './pages/Forum';
 import ForumPost from './pages/ForumPost';
@@ -233,6 +235,7 @@ function App() {
         <Route path="messages" element={<Messages />} />
         <Route path="games" element={<Games />} />
         <Route path="games/doodle-jump" element={<DoodleJump />} />
+        <Route path="games/duck-hunt" element={<DuckHunt />} />
         <Route path="games/2048" element={<Game2048 />} />
         <Route path="games/flappy-bird" element={<FlappyBird />} />
         <Route path="games/chrome-dino" element={<ChromeDino />} />
@@ -278,6 +281,7 @@ function App() {
         <Route path="games/hexgl" element={<HexGL />} />
         <Route path="games/opengd" element={<OpenGD />} />
         <Route path="games/crossy-road" element={<CrossyRoad />} />
+        <Route path="games/hextris" element={<Hextris />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />

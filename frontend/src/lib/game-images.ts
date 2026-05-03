@@ -23,6 +23,7 @@ const GAME_IMAGE_BY_ID: Record<string, string> = {
   'geometry-dash': '/images/games/geometry.png',
   'goyave-empire': '/images/games/goyave.png',
   hexgl: '/images/games/hexgl.png',
+  hextris: '/images/games/hextris.png',
   'knife-hit': '/images/games/knife.png',
   loto: '/braquage-legal-logo.png',
   morpion: '/images/games/morpion.png',

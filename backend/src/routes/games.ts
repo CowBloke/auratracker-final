@@ -19,6 +19,7 @@ const isAscendingScoreGame = (gameType: string) => gameType === 'racer' || gameT
 const GAME_CHAT_LABELS: Record<string, string> = {
   doodle_jump: 'Doodle Jump',
   doodle_jump_mort_subite: 'Doodle Jump Mort Subite',
+  duck_hunt: 'Duck Hunt',
   game_2048: '2048',
   flappy_bird: 'Flappy Bird',
   chrome_dino: 'Chrome Dino',
@@ -38,6 +39,7 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   minesweeper_speedrun: 'Minesweeper Speedrun',
   fruit_ninja: 'Fruit Ninja',
   hexgl: 'HexGL',
+  hextris: 'Hextris',
 };
 
 const CASINO_HOUSE_EDGE_RATE = 0;
@@ -74,6 +76,19 @@ const GAME_REWARDS = {
       { minScore: 2000, moneyMultiplier: 0.18, auraBonus: 20 },  // 2000-3999: 0.18x score + 20 aura
       { minScore: 4000, moneyMultiplier: 0.25, auraBonus: 35 },  // 4000-7999: 0.25x score + 35 aura
       { minScore: 8000, moneyMultiplier: 0.35, auraBonus: 50 },  // 8000+: 0.35x score + 50 aura
+    ],
+  },
+  duck_hunt: {
+    minScoreForReward: 1,
+    // Progressive rewards based on ducks shot
+    scoreTiers: [
+      { minScore: 0, moneyMultiplier: 0.5, auraBonus: 0 },       // 0-9: 0.5x score
+      { minScore: 10, moneyMultiplier: 0.75, auraBonus: 2 },     // 10-24: 0.75x score + 2 aura
+      { minScore: 25, moneyMultiplier: 1.0, auraBonus: 5 },      // 25-49: 1.0x score + 5 aura
+      { minScore: 50, moneyMultiplier: 1.25, auraBonus: 10 },    // 50-99: 1.25x score + 10 aura
+      { minScore: 100, moneyMultiplier: 1.5, auraBonus: 20 },    // 100-199: 1.5x score + 20 aura
+      { minScore: 200, moneyMultiplier: 2.0, auraBonus: 35 },    // 200-499: 2.0x score + 35 aura
+      { minScore: 500, moneyMultiplier: 2.5, auraBonus: 50 },    // 500+: 2.5x score + 50 aura
     ],
   },
   solitaire: {
@@ -288,6 +303,16 @@ const GAME_REWARDS = {
       { minScore: 2100, moneyReward: 230, auraBonus: 22 },
     ],
   },
+  hextris: {
+    minScoreForReward: 100,
+    scoreTiers: [
+      { minScore: 0, moneyMultiplier: 0.05, auraBonus: 0 },       // 0-399: 0.05x score
+      { minScore: 400, moneyMultiplier: 0.08, auraBonus: 5 },     // 400-799: 0.08x score + 5 aura
+      { minScore: 800, moneyMultiplier: 0.12, auraBonus: 10 },    // 800-1599: 0.12x score + 10 aura
+      { minScore: 1600, moneyMultiplier: 0.18, auraBonus: 20 },   // 1600-3199: 0.18x score + 20 aura
+      { minScore: 3200, moneyMultiplier: 0.25, auraBonus: 35 },   // 3200+: 0.25x score + 35 aura
+    ],
+  },
 };
 
 // Calculate progressive rewards for Doodle Jump based on score
@@ -381,6 +406,36 @@ function calculateFlappyBirdRewards(score: number, isNewHighScore: boolean): { m
   if (isNewHighScore) {
     // Additional bonus for beating your own record (scales with score)
     const highScoreBonus = Math.min(Math.floor(score / 50) * 5, 50);
+    auraReward += highScoreBonus;
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+function calculateDuckHuntRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.duck_hunt;
+  
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  // Find the appropriate tier for this score
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  // Calculate money reward based on tier multiplier
+  const moneyReward = Math.floor(score * selectedTier.moneyMultiplier);
+  
+  // Calculate aura reward: base tier bonus + bonus for new high score
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    // Additional bonus for beating your own record (scales with score)
+    const highScoreBonus = Math.min(Math.floor(score / 100) * 5, 50);
     auraReward += highScoreBonus;
   }
 
@@ -486,6 +541,35 @@ function calculateBlockBlastRewards(score: number, isNewHighScore: boolean): { m
   if (isNewHighScore) {
     moneyReward += Math.min(Math.floor(score / 70) * 4, 96);
     auraReward += Math.min(Math.floor(score / 120), 12);
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+function calculateHextrisRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.hextris;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  // Calculate money reward based on tier multiplier
+  const moneyReward = Math.floor(score * selectedTier.moneyMultiplier);
+  
+  // Calculate aura reward: base tier bonus + bonus for new high score
+  let auraReward = selectedTier.auraBonus;
+  if (isNewHighScore) {
+    // Additional bonus for beating your own record
+    const highScoreBonus = Math.min(Math.floor(score / 800) * 10, 50);
+    auraReward += highScoreBonus;
   }
 
   return { money: moneyReward, aura: auraReward };
@@ -1310,6 +1394,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       const rewards = calculateFlappyBirdRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
+    } else if (gameType === 'duck_hunt') {
+      const rewards = calculateDuckHuntRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
     } else if (gameType === 'chrome_dino') {
       const rewards = calculateChromeDinoRewards(score, isNewHighScore);
       moneyReward = rewards.money;
@@ -1320,6 +1408,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       auraReward = rewards.aura;
     } else if (gameType === 'blockblast') {
       const rewards = calculateBlockBlastRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'hextris') {
+      const rewards = calculateHextrisRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'stack_tower') {
