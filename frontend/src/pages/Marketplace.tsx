@@ -8,7 +8,6 @@ import {
   Loader2,
   Package,
   Search,
-  SlidersHorizontal,
   Tag,
   TrendingUp,
   X,

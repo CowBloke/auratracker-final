@@ -13,7 +13,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { toClanTagData } from '@/components/clans/ClanTag';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { UserBadges, BadgeData } from '@/components/badges/UserBadges';
+import { BadgeData } from '@/components/badges/UserBadges';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { TableSkeleton } from '@/components/ui/loading-skeletons';
 
@@ -637,20 +637,23 @@ export default function Leaderboards() {
                               <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground w-8 tabular-nums shrink-0")}>
                                 {ranking.rank}
                               </span>
-                              <div className="flex items-center gap-2">
-                                {ranking.badges && ranking.badges.length > 0 && (
-                                  <UserBadges badges={ranking.badges} size="xs" showEmptySlots={false} tooltipSide="right" />
-                                )}
-                                <PlayerHoverCard
+                              <PlayerHoverCard
+                                userId={ranking.userId}
+                                username={ranking.username}
+                                usernameColor={ranking.usernameColor}
+                                clanTag={toClanTagData(ranking.clanTag)}
+                                className={cn(TYPOGRAPHY.BODY, "font-medium", ranking.userId === user?.id && "text-foreground")}
+                              >
+                                <UsernameDisplay 
+                                  username={ranking.username} 
                                   userId={ranking.userId}
-                                  username={ranking.username}
-                                  usernameColor={ranking.usernameColor}
+                                  usernameColor={ranking.usernameColor} 
+                                  badges={ranking.badges}
                                   clanTag={toClanTagData(ranking.clanTag)}
-                                  className={cn(TYPOGRAPHY.BODY, "font-medium", ranking.userId === user?.id && "text-foreground")}
-                                >
-                                  <UsernameDisplay username={ranking.username} usernameColor={ranking.usernameColor} clanTag={toClanTagData(ranking.clanTag)} />
-                                </PlayerHoverCard>
-                              </div>
+                                  clickable={true}
+                                  badgeSize="xs"
+                                />
+                              </PlayerHoverCard>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className={cn("tabular-nums", TYPOGRAPHY.MUTED)}>

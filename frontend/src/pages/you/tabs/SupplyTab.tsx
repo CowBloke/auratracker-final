@@ -3,7 +3,6 @@ import {
   Banknote,
   Briefcase,
   Building2,
-  CalendarDays,
   Check,
   Gavel,
   GraduationCap,
@@ -11,18 +10,17 @@ import {
   Landmark,
   Loader2,
   Package,
-  Percent,
   Play,
   Plus,
   RefreshCw,
   Settings,
   Tag,
-  TrendingUp,
   User,
   X,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { UsernameDisplay, type BadgeData, type UsernameDisplayPreset } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { PRODUCER_TYPES, RESOURCE_META, type ResourceType } from '@/lib/resources';
 import {
@@ -46,6 +44,10 @@ import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '..
 import { BUSINESS_ICON_MAP } from '../constants';
 
 type Selection = { kind: 'business'; id: string } | null;
+type DisplayUser = Omit<YouPlayer, 'alreadyInRelationship'> & {
+  usernameColor?: string | null;
+  badges?: BadgeData[] | null;
+};
 type NodeSelection =
   | { kind: 'inventory'; business: YouSupplyBusiness; inventory: YouSupplyInventory }
   | { kind: 'construction-material'; business: YouSupplyBusiness; material: YouConstructionMaterial }
@@ -146,6 +148,37 @@ function businessColor(typeKey: string) {
 
 function getBizIcon(typeKey: string) {
   return BUSINESS_ICON_MAP[typeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+}
+
+function UserName({
+  user,
+  fallback = '—',
+  preset = 'no-badge',
+  clickable = false,
+  className,
+  usernameClassName,
+}: {
+  user?: DisplayUser | null;
+  fallback?: string;
+  preset?: UsernameDisplayPreset;
+  clickable?: boolean;
+  className?: string;
+  usernameClassName?: string;
+}) {
+  if (!user) return <span>{fallback}</span>;
+  return (
+    <UsernameDisplay
+      username={user.username}
+      userId={user.id}
+      firstName={user.firstName}
+      usernameColor={user.usernameColor}
+      badges={user.badges}
+      preset={preset}
+      clickable={clickable}
+      className={className}
+      usernameClassName={usernameClassName}
+    />
+  );
 }
 
 function useDragCanvas(initPositions: Positions) {
@@ -280,9 +313,9 @@ function NodeCard({
   pos: Vec2;
   accent: string;
   icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  footer?: string;
+  title: React.ReactNode;
+  subtitle: React.ReactNode;
+  footer?: React.ReactNode;
   active?: boolean;
   construction?: boolean;
   workWarning?: boolean;
@@ -469,9 +502,9 @@ type GraphNodeModel = {
   kind: GraphNodeKind;
   accent: string;
   icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  footer?: string;
+  title: React.ReactNode;
+  subtitle: React.ReactNode;
+  footer?: React.ReactNode;
   selection: NodeSelection;
   group: GraphNodeGroup;
   connectsTo?: string;
@@ -653,7 +686,7 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
       kind: 'loan',
       accent: loan.status === 'ACTIVE' ? '#22c55e' : loan.status === 'PENDING' ? '#f59e0b' : '#94a3b8',
       icon: <Landmark size={17} />,
-      title: loan.borrower?.username ?? 'Emprunteur',
+      title: <UserName user={loan.borrower} fallback="Emprunteur" preset="minimal" />,
       subtitle: loan.status,
       footer: money(loan.amount),
       selection: { kind: 'loan', business, item: loan },
@@ -665,7 +698,7 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
       kind: 'account',
       accent: '#eab308',
       icon: <Banknote size={17} />,
-      title: account.user.username,
+      title: <UserName user={account.user} preset="minimal" />,
       subtitle: account.accountType,
       footer: money(account.balance),
       selection: { kind: 'account', business, item: account },
@@ -682,7 +715,7 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
       icon: <Gavel size={17} />,
       title: caseNode.plainte?.title ?? caseNode.title,
       subtitle: `${caseNode.side} · ${caseNode.status}`,
-      footer: caseNode.lawyer?.username ?? 'Non assigne',
+      footer: <UserName user={caseNode.lawyer} fallback="Non assigne" preset="minimal" />,
       selection: { kind: 'case', business, item: caseNode },
       group: 'bottom',
     }));
@@ -696,7 +729,7 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
       accent: '#f97316',
       icon: <Gavel size={17} />,
       title: plainte.title,
-      subtitle: plainte.defendant?.username ? `vs ${plainte.defendant.username}` : 'Sans défendeur',
+      subtitle: plainte.defendant ? <>vs <UserName user={plainte.defendant} preset="minimal" /></> : 'Sans défendeur',
       footer: 'En attente',
       selection: { kind: 'plainte', business, plainte },
       group: 'right',
@@ -709,7 +742,7 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
     kind: 'team',
     accent: member.isPrimaryLawyer ? '#22c55e' : '#8b5cf6',
     icon: <User size={17} />,
-    title: member.user.username,
+    title: <UserName user={member.user} preset="minimal" />,
     subtitle: member.role,
     footer: member.salary > 0 ? `${member.salary.toLocaleString('fr-FR')}/j` : 'Bénévole',
     selection: { kind: 'team', business, item: member },
@@ -753,7 +786,13 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
       kind: 'transfer',
       accent: '#14b8a6',
       icon: <Banknote size={17} />,
-      title: `${entry.sender.username} -> ${entry.recipient.username}`,
+      title: (
+        <span className="inline-flex min-w-0 items-center gap-1">
+          <UserName user={entry.sender} preset="minimal" />
+          <span>-&gt;</span>
+          <UserName user={entry.recipient} preset="minimal" />
+        </span>
+      ),
       subtitle: `${entry.feeRate}% frais`,
       footer: money(entry.amount),
       selection: { kind: 'transfer', business, item: entry },
@@ -1192,7 +1231,7 @@ function BusinessCanvas({
   );
 }
 
-function StatRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
+function StatRow({ label, value, accent }: { label: string; value: React.ReactNode; accent?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 py-2">
       <span className="text-[11px] text-muted-foreground">{label}</span>
@@ -1274,7 +1313,7 @@ function DetailPanel({
      (selection?.kind === 'transfer' || selection?.kind === 'account') ? Banknote :
      Package);
 
-  const title = selection
+  const titleText = selection
     ? (selection.kind === 'inventory' ? resourceLabel(selection.inventory.resourceType) :
        selection.kind === 'construction-material' ? resourceLabel(selection.material.resourceType) :
        selection.kind === 'offer' ? `Offre · ${resourceLabel(selection.offer.resourceType)}` :
@@ -1283,6 +1322,9 @@ function DetailPanel({
        selection.kind === 'team' ? (selection.item as YouBusinessMember).user.username :
        selection.item.title ?? selection.business.name)
     : '';
+  const title = selection?.kind === 'team'
+    ? <UserName user={(selection.item as YouBusinessMember).user} preset="full" clickable />
+    : titleText;
 
   const panelLabel = selection
     ? (selection.kind === 'inventory' ? 'Dépôt de ressource' :
@@ -1298,7 +1340,7 @@ function DetailPanel({
   return (
     <Dialog open={!!selection} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
-        <DialogTitle className="sr-only">{title}</DialogTitle>
+        <DialogTitle className="sr-only">{titleText}</DialogTitle>
 
         {/* Colored header */}
         <div
@@ -1517,7 +1559,7 @@ function DetailPanel({
             {/* ── Team member ── */}
             {selection?.kind === 'team' && (() => {
               const member = selection.item as YouBusinessMember;
-              const u = member.user;
+              const u = member.user as DisplayUser;
               const accent = member.isPrimaryLawyer ? '#22c55e' : '#8b5cf6';
               return (
                 <>
@@ -1531,8 +1573,16 @@ function DetailPanel({
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="font-semibold text-foreground">{u.username}</p>
-                      {u.firstName && <p className="text-[10px] text-muted-foreground">{u.firstName}</p>}
+                      <UsernameDisplay
+                        username={u.username}
+                        userId={u.id}
+                        firstName={u.firstName}
+                        usernameColor={u.usernameColor}
+                        badges={u.badges}
+                        preset="full"
+                        clickable
+                        usernameClassName="font-semibold text-foreground"
+                      />
                       {u.bio && <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground/60">{u.bio}</p>}
                     </div>
                   </div>
@@ -1579,7 +1629,7 @@ function DetailPanel({
               return (
                 <>
                   <div className="divide-y divide-border/40">
-                    <StatRow label="Emprunteur" value={loan.borrower?.username ?? '—'} />
+                    <StatRow label="Emprunteur" value={<UserName user={loan.borrower} preset="no-badge" clickable />} />
                     <StatRow label="Montant" value={money(loan.amount)} />
                     <StatRow label="Taux" value={`${loan.interestRate}%`} />
                     <StatRow label="Reste" value={money(remaining)} />
@@ -1607,7 +1657,7 @@ function DetailPanel({
               const account = selection.item;
               return (
                 <div className="divide-y divide-border/40">
-                  <StatRow label="Titulaire" value={account.user?.username ?? '—'} />
+                  <StatRow label="Titulaire" value={<UserName user={account.user} preset="no-badge" clickable />} />
                   <StatRow label="Type" value={account.accountType} />
                   <StatRow label="Solde" value={money(account.balance)} />
                   <StatRow label="Ouvert le" value={account.createdAt ? new Date(account.createdAt).toLocaleDateString('fr-FR') : '—'} />
@@ -1624,9 +1674,9 @@ function DetailPanel({
                     <StatRow label="Titre" value={courtCase.title} />
                     <StatRow label="Statut" value={courtCase.status} />
                     <StatRow label="Partie" value={courtCase.side} />
-                    <StatRow label="Avocat" value={courtCase.lawyer?.username ?? 'Non assigné'} />
-                    <StatRow label="Plaignant" value={courtCase.plaintif?.username ?? '—'} />
-                    <StatRow label="Défendeur" value={courtCase.defendant?.username ?? '—'} />
+                    <StatRow label="Avocat" value={<UserName user={courtCase.lawyer} fallback="Non assigné" preset="no-badge" clickable />} />
+                    <StatRow label="Plaignant" value={<UserName user={courtCase.plaintif} preset="no-badge" clickable />} />
+                    <StatRow label="Défendeur" value={<UserName user={courtCase.defendant} preset="no-badge" clickable />} />
                   </div>
                   {courtCase.plainte && (
                     <div className="mt-4 border-t border-border/40 pt-4">
@@ -1642,8 +1692,8 @@ function DetailPanel({
             {selection?.kind === 'plainte' && (
               <>
                 <div className="divide-y divide-border/40">
-                  <StatRow label="Plaignant" value={selection.plainte.plaintif?.username ?? '—'} />
-                  <StatRow label="Défendeur" value={selection.plainte.defendant?.username ?? '—'} />
+                  <StatRow label="Plaignant" value={<UserName user={selection.plainte.plaintif} preset="no-badge" clickable />} />
+                  <StatRow label="Défendeur" value={<UserName user={selection.plainte.defendant} preset="no-badge" clickable />} />
                   <StatRow label="Statut" value={selection.plainte.status} />
                 </div>
                 <div className="mt-4 border-t border-border/40 pt-4">
@@ -1869,8 +1919,10 @@ function SourceModal({
                       <p className="truncate text-[12px] font-semibold text-foreground">{offer.business?.name ?? 'Business'}</p>
                       {isCheapest && <span className="rounded bg-emerald-500/15 px-1 text-[8px] font-bold text-emerald-500">MOINS CHER</span>}
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      @{offer.business?.owner.username ?? 'serveur'} · {offer.availableQuantity ?? 0} en stock
+                    <p className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
+                      <span>@</span>
+                      <UserName user={offer.business?.owner} fallback="serveur" preset="minimal" usernameClassName="text-[10px]" />
+                      <span className="shrink-0">· {offer.availableQuantity ?? 0} en stock</span>
                     </p>
                   </div>
                   <div className="shrink-0 text-right">

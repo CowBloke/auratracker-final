@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { type YouState, type YouJobOffer, type YouBusiness, youApi } from '@/services/api';
 import { PRODUCER_TYPES } from '@/lib/resources';
@@ -137,6 +138,7 @@ function MemberBizTile({ b, currentUserId, onOpen, onWork }: {
   const isProducer = PRODUCER_TYPES.has(b.typeKey);
   const myMember = b.members.find((m) => m.user.id === currentUserId);
   const needsWork = isProducer && myMember != null && !myMember.workedToday && !b.underConstruction;
+  const owner = b.owner as typeof b.owner & { usernameColor?: string | null };
 
   return (
     <div className="rounded-xl border border-border/40 bg-card transition-all hover:border-border">
@@ -161,7 +163,19 @@ function MemberBizTile({ b, currentUserId, onOpen, onWork }: {
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[12px] font-semibold">{b.name}</div>
-            <div className="text-[10px] text-muted-foreground">@{b.owner.username} · {b.type?.label ?? b.typeKey}</div>
+            <div className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
+              <span>@</span>
+              <UsernameDisplay
+                username={owner.username}
+                userId={owner.id}
+                firstName={owner.firstName}
+                usernameColor={owner.usernameColor}
+                preset="minimal"
+                clickable
+                usernameClassName="text-[10px]"
+              />
+              <span className="shrink-0">· {b.type?.label ?? b.typeKey}</span>
+            </div>
           </div>
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
         </div>

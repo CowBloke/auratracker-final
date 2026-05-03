@@ -77,6 +77,14 @@ function getBizLabel(b: YouBusiness) {
   return b.type?.label ?? TYPE_LABELS_FR[b.typeKey] ?? b.typeKey;
 }
 
+function displayedMemberCount(b: YouBusiness) {
+  // memberCount may exclude the owner on the server side. Ensure the owner is counted.
+  const base = typeof b.memberCount === 'number' ? b.memberCount : (b.members?.length ?? 0);
+  const ownerIncluded = b.members?.some((m) => m.user.id === b.ownerId);
+  const count = ownerIncluded ? base : base + 1;
+  return Math.max(1, count);
+}
+
 type SortMode = 'default' | 'treasury_desc' | 'date_desc' | 'date_asc' | 'rating_desc' | 'name_asc';
 type ViewMode = 'grid' | 'list';
 type ActionType = 'bank' | 'loan' | 'invest' | 'formation' | 'buyout' | 'shareholder' | 'transfer' | 'apply' | 'purchase' | 'plainte';
@@ -243,7 +251,7 @@ function GridCard({ business, onClick }: { business: YouBusiness; onClick: () =>
             {fmt(business.treasuryMoney)}
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-            <Users className="h-2.5 w-2.5" />{business.memberCount}
+            <Users className="h-2.5 w-2.5" />{displayedMemberCount(business)}
           </span>
           {business.avgRating != null && business.ratingCount > 0 && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">
@@ -625,7 +633,6 @@ function DetailPanel({
   const isPlaced = business.mapX != null && business.mapY != null;
   const isOwned = business.ownerId === userId;
   const underConstruction = Boolean(business.underConstruction && business.constructionProject);
-  const net = business.monthlyRevenue - business.monthlyExpenses;
   const isEmployee = business.members.some((m) => m.user.id === userId);
   const hasPendingApplication = business.pendingInvitations.some((inv) => inv.employee.id === userId);
   const canApply = !isOwned && !isEmployee && !hasPendingApplication && business.hiring;
@@ -678,7 +685,7 @@ function DetailPanel({
             {onShowTeam && (
               <button type="button" onClick={onShowTeam}
                 className="inline-flex items-center gap-1 rounded-full bg-violet-400/15 px-2 py-0.5 text-[10px] font-medium text-violet-400 transition-colors hover:bg-violet-400/25">
-                <Users className="h-2.5 w-2.5" />{business.memberCount}
+                <Users className="h-2.5 w-2.5" />{displayedMemberCount(business)}
               </button>
             )}
             {business.isShared && onShowShareholders && (
