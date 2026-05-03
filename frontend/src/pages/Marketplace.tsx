@@ -3,7 +3,6 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BellRing,
-  Building2,
   CheckCircle2,
   ChevronRight,
   Loader2,
@@ -14,7 +13,6 @@ import {
   TrendingUp,
   X,
 } from 'lucide-react';
-import { type ResourceType, type ResourceTier, RESOURCE_META, TIER_META } from '@/lib/resources';
 import { useAuth } from '../contexts/AuthContext';
 import {
   marketplaceApi,
@@ -56,54 +54,10 @@ interface InventoryItem {
   item: MarketplaceListingItem;
 }
 
-type TopTab = 'resources' | 'items' | 'sell' | 'mine';
+type TopTab = 'items' | 'sell' | 'mine';
 type ItemsSubTab = 'market' | 'history' | 'stats';
-type SellSubTab = 'items' | 'resources';
 type MarketplaceSortMode = 'newest' | 'price-asc' | 'price-desc' | 'quantity-desc';
 type ItemTypeFilter = 'ALL' | 'CONSUMABLE' | 'COSMETIC' | 'UPGRADE';
-
-type ResourceSortMode = 'price-asc' | 'price-desc' | 'qty-desc' | 'newest';
-
-interface ResourceListing {
-  id: string;
-  resourceType: ResourceType;
-  unitPrice: number;
-  quantity: number;
-  sellerId: string;
-  seller: { id: string; username: string; profilePicture?: string; usernameColor?: string };
-  createdAt: string;
-  priceChange24h: number | null;
-}
-
-const RESOURCE_SORT_OPTIONS: Array<{ value: ResourceSortMode; label: string }> = [
-  { value: 'price-asc',  label: 'Prix croissant' },
-  { value: 'price-desc', label: 'Prix décroissant' },
-  { value: 'qty-desc',   label: 'Quantité décroissante' },
-  { value: 'newest',     label: 'Plus récents' },
-];
-
-// ── Mock resource listings (replaced by API once backend exists) ──
-const now = new Date();
-const ago = (h: number) => new Date(now.getTime() - h * 3_600_000).toISOString();
-const mkSeller = (id: string, username: string, color?: string) => ({ id, username, usernameColor: color });
-
-const MOCK_RESOURCE_LISTINGS: ResourceListing[] = [
-  { id: 'r1',  resourceType: 'WOOD',         unitPrice: 45,   quantity: 200, sellerId: 'u2', seller: mkSeller('u2', 'ThomasR'),    createdAt: ago(2),  priceChange24h: 2.1 },
-  { id: 'r2',  resourceType: 'WOOD',         unitPrice: 48,   quantity: 80,  sellerId: 'u3', seller: mkSeller('u3', 'Sophie_M'),   createdAt: ago(5),  priceChange24h: 2.1 },
-  { id: 'r3',  resourceType: 'STONE',        unitPrice: 35,   quantity: 350, sellerId: 'u4', seller: mkSeller('u4', 'le_mineur'),  createdAt: ago(1),  priceChange24h: -0.5 },
-  { id: 'r4',  resourceType: 'IRON',         unitPrice: 120,  quantity: 150, sellerId: 'u5', seller: mkSeller('u5', 'ClanAlpha', '#f59e0b'), createdAt: ago(3),  priceChange24h: 5.2 },
-  { id: 'r5',  resourceType: 'FOOD',         unitPrice: 25,   quantity: 500, sellerId: 'u6', seller: mkSeller('u6', 'lemonade_pro'), createdAt: ago(4), priceChange24h: -1.3 },
-  { id: 'r6',  resourceType: 'FOOD',         unitPrice: 28,   quantity: 200, sellerId: 'u1', seller: mkSeller('u1', 'Admin'),      createdAt: ago(10), priceChange24h: null },
-  { id: 'r7',  resourceType: 'CLOTH',        unitPrice: 85,   quantity: 120, sellerId: 'u3', seller: mkSeller('u3', 'Sophie_M'),   createdAt: ago(6),  priceChange24h: 1.0 },
-  { id: 'r8',  resourceType: 'CONCRETE',     unitPrice: 180,  quantity: 90,  sellerId: 'u4', seller: mkSeller('u4', 'le_mineur'),  createdAt: ago(8),  priceChange24h: 8.4 },
-  { id: 'r9',  resourceType: 'STEEL',        unitPrice: 350,  quantity: 40,  sellerId: 'u5', seller: mkSeller('u5', 'ClanAlpha', '#f59e0b'), createdAt: ago(12), priceChange24h: 12.1 },
-  { id: 'r10', resourceType: 'FUEL',         unitPrice: 95,   quantity: 60,  sellerId: 'u2', seller: mkSeller('u2', 'ThomasR'),    createdAt: ago(7),  priceChange24h: -3.2 },
-  { id: 'r11', resourceType: 'PAPER',        unitPrice: 55,   quantity: 180, sellerId: 'u3', seller: mkSeller('u3', 'Sophie_M'),   createdAt: ago(9),  priceChange24h: 0.3 },
-  { id: 'r12', resourceType: 'LUXURY_GOODS', unitPrice: 800,  quantity: 15,  sellerId: 'u1', seller: mkSeller('u1', 'Admin'),      createdAt: ago(14), priceChange24h: 4.1 },
-  { id: 'r13', resourceType: 'MEDICINE',     unitPrice: 450,  quantity: 30,  sellerId: 'u1', seller: mkSeller('u1', 'Admin'),      createdAt: ago(20), priceChange24h: -1.8 },
-  { id: 'r14', resourceType: 'DATA',         unitPrice: 200,  quantity: 75,  sellerId: 'u5', seller: mkSeller('u5', 'ClanAlpha', '#f59e0b'), createdAt: ago(3),  priceChange24h: 6.7 },
-  { id: 'r15', resourceType: 'CONTRABAND',   unitPrice: 1200, quantity: 8,   sellerId: 'u2', seller: mkSeller('u2', 'ThomasR'),    createdAt: ago(16), priceChange24h: null },
-];
 
 const TYPE_LABELS: Record<ItemTypeFilter, string> = {
   ALL: 'Tous',
@@ -628,215 +582,6 @@ function InventoryListingCard({ item, selected, onSelect }: { item: InventoryIte
   );
 }
 
-// ── Resource icon ─────────────────────────────────────────
-function ResourceIcon({ type, size = 'md' }: { type: ResourceType; size?: 'sm' | 'md' | 'lg' }) {
-  const meta = RESOURCE_META[type];
-  const { Icon } = meta;
-  const dim = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-14 w-14' : 'h-10 w-10';
-  const iconDim = size === 'sm' ? 'h-3.5 w-3.5' : size === 'lg' ? 'h-6 w-6' : 'h-4 w-4';
-  return (
-    <div className={cn(dim, 'shrink-0 flex items-center justify-center rounded-lg', meta.bg)}>
-      <Icon className={cn(iconDim, meta.iconColor)} />
-    </div>
-  );
-}
-
-// ── Resource list row ─────────────────────────────────────
-function ResourceListRow({ listing, onClick }: { listing: ResourceListing; onClick: () => void }) {
-  const meta = RESOURCE_META[listing.resourceType];
-  const tier = TIER_META[meta.tier];
-  const hasChange = listing.priceChange24h !== null;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex w-full items-center gap-3 border-b border-border/50 px-4 py-3 text-left last:border-0 transition-colors hover:bg-muted/30"
-    >
-      <ResourceIcon type={listing.resourceType} size="sm" />
-
-      <div className="min-w-0 flex-[2]">
-        <p className="truncate text-sm font-semibold">{meta.label}</p>
-        <Badge className={cn('mt-0.5 border px-1.5 py-0 text-[10px] font-medium leading-4', tier.cls)}>{tier.label}</Badge>
-      </div>
-
-      <div className="w-24 shrink-0 text-right">
-        <p className="text-sm font-bold tabular-nums">{formatMoney(listing.unitPrice)}</p>
-        <p className="text-[11px] text-muted-foreground">/ unité</p>
-      </div>
-
-      <div className="hidden w-20 shrink-0 text-right sm:block">
-        {hasChange ? (
-          <p className={cn('flex items-center justify-end gap-0.5 text-xs font-medium', evolutionTone(listing.priceChange24h))}>
-            {(listing.priceChange24h ?? 0) > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-            {formatEvolution(listing.priceChange24h)}
-          </p>
-        ) : <p className="text-xs text-muted-foreground">—</p>}
-        <p className="text-[10px] text-muted-foreground">24h</p>
-      </div>
-
-      <div className="hidden w-28 shrink-0 text-right md:block">
-        <p className="text-sm font-medium tabular-nums">{listing.quantity.toLocaleString('fr-FR')}</p>
-        <p className="text-[11px] text-muted-foreground">disponibles</p>
-      </div>
-
-      <div className="hidden min-w-0 w-32 shrink-0 lg:flex lg:items-center lg:gap-2">
-        <Avatar className="h-6 w-6 shrink-0">
-          {listing.seller.profilePicture ? <AvatarImage src={resolveImageUrl(listing.seller.profilePicture)} alt={listing.seller.username} /> : null}
-          <AvatarFallback className="bg-muted text-[10px] font-medium">{listing.seller.username.slice(0, 1).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <span className="truncate text-xs font-medium" style={listing.seller.usernameColor ? { color: listing.seller.usernameColor } : undefined}>{listing.seller.username}</span>
-      </div>
-
-      <div className="hidden w-20 shrink-0 text-right xl:block">
-        <p className="text-xs text-muted-foreground">{formatRelativeDate(listing.createdAt)}</p>
-      </div>
-
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5" />
-    </button>
-  );
-}
-
-// ── Resource detail modal ─────────────────────────────────
-function ResourceDetailModal({
-  listing,
-  otherListings,
-  currentUserId,
-  onClose,
-}: {
-  listing: ResourceListing;
-  otherListings: ResourceListing[];
-  currentUserId?: string;
-  onClose: () => void;
-}) {
-  const [buyQty, setBuyQty] = useState('1');
-  const meta = RESOURCE_META[listing.resourceType];
-  const tier = TIER_META[meta.tier];
-  const isOwner = currentUserId === listing.sellerId;
-  const qty = Math.max(1, Math.min(listing.quantity, Number.parseInt(buyQty, 10) || 1));
-  const total = qty * listing.unitPrice;
-
-  return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
-        <div className="flex gap-4 p-5 pb-4">
-          <ResourceIcon type={listing.resourceType} size="lg" />
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge className={cn('border text-[11px]', tier.cls)}>{tier.label}</Badge>
-            </div>
-            <h2 className="text-base font-bold leading-tight">{meta.label}</h2>
-            <p className="text-xs text-muted-foreground">{meta.description}</p>
-          </div>
-        </div>
-
-        <Tabs defaultValue="listing" className="border-t border-border/60">
-          <TabsList className="grid h-10 w-full grid-cols-2 rounded-none border-b border-border/60 bg-muted/20 p-0">
-            <TabsTrigger value="listing" className="h-10 rounded-none border-r border-border/60 text-xs data-[state=active]:bg-background data-[state=active]:shadow-none">
-              Cette offre
-            </TabsTrigger>
-            <TabsTrigger value="others" className="h-10 rounded-none text-xs data-[state=active]:bg-background data-[state=active]:shadow-none">
-              Autres offres
-              {otherListings.length > 0 ? <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums">{otherListings.length}</span> : null}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="listing" className="mt-0 space-y-3 p-5">
-            <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
-              <Avatar className="h-8 w-8 shrink-0">
-                {listing.seller.profilePicture ? <AvatarImage src={resolveImageUrl(listing.seller.profilePicture)} alt={listing.seller.username} /> : null}
-                <AvatarFallback className="bg-background text-xs font-medium">{listing.seller.username.slice(0, 1).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-muted-foreground">Vendeur</p>
-                <p className="truncate text-sm font-medium" style={listing.seller.usernameColor ? { color: listing.seller.usernameColor } : undefined}>{listing.seller.username}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[11px] text-muted-foreground">Publié</p>
-                <p className="text-xs font-medium">{formatRelativeDate(listing.createdAt)}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-center">
-                <p className="text-[11px] text-muted-foreground">Prix / unité</p>
-                <p className="mt-1 text-sm font-bold tabular-nums">{formatMoney(listing.unitPrice)}</p>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-center">
-                <p className="text-[11px] text-muted-foreground">Stock disponible</p>
-                <p className="mt-1 text-sm font-bold tabular-nums">{listing.quantity.toLocaleString('fr-FR')} u.</p>
-              </div>
-            </div>
-
-            {!isOwner ? (
-              <div className="space-y-3 rounded-xl border border-border/60 bg-muted/10 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <label className="text-sm font-medium">Quantité à acheter</label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min="1"
-                      max={listing.quantity}
-                      value={buyQty}
-                      onChange={(e) => setBuyQty(e.target.value)}
-                      className="w-24 text-right tabular-nums"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setBuyQty(String(listing.quantity))}
-                      className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                    >
-                      Max
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total</span>
-                  <span className="font-bold tabular-nums">{formatMoney(total)}</span>
-                </div>
-                <Button
-                  className="w-full"
-                  onClick={() => toast.info('Bientôt disponible', { description: 'Les ressources seront achetables une fois le système de production en ligne.' })}
-                >
-                  Acheter {qty} {meta.label.toLowerCase()} · {formatMoney(total)}
-                </Button>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-border/60 bg-muted/10 px-4 py-3 text-center text-sm text-muted-foreground">C'est votre annonce</div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="others" className="mt-0">
-            {otherListings.length === 0 ? (
-              <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">Aucune autre offre pour cette ressource.</div>
-            ) : (
-              <ScrollArea className="h-64">
-                {otherListings.map((other, idx) => {
-                  const isMine = currentUserId === other.sellerId;
-                  return (
-                    <div key={other.id} className={cn('flex items-center gap-3 px-4 py-3', idx !== 0 && 'border-t border-border/50')}>
-                      <Avatar className="h-7 w-7 shrink-0">
-                        {other.seller.profilePicture ? <AvatarImage src={resolveImageUrl(other.seller.profilePicture)} alt={other.seller.username} /> : null}
-                        <AvatarFallback className="bg-background text-xs font-medium">{other.seller.username.slice(0, 1).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium" style={other.seller.usernameColor ? { color: other.seller.usernameColor } : undefined}>{other.seller.username}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">{other.quantity.toLocaleString('fr-FR')} u.</span>
-                      <span className="w-20 shrink-0 text-right text-sm font-semibold tabular-nums">{formatMoney(other.unitPrice)}</span>
-                      {isMine ? <Badge variant="outline" className="shrink-0 text-[10px]">Vous</Badge> : (
-                        <Button size="sm" variant="outline" className="shrink-0" onClick={() => toast.info('Bientôt disponible')}>Acheter</Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </ScrollArea>
-            )}
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // ── Main page ─────────────────────────────────────────────
 export default function Marketplace() {
   const { user, updateBalance } = useAuth();
@@ -848,9 +593,8 @@ export default function Marketplace() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
 
   // Tab state
-  const [topTab, setTopTab] = useState<TopTab>('resources');
+  const [topTab, setTopTab] = useState<TopTab>('items');
   const [itemsSubTab, setItemsSubTab] = useState<ItemsSubTab>('market');
-  const [sellSubTab, setSellSubTab] = useState<SellSubTab>('items');
 
   // Item marketplace state
   const [search, setSearch] = useState('');
@@ -863,17 +607,6 @@ export default function Marketplace() {
   const [buyingListingId, setBuyingListingId] = useState<string | null>(null);
   const [cancellingListingId, setCancellingListingId] = useState<string | null>(null);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
-
-  // Resource marketplace state
-  const [resourceTypeFilter, setResourceTypeFilter] = useState<ResourceType | 'ALL'>('ALL');
-  const [resourceTierFilter, setResourceTierFilter] = useState<ResourceTier | 'ALL'>('ALL');
-  const [resourceSearch, setResourceSearch] = useState('');
-  const [resourceSortMode, setResourceSortMode] = useState<ResourceSortMode>('price-asc');
-  const [resourcePriceMin, setResourcePriceMin] = useState('');
-  const [resourcePriceMax, setResourcePriceMax] = useState('');
-  const [resourceMinQty, setResourceMinQty] = useState('');
-  const [selectedResourceId, setSelectedResourceId] = useState<string | null>(null);
-  const [showResourceFilters, setShowResourceFilters] = useState(false);
 
   const loadData = async () => {
     if (!user) return;
@@ -947,44 +680,6 @@ export default function Marketplace() {
   const myActiveListings = useMemo(() => myListings.filter((l) => l.status === 'ACTIVE'), [myListings]);
   const myHistoryListings = useMemo(() => myListings.filter((l) => l.status !== 'ACTIVE'), [myListings]);
 
-  // Resource filtering
-  const filteredResourceListings = useMemo(() => {
-    const term = resourceSearch.trim().toLowerCase();
-    const priceMin = resourcePriceMin ? Number(resourcePriceMin) : null;
-    const priceMax = resourcePriceMax ? Number(resourcePriceMax) : null;
-    const minQty = resourceMinQty ? Number(resourceMinQty) : null;
-
-    return MOCK_RESOURCE_LISTINGS
-      .filter((l) => resourceTierFilter === 'ALL' || RESOURCE_META[l.resourceType].tier === resourceTierFilter)
-      .filter((l) => resourceTypeFilter === 'ALL' || l.resourceType === resourceTypeFilter)
-      .filter((l) => !term || RESOURCE_META[l.resourceType].label.toLowerCase().includes(term) || l.seller.username.toLowerCase().includes(term))
-      .filter((l) => priceMin === null || l.unitPrice >= priceMin)
-      .filter((l) => priceMax === null || l.unitPrice <= priceMax)
-      .filter((l) => minQty === null || l.quantity >= minQty)
-      .sort((a, b) => {
-        switch (resourceSortMode) {
-          case 'price-asc': return a.unitPrice - b.unitPrice;
-          case 'price-desc': return b.unitPrice - a.unitPrice;
-          case 'qty-desc': return b.quantity - a.quantity;
-          default: return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-      });
-  }, [resourceTypeFilter, resourceTierFilter, resourceSearch, resourceSortMode, resourcePriceMin, resourcePriceMax, resourceMinQty]);
-
-  const selectedResource = useMemo(() => MOCK_RESOURCE_LISTINGS.find((l) => l.id === selectedResourceId) ?? null, [selectedResourceId]);
-  const otherResourceListings = useMemo(() => {
-    if (!selectedResource) return [];
-    return MOCK_RESOURCE_LISTINGS
-      .filter((l) => l.resourceType === selectedResource.resourceType && l.id !== selectedResource.id)
-      .sort((a, b) => a.unitPrice - b.unitPrice);
-  }, [selectedResource]);
-
-  // Visible resource type pills (filtered by tier)
-  const visibleResourceTypes = useMemo(() => {
-    const types = Object.keys(RESOURCE_META) as ResourceType[];
-    return resourceTierFilter === 'ALL' ? types : types.filter((t) => RESOURCE_META[t].tier === resourceTierFilter);
-  }, [resourceTierFilter]);
-
   const handleCreateListing = async () => {
     if (!user || !selectedInventoryItem || submittingListing) return;
     const quantity = Number.parseInt(sellQuantity, 10);
@@ -1043,7 +738,6 @@ export default function Marketplace() {
         <Tabs value={topTab} onValueChange={(v) => setTopTab(v as TopTab)} className="space-y-6">
           <TabsList className="h-auto flex-wrap border-border/60 bg-muted/20">
             {([
-              { value: 'resources', label: 'Ressources' },
               { value: 'items', label: 'Objets' },
               { value: 'sell', label: 'Vendre' },
               { value: 'mine', label: 'Mes annonces' },
@@ -1053,155 +747,6 @@ export default function Marketplace() {
               </TabsTrigger>
             ))}
           </TabsList>
-
-          {/* ── RESOURCES TAB ────────────────────────── */}
-          <TabsContent value="resources" className="space-y-4">
-
-            {/* Tier pills */}
-            <div className="flex flex-wrap gap-2">
-              {(['ALL', 'RAW', 'REFINED', 'FINISHED', 'SPECIAL'] as const).map((tier) => {
-                const label = tier === 'ALL' ? 'Tous' : TIER_META[tier].label;
-                const active = resourceTierFilter === tier;
-                return (
-                  <button
-                    key={tier}
-                    type="button"
-                    onClick={() => { setResourceTierFilter(tier); setResourceTypeFilter('ALL'); }}
-                    className={cn(
-                      'rounded-full border px-3 py-1 text-sm transition-colors',
-                      active ? 'border-primary/60 bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground',
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Resource type pills */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setResourceTypeFilter('ALL')}
-                className={cn(
-                  'rounded-full border px-3 py-1 text-sm transition-colors',
-                  resourceTypeFilter === 'ALL' ? 'border-primary/60 bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground',
-                )}
-              >
-                Toutes
-              </button>
-              {visibleResourceTypes.map((type) => {
-                const meta = RESOURCE_META[type];
-                const { Icon } = meta;
-                const active = resourceTypeFilter === type;
-                return (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setResourceTypeFilter(type)}
-                    className={cn(
-                      'flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors',
-                      active ? 'border-primary/60 bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground',
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {meta.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Search + sort + advanced filters toggle */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-1 gap-2">
-                <div className="relative flex-1 sm:max-w-64">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={resourceSearch}
-                    onChange={(e) => setResourceSearch(e.target.value)}
-                    placeholder="Ressource ou vendeur…"
-                    className="pl-9"
-                  />
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowResourceFilters((v) => !v)}
-                  className={cn('gap-1.5', showResourceFilters && 'border-primary/60 bg-primary/5 text-primary')}
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  Filtres
-                </Button>
-              </div>
-              <Select value={resourceSortMode} onValueChange={(v) => setResourceSortMode(v as ResourceSortMode)}>
-                <SelectTrigger className="w-full sm:w-44">
-                  <SelectValue placeholder="Trier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {RESOURCE_SORT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Advanced filters panel */}
-            {showResourceFilters && (
-              <div className="flex flex-wrap gap-3 rounded-xl border border-border/60 bg-muted/10 p-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Prix min / unité</label>
-                  <Input type="number" min="0" value={resourcePriceMin} onChange={(e) => setResourcePriceMin(e.target.value)} placeholder="0" className="w-28" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Prix max / unité</label>
-                  <Input type="number" min="0" value={resourcePriceMax} onChange={(e) => setResourcePriceMax(e.target.value)} placeholder="∞" className="w-28" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Qté min disponible</label>
-                  <Input type="number" min="0" value={resourceMinQty} onChange={(e) => setResourceMinQty(e.target.value)} placeholder="0" className="w-28" />
-                </div>
-                {(resourcePriceMin || resourcePriceMax || resourceMinQty) && (
-                  <div className="flex items-end">
-                    <Button variant="ghost" size="sm" onClick={() => { setResourcePriceMin(''); setResourcePriceMax(''); setResourceMinQty(''); }}>
-                      Réinitialiser
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Resource table */}
-            {filteredResourceListings.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 p-10 text-center">
-                <BellRing className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
-                <p className="text-sm text-muted-foreground">Aucune offre ne correspond à ces filtres.</p>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-border/60 bg-card/80">
-                <div className="hidden border-b border-border/60 bg-muted/30 px-4 py-2 sm:flex sm:items-center sm:gap-3">
-                  <div className="w-8 shrink-0" />
-                  <div className="min-w-0 flex-[2] text-xs font-medium text-muted-foreground">Ressource</div>
-                  <div className="w-24 shrink-0 text-right text-xs font-medium text-muted-foreground">Prix / u.</div>
-                  <div className="hidden w-20 shrink-0 text-right text-xs font-medium text-muted-foreground sm:block">Δ 24h</div>
-                  <div className="hidden w-28 shrink-0 text-right text-xs font-medium text-muted-foreground md:block">Quantité</div>
-                  <div className="hidden w-32 shrink-0 text-xs font-medium text-muted-foreground lg:block">Vendeur</div>
-                  <div className="hidden w-20 shrink-0 text-right text-xs font-medium text-muted-foreground xl:block">Publié</div>
-                  <div className="w-4 shrink-0" />
-                </div>
-                {filteredResourceListings.map((listing) => (
-                  <ResourceListRow key={listing.id} listing={listing} onClick={() => setSelectedResourceId(listing.id)} />
-                ))}
-              </div>
-            )}
-
-            {filteredResourceListings.length > 0 && (
-              <p className="text-right text-xs text-muted-foreground">
-                {filteredResourceListings.length} offre{filteredResourceListings.length > 1 ? 's' : ''}
-                {' · '}
-                {new Set(filteredResourceListings.map((l) => l.sellerId)).size} vendeur{new Set(filteredResourceListings.map((l) => l.sellerId)).size > 1 ? 's' : ''}
-              </p>
-            )}
-          </TabsContent>
 
           {/* ── ITEMS TAB ─────────────────────────────── */}
           <TabsContent value="items" className="space-y-4">
@@ -1368,108 +913,89 @@ export default function Marketplace() {
 
           {/* ── SELL TAB ──────────────────────────────── */}
           <TabsContent value="sell" className="space-y-4">
-            <Tabs value={sellSubTab} onValueChange={(v) => setSellSubTab(v as SellSubTab)}>
-              <TabsList className="h-auto border-border/60 bg-muted/20">
-                <TabsTrigger value="items" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground">Objets</TabsTrigger>
-                <TabsTrigger value="resources" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground">Ressources</TabsTrigger>
-              </TabsList>
+            {loading ? (
+              <div className="rounded-2xl border border-border/60 bg-card/70 p-4"><GridSkeleton cards={6} /></div>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                <Card className="border-border/60 bg-card/80 shadow-none">
+                  <CardContent className="space-y-4 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <h2 className="text-lg font-semibold tracking-tight">Ton inventaire</h2>
+                        <p className="text-sm text-muted-foreground">Sélectionne l'objet à vendre.</p>
+                      </div>
+                      <Badge variant="secondary" className="border-border/60 bg-background">{inventory.length} objet{inventory.length > 1 ? 's' : ''}</Badge>
+                    </div>
+                    {inventory.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">Aucun objet vendable dans ton inventaire.</div>
+                    ) : (
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {inventory.map((item) => (
+                          <InventoryListingCard key={item.id} item={item} selected={selectedInventoryId === item.id} onSelect={(next) => setSelectedInventoryId(next.id)} />
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-              <TabsContent value="items" className="space-y-6">
-                {loading ? (
-                  <div className="rounded-2xl border border-border/60 bg-card/70 p-4"><GridSkeleton cards={6} /></div>
-                ) : (
-                  <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-                    <Card className="border-border/60 bg-card/80 shadow-none">
-                      <CardContent className="space-y-4 p-4">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <h2 className="text-lg font-semibold tracking-tight">Ton inventaire</h2>
-                            <p className="text-sm text-muted-foreground">Sélectionne l'objet à vendre.</p>
+                <Card className="border-border/60 bg-card/90 shadow-none lg:sticky lg:top-6">
+                  <CardContent className="space-y-5 p-4">
+                    <div className="space-y-1">
+                      <h2 className="text-lg font-semibold tracking-tight">Créer une annonce</h2>
+                      <p className="text-sm text-muted-foreground">Ton objet sera retiré de l'inventaire tant que l'annonce reste active.</p>
+                    </div>
+                    {selectedInventoryItem ? (
+                      <div className="space-y-4">
+                        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-background">
+                              {selectedInventorySkinImageUrl ? (
+                                <DoodleJumpSkinPreview skinImageUrl={selectedInventorySkinImageUrl} className="h-full" height="100%" />
+                              ) : selectedInventoryItem.item.imageUrl ? (
+                                <img src={resolveImageUrl(selectedInventoryItem.item.imageUrl)} alt={selectedInventoryItem.item.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <Package className="h-6 w-6 text-muted-foreground/60" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="truncate text-base font-semibold">{selectedInventoryItem.item.name}</h3>
+                                <Badge variant="secondary" className="border-border/60 bg-background text-[11px]">{getTypeLabel(selectedInventoryItem.item.type)}</Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{selectedInventoryItem.item.description}</p>
+                              <p className="text-xs text-muted-foreground">Prix de base: {formatMoney(selectedInventoryItem.item.price)}</p>
+                            </div>
                           </div>
-                          <Badge variant="secondary" className="border-border/60 bg-background">{inventory.length} objet{inventory.length > 1 ? 's' : ''}</Badge>
                         </div>
-                        {inventory.length === 0 ? (
-                          <div className="rounded-xl border border-dashed border-border/60 p-8 text-center text-sm text-muted-foreground">Aucun objet vendable dans ton inventaire.</div>
-                        ) : (
-                          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            {inventory.map((item) => (
-                              <InventoryListingCard key={item.id} item={item} selected={selectedInventoryId === item.id} onSelect={(next) => setSelectedInventoryId(next.id)} />
-                            ))}
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Quantité</label>
+                            <Input type="number" min="1" max={selectedMaxQuantity} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} />
+                            <p className="text-xs text-muted-foreground">Maximum disponible: {selectedMaxQuantity}</p>
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-border/60 bg-card/90 shadow-none lg:sticky lg:top-6">
-                      <CardContent className="space-y-5 p-4">
-                        <div className="space-y-1">
-                          <h2 className="text-lg font-semibold tracking-tight">Créer une annonce</h2>
-                          <p className="text-sm text-muted-foreground">Ton objet sera retiré de l'inventaire tant que l'annonce reste active.</p>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Prix unitaire</label>
+                            <Input type="number" min="1" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
+                            <p className="text-xs text-muted-foreground">Montant reçu: {formatMoney(Number.parseInt(sellPrice || '0', 10) * Number.parseInt(sellQuantity || '1', 10))}</p>
+                          </div>
                         </div>
-                        {selectedInventoryItem ? (
-                          <div className="space-y-4">
-                            <div className="rounded-2xl border border-border/60 bg-muted/20 p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl bg-background">
-                                  {selectedInventorySkinImageUrl ? (
-                                    <DoodleJumpSkinPreview skinImageUrl={selectedInventorySkinImageUrl} className="h-full" height="100%" />
-                                  ) : selectedInventoryItem.item.imageUrl ? (
-                                    <img src={resolveImageUrl(selectedInventoryItem.item.imageUrl)} alt={selectedInventoryItem.item.name} className="h-full w-full object-cover" />
-                                  ) : (
-                                    <Package className="h-6 w-6 text-muted-foreground/60" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1 space-y-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <h3 className="truncate text-base font-semibold">{selectedInventoryItem.item.name}</h3>
-                                    <Badge variant="secondary" className="border-border/60 bg-background text-[11px]">{getTypeLabel(selectedInventoryItem.item.type)}</Badge>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground">{selectedInventoryItem.item.description}</p>
-                                  <p className="text-xs text-muted-foreground">Prix de base: {formatMoney(selectedInventoryItem.item.price)}</p>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Quantité</label>
-                                <Input type="number" min="1" max={selectedMaxQuantity} value={sellQuantity} onChange={(e) => setSellQuantity(e.target.value)} />
-                                <p className="text-xs text-muted-foreground">Maximum disponible: {selectedMaxQuantity}</p>
-                              </div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Prix unitaire</label>
-                                <Input type="number" min="1" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)} />
-                                <p className="text-xs text-muted-foreground">Montant reçu: {formatMoney(Number.parseInt(sellPrice || '0', 10) * Number.parseInt(sellQuantity || '1', 10))}</p>
-                              </div>
-                            </div>
-                            <div className="rounded-xl border border-border/60 bg-background p-4 text-sm text-muted-foreground">
-                              {selectedInventoryItem.quantity > 1 ? 'Tu peux vendre une partie de ta pile ou la totalité.' : 'Cet objet sera retiré de ton inventaire dès la mise en vente.'}
-                            </div>
-                            <Button className="w-full" onClick={handleCreateListing} disabled={submittingListing}>
-                              {submittingListing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                              Mettre en vente
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 p-6 text-center text-sm text-muted-foreground">
-                            Sélectionne un objet dans ton inventaire pour préparer une annonce.
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="resources">
-                <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/60 bg-muted/10 p-10 text-center">
-                  <Building2 className="h-10 w-10 text-muted-foreground/30" />
-                  <div>
-                    <p className="text-sm font-medium">Vente de ressources</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Les ressources sont produites et vendues depuis la page de votre entreprise.</p>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+                        <div className="rounded-xl border border-border/60 bg-background p-4 text-sm text-muted-foreground">
+                          {selectedInventoryItem.quantity > 1 ? 'Tu peux vendre une partie de ta pile ou la totalité.' : 'Cet objet sera retiré de ton inventaire dès la mise en vente.'}
+                        </div>
+                        <Button className="w-full" onClick={handleCreateListing} disabled={submittingListing}>
+                          {submittingListing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                          Mettre en vente
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex min-h-[280px] items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 p-6 text-center text-sm text-muted-foreground">
+                        Sélectionne un objet dans ton inventaire pour préparer une annonce.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
 
           {/* ── MINE TAB ──────────────────────────────── */}
@@ -1552,15 +1078,6 @@ export default function Marketplace() {
           buyingListingId={buyingListingId}
           onBuy={handleBuyListing}
           onClose={() => setSelectedListingId(null)}
-        />
-      )}
-
-      {selectedResource && (
-        <ResourceDetailModal
-          listing={selectedResource}
-          otherListings={otherResourceListings}
-          currentUserId={user?.id}
-          onClose={() => setSelectedResourceId(null)}
         />
       )}
     </PageShell>
