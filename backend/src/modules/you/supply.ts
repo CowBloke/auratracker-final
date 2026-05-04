@@ -102,7 +102,7 @@ async function ensureSupplyForBusinesses(db: PrismaClient, businesses: Array<{ i
         create: {
           businessId: business.id,
           resourceType: profile.resourceType,
-          quantity: Math.floor(profile.capacity * 0.25),
+          quantity: 0,
           capacity: profile.capacity,
           productionRatePerHour: profile.rate,
           lastProducedAt: now,

@@ -50,7 +50,7 @@ type DisplayUser = Omit<YouPlayer, 'alreadyInRelationship'> & {
 };
 type NodeSelection =
   | { kind: 'inventory'; business: YouSupplyBusiness; inventory: YouSupplyInventory }
-  | { kind: 'construction-material'; business: YouSupplyBusiness; material: YouConstructionMaterial }
+  | { kind: 'construction-material'; business: YouSupplyBusiness; material: YouConstructionMaterial; activeContract: YouSupplyContract | null }
   | { kind: 'offer'; business: YouSupplyBusiness; offer: YouSupplyOffer }
   | { kind: 'contract'; business: YouSupplyBusiness; contract: YouSupplyContract }
   | { kind: 'plainte'; business: YouSupplyBusiness; plainte: YouSupplyPlainteNode }
@@ -609,7 +609,7 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
         title: resourceLabel(material.resourceType),
         subtitle: done ? 'Pret' : activeContract ? (activeContract.supplier?.name ?? 'Fournisseur') : `${remaining} requis`,
         footer: `${material.deliveredQuantity}/${material.requiredQuantity}`,
-        selection: { kind: 'construction-material', business, material },
+        selection: { kind: 'construction-material', business, material, activeContract: activeContract ?? null },
         group: 'left',
         construction: !done,
         resourceType: material.resourceType,
@@ -1249,6 +1249,7 @@ function DetailPanel({
   onClose,
   onSaveOffer,
   onChooseSource,
+  onCancelContract,
   onUpdateMember,
   onRespondLoan,
   onRemindLoan,
@@ -1259,6 +1260,7 @@ function DetailPanel({
   onClose: () => void;
   onSaveOffer: (businessId: string, resourceType: YouSupplyResourceType, unitPrice: number, autoAccept: boolean, isActive?: boolean) => Promise<void>;
   onChooseSource: (business: YouSupplyBusiness, material: YouConstructionMaterial) => void;
+  onCancelContract: (contractId: string) => Promise<void>;
   onUpdateMember: (businessId: string, memberId: string, data: { role: string; salary: number; title: string | null }) => Promise<void>;
   onRespondLoan: (loanId: string, decision: 'accept' | 'reject') => Promise<void>;
   onRemindLoan: (loanId: string) => Promise<void>;
@@ -1457,6 +1459,8 @@ function DetailPanel({
               const remaining = Math.max(0, requiredQuantity - deliveredQuantity);
               const pct = requiredQuantity > 0 ? Math.min(100, Math.round((deliveredQuantity / requiredQuantity) * 100)) : 100;
               const done = remaining === 0;
+              const ac = selection.activeContract;
+              const hasLiveContract = ac && ac.status !== 'COMPLETED' && ac.status !== 'REJECTED' && ac.status !== 'CANCELLED';
               return (
                 <>
                   <div className="mb-4">
@@ -1473,17 +1477,39 @@ function DetailPanel({
                     <StatRow label="Requis" value={String(requiredQuantity)} />
                     <StatRow label="Reste" value={String(remaining)} accent={done ? 'text-emerald-400' : 'text-amber-400'} />
                   </div>
-                  <div className="mt-4">
+                  {hasLiveContract && (
+                    <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="mb-1 text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50">
+                        {ac.status === 'PENDING' ? 'En attente d\'approbation' : 'Livraison en cours'}
+                      </p>
+                      <p className="text-[12px] font-semibold text-foreground">{ac.supplier?.name ?? 'Fournisseur'}</p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        {ac.deliveredQuantity}/{ac.totalQuantity} unités · {ac.unitPrice} money/u
+                      </p>
+                      {ac.status === 'PENDING' && (
+                        <p className="mt-1.5 text-[10px] text-amber-400">Le fournisseur doit accepter la demande avant toute livraison.</p>
+                      )}
+                    </div>
+                  )}
+                  <div className="mt-4 space-y-2">
                     {done ? (
                       <p className="flex items-center gap-2 text-[12px] font-semibold text-emerald-500">
                         <Check size={14} /> Matériau prêt
                       </p>
-                    ) : (
+                    ) : !hasLiveContract ? (
                       <button
                         onClick={() => onChooseSource(selection.business, selection.material)}
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 py-3 text-[12px] font-semibold text-black transition-opacity hover:opacity-90"
                       >
                         <Package size={13} /> Choisir une source
+                      </button>
+                    ) : null}
+                    {hasLiveContract && (
+                      <button
+                        onClick={() => void onCancelContract(ac.id)}
+                        className="w-full rounded-lg border border-red-500/30 py-2.5 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                      >
+                        Annuler le contrat
                       </button>
                     )}
                   </div>
@@ -2044,6 +2070,13 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
     });
   }
 
+  async function cancelContract(contractId: string) {
+    await mutate(async () => {
+      await youApi.cancelSupplyContract(contractId);
+      setNodeSelection(null);
+    });
+  }
+
   async function updateMember(businessId: string, memberId: string, data: { role: string; salary: number; title: string | null }) {
     await mutate(async () => {
       await youApi.updateMemberRole(businessId, memberId, data.role);
@@ -2185,6 +2218,7 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
               onClose={() => setNodeSelection(null)}
               onSaveOffer={saveOffer}
               onChooseSource={(business, material) => setSourceTarget({ business, material })}
+              onCancelContract={cancelContract}
               onUpdateMember={updateMember}
               onRespondLoan={respondLoan}
               onRemindLoan={remindLoan}
