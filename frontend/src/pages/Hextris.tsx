@@ -19,7 +19,6 @@ export default function Hextris() {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
@@ -61,14 +60,12 @@ export default function Hextris() {
 
       if (type === 'HEXTRIS_SCORE_UPDATE') {
         setScore(data.score);
-        setIsPlaying(data.isPlaying);
       }
 
       if (type === 'HEXTRIS_GAME_OVER') {
         const finalScore = data.score;
         setScore(finalScore);
         setGameOver(true);
-        setIsPlaying(false);
 
         // Check if new high score
         const isNew = finalScore > highScore;
@@ -80,7 +77,7 @@ export default function Hextris() {
         // Submit score
         if (user?.id) {
           try {
-            const response = await gamesApi.completeGame('hextris', {
+            const response = await gamesApi.complete('hextris', {
               score: finalScore,
               won: true,
             });
@@ -192,9 +189,9 @@ export default function Hextris() {
             currentUserId={user?.id}
             personalHighScore={highScore}
             isAdmin={user?.isAdmin}
-            onDeleteScore={async (scoreId) => {
+            onDeleteScore={async (userId) => {
               try {
-                await gamesApi.deleteScore(scoreId);
+                await gamesApi.deleteStats('hextris', userId);
                 fetchLeaderboard();
               } catch (error) {
                 console.error('Failed to delete score:', error);
