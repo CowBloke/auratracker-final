@@ -111,6 +111,7 @@ interface ProfileUser {
   lastScoreUpdate?: string;
   overallRankTotalPlayers?: number;
   createdAt: string;
+  dailyPassStreak: number;
   clanTag?: { text: string; style: string | null } | null;
   auraCoinStats?: {
     transactionCount: number;
@@ -525,6 +526,11 @@ export default function Profile() {
       label: 'Aura',
       value: profileUser.aura.toLocaleString(),
       detail: formatRank(rankings?.aura?.rank),
+    },
+    {
+      label: 'Streak quotidien',
+      value: `${profileUser.dailyPassStreak} jours`,
+      detail: 'boîte quotidienne',
     },
     {
       label: 'Money',

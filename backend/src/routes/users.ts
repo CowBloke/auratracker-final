@@ -477,6 +477,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           profilePicture: true,
           profileBanner: true,
           bio: true,
+          dailyPassStreak: true,
           totalScore: true,
           overallRank: true,
           lastScoreUpdate: true,
