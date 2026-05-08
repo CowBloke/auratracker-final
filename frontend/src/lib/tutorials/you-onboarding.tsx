@@ -5,9 +5,9 @@ export const youOnboarding: TutorialFlow = {
   title: 'Bienvenue sur AuraTracker',
   description: 'Découvre la navigation, la section YOU et les outils essentiels en quelques étapes.',
   sections: [
-    { id: 'navigation', title: 'Navigation', startIndex: 0, endIndex: 15 },
-    { id: 'you-section', title: 'Section YOU', startIndex: 16, endIndex: 18 },
-    { id: 'aide', title: 'Aide & outils', startIndex: 19, endIndex: 20 },
+    { id: 'navigation', title: 'Navigation', startIndex: 0, endIndex: 17 },
+    { id: 'you-section', title: 'Section YOU', startIndex: 18, endIndex: 20 },
+    { id: 'aide', title: 'Aide & outils', startIndex: 21, endIndex: 22 },
   ],
   steps: [
     // ── Navigation (0–7) ─────────────────────────────────────────────────────
@@ -19,21 +19,42 @@ export const youOnboarding: TutorialFlow = {
         <div className="space-y-3">
           <p>AuraTracker est une simulation économique multijoueur où tu gères des entreprises, investis, formes des alliances et accumules des richesses.</p>
           <p className="text-muted-foreground">Ce tutoriel te présente les éléments essentiels. Tu peux le quitter ou passer une section à tout moment.</p>
-
+        </div>
+      ),
+    },
+    {
+      id: 'welcome-tabs-1',
+      placement: 'center',
+      title: 'Principaux onglets (1/2)',
+      content: (
+        <div className="space-y-3">
+          <p className="text-muted-foreground">Voici les principales sections de la barre de navigation :</p>
           <div className="rounded-xl border border-border/30 p-3 bg-muted/5">
-            <h4 className="text-sm font-semibold">Principales onglets (barre gauche)</h4>
-            <div className="mt-2 grid gap-2">
-              <div className="text-xs"><strong>Dashboard</strong> — Vue d'ensemble : statistiques, fil d'activité et notifications.</div>
-              <div className="text-xs"><strong>YOU</strong> — Le coeur du jeu : ton profil, entreprises, investissements et onglets associés.</div>
-              <div className="text-xs"><strong>Jeux</strong> — Mini-jeux pour gagner de l'Aura ou de l'argent.</div>
-              <div className="text-xs"><strong>Classements</strong> — Meilleurs joueurs par richesse, Aura et performances.</div>
-              <div className="text-xs"><strong>Clans</strong> — Rejoins ou crée un clan pour jouer en équipe.</div>
-              <div className="text-xs"><strong>Marketplace</strong> — Achetez et vendez ressources, objets et actions entre joueurs.</div>
-              <div className="text-xs"><strong>Boutique / Shop</strong> — Achats directs de ressources et objets.</div>
-              <div className="text-xs"><strong>Inventaire</strong> — Tes objets et biens personnels.</div>
-              <div className="text-xs"><strong>Quêtes & Événements</strong> — Missions et récompenses temporaires.</div>
-              <div className="text-xs"><strong>Forum / Suggestions</strong> — Communauté, idées et retours.</div>
-              <div className="text-xs"><strong>Tutoriels</strong> — Tous les guides et tutoriels disponibles.</div>
+            <div className="grid gap-2">
+              <div className="text-sm"><strong>Dashboard</strong> — Vue d'ensemble : statistiques, fil d'activité et notifications.</div>
+              <div className="text-sm"><strong>YOU</strong> — Le coeur du jeu : ton profil, entreprises, investissements et onglets associés.</div>
+              <div className="text-sm"><strong>Jeux</strong> — Mini-jeux pour gagner de l'Aura ou de l'argent.</div>
+              <div className="text-sm"><strong>Classements</strong> — Meilleurs joueurs par richesse, Aura et performances.</div>
+              <div className="text-sm"><strong>Clans</strong> — Rejoins ou crée un clan pour jouer en équipe.</div>
+              <div className="text-sm"><strong>Marketplace</strong> — Achetez et vendez ressources, objets et actions entre joueurs.</div>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'welcome-tabs-2',
+      placement: 'center',
+      title: 'Principaux onglets (2/2)',
+      content: (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border/30 p-3 bg-muted/5">
+            <div className="grid gap-2">
+              <div className="text-sm"><strong>Boutique / Shop</strong> — Achats directs de ressources et objets.</div>
+              <div className="text-sm"><strong>Inventaire</strong> — Tes objets et biens personnels.</div>
+              <div className="text-sm"><strong>Quêtes & Événements</strong> — Missions et récompenses temporaires.</div>
+              <div className="text-sm"><strong>Forum / Suggestions</strong> — Communauté, idées et retours.</div>
+              <div className="text-sm"><strong>Tutoriels</strong> — Tous les guides et tutoriels disponibles.</div>
             </div>
           </div>
         </div>
