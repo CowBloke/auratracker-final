@@ -605,12 +605,27 @@ model Business {
   supplyLinksAsSource       BusinessSupplyLink[]            @relation("SupplyLinkSource")
   supplyLinksAsTarget       BusinessSupplyLink[]            @relation("SupplyLinkTarget")
   constructionProject BusinessConstructionProject?
+  youtubeVideos       YoutubeVideo[]
 
   @@index([ownerId])
   @@index([supportAgentId])
   @@index([typeKey, createdAt])
   @@index([hiring])
   @@index([isStateOwned])
+}
+
+model YoutubeVideo {
+  id          String   @id @default(uuid())
+  businessId  String
+  title       String
+  description String?
+  videoPath   String   // Path to the uploaded video file
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  @@index([businessId, createdAt])
 }
 
 model Ad {

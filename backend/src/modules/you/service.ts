@@ -27,7 +27,7 @@ import {
   getSharedBalance,
 } from '../../utils/sharedBalance.js';
 import { logAdmin } from '../../utils/logger.js';
-import { writeBase64UploadFile } from '../../utils/uploads.js';
+import { writeBase64UploadFile, writeBase64UploadVideo } from '../../utils/uploads.js';
 import { BALANCING, getBusinessBalancing } from '../../config/balancing.js';
 import {
   BUSINESS_SHARE_PROPOSAL_CANCEL_DELAY_MS,
@@ -56,6 +56,8 @@ import {
 
 const FORMATION_FILE_UPLOAD_DIR = 'uploads/formation-files';
 const MAX_FORMATION_FILE_SIZE_BYTES = 25 * 1024 * 1024;
+const YOUTUBE_VIDEO_UPLOAD_DIR = 'uploads/youtube-videos';
+const MAX_YOUTUBE_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const YOU_CACHE_TTL_MS = 10_000;
 const _youStateCache = new Map<string, { data: any; expiresAt: number }>();
 const _startupProductCache = new Map<string, { data: any; expiresAt: number }>();
@@ -215,6 +217,9 @@ const BUSINESS_BASE_INCLUDE = {
   supplyContractsAsBuyer: {
     orderBy: { createdAt: 'desc' as const },
     take: 30,
+  },
+  youtubeVideos: {
+    orderBy: { createdAt: 'desc' as const },
   },
 } as const;
 
@@ -6810,3 +6815,122 @@ export async function adminResetBusinessUnlockLevels() {
   return { ok: true };
 }
 
+// --- Youtube Business ---
+
+export async function uploadYoutubeVideo(userId: string, businessId: string, data: {
+  title: string;
+  description?: string;
+  videoBase64: string;
+  mimeType: string;
+}) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { ownerId: true, typeKey: true },
+  });
+
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (business.typeKey !== 'youtube') throw new Error('INVALID_BUSINESS_TYPE');
+  if (business.ownerId !== userId) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+  
+  if (!data.title || data.title.trim().length < 3) {
+    throw new Error('INVALID_FORMATION_TITLE'); // reusing error code for title length
+  }
+
+  const uploadResult = await writeBase64UploadVideo({
+    base64Data: data.videoBase64,
+    mimeType: data.mimeType,
+    uploadDir: YOUTUBE_VIDEO_UPLOAD_DIR,
+    maxBytes: MAX_YOUTUBE_VIDEO_SIZE_BYTES,
+  });
+
+  if ('error' in uploadResult) {
+    throw new Error(uploadResult.error);
+  }
+
+  const videoPath = `/${YOUTUBE_VIDEO_UPLOAD_DIR}/${uploadResult.fileName}`;
+
+  const video = await prisma.youtubeVideo.create({
+    data: {
+      businessId,
+      title: data.title.trim(),
+      description: data.description?.trim(),
+      videoPath,
+    },
+  });
+
+  return video;
+}
+
+export async function getYoutubeVideos(businessId: string) {
+  const videos = await prisma.youtubeVideo.findMany({
+    where: { businessId },
+    orderBy: { createdAt: 'desc' },
+  });
+  return videos;
+}
+
+export async function getGlobalYoutubeVideos() {
+  const videos = await prisma.youtubeVideo.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    include: {
+      business: {
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true,
+        }
+      }
+    }
+  });
+  return videos;
+}
+
+export async function incrementVideoViews(videoId: string) {
+  const video = await prisma.youtubeVideo.update({
+    where: { id: videoId },
+    data: { views: { increment: 1 } },
+  });
+  return video;
+}
+
+export async function checkReviewEligibilityOnExit(userId: string, businessId: string) {
+  const existingReview = await prisma.businessRating.findUnique({
+    where: { businessId_userId: { businessId, userId } },
+  });
+
+  if (existingReview) {
+    return { eligible: false }; // Already reviewed
+  }
+
+  const existingEligibility = await prisma.reviewEligibility.findFirst({
+    where: {
+      userId,
+      businessId,
+      targetType: 'BUSINESS',
+    },
+  });
+
+  if (existingEligibility) {
+    if (!existingEligibility.promptedAt && !existingEligibility.reviewedAt) {
+       await prisma.reviewEligibility.update({
+          where: { id: existingEligibility.id },
+          data: { promptAt: new Date() } // Prompt immediately on exit
+       });
+       return { eligible: true };
+    }
+    return { eligible: !existingEligibility.reviewedAt };
+  }
+
+  await prisma.reviewEligibility.create({
+    data: {
+      userId,
+      businessId,
+      targetType: 'BUSINESS',
+      sourceType: 'YOUTUBE_VIDEO',
+      promptAt: new Date(), // Prompt immediately
+    },
+  });
+
+  return { eligible: true };
+}

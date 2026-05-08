@@ -73,6 +73,11 @@ import {
   respondToBusinessShareProposal,
   getUserBusinessPurchases,
   getGlobalTemporaryEffects,
+  uploadYoutubeVideo,
+  getYoutubeVideos,
+  getGlobalYoutubeVideos,
+  incrementVideoViews,
+  checkReviewEligibilityOnExit,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 import {
@@ -1298,6 +1303,58 @@ router.post('/businesses/:businessId/rate', authMiddleware, requireYouAccess, as
     res.json({ ok: true });
   } catch (error) {
     handleRouteError(error, res, 'Rate business error');
+  }
+});
+
+// --- Youtube Videos ---
+
+router.post('/businesses/:businessId/youtube-videos', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const video = await uploadYoutubeVideo(req.user!.id, req.params.businessId, {
+      title: String(req.body?.title ?? ''),
+      description: typeof req.body?.description === 'string' ? req.body.description : undefined,
+      videoBase64: String(req.body?.videoBase64 ?? ''),
+      mimeType: String(req.body?.mimeType ?? ''),
+    });
+    res.status(201).json({ video });
+  } catch (error) {
+    handleRouteError(error, res, 'Upload youtube video error');
+  }
+});
+
+router.get('/businesses/:businessId/youtube-videos', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const videos = await getYoutubeVideos(req.params.businessId);
+    res.json({ videos });
+  } catch (error) {
+    handleRouteError(error, res, 'Get youtube videos error');
+  }
+});
+
+router.get('/youtube-videos', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const videos = await getGlobalYoutubeVideos();
+    res.json({ videos });
+  } catch (error) {
+    handleRouteError(error, res, 'Get global youtube videos error');
+  }
+});
+
+router.post('/youtube-videos/:videoId/view', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const video = await incrementVideoViews(req.params.videoId);
+    res.json({ video });
+  } catch (error) {
+    handleRouteError(error, res, 'Increment video views error');
+  }
+});
+
+router.post('/businesses/:businessId/youtube-exit', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const eligibility = await checkReviewEligibilityOnExit(req.user!.id, req.params.businessId);
+    res.json(eligibility);
+  } catch (error) {
+    handleRouteError(error, res, 'Check youtube review eligibility error');
   }
 });
 
