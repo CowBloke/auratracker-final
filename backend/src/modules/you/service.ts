@@ -4946,11 +4946,12 @@ export async function suspectCheating(userId: string, relationshipId: string) {
       prisma.user.findUnique({ where: { id: accusedId }, select: { money: true } }),
     ]);
     const coupleBalance = relationship.coupleBalance ?? 0;
-    const totalMoney = (viewerUser?.money ?? 0) + (accusedUser?.money ?? 0) + coupleBalance;
+    const totalMoney =
+      (viewerUser?.money ?? BigInt(0)) + (accusedUser?.money ?? BigInt(0)) + BigInt(coupleBalance);
 
     await prisma.$transaction([
       prisma.user.update({ where: { id: userId }, data: { money: totalMoney } }),
-      prisma.user.update({ where: { id: accusedId }, data: { money: 0 } }),
+      prisma.user.update({ where: { id: accusedId }, data: { money: BigInt(0) } }),
       prisma.relationship.update({ where: { id: relationshipId }, data: { status: 'DIVORCED', marriedAt: null, coupleBalance: 0 } }),
     ]);
 
@@ -5027,11 +5028,12 @@ export async function respondToCourtCase(userId: string, accusationId: string, d
     }),
   ]);
   const coupleBalance = marriageRel?.coupleBalance ?? 0;
-  const totalMoney = (accuserUser?.money ?? 0) + (accusedUser?.money ?? 0) + coupleBalance;
+  const totalMoney =
+    (accuserUser?.money ?? BigInt(0)) + (accusedUser?.money ?? BigInt(0)) + BigInt(coupleBalance);
 
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { money: totalMoney } }),
-    prisma.user.update({ where: { id: accusation.accuserId }, data: { money: 0 } }),
+    prisma.user.update({ where: { id: accusation.accuserId }, data: { money: BigInt(0) } }),
     prisma.cheatingAccusation.update({ where: { id: accusationId }, data: { status: 'COURT_TAKEN' } }),
     ...(marriageRel ? [prisma.relationship.update({ where: { id: marriageRel.id }, data: { coupleBalance: 0 } })] : []),
   ]);
@@ -5403,7 +5405,7 @@ export async function repayLoanByBorrower(userId: string, loanId: string, percen
 
   const requestedAmount = Math.min(Math.round(remaining * percentage / 100), remaining);
   const balance = await getSharedBalance(prisma, userId);
-  const actualAmount = Math.min(requestedAmount, balance.money);
+  const actualAmount = Math.min(requestedAmount, Number(balance.money));
 
   if (actualAmount <= 0) throw new Error('BORROWER_INSUFFICIENT_MONEY');
 

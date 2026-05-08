@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Upload, X, Loader2, Video as VideoIcon } from 'lucide-react';
+import { Play, Upload, Loader2, Video as VideoIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -61,11 +61,12 @@ export const runDailyTax = async (
   let totalCollected = 0;
 
   for (const user of users) {
-    const rate = getApplicableRate(user.money, effectiveBrackets);
+    const currentMoney = Number(user.money);
+    const rate = getApplicableRate(currentMoney, effectiveBrackets);
     if (rate <= 0) continue;
 
-    const taxAmount = Math.max(1, Math.floor(user.money * (rate / 100)));
-    const newMoney = Math.max(0, user.money - taxAmount);
+    const taxAmount = Math.max(1, Math.floor(currentMoney * (rate / 100)));
+    const newMoney = Math.max(0, currentMoney - taxAmount);
 
     await prisma.user.update({
       where: { id: user.id },

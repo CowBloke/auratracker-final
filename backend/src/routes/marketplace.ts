@@ -289,7 +289,7 @@ router.post('/purchase', authMiddleware, validate(purchaseSchema), async (req: A
       return res.status(400).json({ error: 'Insufficient money' });
     }
     
-    let updatedUser: { money: number; aura: bigint };
+    let updatedUser: { money: bigint; aura: bigint };
     let userItem: {
       id: string;
       quantity: number;
@@ -1414,7 +1414,7 @@ router.post('/listings/buy', authMiddleware, validate(marketplaceListingActionSc
       },
       newBalance: {
         aura: buyer.aura,
-        money: buyer.money - totalPrice,
+        money: Number(buyer.money) - totalPrice,
       },
     });
   } catch (error) {

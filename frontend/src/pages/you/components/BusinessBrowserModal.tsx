@@ -1270,7 +1270,7 @@ export function BusinessBrowserModal({
       <TeamRosterModal open={Boolean(teamRosterBusiness)} onClose={() => setTeamRosterBusinessId(null)} business={teamRosterBusiness} />
       <ShareholdersModal open={Boolean(shareholdersViewBusiness)} onClose={() => setShareholdersViewBusinessId(null)} business={shareholdersViewBusiness} userId={userId} />
       <FilePlainteModal open={Boolean(plainteBusiness)} onClose={() => setPlainteBusinessId(null)} business={plainteBusiness} userId={userId} players={players} onSubmitted={() => void onReload()} />
-      <YoutubeChannelModal open={Boolean(youtubeBusiness)} onClose={() => setYoutubeBusinessId(null)} business={youtubeBusiness} onSubmitted={() => void onReload()} />
+      <YoutubeChannelModal open={Boolean(youtubeBusiness)} onClose={() => setYoutubeBusinessId(null)} business={youtubeBusiness} onSubmitted={onReload} />
     </>
   );
 }

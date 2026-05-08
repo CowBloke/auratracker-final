@@ -2345,7 +2345,7 @@ router.get('/users', authMiddleware, requireAdminOrFiscal, async (req: AuthReque
         partner: {
           id: relationship.userB.id,
           username: relationship.userB.username,
-          money: relationship.userB.money,
+          money: Number(relationship.userB.money),
         },
       });
       sharedMoneyByUserId.set(relationship.userBId, {
@@ -2355,7 +2355,7 @@ router.get('/users', authMiddleware, requireAdminOrFiscal, async (req: AuthReque
         partner: {
           id: relationship.userA.id,
           username: relationship.userA.username,
-          money: relationship.userA.money,
+          money: Number(relationship.userA.money),
         },
       });
     }

@@ -428,6 +428,20 @@ export interface YouBusinessRating {
   user: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
+export interface YoutubeVideo {
+  id: string;
+  title: string;
+  description: string | null;
+  videoPath: string;
+  views: number;
+  createdAt: string;
+  business?: {
+    id: string;
+    name: string;
+    logoUrl: string | null;
+  };
+}
+
 export interface YouIllegalBusinessUpgrade {
   key: string;
   label: string;
@@ -500,6 +514,7 @@ export interface YouBusiness {
   reviewPromptedAt?: string | null;
   supportAgent?: BusinessSupportAgentSummary | null;
   supportEnabled?: boolean;
+  youtubeVideos?: YoutubeVideo[];
 }
 
 export interface YouBusinessFinancials {
@@ -879,14 +894,7 @@ export interface YouSupplyBusiness {
   transferHistory: YouBusinessTransferHistoryEntry[];
   members: YouBusinessMember[];
   workRatio: number;
-  youtubeVideos: Array<{
-    id: string;
-    title: string;
-    description: string | null;
-    videoPath: string;
-    views: number;
-    createdAt: string;
-  }>;
+  youtubeVideos: YoutubeVideo[];
 }
 
 export interface YouSupplyState {

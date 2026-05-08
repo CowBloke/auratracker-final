@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Play, Star, ExternalLink, MessageSquare, ChevronLeft } from 'lucide-react';
+import { Play, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
@@ -56,7 +56,7 @@ export function YoutubeChannelModal({
       
       // Increment views
       await youApi.incrementVideoViews(video.id);
-    } catch (e) {
+    } catch {
       toast.error('Impossible de charger la vidéo.');
     }
   };
@@ -74,7 +74,7 @@ export function YoutubeChannelModal({
       } else {
         setSelectedVideo(null);
       }
-    } catch (e) {
+    } catch {
       setSelectedVideo(null);
     }
   };

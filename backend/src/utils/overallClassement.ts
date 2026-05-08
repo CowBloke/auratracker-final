@@ -152,7 +152,7 @@ export const recomputeOverallClassement = async (prisma: PrismaClient): Promise<
     );
 
     addCategory(
-      rankEntries(users.map((user) => ({ userId: user.id, metric: user.money })), false),
+      rankEntries(users.map((user) => ({ userId: user.id, metric: Number(user.money) })), false),
       users.length,
     );
 
@@ -161,7 +161,7 @@ export const recomputeOverallClassement = async (prisma: PrismaClient): Promise<
       rankEntries(
         users.map((user) => ({
           userId: user.id,
-          metric: user.money + user.auraCoinBalance * auraCoinPrice,
+          metric: Number(user.money) + user.auraCoinBalance * auraCoinPrice,
         })),
         false,
       ),

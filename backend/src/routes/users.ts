@@ -422,7 +422,7 @@ router.get('/:id/economy-history', authMiddleware, async (req: AuthRequest, res:
     }
 
     let runningAura = Number(user.aura);
-    let runningMoney = user.money;
+    let runningMoney = Number(user.money);
     const historyByDay = new Map<string, { aura: number; money: number }>();
 
     for (const dayKey of dayKeysDescending) {

@@ -764,7 +764,7 @@ router.get('/:category', authMiddleware, async (req: AuthRequest, res: Response)
           select: { money: true, auraCoinBalance: true },
         });
         if (userTotals) {
-          const userTotalValue = userTotals.money + userTotals.auraCoinBalance * priceToUse;
+          const userTotalValue = Number(userTotals.money) + userTotals.auraCoinBalance * priceToUse;
           const higherTotals = await prisma.$queryRaw<{ count: number }[]>`
             SELECT COUNT(*) as count
             FROM "User"

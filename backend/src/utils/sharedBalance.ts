@@ -61,7 +61,7 @@ export async function getSharedBalance(db: DbClient, userId: string) {
 
   return {
     userIds,
-    money: user.money,
+    money: Number(user.money),
     aura: auraUsers.reduce((sum, auraUser) => sum + BigInt(auraUser.aura), BigInt(0)),
   };
 }
@@ -74,7 +74,7 @@ export async function getSharedBalanceByUserIds(db: DbClient, userIds: string[])
   });
 
   return {
-    money: users.reduce((sum, user) => sum + user.money, 0),
+    money: users.reduce((sum, user) => sum + Number(user.money), 0),
     aura: users.reduce((sum, user) => sum + BigInt(user.aura), BigInt(0)),
   };
 }
