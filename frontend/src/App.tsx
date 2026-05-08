@@ -7,7 +7,6 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Games from './pages/Games';
 import DoodleJump from './pages/DoodleJump';
-import DuckHunt from './pages/DuckHunt';
 import Game2048 from './pages/Game2048';
 import FlappyBird from './pages/FlappyBird';
 import Casino from './pages/Casino';
@@ -235,7 +234,6 @@ function App() {
         <Route path="messages" element={<Messages />} />
         <Route path="games" element={<Games />} />
         <Route path="games/doodle-jump" element={<DoodleJump />} />
-        <Route path="games/duck-hunt" element={<DuckHunt />} />
         <Route path="games/2048" element={<Game2048 />} />
         <Route path="games/flappy-bird" element={<FlappyBird />} />
         <Route path="games/chrome-dino" element={<ChromeDino />} />

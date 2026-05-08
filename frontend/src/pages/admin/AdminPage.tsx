@@ -1550,7 +1550,7 @@ export default function Admin() {
     fetchRegistrationReviews();
     fetchBans();
     fetchWarnings();
-    fetchPendingSanctions();
+    fetchPendingSanctions('ALL');
     fetchBanAppeals();
     fetchNameChangeRequests();
     fetchBadges();
@@ -2203,8 +2203,8 @@ export default function Admin() {
   const approveSanction = async (id: string) => {
     try {
       setApprovingSanction(id);
-      await sanctionsApi.approveSanction(id);
-      setPendingSanctions((prev) => prev.filter((s) => s.id !== id));
+      const res = await sanctionsApi.approveSanction(id);
+      setPendingSanctions((prev) => prev.map((s) => s.id === id ? res.data.sanction : s));
       showMessage('success', 'Sanction approuvée et exécutée');
     } catch (error) {
       console.error('Failed to approve sanction:', error);
@@ -2217,8 +2217,8 @@ export default function Admin() {
   const rejectSanction = async (id: string) => {
     try {
       setRejectingSanction(id);
-      await sanctionsApi.rejectSanction(id);
-      setPendingSanctions((prev) => prev.filter((s) => s.id !== id));
+      const res = await sanctionsApi.rejectSanction(id);
+      setPendingSanctions((prev) => prev.map((s) => s.id === id ? res.data.sanction : s));
       showMessage('success', 'Sanction refusée');
     } catch (error) {
       console.error('Failed to reject sanction:', error);

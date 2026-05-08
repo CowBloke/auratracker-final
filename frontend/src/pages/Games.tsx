@@ -154,17 +154,6 @@ const games: Game[] = [
     hasRewards: true,
   },
   {
-    id: 'duck-hunt',
-    pageKey: 'game-duck-hunt',
-    name: 'Duck Hunt',
-    description: 'Chasse aux canards : tire le plus de canards possible pour gagner des récompenses.',
-    type: 'Score',
-    image: getGameImage('duck-hunt'),
-    statsKeys: ['duck_hunt'],
-    releaseRank: 2,
-    hasRewards: true,
-  },
-  {
     id: 'blockblast',
     pageKey: 'game-blockblast',
     name: 'BlockBlast',

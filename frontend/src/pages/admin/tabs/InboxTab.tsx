@@ -161,9 +161,10 @@ export function InboxTab(props: InboxTabProps) {
         const formationItems = pendingFormationReviews.map(p => ({
           id: `formation-${p.id}`, type: 'formation' as const, date: new Date(p.createdAt), data: p,
         }));
-        const sanctionItems = pendingSanctions.map(s => ({
+        const allSanctionItems = pendingSanctions.map(s => ({
           id: `sanction-${s.id}`, type: 'sanction' as const, date: new Date(s.createdAt), data: s,
         }));
+        const sanctionItems = allSanctionItems.filter(i => (i.data as PendingSanction).status === 'PENDING');
 
         const pendingBugItems = allBugItems.filter(i => (i.data as BugReport).status === 'PENDING');
         const pendingAppealItems = allAppealItems.filter(i => (i.data as BanAppeal).status === 'PENDING');
@@ -178,6 +179,7 @@ export function InboxTab(props: InboxTabProps) {
           ...allBugItems.filter(i => (i.data as BugReport).status === 'DONE'),
           ...allAppealItems.filter(i => (i.data as BanAppeal).status !== 'PENDING'),
           ...allNameChangeItems.filter(i => (i.data as NameChangeRequest).status !== 'PENDING'),
+          ...allSanctionItems.filter(i => (i.data as PendingSanction).status !== 'PENDING'),
         ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
         const allPending = pendingUsers.length + pendingBugItems.length + pendingAppealItems.length + pendingNameChangeItems.length + pendingBadgeItems.length + formationItems.length + sanctionItems.length;
@@ -193,7 +195,7 @@ export function InboxTab(props: InboxTabProps) {
           : [...registrationItems, ...pendingBugItems, ...pendingAppealItems, ...pendingNameChangeItems, ...pendingBadgeItems, ...formationItems, ...sanctionItems]
               .sort((a, b) => b.date.getTime() - a.date.getTime());
 
-        const allItemsPool = [...registrationItems, ...archivedRegistrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems, ...pendingBadgeItems, ...formationItems, ...sanctionItems];
+        const allItemsPool = [...registrationItems, ...archivedRegistrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems, ...pendingBadgeItems, ...formationItems, ...allSanctionItems];
         const selectedItem = selectedInboxItem ? allItemsPool.find(i => i.id === selectedInboxItem) ?? null : null;
 
         const ADMIN_CATS = [
