@@ -20,7 +20,7 @@ model User {
   email                   String    @unique
   passwordHash            String
   aura                    BigInt    @default(0)
-  money                   Int       @default(1000)
+  money                   BigInt    @default(1000)
   auraCoinBalance         Float     @default(0) // Aura Coin balance for trading game
   isAdmin                 Boolean   @default(false)
   isSuperAdmin            Boolean   @default(false)
