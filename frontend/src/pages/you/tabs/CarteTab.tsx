@@ -6,6 +6,8 @@ import {
   Building2,
   ChevronDown,
   ExternalLink,
+  Globe,
+  Map as MapIcon,
   MapPin,
   TrendingDown,
   TrendingUp,
@@ -324,6 +326,7 @@ export const CarteTab = forwardRef<
   const [savingPlacementId, setSavingPlacementId] = useState<string | null>(null);
   const [ownerFilter, setOwnerFilter] = useState<'all' | 'mine'>('all');
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [mapType, setMapType] = useState<'map' | 'globe'>('map');
   const [tickerOffset, setTickerOffset] = useState(0);
   const [showBrowserModal, setShowBrowserModal] = useState(false);
   const [browserInitialId, setBrowserInitialId] = useState<string | null>(null);
@@ -436,14 +439,16 @@ export const CarteTab = forwardRef<
       {/* Map */}
       <div className="absolute inset-0">
         <MapView
+          key={mapType}
           ref={mapRef as any}
           center={DEFAULT_CENTER}
-          zoom={DEFAULT_ZOOM}
+          zoom={mapType === 'globe' ? 2.5 : DEFAULT_ZOOM}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
-          dragRotate={false}
-          pitchWithRotate={false}
-          renderWorldCopies={true}
+          dragRotate={mapType === 'globe'}
+          pitchWithRotate={mapType === 'globe'}
+          renderWorldCopies={mapType === 'map'}
+          projection={mapType === 'globe' ? { type: 'globe' } : undefined}
           className="size-full"
         >
           {/* Placement click handler */}
@@ -498,9 +503,11 @@ export const CarteTab = forwardRef<
 
           {/* Map controls */}
           <MapControls
-            position="bottom-right"
+            position="top-right"
             showZoom
-            showLocate={false}
+            showCompass
+            showLocate
+            showFullscreen
           />
         </MapView>
       </div>
@@ -508,23 +515,44 @@ export const CarteTab = forwardRef<
       {/* Gradient overlay */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/10 via-transparent to-background/10" />
 
-      {/* Owner filter pills */}
-      <div className={cn('pointer-events-auto absolute top-3 z-10 flex gap-1.5', embedded ? 'left-3' : 'left-[236px]')}>
-        {(['all', 'mine'] as const).map((f) => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setOwnerFilter(f)}
-            style={
-              ownerFilter === f
-                ? { background: 'hsl(var(--foreground))', color: 'hsl(var(--background))', borderColor: 'hsl(var(--foreground))' }
-                : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'hsl(var(--border) / 0.3)' }
-            }
-            className="rounded-full border px-3 py-1 text-[11px] font-medium transition-all"
-          >
-            {f === 'all' ? 'Tout' : 'À toi'}
-          </button>
-        ))}
+      {/* Owner filter pills & Map type toggle */}
+      <div className={cn('pointer-events-auto absolute top-3 z-10 flex gap-3', embedded ? 'left-3' : 'left-[236px]')}>
+        <div className="flex gap-1.5">
+          {(['all', 'mine'] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setOwnerFilter(f)}
+              style={
+                ownerFilter === f
+                  ? { background: 'hsl(var(--foreground))', color: 'hsl(var(--background))', borderColor: 'hsl(var(--foreground))' }
+                  : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'hsl(var(--border) / 0.3)' }
+              }
+              className="rounded-full border px-3 py-1 text-[11px] font-medium transition-all"
+            >
+              {f === 'all' ? 'Tout' : 'À toi'}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-1.5">
+          {(['map', 'globe'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setMapType(t)}
+              style={
+                mapType === t
+                  ? { background: 'hsl(var(--foreground))', color: 'hsl(var(--background))', borderColor: 'hsl(var(--foreground))' }
+                  : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'hsl(var(--border) / 0.3)' }
+              }
+              className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-all"
+            >
+              {t === 'map' ? <MapIcon className="size-3" /> : <Globe className="size-3" />}
+              {t === 'map' ? 'Carte' : 'Globe'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Left panel — business browser button */}
