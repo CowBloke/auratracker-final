@@ -62,6 +62,12 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
       members: {
         select: { id: true },
       },
+      resourceInventories: {
+        select: {
+          resourceType: true,
+          quantity: true,
+        },
+      },
       shareholders: {
         select: {
           userId: true,

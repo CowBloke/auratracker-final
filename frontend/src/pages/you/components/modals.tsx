@@ -122,7 +122,7 @@ function BusinessTypePickerModal({
   const previewType = businessTypes.find((bt) => bt.key === previewKey) ?? businessTypes[0];
 
   return (
-    <ModalWrap open={open} onClose={onClose} title="Choisir un type d'activité" wide>
+    <ModalWrap open={open} onClose={onClose} title="Choisir un type d'activité" wide contentDataTutorialId="business-type-picker-modal">
       <div className="flex min-h-0 gap-5">
         {/* Left — flat scrollable grid */}
         <div className="max-h-[68vh] min-w-0 flex-1 overflow-y-auto pr-1">
@@ -138,6 +138,7 @@ function BusinessTypePickerModal({
                   key={type.key}
                   type="button"
                   onClick={() => setPreviewKey(type.key)}
+                  data-tutorial-id={`business-type-option-${type.key}`}
                   className={cn(
                     'relative overflow-hidden rounded-xl border p-3 text-left transition-all',
                     isPreviewing ? style.card : 'border-border/40 bg-muted/10 hover:bg-muted/20',
@@ -182,6 +183,7 @@ function BusinessTypePickerModal({
               <button
                 type="button"
                 onClick={() => { onSelect(previewType); onClose(); }}
+                data-tutorial-id="business-type-picker-confirm"
                 className="mt-auto w-full rounded-xl py-3 text-[13px] font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
                 style={{ background: BUSINESS_COLOR_HEX[previewType.key] ?? '#6366f1' }}
               >

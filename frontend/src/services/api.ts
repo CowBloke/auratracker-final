@@ -460,6 +460,7 @@ export interface YouBusiness {
   treasuryMoney: number;
   monthlyRevenue: number;
   monthlyExpenses: number;
+  financials?: YouBusinessFinancials;
   satisfaction: number;
   constructionProject?: YouConstructionProject | null;
   underConstruction?: boolean;
@@ -499,6 +500,48 @@ export interface YouBusiness {
   reviewPromptedAt?: string | null;
   supportAgent?: BusinessSupportAgentSummary | null;
   supportEnabled?: boolean;
+}
+
+export interface YouBusinessFinancials {
+  projectedMonthlyRevenue?: number;
+  projectedMonthlyExpenses?: number;
+  dailyRevenue: number;
+  dailyExpenses: number;
+  payrollDaily: number;
+  netDaily: number;
+  runwayDays: number | null;
+  stockValueGlobal: number;
+  stockValueOffer: number;
+  contractExposure: number;
+  receivables: number;
+  activeDebt: number;
+  creditScore: number;
+  riskScore: number;
+  inputCoverage: {
+    hasRequirements: boolean;
+    percent: number;
+    multiplier: number;
+    shortages: Array<{ resourceType: YouSupplyResourceType | string; required: number; available: number; missing: number }>;
+  };
+  supplierReliability: {
+    percent: number;
+    completed: number;
+    failed: number;
+    label: string;
+  };
+  event: {
+    key: string;
+    label: string;
+    description: string;
+    revenueMultiplier: number;
+    expenseMultiplier: number;
+    riskDelta: number;
+  };
+  constructionFinance?: {
+    remainingCost: number;
+    fundedPercent: number;
+    financingGap: number;
+  } | null;
 }
 
 export interface BusinessPurchasedItem {
@@ -821,6 +864,7 @@ export interface YouSupplyBusiness {
   treasuryMoney: number;
   monthlyRevenue: number;
   monthlyExpenses: number;
+  financials: YouBusinessFinancials;
   satisfaction: number;
   constructionProject: YouConstructionProject | null;
   underConstruction: boolean;

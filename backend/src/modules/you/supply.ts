@@ -10,13 +10,25 @@ import {
   isConstructionActive,
   serializeConstructionProject,
 } from './construction.js';
+import {
+  BUSINESS_INPUT_REQUIREMENTS,
+  SUPPLY_PROFILES,
+  getBusinessFinancialEvent,
+  getBusinessInputCoverage,
+  getBusinessInputRequirements,
+  getBusinessCreditScore,
+  getGlobalMarketUnitPrice,
+  getResourceBasePrice,
+  getRunwayDays,
+  getSupplierReliability,
+  getSupplyProfiles,
+  type YouEconomyResourceType,
+} from './economy.js';
 
-type ResourceType =
-  | 'WOOD' | 'STONE' | 'IRON' | 'FOOD' | 'CLOTH'
-  | 'CONCRETE' | 'STEEL' | 'FUEL' | 'PAPER'
-  | 'LUXURY_GOODS' | 'MEDICINE' | 'DATA' | 'CONTRABAND';
+type ResourceType = YouEconomyResourceType;
 
 const HOUR_MS = 60 * 60 * 1000;
+const SUPPLY_ENABLED_TYPE_KEYS = Array.from(new Set([...Object.keys(SUPPLY_PROFILES), ...Object.keys(BUSINESS_INPUT_REQUIREMENTS)]));
 const USER_PREVIEW_SELECT = {
   id: true,
   username: true,
@@ -27,53 +39,13 @@ const USER_PREVIEW_SELECT = {
   money: true,
 } as const;
 
-const SUPPLY_PROFILES: Record<string, Array<{ resourceType: ResourceType; rate: number; capacity: number; price: number }>> = {
-  lemonade: [{ resourceType: 'FOOD', rate: 3, capacity: 80, price: 8 }],
-  epicerie: [{ resourceType: 'LUXURY_GOODS', rate: 2, capacity: 70, price: 45 }],
-  restaurant: [{ resourceType: 'FOOD', rate: 4, capacity: 100, price: 14 }],
-  coffee_shop: [
-    { resourceType: 'FOOD', rate: 3, capacity: 90, price: 12 },
-    { resourceType: 'LUXURY_GOODS', rate: 1, capacity: 45, price: 42 },
-  ],
-  startup: [{ resourceType: 'DATA', rate: 3, capacity: 90, price: 38 }],
-  agency: [{ resourceType: 'LUXURY_GOODS', rate: 1, capacity: 50, price: 55 }],
-  formation: [{ resourceType: 'PAPER', rate: 2, capacity: 80, price: 20 }],
-  youtube: [
-    { resourceType: 'DATA', rate: 2, capacity: 80, price: 34 },
-    { resourceType: 'PAPER', rate: 1, capacity: 60, price: 18 },
-  ],
-  medecins: [{ resourceType: 'MEDICINE', rate: 2, capacity: 70, price: 50 }],
-  illegal_market: [{ resourceType: 'CONTRABAND', rate: 2, capacity: 60, price: 90 }],
-  farm: [{ resourceType: 'FOOD', rate: 8, capacity: 180, price: 10 }],
-  sawmill: [{ resourceType: 'WOOD', rate: 7, capacity: 160, price: 24 }],
-  quarry: [
-    { resourceType: 'STONE', rate: 7, capacity: 160, price: 18 },
-    { resourceType: 'CONCRETE', rate: 2, capacity: 80, price: 42 },
-  ],
-  iron_mine: [
-    { resourceType: 'IRON', rate: 5, capacity: 140, price: 30 },
-    { resourceType: 'STEEL', rate: 2, capacity: 75, price: 58 },
-  ],
-  fuel_refinery: [{ resourceType: 'FUEL', rate: 3, capacity: 100, price: 48 }],
-  textile_mill: [{ resourceType: 'CLOTH', rate: 5, capacity: 130, price: 26 }],
-};
-const GLOBAL_MARKET_PRICE_MULTIPLIER = 0.55;
 const LINK_TRANSFER_INTERVAL_HOURS = 0.25;
+const LINK_LOGISTICS_PRICE_MULTIPLIER = 0.05;
 
 const CONTRACT_TERMINAL_STATUSES = new Set(['COMPLETED', 'REJECTED', 'CANCELLED']);
 
 function serializeDate(value: Date | null | undefined) {
   return value ? value.toISOString() : null;
-}
-
-function getProfiles(typeKey: string) {
-  return SUPPLY_PROFILES[typeKey] ?? [];
-}
-
-function getGlobalMarketUnitPrice(typeKey: string, resourceType: string) {
-  const profile = getProfiles(typeKey).find((entry) => entry.resourceType === resourceType);
-  const basePrice = profile?.price ?? 10;
-  return Math.max(1, Math.floor(basePrice * GLOBAL_MARKET_PRICE_MULTIPLIER));
 }
 
 function sanitizeQuantity(value: number) {
@@ -86,8 +58,26 @@ function sanitizeUnitPrice(value: number) {
 
 async function ensureSupplyForBusinesses(db: PrismaClient, businesses: Array<{ id: string; typeKey: string }>) {
   const now = new Date();
-  const writes = businesses.flatMap((business) =>
-    getProfiles(business.typeKey).map((profile) =>
+  const writes = businesses.flatMap((business) => {
+    const profilesByResource = new Map<string, { resourceType: ResourceType; rate: number; capacity: number }>();
+    for (const profile of getSupplyProfiles(business.typeKey)) {
+      profilesByResource.set(profile.resourceType, {
+        resourceType: profile.resourceType,
+        rate: profile.rate,
+        capacity: profile.capacity,
+      });
+    }
+    for (const requirement of getBusinessInputRequirements(business.typeKey)) {
+      const existing = profilesByResource.get(requirement.resourceType);
+      const inputCapacity = Math.max(40, requirement.dailyQuantity * 14);
+      profilesByResource.set(requirement.resourceType, {
+        resourceType: requirement.resourceType,
+        rate: existing?.rate ?? 0,
+        capacity: Math.max(existing?.capacity ?? 0, inputCapacity),
+      });
+    }
+
+    return Array.from(profilesByResource.values()).map((profile) =>
       db.businessResourceInventory.upsert({
         where: {
           businessId_resourceType: {
@@ -108,8 +98,8 @@ async function ensureSupplyForBusinesses(db: PrismaClient, businesses: Array<{ i
           lastProducedAt: now,
         },
       }),
-    )
-  );
+    );
+  });
   if (writes.length > 0) {
     await Promise.all(writes);
   }
@@ -173,10 +163,75 @@ export async function sendWorkReminder(userId: string, businessId: string, membe
   });
 }
 
+async function processBusinessInputDemand(db: PrismaClient = prisma) {
+  const businesses = await db.business.findMany({
+    where: {
+      typeKey: { in: Object.keys(BUSINESS_INPUT_REQUIREMENTS) },
+      OR: [
+        { constructionProject: { is: null } },
+        { constructionProject: { is: { status: { not: CONSTRUCTION_STATUS_UNDER_CONSTRUCTION } } } },
+      ],
+    },
+    include: {
+      resourceInventories: true,
+    },
+  });
+
+  if (businesses.length === 0) return;
+
+  const today = getTodayDate();
+  const dayStart = new Date(`${today}T00:00:00.000Z`);
+  const dayEnd = new Date(dayStart.getTime() + 24 * HOUR_MS);
+
+  for (const business of businesses) {
+    const requirements = getBusinessInputRequirements(business.typeKey);
+    if (requirements.length === 0) continue;
+
+    const alreadyProcessed = await db.businessTransaction.findFirst({
+      where: {
+        businessId: business.id,
+        type: 'INPUT_CONSUMPTION',
+        createdAt: { gte: dayStart, lt: dayEnd },
+      },
+      select: { id: true },
+    });
+    if (alreadyProcessed) continue;
+
+    const consumed: Array<{ resourceType: string; quantity: number }> = [];
+    await db.$transaction(async (tx) => {
+      for (const requirement of requirements) {
+        const inventory = business.resourceInventories.find((entry) => entry.resourceType === requirement.resourceType);
+        if (!inventory || inventory.quantity <= 0) continue;
+
+        const quantity = Math.min(inventory.quantity, requirement.dailyQuantity);
+        if (quantity <= 0) continue;
+
+        await tx.businessResourceInventory.update({
+          where: { id: inventory.id },
+          data: { quantity: { decrement: quantity } },
+        });
+        consumed.push({ resourceType: requirement.resourceType, quantity });
+      }
+
+      await tx.businessTransaction.create({
+        data: {
+          businessId: business.id,
+          type: 'INPUT_CONSUMPTION',
+          amount: 0,
+          label: consumed.length > 0
+            ? `Intrants consommes: ${consumed.map((entry) => `${entry.quantity} ${entry.resourceType}`).join(', ')}`
+            : 'Intrants manquants: revenus projetes sous pression',
+          actorId: null,
+        },
+      });
+    });
+  }
+}
+
 export async function accrueBusinessSupply(db: PrismaClient = prisma) {
   const businesses = await db.business.findMany({
     where: {
-      typeKey: { in: Object.keys(SUPPLY_PROFILES) },
+      typeKey: { in: SUPPLY_ENABLED_TYPE_KEYS },
       OR: [
         { constructionProject: { is: null } },
         { constructionProject: { is: { status: { not: CONSTRUCTION_STATUS_UNDER_CONSTRUCTION } } } },
@@ -185,6 +240,7 @@ export async function accrueBusinessSupply(db: PrismaClient = prisma) {
     select: { id: true, typeKey: true },
   });
   await ensureSupplyForBusinesses(db, businesses);
+  await processBusinessInputDemand(db);
 
   const inventories = await db.businessResourceInventory.findMany({
     where: { productionRatePerHour: { gt: 0 } },
@@ -390,7 +446,7 @@ export async function processSupplyLinks(db: PrismaClient = prisma) {
         },
       },
       include: {
-        business: { select: { id: true, ownerId: true, typeKey: true } },
+        business: { select: { id: true, ownerId: true, typeKey: true, treasuryMoney: true } },
       },
     });
     if (!sourceInventory || sourceInventory.quantity <= 0) continue;
@@ -436,8 +492,11 @@ export async function processSupplyLinks(db: PrismaClient = prisma) {
     if (!targetInventory) continue;
 
     const capacityLeft = Math.max(0, targetInventory.capacity - targetInventory.quantity);
-    const movedQuantity = Math.min(sourceInventory.quantity, transferable, capacityLeft);
+    const logisticsUnitCost = Math.max(1, Math.floor(getResourceBasePrice(sourceInventory.business.typeKey, sourceInventory.resourceType) * LINK_LOGISTICS_PRICE_MULTIPLIER));
+    const affordableByLogistics = Math.max(0, Math.floor(sourceInventory.business.treasuryMoney / logisticsUnitCost));
+    const movedQuantity = Math.min(sourceInventory.quantity, transferable, capacityLeft, affordableByLogistics);
     if (movedQuantity <= 0) continue;
+    const logisticsCost = movedQuantity * logisticsUnitCost;
 
     await db.$transaction(async (tx) => {
       await tx.businessResourceInventory.update({
@@ -447,6 +506,19 @@ export async function processSupplyLinks(db: PrismaClient = prisma) {
       await tx.businessResourceInventory.update({
         where: { id: targetInventory.id },
         data: { quantity: { increment: movedQuantity } },
+      });
+      await tx.business.update({
+        where: { id: link.sourceBusinessId },
+        data: { treasuryMoney: { decrement: logisticsCost } },
+      });
+      await tx.businessTransaction.create({
+        data: {
+          businessId: link.sourceBusinessId,
+          type: 'SUPPLY_LOGISTICS',
+          amount: -logisticsCost,
+          label: `Logistique ${movedQuantity} ${sourceInventory.resourceType} vers stock interne`,
+          actorId: null,
+        },
       });
     });
 
@@ -630,6 +702,99 @@ function serializePlainteNode(plainte: any) {
     createdAt: serializeDate(plainte.createdAt),
     plaintif: plainte.plaintif ?? null,
     defendant: plainte.defendant ?? null,
+  };
+}
+
+function buildSupplyBusinessFinancials(business: any, contracts: any[], marketOffers: any[]) {
+  const inventories = business.resourceInventories ?? [];
+  const offers = business.supplyOffers ?? [];
+  const loans = business.loans ?? [];
+  const members = business.members ?? [];
+  const supplierContracts = contracts.filter((contract) => contract.supplierBusinessId === business.id);
+  const buyerContracts = contracts.filter((contract) => contract.buyerBusinessId === business.id);
+  const liveStatuses = new Set(['PENDING', 'ACTIVE']);
+  const inputCoverage = getBusinessInputCoverage(business.typeKey, inventories);
+  const event = getBusinessFinancialEvent(business.id, business.typeKey);
+  const payrollDaily = members.reduce((sum: number, member: any) => sum + Math.max(0, member.salary ?? 0), 0);
+  const projectedMonthlyRevenue = Math.floor((business.monthlyRevenue ?? 0) * inputCoverage.multiplier * event.revenueMultiplier);
+  const projectedMonthlyExpenses = Math.floor((business.monthlyExpenses ?? 0) * event.expenseMultiplier);
+  const dailyRevenue = projectedMonthlyRevenue > 0 ? Math.max(1, Math.round(projectedMonthlyRevenue / 30)) : 0;
+  const dailyOperatingExpenses = projectedMonthlyExpenses > 0 ? Math.max(1, Math.round(projectedMonthlyExpenses / 30)) : 0;
+  const dailyExpenses = dailyOperatingExpenses + payrollDaily;
+  const netDaily = dailyRevenue - dailyExpenses;
+  const contractExposure = buyerContracts
+    .filter((contract) => liveStatuses.has(contract.status))
+    .reduce((sum, contract) => sum + Math.max(0, contract.totalQuantity - contract.deliveredQuantity) * contract.unitPrice, 0);
+  const receivables = supplierContracts
+    .filter((contract) => liveStatuses.has(contract.status))
+    .reduce((sum, contract) => sum + Math.max(0, contract.totalQuantity - contract.deliveredQuantity) * contract.unitPrice, 0);
+  const activeDebt = loans
+    .filter((loan: any) => loan.status === 'ACTIVE')
+    .reduce((sum: number, loan: any) => {
+      const totalOwed = Math.round(loan.amount * (1 + (loan.interestRate ?? 0) / 100));
+      return sum + Math.max(0, totalOwed - (loan.repaidAmount ?? 0));
+    }, 0);
+  const stockValueGlobal = inventories.reduce((sum: number, inventory: any) =>
+    sum + inventory.quantity * getGlobalMarketUnitPrice(business.typeKey, inventory.resourceType), 0);
+  const stockValueOffer = inventories.reduce((sum: number, inventory: any) => {
+    const offer = offers.find((entry: any) => entry.resourceType === inventory.resourceType && entry.isActive);
+    return sum + inventory.quantity * (offer?.unitPrice ?? getGlobalMarketUnitPrice(business.typeKey, inventory.resourceType));
+  }, 0);
+  const reliability = getSupplierReliability(supplierContracts);
+  const runwayDays = getRunwayDays(business.treasuryMoney, Math.max(0, dailyExpenses - dailyRevenue));
+  const creditScore = getBusinessCreditScore({
+    treasuryMoney: business.treasuryMoney,
+    monthlyRevenue: projectedMonthlyRevenue,
+    monthlyExpenses: projectedMonthlyExpenses + payrollDaily * 30,
+    satisfaction: business.satisfaction ?? 70,
+    activeDebt,
+    reliabilityPercent: reliability.percent,
+    runwayDays,
+  });
+  const constructionFinance = business.constructionProject
+    ? (() => {
+        const materials = business.constructionProject.materials ?? [];
+        const remainingCost = materials.reduce((sum: number, material: any) => {
+          const remaining = Math.max(0, material.requiredQuantity - material.deliveredQuantity);
+          const cheapestOffer = marketOffers
+            .filter((offer: any) => offer.resourceType === material.resourceType && offer.isActive && offer.businessId !== business.id)
+            .sort((a: any, b: any) => a.unitPrice - b.unitPrice)[0];
+          const fallback = getResourceBasePrice(business.typeKey, material.resourceType);
+          return sum + remaining * (cheapestOffer?.unitPrice ?? fallback);
+        }, 0);
+        return {
+          remainingCost,
+          fundedPercent: remainingCost <= 0 ? 100 : Math.min(100, Math.round((business.treasuryMoney / remainingCost) * 100)),
+          financingGap: Math.max(0, remainingCost - business.treasuryMoney),
+        };
+      })()
+    : null;
+  const riskScore = Math.max(0, Math.min(100,
+    100
+      - Math.round((creditScore - 300) / 5.5)
+      + Math.max(0, 70 - inputCoverage.percent)
+      + event.riskDelta,
+  ));
+
+  return {
+    projectedMonthlyRevenue,
+    projectedMonthlyExpenses,
+    dailyRevenue,
+    dailyExpenses,
+    payrollDaily,
+    netDaily,
+    runwayDays,
+    stockValueGlobal,
+    stockValueOffer,
+    contractExposure,
+    receivables,
+    activeDebt,
+    creditScore,
+    riskScore,
+    inputCoverage,
+    supplierReliability: reliability,
+    event,
+    constructionFinance,
   };
 }
 
@@ -855,6 +1020,7 @@ export async function getSupplyState(userId: string) {
         const workedCount = activeMembers.filter((m) => m.lastWorkDate === today).length;
         return workedCount >= 4 ? 1.25 : workedCount / activeMembers.length;
       })(),
+      financials: buildSupplyBusinessFinancials(business, contracts, marketOffers),
     })),
     marketOffers: accessibleMarketOffers,
     contracts: contracts.map(serializeContract),

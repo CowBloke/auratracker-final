@@ -122,6 +122,8 @@ export function TutorialOverlay() {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<Element | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
+  const advanceTimerRef = useRef<number | null>(null);
+  const listenerCleanupRef = useRef<(() => void) | null>(null);
 
   const updateSpotlight = useCallback((el: Element, pad: number) => {
     const r = el.getBoundingClientRect();
@@ -130,8 +132,14 @@ export function TutorialOverlay() {
 
   const cleanupStep = useCallback(() => {
     targetRef.current = null;
+    listenerCleanupRef.current?.();
+    listenerCleanupRef.current = null;
     observerRef.current?.disconnect();
     observerRef.current = null;
+    if (advanceTimerRef.current) {
+      window.clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -186,6 +194,31 @@ export function TutorialOverlay() {
       });
       observerRef.current.observe(el);
       observerRef.current.observe(document.body);
+
+      const advanceMode = currentStep.advanceOn ?? 'manual';
+      const scheduleNext = () => {
+        if (cancelled || advanceTimerRef.current) return;
+        advanceTimerRef.current = window.setTimeout(() => {
+          advanceTimerRef.current = null;
+          if (!cancelled) next();
+        }, currentStep.advanceDelayMs ?? 450);
+      };
+
+      if (advanceMode === 'target-present') {
+        scheduleNext();
+      } else if (advanceMode === 'target-click') {
+        el.addEventListener('click', scheduleNext);
+        listenerCleanupRef.current = () => el.removeEventListener('click', scheduleNext);
+      } else if (advanceMode === 'target-input' || advanceMode === 'target-change') {
+        const validateInput = () => {
+          const value = 'value' in el ? String((el as HTMLInputElement).value ?? '') : '';
+          if (value.trim().length > 0) scheduleNext();
+        };
+        const eventName = advanceMode === 'target-input' ? 'input' : 'change';
+        el.addEventListener(eventName, validateInput);
+        listenerCleanupRef.current = () => el.removeEventListener(eventName, validateInput);
+        validateInput();
+      }
     };
 
     void setupStep();
@@ -193,7 +226,7 @@ export function TutorialOverlay() {
     return () => {
       cancelled = true;
     };
-  }, [active, currentStep, navigate, cleanupStep, updateSpotlight]);
+  }, [active, currentStep, navigate, cleanupStep, updateSpotlight, next]);
 
   useEffect(() => {
     return () => cleanupStep();
@@ -209,6 +242,7 @@ export function TutorialOverlay() {
 
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === totalSteps - 1;
+  const manualNextAllowed = currentStep.advanceOn == null || currentStep.advanceOn === 'manual' || currentStep.requireManualAdvance;
 
   return (
     <>
@@ -308,6 +342,7 @@ export function TutorialOverlay() {
             <Button
               size="sm"
               onClick={isLast ? stop : next}
+              disabled={!manualNextAllowed}
               className={cn('h-7 gap-1 px-3 text-xs', isLast && 'bg-primary text-primary-foreground hover:bg-primary/90')}
             >
               {isLast ? 'Terminer' : 'Suivant'}

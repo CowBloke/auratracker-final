@@ -1,7 +1,7 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import {
   Building2,
-  Wallet, MapPin, AlertTriangle, ChevronRight, Hammer,
+  Wallet, MapPin, AlertTriangle, ChevronRight, Hammer, Plus, Gauge, TrendingUp,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -59,9 +59,12 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
   const isProducer = PRODUCER_TYPES.has(b.typeKey);
   const myMember = b.members.find((m) => m.user.id === currentUserId);
   const needsWork = isProducer && myMember != null && !myMember.workedToday && !b.underConstruction;
+  const f = b.financials;
+  const displayNet = f?.netDaily ?? Math.round(net / 30);
+  const runwayLabel = f?.runwayDays == null ? 'stable' : `${f.runwayDays}j`;
 
   return (
-    <div className="rounded-xl border border-border/40 bg-card transition-all hover:border-border">
+    <div className="rounded-xl border border-border/40 bg-card transition-all hover:border-border" data-tutorial-id="you-dashboard-owned-business-card">
       {/* Placement warning */}
       {isUnplaced && (
         <div className="flex items-center gap-2 rounded-t-xl border-b border-amber-400/20 bg-amber-400/8 px-3 py-1.5">
@@ -71,6 +74,7 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
             type="button"
             onClick={(e) => { e.stopPropagation(); onStartPlacing(b.id); }}
             className="flex shrink-0 items-center gap-1 rounded-md bg-amber-400/15 px-2 py-0.5 text-[10px] font-medium text-amber-400 transition-colors hover:bg-amber-400/25"
+            data-tutorial-id="you-dashboard-place-business"
           >
             <MapPin className="h-2.5 w-2.5" />
             Placer
@@ -87,6 +91,7 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
             type="button"
             onClick={(e) => { e.stopPropagation(); onWork(); }}
             className="flex shrink-0 items-center gap-1 rounded-md bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400 transition-colors hover:bg-orange-500/25"
+            data-tutorial-id="you-dashboard-work-button"
           >
             <Hammer className="h-2.5 w-2.5" />
             Travailler
@@ -112,12 +117,28 @@ function OwnedBizTile({ b, onManage, onWork, onStartPlacing, currentUserId }: {
             <div className="text-[12px] font-semibold tabular-nums">{b.treasuryMoney.toLocaleString('fr-FR')}€</div>
           </div>
           <div>
-            <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Net /mois</div>
-            <div className={cn('text-[12px] font-semibold tabular-nums', net >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-              {net >= 0 ? '+' : ''}{net.toLocaleString('fr-FR')}€
+            <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Net /jour</div>
+            <div className={cn('text-[12px] font-semibold tabular-nums', displayNet >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+              {displayNet >= 0 ? '+' : ''}{displayNet.toLocaleString('fr-FR')}€
             </div>
           </div>
         </div>
+        {f && (
+          <div className="mt-2 grid grid-cols-3 gap-1.5 border-t border-border/30 pt-2">
+            <div>
+              <div className="text-[8px] uppercase tracking-wide text-muted-foreground/70">Runway</div>
+              <div className={cn('text-[10px] font-semibold tabular-nums', f.runwayDays != null && f.runwayDays < 5 ? 'text-amber-400' : 'text-muted-foreground')}>{runwayLabel}</div>
+            </div>
+            <div>
+              <div className="text-[8px] uppercase tracking-wide text-muted-foreground/70">Crédit</div>
+              <div className="text-[10px] font-semibold tabular-nums text-sky-400">{f.creditScore}</div>
+            </div>
+            <div>
+              <div className="text-[8px] uppercase tracking-wide text-muted-foreground/70">Intrants</div>
+              <div className={cn('text-[10px] font-semibold tabular-nums', f.inputCoverage.percent >= 80 ? 'text-emerald-400' : f.inputCoverage.percent >= 45 ? 'text-amber-400' : 'text-red-400')}>{f.inputCoverage.percent}%</div>
+            </div>
+          </div>
+        )}
         <Sparkline data={sparkData} color={color} />
       </button>
     </div>
@@ -186,13 +207,14 @@ function MemberBizTile({ b, currentUserId, onOpen, onWork }: {
 
 // ---- Left Rail ----
 
-function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlacing, onOpenBrowser }: {
+function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlacing, onOpenBrowser, onCreateBusiness }: {
   data: YouState;
   currentUserId: string;
   onManageBiz: (id: string) => void;
   onWorkBiz: (id: string) => void;
   onStartPlacing: (id: string) => void;
   onOpenBrowser: () => void;
+  onCreateBusiness: () => void;
 }) {
   const owned = data.ownedBusinesses;
   const memberOnly = data.memberBusinesses;
@@ -207,12 +229,21 @@ function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlac
   const totalNet = owned.reduce((s, b) => s + b.monthlyRevenue - b.monthlyExpenses, 0);
 
   return (
-    <div className="you-dash-left-rail border-r border-border/40">
+    <div className="you-dash-left-rail border-r border-border/40" data-tutorial-id="you-dashboard-left-rail">
       {/* Scrollable content */}
       <div className="you-dash-left-scroll px-3 py-4">
         {/* Empire header */}
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Ton empire</span>
+          <button
+            type="button"
+            onClick={onCreateBusiness}
+            className="inline-flex h-6 items-center gap-1 rounded-md border border-border/50 px-2 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            data-tutorial-id="you-dashboard-create-business"
+          >
+            <Plus className="h-3 w-3" />
+            Créer
+          </button>
           <span className="rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{owned.length}/{data.businessSlots}</span>
         </div>
 
@@ -226,6 +257,16 @@ function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlac
             </div>
             <div className="text-2xl font-semibold tabular-nums">
               {totalTreasury.toLocaleString('fr-FR')}<span className="ml-1 text-sm text-muted-foreground">€</span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border/30 pt-2">
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <Gauge className="h-3 w-3" />
+                Crédit moyen {Math.round(owned.reduce((s, b) => s + (b.financials?.creditScore ?? 500), 0) / Math.max(1, owned.length))}
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <TrendingUp className="h-3 w-3" />
+                {owned.reduce((s, b) => s + (b.financials?.receivables ?? 0), 0).toLocaleString('fr-FR')}€ à recevoir
+              </div>
             </div>
           </div>
         )}
@@ -503,8 +544,9 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
           onWorkBiz={setProductionBizId}
           onStartPlacing={handleStartPlacing}
           onOpenBrowser={() => setShowBrowserModal(true)}
+          onCreateBusiness={() => setCreateOpen(true)}
         />
-        <div className="you-dash-map">
+        <div className="you-dash-map" data-tutorial-id="you-dashboard-map">
           <CarteTab
             ref={carteRef}
             data={data}

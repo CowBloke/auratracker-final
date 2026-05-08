@@ -11,6 +11,9 @@ export interface TutorialStep {
   actionText?: string;
   spotlightPadding?: number;
   route?: string;
+  advanceOn?: 'manual' | 'target-click' | 'target-input' | 'target-change' | 'target-present';
+  advanceDelayMs?: number;
+  requireManualAdvance?: boolean;
 }
 
 export interface TutorialSection {

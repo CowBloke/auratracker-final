@@ -45,6 +45,14 @@ import {
   isConstructionActive,
   serializeConstructionProject,
 } from './construction.js';
+import {
+  getBusinessCreditScore,
+  getBusinessFinancialEvent,
+  getBusinessInputCoverage,
+  getGlobalMarketUnitPrice,
+  getRunwayDays,
+  getSupplierReliability,
+} from './economy.js';
 
 const FORMATION_FILE_UPLOAD_DIR = 'uploads/formation-files';
 const MAX_FORMATION_FILE_SIZE_BYTES = 25 * 1024 * 1024;
@@ -193,6 +201,20 @@ const BUSINESS_BASE_INCLUDE = {
         orderBy: { resourceType: 'asc' as const },
       },
     },
+  },
+  resourceInventories: {
+    orderBy: { resourceType: 'asc' as const },
+  },
+  supplyOffers: {
+    orderBy: { resourceType: 'asc' as const },
+  },
+  supplyContractsAsSupplier: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 30,
+  },
+  supplyContractsAsBuyer: {
+    orderBy: { createdAt: 'desc' as const },
+    take: 30,
   },
 } as const;
 
@@ -563,6 +585,7 @@ function computeBusinessSuggestedShareAmount(business: {
 }
 
 export function getBusinessRevenueSnapshot(business: {
+  id?: string;
   typeKey: string;
   treasuryMoney: number;
   monthlyRevenue: number;
@@ -570,11 +593,17 @@ export function getBusinessRevenueSnapshot(business: {
   customData?: string | null;
   startupProducts?: any[];
   members?: any[];
+  resourceInventories?: Array<{ resourceType: string; quantity: number }>;
 }) {
   const startupProducts = business.typeKey === 'startup'
     ? (business.startupProducts ?? []).map((product: any) => serializeStartupProduct(product))
     : [];
-  const monthlyRevenue = business.typeKey === 'bank'
+  const inputCoverage = getBusinessInputCoverage(business.typeKey, business.resourceInventories ?? []);
+  const event = business.id ? getBusinessFinancialEvent(business.id, business.typeKey) : {
+    revenueMultiplier: 1,
+    expenseMultiplier: 1,
+  };
+  const rawMonthlyRevenue = business.typeKey === 'bank'
     ? Math.max(0, Math.floor(business.treasuryMoney * 0.04))
     : business.typeKey === 'startup'
       ? startupProducts.reduce((total: number, product: any) => total + product.currentRevenue, 0)
@@ -583,9 +612,11 @@ export function getBusinessRevenueSnapshot(business: {
         : business.typeKey === 'formation'
           ? business.monthlyRevenue + (business.members?.length ?? 0) * 250
           : business.monthlyRevenue;
-  const monthlyExpenses = business.typeKey === 'bank'
+  const rawMonthlyExpenses = business.typeKey === 'bank'
     ? 0
     : business.monthlyExpenses;
+  const monthlyRevenue = Math.floor(rawMonthlyRevenue * inputCoverage.multiplier * event.revenueMultiplier);
+  const monthlyExpenses = Math.floor(rawMonthlyExpenses * event.expenseMultiplier);
   const dailyRevenue = monthlyRevenue > 0 ? Math.max(1, Math.round(monthlyRevenue / 30)) : 0;
 
   return {
@@ -593,6 +624,75 @@ export function getBusinessRevenueSnapshot(business: {
     monthlyExpenses,
     dailyRevenue,
     startupProducts,
+    inputCoverage,
+  };
+}
+
+function getBusinessFinancialSnapshot(business: any, monthlyRevenue: number, monthlyExpenses: number) {
+  const payrollDaily = (business.members ?? [])
+    .filter((member: any) => member.status === 'ACTIVE')
+    .reduce((sum: number, member: any) => sum + Math.max(0, member.salary ?? 0), 0);
+  const dailyRevenue = monthlyRevenue > 0 ? Math.max(1, Math.round(monthlyRevenue / 30)) : 0;
+  const dailyOperatingExpenses = monthlyExpenses > 0 ? Math.max(1, Math.round(monthlyExpenses / 30)) : 0;
+  const dailyExpenses = dailyOperatingExpenses + payrollDaily;
+  const netDaily = dailyRevenue - dailyExpenses;
+  const inventories = business.resourceInventories ?? [];
+  const offers = business.supplyOffers ?? [];
+  const stockValueGlobal = inventories.reduce((sum: number, inventory: any) =>
+    sum + inventory.quantity * getGlobalMarketUnitPrice(business.typeKey, inventory.resourceType), 0);
+  const stockValueOffer = inventories.reduce((sum: number, inventory: any) => {
+    const offer = offers.find((entry: any) => entry.resourceType === inventory.resourceType && entry.isActive);
+    return sum + inventory.quantity * (offer?.unitPrice ?? getGlobalMarketUnitPrice(business.typeKey, inventory.resourceType));
+  }, 0);
+  const liveStatuses = new Set(['PENDING', 'ACTIVE']);
+  const contractExposure = (business.supplyContractsAsBuyer ?? [])
+    .filter((contract: any) => liveStatuses.has(contract.status))
+    .reduce((sum: number, contract: any) => sum + Math.max(0, contract.totalQuantity - contract.deliveredQuantity) * contract.unitPrice, 0);
+  const receivables = (business.supplyContractsAsSupplier ?? [])
+    .filter((contract: any) => liveStatuses.has(contract.status))
+    .reduce((sum: number, contract: any) => sum + Math.max(0, contract.totalQuantity - contract.deliveredQuantity) * contract.unitPrice, 0);
+  const activeDebt = (business.loans ?? [])
+    .filter((loan: any) => loan.status === 'ACTIVE')
+    .reduce((sum: number, loan: any) => {
+      const totalOwed = Math.round(loan.amount * (1 + (loan.interestRate ?? 0) / 100));
+      return sum + Math.max(0, totalOwed - (loan.repaidAmount ?? 0));
+    }, 0);
+  const inputCoverage = getBusinessInputCoverage(business.typeKey, inventories);
+  const event = getBusinessFinancialEvent(business.id, business.typeKey);
+  const supplierReliability = getSupplierReliability(business.supplyContractsAsSupplier ?? []);
+  const runwayDays = getRunwayDays(business.treasuryMoney, Math.max(0, dailyExpenses - dailyRevenue));
+  const creditScore = getBusinessCreditScore({
+    treasuryMoney: business.treasuryMoney,
+    monthlyRevenue,
+    monthlyExpenses: monthlyExpenses + payrollDaily * 30,
+    satisfaction: business.satisfaction ?? 70,
+    activeDebt,
+    reliabilityPercent: supplierReliability.percent,
+    runwayDays,
+  });
+  const riskScore = Math.max(0, Math.min(100,
+    100
+      - Math.round((creditScore - 300) / 5.5)
+      + Math.max(0, 70 - inputCoverage.percent)
+      + event.riskDelta,
+  ));
+
+  return {
+    dailyRevenue,
+    dailyExpenses,
+    payrollDaily,
+    netDaily,
+    runwayDays,
+    stockValueGlobal,
+    stockValueOffer,
+    contractExposure,
+    receivables,
+    activeDebt,
+    creditScore,
+    riskScore,
+    inputCoverage,
+    supplierReliability,
+    event,
   };
 }
 
@@ -741,6 +841,7 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     : null;
   const constructionProject = serializeConstructionProject(business.constructionProject);
   const underConstruction = isConstructionActive(business.constructionProject);
+  const financials = getBusinessFinancialSnapshot(business, underConstruction ? 0 : monthlyRevenue, underConstruction ? 0 : monthlyExpenses);
 
   return {
     id: business.id,
@@ -763,6 +864,7 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     treasuryMoney,
     monthlyRevenue: underConstruction ? 0 : monthlyRevenue,
     monthlyExpenses: underConstruction ? 0 : monthlyExpenses,
+    financials,
     satisfaction: business.satisfaction,
     constructionProject,
     underConstruction,

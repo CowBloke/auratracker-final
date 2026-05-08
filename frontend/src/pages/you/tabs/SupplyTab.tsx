@@ -4,6 +4,7 @@ import {
   Briefcase,
   Building2,
   Check,
+  Gauge,
   Gavel,
   GraduationCap,
   Hammer,
@@ -15,6 +16,7 @@ import {
   RefreshCw,
   Settings,
   Tag,
+  TrendingUp,
   User,
   X,
 } from 'lucide-react';
@@ -309,6 +311,7 @@ function NodeCard({
   badge,
   shouldSuppressClick,
   scale = 1,
+  tutorialId,
 }: {
   pos: Vec2;
   accent: string;
@@ -332,11 +335,13 @@ function NodeCard({
   };
   shouldSuppressClick?: () => boolean;
   scale?: number;
+  tutorialId?: string;
 }) {
   const cardAccent = workWarning ? '#f97316' : accent;
   return (
     <div
       className="absolute select-none cursor-grab active:cursor-grabbing"
+      data-tutorial-id={tutorialId}
       style={{ left: 0, top: 0, width: CARD_SIZE, zIndex: 10, transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, transformOrigin: 'top left' }}
       onMouseDown={onDragStart}
       onMouseEnter={() => onHoverChange?.(true)}
@@ -449,6 +454,7 @@ function Sidebar({
           const storage = business.inventories.reduce((sum, entry) => sum + entry.quantity, 0);
           const capacity = business.inventories.reduce((sum, entry) => sum + entry.capacity, 0);
           const progress = business.constructionProject?.progress.percent ?? 0;
+          const financials = business.financials;
           return (
             <button
               key={business.id}
@@ -482,6 +488,11 @@ function Sidebar({
                 <p className="mt-0.5 text-[8px] font-mono text-muted-foreground/45">
                   {underConstruction ? `${progress}% chantier` : business.inventories.length > 0 ? `${storage}/${capacity} stock` : money(business.treasuryMoney)}
                 </p>
+                {financials && (
+                  <p className={cn('mt-0.5 text-[8px] font-mono', financials.netDaily >= 0 ? 'text-emerald-400/80' : 'text-red-400/80')}>
+                    {financials.netDaily >= 0 ? '+' : ''}{financials.netDaily.toLocaleString('fr-FR')}/j · crédit {financials.creditScore}
+                  </p>
+                )}
               </div>
             </button>
           );
@@ -1167,6 +1178,12 @@ function BusinessCanvas({
               accent: node.offer?.isActive ? (node.offer.autoAccept ? '#22c55e' : '#f59e0b') : '#94a3b8',
               onClick: () => onOfferClick(node.offer ? { kind: 'offer', business: business!, offer: node.offer } : { kind: 'inventory', business: business!, inventory: node.inventory! }),
             } : undefined}
+            tutorialId={
+              node.kind === 'inventory' ? 'supply-inventory-node' :
+              node.kind === 'global-market' ? 'supply-global-market-node' :
+              node.kind === 'business' ? 'supply-business-node' :
+              undefined
+            }
           />
         );
       })}
@@ -1198,6 +1215,9 @@ function BusinessCanvas({
           sourceNode?.inventory?.productionRatePerHour ?? 1,
           hoveredLink.maxUnitsPerHour ?? sourceNode?.inventory?.productionRatePerHour ?? 1,
         ));
+        const logisticsUnitCost = sourceNode?.inventory
+          ? Math.max(1, Math.floor((sourceNode.inventory.globalMarketUnitPrice / 0.55) * 0.05))
+          : 1;
         const etaLabel = targetNode?.kind === 'inventory' && targetNode.inventory
           ? formatEta(Math.max(0, targetNode.inventory.capacity - targetNode.inventory.quantity) / ratePerHour)
           : null;
@@ -1213,6 +1233,9 @@ function BusinessCanvas({
               {sourceNode ? resourceLabel(sourceNode.resourceType ?? hoveredLink.sourceResourceType) : resourceLabel(hoveredLink.sourceResourceType)}
             </p>
             <p className="mt-1 text-[10px] text-muted-foreground">Débit: {ratePerHour} u/h</p>
+            {hoveredLink.targetKind !== 'GLOBAL_MARKET' && (
+              <p className="text-[10px] text-muted-foreground">Coût logistique: ≈ {logisticsUnitCost}/u</p>
+            )}
             {etaLabel && <p className="text-[10px] text-muted-foreground">ETA remplissage: {etaLabel}</p>}
             {hoveredLink.targetKind === 'GLOBAL_MARKET' && (
               <p className="text-[10px] text-muted-foreground">Vente auto au prix fixe.</p>
@@ -1246,6 +1269,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function DetailPanel({
   selection,
+  marketOffers,
   onClose,
   onSaveOffer,
   onChooseSource,
@@ -1257,6 +1281,7 @@ function DetailPanel({
   onAcceptPlainte,
 }: {
   selection: NodeSelection;
+  marketOffers: YouSupplyOffer[];
   onClose: () => void;
   onSaveOffer: (businessId: string, resourceType: YouSupplyResourceType, unitPrice: number, autoAccept: boolean, isActive?: boolean) => Promise<void>;
   onChooseSource: (business: YouSupplyBusiness, material: YouConstructionMaterial) => void;
@@ -1365,6 +1390,36 @@ function DetailPanel({
         {/* Scrollable body */}
         <ScrollArea className="max-h-[72vh]">
           <div className="px-5 pb-6 pt-4">
+            {selection?.business.financials && (
+              <div className="mb-5 grid grid-cols-2 gap-2" data-tutorial-id="supply-financial-panel">
+                <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                  <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-muted-foreground/60">
+                    <TrendingUp size={11} /> P&L jour
+                  </div>
+                  <p className={cn('mt-1 text-[13px] font-bold tabular-nums', selection.business.financials.netDaily >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                    {selection.business.financials.netDaily >= 0 ? '+' : ''}{selection.business.financials.netDaily.toLocaleString('fr-FR')}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                  <div className="flex items-center gap-1.5 text-[9px] uppercase tracking-wide text-muted-foreground/60">
+                    <Gauge size={11} /> Risque
+                  </div>
+                  <p className={cn('mt-1 text-[13px] font-bold tabular-nums', selection.business.financials.riskScore < 35 ? 'text-emerald-400' : selection.business.financials.riskScore < 65 ? 'text-amber-400' : 'text-red-400')}>
+                    {selection.business.financials.riskScore}/100
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                  <p className="text-[9px] uppercase tracking-wide text-muted-foreground/60">Runway</p>
+                  <p className="mt-1 text-[13px] font-bold tabular-nums text-foreground">
+                    {selection.business.financials.runwayDays == null ? 'Stable' : `${selection.business.financials.runwayDays} jours`}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                  <p className="text-[9px] uppercase tracking-wide text-muted-foreground/60">Événement</p>
+                  <p className="mt-1 truncate text-[12px] font-semibold text-foreground">{selection.business.financials.event.label}</p>
+                </div>
+              </div>
+            )}
 
             {/* ── Inventory ── */}
             {selection?.kind === 'inventory' && (() => {
@@ -1373,6 +1428,24 @@ function DetailPanel({
                 : 0;
               const bColor = businessColor(selection.business.typeKey);
               const existingOffer = selection.business.offers.find((o) => o.resourceType === selection.inventory.resourceType);
+              const competitorOffers = marketOffers
+                .filter((offer) => offer.resourceType === selection.inventory.resourceType && offer.businessId !== selection.business.id && offer.isActive)
+                .sort((a, b) => a.unitPrice - b.unitPrice);
+              const cheapest = competitorOffers[0]?.unitPrice ?? null;
+              const avgMarket = competitorOffers.length > 0
+                ? Math.round(competitorOffers.reduce((sum, offer) => sum + offer.unitPrice, 0) / competitorOffers.length)
+                : null;
+              const offerPrice = existingOffer?.unitPrice ?? price;
+              const globalPrice = selection.inventory.globalMarketUnitPrice;
+              const baseEstimate = Math.max(globalPrice, Math.round(globalPrice / 0.55));
+              const margin = offerPrice - baseEstimate;
+              const priceLabel = cheapest == null
+                ? 'Aucun concurrent'
+                : offerPrice <= cheapest
+                  ? 'moins cher du marché'
+                  : offerPrice <= (avgMarket ?? cheapest)
+                    ? 'prix compétitif'
+                    : 'premium lent';
               return (
                 <>
                   {/* Stock number + bar — no box */}
@@ -1393,6 +1466,10 @@ function DetailPanel({
                   <div className="divide-y divide-border/40">
                     <StatRow label="Production" value={`${selection.inventory.productionRatePerHour} u/h`} />
                     <StatRow label="Capacité" value={`${pct}%`} />
+                    <StatRow label="Liquidation globale" value={`${globalPrice} money/u`} accent="text-orange-400" />
+                    <StatRow label="Prix marché moyen" value={avgMarket != null ? `${avgMarket} money/u` : 'Aucun'} />
+                    <StatRow label="Position prix" value={priceLabel} accent={cheapest != null && offerPrice <= cheapest ? 'text-emerald-400' : cheapest != null && avgMarket != null && offerPrice > avgMarket ? 'text-amber-400' : undefined} />
+                    <StatRow label="Marge estimée" value={`${margin >= 0 ? '+' : ''}${margin} /u`} accent={margin >= 0 ? 'text-emerald-400' : 'text-red-400'} />
                     <StatRow
                       label="Offre active"
                       value={existingOffer?.isActive ? `${existingOffer.unitPrice} money/u · ${existingOffer.autoAccept ? 'auto' : 'manuelle'}` : 'Aucune'}
@@ -1435,6 +1512,7 @@ function DetailPanel({
                     <button
                       onClick={() => void onSaveOffer(selection.business.id, selection.inventory.resourceType, price, autoAccept, true)}
                       className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-3 text-[13px] font-semibold text-white transition-opacity hover:opacity-90 active:scale-[0.99]"
+                      data-tutorial-id="supply-offer-submit"
                     >
                       <Check size={14} />
                       {existingOffer ? 'Mettre à jour' : 'Publier l\'offre'}
@@ -1577,6 +1655,7 @@ function DetailPanel({
                     <StatRow label="Prix" value={`${selection.contract.unitPrice} money / u`} />
                     <StatRow label="Total" value={money(selection.contract.totalQuantity * selection.contract.unitPrice)} />
                     <StatRow label="Reste à livrer" value={String(selection.contract.totalQuantity - selection.contract.deliveredQuantity)} />
+                    <StatRow label="Cash restant engagé" value={money(Math.max(0, selection.contract.totalQuantity - selection.contract.deliveredQuantity) * selection.contract.unitPrice)} accent={outgoing ? 'text-emerald-400' : 'text-amber-400'} />
                   </div>
                 </>
               );
@@ -1814,7 +1893,7 @@ function OffersPanel({
           </div>
         ))}
       </div>
-      {false && <div className="border-t border-border px-3 py-3">
+      <div className="border-t border-border px-3 py-3" data-tutorial-id="supply-market-panel">
         <p className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50">Sources</p>
         <p className="text-sm font-semibold text-foreground">Marche ressources</p>
         <div className="mt-2 flex gap-1.5">
@@ -1824,8 +1903,8 @@ function OffersPanel({
           </select>
           <input value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} type="number" min={1} className="h-8 w-16 rounded-md border border-border bg-background px-2 text-[11px]" />
         </div>
-      </div>}
-      {false && <div className="flex-1 overflow-y-auto p-2">
+      </div>
+      <div className="max-h-72 overflow-y-auto border-t border-border p-2">
         {filteredMarketOffers.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-4 text-center text-[11px] text-muted-foreground">Aucune source disponible.</div>
         ) : filteredMarketOffers.map((offer) => (
@@ -1838,7 +1917,7 @@ function OffersPanel({
             <p className="mt-1 text-[9px] text-muted-foreground/55">{offer.autoAccept ? 'Acceptation automatique' : 'Validation vendeur'}</p>
           </button>
         ))}
-      </div>}
+      </div>
     </aside>
   );
 }
@@ -2179,6 +2258,19 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
                 <button className={cn('rounded px-2 py-1', viewMode === 'full' && 'bg-muted text-foreground')} onClick={() => setViewMode('full')}>Vue totale</button>
               </div>
               <span className="text-[11px] text-muted-foreground">{money(activeBusiness.treasuryMoney)}</span>
+              {activeBusiness.financials && (
+                <div className="hidden items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 py-1 text-[10px] md:flex" data-tutorial-id="supply-finance-strip">
+                  <span className={cn('font-semibold tabular-nums', activeBusiness.financials.netDaily >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                    {activeBusiness.financials.netDaily >= 0 ? '+' : ''}{activeBusiness.financials.netDaily.toLocaleString('fr-FR')}/j
+                  </span>
+                  <span className="text-muted-foreground/50">·</span>
+                  <span className="text-sky-400">score {activeBusiness.financials.creditScore}</span>
+                  <span className="text-muted-foreground/50">·</span>
+                  <span className={cn(activeBusiness.financials.inputCoverage.percent >= 80 ? 'text-emerald-400' : activeBusiness.financials.inputCoverage.percent >= 45 ? 'text-amber-400' : 'text-red-400')}>
+                    intrants {activeBusiness.financials.inputCoverage.percent}%
+                  </span>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-sm font-medium text-muted-foreground">Supply management</p>
@@ -2215,6 +2307,7 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
             />
             <DetailPanel
               selection={nodeSelection}
+              marketOffers={state?.marketOffers ?? []}
               onClose={() => setNodeSelection(null)}
               onSaveOffer={saveOffer}
               onChooseSource={(business, material) => setSourceTarget({ business, material })}
