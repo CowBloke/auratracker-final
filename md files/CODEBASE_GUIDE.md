@@ -130,9 +130,7 @@ The protected app shell is rendered through `frontend/src/components/layout/Layo
 - `/games/morpion` -> `frontend/src/pages/Morpion.tsx`
 - `/games/polytrack` -> `frontend/src/pages/Polytrack.tsx`
 - `/games/eaglercraft` -> `frontend/src/pages/Eaglercraft.tsx`
-- `/games/subway-surfers` -> `frontend/src/pages/SubwaySurfers.tsx`
 - `/games/hexgl` -> `frontend/src/pages/HexGL.tsx`
-- `/games/opengd` -> `frontend/src/pages/OpenGD.tsx`
 - `/games/crossy-road` -> `frontend/src/pages/CrossyRoad.tsx`
 - `/polymarket` -> `frontend/src/pages/Polymarket.tsx`
 - `/leaderboards` -> `frontend/src/pages/Leaderboards.tsx`

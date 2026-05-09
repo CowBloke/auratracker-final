@@ -724,7 +724,6 @@ const GAME_PAGE_PATH_TO_TYPE: Record<string, string> = {
   '/games/logic-lab': 'logic_lab',
   '/games/minesweeper': 'minesweeper',
   '/games/morpion': 'morpion',
-  '/games/opengd': 'opengd',
   '/games/petit-bac': 'petit_bac',
   '/games/poker': 'poker',
   '/games/polytrack': 'polytrack',
@@ -735,7 +734,6 @@ const GAME_PAGE_PATH_TO_TYPE: Record<string, string> = {
   '/games/snake': 'snake',
   '/games/solitaire': 'solitaire',
   '/games/stack-tower': 'stack_tower',
-  '/games/subway-surfers': 'subway_surfers',
   '/games/tetris': 'tetris',
   '/games/uno': 'uno',
 };

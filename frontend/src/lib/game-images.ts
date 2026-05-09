@@ -38,10 +38,8 @@ const GAME_IMAGE_BY_ID: Record<string, string> = {
   snake: '/images/games/snake.png',
   solitaire: '/images/games/solitaire.png',
   'stack-tower': '/images/games/stack.png',
-  'subway-surfers': '/images/games/subwaysurfer.png',
   sudoku: '/images/games/sudoku.png',
   'logic-lab': '/images/games/sudoku.png',
-  opengd: '/images/games/geometry.png',
   tetris: '/images/games/tetris.png',
   uno: '/images/games/uno.png',
 };

@@ -62,9 +62,7 @@ import BraquageLegal from './pages/BraquageLegal';
 import QSWatermelon from './pages/QSWatermelon';
 import Polytrack from './pages/Polytrack';
 import Eaglercraft from './pages/Eaglercraft';
-import SubwaySurfers from './pages/SubwaySurfers';
 import HexGL from './pages/HexGL';
-import OpenGD from './pages/OpenGD';
 import CrossyRoad from './pages/CrossyRoad';
 import BlockBlast from './pages/BlockBlast';
 import Hextris from './pages/Hextris';
@@ -275,9 +273,7 @@ function App() {
         <Route path="games/morpion" element={<Morpion />} />
         <Route path="games/polytrack" element={<Polytrack />} />
         <Route path="games/eaglercraft" element={<Eaglercraft />} />
-        <Route path="games/subway-surfers" element={<SubwaySurfers />} />
         <Route path="games/hexgl" element={<HexGL />} />
-        <Route path="games/opengd" element={<OpenGD />} />
         <Route path="games/crossy-road" element={<CrossyRoad />} />
         <Route path="games/hextris" element={<Hextris />} />
         <Route path="polymarket" element={<Polymarket />} />
