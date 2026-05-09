@@ -227,7 +227,7 @@ function BusinessInfoPanel({
         : deployedProducts.slice(0, 5).map((p) => ({ key: p.id, label: p.name, price: p.currentRevenue, emoji: null }));
 
   return (
-    <div className="w-[260px] overflow-hidden rounded-xl border border-border bg-background shadow-xl">
+    <div className="w-full overflow-hidden rounded-xl border border-border bg-background shadow-xl">
       {/* Header: icon + name + owner + rating */}
       <div className="flex items-center gap-3 p-4">
         <div
@@ -255,6 +255,12 @@ function BusinessInfoPanel({
           <X className="size-4" />
         </button>
       </div>
+
+      {business.description?.trim() && (
+        <div className="border-t border-border px-4 py-2.5">
+          <p className="break-words whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">{business.description}</p>
+        </div>
+      )}
 
       {/* Services */}
       {services.length > 0 && (
@@ -587,7 +593,7 @@ export const CarteTab = forwardRef<
 
       {/* Selected business info panel */}
       {selectedBusiness && (
-        <div className={cn('pointer-events-auto absolute top-3 z-10 w-[280px]', embedded ? 'right-3' : 'right-[312px]')}>
+        <div className={cn('pointer-events-auto absolute top-3 z-10 w-[360px]', embedded ? 'right-3' : 'right-[312px]')}>
           <BusinessInfoPanel
             business={selectedBusiness}
             userId={userId}

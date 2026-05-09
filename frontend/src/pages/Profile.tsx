@@ -15,7 +15,7 @@ import {
   SocialStats,
   UserEconomyHistoryPoint,
 } from '../services/api';
-import { AlertTriangle, Ban as BanIcon, Building2, CalendarDays, Edit2, Heart, Loader2, MessageCircle, Save, Send, X, Coins, Wallet, Activity, Gamepad2, Award, Zap, Users, Star, Trophy, Sparkles } from 'lucide-react';
+import { AlertTriangle, Ban as BanIcon, Building2, CalendarDays, Edit2, Heart, Loader2, MessageCircle, Save, Send, X, Coins, Wallet, Activity, Zap, Users, Star, Trophy, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -518,51 +518,8 @@ export default function Profile() {
     ...catalogGameRows,
     ...unknownGameRows,
   ].sort((a, b) => b.playedCount - a.playedCount || a.label.localeCompare(b.label, 'fr-FR'));
-  const visibleGameRows = showAllGameStats ? gameRows : gameRows.slice(0, INITIAL_VISIBLE_GAME_ROWS);
   const hasHiddenGameRows = gameRows.length > INITIAL_VISIBLE_GAME_ROWS;
 
-  const summaryMetrics = [
-    {
-      label: 'Aura',
-      value: profileUser.aura.toLocaleString(),
-      detail: formatRank(rankings?.aura?.rank),
-    },
-    {
-      label: 'Streak quotidien',
-      value: `${profileUser.dailyPassStreak} jours`,
-      detail: 'boîte quotidienne',
-    },
-    {
-      label: 'Money',
-      value: formatCurrency(profileUser.money, 0),
-      detail: formatRank(rankings?.money?.rank),
-    },
-    {
-      label: 'AuraCoin',
-      value: `${profileUser.auraCoinBalance.toFixed(4)} AC`,
-      detail: auraCoinValue !== null ? formatCurrency(auraCoinValue) : 'Prix indisponible',
-    },
-    {
-      label: 'Valeur totale',
-      value: totalMoneyValue !== null ? formatCurrency(totalMoneyValue) : '-',
-      detail: 'cash + AuraCoin',
-    },
-    {
-      label: 'Victoires',
-      value: totalWins.toLocaleString(),
-      detail: `${totalWinRate}% win rate`,
-    },
-    {
-      label: 'Parties',
-      value: totalGames.toLocaleString(),
-      detail: 'tous jeux confondus',
-    },
-    {
-      label: 'Classement global',
-      value: overallRank ? `#${overallRank}` : '-',
-      detail: overallTotalPlayers ? `${overallTotalPlayers} joueurs` : 'en calcul',
-    },
-  ];
 
   const headerSocialStats = [
     { label: 'Followers', value: social?.followerCount ?? 0 },
@@ -1356,26 +1313,6 @@ function SidebarPanel({
   );
 }
 
-function MetricTile({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-}) {
-  return (
-    <div className="group relative overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-b from-background/40 to-background/10 p-5 transition-all duration-300 hover:border-border/80 hover:shadow-md hover:shadow-primary/5">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-      <div className="relative z-10">
-        <p className="text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground/80">{label}</p>
-        <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground/90">{value}</p>
-        {detail ? <p className="mt-2 text-xs font-medium text-muted-foreground/80">{detail}</p> : null}
-      </div>
-    </div>
-  );
-}
 
 function CompactMetric({
   label,
@@ -1408,27 +1345,6 @@ function CompactMetric({
   );
 }
 
-function GameStatRow({
-  title,
-  metrics,
-}: {
-  title: string;
-  metrics: string[];
-}) {
-  return (
-    <div className="group flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/20 md:flex-row md:items-center md:justify-between">
-      <span className="text-sm font-semibold capitalize text-foreground/80 transition-colors group-hover:text-foreground">{title}</span>
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm tabular-nums text-muted-foreground md:justify-end">
-        {metrics.map((metric, i) => (
-          <div key={`${title}-${metric}-${i}`} className="flex items-center gap-2">
-            {i > 0 && <div className="hidden h-1 w-1 rounded-full bg-border/80 md:block" />}
-            <span className="font-medium">{metric}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function formatCurrency(value: number, digits = 2) {
   return value.toLocaleString('en-US', {
