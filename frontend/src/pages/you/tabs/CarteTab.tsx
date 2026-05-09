@@ -256,6 +256,12 @@ function BusinessInfoPanel({
         </button>
       </div>
 
+      {business.description?.trim() && (
+        <div className="border-t border-border px-4 py-2.5">
+          <p className="line-clamp-3 text-[11px] text-muted-foreground">{business.description}</p>
+        </div>
+      )}
+
       {/* Services */}
       {services.length > 0 && (
         <div className="border-t border-border">
