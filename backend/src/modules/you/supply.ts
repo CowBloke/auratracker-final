@@ -1,7 +1,7 @@
-import type { PrismaClient } from '@prisma/client';
+﻿import type { PrismaClient } from '@prisma/client';
 import { io, prisma } from '../../server.js';
 import { createNotification } from '../../utils/notifications.js';
-import { emitSharedBalanceUpdatesForUserIds } from '../../utils/sharedBalance.js';
+import { emitSharedBalanceUpdatesForUserIds } from '../../utils/shared-balance.js';
 import { isBusinessManager } from './service.js';
 import {
   CONSTRUCTION_STATUS_COMPLETED,

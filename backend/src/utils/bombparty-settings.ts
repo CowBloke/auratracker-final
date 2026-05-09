@@ -1,5 +1,5 @@
-import type { PrismaClient } from '@prisma/client';
-import { DEFAULT_BOMBPARTY_LANGUAGE_FILE } from './bombpartyDictionary.js';
+﻿import type { PrismaClient } from '@prisma/client';
+import { DEFAULT_BOMBPARTY_LANGUAGE_FILE } from './bombparty-dictionary.js';
 
 export const DEFAULT_BOMBPARTY_WPP = {
   easy: 500,

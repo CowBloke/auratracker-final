@@ -1,9 +1,9 @@
-import { RotateCcw, Rocket, Timer } from 'lucide-react';
+﻿import { RotateCcw, Rocket, Timer } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';

@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { forumApi, ForumSubreddit, ForumPost } from '@/services/api';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

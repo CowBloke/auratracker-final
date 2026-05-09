@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { RotateCcw, Target, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';

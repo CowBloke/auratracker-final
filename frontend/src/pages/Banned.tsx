@@ -1,11 +1,11 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { loadBanInfo } from '@/services/ban';
 import { publicApi } from '@/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { TYPOGRAPHY } from '@/lib/design-system';
-import { CenteredShell } from '@/components/layout/centered-shell';
+import { CenteredShell } from '@/components/layout/CenteredShell';
 import { Loader2, Send, Check } from 'lucide-react';
 import { t } from '@/lib/i18n';
 

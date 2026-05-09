@@ -1,10 +1,10 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAdmin } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { createNotification } from '../utils/notifications.js';
-import { awardBadgeByKey } from '../utils/badgeAwards.js';
+import { awardBadgeByKey } from '../utils/badge-awards.js';
 
 const router = Router();
 

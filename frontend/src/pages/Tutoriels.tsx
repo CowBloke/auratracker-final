@@ -1,11 +1,11 @@
-import { useEffect, useState, type ComponentType } from 'react';
+﻿import { useEffect, useState, type ComponentType } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTutorial } from '@/components/tutorial/TutorialContext';
 import { TUTORIAL_FLOWS, TUTORIAL_FLOW_ORDER } from '@/lib/tutorials';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { infoApi } from '@/services/api';

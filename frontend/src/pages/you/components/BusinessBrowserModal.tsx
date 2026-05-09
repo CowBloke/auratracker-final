@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeftRight, Building2, CalendarDays, ChevronLeft, ChevronRight,
@@ -19,7 +19,7 @@ import {
   InvestModal, LoanModal, ShareholderProposalModal, TeamRosterModal, TransferBusinessModal,
 } from './modals';
 import { YoutubeChannelModal } from './YoutubeChannelModal';
-import { FieldRow, ModalWrap } from './ui';
+import { FieldRow, ModalWrap } from './YouPrimitives';
 import { getBusinessPinColor, TYPE_LABELS_FR } from '../mapConstants';
 import { BUSINESS_ICON_MAP } from '../constants';
 import { withRouteError } from '../utils';

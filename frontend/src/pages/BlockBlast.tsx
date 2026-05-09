@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { Grip, MousePointer2, RotateCcw, Sparkles, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';

@@ -1,9 +1,9 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Map, Shield, Sparkles, Sword, Target, Trash2, Trophy } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { clashApi, type ClashBattleEntry, type ClashBuilding, type ClashLeaderboardEntry, type ClashStateResponse, type ClashTarget } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageCircle, X, Send, Shield, ChevronDown, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { supportApi, SupportMessage, uploadUserImage } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { cn } from '@/lib/utils';
-import { useSmartScroll } from '@/hooks/useSmartScroll';
+import { useSmartScroll } from '@/hooks/use-smart-scroll';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';

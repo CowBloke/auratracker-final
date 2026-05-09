@@ -1,13 +1,13 @@
-import { Socket, Server } from 'socket.io';
+﻿import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
-import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
-import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
-import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
-import { applyDailyGameRewardCaps } from '../utils/dailyGameRewards.js';
-import { duelPartyIds, deleteDuelParty } from './duelParties.js';
-import { AI_PLAYER_ID, AI_PLAYER_NAMES, AI_MOVE_DELAY_MS, aiPartyInfos, getAIP4Move, type AIDifficulty } from './aiGameState.js';
+import { recheckBadgeForCondition } from '../utils/badge-awards.js';
+import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clan-effects.js';
+import { emitSharedBalanceUpdatesForUserIds } from '../utils/shared-balance.js';
+import { applyDailyGameRewardCaps } from '../utils/daily/daily-game-rewards.js';
+import { duelPartyIds, deleteDuelParty } from './duel-parties.js';
+import { AI_PLAYER_ID, AI_PLAYER_NAMES, AI_MOVE_DELAY_MS, aiPartyInfos, getAIP4Move, type AIDifficulty } from './ai-game-state.js';
 
 const ROWS = 6;
 const COLS = 7;

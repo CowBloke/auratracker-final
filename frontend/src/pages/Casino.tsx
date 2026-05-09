@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api, gamesApi } from '../services/api';
@@ -9,8 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { PageShell } from '@/components/layout/page-shell';
-import { startRouletteRound } from './casino/startRouletteRound';
+import { PageShell } from '@/components/layout/PageShell';
+import { startRouletteRound } from './casino/start-roulette-round';
 import {
   BALL_DURATION,
   CHIP_VALUES,

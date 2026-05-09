@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { RotateCcw, Play } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';

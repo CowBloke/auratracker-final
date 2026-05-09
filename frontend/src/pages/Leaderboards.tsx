@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { type Ad, adsApi, auraCoinApi, AuraCoinLeaderboardEntry, gamesApi, leaderboardsApi, clansApi, usersApi } from '../services/api';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { toClanTagData } from '@/components/clans/ClanTag';
 import { ScrollArea } from '@/components/ui/scroll-area';

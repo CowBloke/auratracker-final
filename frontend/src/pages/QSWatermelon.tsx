@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { Trophy } from 'lucide-react';
-import { PageShell, PageHeader } from '@/components/layout/page-shell';
+import { PageShell, PageHeader } from '@/components/layout/PageShell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';

@@ -1,9 +1,9 @@
-import type { PrismaClient } from '@prisma/client';
+﻿import type { PrismaClient } from '@prisma/client';
 import {
   readBombPartyDictionaryWords,
   resolveBombPartyLanguageFile,
-} from './bombpartyDictionary.js';
-import { getBombPartyLanguageSetting } from './bombpartySettings.js';
+} from './bombparty-dictionary.js';
+import { getBombPartyLanguageSetting } from './bombparty-settings.js';
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 

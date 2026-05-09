@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, BookOpen, Building2, Globe, Heart, RotateCcw, ShoppingBasket, TrendingUp, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { AdBanner } from '@/components/ads/AdBanner';
 import { cn } from '@/lib/utils';
 import { type Ad, adsApi, type YouJobOffer, type YouState, youApi } from '@/services/api';
-import { FeedCard, DashboardCard } from '../components/ui';
+import { FeedCard, DashboardCard } from '../components/YouPrimitives';
 import { type FeedItem } from '../types';
 import { isYouNotification, withRouteError } from '../utils';
 

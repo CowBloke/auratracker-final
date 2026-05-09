@@ -1,9 +1,9 @@
-import { useNavigate } from 'react-router-dom';
+﻿import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeftCircle } from 'lucide-react';
 import { TYPOGRAPHY } from '@/lib/design-system';
-import { CenteredShell } from '@/components/layout/centered-shell';
+import { CenteredShell } from '@/components/layout/CenteredShell';
 
 interface BlockedProps {
   message?: string;

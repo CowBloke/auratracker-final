@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,7 +19,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { CenteredShell } from '@/components/layout/centered-shell';
+import { CenteredShell } from '@/components/layout/CenteredShell';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { t } from '@/lib/i18n';
 

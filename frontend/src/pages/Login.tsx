@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/form';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { CenteredShell } from '@/components/layout/centered-shell';
+import { CenteredShell } from '@/components/layout/CenteredShell';
 import { maintenanceApi } from '@/services/api';
 import { normalizeDefaultLandingPage } from '@/lib/default-landing-page';
 import { t } from '@/lib/i18n';

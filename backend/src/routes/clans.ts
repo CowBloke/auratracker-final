@@ -1,21 +1,21 @@
-import { Prisma } from '@prisma/client';
+﻿import { Prisma } from '@prisma/client';
 import { Router, Response } from 'express';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { io, prisma } from '../server.js';
 import { createNotification, emitNotificationUpdated } from '../utils/notifications.js';
-import { recheckBadgeForCondition } from '../utils/badgeAwards.js';
+import { recheckBadgeForCondition } from '../utils/badge-awards.js';
 import {
   buildClanEffectActivation,
   CLAN_EFFECT_GAME_MONEY_BOOST,
   isClanGameMoneyBoostEffect,
   parseClanEffectPayload,
   serializeClanEffect,
-} from '../utils/clanEffects.js';
+} from '../utils/clan-effects.js';
 import {
   getFeaturedClanEvent,
   submitClanEventMiniGame,
   trackClanEventActivity,
-} from '../utils/clanEvents.js';
+} from '../utils/clan-events.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { logAdmin } from '../utils/logger.js';
 

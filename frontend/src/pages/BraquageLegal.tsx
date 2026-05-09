@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { PageShell, PageHeader } from '@/components/layout/page-shell';
+﻿import { useEffect, useMemo, useState } from 'react';
+import { PageShell, PageHeader } from '@/components/layout/PageShell';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

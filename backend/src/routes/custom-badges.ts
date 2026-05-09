@@ -1,8 +1,8 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
-import { awardBadge } from '../utils/badgeAwards.js';
+import { awardBadge } from '../utils/badge-awards.js';
 
 const router = Router();
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePartySocket } from '../contexts/PartySocketContext';
@@ -16,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { useTheme } from '@/contexts/ThemeContext';
 import { resolveThemeImageUrl } from '@/lib/images';

@@ -1,5 +1,5 @@
-import { prisma, io } from '../server.js';
-import { sendWebPushForNotification } from './webPush.js';
+﻿import { prisma, io } from '../server.js';
+import { sendWebPushForNotification } from './web-push.js';
 
 export type NotificationType =
   | 'AURA_RECEIVED'

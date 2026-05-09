@@ -1,8 +1,8 @@
-import { Router, type Response } from 'express';
+﻿import { Router, type Response } from 'express';
 import { type PrismaClient, type Prisma } from '@prisma/client';
 import { authMiddleware, adminMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { prisma, io } from '../server.js';
-import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
+import { emitSharedBalanceUpdates } from '../utils/shared-balance.js';
 
 const router = Router();
 

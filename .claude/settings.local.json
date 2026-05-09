@@ -148,7 +148,11 @@
       "Bash(rtk pnpm *)",
       "Bash(rtk prisma *)",
       "WebFetch(domain:www.mapcn.dev)",
-      "Bash(rtk npx *)"
+      "Bash(rtk npx *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\cowbloke\\\\Programming\\\\Repositories\\\\auratracker-final\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(git mv *)"
     ]
   },
   "outputStyle": "default"

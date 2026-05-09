@@ -1,11 +1,11 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, transferSchema } from '../middleware/validation.js';
 import { logEconomy } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
-import { syncUserDailyAuraState } from '../utils/dailyAura.js';
-import { emitSharedBalanceUpdates, getSharedBalance } from '../utils/sharedBalance.js';
+import { syncUserDailyAuraState } from '../utils/daily/daily-aura.js';
+import { emitSharedBalanceUpdates, getSharedBalance } from '../utils/shared-balance.js';
 import { grantSkillXp } from '../modules/you/service.js';
 
 const router = Router();

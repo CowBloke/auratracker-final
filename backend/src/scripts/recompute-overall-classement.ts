@@ -1,5 +1,5 @@
-import { prisma } from '../lib/prisma.js';
-import { recomputeOverallClassement } from '../utils/overallClassement.js';
+﻿import { prisma } from '../lib/prisma.js';
+import { recomputeOverallClassement } from '../utils/overall-classement.js';
 
 const run = async () => {
   try {

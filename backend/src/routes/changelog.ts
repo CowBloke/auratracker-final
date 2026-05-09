@@ -1,10 +1,10 @@
-import path from 'path';
+﻿import path from 'path';
 import jwt from 'jsonwebtoken';
 import { Router, type Request, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, type AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
-import { ensureDashboardSeedEntries } from '../lib/dashboardSeedData.js';
+import { ensureDashboardSeedEntries } from '../lib/dashboard-seed-data.js';
 import { isAllowedImageUrl, writeBase64UploadImage } from '../utils/uploads.js';
 import { config } from '../config/index.js';
 

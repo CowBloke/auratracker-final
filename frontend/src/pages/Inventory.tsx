@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { type Ad, type BusinessPurchasedItem, adsApi, marketplaceApi, uploadUserImage, youApi } from '../services/api';
 import { AdCard } from '@/components/ads/AdCard';
@@ -23,7 +23,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';

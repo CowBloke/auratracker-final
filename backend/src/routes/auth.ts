@@ -1,4 +1,4 @@
-import { Router, Response, Request } from 'express';
+﻿import { Router, Response, Request } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { prisma } from '../server.js';
@@ -13,9 +13,9 @@ import {
   isReferralEnabled,
   normalizeReferralCode,
 } from '../utils/referrals.js';
-import { serializeClanEffect } from '../utils/clanEffects.js';
-import { DEFAULT_DAILY_AURA_LIMIT } from '../utils/dailyAura.js';
-import { getSharedBalance } from '../utils/sharedBalance.js';
+import { serializeClanEffect } from '../utils/clan-effects.js';
+import { DEFAULT_DAILY_AURA_LIMIT } from '../utils/daily/daily-aura.js';
+import { getSharedBalance } from '../utils/shared-balance.js';
 import { emitNotificationCreated } from '../utils/notifications.js';
 
 const getIpAddress = (req: Request | AuthRequest): string | null => {

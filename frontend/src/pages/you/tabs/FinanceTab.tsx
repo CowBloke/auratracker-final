@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -32,7 +32,7 @@ import {
   youApi,
 } from '@/services/api';
 import { cn } from '@/lib/utils';
-import { Pill, SectionTitle } from '../components/ui';
+import { Pill, SectionTitle } from '../components/YouPrimitives';
 import { formatMoney } from '../utils';
 
 // ── helpers ──────────────────────────────────────────────────────────────────

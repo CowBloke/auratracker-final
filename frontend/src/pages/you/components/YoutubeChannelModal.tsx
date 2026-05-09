@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Play, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { youApi, type YouBusiness, type YoutubeVideo } from '@/services/api';
 import { withRouteError } from '../utils';
-import { ModalWrap } from './ui';
+import { ModalWrap } from './YouPrimitives';
 
 export function YoutubeChannelModal({
   open,

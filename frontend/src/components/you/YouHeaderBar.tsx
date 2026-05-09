@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Brain, Building2, ShieldAlert, Star, TrendingUp, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { type YouSkill, type YouTemporaryEffect, youApi } from '@/services/api';
-import { UserAccountMenu } from '@/components/user-account-menu';
+import { UserAccountMenu } from '@/components/UserAccountMenu';
 import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { TemporaryEffectBadges } from '@/components/temporary-effects/TemporaryEffectBadges';

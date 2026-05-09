@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
+﻿import { useMemo, useRef, useEffect, useState } from 'react';
 import {
   Building2,
   Wallet, MapPin, AlertTriangle, ChevronRight, Hammer, Plus, Gauge, TrendingUp,
@@ -14,7 +14,7 @@ import { ProductionModal } from './components/ProductionModal';
 import { BUSINESS_ICON_MAP } from './constants';
 import { getBusinessPinColor } from './mapConstants';
 import { isYouNotification, withRouteError } from './utils';
-import { FeedCard } from './components/ui';
+import { FeedCard } from './components/YouPrimitives';
 import { type FeedItem } from './types';
 import { CarteTab, type CarteTabHandle } from './tabs/CarteTab';
 import { BusinessBrowserModal } from './components/BusinessBrowserModal';

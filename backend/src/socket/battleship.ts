@@ -1,11 +1,11 @@
-import { Socket, Server } from 'socket.io';
+﻿import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { checkQuestProgress } from '../routes/quests.js';
 import { logGame } from '../utils/logger.js';
-import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clanEffects.js';
-import { emitSharedBalanceUpdatesForUserIds } from '../utils/sharedBalance.js';
-import { applyDailyGameRewardCaps } from '../utils/dailyGameRewards.js';
-import { duelPartyIds, deleteDuelParty } from './duelParties.js';
+import { getActiveClanMoneyBoostPercentsForUsers } from '../utils/clan-effects.js';
+import { emitSharedBalanceUpdatesForUserIds } from '../utils/shared-balance.js';
+import { applyDailyGameRewardCaps } from '../utils/daily/daily-game-rewards.js';
+import { duelPartyIds, deleteDuelParty } from './duel-parties.js';
 
 interface BattleshipPlayer {
   userId: string;

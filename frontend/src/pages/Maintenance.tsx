@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Wrench } from 'lucide-react';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { CenteredShell } from '@/components/layout/centered-shell';
+import { CenteredShell } from '@/components/layout/CenteredShell';
 
 interface MaintenanceProps {
   message?: string;

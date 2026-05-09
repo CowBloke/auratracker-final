@@ -1,5 +1,5 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
-import { getNextParisMidnight, getParisDayKey } from './dailyAura.js';
+﻿import type { Prisma, PrismaClient } from '@prisma/client';
+import { getNextParisMidnight, getParisDayKey } from './daily-aura.js';
 
 export const DAILY_GAME_AURA_LIMIT_SETTING_KEY = 'daily_game_aura_limit';
 export const DAILY_GAME_MONEY_LIMIT_SETTING_KEY = 'daily_game_money_limit';

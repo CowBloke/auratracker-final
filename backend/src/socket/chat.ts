@@ -1,8 +1,8 @@
-import { Socket, Server } from 'socket.io';
+﻿import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { logChat } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
-import { getChatBlockState } from '../utils/chatSettings.js';
+import { getChatBlockState } from '../utils/chat-settings.js';
 
 interface OnlineUser {
   userId: string;

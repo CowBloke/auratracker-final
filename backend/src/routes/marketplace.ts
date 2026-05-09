@@ -1,17 +1,17 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, adminMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, createItemSchema, purchaseSchema, useItemSchema, createMarketplaceListingSchema, marketplaceListingActionSchema } from '../middleware/validation.js';
 import { logMarketplace } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { createNotification } from '../utils/notifications.js';
-import { awardBadge } from '../utils/badgeAwards.js';
+import { awardBadge } from '../utils/badge-awards.js';
 import {
   buildClanEffectActivation,
   CLAN_EFFECT_GAME_MONEY_BOOST,
   isClanGameMoneyBoostEffect,
   parseClanEffectPayload,
-} from '../utils/clanEffects.js';
+} from '../utils/clan-effects.js';
 
 const router = Router();
 

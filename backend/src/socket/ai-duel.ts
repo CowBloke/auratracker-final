@@ -1,5 +1,5 @@
-import { Socket, Server } from 'socket.io';
-import { AI_PLAYER_NAMES, aiPartyInfos, type AIDifficulty } from './aiGameState.js';
+﻿import { Socket, Server } from 'socket.io';
+import { AI_PLAYER_NAMES, aiPartyInfos, type AIDifficulty } from './ai-game-state.js';
 import { startAIMorpionGame } from './morpion.js';
 import { startAIP4Game } from './puissancequatre.js';
 import { startAIChessGame } from './chess.js';

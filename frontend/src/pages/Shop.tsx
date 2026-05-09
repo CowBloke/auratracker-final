@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { type Ad, adsApi, marketplaceApi, clansApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
 import { AdCard } from '@/components/ads/AdCard';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';

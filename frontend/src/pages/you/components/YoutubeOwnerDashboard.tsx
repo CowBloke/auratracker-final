@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Play, Upload, Loader2, Video as VideoIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { youApi, type YouBusiness } from '@/services/api';
 import { withRouteError } from '../utils';
-import { ModalWrap, FieldRow } from './ui';
+import { ModalWrap, FieldRow } from './YouPrimitives';
 
 export function YoutubeOwnerDashboard({
   open,

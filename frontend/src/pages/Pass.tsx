@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { passApi, type PassClaimResponse, type PassRewardEntry, type PassStatus } from '@/services/api';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';

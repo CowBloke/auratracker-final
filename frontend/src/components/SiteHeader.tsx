@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+﻿import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronDown,
@@ -36,7 +36,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { InboxDropdown } from '@/components/inbox/InboxDropdown';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { UserAccountMenu } from '@/components/user-account-menu';
+import { UserAccountMenu } from '@/components/UserAccountMenu';
 import { YouHeaderBar } from '@/components/you/YouHeaderBar';
 import { TopbarCommandPalette } from '@/components/layout/TopbarCommandPalette';
 import { setMoneyIndicatorElement } from '@/lib/money-income-effects';

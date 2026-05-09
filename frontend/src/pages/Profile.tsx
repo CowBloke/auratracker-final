@@ -15,7 +15,7 @@ import {
   SocialStats,
   UserEconomyHistoryPoint,
 } from '../services/api';
-import { AlertTriangle, Ban as BanIcon, Building2, CalendarDays, Edit2, Heart, Loader2, MessageCircle, Save, Send, X } from 'lucide-react';
+import { AlertTriangle, Ban as BanIcon, Building2, CalendarDays, Edit2, Heart, Loader2, MessageCircle, Save, Send, X, Coins, Wallet, Activity, Gamepad2, Award, Zap, Users, Star, Trophy, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -76,12 +76,12 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
 };
 
 const YOU_SKILL_META: Record<string, { label: string; bar: string; text: string }> = {
-  affaires:      { label: 'Affaires',      bar: 'bg-emerald-500', text: 'text-emerald-500' },
-  social:        { label: 'Social',        bar: 'bg-purple-500',  text: 'text-purple-500' },
-  intelligence:  { label: 'Intelligence',  bar: 'bg-sky-500',     text: 'text-sky-500' },
-  charisme:      { label: 'Charisme',      bar: 'bg-pink-500',    text: 'text-pink-500' },
-  finance:       { label: 'Finance',       bar: 'bg-amber-500',   text: 'text-amber-500' },
-  illegalite:    { label: 'Illégalité',    bar: 'bg-rose-500',    text: 'text-rose-500' },
+  affaires: { label: 'Affaires', bar: 'bg-emerald-500', text: 'text-emerald-500' },
+  social: { label: 'Social', bar: 'bg-purple-500', text: 'text-purple-500' },
+  intelligence: { label: 'Intelligence', bar: 'bg-sky-500', text: 'text-sky-500' },
+  charisme: { label: 'Charisme', bar: 'bg-pink-500', text: 'text-pink-500' },
+  finance: { label: 'Finance', bar: 'bg-amber-500', text: 'text-amber-500' },
+  illegalite: { label: 'Illégalité', bar: 'bg-rose-500', text: 'text-rose-500' },
 };
 
 const profileEconomyChartConfig = {
@@ -118,16 +118,16 @@ interface ProfileUser {
     totalMoney: number;
   };
   social?: SocialRelationship &
-    SocialStats & {
-      connections: Array<{
-        id: string;
-        username: string;
-        firstName?: string | null;
-        usernameColor?: string | null;
-        profilePicture?: string | null;
-        createdAt: string;
-      }>;
-    };
+  SocialStats & {
+    connections: Array<{
+      id: string;
+      username: string;
+      firstName?: string | null;
+      usernameColor?: string | null;
+      profilePicture?: string | null;
+      createdAt: string;
+    }>;
+  };
   gameStats: Array<{
     gameType: string;
     wins: number;
@@ -302,19 +302,19 @@ export default function Profile() {
         setProfileUser((prev) =>
           prev
             ? {
-                ...prev,
-                social: prev.social
-                  ? {
-                      ...prev.social,
-                      ...res.data.relationship,
-                      ...res.data.stats,
-                    }
-                  : {
-                      ...res.data.relationship,
-                      ...res.data.stats,
-                      connections: [],
-                    },
-              }
+              ...prev,
+              social: prev.social
+                ? {
+                  ...prev.social,
+                  ...res.data.relationship,
+                  ...res.data.stats,
+                }
+                : {
+                  ...res.data.relationship,
+                  ...res.data.stats,
+                  connections: [],
+                },
+            }
             : prev,
         );
       } else {
@@ -322,19 +322,19 @@ export default function Profile() {
         setProfileUser((prev) =>
           prev
             ? {
-                ...prev,
-                social: prev.social
-                  ? {
-                      ...prev.social,
-                      ...res.data.relationship,
-                      ...res.data.stats,
-                    }
-                  : {
-                      ...res.data.relationship,
-                      ...res.data.stats,
-                      connections: [],
-                    },
-              }
+              ...prev,
+              social: prev.social
+                ? {
+                  ...prev.social,
+                  ...res.data.relationship,
+                  ...res.data.stats,
+                }
+                : {
+                  ...res.data.relationship,
+                  ...res.data.stats,
+                  connections: [],
+                },
+            }
             : prev,
         );
       }
@@ -507,12 +507,12 @@ export default function Profile() {
       playedCount: bombPartyStats?.totalPlayed ?? 0,
       metrics: bombPartyStats
         ? [
-            `${bombPartyStats.longestWord || '-'} record`,
-            `${bombPartyStats.wordsTyped.toLocaleString()} mots`,
-            `${bombPartyStats.wins} V`,
-            `${bombPartyStats.totalPlayed} jouees`,
-            `${bombPartyStats.totalPlayed > 0 ? Math.round((bombPartyStats.wins / bombPartyStats.totalPlayed) * 100) : 0}%`,
-          ]
+          `${bombPartyStats.longestWord || '-'} record`,
+          `${bombPartyStats.wordsTyped.toLocaleString()} mots`,
+          `${bombPartyStats.wins} V`,
+          `${bombPartyStats.totalPlayed} jouees`,
+          `${bombPartyStats.totalPlayed > 0 ? Math.round((bombPartyStats.wins / bombPartyStats.totalPlayed) * 100) : 0}%`,
+        ]
         : ['- record', '0 mots', '0 V', '0 jouees', '0%'],
     },
     ...catalogGameRows,
@@ -574,444 +574,584 @@ export default function Profile() {
   return (
     <>
       <div className="w-full px-0 pb-8">
-        <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm">
-          <div className="relative h-36 overflow-hidden border-b border-border/60 bg-gradient-to-br from-muted via-background to-muted/70 md:h-48">
-          {profileBannerUrl ? (
-            <>
-              <img
-                src={profileBannerUrl}
-                alt={`Banniere de ${profileUser.username}`}
-                className="absolute inset-0 h-full w-full object-cover"
+        <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[2rem] border border-border/40 bg-card/80 backdrop-blur-xl shadow-xl shadow-black/5">
+          <div className="relative h-28 overflow-hidden border-b border-border/30 bg-gradient-to-br from-muted via-background to-muted/70 md:h-36">
+            {profileBannerUrl ? (
+              <>
+                <img
+                  src={profileBannerUrl}
+                  alt={`Banniere de ${profileUser.username}`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/20" />
+              </>
+            ) : null}
+            <div className="absolute -left-20 top-0 h-48 w-48 rounded-full bg-foreground/[0.05] blur-3xl" />
+            <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-foreground/[0.04] blur-3xl" />
+            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card via-card/45 to-transparent" />
+
+            <div className="absolute right-4 top-4 z-30 md:right-6 md:top-5">
+              <OverallClassementBadge
+                rank={overallRank}
+                totalPlayers={overallTotalPlayers}
+                totalScore={overallTotalScore}
               />
-              <div className="absolute inset-0 bg-black/20" />
-            </>
-          ) : null}
-          <div className="absolute -left-20 top-0 h-48 w-48 rounded-full bg-foreground/[0.05] blur-3xl" />
-          <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-foreground/[0.04] blur-3xl" />
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card via-card/45 to-transparent" />
-
-          <div className="absolute right-4 top-4 z-30 md:right-6 md:top-5">
-            <OverallClassementBadge
-              rank={overallRank}
-              totalPlayers={overallTotalPlayers}
-              totalScore={overallTotalScore}
-            />
-          </div>
+            </div>
           </div>
 
-          <div className="relative z-10 border-b border-border/60 px-5 pb-6 pt-4 md:px-8">
-            <div className="flex flex-col gap-5">
-            <div className="relative z-20 -mt-16 flex flex-col gap-4 md:-mt-20 md:flex-row md:items-end md:justify-between">
-              <ProfileAvatar profileUser={profileUser} />
-              <div className="flex shrink-0 flex-wrap items-center gap-3 md:justify-end">
-                {isOwnProfile ? (
-                  <Button
-                    variant="outline"
-                    className="rounded-full px-5"
-                    onClick={() => setEditingBio(true)}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                    Modifier la bio
-                  </Button>
-                ) : (
-                  <>
+          <div className="relative z-10 border-b border-border/30 px-5 pb-5 pt-3 md:px-8">
+            <div className="flex flex-col gap-4">
+              <div className="relative z-20 -mt-12 flex flex-col gap-4 md:-mt-14 md:flex-row md:items-end md:justify-between">
+                <ProfileAvatar profileUser={profileUser} />
+                <div className="flex shrink-0 flex-wrap items-center gap-3 md:justify-end">
+                  {isOwnProfile ? (
                     <Button
                       variant="outline"
                       className="rounded-full px-5"
-                      onClick={() => navigate(`/messages?user=${profileUser.id}`)}
+                      onClick={() => setEditingBio(true)}
                     >
-                      <MessageCircle className="h-4 w-4" />
-                      Message
+                      <Edit2 className="h-4 w-4" />
+                      Modifier la bio
                     </Button>
-                    <Button
-                      onClick={handleFollowToggle}
-                      disabled={socialLoading}
-                      className="rounded-full px-5"
-                    >
-                      {socialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                      {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
-                    </Button>
-                  </>
-                )}
-                {canModerateProfile ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="rounded-full border-amber-500/50 px-5 text-amber-500 hover:bg-amber-500/10"
-                      onClick={openWarningDialog}
-                    >
-                      <AlertTriangle className="h-4 w-4" />
-                      Avertir
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="rounded-full border-orange-500/50 px-5 text-orange-500 hover:bg-orange-500/10"
-                      onClick={openBanDialog}
-                    >
-                      <BanIcon className="h-4 w-4" />
-                      Bannir
-                    </Button>
-                  </>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="min-w-0 space-y-3">
-              <div className="flex flex-wrap items-center gap-3">
-                {isOwnProfile || equippedBadges.length > 0 ? (
-                  <ProfileBadgeSlots
-                    badges={userBadges}
-                    equippedBadge1Id={equippedBadge1Id}
-                    equippedBadge2Id={equippedBadge2Id}
-                    editable={isOwnProfile}
-                    variant="inline"
-                    onEquip={handleEquipBadge}
-                  />
-                ) : null}
-                <span
-                  className="min-w-0 truncate text-3xl font-semibold tracking-tight md:text-4xl"
-                  style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
-                >
-                  {profileUser.username}
-                </span>
-                {clanTag ? (
-                  <ClanTag
-                    tag={clanTag}
-                    className="rounded-md px-2 py-1 text-[11px] font-semibold md:text-xs"
-                  />
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
-                {profileUser.firstName ? (
-                  <span className="font-medium text-foreground/80">{profileUser.firstName}</span>
-                ) : null}
-                <span className="rounded-full border border-border/70 px-3 py-1 text-sm text-muted-foreground">
-                  @{profileUser.username}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-2">
-                  <CalendarDays className="h-4 w-4" />
-                  Membre depuis {memberSinceLabel}
-                </span>
-                {isOwnProfile ? (
-                  <span className="rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
-                    La banniere se change depuis l'inventaire
-                  </span>
-                ) : null}
-              </div>
-
-              <p className={cn('max-w-2xl text-sm leading-6 text-foreground/88', !profileUser.bio && 'text-muted-foreground')}>
-                {profileUser.bio ||
-                  (isOwnProfile
-                    ? 'Ajoute une description pour te presenter aux autres joueurs.'
-                    : 'Aucune description pour le moment.')}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-              {headerSocialStats.map((item) => (
-                <div key={item.label} className="inline-flex items-center gap-2 text-muted-foreground">
-                  <span className="font-semibold text-foreground">{item.value}</span>
-                  <span>{item.label}</span>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="rounded-full px-5"
+                        onClick={() => navigate(`/messages?user=${profileUser.id}`)}
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Message
+                      </Button>
+                      <Button
+                        onClick={handleFollowToggle}
+                        disabled={socialLoading}
+                        className="rounded-full px-5"
+                      >
+                        {socialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        {social?.isFollowing ? 'Ne plus suivre' : 'Suivre'}
+                      </Button>
+                    </>
+                  )}
+                  {canModerateProfile ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="rounded-full border-amber-500/50 px-5 text-amber-500 hover:bg-amber-500/10"
+                        onClick={openWarningDialog}
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                        Avertir
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="rounded-full border-orange-500/50 px-5 text-orange-500 hover:bg-orange-500/10"
+                        onClick={openBanDialog}
+                      >
+                        <BanIcon className="h-4 w-4" />
+                        Bannir
+                      </Button>
+                    </>
+                  ) : null}
                 </div>
-              ))}
-            </div>
+              </div>
+
+              <div className="min-w-0 space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  {isOwnProfile || equippedBadges.length > 0 ? (
+                    <ProfileBadgeSlots
+                      badges={userBadges}
+                      equippedBadge1Id={equippedBadge1Id}
+                      equippedBadge2Id={equippedBadge2Id}
+                      editable={isOwnProfile}
+                      variant="inline"
+                      onEquip={handleEquipBadge}
+                    />
+                  ) : null}
+                  <span
+                    className="min-w-0 truncate text-3xl font-semibold tracking-tight md:text-4xl"
+                    style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
+                  >
+                    {profileUser.username}
+                  </span>
+                  {clanTag ? (
+                    <ClanTag
+                      tag={clanTag}
+                      className="rounded-md px-2 py-1 text-[11px] font-semibold md:text-xs"
+                    />
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+                  {profileUser.firstName ? (
+                    <span className="font-medium text-foreground/80">{profileUser.firstName}</span>
+                  ) : null}
+                  <span className="rounded-full border border-border/70 px-3 py-1 text-sm text-muted-foreground">
+                    @{profileUser.username}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarDays className="h-4 w-4" />
+                    Membre depuis {memberSinceLabel}
+                  </span>
+                  {isOwnProfile ? (
+                    <span className="rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                      La banniere se change depuis l'inventaire
+                    </span>
+                  ) : null}
+                </div>
+
+                <p className={cn('max-w-2xl text-sm leading-6 text-foreground/88', !profileUser.bio && 'text-muted-foreground')}>
+                  {profileUser.bio ||
+                    (isOwnProfile
+                      ? 'Ajoute une description pour te presenter aux autres joueurs.'
+                      : 'Aucune description pour le moment.')}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                {headerSocialStats.map((item) => (
+                  <div key={item.label} className="inline-flex items-center gap-2 text-muted-foreground">
+                    <span className="font-semibold text-foreground">{item.value}</span>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
           <div className="grid lg:grid-cols-[minmax(0,1.55fr)_340px]">
-            <div className="min-w-0 lg:border-r lg:border-border/60">
-            <SectionBlock
-              title="A propos"
-              action={
-                isOwnProfile && !editingBio ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingBio(true)}
-                    className="rounded-full text-muted-foreground hover:text-foreground"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                    Modifier
-                  </Button>
-                ) : null
-              }
-            >
-              {editingBio ? (
-                <div className="space-y-4">
-                  <Textarea
-                    value={bioText}
-                    onChange={(e) => setBioText(e.target.value)}
-                    placeholder="Ecris quelque chose sur toi..."
-                    className="min-h-[120px] resize-none rounded-2xl border-border/70 bg-background/70"
-                    maxLength={500}
-                  />
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <span className={cn(TYPOGRAPHY.XS, 'tabular-nums text-muted-foreground')}>
-                      {bioText.length}/500
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={handleCancelBio} disabled={savingBio}>
-                        <X className="h-4 w-4" />
-                        Annuler
-                      </Button>
-                      <Button size="sm" onClick={handleSaveBio} disabled={savingBio} className="rounded-full px-4">
-                        {savingBio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                        Enregistrer
-                      </Button>
+            <div className="min-w-0 lg:border-r lg:border-border/30">
+              <SectionBlock
+                title="A propos"
+                action={
+                  isOwnProfile && !editingBio ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingBio(true)}
+                      className="rounded-full text-muted-foreground hover:text-foreground"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      Modifier
+                    </Button>
+                  ) : null
+                }
+              >
+                {editingBio ? (
+                  <div className="space-y-4">
+                    <Textarea
+                      value={bioText}
+                      onChange={(e) => setBioText(e.target.value)}
+                      placeholder="Ecris quelque chose sur toi..."
+                      className="min-h-[120px] resize-none rounded-2xl border-border/70 bg-background/70"
+                      maxLength={500}
+                    />
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <span className={cn(TYPOGRAPHY.XS, 'tabular-nums text-muted-foreground')}>
+                        {bioText.length}/500
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={handleCancelBio} disabled={savingBio}>
+                          <X className="h-4 w-4" />
+                          Annuler
+                        </Button>
+                        <Button size="sm" onClick={handleSaveBio} disabled={savingBio} className="rounded-full px-4">
+                          {savingBio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                          Enregistrer
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className={cn('text-sm leading-7 text-foreground/88', !profileUser.bio && 'text-muted-foreground')}>
+                    {profileUser.bio ||
+                      (isOwnProfile
+                        ? 'Ajoute une description pour te presenter aux autres joueurs.'
+                        : 'Aucune description.')}
+                  </p>
+                )}
+              </SectionBlock>
+
+              <SectionBlock title="Aperçu du joueur">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
+                  {/* Aura & Global Rank - Big Card */}
+                  <div className="group relative overflow-hidden rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-background to-background p-5 md:col-span-7 xl:col-span-6">
+                    <div className="absolute right-0 top-0 p-6 opacity-10 transition-transform duration-500 group-hover:scale-110 group-hover:opacity-20">
+                      <Sparkles className="h-24 w-24 text-amber-500" />
+                      <div className="absolute inset-0 rounded-full bg-amber-500/30 blur-3xl" />
+                    </div>
+                    <div className="relative z-10 flex h-full flex-col justify-between gap-5">
+                      <div>
+                        <div className="flex items-center gap-2 text-amber-500/80">
+                          <Star className="h-4 w-4" />
+                          <p className="text-xs font-semibold tracking-wider uppercase">Aura</p>
+                        </div>
+                        <p className="mt-1 text-4xl font-bold tracking-tighter sm:text-5xl">{profileUser.aura.toLocaleString()}</p>
+                        <p className="mt-1 text-sm font-medium text-muted-foreground">{formatRank(rankings?.aura?.rank)}</p>
+                      </div>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Trophy className="h-3 w-3" />
+                            <p className="text-[10px] font-semibold tracking-wider uppercase">Classement global</p>
+                          </div>
+                          <p className="mt-1 text-xl font-semibold">{overallRank ? `#${overallRank}` : '-'}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center justify-end gap-1.5 text-muted-foreground">
+                            <Users className="h-3 w-3" />
+                            <p className="text-[10px] font-semibold tracking-wider uppercase">Joueurs</p>
+                          </div>
+                          <p className="mt-1 text-base font-medium">{overallTotalPlayers ? overallTotalPlayers.toLocaleString() : '-'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Economy - Spans remaining columns */}
+                  <div className="flex flex-col gap-4 md:col-span-5 xl:col-span-6">
+                    {/* Money */}
+                    <div className="group relative flex flex-1 flex-col justify-center overflow-hidden rounded-[2rem] border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-background to-background p-5">
+                      <div className="absolute right-0 top-0 p-4 opacity-10 transition-transform duration-500 group-hover:scale-110 group-hover:opacity-20">
+                        <Wallet className="h-16 w-16 text-emerald-500" />
+                        <div className="absolute inset-0 rounded-full bg-emerald-500/30 blur-2xl" />
+                      </div>
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-1.5 text-emerald-500/80">
+                          <Coins className="h-4 w-4" />
+                          <p className="text-xs font-semibold tracking-wider uppercase">Argent</p>
+                        </div>
+                        <p className="mt-1 text-3xl font-bold tracking-tight">{formatCurrency(profileUser.money, 0)}</p>
+                        <p className="mt-1 text-sm font-medium text-muted-foreground">{formatRank(rankings?.money?.rank)}</p>
+                      </div>
+                    </div>
+                    {/* AuraCoin & Total */}
+                    <div className="grid flex-1 grid-cols-2 gap-4">
+                      <div className="rounded-[1.5rem] border border-border/40 bg-background/40 p-4">
+                        <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">AuraCoin</p>
+                        <p className="mt-1 text-lg font-semibold">{profileUser.auraCoinBalance.toFixed(2)} AC</p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">{auraCoinValue !== null ? formatCurrency(auraCoinValue) : '-'}</p>
+                      </div>
+                      <div className="rounded-[1.5rem] border border-border/40 bg-background/40 p-4">
+                        <p className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">Valeur totale</p>
+                        <p className="mt-1 truncate text-lg font-semibold">{totalMoneyValue !== null ? formatCurrency(totalMoneyValue) : '-'}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Cash + AC</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stats - Bottom row */}
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:col-span-12">
+                    <div className="rounded-[1.5rem] border border-border/40 bg-background/40 p-4 text-center">
+                      <p className="text-xs text-muted-foreground">Victoires</p>
+                      <p className="mt-1 text-xl font-bold">{totalWins.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-border/40 bg-background/40 p-4 text-center">
+                      <p className="text-xs text-muted-foreground">Parties</p>
+                      <p className="mt-1 text-xl font-bold">{totalGames.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-border/40 bg-background/40 p-4 text-center">
+                      <p className="text-xs text-muted-foreground">Win Rate</p>
+                      <p className="mt-1 text-xl font-bold">{totalWinRate}%</p>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-orange-500/20 bg-gradient-to-b from-orange-500/10 to-transparent p-4 text-center">
+                      <p className="text-xs text-orange-500/80">Streak Quotidien</p>
+                      <p className="mt-1 text-xl font-bold">{profileUser.dailyPassStreak} j</p>
                     </div>
                   </div>
                 </div>
-              ) : (
-                <p className={cn('text-sm leading-7 text-foreground/88', !profileUser.bio && 'text-muted-foreground')}>
-                  {profileUser.bio ||
-                    (isOwnProfile
-                      ? 'Ajoute une description pour te presenter aux autres joueurs.'
-                      : 'Aucune description.')}
-                </p>
-              )}
-            </SectionBlock>
+              </SectionBlock>
 
-            <SectionBlock title="Vue d'ensemble">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {summaryMetrics.map((metric) => (
-                  <MetricTile
-                    key={metric.label}
-                    label={metric.label}
-                    value={metric.value}
-                    detail={metric.detail}
-                  />
-                ))}
-              </div>
-            </SectionBlock>
+              <SectionBlock title="Evolution aura / argent (30 jours)">
+                {economyHistoryLoading ? (
+                  <div className="h-[260px] animate-pulse rounded-3xl border border-border/40 bg-muted/20" />
+                ) : economyHistory.length > 0 ? (
+                  <div className="rounded-3xl border border-border/40 bg-gradient-to-b from-background/40 to-background/10 p-3 sm:p-5 shadow-sm">
+                    <ChartContainer config={profileEconomyChartConfig} className="!aspect-auto h-[240px] w-full sm:h-[280px]">
+                      <LineChart data={economyHistory} margin={{ top: 12, right: 12, bottom: 6, left: 0 }}>
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="date"
+                          tickLine={false}
+                          axisLine={false}
+                          minTickGap={24}
+                          tickFormatter={(value: string) => new Date(`${value}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+                        />
+                        <YAxis yAxisId="aura" orientation="left" tickLine={false} axisLine={false} width={64} />
+                        <YAxis yAxisId="money" orientation="right" tickLine={false} axisLine={false} width={72} />
+                        <ChartTooltip
+                          cursor={false}
+                          content={
+                            <ChartTooltipContent
+                              indicator="line"
+                              labelFormatter={(value) => new Date(`${String(value)}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' })}
+                            />
+                          }
+                        />
+                        <Line
+                          yAxisId="aura"
+                          dataKey="aura"
+                          type="monotone"
+                          stroke="var(--color-aura)"
+                          strokeWidth={2.2}
+                          dot={false}
+                          activeDot={{ r: 4, fill: 'var(--color-aura)' }}
+                        />
+                        <Line
+                          yAxisId="money"
+                          dataKey="money"
+                          type="monotone"
+                          stroke="var(--color-money)"
+                          strokeWidth={2.2}
+                          dot={false}
+                          activeDot={{ r: 4, fill: 'var(--color-money)' }}
+                        />
+                      </LineChart>
+                    </ChartContainer>
+                  </div>
+                ) : (
+                  <p className={TYPOGRAPHY.MUTED}>Historique indisponible pour le moment.</p>
+                )}
+              </SectionBlock>
 
-            <SectionBlock title="Evolution aura / argent (30 jours)">
-              {economyHistoryLoading ? (
-                <div className="h-[260px] animate-pulse rounded-3xl border border-border/60 bg-muted/40" />
-              ) : economyHistory.length > 0 ? (
-                <div className="rounded-3xl border border-border/60 bg-background/35 p-3 sm:p-4">
-                  <ChartContainer config={profileEconomyChartConfig} className="!aspect-auto h-[240px] w-full sm:h-[280px]">
-                    <LineChart data={economyHistory} margin={{ top: 12, right: 12, bottom: 6, left: 0 }}>
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="date"
-                        tickLine={false}
-                        axisLine={false}
-                        minTickGap={24}
-                        tickFormatter={(value: string) => new Date(`${value}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
-                      />
-                      <YAxis yAxisId="aura" orientation="left" tickLine={false} axisLine={false} width={64} />
-                      <YAxis yAxisId="money" orientation="right" tickLine={false} axisLine={false} width={72} />
-                      <ChartTooltip
-                        cursor={false}
-                        content={
-                          <ChartTooltipContent
-                            indicator="line"
-                            labelFormatter={(value) => new Date(`${String(value)}T00:00:00`).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' })}
-                          />
-                        }
-                      />
-                      <Line
-                        yAxisId="aura"
-                        dataKey="aura"
-                        type="monotone"
-                        stroke="var(--color-aura)"
-                        strokeWidth={2.2}
-                        dot={false}
-                        activeDot={{ r: 4, fill: 'var(--color-aura)' }}
-                      />
-                      <Line
-                        yAxisId="money"
-                        dataKey="money"
-                        type="monotone"
-                        stroke="var(--color-money)"
-                        strokeWidth={2.2}
-                        dot={false}
-                        activeDot={{ r: 4, fill: 'var(--color-money)' }}
-                      />
-                    </LineChart>
-                  </ChartContainer>
-                </div>
-              ) : (
-                <p className={TYPOGRAPHY.MUTED}>Historique indisponible pour le moment.</p>
-              )}
-            </SectionBlock>
+              <SectionBlock title="Jeux Favoris" flushBottom={!hasHiddenGameRows}>
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {gameRows.slice(0, 3).map(({ label, playedCount, metrics }) => (
+                     <div key={label} className="group flex flex-col justify-between gap-4 rounded-[1.5rem] border border-border/40 bg-gradient-to-br from-background/50 to-background/10 p-5 transition-colors hover:border-primary/30">
+                       <div className="flex items-start justify-between">
+                         <h3 className="text-lg font-semibold">{label}</h3>
+                         <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">{playedCount} jouées</span>
+                       </div>
+                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                         {metrics.map((metric, i) => {
+                            const isWinRate = metric.includes('%');
+                            const isWins = metric.includes(' V');
+                            const isRecord = metric.includes('record');
+                            let mLabel = "Stat";
+                            let mVal = metric;
+                            if (isWinRate) { mLabel = "Win Rate"; mVal = metric; }
+                            else if (isWins) { mLabel = "Victoires"; mVal = metric.replace(' V', ''); }
+                            else if (isRecord) { mLabel = "Record"; mVal = metric.replace(' record', ''); }
+                            else if (metric.includes('mots')) { mLabel = "Mots"; mVal = metric.replace(' mots', ''); }
+                            else if (metric.includes('transactions')) { mLabel = "Transactions"; mVal = metric.replace(' transactions', ''); }
+                            else if (metric.includes('jouees')) { mLabel = "Parties"; mVal = metric.replace(' jouees', ''); }
+                            else if (metric.startsWith('$')) { mLabel = "Total"; mVal = metric; }
+                            
+                            if (mLabel === "Parties" || mLabel === "Transactions") return null;
 
-            <SectionBlock title="Statistiques par jeu">
-              <div className="divide-y divide-border/60 overflow-hidden rounded-3xl border border-border/60 bg-background/35">
-                {visibleGameRows.map(({ label, metrics }) => (
-                  <GameStatRow
-                    key={label}
-                    title={label}
-                    metrics={metrics}
-                  />
-                ))}
-              </div>
-
-              {hasHiddenGameRows ? (
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="outline"
-                    className="rounded-full"
-                    onClick={() => setShowAllGameStats((prev) => !prev)}
-                  >
-                    {showAllGameStats ? 'Voir moins' : 'Charger plus'}
-                  </Button>
-                </div>
-              ) : null}
-            </SectionBlock>
-
-            <SectionBlock title="Badges" flushBottom>
-              {!isOwnProfile && equippedBadges.length > 0 ? (
-                <div className="mb-5 flex items-center gap-4 rounded-3xl border border-border/60 bg-background/35 p-4">
-                  <UserBadges
-                    badges={equippedBadges}
-                    size="xl"
-                    showEmptySlots={false}
-                    tooltipSide="bottom"
-                  />
-                </div>
-              ) : null}
-
-              {allBadges.length > 0 ? (
-                <BadgeCatalog allBadges={allBadges} earnedBadges={userBadges} totalUsers={totalUsers} />
-              ) : userBadges.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {userBadges.map((badge) => (
-                    <div key={badge.id} className="h-9 w-9" />
+                            return (
+                               <div key={i}>
+                                 <p className="text-[11px] tracking-wider text-muted-foreground uppercase">{mLabel}</p>
+                                 <p className="font-medium">{mVal}</p>
+                               </div>
+                            );
+                         })}
+                       </div>
+                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
-              )}
-            </SectionBlock>
+
+                {gameRows.length > 3 && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 px-2 text-sm font-medium text-muted-foreground">Autres statistiques</h3>
+                    <div className="flex flex-col gap-2">
+                      {(showAllGameStats ? gameRows.slice(3) : gameRows.slice(3, INITIAL_VISIBLE_GAME_ROWS)).map(({ label, metrics }) => (
+                        <div key={label} className="flex flex-col gap-3 rounded-2xl border border-transparent p-4 transition-colors hover:border-border/40 hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between">
+                          <span className="text-sm font-medium">{label}</span>
+                          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm tabular-nums text-muted-foreground sm:justify-end">
+                            {metrics.map((metric, i) => (
+                              <div key={`${label}-${metric}-${i}`} className="flex items-center gap-2">
+                                {i > 0 && <div className="hidden h-1 w-1 rounded-full bg-border/80 sm:block" />}
+                                <span className={metric.includes('%') ? "font-medium text-foreground" : ""}>{metric}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {hasHiddenGameRows ? (
+                  <div className="mt-6 flex justify-center">
+                    <Button
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => setShowAllGameStats((prev) => !prev)}
+                    >
+                      {showAllGameStats ? 'Voir moins' : 'Charger plus'}
+                    </Button>
+                  </div>
+                ) : null}
+              </SectionBlock>
+
+              <SectionBlock title="Badges" flushBottom>
+                {!isOwnProfile && equippedBadges.length > 0 ? (
+                  <div className="mb-5 flex items-center gap-4 rounded-3xl border border-border/40 bg-background/35 p-4 shadow-sm">
+                    <UserBadges
+                      badges={equippedBadges}
+                      size="xl"
+                      showEmptySlots={false}
+                      tooltipSide="bottom"
+                    />
+                  </div>
+                ) : null}
+
+                {allBadges.length > 0 ? (
+                  <BadgeCatalog allBadges={allBadges} earnedBadges={userBadges} totalUsers={totalUsers} />
+                ) : userBadges.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {userBadges.map((badge) => (
+                      <div key={badge.id} className="h-9 w-9" />
+                    ))}
+                  </div>
+                ) : (
+                  <p className={TYPOGRAPHY.MUTED}>Aucun badge.</p>
+                )}
+              </SectionBlock>
             </div>
 
             <aside className="min-w-0">
               <div className="flex flex-col lg:sticky lg:top-6">
-              <SidebarPanel title="Highlights">
-                <div className="grid gap-3">
-                  <CompactMetric
-                    label="Aura"
-                    value={profileUser.aura.toLocaleString()}
-                    detail={formatRank(rankings?.aura?.rank)}
-                  />
-                  <CompactMetric
-                    label="Money"
-                    value={formatCurrency(profileUser.money, 0)}
-                    detail={formatRank(rankings?.money?.rank)}
-                  />
-                  <CompactMetric
-                    label="AuraCoin"
-                    value={`${profileUser.auraCoinBalance.toFixed(4)} AC`}
-                    detail={auraCoinValue !== null ? formatCurrency(auraCoinValue) : 'Prix indisponible'}
-                  />
-                  <CompactMetric
-                    label="Valeur totale"
-                    value={totalMoneyValue !== null ? formatCurrency(totalMoneyValue) : '-'}
-                    detail="cash + AuraCoin"
-                  />
-                </div>
-              </SidebarPanel>
-
-              {social ? (
-                <SidebarPanel title="Reseau">
-                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                    <CompactMetric label="Followers" value={String(social.followerCount)} />
-                    <CompactMetric label="Following" value={String(social.followingCount)} />
-                    <CompactMetric label="Connexions" value={String(social.connectionCount)} />
-                  </div>
-
-                  {social.connections.length > 0 ? (
-                    <div className="mt-5 space-y-3">
-                      <p className="text-xs text-muted-foreground">Connexions visibles</p>
-                      <div className="flex flex-wrap gap-2">
-                        {social.connections.map((connection) => (
-                          <Button
-                            key={connection.id}
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full"
-                            onClick={() => navigate(`/profile/${connection.id}`)}
-                          >
-                            {connection.username}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </SidebarPanel>
-              ) : null}
-
-              {profileUser.youSkills && profileUser.youSkills.length > 0 ? (
-                <SidebarPanel title="You · Compétences">
-                  <div className="grid grid-cols-2 gap-2">
-                    {profileUser.youSkills.map((skill) => {
-                      const meta = YOU_SKILL_META[skill.key] ?? { label: skill.key, bar: 'bg-amber-500', text: 'text-amber-500' };
-                      const pct = Math.round((skill.xp / 100) * 100);
-                      return (
-                        <div key={skill.key} className="rounded-2xl border border-border/60 bg-background/40 px-3 py-2">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="truncate text-xs text-muted-foreground">{meta.label}</span>
-                            <span className={cn('shrink-0 text-xs font-semibold tabular-nums', meta.text)}>Niv.{skill.level}</span>
-                          </div>
-                          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted/60">
-                            <div className={cn('h-full', meta.bar)} style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </SidebarPanel>
-              ) : null}
-
-              {profileUser.marriage || (profileUser.ownedBusinesses && profileUser.ownedBusinesses.length > 0) ? (
-                <SidebarPanel title="Vie" flushBottom>
-                  <div className="space-y-4">
-                    {profileUser.marriage ? (
-                      <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">Statut</p>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Heart className="h-4 w-4 shrink-0 text-rose-500" />
-                          <span>Marie(e) avec </span>
-                          <button
-                            className="font-medium hover:underline"
-                            style={profileUser.marriage.partner.usernameColor ? { color: profileUser.marriage.partner.usernameColor } : undefined}
-                            onClick={() => navigate(`/profile/${profileUser.marriage!.partner.id}`)}
-                          >
-                            {profileUser.marriage.partner.username}
-                          </button>
-                        </div>
-                        {profileUser.marriage.marriedAt ? (
-                          <p className="text-xs text-muted-foreground">
-                            depuis le {new Date(profileUser.marriage.marriedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {profileUser.ownedBusinesses && profileUser.ownedBusinesses.length > 0 ? (
-                      <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">Entreprises</p>
+                {profileUser.marriage || (profileUser.ownedBusinesses && profileUser.ownedBusinesses.length > 0) ? (
+                  <SidebarPanel title="Vie & Entreprises" flushBottom={!social && !profileUser.youSkills?.length}>
+                    <div className="space-y-4">
+                      {profileUser.ownedBusinesses && profileUser.ownedBusinesses.length > 0 ? (
                         <div className="space-y-2">
-                          {profileUser.ownedBusinesses.map((biz) => (
-                            <div key={biz.id} className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/40 px-3 py-2">
-                              <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium">{biz.name}</p>
-                                <p className="text-xs text-muted-foreground">{BUSINESS_TYPE_LABELS[biz.typeKey] ?? biz.typeKey}</p>
+                          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Entreprises</p>
+                          <div className="space-y-2">
+                            {profileUser.ownedBusinesses.map((biz) => (
+                              <div key={biz.id} className="group flex items-center gap-3 rounded-2xl border border-border/40 bg-gradient-to-br from-background/50 to-background/10 p-3 transition-all duration-300 hover:border-border/60 hover:bg-background/40 hover:shadow-sm">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                  <Building2 className="h-5 w-5" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold">{biz.name}</p>
+                                  <p className="text-[11px] text-muted-foreground">{BUSINESS_TYPE_LABELS[biz.typeKey] ?? biz.typeKey}</p>
+                                </div>
                               </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      
+                      {profileUser.marriage ? (
+                        <div className="space-y-2">
+                          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Statut relationnel</p>
+                          <div className="group flex items-center gap-3 rounded-2xl border border-rose-500/20 bg-gradient-to-br from-rose-500/10 to-transparent p-3 transition-colors hover:border-rose-500/40">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/20 text-rose-500">
+                              <Heart className="h-5 w-5" />
                             </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1 text-sm font-semibold">
+                                <span className="text-muted-foreground font-normal">Marié(e) avec</span>
+                                <button
+                                  className="hover:underline truncate"
+                                  style={profileUser.marriage.partner.usernameColor ? { color: profileUser.marriage.partner.usernameColor } : undefined}
+                                  onClick={() => navigate(`/profile/${profileUser.marriage!.partner.id}`)}
+                                >
+                                  {profileUser.marriage.partner.username}
+                                </button>
+                              </div>
+                              {profileUser.marriage.marriedAt ? (
+                                <p className="text-[11px] text-muted-foreground">
+                                  depuis le {new Date(profileUser.marriage.marriedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </SidebarPanel>
+                ) : null}
+
+                <SidebarPanel title="Highlights" flushBottom={!social && !profileUser.youSkills?.length}>
+                  <div className="grid gap-3">
+                    <CompactMetric
+                      label="Aura"
+                      value={profileUser.aura.toLocaleString()}
+                      detail={formatRank(rankings?.aura?.rank)}
+                      icon={Star}
+                      colorClass="text-amber-500 bg-amber-500/10"
+                    />
+                    <CompactMetric
+                      label="Money"
+                      value={formatCurrency(profileUser.money, 0)}
+                      detail={formatRank(rankings?.money?.rank)}
+                      icon={Coins}
+                      colorClass="text-emerald-500 bg-emerald-500/10"
+                    />
+                    <CompactMetric
+                      label="AuraCoin"
+                      value={`${profileUser.auraCoinBalance.toFixed(4)} AC`}
+                      detail={auraCoinValue !== null ? formatCurrency(auraCoinValue) : 'Prix indisponible'}
+                      icon={Zap}
+                      colorClass="text-sky-500 bg-sky-500/10"
+                    />
+                    <CompactMetric
+                      label="Valeur totale"
+                      value={totalMoneyValue !== null ? formatCurrency(totalMoneyValue) : '-'}
+                      detail="cash + AuraCoin"
+                      icon={Activity}
+                      colorClass="text-primary bg-primary/10"
+                    />
+                  </div>
+                </SidebarPanel>
+
+                {social ? (
+                  <SidebarPanel title="Réseau" flushBottom={!profileUser.youSkills?.length}>
+                    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                      <CompactMetric label="Followers" value={String(social.followerCount)} icon={Users} colorClass="text-purple-500 bg-purple-500/10" />
+                      <CompactMetric label="Following" value={String(social.followingCount)} icon={Users} colorClass="text-pink-500 bg-pink-500/10" />
+                      <CompactMetric label="Connexions" value={String(social.connectionCount)} icon={Users} colorClass="text-indigo-500 bg-indigo-500/10" />
+                    </div>
+
+                    {social.connections.length > 0 ? (
+                      <div className="mt-5 space-y-3">
+                        <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Connexions visibles</p>
+                        <div className="flex flex-wrap gap-2">
+                          {social.connections.map((connection) => (
+                            <Button
+                              key={connection.id}
+                              variant="outline"
+                              size="sm"
+                              className="rounded-full h-8 px-3 text-xs"
+                              onClick={() => navigate(`/profile/${connection.id}`)}
+                            >
+                              {connection.username}
+                            </Button>
                           ))}
                         </div>
                       </div>
                     ) : null}
-                  </div>
-                </SidebarPanel>
-              ) : null}
+                  </SidebarPanel>
+                ) : null}
+
+                {profileUser.youSkills && profileUser.youSkills.length > 0 ? (
+                  <SidebarPanel title="You · Compétences" flushBottom>
+                    <div className="grid grid-cols-2 gap-2">
+                      {profileUser.youSkills.map((skill) => {
+                        const meta = YOU_SKILL_META[skill.key] ?? { label: skill.key, bar: 'bg-amber-500', text: 'text-amber-500' };
+                        const pct = Math.round((skill.xp / 100) * 100);
+                        return (
+                          <div key={skill.key} className="group rounded-2xl border border-border/40 bg-gradient-to-br from-background/50 to-background/10 px-3 py-2 transition-all duration-300 hover:border-border/60 hover:shadow-sm">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="truncate text-xs font-medium text-muted-foreground">{meta.label}</span>
+                              <span className={cn('shrink-0 text-[10px] font-bold tabular-nums', meta.text)}>Niv.{skill.level}</span>
+                            </div>
+                            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted/40">
+                              <div className={cn('h-full transition-all duration-500', meta.bar)} style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </SidebarPanel>
+                ) : null}
               </div>
             </aside>
           </div>
@@ -1155,7 +1295,7 @@ function ProfileAvatar({ profileUser }: { profileUser: ProfileUser }) {
       <img
         src={resolveImageUrl(profileUser.profilePicture)}
         alt={profileUser.username}
-        className="relative z-20 h-24 w-24 shrink-0 rounded-full border-4 border-card object-cover shadow-sm md:h-32 md:w-32"
+        className="relative z-20 h-20 w-20 shrink-0 rounded-full border-[3px] border-card bg-card object-cover shadow-xl transition-transform hover:scale-[1.02] md:h-24 md:w-24"
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = 'none';
         }}
@@ -1164,9 +1304,9 @@ function ProfileAvatar({ profileUser }: { profileUser: ProfileUser }) {
   }
 
   return (
-    <div className="relative z-20 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-card bg-muted/70 shadow-sm md:h-32 md:w-32">
+    <div className="relative z-20 flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-[3px] border-card bg-muted/70 shadow-xl transition-transform hover:scale-[1.02] md:h-24 md:w-24">
       <span
-        className="text-3xl font-semibold tracking-tight md:text-4xl"
+        className="text-2xl font-semibold tracking-tight md:text-3xl"
         style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}
       >
         {profileUser.username.slice(0, 2)}
@@ -1187,9 +1327,9 @@ function SectionBlock({
   children: ReactNode;
 }) {
   return (
-    <section className={cn('px-5 py-6 md:px-8', !flushBottom && 'border-b border-border/60')}>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+    <section className={cn('px-5 py-8 md:px-8', !flushBottom && 'border-b border-border/30')}>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground/90">{title}</h2>
         {action}
       </div>
       {children}
@@ -1207,9 +1347,9 @@ function SidebarPanel({
   flushBottom?: boolean;
 }) {
   return (
-    <section className={cn('px-5 py-6 md:px-6', !flushBottom && 'border-b border-border/60')}>
-      <div className="mb-4">
-        <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+    <section className={cn('px-5 py-8 md:px-6', !flushBottom && 'border-b border-border/30')}>
+      <div className="mb-5">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground/90">{title}</h2>
       </div>
       {children}
     </section>
@@ -1226,10 +1366,13 @@ function MetricTile({
   detail?: string;
 }) {
   return (
-    <div className="rounded-3xl border border-border/60 bg-background/40 p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight">{value}</p>
-      {detail ? <p className="mt-1 text-xs text-muted-foreground">{detail}</p> : null}
+    <div className="group relative overflow-hidden rounded-3xl border border-border/40 bg-gradient-to-b from-background/40 to-background/10 p-5 transition-all duration-300 hover:border-border/80 hover:shadow-md hover:shadow-primary/5">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="relative z-10">
+        <p className="text-sm font-medium text-muted-foreground transition-colors group-hover:text-foreground/80">{label}</p>
+        <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground/90">{value}</p>
+        {detail ? <p className="mt-2 text-xs font-medium text-muted-foreground/80">{detail}</p> : null}
+      </div>
     </div>
   );
 }
@@ -1238,16 +1381,29 @@ function CompactMetric({
   label,
   value,
   detail,
+  icon: Icon,
+  colorClass = "text-muted-foreground"
 }: {
   label: string;
   value: string;
   detail?: string;
+  icon?: React.ElementType;
+  colorClass?: string;
 }) {
   return (
-    <div className="rounded-3xl border border-border/60 bg-background/40 p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-lg font-semibold tracking-tight">{value}</p>
-      {detail ? <p className="mt-1 text-xs text-muted-foreground">{detail}</p> : null}
+    <div className="group relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-background/50 to-background/10 p-3.5 transition-all duration-300 hover:border-border/60 hover:bg-background/40 hover:shadow-sm">
+      <div className="relative z-10 flex h-full items-center gap-3">
+        {Icon ? (
+          <div className={cn("flex shrink-0 items-center justify-center rounded-xl p-2.5", colorClass)}>
+            <Icon className="h-4 w-4" />
+          </div>
+        ) : null}
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground transition-colors group-hover:text-foreground/80">{label}</p>
+          <p className="mt-0.5 truncate text-lg font-semibold tracking-tight text-foreground/90">{value}</p>
+          {detail ? <p className="mt-0.5 truncate text-[10px] font-medium text-muted-foreground/80">{detail}</p> : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1260,11 +1416,14 @@ function GameStatRow({
   metrics: string[];
 }) {
   return (
-    <div className="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5">
-      <span className="text-sm font-medium capitalize text-foreground">{title}</span>
-      <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm tabular-nums text-muted-foreground md:justify-end">
-        {metrics.map((metric) => (
-          <span key={`${title}-${metric}`}>{metric}</span>
+    <div className="group flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/20 md:flex-row md:items-center md:justify-between">
+      <span className="text-sm font-semibold capitalize text-foreground/80 transition-colors group-hover:text-foreground">{title}</span>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm tabular-nums text-muted-foreground md:justify-end">
+        {metrics.map((metric, i) => (
+          <div key={`${title}-${metric}-${i}`} className="flex items-center gap-2">
+            {i > 0 && <div className="hidden h-1 w-1 rounded-full bg-border/80 md:block" />}
+            <span className="font-medium">{metric}</span>
+          </div>
         ))}
       </div>
     </div>

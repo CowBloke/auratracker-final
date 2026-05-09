@@ -1,16 +1,16 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { validate, gameCompleteSchema, casinoStartSchema } from '../middleware/validation.js';
 import { logGame, logAdmin } from '../utils/logger.js';
 import { checkQuestProgress } from './quests.js';
-import { recheckBadgeForCondition, awardBadgeByKey } from '../utils/badgeAwards.js';
+import { recheckBadgeForCondition, awardBadgeByKey } from '../utils/badge-awards.js';
 import { announceGameRecordBroken } from '../socket/chat.js';
-import { getActiveClanMoneyBoostForUser } from '../utils/clanEffects.js';
-import { trackClanEventActivity } from '../utils/clanEvents.js';
-import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
-import { getParisDayKey, getParisDayStart } from '../utils/dailyAura.js';
-import { applyDailyGameRewardCaps, syncUserDailyGameRewardState } from '../utils/dailyGameRewards.js';
+import { getActiveClanMoneyBoostForUser } from '../utils/clan-effects.js';
+import { trackClanEventActivity } from '../utils/clan-events.js';
+import { emitSharedBalanceUpdates } from '../utils/shared-balance.js';
+import { getParisDayKey, getParisDayStart } from '../utils/daily/daily-aura.js';
+import { applyDailyGameRewardCaps, syncUserDailyGameRewardState } from '../utils/daily/daily-game-rewards.js';
 
 const router = Router();
 const isDoodleJumpType = (gameType: string) => gameType === 'doodle_jump' || gameType === 'doodle_jump_mort_subite';

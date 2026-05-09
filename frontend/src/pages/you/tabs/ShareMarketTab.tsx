@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { Building2, Loader2, ShoppingCart, Tag } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type YouState, youApi } from '@/services/api';
-import { SectionTitle } from '../components/ui';
+import { SectionTitle } from '../components/YouPrimitives';
 import { formatMoney } from '../utils';
 
 function pct(value: number) {

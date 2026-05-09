@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
@@ -12,7 +12,7 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { DuelPlayerSelectionModal } from '@/components/game/DuelPlayerSelectionModal';

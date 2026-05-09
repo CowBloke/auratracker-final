@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
   Sun,
   Moon,
@@ -41,7 +41,7 @@ import {
   getCustomThemePreviewVars,
   sanitizeCustomTheme,
 } from '@/lib/custom-theme';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { ReferralSummary, authApi, usersApi } from '@/services/api';
 import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
 import { toast } from '@/hooks/use-toast';

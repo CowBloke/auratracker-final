@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client';
-import { recalculateBombPartyPrompts } from '../src/utils/bombpartyPrompts.js';
-import { ensureBombPartyDefaultSettings } from '../src/utils/bombpartySettings.js';
+﻿import { PrismaClient } from '@prisma/client';
+import { recalculateBombPartyPrompts } from '../src/utils/bombparty-prompts.js';
+import { ensureBombPartyDefaultSettings } from '../src/utils/bombparty-settings.js';
 
 const prisma = new PrismaClient();
 

@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+﻿import { useEffect, useRef, useState, useCallback } from 'react';
 import { Maximize2, Minimize2, Trophy, Clock, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { polytrackApi, type PolytrackTrack, type PolytrackLeaderboardEntry } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePartySocket } from '@/contexts/PartySocketContext';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Card as UICard, CardContent } from '@/components/ui/card';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 

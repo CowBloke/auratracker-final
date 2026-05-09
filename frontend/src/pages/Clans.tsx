@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Axe, AlertTriangle, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -25,7 +25,7 @@ import {
 import { MemoryGame } from '@/components/clans/war-games/MemoryGame';
 import { BombDropGame } from '@/components/clans/war-games/BombDropGame';
 import { NavalWarfareGame } from '@/components/clans/war-games/NavalWarfareGame';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { CenteredSkeletonCard, ListSkeleton } from '@/components/ui/loading-skeletons';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

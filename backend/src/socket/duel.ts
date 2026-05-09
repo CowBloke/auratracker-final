@@ -1,4 +1,4 @@
-import { Socket, Server } from 'socket.io';
+﻿import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { startDirectChessGame } from './chess.js';
 import { startDirectBattleshipGame } from './battleship.js';
@@ -7,7 +7,7 @@ import { startDirectBallArenaGame } from './ballarena.js';
 import { startDirectUnoGame } from './uno.js';
 import { startDirectMorpionGame } from './morpion.js';
 import { emitPartyChatHistory } from './party.js';
-import { duelPartyIds, onDuelPartyDeleted } from './duelParties.js';
+import { duelPartyIds, onDuelPartyDeleted } from './duel-parties.js';
 
 type DuelGameType = 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion';
 

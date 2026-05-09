@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Bot, ChevronLeft, ChevronRight, Eye, EyeOff, LogOut, SkipBack, SkipForward, Swords, Trophy } from 'lucide-react';
 import { Chess } from 'chess.js';
@@ -12,7 +12,7 @@ import { useDuelSocket } from '../contexts/DuelSocketContext';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { SpectateEffectBar, type SpectateFloatingMessage } from '@/components/spectate/SpectateEffectBar';

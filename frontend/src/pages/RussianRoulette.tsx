@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePartySocket } from '@/contexts/PartySocketContext';
 import { useGameSocket } from '@/contexts/GameSocketContext';
 import { ArrowLeft, Play, Skull, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { cn } from '@/lib/utils';
 import { UsernameDisplay } from '@/components/ui/username-display';
 

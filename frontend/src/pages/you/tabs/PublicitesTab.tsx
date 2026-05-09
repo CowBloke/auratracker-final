@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { Building2, Check, Megaphone, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { ImagePicker } from '@/components/ui/image-picker';
 import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { type Ad, type AdCreateInput, type YouBusiness, adsApi, uploadUserImage } from '@/services/api';
-import { FieldRow, ModalWrap, SectionTitle, SelectBox } from '../components/ui';
+import { FieldRow, ModalWrap, SectionTitle, SelectBox } from '../components/YouPrimitives';
 
 
 function EmptyState({ text }: { text: string }) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Archive,
@@ -32,7 +32,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
-import { PageHeader, PageShell } from '@/components/layout/page-shell';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ListSkeleton } from '@/components/ui/loading-skeletons';

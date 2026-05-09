@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Building2, Megaphone, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { type Ad, adsApi, type YouBusiness, type YouBusinessShareProposal, type 
 import { AdBanner } from '@/components/ads/AdBanner';
 import { BUSINESS_ICON_MAP } from '../constants';
 import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '../components/modals';
-import { ActionCard, ActionRow, Pill, SectionTitle } from '../components/ui';
+import { ActionCard, ActionRow, Pill, SectionTitle } from '../components/YouPrimitives';
 import { formatMoney, withRouteError } from '../utils';
 
 function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b: YouBusiness) => void }) {

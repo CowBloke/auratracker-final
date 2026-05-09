@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+﻿import { FormEvent, useState } from 'react';
 import { usePartySocket } from '@/contexts/PartySocketContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
-import { useSmartScroll } from '@/hooks/useSmartScroll';
+import { useSmartScroll } from '@/hooks/use-smart-scroll';
 
 interface PartyChatPanelProps {
   title?: string;

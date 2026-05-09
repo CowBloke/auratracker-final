@@ -1,9 +1,9 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
 import { logEconomy } from '../utils/logger.js';
-import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
+import { emitSharedBalanceUpdates } from '../utils/shared-balance.js';
 
 const router = Router();
 

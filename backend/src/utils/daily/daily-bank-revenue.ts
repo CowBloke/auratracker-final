@@ -1,8 +1,8 @@
-import type { PrismaClient } from '@prisma/client';
-import { getParisDayKey } from './dailyAura.js';
-import { logAdmin } from './logger.js';
-import { createNotification } from './notifications.js';
-import { emitSharedBalanceUpdatesForUserIds } from './sharedBalance.js';
+﻿import type { PrismaClient } from '@prisma/client';
+import { getParisDayKey } from './daily-aura.js';
+import { logAdmin } from '../logger.js';
+import { createNotification } from '../notifications.js';
+import { emitSharedBalanceUpdatesForUserIds } from '../shared-balance.js';
 
 export const BANK_BASE_DAILY_RATE = 0.002;       // 0.2% per day
 export const BANK_LIVRET_DAILY_RATE = 0.005;     // 0.5% per day with livret épargne

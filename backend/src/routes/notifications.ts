@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import {
@@ -6,7 +6,7 @@ import {
   emitNotificationUpdated,
   serializeNotification,
 } from '../utils/notifications.js';
-import { getWebPushPublicKey, isWebPushConfigured } from '../utils/webPush.js';
+import { getWebPushPublicKey, isWebPushConfigured } from '../utils/web-push.js';
 
 const router = Router();
 

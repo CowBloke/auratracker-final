@@ -1,5 +1,5 @@
-import type { PrismaClient } from '@prisma/client';
-import { runDailyBusinessSalaryPayments } from '../modules/you/service.js';
+﻿import type { PrismaClient } from '@prisma/client';
+import { runDailyBusinessSalaryPayments } from '../../modules/you/service.js';
 
 let _timer: ReturnType<typeof setInterval> | null = null;
 

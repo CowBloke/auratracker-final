@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+﻿import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Minimize2, Send, Users, ChevronDown } from 'lucide-react';
 import { usePartySocket } from '@/contexts/PartySocketContext';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
-import { useSmartScroll } from '@/hooks/useSmartScroll';
+import { useSmartScroll } from '@/hooks/use-smart-scroll';
 
 interface PartyChatFloatingProps {
   rightOffset: string;

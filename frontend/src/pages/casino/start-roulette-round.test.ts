@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { startRouletteRound } from './startRouletteRound';
+﻿import { describe, expect, it, vi } from 'vitest';
+import { startRouletteRound } from './start-roulette-round';
 
 describe('startRouletteRound', () => {
   it('starts round even when refresh fails', async () => {

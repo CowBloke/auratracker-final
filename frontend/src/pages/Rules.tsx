@@ -1,7 +1,7 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+﻿import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { t } from '@/lib/i18n';
 
 interface RuleSection {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+﻿import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -13,7 +13,7 @@ import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { Loader2, Package, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Gamepad2, Coins, Users, Shield, Gavel, TrendingUp, Eye, Activity, CalendarRange, Award, Terminal, Landmark, Inbox, Settings, BarChart2 } from 'lucide-react';
 
 import { cn, humanizeUiLabel } from '@/lib/utils';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import {
   DEFAULT_LANDING_PAGE,
   DEFAULT_LANDING_PAGE_KEY,

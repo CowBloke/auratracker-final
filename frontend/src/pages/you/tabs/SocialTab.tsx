@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Gavel, Heart, Scale, Trash2, UserPlus, Wallet } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { type YouCourtCase, type YouRelationship, type YouState, youApi } from '@/services/api';
 import { NewRelationModal } from '../components/modals';
-import { Pill, SectionTitle, UserAvatar } from '../components/ui';
+import { Pill, SectionTitle, UserAvatar } from '../components/YouPrimitives';
 import { getRelationshipPill, withRouteError } from '../utils';
 
 function RelationListItem({

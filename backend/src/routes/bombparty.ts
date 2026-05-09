@@ -1,7 +1,7 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { getBombPartyWppSettings } from '../utils/bombpartySettings.js';
+import { getBombPartyWppSettings } from '../utils/bombparty-settings.js';
 
 const router = Router();
 

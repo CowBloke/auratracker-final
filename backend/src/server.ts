@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import path from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -26,10 +26,10 @@ import {
   createPrismaStudioProxy,
   prismaStudioAccessMiddleware,
   canUpgradePrismaStudio,
-} from './routes/prismaStudio.js';
+} from './routes/prisma-studio.js';
 import { authMiddleware, adminMiddleware } from './middleware/auth.js';
 import auraCoinRoutes, { startPriceEngine as startAuraCoinEngine, stopPriceEngine as stopAuraCoinEngine } from './routes/auracoin.js';
-import marketRoomRoutes, { startMarketRoomEngines, stopMarketRoomEngines } from './routes/marketRoom.js';
+import marketRoomRoutes, { startMarketRoomEngines, stopMarketRoomEngines } from './routes/market-room.js';
 import suggestionsRoutes from './routes/suggestions.js';
 import bombpartyRoutes from './routes/bombparty.js';
 import uploadsRoutes from './routes/uploads.js';
@@ -41,16 +41,16 @@ import questsRoutes from './routes/quests.js';
 import solitaireRoutes from './routes/solitaire.js';
 import notificationsRoutes from './routes/notifications.js';
 import badgesRoutes from './routes/badges.js';
-import customBadgesRoutes from './routes/customBadges.js';
+import customBadgesRoutes from './routes/custom-badges.js';
 import supportRoutes from './routes/support.js';
 import clashRoutes from './routes/clash.js';
-import polytrackRoutes from './routes/polytrack.js';
+import polytrackRoutes from './routes/poly-track.js';
 import changelogRoutes from './routes/changelog.js';
 import youRoutes from './routes/you.js';
 import adsRoutes from './routes/ads.js';
 import messagesRoutes from './routes/messages.js';
 import justiceRoutes from './routes/justice.js';
-import braquageLegalRoutes, { drawBraquageLegalSession } from './routes/braquageLegal.js';
+import braquageLegalRoutes, { drawBraquageLegalSession } from './routes/braquage-legal.js';
 import infoRoutes from './routes/info.js';
 import forumRoutes from './routes/forum.js';
 
@@ -65,7 +65,7 @@ import { setupBattleshipHandlers } from './socket/battleship.js';
 import { setupPuissanceQuatreHandlers } from './socket/puissancequatre.js';
 import { setupChessHandlers } from './socket/chess.js';
 import { setupDuelHandlers } from './socket/duel.js';
-import { setupAIDuelHandlers } from './socket/aiDuel.js';
+import { setupAIDuelHandlers } from './socket/ai-duel.js';
 import { setupRussianRouletteHandlers } from './socket/russianroulette.js';
 import { setupBallArenaHandlers } from './socket/ballarena.js';
 import { setupUnoHandlers } from './socket/uno.js';
@@ -73,20 +73,20 @@ import { setupMorpionHandlers } from './socket/morpion.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
-import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges, awardBadgeByKey } from './utils/badgeAwards.js';
-import { ensureDefaultBadges } from './utils/seedBadges.js';
-import { recomputeOverallClassement, startOverallClassementScheduler, stopOverallClassementScheduler } from './utils/overallClassement.js';
-import { startDailyBankRevenueScheduler, stopDailyBankRevenueScheduler } from './utils/dailyBankRevenue.js';
-import { startDailyBusinessRevenueScheduler, stopDailyBusinessRevenueScheduler } from './utils/dailyBusinessRevenue.js';
-import { startDailyBusinessSalaryScheduler, stopDailyBusinessSalaryScheduler } from './utils/dailyBusinessSalaries.js';
-import { startSupplyProductionScheduler, stopSupplyProductionScheduler } from './utils/supplyProduction.js';
-import { runDailyTax, startDailyTaxScheduler, stopDailyTaxScheduler } from './utils/dailyTax.js';
-import { advanceClanEventsState } from './utils/clanEvents.js';
+import { startAutoBadgeScheduler, stopAutoBadgeScheduler, autoEquipDefaultBadges, awardBadgeByKey } from './utils/badge-awards.js';
+import { ensureDefaultBadges } from './utils/seed-badges.js';
+import { recomputeOverallClassement, startOverallClassementScheduler, stopOverallClassementScheduler } from './utils/overall-classement.js';
+import { startDailyBankRevenueScheduler, stopDailyBankRevenueScheduler } from './utils/daily/daily-bank-revenue.js';
+import { startDailyBusinessRevenueScheduler, stopDailyBusinessRevenueScheduler } from './utils/daily/daily-business-revenue.js';
+import { startDailyBusinessSalaryScheduler, stopDailyBusinessSalaryScheduler } from './utils/daily/daily-business-salaries.js';
+import { startSupplyProductionScheduler, stopSupplyProductionScheduler } from './utils/supply-production.js';
+import { runDailyTax, startDailyTaxScheduler, stopDailyTaxScheduler } from './utils/daily/daily-tax.js';
+import { advanceClanEventsState } from './utils/clan-events.js';
 import {
   runDailyRacerRewards,
   startDailyRacerRewardsScheduler,
   stopDailyRacerRewardsScheduler,
-} from './utils/dailyRacerRewards.js';
+} from './utils/daily/daily-racer-rewards.js';
 
 // Initialize Prisma
 export { prisma };

@@ -1,10 +1,10 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logEconomy } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
-import { awardBadgeByKey } from '../utils/badgeAwards.js';
-import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
+import { awardBadgeByKey } from '../utils/badge-awards.js';
+import { emitSharedBalanceUpdates } from '../utils/shared-balance.js';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { prisma } from '../server.js';
-import { getChatBlockState } from '../utils/chatSettings.js';
+import { getChatBlockState } from '../utils/chat-settings.js';
 
 const router = Router();
 const MAINTENANCE_ENABLED_KEY = 'maintenance_enabled';

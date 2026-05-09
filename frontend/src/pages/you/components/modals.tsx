@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
   CreditCard, Download, Edit2, ExternalLink, Factory, GraduationCap, Image, Landmark, Loader2, Percent,
@@ -31,7 +31,7 @@ import {
   getLoanStatusPillColor,
   getLoanTimeLeftLabel,
 } from './modal-helpers';
-import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, SectionTitle, SelectBox, UserAvatar } from './ui';
+import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, SectionTitle, SelectBox, UserAvatar } from './YouPrimitives';
 
 const PICKER_DEFAULT_STYLE = { card: 'border-border/40 bg-muted/10', badge: 'bg-muted text-muted-foreground', iconWrap: 'bg-muted/20', icon: 'text-foreground/60' };
 

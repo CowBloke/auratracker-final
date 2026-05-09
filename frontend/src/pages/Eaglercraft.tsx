@@ -1,6 +1,6 @@
-import { RotateCcw, Swords, Wifi } from 'lucide-react';
+﻿import { RotateCcw, Swords, Wifi } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

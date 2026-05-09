@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestionsApi, Suggestion, uploadUserImage } from '../services/api';
 import { ImagePicker } from '@/components/ui/image-picker';
@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
 
 type PendingSortOption = 'trending' | 'newest' | 'top' | 'discussed';

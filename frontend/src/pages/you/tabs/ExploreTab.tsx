@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeftRight,
@@ -52,7 +52,7 @@ import {
   TeamRosterModal,
   TransferBusinessModal,
 } from '../components/modals';
-import { Input, ModalWrap, Pill, SectionTitle } from '../components/ui';
+import { Input, ModalWrap, Pill, SectionTitle } from '../components/YouPrimitives';
 import { BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { withRouteError } from '../utils';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';

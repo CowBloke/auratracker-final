@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
+﻿import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Send, X, MoreHorizontal, Pin, PinOff, Reply, Plus, ChevronDown, BarChart3, Loader2, ImagePlus, Download } from 'lucide-react';
-import { useSmartScroll } from '@/hooks/useSmartScroll';
+import { useSmartScroll } from '@/hooks/use-smart-scroll';
 import {
   Sidebar,
   SidebarContent,

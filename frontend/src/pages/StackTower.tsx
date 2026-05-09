@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { gsap, Power1 } from 'gsap';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { PageShell } from '@/components/layout/page-shell';
+import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameTopBar } from '@/components/game/GameTopBar';

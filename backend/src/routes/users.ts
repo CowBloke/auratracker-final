@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { prisma } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
@@ -9,7 +9,7 @@ import {
   getRelationshipWithViewer,
   getUserSocialStats,
 } from '../utils/social.js';
-import { getParisDayKey, getParisDayStart } from '../utils/dailyAura.js';
+import { getParisDayKey, getParisDayStart } from '../utils/daily/daily-aura.js';
 
 const router = Router();
 const ANNOUNCEMENT_KEY = 'topbar_announcement';

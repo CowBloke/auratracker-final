@@ -1,10 +1,10 @@
-import { Router, Response } from 'express';
+﻿import { Router, Response } from 'express';
 import { randomBytes } from 'crypto';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAuraCoin } from '../utils/logger.js';
 import { createNotification } from '../utils/notifications.js';
-import { emitSharedBalanceUpdates } from '../utils/sharedBalance.js';
+import { emitSharedBalanceUpdates } from '../utils/shared-balance.js';
 
 const router = Router();
 

@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+﻿import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { ChatSidebarProvider, ChatSidebarWrapper, useChatSidebar } from '../chat/ChatSidebarWrapper';
 import ChatBubble from '../chat/ChatBubble';
@@ -16,7 +16,7 @@ import { useGameSocket } from '@/contexts/GameSocketContext';
 import { useDuelSocket } from '@/contexts/DuelSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import AppSidebar from '@/components/layout/Sidebar';
-import { SiteHeader } from '@/components/site-header';
+import { SiteHeader } from '@/components/SiteHeader';
 import PartyChatFloating from '@/components/party/PartyChatFloating';
 import MoneyIncomeOverlay from '@/components/rewards/MoneyIncomeOverlay';
 import { CONTAINER } from '@/lib/design-system';
