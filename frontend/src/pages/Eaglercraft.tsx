@@ -1,12 +1,10 @@
-﻿import { RotateCcw, Swords, Wifi } from 'lucide-react';
+import { RotateCcw, Wifi } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -76,20 +74,64 @@ export default function Eaglercraft() {
   }, [focusGame, isFullscreen, isPaused, sessionKey]);
 
   return (
-    <PageShell>
-      <div className={cn('grid gap-4', isFullscreen ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px]')}>
-        <div
-          ref={containerRef}
-          className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4')}
-        >
-          <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
-            <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
-            <Button size="sm" variant="outline" onClick={restartSession}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Recharger
-            </Button>
-          </GameFullscreenToolbar>
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="Eaglercraft"
+        score={0}
+        highScore={0}
+        isNewHighScore={false}
+        rewards={null}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Version navigateur de Minecraft avec support multijoueur WebSocket.</p>
+            <div className="space-y-1">
+              <Label htmlFor="eaglercraft-server-ctrl" className="text-xs text-muted-foreground">Serveur multijoueur (wss://)</Label>
+              <Input
+                id="eaglercraft-server-ctrl"
+                value={multiplayerInput}
+                onChange={(event) => setMultiplayerInput(event.target.value)}
+                placeholder="wss://exemple.serveur.com"
+                autoComplete="off"
+                spellCheck={false}
+                className="h-7 text-xs"
+              />
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  className="flex-1 h-7 text-xs"
+                  onClick={launchMultiplayer}
+                  disabled={!multiplayerInput.trim().startsWith('wss://') && !multiplayerInput.trim().startsWith('ws://')}
+                >
+                  <Wifi className="mr-1 h-3 w-3" />
+                  Multijoueur
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={clearMultiplayer}>
+                  Solo
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={false}
+        onToggleLeaderboard={() => {}}
+      >
+        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
+        <Button size="sm" variant="outline" onClick={restartSession}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Recharger
+        </Button>
+      </GameTopBar>
 
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[1280px] flex-col">
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={GAME_WIDTH} baseHeight={GAME_HEIGHT}>
             <iframe
               ref={iframeRef}
@@ -108,64 +150,11 @@ export default function Eaglercraft() {
                 setIsPaused(false);
                 focusGame();
               }}
-              description="La session reste affichée mais les interactions sont gelées par-dessus."
+              description="La session reste affichee mais les interactions sont gelees par-dessus."
             />
           </GameFullscreenStage>
         </div>
-
-        {!isFullscreen && (
-          <div className="flex flex-col gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Swords className="h-4 w-4 text-muted-foreground" />
-                  Eaglercraft
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>
-                  Version navigateur intégrée avec support multijoueur via adresse serveur WebSocket.
-                </p>
-                <div className="space-y-2 rounded-lg border border-border/60 bg-background/60 p-3">
-                  <Label htmlFor="eaglercraft-server" className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Adresse serveur multijoueur
-                  </Label>
-                  <Input
-                    id="eaglercraft-server"
-                    value={multiplayerInput}
-                    onChange={(event) => setMultiplayerInput(event.target.value)}
-                    placeholder="wss://exemple.serveur.com"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={launchMultiplayer}
-                      disabled={!multiplayerInput.trim().startsWith('wss://') && !multiplayerInput.trim().startsWith('ws://')}
-                    >
-                      <Wifi className="mr-2 h-4 w-4" />
-                      Lancer multijoueur
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={clearMultiplayer}>
-                      Session solo
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-1 text-xs leading-relaxed">
-                  <p>1. Colle une adresse serveur en <strong>wss://</strong> (ou <strong>ws://</strong> si ton serveur le demande).</p>
-                  <p>2. Clique <strong>Lancer multijoueur</strong> pour ouvrir le client avec connexion rapide.</p>
-                  <p>3. Si ça bloque, utilise <strong>Recharger</strong>, puis vérifie l&apos;adresse serveur.</p>
-                  <p>4. Clique <strong>Session solo</strong> pour revenir à une session offline classique.</p>
-                </div>
-                <p>
-                  Si l&apos;écran reste noir ou si le jeu fige, recharge la session avec le bouton ci-dessus.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
-    </PageShell>
+    </div>
   );
 }

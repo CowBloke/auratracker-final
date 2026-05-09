@@ -6,11 +6,10 @@ import { cn } from '@/lib/utils';
 import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent } from '@/components/ui/card';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
-import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
 
 type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 
@@ -180,7 +179,6 @@ export default function Solitaire() {
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
   const hideGameLeaderboards = useHideGameLeaderboards();
-  const hideGameLeftInfo = useHideGameLeftInfo();
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const [game, setGame] = useState<GameState>(() => createInitialGame());
@@ -524,13 +522,7 @@ export default function Solitaire() {
     }
   }, [isPaused, isWon]);
 
-  const formatTime = (value: number) => {
-    const minutes = Math.floor(value / 60)
-      .toString()
-      .padStart(2, '0');
-    const secs = (value % 60).toString().padStart(2, '0');
-    return `${minutes}:${secs}`;
-  };
+
 
   const boardGap = Math.max(6, Math.round(cardWidth * 0.12));
   const stackOffsetFaceUp = Math.max(12, Math.round(cardWidth * 0.27));
@@ -538,102 +530,41 @@ export default function Solitaire() {
   const pilePadding = Math.max(2, Math.round(cardWidth * 0.04));
 
   return (
-    <div className={cn(
-      'grid grid-cols-1 gap-4 items-start px-4 pb-6 lg:px-6 lg:pb-8',
-      isFullscreen
-        ? 'justify-items-center'
-        : hideGameLeftInfo
-          ? leaderboardVisible
-            ? 'xl:grid-cols-[1fr_320px]'
-            : 'justify-items-center'
-          : leaderboardVisible
-            ? 'xl:grid-cols-[280px_1fr_320px]'
-            : 'xl:grid-cols-[280px_1fr]'
-    )}>
-      {!hideGameLeftInfo && (
-      <div className={cn('flex flex-col gap-3', isFullscreen && 'hidden')}>
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Statistiques</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 space-y-4">
-            <div>
-              <p className="text-3xl font-light tabular-nums">{score.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Score actuel</p>
-            </div>
-            <Separator />
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Coups: <span className="font-medium text-foreground tabular-nums">{moves.toLocaleString()}</span></p>
-              <p className="text-sm text-muted-foreground">Temps: <span className="font-medium text-foreground tabular-nums">{formatTime(seconds)}</span></p>
-              <p className="text-sm text-muted-foreground">Record: <span className="font-medium text-foreground tabular-nums">{highScore.toLocaleString()}</span></p>
-            </div>
-            {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
-            {rewards && (rewards.money > 0 || rewards.aura > 0) && (
-              <p className="text-sm text-muted-foreground">
-                {rewards.money > 0 && `+$${rewards.money}`}
-                {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                {rewards.aura > 0 && `+${rewards.aura} aura`}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="px-4 py-3">
-            <CardTitle className="text-sm font-medium">Progression</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-sm text-muted-foreground">
-              Cartes posées: <span className="font-medium text-foreground tabular-nums">{completedCards}/52</span>
-            </p>
-          </CardContent>
-        </Card>
-
-        <Button
-          variant="outline"
-          type="button"
-          onClick={startNewGame}
-          className="inline-flex items-center gap-2"
-        >
-          <RotateCcw className="h-4 w-4" />
+    <div
+      ref={gameContainerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="Solitaire"
+        score={score}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Glisse-depose pour deplacer les cartes.</p>
+            <p className="text-xs text-muted-foreground">Double-clic pour tenter un move automatique.</p>
+            <p className="text-xs text-muted-foreground">Le score baisse avec les coups et le temps.</p>
+          </div>
+        )}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={leaderboardVisible}
+        onToggleLeaderboard={() => setShowLeaderboard((value) => !value)}
+      >
+        <Button variant="outline" size="sm" type="button" onClick={startNewGame}>
+          <RotateCcw className="h-4 w-4 mr-2" />
           Nouvelle partie
         </Button>
-      </div>
-      )}
+      </GameTopBar>
 
-      <div
-        ref={gameContainerRef}
-        className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4')}
-      >
-        <GameTopBar
-          title="Solitaire"
-          score={score}
-          highScore={highScore}
-          isNewHighScore={isNewHighScore}
-          rewards={rewards}
-          controls={(
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Glisse-dépose pour déplacer les cartes.</p>
-              <p className="text-xs text-muted-foreground">Double-clic pour tenter un move automatique.</p>
-              <p className="text-xs text-muted-foreground">Le score baisse avec les coups et le temps.</p>
-            </div>
-          )}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          showLeaderboard={leaderboardVisible}
-          onToggleLeaderboard={() => setShowLeaderboard((value) => !value)}
-          className="w-full max-w-[1100px]"
-        >
-          {isFullscreen && (
-            <Button variant="outline" size="sm" type="button" onClick={startNewGame}>
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Nouvelle partie
-            </Button>
-          )}
-        </GameTopBar>
-
-        <Card className={cn(isFullscreen && 'w-screen min-h-screen rounded-none border-0 bg-background shadow-none')}>
-          <CardContent className="p-3 md:p-4">
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[1100px] flex-col">
+          <Card className={cn(isFullscreen && 'w-screen min-h-screen rounded-none border-0 bg-background shadow-none')}>
+            <CardContent className="p-3 md:p-4">
             <div
               ref={boardRef}
               style={
@@ -827,22 +758,23 @@ export default function Solitaire() {
             </div>
           )}
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+          </Card>
+        </div>
 
-      {leaderboardVisible && (
-        <GameLeaderboard
-          entries={leaderboard}
-          currentUserId={user?.id}
-          personalHighScore={highScore}
-          isAdmin={user?.isAdmin}
-          onDeleteScore={handleDeleteScore}
-          maxHeight={720}
-          hidden={isFullscreen}
-        />
-      )}
-
+        {leaderboardVisible && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              isAdmin={user?.isAdmin}
+              onDeleteScore={handleDeleteScore}
+              maxHeight={720}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

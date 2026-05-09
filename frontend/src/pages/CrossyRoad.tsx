@@ -1,13 +1,11 @@
-﻿import { Bird, Play, RotateCcw } from 'lucide-react';
+﻿import { Play, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
-import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -252,29 +250,51 @@ export default function CrossyRoad() {
     }
   }, [fetchLeaderboard, user?.id]);
 
-  return (
-    <PageShell>
-      <div className={cn('grid gap-4', isFullscreen ? 'grid-cols-1' : 'grid-cols-1')}>
-        <div
-          ref={containerRef}
-          className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4')}
-        >
-          <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
-            <GamePauseButton
-              isPaused={isPaused}
-              onToggle={handlePauseToggle}
-              disabled={!canPause && !isPaused}
-            />
-            <Button size="sm" variant="outline" onClick={restartSession} disabled={!buildDetected}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Relancer
-            </Button>
-            <Button size="sm" variant="outline" onClick={hardReloadSession} disabled={!buildDetected}>
-              <Play className="mr-2 h-4 w-4" />
-              Recharger
-            </Button>
-          </GameFullscreenToolbar>
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="Crossy Road"
+        score={highScore}
+        highScore={highScore}
+        isNewHighScore={false}
+        rewards={null}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Fleches directionnelles pour se deplacer.</p>
+            <p className="text-xs text-muted-foreground">Espace pour avancer, P pour pause.</p>
+            <p className="text-xs text-muted-foreground">{CROSSY_SUMMARY}</p>
+          </div>
+        )}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
+      >
+        <GamePauseButton
+          isPaused={isPaused}
+          onToggle={handlePauseToggle}
+          disabled={!canPause && !isPaused}
+        />
+        <Button size="sm" variant="outline" onClick={restartSession} disabled={!buildDetected}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Relancer
+        </Button>
+        <Button size="sm" variant="outline" onClick={hardReloadSession} disabled={!buildDetected}>
+          <Play className="mr-2 h-4 w-4" />
+          Recharger
+        </Button>
+      </GameTopBar>
+
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[1280px] flex-col">
           {buildDetected ? (
             <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={GAME_WIDTH} baseHeight={GAME_HEIGHT}>
               <iframe
@@ -293,7 +313,7 @@ export default function CrossyRoad() {
                 onResume={() => {
                   handlePauseToggle();
                 }}
-                description="La session reste affichée mais le jeu est suspendu."
+                description="La session reste affichee mais le jeu est suspendu."
               />
             </GameFullscreenStage>
           ) : (
@@ -303,13 +323,15 @@ export default function CrossyRoad() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <p>
-                  Crossy Road est déjà intégré au hub jeux avec le même shell UI. Il suffit d&apos;ajouter un build web dans <code>/frontend/public/crossy-road</code> avec un <code>index.html</code> pour le rendre jouable.
+                  Crossy Road est deja integre au hub jeux avec le meme shell UI. Il suffit d&apos;ajouter un build web dans <code>/frontend/public/crossy-road</code> avec un <code>index.html</code> pour le rendre jouable.
                 </p>
               </CardContent>
             </Card>
           )}
+        </div>
 
-          {!isFullscreen && buildDetected && (
+        {showLeaderboard && !isFullscreen && buildDetected && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
             <GameLeaderboard
               entries={leaderboard}
               currentUserId={user?.id}
@@ -318,38 +340,10 @@ export default function CrossyRoad() {
               onDeleteScore={handleDeleteScore}
               title="Classement Crossy Road"
             />
-          )}
-        </div>
-
-        {!isFullscreen && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <Bird className="h-4 w-4 text-muted-foreground" />
-                Crossy Road
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">Classique</Badge>
-              </div>
-              <p>{CROSSY_SUMMARY}</p>
-              <p>
-                Ton meilleur score est enregistré automatiquement à chaque fin de run.
-              </p>
-              <div className="mt-4">
-                <div className="font-semibold mb-1">Contrôles</div>
-                <ul className="list-disc list-inside text-sm space-y-1">
-                  <li><strong>Flèches directionnelles</strong> : se déplacer</li>
-                  <li><strong>Espace</strong> : avancer</li>
-                  <li><strong>P</strong> : pause</li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
+          </div>
         )}
       </div>
-    </PageShell>
+    </div>
   );
 }
 

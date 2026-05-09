@@ -11,14 +11,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -208,11 +205,11 @@ export default function Snake() {
   const [difficulty, setDifficulty] = useState<DifficultyKey>('classic');
   const [game, setGame] = useState<SnakeGameState>(() => createInitialGame('classic'));
   const [highScore, setHighScore] = useState(0);
-  const [totalPlayed, setTotalPlayed] = useState(0);
+  const [, setTotalPlayed] = useState(0);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
-  const [lastScore, setLastScore] = useState<number | null>(null);
+  const [, setLastScore] = useState<number | null>(null);
 
   const submittedThisRunRef = useRef(false);
   const runVersionRef = useRef(0);
@@ -483,108 +480,64 @@ export default function Snake() {
 
   const currentDifficulty = DIFFICULTIES[difficulty];
 
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
   return (
-    <PageShell size="wide">
-      <PageHeader
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
         title="Snake"
-        description="Un Snake natif au hub Aura: score, combos, acceleration progressive et classement persistant."
-      />
+        score={game.score}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Fleches ou ZQSD pour tourner.</p>
+            <p className="text-xs text-muted-foreground">Espace pour pause/reprise.</p>
+            <p className="text-xs text-muted-foreground">R ou Entree pour relancer la run.</p>
+            <div className="pt-1">
+              <Select value={difficulty} onValueChange={changeDifficulty}>
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(DIFFICULTIES).map(([key, value]) => (
+                    <SelectItem key={key} value={key} className="text-xs">
+                      {value.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">{currentDifficulty.description}</p>
+            </div>
+          </div>
+        )}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
+      >
+        <GamePauseButton isPaused={game.status === 'paused'} onToggle={handlePauseToggle} disabled={!canPause} />
+        {game.status === 'idle' ? (
+          <Button size="sm" onClick={() => setGame((current) => ({ ...current, status: 'running' }))}>
+            <Play className="mr-2 h-4 w-4" />
+            Demarrer
+          </Button>
+        ) : null}
+        <Button size="sm" variant="outline" onClick={() => restartGame()}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Rejouer
+        </Button>
+      </GameTopBar>
 
-      <div className={cn('grid items-start gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]', isFullscreen && 'grid-cols-1')}>
-        <div className={cn('space-y-4', isFullscreen && 'hidden')}>
-          <Card>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="text-sm font-medium">Run</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 px-4 pb-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Score</p>
-                  <p className="text-2xl font-semibold tabular-nums">{game.score}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Record</p>
-                  <p className="text-2xl font-semibold tabular-nums">{highScore}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Pommes</p>
-                  <p className="text-xl font-medium tabular-nums">{game.foodsEaten}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Combo max</p>
-                  <p className="text-xl font-medium tabular-nums">x{Math.max(game.bestCombo, game.combo)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Difficulte</p>
-                <Select value={difficulty} onValueChange={changeDifficulty}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DIFFICULTIES).map(([key, value]) => (
-                      <SelectItem key={key} value={key}>
-                        {value.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">{currentDifficulty.description}</p>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>Statut: <span className="text-foreground">{game.status === 'idle' ? 'Pret' : game.status === 'running' ? 'En cours' : game.status === 'paused' ? 'En pause' : 'Termine'}</span></p>
-                <p>Vitesse: <span className="font-mono text-foreground">{game.speedMs} ms</span></p>
-                <p>Parties jouees: <span className="font-mono text-foreground">{totalPlayed}</span></p>
-              </div>
-
-              {lastScore !== null && (
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm">
-                  <p className="font-medium text-foreground">Derniere run: {lastScore}</p>
-                  <p className="mt-1 text-muted-foreground">
-                    {rewards && (rewards.money > 0 || rewards.aura > 0)
-                      ? `${rewards.money > 0 ? `+$${rewards.money}` : ''}${rewards.money > 0 && rewards.aura > 0 ? ' · ' : ''}${rewards.aura > 0 ? `+${rewards.aura} aura` : ''}`
-                      : 'Aucune recompense sur cette run.'}
-                  </p>
-                  {isNewHighScore ? <p className="mt-1 text-emerald-600 dark:text-emerald-400">Nouveau record personnel.</p> : null}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="text-sm font-medium">Commandes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 px-4 pb-4 text-sm text-muted-foreground">
-              <p>Fleches ou ZQSD pour tourner.</p>
-              <p>Espace pour pause/reprise.</p>
-              <p>R ou Entree pour relancer la run.</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div
-          ref={containerRef}
-          className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4')}
-        >
-          <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
-            <GamePauseButton isPaused={game.status === 'paused'} onToggle={handlePauseToggle} disabled={!canPause} />
-            {game.status === 'idle' ? (
-              <Button size="sm" onClick={() => setGame((current) => ({ ...current, status: 'running' }))}>
-                <Play className="mr-2 h-4 w-4" />
-                Demarrer
-              </Button>
-            ) : null}
-            <Button size="sm" variant="outline" onClick={() => restartGame()}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Rejouer
-            </Button>
-          </GameFullscreenToolbar>
-
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[600px] flex-col">
           <GameFullscreenStage
             isFullscreen={isFullscreen}
             baseWidth={BOARD_PIXEL_SIZE}
@@ -701,65 +654,51 @@ export default function Snake() {
             </div>
           </GameFullscreenStage>
 
-          <Card className={cn('xl:hidden', isFullscreen && 'hidden')}>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="text-sm font-medium">Pad tactile</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="mx-auto grid w-[176px] grid-cols-3 gap-2">
-                <span />
-                <Button variant="outline" size="icon" onClick={() => queueDirection('up')}>
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-                <span />
-                <Button variant="outline" size="icon" onClick={() => queueDirection('left')}>
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handlePauseToggle}
-                  disabled={!canPause && game.status !== 'idle'}
-                >
-                  {game.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                </Button>
-                <Button variant="outline" size="icon" onClick={() => queueDirection('right')}>
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-                <span />
-                <Button variant="outline" size="icon" onClick={() => queueDirection('down')}>
-                  <ArrowDown className="h-4 w-4" />
-                </Button>
-                <span />
-              </div>
-            </CardContent>
-          </Card>
+          <div className={cn('mt-3 xl:hidden', isFullscreen && 'hidden')}>
+            <div className="mx-auto grid w-[176px] grid-cols-3 gap-2">
+              <span />
+              <Button variant="outline" size="icon" onClick={() => queueDirection('up')}>
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <span />
+              <Button variant="outline" size="icon" onClick={() => queueDirection('left')}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePauseToggle}
+                disabled={!canPause && game.status !== 'idle'}
+              >
+                {game.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => queueDirection('right')}>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <span />
+              <Button variant="outline" size="icon" onClick={() => queueDirection('down')}>
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+              <span />
+            </div>
+          </div>
         </div>
 
-        <div className={cn('space-y-4', isFullscreen && 'hidden')}>
-          <GameLeaderboard
-            entries={leaderboard}
-            currentUserId={user?.id}
-            personalHighScore={highScore}
-            isAdmin={isAdmin}
-            onDeleteScore={handleDeleteScore}
-            title="Classement Snake"
-            maxHeight={520}
-          />
-
-          <Card>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="text-sm font-medium">Conseils</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 px-4 pb-4 text-sm text-muted-foreground">
-              <p>Anticipe deux coups a l avance pour eviter les impasses au centre.</p>
-              <p>Les pommes enchainees rapidement montent le combo et accelerent le score.</p>
-              <p>Sur mobile, le pad tactile te permet de jouer sans clavier.</p>
-            </CardContent>
-          </Card>
-        </div>
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              isAdmin={isAdmin}
+              onDeleteScore={handleDeleteScore}
+              title="Classement Snake"
+              maxHeight={520}
+            />
+          </div>
+        )}
       </div>
-    </PageShell>
+    </div>
   );
 }
 

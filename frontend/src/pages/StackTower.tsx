@@ -3,15 +3,12 @@ import * as THREE from 'three';
 import { gsap, Power1 } from 'gsap';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { PageShell } from '@/components/layout/PageShell';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameTopBar } from '@/components/game/GameTopBar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
-import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
 import { cn } from '@/lib/utils';
-import { Box, Trophy } from 'lucide-react';
 
 const GAME_TYPE = 'stack_tower';
 const STAGE_WIDTH = 900;
@@ -550,7 +547,6 @@ class Game {
 export default function StackTower() {
   const { user, refreshUser } = useAuth();
   const hideGameLeaderboards = useHideGameLeaderboards();
-  const hideGameLeftInfo = useHideGameLeftInfo();
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const gameRef = useRef<Game | null>(null);
 
@@ -668,66 +664,13 @@ export default function StackTower() {
   }, [submitScore]);
 
   return (
-    <PageShell size="wide">
-      <div className={cn(
-        'grid gap-6',
-        isFullscreen
-          ? '2xl:grid-cols-1'
-          : hideGameLeftInfo
-            ? leaderboardVisible
-              ? '2xl:grid-cols-[minmax(0,1fr)_280px]'
-              : '2xl:grid-cols-1'
-            : leaderboardVisible
-              ? '2xl:grid-cols-[280px_minmax(0,1fr)_280px]'
-              : '2xl:grid-cols-[280px_minmax(0,1fr)]'
-      )}>
-        {!hideGameLeftInfo && (
-        <div className={cn('space-y-4', isFullscreen && 'hidden')}>
-          <Card>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <Trophy className="h-4 w-4 text-muted-foreground" />
-                Tour empilée
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 px-4 pb-4">
-              <div>
-                <p className="text-3xl font-semibold tabular-nums">{score}</p>
-                <p className="text-xs text-muted-foreground">Score actuel</p>
-              </div>
-              <div>
-                <p className="text-xl font-medium tabular-nums">{highScore}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Record personnel</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                <Box className="h-4 w-4 text-muted-foreground" />
-                Contrôles
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 px-4 pb-4 text-xs text-muted-foreground">
-              <p>
-                Espace ou clic pour poser un bloc.
-              </p>
-              <p>
-                Le jeu reprend exactement la logique Three.js/TweenLite du code source fourni.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-        )}
-
-        <div
-          ref={gameContainerRef}
-          className={cn(
-            'flex flex-col gap-3',
-            isFullscreen && 'min-h-screen w-screen items-center justify-center bg-background px-4 py-4',
-          )}
-        >
+    <div
+      ref={gameContainerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4',
+      )}
+    >
           <GameTopBar
             title="Stack Tower"
             score={score}
@@ -747,6 +690,8 @@ export default function StackTower() {
             className="w-full max-w-[900px]"
           />
 
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[900px] flex-col">
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={STAGE_WIDTH} baseHeight={STAGE_HEIGHT}>
             <div id="container" className={cn('relative h-full w-full overflow-hidden rounded-xl border border-border bg-background')}>
               <div id="game" className="absolute inset-0" />
@@ -795,21 +740,20 @@ export default function StackTower() {
           </GameFullscreenStage>
         </div>
 
-        {leaderboardVisible && (
-        <div className={cn('w-full', !isFullscreen && '2xl:max-w-[280px]')}>
-          <GameLeaderboard
-            entries={leaderboard}
-            currentUserId={user?.id}
-            personalHighScore={highScore}
-            isAdmin={user?.isAdmin}
-            onDeleteScore={handleDeleteScore}
-            maxHeight={540}
-            hidden={isFullscreen}
-          />
-        </div>
+        {leaderboardVisible && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              isAdmin={user?.isAdmin}
+              onDeleteScore={handleDeleteScore}
+              maxHeight={540}
+            />
+          </div>
         )}
       </div>
-    </PageShell>
+    </div>
   );
 }
 

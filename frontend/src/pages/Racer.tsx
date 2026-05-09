@@ -4,9 +4,8 @@ import { gamesApi, DailyRacerLeaderboardEntry } from '../services/api';
 import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useHideGameLeaderboards } from '@/lib/game-preferences';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
@@ -438,7 +437,6 @@ interface Car {
 // COMPONENT
 // ============================================
 export default function Racer() {
-  const hideGameLeaderboards = useHideGameLeaderboards();
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
@@ -1361,41 +1359,58 @@ export default function Racer() {
     }
   }, [fetchDailyRacerState, user?.id, user?.isAdmin]);
 
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      <div className={cn('flex items-center justify-end gap-4', isFullscreen && 'hidden')}>
-        <div className="text-right text-sm text-muted-foreground tabular-nums">
-          <div className="text-2xl font-light text-foreground">{speed} mph</div>
-          <div>Temps: {formatTime(currentLapTime)}</div>
-          <div>Piste du jour (temps universel) : {trackDateLabel}</div>
-          <div>Meilleur du jour: {dailyBestLapTimeMs ? formatMsTime(dailyBestLapTimeMs) : '--'}</div>
-          <div>Tentatives du jour: {dailyRunCount}</div>
-        </div>
-      </div>
-
-      <div className={cn('flex flex-col items-center gap-6 2xl:flex-row 2xl:items-start', isFullscreen && 'min-h-screen')}>
-        <div
-          ref={gameContainerRef}
-          className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4')}
-        >
-          <div className="flex w-full max-w-[1024px] items-center justify-between gap-2">
-            <GameFullscreenToolbar
-              isFullscreen={isFullscreen}
-              onToggleFullscreen={toggleFullscreen}
-              className="w-auto"
-            />
-            {imagesLoaded && (
-              <Button
-                variant="ghost"
-                onClick={initGame}
-                className="flex items-center gap-2 border border-border/60 px-3 py-2 text-xs uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Rejouer
-              </Button>
-            )}
+    <div
+      ref={gameContainerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="Racer"
+        score={dailyBestLapTimeMs ?? 0}
+        highScore={dailyBestLapTimeMs ?? 0}
+        isNewHighScore={isNewDailyBest}
+        rewards={rewards}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Course de rue retro — completez un tour le plus vite possible.</p>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              Vitesse: {speed} mph · Temps: {formatTime(currentLapTime)}
+            </p>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              Piste du jour ({trackDateLabel}) · Meilleur: {dailyBestLapTimeMs ? formatMsTime(dailyBestLapTimeMs) : '--'} · Tentatives: {dailyRunCount}
+            </p>
+            <div className="flex flex-wrap gap-1 pt-1 text-xs text-muted-foreground">
+              <kbd className="px-1.5 py-0.5 border border-border/50 rounded text-[10px]">Left/Q</kbd>
+              <span>Gauche</span>
+              <kbd className="px-1.5 py-0.5 border border-border/50 rounded text-[10px] ml-2">Right/D</kbd>
+              <span>Droite</span>
+              <kbd className="px-1.5 py-0.5 border border-border/50 rounded text-[10px] ml-2">Up/Z</kbd>
+              <span>Accel</span>
+              <kbd className="px-1.5 py-0.5 border border-border/50 rounded text-[10px] ml-2">Down/S</kbd>
+              <span>Freiner</span>
+            </div>
           </div>
+        )}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
+      >
+        {imagesLoaded && (
+          <Button size="sm" variant="outline" onClick={initGame}>
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Rejouer
+          </Button>
+        )}
+      </GameTopBar>
 
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[1024px] flex-col">
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={WIDTH} baseHeight={HEIGHT}>
             <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="h-full w-full rounded-lg border border-border/30" />
 
@@ -1450,13 +1465,8 @@ export default function Racer() {
           </GameFullscreenStage>
         </div>
 
-        {!hideGameLeaderboards && (
-          <div
-            className={cn(
-              'w-full max-w-[1024px] 2xl:w-80 2xl:max-w-none',
-              isFullscreen && 'hidden'
-            )}
-          >
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
             <GameLeaderboard
               entries={leaderboardEntries}
               currentUserId={user?.id}
@@ -1469,29 +1479,6 @@ export default function Racer() {
             />
           </div>
         )}
-      </div>
-
-      <div className={cn('flex justify-center gap-8 text-xs text-muted-foreground', isFullscreen && 'hidden')}>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">Left</kbd>
-          <span>Gauche</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">Right</kbd>
-          <span>Droite</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">Up</kbd>
-          <span>Accel</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 border border-border/50 rounded">Down</kbd>
-          <span>Freiner</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>ou</span>
-          <kbd className="px-2 py-1 border border-border/50 rounded">zqsd</kbd>
-        </div>
       </div>
     </div>
   );

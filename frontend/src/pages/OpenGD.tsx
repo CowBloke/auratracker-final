@@ -1,10 +1,9 @@
-﻿import { RotateCcw, Square } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -73,24 +72,43 @@ export default function OpenGD() {
   }, [buildDetected, focusGame, isFullscreen, isPaused, sessionKey]);
 
   return (
-    <PageShell>
-      <div className={cn('grid gap-4', isFullscreen ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px]')}>
-        <div
-          ref={containerRef}
-          className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4')}
-        >
-          <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
-            <GamePauseButton
-              isPaused={isPaused}
-              onToggle={() => setIsPaused((current) => !current)}
-              disabled={!buildDetected}
-            />
-            <Button size="sm" variant="outline" onClick={restartSession} disabled={!buildDetected}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Recharger
-            </Button>
-          </GameFullscreenToolbar>
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="OpenGD"
+        score={0}
+        highScore={0}
+        isNewHighScore={false}
+        rewards={null}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Implementation open source de Geometry Dash.</p>
+            <p className="text-xs text-muted-foreground">Depot source: <a href={UPSTREAM_REPO} target="_blank" rel="noreferrer" className="underline underline-offset-4">{UPSTREAM_REPO}</a></p>
+          </div>
+        )}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={false}
+        onToggleLeaderboard={() => {}}
+      >
+        <GamePauseButton
+          isPaused={isPaused}
+          onToggle={() => setIsPaused((current) => !current)}
+          disabled={!buildDetected}
+        />
+        <Button size="sm" variant="outline" onClick={restartSession} disabled={!buildDetected}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Recharger
+        </Button>
+      </GameTopBar>
 
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[1280px] flex-col">
           {buildDetected ? (
             <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={GAME_WIDTH} baseHeight={GAME_HEIGHT}>
               <iframe
@@ -110,7 +128,7 @@ export default function OpenGD() {
                   setIsPaused(false);
                   focusGame();
                 }}
-                description="La session reste affichée mais les interactions sont gelées par-dessus."
+                description="La session reste affichee mais les interactions sont gelees par-dessus."
               />
             </GameFullscreenStage>
           ) : (
@@ -120,40 +138,19 @@ export default function OpenGD() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <p>
-                  Le dépôt OpenGD a été copié dans <code>{SOURCE_REPO_COPY}</code>, mais il ne contient pas de build navigateur prêt à lancer automatiquement.
+                  Le depot OpenGD a ete copie dans <code>{SOURCE_REPO_COPY}</code>, mais il ne contient pas de build navigateur pret a lancer automatiquement.
                 </p>
                 <p>
-                  Si tu ajoutes un build web avec un <code>index.html</code> dans <code>/frontend/public/opengd</code>, la page le détectera et le lancera directement.
+                  Si tu ajoutes un build web avec un <code>index.html</code> dans <code>/frontend/public/opengd</code>, la page le detectera et le lancera directement.
                 </p>
                 <p>
-                  Dépôt source: <a href={UPSTREAM_REPO} target="_blank" rel="noreferrer" className="underline underline-offset-4">{UPSTREAM_REPO}</a>
+                  Depot source: <a href={UPSTREAM_REPO} target="_blank" rel="noreferrer" className="underline underline-offset-4">{UPSTREAM_REPO}</a>
                 </p>
               </CardContent>
             </Card>
           )}
         </div>
-
-        {!isFullscreen && (
-          <div className="flex flex-col gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Square className="h-4 w-4 text-muted-foreground" />
-                  OpenGD
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>
-                  Intégration native au hub jeux AuraTracker avec le même shell UI que les autres jeux iframe (plein écran, pause, rechargement).
-                </p>
-                <p>
-                  OpenGD est une implémentation open source de Geometry Dash; la page est prête et basculera automatiquement vers le mode jouable dès qu&apos;un build web sera disponible.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
-    </PageShell>
+    </div>
   );
 }

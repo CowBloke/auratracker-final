@@ -1,13 +1,11 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
-import { Grip, MousePointer2, RotateCcw, Sparkles, Trophy } from 'lucide-react';
+import { MousePointer2, RotateCcw, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
-import { PageHeader, PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import {
@@ -92,10 +90,10 @@ export default function BlockBlast() {
   const [hoveredDrop, setHoveredDrop] = useState<{ x: number; y: number } | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [highScore, setHighScore] = useState(0);
-  const [totalPlayed, setTotalPlayed] = useState(0);
+  const [, setTotalPlayed] = useState(0);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
-  const [lastScore, setLastScore] = useState<number | null>(null);
+  const [, setLastScore] = useState<number | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
 
   const submittedThisRunRef = useRef(false);
@@ -355,108 +353,67 @@ export default function BlockBlast() {
       : 'min(100%, 620px, max(280px, calc(100vh - 28rem)))',
   };
 
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+
   return (
-    <PageShell size="wide">
-      <PageHeader
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
         title="BlockBlast"
-        description="Portage fidèle de Blockerino dans Aura: mêmes pièces, même scoring, mode Classic et Chaos, avec score persistant et classement."
-      />
+        score={game.score}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Glisse une piece sur la grille ou selectionne-la puis clique un emplacement valide.</p>
+            <p className="text-xs text-muted-foreground">Completer une ligne ou une colonne declenche un bonus combo.</p>
+            <div className="grid grid-cols-2 gap-1 pt-1">
+              {(['classic', 'chaos'] as BlockBlastMode[]).map((mode) => (
+                <Button
+                  key={mode}
+                  type="button"
+                  size="sm"
+                  variant={game.mode === mode ? 'default' : 'outline'}
+                  className={cn('h-auto flex-col items-start gap-0.5 px-2 py-2 text-left text-xs', mode === 'chaos' && game.mode === mode && 'bg-black text-white hover:bg-black/90')}
+                  onClick={() => changeMode(mode)}
+                >
+                  <span>{getModeConfig(mode).label}</span>
+                  <span className="text-[10px] font-normal opacity-80">
+                    {mode === 'classic' ? '8x8, 3 pieces' : '10x10, 5 pieces'}
+                  </span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
+      >
+        <Button type="button" variant="outline" size="sm" onClick={() => resetRun()}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Recommencer
+        </Button>
+      </GameTopBar>
 
-      <div className={cn('grid items-start gap-4 xl:grid-cols-[280px_minmax(0,1fr)_320px]', isFullscreen && 'grid-cols-1')}>
-        <div className={cn('space-y-4', isFullscreen && 'hidden')}>
-          <Card>
-            <CardHeader className="px-4 py-3">
-              <CardTitle className="text-sm font-medium">Run</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 px-4 pb-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Score</p>
-                  <p className="text-2xl font-semibold tabular-nums">{game.score}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Record</p>
-                  <p className="text-2xl font-semibold tabular-nums">{highScore}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Combo</p>
-                  <p className="text-xl font-medium tabular-nums">x{Math.max(1, game.combo)}</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                  <p className="text-xs text-muted-foreground">Parties</p>
-                  <p className="text-xl font-medium tabular-nums">{totalPlayed}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">Mode</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['classic', 'chaos'] as BlockBlastMode[]).map((mode) => (
-                    <Button
-                      key={mode}
-                      type="button"
-                      variant={game.mode === mode ? 'default' : 'outline'}
-                      className={cn('h-auto flex-col items-start gap-1 px-3 py-3 text-left', mode === 'chaos' && game.mode === mode && 'bg-black text-white hover:bg-black/90')}
-                      onClick={() => changeMode(mode)}
-                    >
-                      <span>{getModeConfig(mode).label}</span>
-                      <span className="text-[11px] font-normal opacity-80">
-                        {mode === 'classic' ? '8x8, 3 pièces' : '10x10, 5 pièces'}
-                      </span>
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 p-3 text-sm">
-                <p className="font-medium">Comment jouer</p>
-                <p className="text-muted-foreground">Glisse une pièce sur la grille ou sélectionne-la puis clique un emplacement valide.</p>
-                <p className="text-muted-foreground">Chaque bloc posé donne des points. Compléter une ligne ou une colonne déclenche un bonus combo.</p>
-              </div>
-
-              {lastScore !== null && (
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm">
-                  <p className="font-medium text-emerald-200">Dernière run: {lastScore}</p>
-                  <p className="mt-1 text-emerald-100/80">
-                    {rewards ? `+${rewards.money} money, +${rewards.aura} aura` : 'Score enregistré.'}
-                    {isNewHighScore ? ' Nouveau record personnel.' : ''}
-                  </p>
-                </div>
-              )}
-
-              <Button type="button" variant="outline" className="w-full" onClick={() => resetRun()}>
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Recommencer
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
+      <div className="flex items-start justify-center gap-4">
         <div
-          ref={containerRef}
           className={cn(
-            'rounded-2xl border border-border/50 bg-[radial-gradient(circle_at_top,_rgba(255,80,80,0.18),_transparent_35%),linear-gradient(180deg,_rgba(8,8,10,0.98),_rgba(20,20,28,0.96))] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.35)]',
-            isFullscreen && 'fixed inset-0 z-50 rounded-none border-0 p-6',
+            'flex w-full max-w-[920px] flex-col rounded-2xl border border-border/50 bg-[radial-gradient(circle_at_top,_rgba(255,80,80,0.18),_transparent_35%),linear-gradient(180deg,_rgba(8,8,10,0.98),_rgba(20,20,28,0.96))] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.35)]',
+            isFullscreen && 'rounded-none border-0 p-6',
           )}
         >
-          <GameFullscreenToolbar
-            isFullscreen={isFullscreen}
-            onToggleFullscreen={toggleFullscreen}
-            className="mb-4"
-          >
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
-              <Sparkles className="h-3.5 w-3.5" />
-              {modeConfig.label} · {modeConfig.boardLength}x{modeConfig.boardLength}
-            </div>
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
-              <Trophy className="h-3.5 w-3.5" />
-              Score {game.score}
-            </div>
-            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
-              <Grip className="h-3.5 w-3.5" />
-              Combo x{Math.max(1, game.combo)}
-            </div>
-          </GameFullscreenToolbar>
+          <div className="mb-4 flex items-center gap-2 text-xs text-white/60">
+            <Sparkles className="h-3.5 w-3.5" />
+            {modeConfig.label} · {modeConfig.boardLength}x{modeConfig.boardLength} · Combo x{Math.max(1, game.combo)}
+          </div>
 
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={BASE_STAGE_SIZE} baseHeight={BASE_STAGE_SIZE}>
             <div className="relative flex h-full w-full flex-col items-center justify-center gap-6 overflow-hidden rounded-[28px] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_30%),linear-gradient(180deg,_rgba(14,14,18,0.98),_rgba(0,0,0,0.95))] px-4 py-6">
@@ -657,18 +614,20 @@ export default function BlockBlast() {
           )}
         </div>
 
-        <div className={cn(isFullscreen && 'hidden')}>
-          <GameLeaderboard
-            entries={leaderboard}
-            currentUserId={user?.id}
-            personalHighScore={highScore}
-            isAdmin={isAdmin}
-            onDeleteScore={handleDeleteScore}
-            title="Classement BlockBlast"
-          />
-        </div>
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
+            <GameLeaderboard
+              entries={leaderboard}
+              currentUserId={user?.id}
+              personalHighScore={highScore}
+              isAdmin={isAdmin}
+              onDeleteScore={handleDeleteScore}
+              title="Classement BlockBlast"
+            />
+          </div>
+        )}
       </div>
-    </PageShell>
+    </div>
   );
 }
 

@@ -1,9 +1,9 @@
-﻿import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Map, Shield, Sparkles, Sword, Target, Trash2, Trophy } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Map, Target, Trash2, Trophy } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { clashApi, type ClashBattleEntry, type ClashBuilding, type ClashLeaderboardEntry, type ClashStateResponse, type ClashTarget } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ import { toast } from '@/hooks/use-toast';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { useHideGameLeaderboards } from '@/lib/game-preferences';
 
 type TabId = 'village' | 'attack' | 'journal' | 'leaderboard';
 
@@ -109,31 +108,6 @@ function getBuildingAccent(type: ClashBuilding['type']) {
   }
 }
 
-function InfoStat({
-  label,
-  value,
-  icon,
-  detail,
-}: {
-  label: string;
-  value: string;
-  icon: ReactNode;
-  detail?: string;
-}) {
-  return (
-    <Card className="rounded-2xl border-border/50 shadow-none">
-      <CardContent className="flex items-start gap-3 p-4">
-        <div className="rounded-xl border border-border/50 bg-muted/30 p-2.5 text-foreground/80">{icon}</div>
-        <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className="mt-1 text-lg font-semibold">{value}</p>
-          {detail ? <p className="text-xs text-muted-foreground">{detail}</p> : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function BuildingInspector({
   building,
   canAfford,
@@ -216,7 +190,6 @@ function BuildingInspector({
 export default function ClashVillage() {
   const { refreshUser } = useAuth();
   const { confirm } = useAppDialog();
-  const hideGameLeaderboards = useHideGameLeaderboards();
   const [activeTab, setActiveTab] = useState<TabId>('village');
   const [state, setState] = useState<ClashStateResponse | null>(null);
   const [targets, setTargets] = useState<ClashTarget[]>([]);
@@ -242,12 +215,6 @@ export default function ClashVillage() {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (hideGameLeaderboards && activeTab === 'leaderboard') {
-      setActiveTab('village');
-    }
-  }, [activeTab, hideGameLeaderboards]);
 
   const loadPage = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setLoading(true);
@@ -333,7 +300,7 @@ export default function ClashVillage() {
   }, [loadPage]);
 
   const handleDeleteVillage = useCallback(async () => {
-    if (!(await confirm('Supprimer ton village Clash ? Cette action retirera ton village du jeu et personne ne pourra plus l’attaquer tant que tu n’en recrées pas un.'))) {
+    if (!(await confirm("Supprimer ton village Clash ? Cette action retirera ton village du jeu et personne ne pourra plus l'attaquer tant que tu n'en recrées pas un."))) {
       return;
     }
 
@@ -354,7 +321,7 @@ export default function ClashVillage() {
       });
       toast({
         title: 'Village supprimé',
-        description: 'Ton village a été retiré du jeu. Tu restes inattaquable tant que tu n’en recrées pas un.',
+        description: "Ton village a été retiré du jeu. Tu restes inattaquable tant que tu n'en recrées pas un.",
       });
     } catch (error: any) {
       toast({
@@ -381,7 +348,7 @@ export default function ClashVillage() {
     } catch (error: any) {
       toast({
         title: 'Amélioration impossible',
-        description: error.response?.data?.error || 'Impossible d’améliorer ce bâtiment.',
+        description: error.response?.data?.error || "Impossible d'améliorer ce bâtiment.",
         variant: 'destructive',
       });
     } finally {
@@ -417,10 +384,6 @@ export default function ClashVillage() {
     () => formatCountdown(village?.attackCooldownUntil, now),
     [village?.attackCooldownUntil, now],
   );
-  const shieldCountdown = useMemo(
-    () => formatCountdown(village?.shieldUntil, now),
-    [village?.shieldUntil, now],
-  );
   const selectedBuilding = useMemo(
     () => village?.buildings.find((building) => building.id === selectedBuildingId) ?? village?.buildings[0] ?? null,
     [selectedBuildingId, village?.buildings],
@@ -445,26 +408,26 @@ export default function ClashVillage() {
 
   if (loading && !state) {
     return (
-      <PageShell>
+      <div className="relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8">
         <div className="flex min-h-[40vh] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-muted/10 px-4">
           <div className="w-full max-w-md">
             <CenteredSkeletonCard />
           </div>
         </div>
-      </PageShell>
+      </div>
     );
   }
 
   if (!village) {
     return (
-      <PageShell>
+      <div className="relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8">
         <Card className="rounded-3xl border-border/50 shadow-none">
           <CardContent className="space-y-5 p-6">
             <h1 className={TYPOGRAPHY.PAGE_TITLE}>Clash Village</h1>
             <div className="space-y-2">
               <p className="text-sm font-medium">Crée ton village pour commencer à jouer.</p>
               <p className="text-sm text-muted-foreground">
-                Tant que tu n’as pas créé ton village, il n’existe pas dans le matchmaking et personne ne peut t’attaquer.
+                Tant que tu n'as pas créé ton village, il n'existe pas dans le matchmaking et personne ne peut t'attaquer.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -477,69 +440,51 @@ export default function ClashVillage() {
             </div>
           </CardContent>
         </Card>
-      </PageShell>
+      </div>
     );
   }
 
   return (
-    <PageShell className={SPACING.SECTION_SPACING}>
-      <PageHeader
+    <div className={cn('relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8', SPACING.SECTION_SPACING)}>
+      <GameTopBar
         title="Clash Village"
-        description="Construis ton village, renforce tes défenses et lance des raids asynchrones sur les autres joueurs."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleDeleteVillage()}
-              disabled={deleteLoading}
-            >
-              <Trash2 className="mr-1 h-4 w-4" />
-              {deleteLoading ? 'Suppression...' : 'Supprimer le village'}
-            </Button>
-            <Badge variant="secondary" className="rounded-full px-3 py-1">
-              HDV {village.townHallLevel}
-            </Badge>
-            <Badge variant="outline" className="rounded-full px-3 py-1">
-              {village.trophies.toLocaleString('fr-FR')} trophées
-            </Badge>
+        score={village.trophies}
+        highScore={village.trophies}
+        isNewHighScore={false}
+        rewards={null}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Construis ton village, renforce tes defenses et lance des raids asynchrones.</p>
+            <p className="text-xs text-muted-foreground">
+              HDV {village.townHallLevel} · {village.trophies.toLocaleString('fr-FR')} trophees · Defense: {village.defenseRating}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Stockage: {formatMoney(village.moneyInStorage)} / {formatMoney(village.storageCapacity)} $
+            </p>
           </div>
-        }
-      />
-
-      <div className="grid gap-4 lg:grid-cols-4">
-        <InfoStat
-          label="Stockage"
-          value={`${formatMoney(village.moneyInStorage)} / ${formatMoney(village.storageCapacity)}`}
-          icon={<CurrencyIcon type="money" className="h-4 w-4" />}
-          detail="Réserve attaquable du village"
-        />
-        <InfoStat
-          label="Défense"
-          value={String(village.defenseRating)}
-          icon={<Shield className="h-4 w-4" />}
-          detail={`Coffre protégé à ${formatPercent(village.vaultProtectionPct)}`}
-        />
-        <InfoStat
-          label="Temps de recharge"
-          value={attackCooldown ?? 'Disponible'}
-          icon={<Sword className="h-4 w-4" />}
-          detail={village.attackCooldownUntil ? `Fin le ${formatDate(village.attackCooldownUntil)}` : 'Ton armée est prête'}
-        />
-        <InfoStat
-          label="Bouclier"
-          value={shieldCountdown ?? 'Inactif'}
-          icon={<Sparkles className="h-4 w-4" />}
-          detail={village.shieldUntil ? `Fin le ${formatDate(village.shieldUntil)}` : 'Aucune protection active'}
-        />
-      </div>
+        )}
+        isFullscreen={false}
+        onToggleFullscreen={() => {}}
+        showLeaderboard={false}
+        onToggleLeaderboard={() => {}}
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void handleDeleteVillage()}
+          disabled={deleteLoading}
+        >
+          <Trash2 className="mr-1 h-4 w-4" />
+          {deleteLoading ? 'Suppression...' : 'Supprimer'}
+        </Button>
+      </GameTopBar>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabId)} className={SPACING.SECTION_SPACING}>
         <TabsList className="h-auto flex-wrap">
           <TabsTrigger value="village">Village</TabsTrigger>
           <TabsTrigger value="attack">Attaquer</TabsTrigger>
           <TabsTrigger value="journal">Journal</TabsTrigger>
-          {!hideGameLeaderboards && <TabsTrigger value="leaderboard">Classement</TabsTrigger>}
+          <TabsTrigger value="leaderboard">Classement</TabsTrigger>
         </TabsList>
 
         <TabsContent value="village" className={SPACING.SECTION_SPACING}>
@@ -838,7 +783,6 @@ export default function ClashVillage() {
           </div>
         </TabsContent>
 
-        {!hideGameLeaderboards && (
         <TabsContent value="leaderboard" className={SPACING.SECTION_SPACING}>
           <div className="grid gap-6 xl:grid-cols-3">
             {[
@@ -882,8 +826,7 @@ export default function ClashVillage() {
             ))}
           </div>
         </TabsContent>
-        )}
       </Tabs>
-    </PageShell>
+    </div>
   );
 }

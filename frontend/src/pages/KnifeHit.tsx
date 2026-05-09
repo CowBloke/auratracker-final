@@ -1,7 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { RotateCcw, Target, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -1085,15 +1084,14 @@ export default function KnifeHit() {
   }, [gameOver, started, startGame, throwKnife]);
 
   return (
-    <PageShell size="wide">
-      <div
-        ref={gameContainerRef}
-        className={cn(
-          'flex flex-col items-center gap-4 px-4 pb-4',
-          isFullscreen && 'min-h-screen w-screen justify-start bg-background px-4 py-4'
-        )}
-      >
-        <GameTopBar
+    <div
+      ref={gameContainerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
           title="Knife Hit"
           score={score}
           highScore={highScore}
@@ -1152,47 +1150,50 @@ export default function KnifeHit() {
           onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
         />
 
-        <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_SIZE} baseHeight={CANVAS_SIZE}>
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_SIZE}
-            height={CANVAS_SIZE}
-            className="h-full w-full rounded-[28px] border border-border/40"
-            onClick={() => {
-              if (!started || gameOver) {
-                startGame();
-                return;
-              }
-              throwKnife();
-            }}
-          />
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[420px] flex-col">
+          <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_SIZE} baseHeight={CANVAS_SIZE}>
+            <canvas
+              ref={canvasRef}
+              width={CANVAS_SIZE}
+              height={CANVAS_SIZE}
+              className="h-full w-full rounded-[28px] border border-border/40"
+              onClick={() => {
+                if (!started || gameOver) {
+                  startGame();
+                  return;
+                }
+                throwKnife();
+              }}
+            />
 
-          {gameOver && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/50 backdrop-blur-sm">
-              <div className="w-full max-w-xs rounded-2xl border border-border/60 bg-background/95 p-6 text-center shadow-xl">
-                <p className="text-sm text-muted-foreground">Run terminee</p>
-                <p className="mt-1 text-4xl font-bold">{score}</p>
-                <p className="mt-1 text-sm text-muted-foreground">couteaux places avant collision</p>
-                {isNewHighScore && <p className="mt-3 text-sm font-medium text-amber-500">Nouveau record</p>}
-                {rewards && (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    +${rewards.money} · +{rewards.aura} aura
-                  </p>
-                )}
-                <div className="relative mt-4 h-28">
-                  <Button
-                    className="absolute w-[46%] min-w-[132px]"
-                    style={replayButtonSlot}
-                    onClick={startGame}
-                  >
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                    Nouvelle run
-                  </Button>
+            {gameOver && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-[28px] bg-black/50 backdrop-blur-sm">
+                <div className="w-full max-w-xs rounded-2xl border border-border/60 bg-background/95 p-6 text-center shadow-xl">
+                  <p className="text-sm text-muted-foreground">Run terminee</p>
+                  <p className="mt-1 text-4xl font-bold">{score}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">couteaux places avant collision</p>
+                  {isNewHighScore && <p className="mt-3 text-sm font-medium text-amber-500">Nouveau record</p>}
+                  {rewards && (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      +${rewards.money} · +{rewards.aura} aura
+                    </p>
+                  )}
+                  <div className="relative mt-4 h-28">
+                    <Button
+                      className="absolute w-[46%] min-w-[132px]"
+                      style={replayButtonSlot}
+                      onClick={startGame}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Nouvelle run
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </GameFullscreenStage>
+            )}
+          </GameFullscreenStage>
+        </div>
 
         {showLeaderboard && !isFullscreen && (
           <div className="w-[240px] shrink-0 hidden lg:block">
@@ -1203,11 +1204,10 @@ export default function KnifeHit() {
               isAdmin={user?.isAdmin}
               onDeleteScore={handleDeleteScore}
               maxHeight={500}
-              hidden={false}
             />
           </div>
         )}
       </div>
-    </PageShell>
+    </div>
   );
 }

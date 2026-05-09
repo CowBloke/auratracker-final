@@ -2,11 +2,9 @@
 import { RotateCcw, Play } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -231,25 +229,46 @@ export default function ChromeDino() {
     }
   }, [fetchLeaderboard, user?.id]);
 
-  return (
-    <PageShell>
-      <div className="grid gap-4 grid-cols-1">
-        <div
-          ref={containerRef}
-          className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4')}
-        >
-          <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
-            <GamePauseButton isPaused={isPaused} onToggle={handlePauseToggle} disabled={!canPause && !isPaused} />
-            <Button size="sm" variant="outline" onClick={restartGame}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Relancer
-            </Button>
-            <Button size="sm" variant="outline" onClick={hardReloadGame}>
-              <Play className="mr-2 h-4 w-4" />
-              Recharger
-            </Button>
-          </GameFullscreenToolbar>
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="Chrome Dino"
+        score={lastScore ?? 0}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Espace ou fleche haut pour sauter.</p>
+            <p className="text-xs text-muted-foreground">Score minimum recompense: {MIN_REWARD_SCORE}.</p>
+          </div>
+        }
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
+      >
+        <GamePauseButton isPaused={isPaused} onToggle={handlePauseToggle} disabled={!canPause && !isPaused} />
+        <Button size="sm" variant="outline" onClick={restartGame}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Relancer
+        </Button>
+        <Button size="sm" variant="outline" onClick={hardReloadGame}>
+          <Play className="mr-2 h-4 w-4" />
+          Recharger
+        </Button>
+      </GameTopBar>
+
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[1200px] flex-col">
           <GameFullscreenStage
             isFullscreen={isFullscreen}
             baseWidth={GAME_WIDTH}
@@ -274,37 +293,10 @@ export default function ChromeDino() {
               description="La run est mise en pause sans remplacer le jeu Chromium embarque."
             />
           </GameFullscreenStage>
+        </div>
 
-          {!isFullscreen && (
-            <Card className="border-border/60 bg-card/80">
-              <CardContent className="flex flex-col gap-2 p-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  Score minimum récompensé: <span className="font-semibold text-foreground">{MIN_REWARD_SCORE}</span>.
-                  Les gros runs et les nouveaux records paient un peu mieux.
-                </div>
-                <div className="text-right">
-                  {lastScore !== null ? (
-                    rewards && (rewards.money > 0 || rewards.aura > 0) ? (
-                      <span className="font-medium text-foreground">
-                        Dernière run {lastScore}: {rewards.money > 0 && `+$${rewards.money}`}
-                        {rewards.money > 0 && rewards.aura > 0 && ' · '}
-                        {rewards.aura > 0 && `+${rewards.aura} aura`}
-                        {isNewHighScore ? ' · nouveau record' : ''}
-                      </span>
-                    ) : (
-                      <span>
-                        Dernière run {lastScore}: pas de récompense, il faut atteindre {MIN_REWARD_SCORE}.
-                      </span>
-                    )
-                  ) : (
-                    <span>Vise {MIN_REWARD_SCORE}+ pour commencer à gagner.</span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {!isFullscreen && (
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
             <GameLeaderboard
               entries={leaderboard}
               currentUserId={user?.id}
@@ -313,10 +305,10 @@ export default function ChromeDino() {
               onDeleteScore={handleDeleteScore}
               title="Classement Chrome Dino"
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </PageShell>
+    </div>
   );
 }
 

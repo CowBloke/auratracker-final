@@ -152,7 +152,8 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\cowbloke\\\\Programming\\\\Repositories\\\\auratracker-final\" -Recurse -Directory)",
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Sort-Object)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(grep -E \"\\\\.tsx$|\\\\.ts$\")"
     ]
   },
   "outputStyle": "default"

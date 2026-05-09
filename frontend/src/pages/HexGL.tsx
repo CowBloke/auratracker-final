@@ -1,13 +1,11 @@
-﻿import { RotateCcw, Rocket, Timer } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
-import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -18,7 +16,6 @@ const GAME_TYPE = 'hexgl';
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
 const GAME_SRC = '/hexgl/index.html';
-const UPSTREAM_REPO = 'https://github.com/BKcore/HexGL';
 const GAME_SOURCE = 'aura-hexgl';
 
 interface HexGLMessage {
@@ -53,6 +50,7 @@ export default function HexGL() {
   const [isPaused, setIsPaused] = useState(false);
   const [highScore, setHighScore] = useState<number | null>(null);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
 
@@ -101,7 +99,7 @@ export default function HexGL() {
   const submitScore = useCallback(async (score: number) => {
     if (!Number.isFinite(score) || score <= 0) return;
 
-    const runKey = `${sessionKey}:${score.toFixed(3)}`;
+    const runKey = `${sessionKey}-${score}`;
     if (submittedRunRef.current === runKey) return;
     submittedRunRef.current = runKey;
 
@@ -110,18 +108,10 @@ export default function HexGL() {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const response = await gamesApi.complete(GAME_TYPE, {
-          score,
-          won: true,
-        });
+        const response = await gamesApi.complete(GAME_TYPE, { score, won: true });
 
         if (response.data.isNewHighScore) {
           setHighScore(score);
-        } else {
-          setHighScore((current) => {
-            if (current === null) return score;
-            return Math.min(current, score);
-          });
         }
 
         await refreshUser();
@@ -137,8 +127,8 @@ export default function HexGL() {
 
     submittedRunRef.current = null;
     console.error('Failed to submit HexGL score after retries:', lastError);
-    toast('Temps non comptabilise', {
-      description: "Le chrono n'a pas pu etre enregistre. Relance une course dans quelques secondes.",
+    toast('Score non enregistre', {
+      description: "La course n'a pas pu etre sauvegardee. Rejoue dans quelques secondes.",
       duration: 4500,
     });
   }, [fetchLeaderboard, refreshUser, sessionKey]);
@@ -147,18 +137,13 @@ export default function HexGL() {
     const handleMessage = (event: MessageEvent<HexGLMessage>) => {
       if (event.origin !== window.location.origin) return;
       if (!event.data || event.data.source !== GAME_SOURCE) return;
+      if (event.data.type !== 'finish') return;
 
-      if (event.data.type === 'ready') {
-        setIsPaused(false);
-        submittedRunRef.current = null;
-        return;
-      }
+      const nextScore = Number.isFinite(event.data.score)
+        ? Math.max(0, event.data.score ?? 0)
+        : 0;
 
-      if (event.data.type === 'finish') {
-        const nextScore = Number.isFinite(event.data.score) ? Number(event.data.score) : 0;
-        setIsPaused(false);
-        void submitScore(nextScore);
-      }
+      void submitScore(nextScore);
     };
 
     window.addEventListener('message', handleMessage);
@@ -185,20 +170,39 @@ export default function HexGL() {
   }, [fetchLeaderboard, user?.id]);
 
   return (
-    <PageShell>
-      <div className={cn('grid gap-4', isFullscreen ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px]')}>
-        <div
-          ref={containerRef}
-          className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4')}
-        >
-          <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
-            <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
-            <Button size="sm" variant="outline" onClick={restartSession}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Recharger
-            </Button>
-          </GameFullscreenToolbar>
+    <div
+      ref={containerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="HexGL"
+        score={highScore ?? 0}
+        highScore={highScore ?? 0}
+        isNewHighScore={false}
+        rewards={null}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Course futuriste WebGL inspiree de Wipeout.</p>
+            <p className="text-xs text-muted-foreground">Ton meilleur temps: {formatHexGlTime(highScore)}</p>
+          </div>
+        )}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
+      >
+        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
+        <Button size="sm" variant="outline" onClick={restartSession}>
+          <RotateCcw className="mr-2 h-4 w-4" />
+          Recharger
+        </Button>
+      </GameTopBar>
 
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex w-full max-w-[1280px] flex-col">
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={GAME_WIDTH} baseHeight={GAME_HEIGHT}>
             <iframe
               ref={iframeRef}
@@ -222,40 +226,8 @@ export default function HexGL() {
           </GameFullscreenStage>
         </div>
 
-        {!isFullscreen && (
-          <div className="flex flex-col gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Rocket className="h-4 w-4 text-muted-foreground" />
-                  HexGL
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm text-muted-foreground">
-                <p>
-                  Course futuriste WebGL inspirée de Wipeout, intégrée avec le shell jeu AuraTracker.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">Ton record</p>
-                    <p className="mt-1 font-mono text-lg text-foreground">{formatHexGlTime(highScore)}</p>
-                  </div>
-                  <div className="rounded-lg border border-border/40 bg-muted/20 p-3">
-                    <p className="flex items-center gap-1 text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
-                      <Timer className="h-3.5 w-3.5" />
-                      Top global
-                    </p>
-                    <p className="mt-1 font-mono text-lg text-foreground">
-                      {formatHexGlTime(leaderboard[0]?.highScore ?? null)}
-                    </p>
-                  </div>
-                </div>
-                <p>
-                  Dépôt source: <a href={UPSTREAM_REPO} target="_blank" rel="noreferrer" className="underline underline-offset-4">{UPSTREAM_REPO}</a>
-                </p>
-              </CardContent>
-            </Card>
-
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[240px] shrink-0 hidden lg:block">
             <GameLeaderboard
               title="Classement HexGL"
               entries={leaderboard}
@@ -269,7 +241,6 @@ export default function HexGL() {
           </div>
         )}
       </div>
-    </PageShell>
+    </div>
   );
 }
-

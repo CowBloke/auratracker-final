@@ -1,7 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -558,14 +557,13 @@ export default function Minesweeper() {
   );
 
 return (
-    <PageShell size="full">
-      <div
-        ref={gameContainerRef}
-        className={cn(
-          'flex flex-col items-center gap-4 px-4 pb-4',
-          isFullscreen && 'min-h-screen w-screen justify-center bg-background px-4 py-6'
-        )}
-      >
+    <div
+      ref={gameContainerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
         <GameTopBar
           title="Démineur"
           score={status === 'won' || status === 'lost' ? lastScore : 0}
@@ -599,7 +597,8 @@ return (
           </DialogContent>
         </Dialog>
 
-        <div className="flex w-full max-w-[42rem] justify-between gap-2">
+      <div className="flex items-start justify-center gap-4">
+        <div className="flex flex-col gap-3">
           {isFullscreen && (
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" onClick={() => resetBoard()}>
@@ -616,84 +615,84 @@ return (
               </Button>
             </div>
           )}
-        </div>
 
-        <div className="rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
-          <div className="relative rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
-            <div className="grid gap-1" style={boardStyle}>
-              {board.flat().map((cell) => {
-                const isExplodedMine = status === 'lost' && cell.isMine;
-                return (
-                  <button
-                    key={`${cell.row}-${cell.column}`}
-                    type="button"
-                    onClick={() => handleCellAction(cell.row, cell.column)}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      toggleFlagAt(cell.row, cell.column);
-                    }}
-                    disabled={status === 'won' || status === 'lost'}
-                    className={cn(
-                      'relative flex items-center justify-center text-xs font-bold transition-all',
-                      cell.isRevealed
-                        ? cell.isMine
-                          ? 'bg-red-500 text-white'
-                          : cell.adjacentMines === 0
-                            ? 'bg-slate-200 text-transparent'
-                            : NUMBER_COLORS[cell.adjacentMines as keyof typeof NUMBER_COLORS] || 'bg-slate-300'
-                        : cell.isFlagged
-                          ? 'bg-yellow-100'
-                          : isExplodedMine
-                            ? 'bg-red-600'
-                            : 'bg-gradient-to-b from-slate-300 to-slate-400 hover:from-slate-200 hover:to-slate-300',
-                      cell.isRevealed && cell.isMine && !isExplodedMine && 'bg-red-500'
-                    )}
-                  >
-                    <span
+          <div className="rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
+            <div className="relative rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
+              <div className="grid gap-1" style={boardStyle}>
+                {board.flat().map((cell) => {
+                  const isExplodedMine = status === 'lost' && cell.isMine;
+                  return (
+                    <button
+                      key={`${cell.row}-${cell.column}`}
+                      type="button"
+                      onClick={() => handleCellAction(cell.row, cell.column)}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        toggleFlagAt(cell.row, cell.column);
+                      }}
+                      disabled={status === 'won' || status === 'lost'}
                       className={cn(
-                        'absolute inset-0 rounded-sm',
-                        cell.isRevealed && cell.adjacentMines > 0 && 'bg-transparent'
+                        'relative flex items-center justify-center text-xs font-bold transition-all',
+                        cell.isRevealed
+                          ? cell.isMine
+                            ? 'bg-red-500 text-white'
+                            : cell.adjacentMines === 0
+                              ? 'bg-slate-200 text-transparent'
+                              : NUMBER_COLORS[cell.adjacentMines as keyof typeof NUMBER_COLORS] || 'bg-slate-300'
+                          : cell.isFlagged
+                            ? 'bg-yellow-100'
+                            : isExplodedMine
+                              ? 'bg-red-600'
+                              : 'bg-gradient-to-b from-slate-300 to-slate-400 hover:from-slate-200 hover:to-slate-300',
+                        cell.isRevealed && cell.isMine && !isExplodedMine && 'bg-red-500'
                       )}
-                    />
-                    {cell.isFlagged && !cell.isRevealed && (
-                      <Flag className="h-3 w-3 text-yellow-500" />
-                    )}
-                    {cell.isRevealed && cell.adjacentMines > 0 && !cell.isMine && (
-                      <span>{cell.adjacentMines}</span>
-                    )}
-                    {isExplodedMine && <Bomb className="h-4 w-4" />}
-                    {cell.isRevealed && cell.isMine && !isExplodedMine && <Bomb className="h-3 w-3" />}
-                  </button>
-                );
-              })}
+                    >
+                      <span
+                        className={cn(
+                          'absolute inset-0 rounded-sm',
+                          cell.isRevealed && cell.adjacentMines > 0 && 'bg-transparent'
+                        )}
+                      />
+                      {cell.isFlagged && !cell.isRevealed && (
+                        <Flag className="h-3 w-3 text-yellow-500" />
+                      )}
+                      {cell.isRevealed && cell.adjacentMines > 0 && !cell.isMine && (
+                        <span>{cell.adjacentMines}</span>
+                      )}
+                      {isExplodedMine && <Bomb className="h-4 w-4" />}
+                      {cell.isRevealed && cell.isMine && !isExplodedMine && <Bomb className="h-3 w-3" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
 
-        {status === 'won' && (
-          <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-            <p className="font-medium">Grille nettoyee.</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {isSpeedrunDisplay
-                ? `Temps ${formatDuration(lastScore)} · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`
-                : `Score ${lastScore} · temps ${elapsedSeconds}s · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`}
-            </p>
-            {rewards && (
+          {status === 'won' && (
+            <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+              <p className="font-medium">Grille nettoyee.</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Recompenses: +${rewards.money} · +${rewards.aura} aura{isNewHighScore ? ' · nouveau record' : ''}.
+                {isSpeedrunDisplay
+                  ? `Temps ${formatDuration(lastScore)} · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`
+                  : `Score ${lastScore} · temps ${elapsedSeconds}s · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`}
               </p>
-            )}
-          </div>
-        )}
+              {rewards && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Recompenses: +${rewards.money} · +${rewards.aura} aura{isNewHighScore ? ' · nouveau record' : ''}.
+                </p>
+              )}
+            </div>
+          )}
 
-        {status === 'lost' && (
-          <div className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
-            <p className="font-medium">Bombe declenchee.</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {progress}% de progression apres {elapsedSeconds}s.
-            </p>
-          </div>
-        )}
+          {status === 'lost' && (
+            <div className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
+              <p className="font-medium">Bombe declenchee.</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {progress}% de progression apres {elapsedSeconds}s.
+              </p>
+            </div>
+          )}
+        </div>
 
         {showLeaderboard && !isFullscreen && (
           <div className="w-[240px] shrink-0 hidden lg:block">
@@ -705,11 +704,10 @@ return (
               isAdmin={user?.isAdmin}
               onDeleteScore={(userId) => handleDeleteScore(userId)}
               maxHeight={500}
-              hidden={false}
             />
           </div>
         )}
       </div>
-    </PageShell>
+    </div>
   );
 }

@@ -5,8 +5,7 @@ import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/Ga
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { useHideGameLeaderboards } from '@/lib/game-preferences';
-import { GameFullscreenToolbar } from '@/components/game/GameFullscreenToolbar';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -243,7 +242,6 @@ function persistSave(state: SaveState): void {
 
 // ---- Component ----
 export default function GoyaveEmpire() {
-  const hideGameLeaderboards = useHideGameLeaderboards();
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
 
@@ -397,12 +395,6 @@ export default function GoyaveEmpire() {
     return () => clearInterval(interval);
   }, [fetchActiveLeaderboard]);
 
-  useEffect(() => {
-    if (hideGameLeaderboards && showLeaderboard) {
-      setShowLeaderboard(false);
-    }
-  }, [hideGameLeaderboards, showLeaderboard]);
-
   // Actions
   const handleClick = useCallback(() => {
     if (isPaused) return;
@@ -481,18 +473,37 @@ export default function GoyaveEmpire() {
   const PANEL_HEIGHT = 680;
 
   return (
-    <div className="w-full px-2 pb-6 lg:px-4 lg:pb-8">
-      {/* Three-column Cookie Clicker layout */}
-      <div
-        ref={gameContainerRef}
-        className={cn(
-          'flex w-full flex-col gap-3',
-          isFullscreen && 'min-h-screen w-screen bg-background p-4'
+    <div
+      ref={gameContainerRef}
+      className={cn(
+        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
+        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
+      )}
+    >
+      <GameTopBar
+        title="Goyave Empire"
+        score={save.guavas}
+        highScore={save.cashOutScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={(
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Clique sur la goyave pour recolter.</p>
+            <p className="text-xs text-muted-foreground">Achete des batiments pour automatiser la production.</p>
+            <p className="text-xs text-muted-foreground">Encaisse pour convertir en aura et argent.</p>
+          </div>
         )}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={false}
+        onToggleLeaderboard={() => {}}
       >
-        <GameFullscreenToolbar isFullscreen={isFullscreen} onToggleFullscreen={toggleFullscreen} className="w-full">
-          <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
-        </GameFullscreenToolbar>
+        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
+      </GameTopBar>
+
+      {/* Three-column Cookie Clicker layout */}
+      <div className={cn('flex w-full flex-col gap-3')}>
+
 
         <div className="relative flex gap-0 items-stretch w-full" style={{ height: PANEL_HEIGHT }}>
         <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
@@ -651,14 +662,12 @@ export default function GoyaveEmpire() {
             >
               Bâtiments
             </button>
-            {!hideGameLeaderboards && (
-              <button
-                onClick={() => setShowLeaderboard(true)}
-                className={`flex-1 py-3 text-sm font-medium transition-colors ${showLeaderboard ? 'bg-muted/40 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                Classements
-              </button>
-            )}
+            <button
+              onClick={() => setShowLeaderboard(true)}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${showLeaderboard ? 'bg-muted/40 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Classements
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -739,9 +748,11 @@ export default function GoyaveEmpire() {
             )}
           </div>
         </div>
-        </div>
       </div>
+    </div>
     </div>
   );
 }
+
+
 
