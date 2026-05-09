@@ -935,7 +935,7 @@ export const youApi = {
   getSkills: () => api.get<{ skills: YouSkill[] }>('/you/skills'),
   trainSkill: (skillKey: string) =>
     api.post<{ skill: YouSkill }>(`/you/skills/${skillKey}/train`),
-  createBusiness: (data: { name: string; typeKey: string; capital: number; description?: string; location?: string }) =>
+  createBusiness: (data: { name: string; typeKey: string; capital: number; description: string; location?: string }) =>
     api.post<{ business: YouBusiness }>('/you/businesses', data),
   runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item', data?: Record<string, unknown>) =>
     api.post<{ result: Record<string, unknown> }>(`/you/businesses/${businessId}/actions/${actionKey}`, data ?? {}),

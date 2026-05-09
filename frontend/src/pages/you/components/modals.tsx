@@ -215,6 +215,7 @@ export function CreateBusinessModal({
   const accessibleTypes = businessTypes.filter((t) => t.level === 1 || t.level <= (unlockedBusinessLevel + 1));
 
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [typeKey, setTypeKey] = useState(accessibleTypes[0]?.key ?? '');
   const [capital, setCapital] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -228,6 +229,7 @@ export function CreateBusinessModal({
       setCapital(String(firstType.minCapital));
     }
     setName('');
+    setDescription('');
   }, [businessTypes, open]);
 
   const selectedType = accessibleTypes.find((type) => type.key === typeKey) ?? accessibleTypes[0];
@@ -237,7 +239,7 @@ export function CreateBusinessModal({
     if (!selectedType) return;
     setSubmitting(true);
     try {
-      await withRouteError(() => youApi.createBusiness({ name, typeKey: selectedType.key, capital: isBank ? 0 : Number(capital) }), 'Impossible de creer le business.');
+      await withRouteError(() => youApi.createBusiness({ name, description, typeKey: selectedType.key, capital: isBank ? 0 : Number(capital) }), 'Impossible de creer le business.');
       toast.success('Business cree');
       await onCreated();
       onClose();
@@ -295,6 +297,15 @@ export function CreateBusinessModal({
             data-tutorial-id="create-business-name"
           />
         </FieldRow>
+        <FieldRow label="Description">
+          <Textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            rows={3}
+            placeholder="Decris ton business..."
+            data-tutorial-id="create-business-description"
+          />
+        </FieldRow>
         {!isBank ? (
           <FieldRow label="Capital de depart">
             <Input
@@ -306,7 +317,7 @@ export function CreateBusinessModal({
             />
           </FieldRow>
         ) : null}
-        <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedType || !name.trim() || (!isBank && Number(capital) < selectedType.minCapital)} data-tutorial-id="create-business-submit">Creer</Button></div>
+        <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedType || !name.trim() || !description.trim() || (!isBank && Number(capital) < selectedType.minCapital)} data-tutorial-id="create-business-submit">Creer</Button></div>
       </ModalWrap>
       <BusinessTypePickerModal
         open={pickerOpen}

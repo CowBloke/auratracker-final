@@ -98,6 +98,7 @@ const YOU_LOGO_ADMIN_ONLY_KEY = 'you_logo_admin_only';
 const ERROR_STATUS: Record<string, number> = {
   INVALID_BUSINESS_TYPE: 400,
   INVALID_BUSINESS_NAME: 400,
+  BUSINESS_DESCRIPTION_REQUIRED: 400,
   BUSINESS_CAPITAL_TOO_LOW: 400,
   INSUFFICIENT_MONEY: 400,
   INSUFFICIENT_SHARED_MONEY: 400,
@@ -254,6 +255,7 @@ const ERROR_STATUS: Record<string, number> = {
 const ERROR_MESSAGE: Record<string, string> = {
   INVALID_BUSINESS_TYPE: 'Type de business invalide.',
   INVALID_BUSINESS_NAME: 'Le nom du business est trop court.',
+  BUSINESS_DESCRIPTION_REQUIRED: 'La description du business est obligatoire.',
   BUSINESS_CAPITAL_TOO_LOW: 'Le capital de depart est trop faible pour ce type de business.',
   INSUFFICIENT_MONEY: 'Tu n as pas assez de money pour cette action.',
   INSUFFICIENT_SHARED_MONEY: 'Ton foyer n a pas assez de money pour cette action.',
@@ -568,7 +570,7 @@ router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthReq
       name: String(req.body?.name ?? ''),
       typeKey: String(req.body?.typeKey ?? ''),
       capital: Number(req.body?.capital ?? 0),
-      description: typeof req.body?.description === 'string' ? req.body.description : undefined,
+      description: String(req.body?.description ?? ''),
       location: typeof req.body?.location === 'string' ? req.body.location : undefined,
     }, isAdmin);
     res.status(201).json({ business });

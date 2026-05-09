@@ -1557,7 +1557,7 @@ export async function trainUserSkill(userId: string, skillKey: string) {
   return serialized;
 }
 
-export async function createBusiness(userId: string, input: { name: string; typeKey: string; capital: number; description?: string; location?: string }, callerIsAdmin = false) {
+export async function createBusiness(userId: string, input: { name: string; typeKey: string; capital: number; description: string; location?: string }, callerIsAdmin = false) {
   await ensureUserSkills(userId);
 
   const type = BUSINESS_TYPE_MAP.get(input.typeKey);
@@ -1573,6 +1573,10 @@ export async function createBusiness(userId: string, input: { name: string; type
   const name = input.name.trim();
   if (name.length < 3) {
     throw new Error('INVALID_BUSINESS_NAME');
+  }
+  const description = input.description.trim();
+  if (!description) {
+    throw new Error('BUSINESS_DESCRIPTION_REQUIRED');
   }
 
   if (input.capital < type.minCapital) {
@@ -1632,7 +1636,7 @@ export async function createBusiness(userId: string, input: { name: string; type
         ownerId: userId,
         name,
         typeKey: type.key,
-        description: input.description?.trim() || type.description,
+        description,
         location: input.location?.trim() || 'Institution de l\'Etat',
         startingCapital,
         treasuryMoney: startingCapital,
