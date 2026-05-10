@@ -18,7 +18,7 @@ export type LogType =
 // Log actions by type
 export type AuthAction = 'login' | 'logout' | 'register' | 'login_failed' | 'login_banned';
 export type ChatAction = 'message_sent' | 'message_deleted';
-export type GameAction = 'game_complete' | 'game_reward' | 'casino_bet' | 'casino_start' | 'highscore' | 'reward_fallback';
+export type GameAction = 'game_complete' | 'game_reward' | 'casino_bet' | 'casino_start' | 'highscore' | 'reward_fallback' | 'horse_race_place_bet' | 'horse_race_cancel_bet' | 'horse_race_settle_bet';
 export type EconomyAction = 'transfer' | 'gift_aura' | 'balance_change' | 'quest_reward' | 'pass_reward';
 export type PartyAction = 'party_create' | 'party_join' | 'party_leave' | 'party_disband' | 'party_kick' | 'party_invite' | 'party_update';
 export type SuggestionAction = 'suggestion_create' | 'suggestion_vote' | 'suggestion_comment' | 'suggestion_delete' | 'suggestion_status' | 'suggestion_rating' | 'bug_report';
