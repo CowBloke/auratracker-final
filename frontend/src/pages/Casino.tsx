@@ -1,16 +1,19 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api, gamesApi } from '../services/api';
 import { cn } from '@/lib/utils';
-import { Bomb, CircleDollarSign, Crosshair, Disc3, Rocket, RotateCcw, Sparkles, Spade, Trash2, TrendingUp } from 'lucide-react';
+import { Bomb, CircleDollarSign, Crosshair, Disc3, Rocket, RotateCcw, SlidersHorizontal, Sparkles, Spade, Trash2, TrendingUp, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { PageShell } from '@/components/layout/PageShell';
-import { startRouletteRound } from './casino/start-roulette-round';
+import { PageShell } from '@/components/layout/page-shell';
+import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { startRouletteRound } from './casino/startRouletteRound';
 import {
   BALL_DURATION,
   CHIP_VALUES,
@@ -1314,8 +1317,12 @@ function CrashGame({
 // Main Casino page
 // -----------------------------
 export default function Casino() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [celebration, setCelebration] = useState<CasinoCelebration | null>(null);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const tableParam = searchParams.get('table');
   const activeGame: GameTab | null = isGameTab(tableParam) ? tableParam : null;
 
@@ -1357,38 +1364,104 @@ export default function Casino() {
     setSearchParams(nextParams);
   }, [searchParams, setSearchParams]);
 
-  return (
-    <PageShell size="wide">
-      <CasinoCelebrationLayer celebration={celebration} onDismiss={() => setCelebration(null)} />
-      {activeGame ? (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between rounded-[1.4rem] border border-border/70 bg-card/70 px-4 py-3 backdrop-blur-sm">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">Table active</p>
-              <p className="mt-1 text-lg font-semibold">{CASINO_GAME_LABELS[activeGame]}</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={leaveTable}>
-              Revenir au plan du casino
-            </Button>
-          </div>
-          {activeGame === 'roulette' ? (
-            <RouletteGame onExit={leaveTable} onCelebrate={triggerCelebration} />
-          ) : activeGame === 'slots' ? (
-            <SlotMachineGame onBetChange={() => {}} onCelebrate={triggerCelebration} />
-          ) : activeGame === 'soccer' ? (
-            <SoccerGame onCelebrate={triggerCelebration} />
-          ) : activeGame === 'mines' ? (
-            <MinesGame onCelebrate={triggerCelebration} />
-          ) : activeGame === 'crash' ? (
-            <CrashGame onCelebrate={triggerCelebration} />
-          ) : (
-            <BlackjackGame onBetChange={() => {}} onCelebrate={triggerCelebration} />
-          )}
-        </section>
-      ) : (
-        <CasinoFloor onChooseTable={openTable} />
+  const topBarControls = (
+    <div className="space-y-4 text-xs">
+      <div className="rounded-lg border border-border/60 p-3 bg-muted/30 space-y-2">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Portefeuille</p>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5"><CircleDollarSign className="h-3.5 w-3.5 text-amber-500" /> Or</span>
+          <span className="font-bold font-mono">{user?.money?.toLocaleString() ?? 0}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5"><Sparkles className="h-3.5 w-3.5 text-sky-500" /> Aura</span>
+          <span className="font-bold font-mono">{user?.aura?.toLocaleString() ?? 0}</span>
+        </div>
+      </div>
+      {activeGame && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full h-9 rounded-xl font-bold"
+          onClick={leaveTable}
+        >
+          Quitter la table
+        </Button>
       )}
-    </PageShell>
+    </div>
+  );
+
+  return (
+    <div ref={containerRef} className="relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8">
+      <CasinoCelebrationLayer celebration={celebration} onDismiss={() => setCelebration(null)} />
+
+      <GameTopBar
+        title={activeGame ? CASINO_GAME_LABELS[activeGame] : "Etage Casino"}
+        score={user?.money ?? 0}
+        highScore={user?.aura ?? 0}
+        controls={topBarControls}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+      >
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-full"
+            onClick={() => setShowSettingsDialog(true)}
+            title="Parametres"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </GameTopBar>
+
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Casino AuraTracker</DialogTitle>
+          </DialogHeader>
+          {topBarControls}
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex items-start justify-center gap-6">
+        <div className="flex w-full max-w-[1280px] flex-col overflow-hidden">
+          {activeGame ? (
+            <div className="space-y-4">
+              <GameFullscreenStage isFullscreen={false} baseWidth={1280} baseHeight={720}>
+                <div className="w-full h-full bg-background rounded-[28px] border border-border/30 overflow-auto p-4 lg:p-8">
+                  {activeGame === 'roulette' ? (
+                    <RouletteGame onExit={leaveTable} onCelebrate={triggerCelebration} />
+                  ) : activeGame === 'slots' ? (
+                    <SlotMachineGame onBetChange={() => {}} onCelebrate={triggerCelebration} />
+                  ) : activeGame === 'soccer' ? (
+                    <SoccerGame onCelebrate={triggerCelebration} />
+                  ) : activeGame === 'mines' ? (
+                    <MinesGame onCelebrate={triggerCelebration} />
+                  ) : activeGame === 'crash' ? (
+                    <CrashGame onCelebrate={triggerCelebration} />
+                  ) : (
+                    <BlackjackGame onBetChange={() => {}} onCelebrate={triggerCelebration} />
+                  )}
+                </div>
+              </GameFullscreenStage>
+            </div>
+          ) : (
+            <CasinoFloor onChooseTable={openTable} />
+          )}
+        </div>
+
+        {showLeaderboard && (
+          <div className="w-[300px] shrink-0 hidden lg:block h-full">
+             <Card className="rounded-[32px] border-border/40 shadow-xl p-6">
+                <h3 className="text-sm font-bold flex items-center gap-2 mb-4"><Trophy className="h-4 w-4 text-amber-500" /> High Rollers</h3>
+                <p className="text-xs text-muted-foreground italic">Le classement casino est global. Consulte la page Classements pour le detail.</p>
+             </Card>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

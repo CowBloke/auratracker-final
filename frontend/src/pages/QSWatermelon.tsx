@@ -1,11 +1,14 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react';
-import { GameTopBar } from '@/components/game/GameTopBar';
+import { Play, RotateCcw, SlidersHorizontal, Trophy } from 'lucide-react';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
-import { useHideGameLeaderboards } from '@/lib/game-preferences';
+import { cn } from '@/lib/utils';
+import { GameTopBar } from '@/components/game/GameTopBar';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
 
 const GAME_TYPE = 'qs_watermelon';
@@ -24,10 +27,11 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function QSWatermelon() {
   const { user, refreshUser } = useAuth();
-  const hideGameLeaderboards = useHideGameLeaderboards();
   const [highScore, setHighScore] = useState(0);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const lastSubmitAttemptRef = useRef<{ score: number; at: number } | null>(null);
 
   const fetchStats = useCallback(async () => {
@@ -126,8 +130,31 @@ export default function QSWatermelon() {
     }
   }, [fetchLeaderboard, user?.id]);
 
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const leaderboardVisible = showLeaderboard && !hideGameLeaderboards;
+  const topBarControls = (
+    <div className="space-y-4 text-xs">
+      <div className="rounded-lg border border-border/60 p-3 bg-muted/30">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+          <Trophy className="h-3 w-3" />
+          Conseils de fusion
+        </p>
+        <ul className="space-y-2 text-muted-foreground list-disc pl-3">
+          <li>Garde le centre propre au début pour t'offrir plus de latitude.</li>
+          <li>Ne force pas toutes les fusions en haut : sécurise ton espace.</li>
+          <li>Les grosses chaînes naissent souvent d'une base compacte.</li>
+        </ul>
+      </div>
+      <Separator />
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full justify-center h-8 text-xs"
+        onClick={() => window.location.reload()}
+      >
+        <RotateCcw className="mr-2 h-3 w-3" />
+        Nouvelle partie
+      </Button>
+    </div>
+  );
 
   return (
     <div
@@ -136,24 +163,36 @@ export default function QSWatermelon() {
     >
       <GameTopBar
         title="QS Watermelon"
-        score={highScore}
+        score={0} // Score is handled inside iframe usually, but we could show highscore
         highScore={highScore}
-        isNewHighScore={false}
-        rewards={null}
-        controls={
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Garde le centre propre au debut pour t&apos;offrir plus de latitude.</p>
-            <p className="text-xs text-muted-foreground">Ne force pas toutes les fusions en haut de pile.</p>
-            <p className="text-xs text-muted-foreground">Les grosses chaines naissent d&apos;une base compacte.</p>
-          </div>
-        }
+        controls={topBarControls}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
-        showLeaderboard={leaderboardVisible}
-        onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
-      />
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          onClick={() => setShowSettingsDialog(true)}
+          title="Parametres"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+        </Button>
+      </GameTopBar>
 
-      <div className="flex items-start justify-center gap-4">
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Parametres Watermelon</DialogTitle>
+          </DialogHeader>
+          {topBarControls}
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex items-start justify-center gap-6">
         <div className="flex w-full max-w-[480px] flex-col">
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
             <iframe
@@ -168,8 +207,8 @@ export default function QSWatermelon() {
           </GameFullscreenStage>
         </div>
 
-        {leaderboardVisible && !isFullscreen && (
-          <div className="w-[240px] shrink-0 hidden lg:block">
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[280px] shrink-0 hidden lg:block">
             <GameLeaderboard
               entries={leaderboard}
               currentUserId={user?.id}
@@ -177,7 +216,7 @@ export default function QSWatermelon() {
               isAdmin={user?.isAdmin}
               onDeleteScore={handleDeleteScore}
               title="Classement"
-              maxHeight={420}
+              maxHeight={800}
             />
           </div>
         )}

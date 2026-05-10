@@ -1,17 +1,20 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
+import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameTopBar } from '@/components/game/GameTopBar';
-import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Play, RotateCcw, SlidersHorizontal, Users } from 'lucide-react';
 import { useHideGameLeaderboards } from '@/lib/game-preferences';
-import { Play, RotateCcw } from 'lucide-react';
 
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 540;
@@ -209,6 +212,7 @@ const createPattern = (choice: number, startX: number): Obstacle[] => {
 export default function GeometryDash() {
   const { user, refreshUser } = useAuth();
   const hideGameLeaderboards = useHideGameLeaderboards();
+  const hideGameLeftInfo = useHideGameLeftInfo();
   const { theme } = useTheme();
   const palette = useMemo(() => palettes[theme], [theme]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -243,15 +247,9 @@ export default function GeometryDash() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
-  const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const canPause = started && !gameOver;
-  const leaderboardVisible = showLeaderboard && !hideGameLeaderboards;
-  useEffect(() => {
-    if (hideGameLeaderboards) {
-      setShowLeaderboard(false);
-    }
-  }, [hideGameLeaderboards]);
 
   const fetchStats = useCallback(async () => {
     if (!user?.id) return;
@@ -726,13 +724,34 @@ export default function GeometryDash() {
 
   useEffect(() => () => cancelAnimationFrame(animationRef.current), []);
 
+  const isPlaying = started && !gameOver;
+  const topBarControls = (
+    <div className="space-y-2 text-xs">
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <kbd className="px-2 py-0.5 border border-border/50 rounded">Espace</kbd>
+        <span>Sauter</span>
+      </div>
+      <Separator className="my-2" />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Vitesse</p>
+          <p className="text-sm font-semibold tabular-nums">{Math.round(START_SPEED + (score / 5000) * (MAX_SPEED - START_SPEED))}</p>
+        </div>
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Record</p>
+          <p className="text-sm font-semibold tabular-nums">{highScore}</p>
+        </div>
+      </div>
+      <p className="text-[10px] text-muted-foreground leading-relaxed mt-2">
+        Le cube avance seul. Le timing du saut fait tout. Pads violets, plateformes, blocs et triples pics.
+      </p>
+    </div>
+  );
+
   return (
     <div
       ref={gameContainerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
+      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
     >
       <GameTopBar
         title="Geometry Dash"
@@ -740,86 +759,90 @@ export default function GeometryDash() {
         highScore={highScore}
         isNewHighScore={isNewHighScore}
         rewards={rewards}
-        controls={(
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Espace, ↑ ou W pour sauter.</p>
-            <p className="text-xs text-muted-foreground">Clic ou tap pour jouer sur mobile.</p>
-            <p className="text-xs text-muted-foreground">Le cube avance tout seul.</p>
-          </div>
-        )}
+        controls={topBarControls}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
-        showLeaderboard={leaderboardVisible}
-        onToggleLeaderboard={() => setShowLeaderboard((value) => !value)}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
-        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          onClick={() => setShowSettingsDialog(true)}
+          title="Parametres"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+        </Button>
       </GameTopBar>
 
-      <div className="flex items-start justify-center gap-4">
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Parametres Geometry Dash</DialogTitle>
+          </DialogHeader>
+          {topBarControls}
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex items-start justify-center gap-6">
         <div className="flex w-full max-w-[960px] flex-col">
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
             <canvas
               ref={canvasRef}
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              className="block h-full w-full cursor-pointer rounded-lg border border-border bg-black/20"
-              onMouseDown={() => {
-                if (isPaused) return;
-                if (!started) {
-                  initGame();
-                  return;
-                }
-                queueJump();
-              }}
-              onTouchStart={(event) => {
-                event.preventDefault();
-                if (isPaused) return;
-                if (!started) {
-                  initGame();
-                  return;
-                }
-                queueJump();
-              }}
+              className="block h-full w-full rounded-lg border border-border/30 bg-[#0f172a]"
+              onClick={queueJump}
             />
+            
             <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
 
             {!started && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">
-                <div className="space-y-4 text-center p-6">
-                  <p className="text-3xl font-light">Geometry Dash</p>
-                  <Button onClick={initGame} variant="outline" className="border-foreground">
-                    <Play className="h-4 w-4 mr-2" />
-                    Lancer le run
-                  </Button>
-                </div>
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+                <Button
+                  variant="ghost"
+                  onClick={initGame}
+                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
+                >
+                  <Play className="w-4 h-4" />
+                  Jouer
+                </Button>
               </div>
             )}
 
             {gameOver && (
-              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/88">
-                <div className="space-y-4 text-center p-6">
-                  <p className="text-2xl font-light">Crash</p>
-                  <p className="text-4xl tabular-nums">{score}</p>
-                  {isNewHighScore && <p className="text-sm text-foreground">Nouveau record.</p>}
-                  {rewards && (rewards.aura > 0 || rewards.money > 0) && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/90">
+                <div className="text-center space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-light mb-2">Fin de partie</h2>
+                    <p className="text-3xl tabular-nums">{score.toLocaleString()}</p>
+                  </div>
+                  {isNewHighScore && <p className="text-sm text-foreground">Nouveau record !</p>}
+                  {rewards && (rewards.money > 0 || rewards.aura > 0) && (
                     <p className="text-sm text-muted-foreground">
                       {rewards.money > 0 && `+$${rewards.money}`}
                       {rewards.money > 0 && rewards.aura > 0 && ' · '}
                       {rewards.aura > 0 && `+${rewards.aura} aura`}
                     </p>
                   )}
-                  <Button onClick={initGame} variant="outline" className="border-foreground">
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Rejouer
-                  </Button>
+                <Button
+                  variant="ghost"
+                  onClick={initGame}
+                  className="flex items-center gap-2 px-6 py-3 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors mx-auto"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Rejouer
+                </Button>
                 </div>
               </div>
             )}
           </GameFullscreenStage>
         </div>
 
-        {leaderboardVisible && !isFullscreen && (
-          <div className="w-[240px] shrink-0 hidden lg:block">
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[280px] shrink-0 hidden lg:block">
             <GameLeaderboard
               entries={leaderboard}
               currentUserId={user?.id}
@@ -827,6 +850,7 @@ export default function GeometryDash() {
               isAdmin={user?.isAdmin}
               onDeleteScore={handleDeleteScore}
               maxHeight={540}
+              hidden={false}
             />
           </div>
         )}
@@ -834,4 +858,3 @@ export default function GeometryDash() {
     </div>
   );
 }
-

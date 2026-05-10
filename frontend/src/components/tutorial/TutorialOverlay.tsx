@@ -235,6 +235,9 @@ export function TutorialOverlay() {
   if (!active || !currentStep) return null;
 
   const tooltipHeight = tooltipRef.current?.offsetHeight ?? 200;
+  const advanceMode = currentStep.advanceOn ?? 'manual';
+  const allowsUnderlyingInteraction =
+    advanceMode === 'target-click' || advanceMode === 'target-input' || advanceMode === 'target-change';
   const tStyle = spotlight
     ? tooltipStyle(spotlight, resolvedPlacement, tooltipHeight)
     : { position: 'fixed' as const, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: TOOLTIP_WIDTH };
@@ -249,7 +252,7 @@ export function TutorialOverlay() {
       {/* Spotlight: pointer-events-none so all page interactions work normally */}
       {spotlight && (
         <div
-          className="pointer-events-none rounded-lg transition-all duration-200"
+          className={cn('rounded-lg transition-all duration-200', allowsUnderlyingInteraction ? 'pointer-events-none' : 'pointer-events-auto')}
           style={{
             position: 'fixed',
             top: spotlight.top,
@@ -264,10 +267,10 @@ export function TutorialOverlay() {
         />
       )}
 
-      {/* Dark overlay for center steps (no target) — pointer-events-none */}
+      {/* Dark overlay for center steps (no target) */}
       {!spotlight && (
         <div
-          className="pointer-events-none fixed inset-0 bg-black/60"
+          className={cn('fixed inset-0 bg-black/60', allowsUnderlyingInteraction ? 'pointer-events-none' : 'pointer-events-auto')}
           style={{ zIndex: 999990 }}
         />
       )}

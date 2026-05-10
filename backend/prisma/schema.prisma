@@ -232,6 +232,10 @@ model User {
   forumPostVotes            ForumPostVote[]
   forumCommentVotes         ForumCommentVote[]
 
+  // YouTube interactions
+  youtubeComments YoutubeVideoComment[]
+  youtubeLikes    YoutubeVideoLike[]
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
@@ -615,17 +619,51 @@ model Business {
 }
 
 model YoutubeVideo {
-  id          String   @id @default(uuid())
-  businessId  String
-  title       String
-  description String?
-  videoPath   String   // Path to the uploaded video file
-  views       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  businessId    String
+  title         String
+  description   String?
+  videoPath     String   // Path to the uploaded video file
+  thumbnailPath String?  // Optional thumbnail
+  duration      Float?   // In seconds
+  views         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  comments YoutubeVideoComment[]
+  likes    YoutubeVideoLike[]
+
   @@index([businessId, createdAt])
+}
+
+model YoutubeVideoComment {
+  id        String   @id @default(uuid())
+  videoId   String
+  userId    String
+  rating    Int?     // Optional rating 1-5
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  video YoutubeVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([videoId, createdAt])
+  @@index([userId])
+}
+
+model YoutubeVideoLike {
+  id        String   @id @default(uuid())
+  videoId   String
+  userId    String
+  isLike    Boolean  @default(true) // true = like, false = dislike
+  createdAt DateTime @default(now())
+
+  video YoutubeVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, userId])
 }
 
 model Ad {

@@ -1,4 +1,4 @@
-﻿import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeftRight,
@@ -260,7 +260,7 @@ function BusinessHeader({
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-[200px] text-center text-xs">
-                  La note se débloque après une interaction avec cet établissement
+                  La note se débloque après une interaction ou si tu détiens au moins 1% de l'entreprise
                 </TooltipContent>
               </Tooltip>
             )
@@ -1104,7 +1104,7 @@ function RatingModal({
           </p>
           {!business.canRate ? (
             <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-sm text-muted-foreground">
-              Cet avis sera disponible apres une interaction avec cet etablissement.
+              Cet avis sera disponible apres une interaction ou si tu detiens au moins 1% de l'entreprise.
             </div>
           ) : null}
           <StarRatingInput value={rating} onChange={setRating} />

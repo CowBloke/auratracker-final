@@ -76,6 +76,9 @@ import {
   uploadYoutubeVideo,
   getYoutubeVideos,
   getGlobalYoutubeVideos,
+  getYoutubeVideoDetails,
+  addYoutubeVideoComment,
+  toggleYoutubeVideoLike,
   incrementVideoViews,
   checkReviewEligibilityOnExit,
 } from '../modules/you/service.js';
@@ -1317,6 +1320,9 @@ router.post('/businesses/:businessId/youtube-videos', authMiddleware, requireYou
       description: typeof req.body?.description === 'string' ? req.body.description : undefined,
       videoBase64: String(req.body?.videoBase64 ?? ''),
       mimeType: String(req.body?.mimeType ?? ''),
+      thumbnailBase64: typeof req.body?.thumbnailBase64 === 'string' ? req.body.thumbnailBase64 : undefined,
+      thumbnailMimeType: typeof req.body?.thumbnailMimeType === 'string' ? req.body.thumbnailMimeType : undefined,
+      duration: typeof req.body?.duration === 'number' ? req.body.duration : undefined,
     });
     res.status(201).json({ video });
   } catch (error) {
@@ -1348,6 +1354,36 @@ router.post('/youtube-videos/:videoId/view', authMiddleware, requireYouAccess, a
     res.json({ video });
   } catch (error) {
     handleRouteError(error, res, 'Increment video views error');
+  }
+});
+
+router.get('/youtube-videos/:videoId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const video = await getYoutubeVideoDetails(req.params.videoId, req.user?.id);
+    res.json({ video });
+  } catch (error) {
+    handleRouteError(error, res, 'Get youtube video details error');
+  }
+});
+
+router.post('/youtube-videos/:videoId/comments', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const comment = await addYoutubeVideoComment(req.user!.id, req.params.videoId, {
+      content: String(req.body?.content ?? ''),
+      rating: typeof req.body?.rating === 'number' ? req.body.rating : undefined,
+    });
+    res.status(201).json({ comment });
+  } catch (error) {
+    handleRouteError(error, res, 'Add youtube video comment error');
+  }
+});
+
+router.post('/youtube-videos/:videoId/like', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await toggleYoutubeVideoLike(req.user!.id, req.params.videoId, Boolean(req.body?.isLike ?? true));
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Toggle youtube video like error');
   }
 });
 

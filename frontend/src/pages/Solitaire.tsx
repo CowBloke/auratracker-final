@@ -1,5 +1,5 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
@@ -7,6 +7,8 @@ import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { useHideGameLeaderboards } from '@/lib/game-preferences';
@@ -178,9 +180,6 @@ function SolitaireCard({
 export default function Solitaire() {
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
-  const hideGameLeaderboards = useHideGameLeaderboards();
-  const boardRef = useRef<HTMLDivElement | null>(null);
-
   const [game, setGame] = useState<GameState>(() => createInitialGame());
   const [moves, setMoves] = useState(0);
   const [seconds, setSeconds] = useState(0);
@@ -193,7 +192,10 @@ export default function Solitaire() {
   const [isNewHighScore, setIsNewHighScore] = useState(false);
   const [cardWidth, setCardWidth] = useState(96);
   const [isPaused, setIsPaused] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const hideGameLeaderboards = useHideGameLeaderboards();
   const leaderboardVisible = showLeaderboard && !hideGameLeaderboards;
 
   const score = useMemo(() => computeScore(moves, seconds), [moves, seconds]);
@@ -522,20 +524,56 @@ export default function Solitaire() {
     }
   }, [isPaused, isWon]);
 
-
+  const formatTime = (value: number) => {
+    const minutes = Math.floor(value / 60)
+      .toString()
+      .padStart(2, '0');
+    const secs = (value % 60).toString().padStart(2, '0');
+    return `${minutes}:${secs}`;
+  };
 
   const boardGap = Math.max(6, Math.round(cardWidth * 0.12));
   const stackOffsetFaceUp = Math.max(12, Math.round(cardWidth * 0.27));
   const stackOffsetFaceDown = Math.max(8, Math.round(cardWidth * 0.1));
   const pilePadding = Math.max(2, Math.round(cardWidth * 0.04));
 
+  const topBarControls = (
+    <div className="space-y-2 text-xs">
+      <p className="text-muted-foreground leading-relaxed">
+        Glisse-dépose pour déplacer les cartes. Double-clic pour tenter un move automatique.
+      </p>
+      <Separator className="my-2" />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Coups</p>
+          <p className="text-sm font-semibold tabular-nums">{moves.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Temps</p>
+          <p className="text-sm font-semibold tabular-nums">{formatTime(seconds)}</p>
+        </div>
+        <div className="rounded-lg border border-border/60 p-2 text-center col-span-2">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Progression</p>
+          <p className="text-sm font-semibold tabular-nums">{completedCards}/52 cartes</p>
+        </div>
+      </div>
+      <Separator className="my-2" />
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full justify-center h-8 text-xs"
+        onClick={startNewGame}
+      >
+        <RotateCcw className="mr-2 h-3 w-3" />
+        Nouvelle partie
+      </Button>
+    </div>
+  );
+
   return (
     <div
       ref={gameContainerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
+      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
     >
       <GameTopBar
         title="Solitaire"
@@ -543,206 +581,215 @@ export default function Solitaire() {
         highScore={highScore}
         isNewHighScore={isNewHighScore}
         rewards={rewards}
-        controls={(
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Glisse-depose pour deplacer les cartes.</p>
-            <p className="text-xs text-muted-foreground">Double-clic pour tenter un move automatique.</p>
-            <p className="text-xs text-muted-foreground">Le score baisse avec les coups et le temps.</p>
-          </div>
-        )}
+        controls={topBarControls}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
-        showLeaderboard={leaderboardVisible}
-        onToggleLeaderboard={() => setShowLeaderboard((value) => !value)}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
-        <Button variant="outline" size="sm" type="button" onClick={startNewGame}>
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Nouvelle partie
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          onClick={() => setShowSettingsDialog(true)}
+          title="Parametres"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
         </Button>
       </GameTopBar>
 
-      <div className="flex items-start justify-center gap-4">
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Parametres Solitaire</DialogTitle>
+          </DialogHeader>
+          {topBarControls}
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex items-start justify-center gap-6">
         <div className="flex w-full max-w-[1100px] flex-col">
           <Card className={cn(isFullscreen && 'w-screen min-h-screen rounded-none border-0 bg-background shadow-none')}>
             <CardContent className="p-3 md:p-4">
-            <div
-              ref={boardRef}
-              style={
-                {
-                  '--card-w': `${cardWidth}px`,
-                  '--pile-gap': `${boardGap}px`,
-                  '--stack-faceup': `${stackOffsetFaceUp}px`,
-                  '--stack-facedown': `${stackOffsetFaceDown}px`,
-                  '--pile-pad': `${pilePadding}px`,
-                  '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
-                } as CSSProperties
-              }
-              className="relative"
-            >
-          <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
-          <div className="mb-4 flex items-start justify-between gap-[var(--pile-gap)]">
-            <div className="flex gap-[var(--pile-gap)]">
-              <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
-                <div className="mb-1 text-xs font-semibold text-muted-foreground">Pioche</div>
-                <div
-                  onClick={drawFromStock}
-                  className="inline-block rounded-xl focus:outline-none focus:ring-2 focus:ring-ring"
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      drawFromStock();
-                    }
-                  }}
-                >
-                  {game.stock.length > 0 ? (
-                    <SolitaireCard card={{ ...game.stock[game.stock.length - 1], faceUp: false }} draggable={false} />
-                  ) : (
-                    <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
-                      Retourner
-                    </div>
-                  )}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">{game.stock.length} cartes</div>
-              </div>
-
-              <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
-                <div className="mb-1 text-xs font-semibold text-muted-foreground">Défausse</div>
-                <div>
-                  {game.waste.length > 0 ? (
-                    <SolitaireCard
-                      card={game.waste[game.waste.length - 1]}
-                      draggable={!isWon}
-                      onDragStart={() => setDragSource({ type: 'waste' })}
-                      onDragEnd={() => setDragSource(null)}
-                      onDoubleClick={() => tryAutoMoveToFoundation({ type: 'waste' })}
-                    />
-                  ) : (
-                    <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
-                      Vide
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
-              <div className="mb-1 text-xs font-semibold text-muted-foreground">Fondations</div>
               <div
-                className="grid gap-[var(--pile-gap)]"
-                style={{ gridTemplateColumns: 'repeat(4, var(--pile-col-w))' }}
+                ref={boardRef}
+                style={
+                  {
+                    '--card-w': `${cardWidth}px`,
+                    '--pile-gap': `${boardGap}px`,
+                    '--stack-faceup': `${stackOffsetFaceUp}px`,
+                    '--stack-facedown': `${stackOffsetFaceDown}px`,
+                    '--pile-pad': `${pilePadding}px`,
+                    '--pile-col-w': `${cardWidth + pilePadding * 2}px`,
+                  } as CSSProperties
+                }
+                className="relative"
               >
-                {SUITS.map((suit) => {
-                  const pile = game.foundations[suit];
-                  const top = pile[pile.length - 1];
-                  const canDrop = canDropToFoundation(suit);
-
-                  return (
-                    <div
-                      key={suit}
-                      onDragOver={(event) => {
-                        if (canDrop) {
-                          event.preventDefault();
-                          event.dataTransfer.dropEffect = 'move';
-                        }
-                      }}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        applyMove({ type: 'foundation', suit });
-                      }}
-                      className={cn(
-                        'flex justify-center rounded-xl p-[var(--pile-pad)] transition',
-                        canDrop ? 'ring-2 ring-primary/70' : 'ring-1 ring-border/30'
-                      )}
-                    >
-                      {top ? (
-                        <SolitaireCard
-                          card={top}
-                          draggable={!isWon}
-                          onDragStart={() => setDragSource({ type: 'foundation', suit })}
-                          onDragEnd={() => setDragSource(null)}
-                        />
-                      ) : (
-                        <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10">
-                          <span className={cn('text-2xl', getCardColorClass(suit))}>{SUIT_SYMBOL[suit]}</span>
-                          <span className="text-[10px] font-semibold text-muted-foreground">As</span>
-                        </div>
-                      )}
+                <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
+                <div className="mb-4 flex items-start justify-between gap-[var(--pile-gap)]">
+                  <div className="flex gap-[var(--pile-gap)]">
+                    <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
+                      <div className="mb-1 text-xs font-semibold text-muted-foreground text-center">Pioche</div>
+                      <div
+                        onClick={drawFromStock}
+                        className="inline-block rounded-xl focus:outline-none focus:ring-2 focus:ring-ring"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            drawFromStock();
+                          }
+                        }}
+                      >
+                        {game.stock.length > 0 ? (
+                          <SolitaireCard card={{ ...game.stock[game.stock.length - 1], faceUp: false }} draggable={false} />
+                        ) : (
+                          <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground text-center px-1">
+                            Retourner
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-1 text-[10px] text-muted-foreground text-center">{game.stock.length}</div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
 
-          <div
-            className="grid justify-center gap-[var(--pile-gap)]"
-            style={{ gridTemplateColumns: 'repeat(7, var(--pile-col-w))' }}
-          >
-            {game.tableau.map((pile, pileIndex) => {
-              const canDrop = canDropToTableau(pileIndex);
-
-              return (
-                <div
-                  key={`pile-${pileIndex}`}
-                  onDragOver={(event) => {
-                    if (canDrop) {
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = 'move';
-                    }
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    applyMove({ type: 'tableau', pileIndex });
-                  }}
-                  className={cn(
-                    'relative min-h-[calc(var(--card-w)*3.9)] rounded-xl border border-border/40 p-[var(--pile-pad)] transition',
-                    canDrop && 'ring-2 ring-primary/70'
-                  )}
-                >
-                  {pile.length === 0 ? (
-                    <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs font-semibold text-muted-foreground">
-                      K
-                    </div>
-                  ) : (
-                    pile.map((card, cardIndex) => {
-                      const offset = card.faceUp ? stackOffsetFaceUp : stackOffsetFaceDown;
-                      const top = pile.slice(cardIndex);
-                      const draggable = card.faceUp && top.every((item) => item.faceUp) && !isWon;
-
-                      return (
-                        <div
-                          key={card.id}
-                          className="absolute left-[var(--pile-pad)]"
-                          style={{
-                            top: `${pile
-                              .slice(0, cardIndex)
-                              .reduce((sum, c) => sum + (c.faceUp ? stackOffsetFaceUp : stackOffsetFaceDown), 0)}px`,
-                          }}
-                        >
+                    <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
+                      <div className="mb-1 text-xs font-semibold text-muted-foreground text-center">Défausse</div>
+                      <div className="relative h-[calc(var(--card-w)*1.4)] w-[var(--card-w)]">
+                        {game.waste.length > 0 ? (
                           <SolitaireCard
-                            card={card}
-                            draggable={draggable}
-                            onDragStart={() => setDragSource({ type: 'tableau', pileIndex, cardIndex })}
+                            card={game.waste[game.waste.length - 1]}
+                            draggable={!isWon}
+                            onDragStart={() => setDragSource({ type: 'waste' })}
                             onDragEnd={() => setDragSource(null)}
-                            onDoubleClick={() => {
-                              if (draggable) {
-                                tryAutoMoveToFoundation({ type: 'tableau', pileIndex, cardIndex });
+                            onDoubleClick={() => tryAutoMoveToFoundation({ type: 'waste' })}
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs text-muted-foreground">
+                            Vide
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/40 bg-muted/25 p-2">
+                    <div className="mb-1 text-xs font-semibold text-muted-foreground text-center">Fondations</div>
+                    <div
+                      className="grid gap-[var(--pile-gap)]"
+                      style={{ gridTemplateColumns: 'repeat(4, var(--pile-col-w))' }}
+                    >
+                      {SUITS.map((suit) => {
+                        const pile = game.foundations[suit];
+                        const top = pile[pile.length - 1];
+                        const canDrop = canDropToFoundation(suit);
+
+                        return (
+                          <div
+                            key={suit}
+                            onDragOver={(event) => {
+                              if (canDrop) {
+                                event.preventDefault();
+                                event.dataTransfer.dropEffect = 'move';
                               }
                             }}
-                          />
-                          {cardIndex === pile.length - 1 && (
-                            <div style={{ height: `${offset}px` }} />
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
+                            onDrop={(event) => {
+                              event.preventDefault();
+                              applyMove({ type: 'foundation', suit });
+                            }}
+                            className={cn(
+                              'flex justify-center rounded-xl p-[var(--pile-pad)] transition',
+                              canDrop ? 'ring-2 ring-primary/70' : 'ring-1 ring-border/30'
+                            )}
+                          >
+                            {top ? (
+                              <SolitaireCard
+                                card={top}
+                                draggable={!isWon}
+                                onDragStart={() => setDragSource({ type: 'foundation', suit })}
+                                onDragEnd={() => setDragSource(null)}
+                              />
+                            ) : (
+                              <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10">
+                                <span className={cn('text-2xl', getCardColorClass(suit))}>{SUIT_SYMBOL[suit]}</span>
+                                <span className="text-[10px] font-semibold text-muted-foreground">As</span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+
+                <div
+                  className="grid justify-center gap-[var(--pile-gap)]"
+                  style={{ gridTemplateColumns: 'repeat(7, var(--pile-col-w))' }}
+                >
+                  {game.tableau.map((pile, pileIndex) => {
+                    const canDrop = canDropToTableau(pileIndex);
+
+                    return (
+                      <div
+                        key={`pile-${pileIndex}`}
+                        onDragOver={(event) => {
+                          if (canDrop) {
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = 'move';
+                          }
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          applyMove({ type: 'tableau', pileIndex });
+                        }}
+                        className={cn(
+                          'relative min-h-[calc(var(--card-w)*3.9)] rounded-xl border border-border/40 p-[var(--pile-pad)] transition',
+                          canDrop && 'ring-2 ring-primary/70'
+                        )}
+                      >
+                        {pile.length === 0 ? (
+                          <div className="flex h-[calc(var(--card-w)*1.4)] w-[var(--card-w)] items-center justify-center rounded-xl border-2 border-dashed border-border/60 bg-muted/10 text-xs font-semibold text-muted-foreground">
+                            K
+                          </div>
+                        ) : (
+                          pile.map((card, cardIndex) => {
+                            const offset = card.faceUp ? stackOffsetFaceUp : stackOffsetFaceDown;
+                            const topCards = pile.slice(cardIndex);
+                            const draggable = card.faceUp && topCards.every((item) => item.faceUp) && !isWon;
+
+                            return (
+                              <div
+                                key={card.id}
+                                className="absolute left-[var(--pile-pad)]"
+                                style={{
+                                  top: `${pile
+                                    .slice(0, cardIndex)
+                                    .reduce((sum, c) => sum + (c.faceUp ? stackOffsetFaceUp : stackOffsetFaceDown), 0)}px`,
+                                }}
+                              >
+                                <SolitaireCard
+                                  card={card}
+                                  draggable={draggable}
+                                  onDragStart={() => setDragSource({ type: 'tableau', pileIndex, cardIndex })}
+                                  onDragEnd={() => setDragSource(null)}
+                                  onDoubleClick={() => {
+                                    if (draggable) {
+                                      tryAutoMoveToFoundation({ type: 'tableau', pileIndex, cardIndex });
+                                    }
+                                  }}
+                                />
+                                {cardIndex === pile.length - 1 && (
+                                  <div style={{ height: `${offset}px` }} />
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
           {isWon && (
             <div className="mt-4 rounded-xl border border-primary/30 bg-primary/10 p-4 text-center">
               <div className="text-lg font-semibold">Partie gagnée</div>
@@ -758,22 +805,21 @@ export default function Solitaire() {
             </div>
           )}
           </div>
-          </CardContent>
-          </Card>
-        </div>
+        </CardContent>
+      </Card>
+    </div>
 
-        {leaderboardVisible && !isFullscreen && (
-          <div className="w-[240px] shrink-0 hidden lg:block">
-            <GameLeaderboard
-              entries={leaderboard}
-              currentUserId={user?.id}
-              personalHighScore={highScore}
-              isAdmin={user?.isAdmin}
-              onDeleteScore={handleDeleteScore}
-              maxHeight={720}
-            />
-          </div>
-        )}
+      {leaderboardVisible && (
+        <GameLeaderboard
+          entries={leaderboard}
+          currentUserId={user?.id}
+          personalHighScore={highScore}
+          isAdmin={user?.isAdmin}
+          onDeleteScore={handleDeleteScore}
+          maxHeight={720}
+          hidden={isFullscreen}
+        />
+      )}
       </div>
     </div>
   );

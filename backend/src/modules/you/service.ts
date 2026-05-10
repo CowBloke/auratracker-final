@@ -1,4 +1,4 @@
-﻿import { io, prisma } from '../../server.js';
+import { io, prisma } from '../../server.js';
 import { createNotification, emitNotificationUpdated } from '../../utils/notifications.js';
 import {
   BUSINESS_TYPES,
@@ -575,6 +575,45 @@ function serializeBusinessLoan(loan: any) {
   };
 }
 
+function getBusinessValuation(business: {
+  startingCapital: number;
+  treasuryMoney: number | bigint;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+}) {
+  return Math.max(
+    1000,
+    business.startingCapital + Number(business.treasuryMoney) + Math.max(0, (business.monthlyRevenue - business.monthlyExpenses) * 6),
+  );
+}
+
+function getUserBusinessStakePercent(userId: string, business: any) {
+  const valuation = getBusinessValuation(business);
+  if (valuation <= 0) return 0;
+
+  let totalValue = 0;
+
+  // 1. Shares (Equity)
+  const shareholding = (business.shareholders ?? []).find((s: any) => (s.userId === userId || s.user?.id === userId));
+  if (shareholding) {
+    totalValue += (shareholding.sharePercent * valuation) / 100;
+  }
+
+  // 2. Bank deposits
+  const bankAccount = (business.bankAccounts ?? []).find((a: any) => a.userId === userId);
+  if (bankAccount) {
+    totalValue += Number(bankAccount.balance);
+  }
+
+  // 3. Active investments
+  const investments = (business.investments ?? []).filter((i: any) => (i.investorId === userId || i.investor?.id === userId));
+  investments.forEach((i: any) => {
+    totalValue += i.amount;
+  });
+
+  return (totalValue / valuation) * 100;
+}
+
 function computeBusinessSuggestedShareAmount(business: {
   startingCapital: number;
   treasuryMoney: number | bigint;
@@ -582,10 +621,7 @@ function computeBusinessSuggestedShareAmount(business: {
   monthlyExpenses: number;
 }, sharePercent: number) {
   const safeSharePercent = Math.max(1, Math.min(95, sharePercent));
-  const valuationBase = Math.max(
-    1000,
-    business.startingCapital + Number(business.treasuryMoney) + Math.max(0, (business.monthlyRevenue - business.monthlyExpenses) * 6),
-  );
+  const valuationBase = getBusinessValuation(business);
   return Math.max(500, Math.round((valuationBase * safeSharePercent) / 100));
 }
 
@@ -754,10 +790,15 @@ function getFormationReviewEligibilityEntry(product: any, viewerId: string) {
 
 function getBusinessReviewStatus(business: any, viewerId: string) {
   const entry = getBusinessReviewEligibilityEntry(business, viewerId);
+  const stakePercent = getUserBusinessStakePercent(viewerId, business);
+  const meetsStakeThreshold = stakePercent >= 1;
+  const hasAlreadyRated = (business.ratings ?? []).some((r: any) => r.userId === viewerId);
+
   return {
-    canRate: Boolean(entry && !entry.reviewedAt && business.ownerId !== viewerId),
+    canRate: Boolean((entry && !entry.reviewedAt) || (meetsStakeThreshold && !hasAlreadyRated)) && business.ownerId !== viewerId,
     reviewPromptAt: entry?.promptAt ? new Date(entry.promptAt).toISOString() : null,
     reviewPromptedAt: entry?.promptedAt ? new Date(entry.promptedAt).toISOString() : null,
+    stakePercent, // Optional: helpful for debugging or UI
   };
 }
 
@@ -982,7 +1023,12 @@ async function rateBusiness(userId: string, businessId: string, rating: number, 
     : null;
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    include: { reviewEligibilities: true },
+    include: {
+      reviewEligibilities: true,
+      shareholders: { where: { userId } },
+      bankAccounts: { where: { userId } },
+      investments: { where: { investorId: userId } },
+    },
   });
   if (!business) {
     throw new Error('BUSINESS_NOT_FOUND');
@@ -991,22 +1037,43 @@ async function rateBusiness(userId: string, businessId: string, rating: number, 
     throw new Error('BUSINESS_RATING_NOT_ALLOWED');
   }
   const eligibility = getBusinessReviewEligibilityEntry(business, userId);
-  if (!eligibility || business.ownerId === userId) {
+  const stakePercent = getUserBusinessStakePercent(userId, business);
+  const meetsStakeThreshold = stakePercent >= 1;
+
+  if (business.ownerId === userId) {
     throw new Error('BUSINESS_RATING_NOT_ALLOWED');
   }
+
+  if (!eligibility && !meetsStakeThreshold) {
+    throw new Error('BUSINESS_RATING_NOT_ALLOWED');
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.businessRating.upsert({
       where: { businessId_userId: { businessId, userId } },
       update: { rating, comment: normalizedComment || null },
       create: { businessId, userId, rating, comment: normalizedComment || null },
     });
-    await tx.reviewEligibility.update({
-      where: { id: eligibility.id },
-      data: {
-        reviewedAt: new Date(),
-        promptedAt: eligibility.promptedAt ?? new Date(),
-      },
-    });
+
+    if (eligibility) {
+      await tx.reviewEligibility.update({
+        where: { id: eligibility.id },
+        data: {
+          reviewedAt: new Date(),
+          promptedAt: eligibility.promptedAt ?? new Date(),
+        },
+      });
+    } else {
+      await tx.reviewEligibility.create({
+        data: {
+          userId,
+          businessId,
+          targetType: 'BUSINESS',
+          sourceType: 'STAKE_THRESHOLD',
+          reviewedAt: new Date(),
+        },
+      });
+    }
   });
   logYouAdmin('business_rate', userId, undefined, business.id, business.name, {
     rating,
@@ -1184,6 +1251,7 @@ export async function getYouState(userId: string) {
     myShareMarketListings,
     skills,
     viewerUser,
+    viewerBankAccounts,
   ] = await Promise.all([
     prisma.user.findMany({
       where: {
@@ -1344,6 +1412,9 @@ export async function getYouState(userId: string) {
       where: { id: userId },
       select: { unlockedBusinessLevel: true, isAdmin: true, isSuperAdmin: true, youAdblockExpiresAt: true },
     }),
+    prisma.bankAccount.findMany({
+      where: { userId },
+    }),
   ]);
 
   const startupBusinessIds = [...ownedBusinesses, ...exploreBusinesses, ...memberBusinesses, ...shareholderBusinesses]
@@ -1390,6 +1461,12 @@ export async function getYouState(userId: string) {
   const unlockedBusinessLevel = viewerUser?.unlockedBusinessLevel ?? 0;
   const temporaryEffects = serializeGlobalTemporaryEffects(viewerUser?.youAdblockExpiresAt ?? null);
 
+  const bankAccountMap = new Map((viewerBankAccounts ?? []).map((a: any) => [a.businessId, a]));
+  const injectBankAccounts = (business: any) => {
+    business.bankAccounts = bankAccountMap.has(business.id) ? [bankAccountMap.get(business.id)] : [];
+    return business;
+  };
+
   const data = {
     businessTypes: BUSINESS_TYPES,
     skills: serializedSkills,
@@ -1429,10 +1506,10 @@ export async function getYouState(userId: string) {
       accuser: c.accuser,
       createdAt: c.createdAt.toISOString(),
     })),
-    ownedBusinesses: ownedBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
-    exploreBusinesses: exploreBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
-    memberBusinesses: memberBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
-    shareholderBusinesses: shareholderBusinessesWithProducts.map((business) => serializeBusiness(business, userId, { viewerIsAdmin })),
+    ownedBusinesses: ownedBusinessesWithProducts.map((business) => serializeBusiness(injectBankAccounts(business), userId, { viewerIsAdmin })),
+    exploreBusinesses: exploreBusinessesWithProducts.map((business) => serializeBusiness(injectBankAccounts(business), userId, { viewerIsAdmin })),
+    memberBusinesses: memberBusinessesWithProducts.map((business) => serializeBusiness(injectBankAccounts(business), userId, { viewerIsAdmin })),
+    shareholderBusinesses: shareholderBusinessesWithProducts.map((business) => serializeBusiness(injectBankAccounts(business), userId, { viewerIsAdmin })),
     temporaryEffects,
   };
   _youStateCache.set(userId, { data, expiresAt: Date.now() + YOU_CACHE_TTL_MS });
@@ -6828,6 +6905,9 @@ export async function uploadYoutubeVideo(userId: string, businessId: string, dat
   description?: string;
   videoBase64: string;
   mimeType: string;
+  thumbnailBase64?: string;
+  thumbnailMimeType?: string;
+  duration?: number;
 }) {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
@@ -6842,18 +6922,31 @@ export async function uploadYoutubeVideo(userId: string, businessId: string, dat
     throw new Error('INVALID_FORMATION_TITLE'); // reusing error code for title length
   }
 
-  const uploadResult = await writeBase64UploadVideo({
+  const videoUploadResult = await writeBase64UploadVideo({
     base64Data: data.videoBase64,
     mimeType: data.mimeType,
     uploadDir: YOUTUBE_VIDEO_UPLOAD_DIR,
     maxBytes: MAX_YOUTUBE_VIDEO_SIZE_BYTES,
   });
 
-  if ('error' in uploadResult) {
-    throw new Error(uploadResult.error);
+  if ('error' in videoUploadResult) {
+    throw new Error(videoUploadResult.error);
   }
 
-  const videoPath = `/${YOUTUBE_VIDEO_UPLOAD_DIR}/${uploadResult.fileName}`;
+  let thumbnailPath: string | undefined;
+  if (data.thumbnailBase64 && data.thumbnailMimeType) {
+    const thumbResult = await writeBase64UploadFile({
+      base64Data: data.thumbnailBase64,
+      mimeType: data.thumbnailMimeType,
+      uploadDir: 'uploads/youtube-thumbnails',
+      maxBytes: 5 * 1024 * 1024, // 5MB limit for thumbnails
+    });
+    if (!('error' in thumbResult)) {
+      thumbnailPath = `/uploads/youtube-thumbnails/${thumbResult.fileName}`;
+    }
+  }
+
+  const videoPath = `/${YOUTUBE_VIDEO_UPLOAD_DIR}/${videoUploadResult.fileName}`;
 
   const video = await prisma.youtubeVideo.create({
     data: {
@@ -6861,6 +6954,8 @@ export async function uploadYoutubeVideo(userId: string, businessId: string, dat
       title: data.title.trim(),
       description: data.description?.trim(),
       videoPath,
+      thumbnailPath,
+      duration: data.duration,
     },
   });
 
@@ -6871,6 +6966,14 @@ export async function getYoutubeVideos(businessId: string) {
   const videos = await prisma.youtubeVideo.findMany({
     where: { businessId },
     orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: {
+          comments: true,
+          likes: true,
+        }
+      }
+    }
   });
   return videos;
 }
@@ -6885,6 +6988,12 @@ export async function getGlobalYoutubeVideos() {
           id: true,
           name: true,
           logoUrl: true,
+        }
+      },
+      _count: {
+        select: {
+          comments: true,
+          likes: true,
         }
       }
     }
@@ -6939,4 +7048,156 @@ export async function checkReviewEligibilityOnExit(userId: string, businessId: s
   });
 
   return { eligible: true };
+}
+
+export async function getYoutubeVideoDetails(videoId: string, userId?: string) {
+  const video = await prisma.youtubeVideo.findUnique({
+    where: { id: videoId },
+    include: {
+      business: {
+        include: {
+          owner: {
+            select: USER_PREVIEW_SELECT,
+          }
+        }
+      },
+      comments: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: USER_PREVIEW_SELECT,
+          }
+        }
+      },
+      likes: true,
+      _count: {
+        select: {
+          comments: true,
+          likes: true,
+        }
+      }
+    }
+  });
+
+  if (!video) throw new Error('VIDEO_NOT_FOUND');
+
+  const likesCount = video.likes.filter(l => l.isLike).length;
+  const dislikesCount = video.likes.filter(l => !l.isLike).length;
+  const userInteraction = userId ? video.likes.find(l => l.userId === userId) : null;
+
+  return {
+    ...video,
+    likesCount,
+    dislikesCount,
+    userLike: userInteraction ? userInteraction.isLike : null,
+  };
+}
+
+export async function addYoutubeVideoComment(userId: string, videoId: string, data: { content: string; rating?: number }) {
+  const video = await prisma.youtubeVideo.findUnique({
+    where: { id: videoId },
+    include: { business: true }
+  });
+
+  if (!video) throw new Error('VIDEO_NOT_FOUND');
+
+  const comment = await prisma.youtubeVideoComment.create({
+    data: {
+      videoId,
+      userId,
+      content: data.content,
+      rating: data.rating,
+    },
+    include: {
+      user: {
+        select: USER_PREVIEW_SELECT,
+      }
+    }
+  });
+
+  // If rating is provided, it counts as a business review
+  if (data.rating) {
+    const rating = Math.max(1, Math.min(5, data.rating));
+    
+    // Upsert business rating
+    await prisma.businessRating.upsert({
+      where: {
+        businessId_userId: {
+          businessId: video.businessId,
+          userId,
+        }
+      },
+      update: {
+        rating,
+        comment: data.content,
+      },
+      create: {
+        businessId: video.businessId,
+        userId,
+        rating,
+        comment: data.content,
+      }
+    });
+
+    // Mark as reviewed in eligibility
+    await prisma.reviewEligibility.updateMany({
+      where: {
+        userId,
+        businessId: video.businessId,
+        targetType: 'BUSINESS',
+      },
+      data: {
+        reviewedAt: new Date(),
+      }
+    });
+
+    // Update business satisfaction
+    const ratings = await prisma.businessRating.findMany({
+      where: { businessId: video.businessId }
+    });
+    const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+    const satisfaction = Math.round(avgRating * 20); // 1-5 to 0-100 (approx)
+
+    await prisma.business.update({
+      where: { id: video.businessId },
+      data: { satisfaction }
+    });
+  }
+
+  return comment;
+}
+
+export async function toggleYoutubeVideoLike(userId: string, videoId: string, isLike: boolean) {
+  const existing = await prisma.youtubeVideoLike.findUnique({
+    where: {
+      videoId_userId: { videoId, userId }
+    }
+  });
+
+  if (existing) {
+    if (existing.isLike === isLike) {
+      // Remove if same
+      await prisma.youtubeVideoLike.delete({
+        where: { id: existing.id }
+      });
+      return { action: 'removed' };
+    } else {
+      // Update if different
+      await prisma.youtubeVideoLike.update({
+        where: { id: existing.id },
+        data: { isLike }
+      });
+      return { action: 'updated', isLike };
+    }
+  }
+
+  await prisma.youtubeVideoLike.create({
+    data: {
+      videoId,
+      userId,
+      isLike,
+    }
+  });
+
+  return { action: 'created', isLike };
 }

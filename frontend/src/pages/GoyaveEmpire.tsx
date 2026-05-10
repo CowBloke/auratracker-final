@@ -5,10 +5,15 @@ import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/Ga
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { GameTopBar } from '@/components/game/GameTopBar';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
+import { Play, RotateCcw, SlidersHorizontal, Trophy } from 'lucide-react';
+import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
+import { GameTopBar } from '@/components/game/GameTopBar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 // ---- Constants ----
 const SAVE_KEY = 'goyave_empire_save';
@@ -242,6 +247,7 @@ function persistSave(state: SaveState): void {
 
 // ---- Component ----
 export default function GoyaveEmpire() {
+  const hideGameLeaderboards = useHideGameLeaderboards();
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
 
@@ -252,7 +258,7 @@ export default function GoyaveEmpire() {
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isCashingOut, setIsCashingOut] = useState(false);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showActiveLeaderboard, setShowActiveLeaderboard] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -395,6 +401,12 @@ export default function GoyaveEmpire() {
     return () => clearInterval(interval);
   }, [fetchActiveLeaderboard]);
 
+  useEffect(() => {
+    if (hideGameLeaderboards && showLeaderboard) {
+      setShowLeaderboard(false);
+    }
+  }, [hideGameLeaderboards, showLeaderboard]);
+
   // Actions
   const handleClick = useCallback(() => {
     if (isPaused) return;
@@ -472,287 +484,291 @@ export default function GoyaveEmpire() {
 
   const PANEL_HEIGHT = 680;
 
+  const topBarControls = (
+    <div className="space-y-4 text-xs">
+      <div className="rounded-lg border border-border/60 p-3 bg-muted/30 space-y-2">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Status de l'Empire</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded border border-border/40 p-2 bg-background">
+            <p className="text-[10px] text-muted-foreground">GPS Total</p>
+            <p className="font-semibold tabular-nums text-green-400">{fmt(gps)}/s</p>
+          </div>
+          <div className="rounded border border-border/40 p-2 bg-background">
+            <p className="text-[10px] text-muted-foreground">Clic</p>
+            <p className="font-semibold tabular-nums">+{fmt(clickPower)}</p>
+          </div>
+        </div>
+      </div>
+      <Separator />
+      <div className="border border-border/30 rounded-lg bg-muted/20 p-3 space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-wider">Encaisser</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{rewardPreviewText(save.totalGuavas)}</div>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="h-7 px-3 text-[10px] uppercase font-bold"
+            disabled={save.totalGuavas < 100 || isCashingOut}
+            onClick={async () => {
+              if (!(await confirm('Encaisser et réinitialiser votre empire ?'))) return;
+              void handleCashOut();
+            }}
+          >
+            {isCashingOut ? '...' : 'Cash'}
+          </Button>
+        </div>
+        <div className="text-[10px] text-center text-muted-foreground">
+          Record : <span className="font-medium">{fmt(save.cashOutScore)}</span>
+        </div>
+      </div>
+      <Separator />
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full justify-center h-8 text-xs"
+        onClick={() => setIsPaused((v) => !v)}
+      >
+        {isPaused ? <Play className="mr-2 h-3 w-3" /> : <RotateCcw className="mr-2 h-3 w-3" />}
+        {isPaused ? 'Reprendre' : 'Pause'}
+      </Button>
+    </div>
+  );
+
   return (
     <div
       ref={gameContainerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
+      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
     >
       <GameTopBar
         title="Goyave Empire"
         score={save.guavas}
+        scoreSuffix=" 🍈"
         highScore={save.cashOutScore}
+        scoreFormatter={fmt}
         isNewHighScore={isNewHighScore}
         rewards={rewards}
-        controls={(
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Clique sur la goyave pour recolter.</p>
-            <p className="text-xs text-muted-foreground">Achete des batiments pour automatiser la production.</p>
-            <p className="text-xs text-muted-foreground">Encaisse pour convertir en aura et argent.</p>
-          </div>
-        )}
+        controls={topBarControls}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
-        showLeaderboard={false}
-        onToggleLeaderboard={() => {}}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
-        <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          onClick={() => setShowSettingsDialog(true)}
+          title="Parametres"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+        </Button>
       </GameTopBar>
 
-      {/* Three-column Cookie Clicker layout */}
-      <div className={cn('flex w-full flex-col gap-3')}>
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Parametres Empire</DialogTitle>
+          </DialogHeader>
+          {topBarControls}
+        </DialogContent>
+      </Dialog>
 
+      <div className="flex items-start justify-center gap-6 overflow-hidden">
+        <div className="flex w-full max-w-[1200px] flex-col overflow-hidden">
+          <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={1000} baseHeight={PANEL_HEIGHT}>
+            <div className="relative flex items-stretch w-full h-full overflow-hidden rounded-[28px] border border-border/30 bg-card shadow-2xl">
+              <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
 
-        <div className="relative flex gap-0 items-stretch w-full" style={{ height: PANEL_HEIGHT }}>
-        <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
+              {/* ── LEFT: Upgrades ── */}
+              <div className="flex-shrink-0 border-r border-border/20 bg-muted/5 flex flex-col overflow-hidden" style={{ width: 180 }}>
+                <div className="px-4 py-3 border-b border-border/20 flex-shrink-0">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">Améliorations</div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 scrollbar-hide">
+                  {unlockedUpgrades.length === 0 ? (
+                    <p className="text-[10px] text-muted-foreground text-center mt-6 leading-relaxed px-2 opacity-50">
+                      Plus de bâtiments pour débloquer...
+                    </p>
+                  ) : (
+                    <TooltipProvider delayDuration={150}>
+                      <div className="grid grid-cols-3 gap-2">
+                        {unlockedUpgrades.map((upg) => {
+                          const canAfford = save.guavas >= upg.cost;
+                          return (
+                            <Tooltip key={upg.id}>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => buyUpgrade(upg.id)}
+                                  disabled={!canAfford}
+                                  className={`aspect-square rounded-xl border-2 text-xl flex items-center justify-center transition-all select-none
+                                    ${canAfford
+                                      ? 'border-yellow-500/70 bg-yellow-500/10 hover:bg-yellow-500/20 hover:scale-105 cursor-pointer shadow-sm shadow-yellow-500/20'
+                                      : 'border-border/30 bg-muted/10 opacity-40 cursor-not-allowed'
+                                    }`}
+                                >
+                                  {upg.emoji}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="p-0 overflow-hidden max-w-[200px]">
+                                <div className="px-3 pt-3 pb-2 space-y-1.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xl">{upg.emoji}</span>
+                                    <span className="text-sm font-semibold leading-tight">{upg.name}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground leading-snug">{upg.description}</p>
+                                </div>
+                                <div className={`px-3 py-2 border-t border-border/30 flex items-center justify-between gap-3 ${canAfford ? 'bg-yellow-500/10' : 'bg-muted/20'}`}>
+                                  <span className="text-xs text-muted-foreground">Coût</span>
+                                  <span className={`text-xs font-semibold tabular-nums ${canAfford ? 'text-yellow-500' : 'text-muted-foreground'}`}>
+                                    {fmt(upg.cost)} 🍈
+                                  </span>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </div>
 
-        {/* ── LEFT: Upgrades ── */}
-        <div className="flex-shrink-0 border border-border/30 border-r-0 rounded-l-xl bg-card flex flex-col overflow-hidden" style={{ width: 192 }}>
-          <div className="px-4 py-3 border-b border-border/20 flex-shrink-0">
-            <div className="text-xs font-semibold text-muted-foreground">Améliorations</div>
-          </div>
-          <div className="flex-1 overflow-y-auto p-3">
-            {unlockedUpgrades.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center mt-6 leading-relaxed px-2">
-                Achetez des bâtiments pour débloquer des améliorations.
-              </p>
-            ) : (
-              <TooltipProvider delayDuration={150}>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {unlockedUpgrades.map((upg) => {
-                    const canAfford = save.guavas >= upg.cost;
-                    const targetDef = BUILDINGS.find((b) => b.id === upg.target);
+              {/* ── CENTER: Main click area ── */}
+              <div className="flex-1 flex flex-col items-center justify-between py-12 px-8 overflow-hidden bg-gradient-to-b from-card/50 to-muted/20">
+                <div className="text-center w-full space-y-2">
+                  <div className="text-7xl font-black tabular-nums tracking-tighter text-green-400 drop-shadow-[0_0_15px_rgba(74,222,128,0.2)]">
+                    {fmt(save.guavas)}
+                  </div>
+                  <div className="text-xs font-bold text-muted-foreground uppercase tracking-[0.4em]">goyaves</div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-400/10 text-green-400 text-[10px] font-bold">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400"></span>
+                    </span>
+                    {fmt(gps)} / seconde
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleClick}
+                  className="group relative select-none cursor-pointer active:scale-95 transition-all duration-75"
+                  aria-label="Récolter une goyave"
+                >
+                  <div className="absolute inset-0 bg-green-400/20 rounded-full blur-[60px] group-hover:bg-green-400/30 transition-all"></div>
+                  <img
+                    src="/assets/doodle-player.png"
+                    alt="Goyave"
+                    className="relative w-56 h-56 object-contain image-rendering-pixelated group-hover:scale-110 transition-transform duration-200"
+                    draggable={false}
+                  />
+                </button>
+
+                <div className="w-full max-w-sm space-y-4">
+                  {offlineGuavas !== null && (
+                    <div className="border border-green-500/30 rounded-xl bg-green-500/10 px-4 py-3 flex items-center justify-between gap-3 backdrop-blur-md animate-in slide-in-from-bottom-2">
+                      <span className="text-xs font-medium text-green-400">Empire étendu hors-ligne: +{fmt(offlineGuavas)} 🍈</span>
+                      <button onClick={() => setOfflineGuavas(null)} className="text-muted-foreground hover:text-foreground">✕</button>
+                    </div>
+                  )}
+
+                  <div className="text-center space-y-1">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-50">
+                      Total récolté: {fmt(save.totalGuavas)}
+                    </div>
+                    <div className="text-[10px] font-medium text-muted-foreground">
+                      Puissance de clic: +{fmt(clickPower)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── RIGHT: Buildings ── */}
+              <div className="flex-shrink-0 border-l border-border/20 bg-muted/5 flex flex-col overflow-hidden" style={{ width: 300 }}>
+                <div className="px-4 py-3 border-b border-border/20 flex-shrink-0">
+                  <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">Bâtiments</div>
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-hide">
+                  {BUILDINGS.map((def) => {
+                    const owned = save.buildings[def.id] ?? 0;
+                    const cost = buildingCost(def, owned);
+                    const canAfford = save.guavas >= cost;
+                    const contribution = buildingGps(def, owned, save.upgrades);
                     return (
-                      <Tooltip key={upg.id}>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => buyUpgrade(upg.id)}
-                            disabled={!canAfford}
-                            className={`aspect-square rounded-lg border-2 text-2xl flex items-center justify-center transition-all select-none
-                              ${canAfford
-                                ? 'border-yellow-500/70 bg-yellow-500/10 hover:bg-yellow-500/20 hover:border-yellow-400 cursor-pointer shadow-sm shadow-yellow-500/20'
-                                : 'border-border/30 bg-muted/10 opacity-40 cursor-not-allowed'
-                              }`}
-                          >
-                            {upg.emoji}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="p-0 overflow-hidden max-w-[200px]">
-                          <div className="px-3 pt-3 pb-2 space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{upg.emoji}</span>
-                              <span className="text-sm font-semibold leading-tight">{upg.name}</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground leading-snug">{upg.description}</p>
-                            {targetDef && (
-                              <p className="text-xs text-muted-foreground/70">
-                                {targetDef.emoji} {targetDef.name}
-                              </p>
-                            )}
-                          </div>
-                          <div className={`px-3 py-2 border-t border-border/30 flex items-center justify-between gap-3 ${canAfford ? 'bg-yellow-500/10' : 'bg-muted/20'}`}>
-                            <span className="text-xs text-muted-foreground">Coût</span>
-                            <span className={`text-xs font-semibold tabular-nums ${canAfford ? 'text-yellow-500' : 'text-muted-foreground'}`}>
-                              {fmt(upg.cost)} 🍈
+                      <button
+                        key={def.id}
+                        onClick={() => buyBuilding(def.id)}
+                        disabled={!canAfford}
+                        className={`w-full text-left px-5 py-4 border-b border-border/10 transition-all flex items-center gap-4
+                          ${canAfford
+                            ? 'hover:bg-yellow-500/5 cursor-pointer'
+                            : 'opacity-40 cursor-not-allowed'
+                          }`}
+                      >
+                        <span className={`text-3xl flex-shrink-0 transition-all duration-300 ${owned > 0 ? 'scale-100' : 'scale-75 opacity-30 grayscale'}`}>
+                          {def.emoji}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-sm font-bold truncate text-foreground/90">
+                              {def.name}
+                            </span>
+                            <span className="text-xl font-black tabular-nums text-foreground/30">
+                              {owned}
                             </span>
                           </div>
-                        </TooltipContent>
-                      </Tooltip>
+                          <div className="flex items-center justify-between mt-0.5 gap-2">
+                            <span className="text-[10px] font-medium text-muted-foreground truncate opacity-70">
+                              {owned > 0 ? `${fmt(contribution)}/s` : def.description}
+                            </span>
+                            <span className={`text-[11px] font-bold tabular-nums flex-shrink-0 ${canAfford ? 'text-yellow-500' : 'text-muted-foreground/50'}`}>
+                              {fmt(cost)} 🍈
+                            </span>
+                          </div>
+                        </div>
+                      </button>
                     );
                   })}
                 </div>
-              </TooltipProvider>
-            )}
-          </div>
+              </div>
+            </div>
+          </GameFullscreenStage>
         </div>
 
-        {/* ── CENTER: Main click area ── */}
-        <div className="flex-1 border border-border/30 bg-card flex flex-col items-center justify-between py-8 px-6 overflow-hidden">
-
-          {/* Top: big counters */}
-          <div className="text-center w-full">
-            <div className="text-6xl font-bold tabular-nums leading-none text-green-400">
-              {fmt(save.guavas)}
-            </div>
-            <div className="text-base text-muted-foreground mt-2">goyaves</div>
-            <div className="text-sm text-muted-foreground/60 mt-1">
-              {fmt(gps)} / seconde
-            </div>
-          </div>
-
-          {/* Big clickable guava */}
-          <button
-            onClick={handleClick}
-            className="select-none cursor-pointer active:scale-90 hover:scale-110 transition-transform duration-100"
-            style={{ filter: 'drop-shadow(0 0 32px rgba(74,222,128,0.35))' }}
-            aria-label="Récolter une goyave"
-          >
-            <img
-              src="/assets/doodle-player.png"
-              alt="Goyave"
-              style={{ width: 224, height: 224, objectFit: 'contain', imageRendering: 'pixelated' }}
-              draggable={false}
-            />
-          </button>
-
-          {/* Bottom info + actions */}
-          <div className="w-full space-y-3">
-            {/* Click power */}
-            <div className="text-center text-xs text-muted-foreground">
-              +{fmt(clickPower)} par clic · {fmt(save.totalGuavas)} total récoltées
-            </div>
-
-            {/* Offline popup */}
-            {offlineGuavas !== null && (
-              <div className="border border-green-500/40 rounded-lg bg-green-500/10 px-4 py-2.5 flex items-center justify-between gap-3">
-                <span className="text-sm text-green-400">+{fmt(offlineGuavas)} goyaves récoltées hors ligne !</span>
-                <button onClick={() => setOfflineGuavas(null)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+        {showLeaderboard && !isFullscreen && (
+          <div className="w-[280px] shrink-0 hidden lg:block h-full">
+            <div className="h-full flex flex-col gap-4">
+              <div className="p-1 rounded-xl bg-muted/30 border border-border/40 flex gap-1">
+                <button
+                  onClick={() => setShowActiveLeaderboard(true)}
+                  className={`flex-1 rounded-lg py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${showActiveLeaderboard ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Actif
+                </button>
+                <button
+                  onClick={() => setShowActiveLeaderboard(false)}
+                  className={`flex-1 rounded-lg py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${!showActiveLeaderboard ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Records
+                </button>
               </div>
-            )}
 
-            {/* Rewards display */}
-            {rewards && (
-              <div className="border border-border/30 rounded-lg bg-muted/20 px-4 py-2.5 text-center space-y-0.5">
-                {isNewHighScore && <div className="text-xs font-semibold text-yellow-500">Nouveau record !</div>}
-                <div className="text-sm text-muted-foreground">
-                  {rewards.money > 0 && <span>+${rewards.money}</span>}
-                  {rewards.money > 0 && rewards.aura > 0 && <span className="mx-1.5 opacity-40">·</span>}
-                  {rewards.aura > 0 && <span>+{rewards.aura} aura</span>}
-                  {rewards.money === 0 && rewards.aura === 0 && <span>Pas assez de goyaves pour une récompense.</span>}
-                </div>
-              </div>
-            )}
-
-            {/* Cash out */}
-            <div className="border border-border/30 rounded-lg bg-muted/20 px-4 py-3 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-xs font-medium">Encaisser l'Empire</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{rewardPreviewText(save.totalGuavas)}</div>
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="shrink-0 text-xs"
-                disabled={save.totalGuavas < 100 || isCashingOut}
-                onClick={async () => {
-                  if (!(await confirm('Encaisser et réinitialiser votre empire ?'))) return;
-                  void handleCashOut();
-                }}
-              >
-                {isCashingOut ? '...' : 'Encaisser'}
-              </Button>
-            </div>
-
-            {/* Record */}
-            <div className="text-center text-xs text-muted-foreground">
-              Record encaissé : <span className="text-foreground font-medium tabular-nums">{fmt(save.cashOutScore)}</span> goyaves
+              <GameLeaderboard
+                entries={showActiveLeaderboard ? activeLeaderboard : cashOutLeaderboard}
+                currentUserId={user?.id}
+                personalHighScore={showActiveLeaderboard ? undefined : save.cashOutScore}
+                isAdmin={showActiveLeaderboard ? false : user?.isAdmin}
+                onDeleteScore={showActiveLeaderboard ? undefined : handleDeleteScore}
+                title={showActiveLeaderboard ? "Empire Actuel" : "Meilleurs Records"}
+                maxHeight={PANEL_HEIGHT - 60}
+              />
             </div>
           </div>
-        </div>
-
-        {/* ── RIGHT: Buildings + Leaderboard ── */}
-        <div className="flex-shrink-0 border border-border/30 border-l-0 rounded-r-xl bg-card flex flex-col overflow-hidden" style={{ width: 320 }}>
-          {/* Tab header */}
-          <div className="flex border-b border-border/20 flex-shrink-0">
-            <button
-              onClick={() => setShowLeaderboard(false)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors ${!showLeaderboard ? 'bg-muted/40 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              Bâtiments
-            </button>
-            <button
-              onClick={() => setShowLeaderboard(true)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors ${showLeaderboard ? 'bg-muted/40 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              Classements
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {!showLeaderboard ? (
-              /* Buildings list — Cookie Clicker style */
-              <div>
-                {BUILDINGS.map((def) => {
-                  const owned = save.buildings[def.id] ?? 0;
-                  const cost = buildingCost(def, owned);
-                  const canAfford = save.guavas >= cost;
-                  const contribution = buildingGps(def, owned, save.upgrades);
-                  return (
-                    <button
-                      key={def.id}
-                      onClick={() => buyBuilding(def.id)}
-                      disabled={!canAfford}
-                      className={`w-full text-left px-4 py-3 border-b border-border/20 transition-colors flex items-center gap-3
-                        ${canAfford
-                          ? 'hover:bg-yellow-500/8 cursor-pointer bg-yellow-500/5'
-                          : 'opacity-50 cursor-not-allowed'
-                        }`}
-                    >
-                      {/* Emoji */}
-                      <span className={`text-3xl flex-shrink-0 transition-opacity ${owned > 0 ? 'opacity-100' : 'opacity-40'}`}>
-                        {def.emoji}
-                      </span>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className={`text-sm font-semibold truncate ${canAfford ? 'text-foreground' : 'text-muted-foreground'}`}>
-                            {def.name}
-                          </span>
-                          <span className="text-2xl font-bold tabular-nums text-foreground/70 leading-none flex-shrink-0">
-                            {owned}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between mt-0.5 gap-2">
-                          <span className="text-xs text-muted-foreground truncate">
-                            {owned > 0 ? `${fmt(contribution)}/s` : def.description}
-                          </span>
-                          <span className={`text-xs font-medium tabular-nums flex-shrink-0 ${canAfford ? 'text-yellow-500' : 'text-muted-foreground'}`}>
-                            {fmt(cost)} 🍈
-                          </span>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              /* Leaderboards */
-              <div className="h-full flex flex-col">
-                <div className="p-2 border-b border-border/20 flex gap-2">
-                  <button
-                    onClick={() => setShowActiveLeaderboard(true)}
-                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${showActiveLeaderboard ? 'bg-muted/60 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    Actif (live)
-                  </button>
-                  <button
-                    onClick={() => setShowActiveLeaderboard(false)}
-                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${!showActiveLeaderboard ? 'bg-muted/60 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                  >
-                    Records
-                  </button>
-                </div>
-
-                <GameLeaderboard
-                  entries={showActiveLeaderboard ? activeLeaderboard : cashOutLeaderboard}
-                  currentUserId={user?.id}
-                  personalHighScore={showActiveLeaderboard ? undefined : save.cashOutScore}
-                  isAdmin={showActiveLeaderboard ? false : user?.isAdmin}
-                  onDeleteScore={showActiveLeaderboard ? undefined : handleDeleteScore}
-                  noCard
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
-    </div>
     </div>
   );
 }
-
-
 

@@ -20,6 +20,7 @@ import {
   Info,
   MessagesSquare,
   Boxes,
+  Video,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -60,6 +61,7 @@ const economyItems: SidebarRouteItem[] = [
 
 const youNavItems = [
   { tab: 'carte',  label: t('sidebar_you_map'),    icon: Map   },
+  { tab: 'youtube', label: 'YouTube', icon: Video },
   { tab: 'supply', label: t('sidebar_you_supply'), icon: Boxes },
 ];
 

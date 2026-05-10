@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Map, Target, Trash2, Trophy } from 'lucide-react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { AlertTriangle, Map, Shield, Sparkles, Sword, Target, Trash2, Trophy, SlidersHorizontal, History, RotateCcw } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { clashApi, type ClashBattleEntry, type ClashBuilding, type ClashLeaderboardEntry, type ClashStateResponse, type ClashTarget } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { GameTopBar } from '@/components/game/GameTopBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,8 +13,10 @@ import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { toast } from '@/hooks/use-toast';
 import { useAppDialog } from '@/contexts/AppDialogContext';
-import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { useHideGameLeaderboards } from '@/lib/game-preferences';
 
 type TabId = 'village' | 'attack' | 'journal' | 'leaderboard';
 
@@ -84,13 +86,6 @@ function getBuildingUpgradeCost(building: ClashBuilding) {
   }
 }
 
-function getActivityTone(type: string) {
-  if (type.includes('WIN') || type === 'UPGRADE') return 'text-emerald-600';
-  if (type === 'DEFENSE' || type === 'ATTACK_LOSS') return 'text-amber-600';
-  if (type === 'COOLDOWN' || type === 'SHIELD') return 'text-sky-600';
-  return 'text-muted-foreground';
-}
-
 function getBuildingAccent(type: ClashBuilding['type']) {
   switch (type) {
     case 'townHall':
@@ -122,64 +117,56 @@ function BuildingInspector({
   const cost = getBuildingUpgradeCost(building);
 
   return (
-    <Card className="rounded-3xl border-border/50 shadow-none">
-      <CardContent className="space-y-4 p-5">
-        <div className={cn('rounded-3xl border bg-gradient-to-br p-4', getBuildingAccent(building.type))}>
+    <Card className="rounded-[32px] border-border/40 shadow-xl overflow-hidden bg-card/60 backdrop-blur-md">
+      <CardContent className="space-y-4 p-6">
+        <div className={cn('rounded-3xl border bg-gradient-to-br p-5 shadow-sm', getBuildingAccent(building.type))}>
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{BUILDING_ICONS[building.type]}</span>
-                <div>
-                  <p className="font-semibold">{BUILDING_LABELS[building.type]}</p>
-                  <p className="text-xs text-muted-foreground">Position X{building.x} • Y{building.y}</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <span className="text-3xl drop-shadow-md">{BUILDING_ICONS[building.type]}</span>
+              <div>
+                <p className="font-bold text-lg">{BUILDING_LABELS[building.type]}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Position X{building.x} • Y{building.y}</p>
               </div>
             </div>
-            <Badge variant="outline" className="rounded-full bg-background/70">
+            <Badge variant="outline" className="rounded-full bg-background/80 px-3 py-1 font-bold">
               Niveau {building.level}
             </Badge>
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Résistance</p>
-            <p className="mt-1 font-semibold">{building.hp} / {building.maxHp} HP</p>
+          <div className="rounded-2xl border border-border/30 bg-muted/20 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Résistance</p>
+            <p className="mt-1 font-bold">{building.hp} / {building.maxHp} HP</p>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Coût suivant</p>
-            <p className="mt-1 font-semibold">{formatMoney(cost)} 🪙</p>
+          <div className="rounded-2xl border border-border/30 bg-muted/20 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Coût suivant</p>
+            <p className="mt-1 font-bold">{formatMoney(cost)} 🪙</p>
           </div>
           {typeof building.storageCapacity === 'number' ? (
-            <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Capacité</p>
-              <p className="mt-1 font-semibold">{formatMoney(building.storageCapacity)}</p>
+            <div className="rounded-2xl border border-border/30 bg-muted/20 p-3">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Capacité</p>
+              <p className="mt-1 font-bold">{formatMoney(building.storageCapacity)}</p>
             </div>
           ) : null}
           {typeof building.protectionPct === 'number' ? (
-            <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Protection</p>
-              <p className="mt-1 font-semibold">{formatPercent(building.protectionPct)}</p>
-            </div>
-          ) : null}
-          {typeof building.defensePower === 'number' ? (
-            <div className="rounded-2xl border border-border/50 bg-muted/15 p-3 sm:col-span-2">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Puissance défensive</p>
-              <p className="mt-1 font-semibold">{building.defensePower}</p>
+            <div className="rounded-2xl border border-border/30 bg-muted/20 p-3">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-bold">Protection</p>
+              <p className="mt-1 font-bold">{formatPercent(building.protectionPct)}</p>
             </div>
           ) : null}
         </div>
 
-        <div className="space-y-3">
+        <div className="pt-2">
           <Button
-            className="w-full"
+            className="w-full rounded-2xl h-12 text-sm font-bold shadow-lg shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
             onClick={() => onUpgrade(building.type)}
             disabled={!canAfford || isLoading}
           >
             {isLoading ? 'Amélioration...' : `Améliorer pour ${formatMoney(cost)} 🪙`}
           </Button>
           {!canAfford ? (
-            <p className="text-xs text-amber-600">Monnaie de village insuffisante. Attaque pour en gagner !</p>
+            <p className="text-[10px] text-amber-600 mt-2 text-center font-medium">Or insuffisant. Pille des villages !</p>
           ) : null}
         </div>
       </CardContent>
@@ -188,8 +175,9 @@ function BuildingInspector({
 }
 
 export default function ClashVillage() {
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { confirm } = useAppDialog();
+  const hideGameLeaderboards = useHideGameLeaderboards();
   const [activeTab, setActiveTab] = useState<TabId>('village');
   const [state, setState] = useState<ClashStateResponse | null>(null);
   const [targets, setTargets] = useState<ClashTarget[]>([]);
@@ -210,11 +198,20 @@ export default function ClashVillage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (hideGameLeaderboards && activeTab === 'leaderboard') {
+      setActiveTab('village');
+    }
+  }, [activeTab, hideGameLeaderboards]);
 
   const loadPage = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!silent) setLoading(true);
@@ -300,7 +297,7 @@ export default function ClashVillage() {
   }, [loadPage]);
 
   const handleDeleteVillage = useCallback(async () => {
-    if (!(await confirm("Supprimer ton village Clash ? Cette action retirera ton village du jeu et personne ne pourra plus l'attaquer tant que tu n'en recrées pas un."))) {
+    if (!(await confirm('Supprimer ton village Clash ? Cette action retirera ton village du jeu et personne ne pourra plus l’attaquer tant que tu n’en recrées pas un.'))) {
       return;
     }
 
@@ -321,7 +318,7 @@ export default function ClashVillage() {
       });
       toast({
         title: 'Village supprimé',
-        description: "Ton village a été retiré du jeu. Tu restes inattaquable tant que tu n'en recrées pas un.",
+        description: 'Ton village a été retiré du jeu. Tu restes inattaquable tant que tu n’en recrées pas un.',
       });
     } catch (error: any) {
       toast({
@@ -348,7 +345,7 @@ export default function ClashVillage() {
     } catch (error: any) {
       toast({
         title: 'Amélioration impossible',
-        description: error.response?.data?.error || "Impossible d'améliorer ce bâtiment.",
+        description: error.response?.data?.error || 'Impossible d’améliorer ce bâtiment.',
         variant: 'destructive',
       });
     } finally {
@@ -384,6 +381,10 @@ export default function ClashVillage() {
     () => formatCountdown(village?.attackCooldownUntil, now),
     [village?.attackCooldownUntil, now],
   );
+  const shieldCountdown = useMemo(
+    () => formatCountdown(village?.shieldUntil, now),
+    [village?.shieldUntil, now],
+  );
   const selectedBuilding = useMemo(
     () => village?.buildings.find((building) => building.id === selectedBuildingId) ?? village?.buildings[0] ?? null,
     [selectedBuildingId, village?.buildings],
@@ -408,11 +409,9 @@ export default function ClashVillage() {
 
   if (loading && !state) {
     return (
-      <div className="relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8">
-        <div className="flex min-h-[40vh] items-center justify-center rounded-3xl border border-dashed border-border/70 bg-muted/10 px-4">
-          <div className="w-full max-w-md">
-            <CenteredSkeletonCard />
-          </div>
+      <div className="flex min-h-[40vh] items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          <CenteredSkeletonCard />
         </div>
       </div>
     );
@@ -420,21 +419,23 @@ export default function ClashVillage() {
 
   if (!village) {
     return (
-      <div className="relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8">
-        <Card className="rounded-3xl border-border/50 shadow-none">
-          <CardContent className="space-y-5 p-6">
-            <h1 className={TYPOGRAPHY.PAGE_TITLE}>Clash Village</h1>
+      <div className="flex min-h-screen items-center justify-center p-4 bg-muted/10">
+        <Card className="max-w-md w-full rounded-[32px] border-border/50 shadow-2xl overflow-hidden bg-background">
+          <div className="h-32 bg-gradient-to-br from-emerald-500 to-sky-600 flex items-center justify-center">
+            <Sparkles className="h-16 w-16 text-white/20 animate-pulse" />
+          </div>
+          <CardContent className="space-y-6 p-8 text-center">
             <div className="space-y-2">
-              <p className="text-sm font-medium">Crée ton village pour commencer à jouer.</p>
-              <p className="text-sm text-muted-foreground">
-                Tant que tu n'as pas créé ton village, il n'existe pas dans le matchmaking et personne ne peut t'attaquer.
+              <h1 className="text-2xl font-bold tracking-tight">Clash Village</h1>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Crée ton village pour commencer l&apos;aventure. Construis tes défenses et pille les ressources des autres.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={() => void handleCreateVillage()} disabled={createLoading}>
-                {createLoading ? 'Création...' : 'Créer mon village'}
+            <div className="flex flex-col gap-3">
+              <Button onClick={() => void handleCreateVillage()} disabled={createLoading} className="rounded-2xl h-12 text-base font-bold">
+                {createLoading ? 'Fondation...' : 'Fonder mon village'}
               </Button>
-              <Button variant="outline" onClick={() => void loadPage()} disabled={createLoading}>
+              <Button variant="outline" onClick={() => void loadPage()} disabled={createLoading} className="rounded-2xl h-12 font-bold">
                 Réessayer
               </Button>
             </div>
@@ -444,95 +445,146 @@ export default function ClashVillage() {
     );
   }
 
-  return (
-    <div className={cn('relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8', SPACING.SECTION_SPACING)}>
-      <GameTopBar
-        title="Clash Village"
-        score={village.trophies}
-        highScore={village.trophies}
-        isNewHighScore={false}
-        rewards={null}
-        controls={(
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Construis ton village, renforce tes defenses et lance des raids asynchrones.</p>
-            <p className="text-xs text-muted-foreground">
-              HDV {village.townHallLevel} · {village.trophies.toLocaleString('fr-FR')} trophees · Defense: {village.defenseRating}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Stockage: {formatMoney(village.moneyInStorage)} / {formatMoney(village.storageCapacity)} $
-            </p>
+  const topBarControls = (
+    <div className="space-y-4 text-xs">
+      <div className="rounded-2xl border border-border/40 p-4 bg-muted/30 space-y-3 shadow-inner">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 font-bold">
+          <Map className="h-3.5 w-3.5" />
+          Mon Village
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-border/30 bg-background p-2 shadow-sm">
+            <p className="text-[8px] uppercase text-muted-foreground font-bold">HDV</p>
+            <p className="font-bold">Niv. {village.townHallLevel}</p>
           </div>
-        )}
-        isFullscreen={false}
-        onToggleFullscreen={() => {}}
-        showLeaderboard={false}
-        onToggleLeaderboard={() => {}}
-      >
+          <div className="rounded-xl border border-border/30 bg-background p-2 shadow-sm">
+            <p className="text-[8px] uppercase text-muted-foreground font-bold">Trophées</p>
+            <p className="font-bold">{village.trophies.toLocaleString('fr-FR')}</p>
+          </div>
+        </div>
+      </div>
+
+      <Separator className="opacity-50" />
+
+      <div className="space-y-2">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 font-bold px-1">
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Gestion
+        </p>
         <Button
           variant="outline"
           size="sm"
+          className="w-full justify-start h-10 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/5 border-destructive/20 font-bold"
           onClick={() => void handleDeleteVillage()}
           disabled={deleteLoading}
         >
-          <Trash2 className="mr-1 h-4 w-4" />
-          {deleteLoading ? 'Suppression...' : 'Supprimer'}
+          <Trash2 className="mr-2 h-4 w-4" />
+          {deleteLoading ? 'Suppression...' : 'Supprimer mon village'}
         </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8"
+    >
+      <GameTopBar
+        title="Clash Village"
+        score={village.moneyInStorage}
+        highScore={village.trophies}
+        controls={topBarControls}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+      >
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-full hover:bg-muted/50 transition-colors"
+            onClick={() => setShowSettingsDialog(true)}
+            title="Gestion du village"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </GameTopBar>
 
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabId)} className={SPACING.SECTION_SPACING}>
-        <TabsList className="h-auto flex-wrap">
-          <TabsTrigger value="village">Village</TabsTrigger>
-          <TabsTrigger value="attack">Attaquer</TabsTrigger>
-          <TabsTrigger value="journal">Journal</TabsTrigger>
-          <TabsTrigger value="leaderboard">Classement</TabsTrigger>
-        </TabsList>
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-sm rounded-[32px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Gestion Clash Village</DialogTitle>
+          </DialogHeader>
+          <div className="pt-2">
+            {topBarControls}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        <TabsContent value="village" className={SPACING.SECTION_SPACING}>
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <Card className="rounded-3xl border-border/50 shadow-none">
-              <CardContent className="space-y-5 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-semibold">Plateau du village</h2>
-                    <p className="text-sm text-muted-foreground">Quadrillage 8x6 avec emplacements visibles et sélection structure par structure.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline" className="rounded-full">
-                      {village.layout.length} structures
-                    </Badge>
-                    <Badge variant="secondary" className="rounded-full">
-                      <Map className="mr-1 h-3.5 w-3.5" />
-                      {GRID_COLUMNS} x {GRID_ROWS}
-                    </Badge>
-                  </div>
-                </div>
+      <div className="flex items-start justify-center gap-6">
+        <div className="flex w-full max-w-[1280px] flex-col overflow-hidden space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="bg-card/40 backdrop-blur-md border border-border/30 rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0 shadow-sm border border-amber-500/10">
+                <CurrencyIcon type="money" className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Réserve</p>
+                <p className="text-base font-bold truncate">{formatMoney(village.moneyInStorage)} / {formatMoney(village.storageCapacity)}</p>
+              </div>
+            </div>
+            <div className="bg-card/40 backdrop-blur-md border border-border/30 rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className="h-10 w-10 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-600 shrink-0 shadow-sm border border-sky-500/10">
+                <Shield className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Défense</p>
+                <p className="text-base font-bold truncate">Note: {village.defenseRating}</p>
+              </div>
+            </div>
+            <div className="bg-card/40 backdrop-blur-md border border-border/30 rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border", village.attackCooldownUntil ? "bg-red-500/10 text-red-600 border-red-500/10" : "bg-emerald-500/10 text-emerald-600 border-emerald-500/10")}>
+                <Sword className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Attaque</p>
+                <p className="text-base font-bold truncate">{attackCooldown ?? 'Prête'}</p>
+              </div>
+            </div>
+            <div className="bg-card/40 backdrop-blur-md border border-border/30 rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+              <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border", village.shieldUntil ? "bg-sky-500/10 text-sky-600 border-sky-500/10" : "bg-muted/10 text-muted-foreground border-border/30")}>
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">Bouclier</p>
+                <p className="text-base font-bold truncate">{shieldCountdown ?? 'Aucun'}</p>
+              </div>
+            </div>
+          </div>
 
-                <div className="overflow-hidden rounded-[30px] border border-border/50 bg-gradient-to-br from-lime-100/70 via-emerald-50/70 to-sky-100/60 p-3 shadow-inner dark:from-lime-950/25 dark:via-emerald-950/20 dark:to-sky-950/20">
-                  <div className="grid grid-cols-[auto_1fr] gap-3">
-                    <div className="grid grid-rows-6 gap-2 pt-8">
-                      {Array.from({ length: GRID_ROWS }, (_, index) => (
-                        <div key={`y-${index + 1}`} className="flex h-[56px] items-center justify-center text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/45">
-                          Y{index + 1}
-                        </div>
-                      ))}
-                    </div>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)} className="w-full">
+            <div className="flex justify-center mb-8">
+              <TabsList className="h-11 p-1 bg-muted/30 backdrop-blur-md rounded-2xl border border-border/30 shadow-sm">
+                <TabsTrigger value="village" className="rounded-xl px-8 h-9 data-[state=active]:bg-background data-[state=active]:shadow-md font-bold transition-all">Village</TabsTrigger>
+                <TabsTrigger value="attack" className="rounded-xl px-8 h-9 data-[state=active]:bg-background data-[state=active]:shadow-md font-bold transition-all">Attaquer</TabsTrigger>
+                <TabsTrigger value="journal" className="rounded-xl px-8 h-9 data-[state=active]:bg-background data-[state=active]:shadow-md font-bold transition-all">Journal</TabsTrigger>
+              </TabsList>
+            </div>
 
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-8 gap-2">
-                        {Array.from({ length: GRID_COLUMNS }, (_, index) => (
-                          <div key={`x-${index + 1}`} className="flex items-center justify-center text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground/45">
-                            X{index + 1}
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="relative grid min-h-[420px] grid-cols-8 grid-rows-6 gap-2 rounded-[28px] border border-emerald-900/10 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.38),_transparent_30%),linear-gradient(180deg,_rgba(132,204,22,0.28),_rgba(34,197,94,0.2))] p-2 dark:border-emerald-100/10 dark:bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.08),_transparent_30%),linear-gradient(180deg,_rgba(132,204,22,0.18),_rgba(21,128,61,0.22))]">
+            <TabsContent value="village" className="focus-visible:outline-none">
+              <div className="grid gap-8 xl:grid-cols-[1fr_420px]">
+                <div className="space-y-6">
+                  <div className="overflow-hidden rounded-[48px] border border-border/40 bg-muted/5 p-6 shadow-2xl relative group">
+                     <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-sky-500/5 pointer-events-none group-hover:opacity-100 opacity-50 transition-opacity" />
+                     <div className="relative grid grid-cols-8 grid-rows-6 gap-3 min-h-[520px]">
                         {boardCells.map((cell) => {
-                          const occupant = village.buildings.find((building) => {
-                            const startX = building.x;
-                            const endX = Math.min(GRID_COLUMNS, building.x + 1);
-                            const startY = building.y;
-                            const endY = Math.min(GRID_ROWS, building.y + 1);
+                          const occupant = village.buildings.find((b) => {
+                            const startX = b.x;
+                            const endX = Math.min(GRID_COLUMNS, b.x + 1);
+                            const startY = b.y;
+                            const endY = Math.min(GRID_ROWS, b.y + 1);
                             return cell.x >= startX && cell.x <= endX && cell.y >= startY && cell.y <= endY;
                           });
                           const isAnchor = occupant?.x === cell.x && occupant?.y === cell.y;
@@ -544,289 +596,237 @@ export default function ClashVillage() {
                               type="button"
                               onClick={() => occupant && setSelectedBuildingId(occupant.id)}
                               className={cn(
-                                'relative flex min-h-[56px] items-center justify-center rounded-2xl border text-center transition',
+                                'relative flex min-h-[76px] items-center justify-center rounded-2xl border transition-all duration-500',
                                 occupant
                                   ? isSelected
-                                    ? 'border-foreground/60 bg-background/90 shadow-md'
-                                    : 'border-border/50 bg-background/65 hover:bg-background/85'
-                                  : 'border-dashed border-emerald-900/10 bg-white/20 text-foreground/35 dark:border-emerald-50/10 dark:bg-black/10',
+                                    ? 'border-primary bg-background shadow-[0_0_30px_rgba(var(--primary),0.2)] scale-105 z-10'
+                                    : 'border-border/40 bg-background/90 hover:bg-background hover:scale-[1.02] shadow-sm'
+                                  : 'border-dashed border-border/10 bg-muted/5 hover:bg-muted/10',
                                 occupant ? 'cursor-pointer' : 'cursor-default',
                               )}
                             >
-                              <span className="absolute left-2 top-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-foreground/35">
-                                {cell.x}.{cell.y}
-                              </span>
                               {occupant ? (
                                 isAnchor ? (
-                                  <span className="flex flex-col items-center px-1">
-                                    <span className="text-xl leading-none">{BUILDING_ICONS[occupant.type]}</span>
-                                    <span className="mt-1 text-[10px] font-semibold leading-tight">{BUILDING_LABELS[occupant.type]}</span>
-                                    <span className="text-[9px] text-muted-foreground">Niv. {occupant.level}</span>
-                                  </span>
-                                ) : (
-                                  <div className={cn('h-full w-full rounded-xl border border-dashed', isSelected ? 'border-foreground/35 bg-foreground/5' : 'border-border/30 bg-black/[0.03] dark:bg-white/[0.03]')} />
-                                )
-                              ) : (
-                                <span className="text-[9px] font-medium uppercase tracking-[0.2em]">Libre</span>
-                              )}
+                                  <div className="flex flex-col items-center gap-1.5 animate-in fade-in zoom-in duration-300">
+                                    <span className="text-3xl drop-shadow-md transform group-hover:scale-110 transition-transform">{BUILDING_ICONS[occupant.type]}</span>
+                                    <span className="text-[10px] font-bold text-muted-foreground/90 bg-muted/30 px-1.5 rounded-md">Lvl {occupant.level}</span>
+                                  </div>
+                                ) : null
+                              ) : null}
                             </button>
                           );
                         })}
-                      </div>
-                    </div>
+                     </div>
                   </div>
-                </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {village.buildings.map((building) => (
-                    <button
-                      key={`chip-${building.id}`}
-                      type="button"
-                      onClick={() => setSelectedBuildingId(building.id)}
-                      className={cn(
-                        'rounded-2xl border p-3 text-left transition',
-                        selectedBuilding?.id === building.id
-                          ? 'border-foreground/50 bg-muted/35 shadow-sm'
-                          : 'border-border/50 bg-muted/15 hover:bg-muted/25',
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{BUILDING_ICONS[building.type]}</span>
-                          <div>
-                            <p className="text-sm font-medium">{BUILDING_LABELS[building.type]}</p>
-                            <p className="text-[11px] text-muted-foreground">X{building.x} Y{building.y}</p>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="rounded-full">Niv. {building.level}</Badge>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-4">
-              {selectedBuilding ? (
-                <BuildingInspector
-                  building={selectedBuilding}
-                  canAfford={(village?.moneyInStorage ?? 0) >= getBuildingUpgradeCost(selectedBuilding)}
-                  isLoading={upgradeLoading === selectedBuilding.type}
-                  onUpgrade={(buildingType) => void handleUpgrade(buildingType)}
-                />
-              ) : null}
-
-              <Card className="rounded-3xl border-border/50 shadow-none">
-                <CardContent className="space-y-3 p-5">
-                  <h2 className="text-base font-semibold">Armée disponible</h2>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {village.troops.map((troop) => (
-                      <div key={troop.type} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                        <p className="text-sm font-medium">{TROOP_LABELS[troop.type]}</p>
-                        <p className="text-xs text-muted-foreground">{troop.count} unités prêtes</p>
-                      </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                    {village.buildings.map((b) => (
+                      <button
+                        key={b.id}
+                        onClick={() => setSelectedBuildingId(b.id)}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all duration-200",
+                          selectedBuilding?.id === b.id 
+                            ? "bg-primary/10 border-primary/40 shadow-sm" 
+                            : "bg-card/40 border-border/30 hover:bg-muted/40 hover:scale-[1.02]"
+                        )}
+                      >
+                        <span className="text-2xl drop-shadow-sm">{BUILDING_ICONS[b.type]}</span>
+                        <span className="text-[9px] font-bold truncate w-full text-center uppercase tracking-tight text-muted-foreground">{BUILDING_LABELS[b.type]}</span>
+                      </button>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="attack" className={SPACING.SECTION_SPACING}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="space-y-1">
-              <h2 className="text-base font-semibold">Matchmaking</h2>
-              <p className="text-sm text-muted-foreground">Cibles hors bouclier, proches de ton niveau de trophées.</p>
-            </div>
-            <Button variant="outline" onClick={() => void refreshTargets()} disabled={refreshingTargets}>
-              {refreshingTargets ? 'Recherche...' : 'Nouvelles cibles'}
-            </Button>
-          </div>
-
-          {village.attackCooldownUntil && new Date(village.attackCooldownUntil).getTime() > now ? (
-            <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-none">
-              <CardContent className="flex items-start gap-3 p-4">
-                <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" />
-                <div>
-                  <p className="font-medium">Armée en récupération</p>
-                  <p className="text-sm text-muted-foreground">Nouvelle attaque disponible dans {attackCooldown}.</p>
                 </div>
-              </CardContent>
-            </Card>
-          ) : null}
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            {targets.map((target) => (
-              <Card key={target.user?.id ?? target.village.id} className="rounded-3xl border-border/50 shadow-none">
-                <CardContent className="space-y-4 p-5">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12 border border-border/50">
-                      <AvatarImage src={target.user?.profilePicture ?? undefined} />
-                      <AvatarFallback>{getAvatarFallback(target.user?.username)}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      {target.user ? (
-                        <UsernameDisplay
-                          username={target.user.username}
-                          usernameColor={target.user.usernameColor}
-                          usernameClassName="font-medium"
-                        />
-                      ) : (
-                        <span className="font-medium">Village inconnu</span>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        HDV {target.village.townHallLevel} • {target.village.trophies.toLocaleString('fr-FR')} trophées
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="rounded-full">
-                      {formatMoney(target.availableLoot)} $
-                    </Badge>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                      <p className="text-xs text-muted-foreground">Butin visible</p>
-                      <p className="text-sm font-semibold">{formatMoney(target.availableLoot)} $</p>
-                    </div>
-                    <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                      <p className="text-xs text-muted-foreground">Défense</p>
-                      <p className="text-sm font-semibold">{target.village.defenseRating}</p>
-                    </div>
-                    <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                      <p className="text-xs text-muted-foreground">Protection</p>
-                      <p className="text-sm font-semibold">{formatPercent(target.village.vaultProtectionPct)}</p>
-                    </div>
-                  </div>
-
-                  <Button
-                    className="w-full"
-                    onClick={() => void handleAttack(target)}
-                    disabled={Boolean(village.attackCooldownUntil && new Date(village.attackCooldownUntil).getTime() > now) || attackLoading === target.user?.id}
-                  >
-                    {attackLoading === target.user?.id ? 'Raid en cours...' : 'Lancer le raid'}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {targets.length === 0 ? (
-            <Card className="rounded-3xl border-dashed border-border/70 shadow-none">
-              <CardContent className="p-6 text-sm text-muted-foreground">
-                Aucune cible disponible pour le moment. Rafraîchis le matchmaking dans quelques instants.
-              </CardContent>
-            </Card>
-          ) : null}
-        </TabsContent>
-
-        <TabsContent value="journal" className={SPACING.SECTION_SPACING}>
-          <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-            <Card className="rounded-3xl border-border/50 shadow-none">
-              <CardContent className="space-y-4 p-5">
-                <h2 className="text-base font-semibold">Historique des raids</h2>
-                <div className="space-y-3">
-                  {[...history.attacks, ...history.defenses]
-                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                    .map((entry) => (
-                      <div key={entry.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <UsernameDisplay
-                              username={entry.opponent.username}
-                              usernameColor={entry.opponent.usernameColor}
-                              usernameClassName="font-medium"
-                            />
-                            <p className="text-xs text-muted-foreground">{formatDate(entry.createdAt)}</p>
-                          </div>
-                          <Badge variant={entry.trophiesDelta >= 0 ? 'secondary' : 'destructive'} className="rounded-full">
-                            {entry.trophiesDelta >= 0 ? '+' : ''}{entry.trophiesDelta} trophées
-                          </Badge>
+                <div className="space-y-6">
+                  {selectedBuilding && (
+                    <BuildingInspector
+                      building={selectedBuilding}
+                      canAfford={(village?.moneyInStorage ?? 0) >= getBuildingUpgradeCost(selectedBuilding)}
+                      isLoading={upgradeLoading === selectedBuilding.type}
+                      onUpgrade={(type) => void handleUpgrade(type)}
+                    />
+                  )}
+                  <Card className="rounded-[32px] border-border/40 shadow-xl overflow-hidden bg-card/60 backdrop-blur-md">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold flex items-center gap-2 px-1">
+                        <Sword className="h-4 w-4 text-muted-foreground" />
+                        Armée disponible
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 gap-2 p-5">
+                      {village.troops.map((t) => (
+                        <div key={t.type} className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/30 shadow-sm">
+                          <span className="text-sm font-bold">{TROOP_LABELS[t.type]}</span>
+                          <Badge variant="secondary" className="rounded-full h-7 px-3 font-bold text-xs">{t.count}</Badge>
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          <span>{entry.destructionPercent}% destruction</span>
-                          <span>•</span>
-                          <span>{formatMoney(entry.moneyStolen)} $</span>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </TabsContent>
 
-            <Card className="rounded-3xl border-border/50 shadow-none">
-              <CardContent className="space-y-4 p-5">
-                <h2 className="text-base font-semibold">Activité du village</h2>
-                <div className="space-y-3">
-                  {history.activities.map((activity) => (
-                    <div key={activity.id} className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className={cn('font-medium', getActivityTone(activity.type))}>{activity.title}</p>
-                          <p className="text-sm text-muted-foreground">{activity.detail}</p>
-                        </div>
-                        <p className="shrink-0 text-xs text-muted-foreground">{formatDate(activity.createdAt)}</p>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-3 text-xs">
-                        <span className={activity.deltaMoney >= 0 ? 'text-emerald-600' : 'text-amber-600'}>
-                          {activity.deltaMoney >= 0 ? '+' : ''}{formatMoney(activity.deltaMoney)} $
-                        </span>
-                        <span className={activity.deltaTrophies >= 0 ? 'text-sky-600' : 'text-rose-600'}>
-                          {activity.deltaTrophies >= 0 ? '+' : ''}{activity.deltaTrophies} trophées
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+            <TabsContent value="attack" className="space-y-6 focus-visible:outline-none">
+              <div className="flex items-center justify-between px-1">
+                <div className="space-y-0.5">
+                   <h3 className="text-xl font-bold tracking-tight">Matchmaking</h3>
+                   <p className="text-xs text-muted-foreground font-medium">Trouve un village à attaquer pour gagner de l&apos;or et des trophées.</p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="leaderboard" className={SPACING.SECTION_SPACING}>
-          <div className="grid gap-6 xl:grid-cols-3">
-            {[
-              { key: 'trophies', title: 'Top trophées', icon: <Trophy className="h-4 w-4" />, rows: leaderboard.trophies },
-              { key: 'loot', title: 'Top pillage', icon: <CurrencyIcon type="money" className="h-4 w-4" />, rows: leaderboard.loot },
-              { key: 'defense', title: 'Top défense', icon: <Target className="h-4 w-4" />, rows: leaderboard.defense },
-            ].map((column) => (
-              <Card key={column.key} className="rounded-3xl border-border/50 shadow-none">
-                <CardContent className="space-y-4 p-5">
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-xl border border-border/50 bg-muted/30 p-2">{column.icon}</span>
-                    <h2 className="text-base font-semibold">{column.title}</h2>
-                  </div>
-                  <div className="space-y-3">
-                    {column.rows.map((entry) => (
-                      <div key={`${column.key}-${entry.rank}-${entry.user?.id ?? 'unknown'}`} className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/15 p-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border/50 bg-background text-sm font-semibold">
-                          {entry.rank}
-                        </div>
+                <Button variant="outline" size="sm" onClick={() => void refreshTargets()} disabled={refreshingTargets} className="rounded-full h-10 px-5 font-bold border-border/40 shadow-sm hover:shadow-md transition-all">
+                  <RotateCcw className={cn("h-4 w-4 mr-2", refreshingTargets && "animate-spin")} />
+                  Rafraîchir
+                </Button>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                {targets.map((t) => (
+                  <Card key={t.user?.id ?? t.village.id} className="rounded-[40px] border-border/30 shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden bg-card/40 backdrop-blur-md group">
+                    <CardContent className="p-7 space-y-5">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-16 w-16 border-2 border-primary/20 shadow-md transform group-hover:scale-105 transition-transform duration-300">
+                          <AvatarImage src={t.user?.profilePicture ?? undefined} />
+                          <AvatarFallback className="bg-primary/5 text-primary text-2xl font-bold">{getAvatarFallback(t.user?.username)}</AvatarFallback>
+                        </Avatar>
                         <div className="min-w-0 flex-1">
-                          {entry.user ? (
-                            <UsernameDisplay
-                              username={entry.user.username}
-                              usernameColor={entry.user.usernameColor}
-                              usernameClassName="font-medium"
-                            />
-                          ) : (
-                            <span className="font-medium">Village inconnu</span>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            {column.key === 'trophies' && `${entry.trophies?.toLocaleString('fr-FR')} trophées`}
-                            {column.key === 'loot' && `${(entry.totalLoot ?? 0).toLocaleString('fr-FR')} $ pillés`}
-                            {column.key === 'defense' && `${entry.averageDefense ?? 0}% moyenne défensive • ${entry.defenseCount ?? 0} défenses`}
-                          </p>
+                          {t.user ? (
+                            <UsernameDisplay username={t.user.username} usernameColor={t.user.usernameColor} usernameClassName="text-lg font-bold" />
+                          ) : <span className="font-bold text-lg text-muted-foreground">Village Inconnu</span>}
+                          <div className="flex items-center gap-3 mt-1">
+                            <Badge variant="outline" className="text-[10px] rounded-full h-6 px-3 bg-muted/30 font-bold border-border/30">HDV {t.village.townHallLevel}</Badge>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1.5 font-bold"><Trophy className="h-3.5 w-3.5 text-amber-500" /> {t.village.trophies}</span>
+                          </div>
                         </div>
                       </div>
-                    ))}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-muted/20 rounded-[24px] p-4 border border-border/20 text-center shadow-inner">
+                          <p className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest mb-1">Butin Estimé</p>
+                          <p className="text-lg font-black text-amber-600">{formatMoney(t.availableLoot)} 🪙</p>
+                        </div>
+                        <div className="bg-muted/20 rounded-[24px] p-4 border border-border/20 text-center shadow-inner">
+                          <p className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest mb-1">Défense</p>
+                          <p className="text-lg font-black text-sky-600">{t.village.defenseRating}</p>
+                        </div>
+                      </div>
+                      <Button
+                        className="w-full rounded-2xl h-12 text-sm font-bold shadow-lg shadow-primary/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        onClick={() => void handleAttack(t)}
+                        disabled={Boolean(village.attackCooldownUntil && new Date(village.attackCooldownUntil).getTime() > now) || attackLoading === t.user?.id}
+                      >
+                        {attackLoading === t.user?.id ? 'Raid en cours...' : 'Lancer le raid'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {targets.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 bg-muted/5 rounded-[48px] border border-dashed border-border/30">
+                  <div className="h-16 w-16 rounded-full bg-muted/20 flex items-center justify-center text-muted-foreground/30">
+                    <Target className="h-8 w-8" />
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                  <div>
+                    <p className="text-lg font-bold text-muted-foreground">Aucune cible trouvée</p>
+                    <p className="text-sm text-muted-foreground/60 max-w-xs">Le matchmaking est vide pour le moment. Réessaye plus tard ou rafraîchis la liste.</p>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="journal" className="space-y-8 focus-visible:outline-none">
+               <div className="grid gap-8 md:grid-cols-2">
+                  <div className="space-y-6">
+                    <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-3"><History className="h-6 w-6 text-muted-foreground" /> Combats récents</h3>
+                    <div className="space-y-3">
+                      {[...history.attacks, ...history.defenses]
+                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                        .map((e) => (
+                          <div key={e.id} className="bg-card/40 backdrop-blur-md border border-border/30 rounded-[32px] p-5 flex items-center gap-5 shadow-sm hover:shadow-md transition-all group">
+                            <div className={cn("h-12 w-12 rounded-[20px] flex items-center justify-center shrink-0 shadow-sm border transform group-hover:scale-105 transition-transform", e.trophiesDelta >= 0 ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/10" : "bg-rose-500/10 text-rose-600 border-rose-500/10")}>
+                              {e.trophiesDelta >= 0 ? <Trophy className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <UsernameDisplay username={e.opponent.username} usernameColor={e.opponent.usernameColor} usernameClassName="font-bold text-base" />
+                              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">{formatDate(e.createdAt)}</p>
+                            </div>
+                            <div className="text-right">
+                               <p className={cn("font-black text-base tabular-nums", e.trophiesDelta >= 0 ? "text-emerald-600" : "text-rose-600")}>{e.trophiesDelta >= 0 ? '+' : ''}{e.trophiesDelta} 🏆</p>
+                               <p className="text-[10px] text-muted-foreground font-bold">{formatMoney(e.moneyStolen)} 🪙</p>
+                            </div>
+                          </div>
+                        ))}
+                      
+                      {history.attacks.length === 0 && history.defenses.length === 0 && (
+                        <div className="text-center py-12 bg-muted/5 rounded-[32px] border border-dashed border-border/30">
+                          <p className="text-sm font-bold text-muted-foreground/50">Aucun combat au journal</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-3"><Sparkles className="h-6 w-6 text-muted-foreground" /> Activités récentes</h3>
+                    <div className="space-y-3">
+                       {state.activities.slice(0, 15).map((act, i) => (
+                         <div key={i} className="text-xs p-4 rounded-2xl bg-muted/10 border border-border/20 flex gap-4 backdrop-blur-sm group hover:bg-muted/20 transition-colors">
+                            <div className="h-2 w-2 rounded-full bg-primary/40 mt-1.5 shrink-0 group-hover:bg-primary transition-colors" />
+                            <div className="space-y-1">
+                              <p className="leading-relaxed font-medium">{act.message}</p>
+                              <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">{formatDate(act.createdAt)}</p>
+                            </div>
+                         </div>
+                       ))}
+
+                       {state.activities.length === 0 && (
+                        <div className="text-center py-12 bg-muted/5 rounded-[32px] border border-dashed border-border/30">
+                          <p className="text-sm font-bold text-muted-foreground/50">Aucune activité enregistrée</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+               </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {showLeaderboard && (
+          <div className="w-[340px] shrink-0 hidden xl:block h-full space-y-6 animate-in slide-in-from-right duration-500">
+             <div className="bg-card/40 backdrop-blur-md border border-border/30 rounded-[40px] p-8 shadow-2xl space-y-8 sticky top-6">
+                <div className="space-y-6">
+                   <h3 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 text-muted-foreground px-1">
+                     <Trophy className="h-4 w-4 text-amber-500" /> 
+                     Top Trophées
+                   </h3>
+                   <div className="space-y-3">
+                      {leaderboard.trophies.slice(0, 5).map((u, i) => (
+                        <div key={u.id} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-background/80 transition-all group shadow-sm border border-transparent hover:border-border/30">
+                          <span className={cn("text-xs font-black w-6 text-center", i < 3 ? "text-amber-500" : "text-muted-foreground/40")}>{i+1}</span>
+                          <UsernameDisplay username={u.username} usernameColor={u.usernameColor} usernameClassName="text-sm font-bold flex-1 truncate" />
+                          <span className="text-sm font-black tabular-nums">{u.trophies}</span>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+                
+                <Separator className="opacity-30" />
+                
+                <div className="space-y-6">
+                   <h3 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-3 text-muted-foreground px-1">
+                     <CurrencyIcon type="money" className="h-4 w-4 text-amber-600" /> 
+                     Top Pilleurs
+                   </h3>
+                   <div className="space-y-3">
+                      {leaderboard.loot.slice(0, 5).map((u, i) => (
+                        <div key={u.id} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-background/80 transition-all group shadow-sm border border-transparent hover:border-border/30">
+                          <span className={cn("text-xs font-black w-6 text-center", i < 3 ? "text-amber-600" : "text-muted-foreground/40")}>{i+1}</span>
+                          <UsernameDisplay username={u.username} usernameColor={u.usernameColor} usernameClassName="text-sm font-bold flex-1 truncate" />
+                          <span className="text-sm font-black tabular-nums">{formatMoney(u.moneyStolen)}</span>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+             </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

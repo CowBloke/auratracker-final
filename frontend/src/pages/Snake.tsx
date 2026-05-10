@@ -1,25 +1,17 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Pause,
-  Play,
-  RotateCcw,
-  Trophy,
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { Play, RotateCcw, SlidersHorizontal, Trophy, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Pause } from 'lucide-react';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
-import { GameTopBar } from '@/components/game/GameTopBar';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
+import { GameTopBar } from '@/components/game/GameTopBar';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 type DifficultyKey = 'zen' | 'classic' | 'rush';
@@ -205,11 +197,13 @@ export default function Snake() {
   const [difficulty, setDifficulty] = useState<DifficultyKey>('classic');
   const [game, setGame] = useState<SnakeGameState>(() => createInitialGame('classic'));
   const [highScore, setHighScore] = useState(0);
-  const [, setTotalPlayed] = useState(0);
+  const [totalPlayed, setTotalPlayed] = useState(0);
   const [leaderboard, setLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewHighScore, setIsNewHighScore] = useState(false);
-  const [, setLastScore] = useState<number | null>(null);
+  const [lastScore, setLastScore] = useState<number | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
   const submittedThisRunRef = useRef(false);
   const runVersionRef = useRef(0);
@@ -478,17 +472,81 @@ export default function Snake() {
     });
   }, [game.food.x, game.food.y, game.snake]);
 
-  const currentDifficulty = DIFFICULTIES[difficulty];
+  const currentDifficulty = DIFFICULTIES[difficulty]; const topBarControls = (
+    <div className="space-y-4 text-xs">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Score</p>
+          <p className="text-sm font-semibold tabular-nums">{game.score}</p>
+        </div>
+        <div className="rounded-lg border border-border/60 p-2 text-center">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Record</p>
+          <p className="text-sm font-semibold tabular-nums">{highScore}</p>
+        </div>
+      </div>
 
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
+      <Separator />
+
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Difficulté</p>
+        <Select value={difficulty} onValueChange={changeDifficulty}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(DIFFICULTIES).map(([key, value]) => (
+              <SelectItem key={key} value={key} className="text-xs">
+                {value.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground leading-relaxed italic">{currentDifficulty.description}</p>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2 rounded-lg border border-border/40 bg-muted/20 p-2.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider">Contrôles</p>
+        <div className="grid grid-cols-3 gap-2">
+          <span />
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => queueDirection('up')}>
+            <ArrowUp className="h-4 w-4" />
+          </Button>
+          <span />
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => queueDirection('left')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => queueDirection('down')}>
+            <ArrowDown className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => queueDirection('right')}>
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-[10px] text-center text-muted-foreground mt-2">
+          Utilise les flèches ou ZQSD
+        </p>
+      </div>
+
+      <Separator />
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full justify-center h-8 text-xs"
+        onClick={() => restartGame()}
+      >
+        <RotateCcw className="mr-2 h-3 w-3" />
+        Rejouer
+      </Button>
+    </div>
+  );
 
   return (
     <div
       ref={containerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
+      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
     >
       <GameTopBar
         title="Snake"
@@ -496,65 +554,43 @@ export default function Snake() {
         highScore={highScore}
         isNewHighScore={isNewHighScore}
         rewards={rewards}
-        controls={(
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Fleches ou ZQSD pour tourner.</p>
-            <p className="text-xs text-muted-foreground">Espace pour pause/reprise.</p>
-            <p className="text-xs text-muted-foreground">R ou Entree pour relancer la run.</p>
-            <div className="pt-1">
-              <Select value={difficulty} onValueChange={changeDifficulty}>
-                <SelectTrigger className="h-7 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(DIFFICULTIES).map(([key, value]) => (
-                    <SelectItem key={key} value={key} className="text-xs">
-                      {value.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-1">{currentDifficulty.description}</p>
-            </div>
-          </div>
-        )}
+        controls={topBarControls}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
         showLeaderboard={showLeaderboard}
-        onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
-        <GamePauseButton isPaused={game.status === 'paused'} onToggle={handlePauseToggle} disabled={!canPause} />
-        {game.status === 'idle' ? (
-          <Button size="sm" onClick={() => setGame((current) => ({ ...current, status: 'running' }))}>
-            <Play className="mr-2 h-4 w-4" />
-            Demarrer
-          </Button>
-        ) : null}
-        <Button size="sm" variant="outline" onClick={() => restartGame()}>
-          <RotateCcw className="mr-2 h-4 w-4" />
-          Rejouer
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          onClick={() => setShowSettingsDialog(true)}
+          title="Parametres"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
         </Button>
       </GameTopBar>
 
-      <div className="flex items-start justify-center gap-4">
-        <div className="flex w-full max-w-[600px] flex-col">
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Parametres Snake</DialogTitle>
+          </DialogHeader>
+          {topBarControls}
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex items-start justify-center gap-6">
+        <div className="flex w-full max-w-[800px] flex-col">
           <GameFullscreenStage
             isFullscreen={isFullscreen}
             baseWidth={BOARD_PIXEL_SIZE}
             baseHeight={BOARD_PIXEL_SIZE}
-            contentClassName="rounded-[28px] border border-emerald-500/20 bg-[#07140d] shadow-[0_24px_80px_rgba(0,0,0,0.35)]"
+            contentClassName="rounded-[28px] border border-emerald-500/20 bg-[#07140d] shadow-2xl"
           >
             <div className="relative flex h-full w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(34,197,94,0.18),_transparent_45%),linear-gradient(180deg,_rgba(5,15,10,0.96),_rgba(4,12,8,1))] p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">Score</p>
-                  <p className="text-2xl font-semibold tabular-nums">{game.score}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-white/55">Record</p>
-                  <p className="text-2xl font-semibold tabular-nums">{highScore}</p>
-                </div>
-              </div>
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(transparent_0%,rgba(255,255,255,0.02)_100%)]" />
 
               <div
                 className="grid flex-1 rounded-[22px] border border-white/10 bg-[#0b1f13] p-2 shadow-inner"
@@ -591,22 +627,22 @@ export default function Snake() {
                 ))}
               </div>
 
-              <div className="mt-4 grid grid-cols-3 gap-3 text-white/78 sm:grid-cols-4">
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Pommes</p>
-                  <p className="mt-1 font-semibold tabular-nums">{game.foodsEaten}</p>
+              <div className="mt-4 grid grid-cols-4 gap-2">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-2 text-center">
+                  <p className="text-[9px] uppercase tracking-widest text-white/40">Pommes</p>
+                  <p className="text-xs font-bold text-white tabular-nums">{game.foodsEaten}</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Combo</p>
-                  <p className="mt-1 font-semibold tabular-nums">x{game.combo}</p>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-2 text-center">
+                  <p className="text-[9px] uppercase tracking-widest text-white/40">Combo</p>
+                  <p className="text-xs font-bold text-white tabular-nums">x{game.combo}</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Mode</p>
-                  <p className="mt-1 font-semibold">{currentDifficulty.label}</p>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-2 text-center">
+                  <p className="text-[9px] uppercase tracking-widest text-white/40">Mode</p>
+                  <p className="text-xs font-bold text-white truncate px-1">{currentDifficulty.label}</p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Tempo</p>
-                  <p className="mt-1 font-semibold tabular-nums">{game.speedMs} ms</p>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-2 text-center">
+                  <p className="text-[9px] uppercase tracking-widest text-white/40">Vitesse</p>
+                  <p className="text-xs font-bold text-white tabular-nums">{game.speedMs}ms</p>
                 </div>
               </div>
 
@@ -624,28 +660,21 @@ export default function Snake() {
                       {game.status === 'game-over' ? <Trophy className="h-7 w-7 text-emerald-300" /> : <Play className="h-7 w-7 text-emerald-300" />}
                     </div>
                     <h2 className="text-2xl font-semibold">
-                      {game.status === 'game-over' ? 'Run terminee' : 'Pret a jouer'}
+                      {game.status === 'game-over' ? 'Run terminée' : 'Prêt à jouer'}
                     </h2>
                     <p className="mt-2 text-sm text-white/70">
                       {game.status === 'game-over'
                         ? game.reason ?? 'Le serpent a fini sa course.'
-                        : 'Prends une direction pour lancer la premiere boucle ou clique sur demarrer.'}
+                        : 'Prends une direction pour lancer la première boucle ou clique sur démarrer.'}
                     </p>
-                    {game.status === 'game-over' ? (
-                      <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm">
-                        <p>Score final: <span className="font-semibold tabular-nums">{game.score}</span></p>
-                        <p>Pommes mangees: <span className="font-semibold tabular-nums">{game.foodsEaten}</span></p>
-                        <p>Meilleur combo: <span className="font-semibold tabular-nums">x{Math.max(game.bestCombo, 1)}</span></p>
-                      </div>
-                    ) : null}
                     <div className="mt-5 flex flex-col gap-2 sm:flex-row">
                       <Button className="flex-1" onClick={() => (game.status === 'game-over' ? startFreshRun() : setGame((current) => ({ ...current, status: 'running' })))}>
                         <Play className="mr-2 h-4 w-4" />
-                        {game.status === 'game-over' ? 'Relancer maintenant' : 'Demarrer'}
+                        Jouer
                       </Button>
                       <Button className="flex-1" variant="outline" onClick={() => restartGame()}>
                         <RotateCcw className="mr-2 h-4 w-4" />
-                        Nouvelle run
+                        Reset
                       </Button>
                     </div>
                   </div>
@@ -653,47 +682,18 @@ export default function Snake() {
               )}
             </div>
           </GameFullscreenStage>
-
-          <div className={cn('mt-3 xl:hidden', isFullscreen && 'hidden')}>
-            <div className="mx-auto grid w-[176px] grid-cols-3 gap-2">
-              <span />
-              <Button variant="outline" size="icon" onClick={() => queueDirection('up')}>
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-              <span />
-              <Button variant="outline" size="icon" onClick={() => queueDirection('left')}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePauseToggle}
-                disabled={!canPause && game.status !== 'idle'}
-              >
-                {game.status === 'paused' ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => queueDirection('right')}>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <span />
-              <Button variant="outline" size="icon" onClick={() => queueDirection('down')}>
-                <ArrowDown className="h-4 w-4" />
-              </Button>
-              <span />
-            </div>
-          </div>
         </div>
 
         {showLeaderboard && !isFullscreen && (
-          <div className="w-[240px] shrink-0 hidden lg:block">
+          <div className="w-[280px] shrink-0 hidden lg:block h-full">
             <GameLeaderboard
               entries={leaderboard}
               currentUserId={user?.id}
               personalHighScore={highScore}
               isAdmin={isAdmin}
               onDeleteScore={handleDeleteScore}
-              title="Classement Snake"
-              maxHeight={520}
+              title="Classement"
+              maxHeight={600}
             />
           </div>
         )}

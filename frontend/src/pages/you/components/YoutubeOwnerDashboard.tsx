@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Play, Upload, Loader2, Video as VideoIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -22,9 +22,12 @@ export function YoutubeOwnerDashboard({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [duration, setDuration] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const thumbInputRef = useRef<HTMLInputElement>(null);
 
   const videos = business.youtubeVideos ?? [];
 
@@ -33,6 +36,8 @@ export function YoutubeOwnerDashboard({
       setTitle('');
       setDescription('');
       setVideoFile(null);
+      setThumbnailFile(null);
+      setDuration(undefined);
       setFormOpen(false);
     }
   }, [open]);
@@ -54,12 +59,17 @@ export function YoutubeOwnerDashboard({
     setSaving(true);
     try {
       const base64Data = await fileToBase64(videoFile);
+      const thumbnailBase64 = thumbnailFile ? await fileToBase64(thumbnailFile) : undefined;
+      
       await withRouteError(
         () => youApi.uploadYoutubeVideo(business.id, {
           title: title.trim(),
           description: description.trim() || undefined,
           videoBase64: base64Data,
           mimeType: videoFile.type,
+          thumbnailBase64,
+          thumbnailMimeType: thumbnailFile?.type,
+          duration,
         }),
         'Impossible de mettre en ligne la vidéo.'
       );
@@ -79,6 +89,8 @@ export function YoutubeOwnerDashboard({
     setTitle('');
     setDescription('');
     setVideoFile(null);
+    setThumbnailFile(null);
+    setDuration(undefined);
   };
 
   if (!open) return null;
@@ -98,7 +110,16 @@ export function YoutubeOwnerDashboard({
           {videos.map((video) => (
             <div key={video.id} className="rounded-xl border border-border/40 bg-muted/10 p-4 flex items-start gap-4">
               <div className="h-20 w-32 shrink-0 bg-black rounded-lg flex items-center justify-center overflow-hidden border border-border/50 relative">
-                 <VideoIcon className="text-white/20 w-8 h-8 absolute" />
+                {video.thumbnailPath ? (
+                  <img src={`${import.meta.env.VITE_API_URL}${video.thumbnailPath}`} className="w-full h-full object-cover" />
+                ) : (
+                  <VideoIcon className="text-white/20 w-8 h-8 absolute" />
+                )}
+                {video.duration && (
+                  <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/80 text-[8px] font-medium text-white rounded">
+                    {Math.floor(video.duration / 60)}:{Math.floor(video.duration % 60).toString().padStart(2, '0')}
+                  </div>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{video.title}</p>
@@ -148,10 +169,40 @@ export function YoutubeOwnerDashboard({
                              return;
                          }
                          setVideoFile(file);
+                         
+                         // Get duration
+                         const video = document.createElement('video');
+                         video.preload = 'metadata';
+                         video.onloadedmetadata = () => {
+                           window.URL.revokeObjectURL(video.src);
+                           setDuration(video.duration);
+                         };
+                         video.src = URL.createObjectURL(file);
                      }
                    }} 
                  />
                  {videoFile && <p className="text-xs text-muted-foreground">Fichier sélectionné : {videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(2)} Mo)</p>}
+             </div>
+         </FieldRow>
+         <FieldRow label="Miniature (JPG/PNG - Optionnel)">
+             <div className="flex flex-col gap-2">
+                 <Input 
+                   ref={thumbInputRef} 
+                   type="file" 
+                   accept="image/jpeg,image/png" 
+                   onChange={(e) => {
+                     const file = e.target.files?.[0];
+                     if (file) {
+                         if (file.size > 5 * 1024 * 1024) {
+                             toast.error('La miniature ne doit pas dépasser 5 Mo.');
+                             if (thumbInputRef.current) thumbInputRef.current.value = '';
+                             return;
+                         }
+                         setThumbnailFile(file);
+                     }
+                   }} 
+                 />
+                 {thumbnailFile && <p className="text-xs text-muted-foreground">Miniature sélectionnée : {thumbnailFile.name}</p>}
              </div>
          </FieldRow>
          <div className="flex justify-end gap-2 mt-4">

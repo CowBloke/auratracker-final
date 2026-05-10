@@ -1,14 +1,16 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react';
-import { RotateCcw, Play } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Play, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { Button } from '@/components/ui/button';
-import { GameTopBar } from '@/components/game/GameTopBar';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
+import { GameTopBar } from '@/components/game/GameTopBar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
@@ -46,6 +48,8 @@ export default function ChromeDino() {
   const [isPaused, setIsPaused] = useState(false);
   const [status, setStatus] = useState<RunnerStatus>('idle');
   const [sessionKey, setSessionKey] = useState(0);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
 
   const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
   const canPause = status === 'running';
@@ -229,51 +233,92 @@ export default function ChromeDino() {
     }
   }, [fetchLeaderboard, user?.id]);
 
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const topBarControls = (
+    <div className="space-y-4 text-xs">
+      <div className="rounded-lg border border-border/60 p-3 bg-muted/30 space-y-2">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Objectif</p>
+        <p className="text-muted-foreground">
+          Score minimum récompensé : <span className="font-semibold text-foreground">{MIN_REWARD_SCORE}</span>.
+        </p>
+        {lastScore !== null && (
+          <div className="pt-2 border-t border-border/40">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Dernière run</p>
+            <p className="font-medium text-foreground">
+              Score: {lastScore}
+              {rewards && (rewards.money > 0 || rewards.aura > 0) ? (
+                <span className="block text-[10px] text-emerald-500 mt-0.5">
+                  {rewards.money > 0 && `+$${rewards.money}`} {rewards.aura > 0 && `· +${rewards.aura} aura`}
+                  {isNewHighScore && ' · NOUVEAU RECORD'}
+                </span>
+              ) : (
+                <span className="block text-[10px] text-orange-500 mt-0.5">
+                  Pas de récompense (min {MIN_REWARD_SCORE})
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
+      <Separator />
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" className="flex-1 h-8" onClick={restartGame}>
+          <RotateCcw className="mr-2 h-3 w-3" />
+          Relancer
+        </Button>
+        <Button size="sm" variant="outline" className="flex-1 h-8" onClick={hardReloadGame}>
+          <Play className="mr-2 h-3 w-3" />
+          Recharger
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div
       ref={containerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
+      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
     >
       <GameTopBar
         title="Chrome Dino"
-        score={lastScore ?? 0}
+        score={0} // Score is shown in iframe
         highScore={highScore}
-        isNewHighScore={isNewHighScore}
-        rewards={rewards}
-        controls={
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Espace ou fleche haut pour sauter.</p>
-            <p className="text-xs text-muted-foreground">Score minimum recompense: {MIN_REWARD_SCORE}.</p>
-          </div>
-        }
+        controls={topBarControls}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
         showLeaderboard={showLeaderboard}
-        onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
-        <GamePauseButton isPaused={isPaused} onToggle={handlePauseToggle} disabled={!canPause && !isPaused} />
-        <Button size="sm" variant="outline" onClick={restartGame}>
-          <RotateCcw className="mr-2 h-4 w-4" />
-          Relancer
-        </Button>
-        <Button size="sm" variant="outline" onClick={hardReloadGame}>
-          <Play className="mr-2 h-4 w-4" />
-          Recharger
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <GamePauseButton isPaused={isPaused} onToggle={handlePauseToggle} disabled={!canPause && !isPaused} size="icon" className="h-7 w-7" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-full"
+            onClick={() => setShowSettingsDialog(true)}
+            title="Parametres"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </GameTopBar>
 
-      <div className="flex items-start justify-center gap-4">
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Parametres Chrome Dino</DialogTitle>
+          </DialogHeader>
+          {topBarControls}
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex items-start justify-center gap-6">
         <div className="flex w-full max-w-[1200px] flex-col">
           <GameFullscreenStage
             isFullscreen={isFullscreen}
             baseWidth={GAME_WIDTH}
             baseHeight={GAME_HEIGHT}
-            contentClassName="rounded-xl border border-border/50 bg-[#f3f3f3] shadow-sm"
+            contentClassName="rounded-xl border border-border/50 bg-[#f3f3f3] shadow-sm overflow-hidden"
           >
             <iframe
               ref={iframeRef}
@@ -290,20 +335,21 @@ export default function ChromeDino() {
             <GamePauseOverlay
               visible={isPaused}
               onResume={handlePauseToggle}
-              description="La run est mise en pause sans remplacer le jeu Chromium embarque."
+              description="La run est mise en pause sans remplacer le jeu Chromium embarqué."
             />
           </GameFullscreenStage>
         </div>
 
         {showLeaderboard && !isFullscreen && (
-          <div className="w-[240px] shrink-0 hidden lg:block">
+          <div className="w-[280px] shrink-0 hidden lg:block">
             <GameLeaderboard
               entries={leaderboard}
               currentUserId={user?.id}
               personalHighScore={highScore}
               isAdmin={isAdmin}
               onDeleteScore={handleDeleteScore}
-              title="Classement Chrome Dino"
+              title="Classement"
+              maxHeight={420}
             />
           </div>
         )}

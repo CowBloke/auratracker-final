@@ -1,6 +1,7 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
+import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -556,146 +557,149 @@ export default function Minesweeper() {
     </div>
   );
 
-return (
+  return (
     <div
       ref={gameContainerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
+      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
     >
-        <GameTopBar
-          title="Démineur"
-          score={status === 'won' || status === 'lost' ? lastScore : 0}
-          highScore={highScore}
-          isNewHighScore={isNewHighScore}
-          rewards={rewards}
-          controls={topBarControls}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={toggleFullscreen}
-          showLeaderboard={showLeaderboard}
-          onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+      <GameTopBar
+        title="Démineur"
+        score={status === 'won' || status === 'lost' ? lastScore : 0}
+        highScore={highScore}
+        isNewHighScore={isNewHighScore}
+        rewards={rewards}
+        controls={topBarControls}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        showLeaderboard={showLeaderboard}
+        onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 rounded-full"
+          onClick={() => setShowSettingsDialog(true)}
+          title="Parametres"
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-full"
-            onClick={() => setShowSettingsDialog(true)}
-            title="Parametres"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-          </Button>
-        </GameTopBar>
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+        </Button>
+      </GameTopBar>
 
-        <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Parametres Démineur</DialogTitle>
-            </DialogHeader>
-            {topBarControls}
-          </DialogContent>
-        </Dialog>
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Parametres Démineur</DialogTitle>
+          </DialogHeader>
+          {topBarControls}
+        </DialogContent>
+      </Dialog>
 
-      <div className="flex items-start justify-center gap-4">
-        <div className="flex flex-col gap-3">
-          {isFullscreen && (
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={() => resetBoard()}>
-                <RotateCcw className="mr-2 h-4 w-4" />
+      <div className="flex items-start justify-center gap-6">
+        <div className="flex w-full max-w-[800px] flex-col">
+          <div className="flex flex-col items-center">
+            <div className="mb-4 flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => resetBoard()}>
+                <RotateCcw className="mr-2 h-3.5 w-3.5" />
                 Nouvelle partie
               </Button>
               <Button
                 type="button"
                 variant={flagMode ? 'default' : 'outline'}
+                size="sm"
                 onClick={() => setFlagMode((current) => !current)}
               >
-                <Flag className="mr-2 h-4 w-4" />
-                {flagMode ? 'Mode drapeau' : 'Mode reveal'}
+                <Flag className="mr-2 h-3.5 w-3.5" />
+                {flagMode ? 'Drapeau' : 'Reveler'}
               </Button>
             </div>
-          )}
 
-          <div className="rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
-            <div className="relative rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
-              <div className="grid gap-1" style={boardStyle}>
-                {board.flat().map((cell) => {
-                  const isExplodedMine = status === 'lost' && cell.isMine;
-                  return (
-                    <button
-                      key={`${cell.row}-${cell.column}`}
-                      type="button"
-                      onClick={() => handleCellAction(cell.row, cell.column)}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        toggleFlagAt(cell.row, cell.column);
-                      }}
-                      disabled={status === 'won' || status === 'lost'}
-                      className={cn(
-                        'relative flex items-center justify-center text-xs font-bold transition-all',
-                        cell.isRevealed
-                          ? cell.isMine
-                            ? 'bg-red-500 text-white'
-                            : cell.adjacentMines === 0
-                              ? 'bg-slate-200 text-transparent'
-                              : NUMBER_COLORS[cell.adjacentMines as keyof typeof NUMBER_COLORS] || 'bg-slate-300'
-                          : cell.isFlagged
-                            ? 'bg-yellow-100'
-                            : isExplodedMine
-                              ? 'bg-red-600'
-                              : 'bg-gradient-to-b from-slate-300 to-slate-400 hover:from-slate-200 hover:to-slate-300',
-                        cell.isRevealed && cell.isMine && !isExplodedMine && 'bg-red-500'
-                      )}
-                    >
-                      <span
+            <div className="rounded-[1.75rem] border border-stone-300 bg-[linear-gradient(180deg,#f8fafc,#e2e8f0)] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.14)] sm:p-4">
+              <div className="relative rounded-[1.25rem] border border-slate-300 bg-slate-100 p-2 shadow-inner">
+                <div className="grid gap-1" style={boardStyle}>
+                  {board.flat().map((cell) => {
+                    const isExplodedMine = status === 'lost' && cell.isMine;
+                    return (
+                      <button
+                        key={`${cell.row}-${cell.column}`}
+                        type="button"
+                        onClick={() => handleCellAction(cell.row, cell.column)}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          toggleFlagAt(cell.row, cell.column);
+                        }}
+                        disabled={status === 'won' || status === 'lost'}
                         className={cn(
-                          'absolute inset-0 rounded-sm',
-                          cell.isRevealed && cell.adjacentMines > 0 && 'bg-transparent'
+                          'relative flex items-center justify-center text-xs font-bold transition-all rounded-sm shadow-sm',
+                          cell.isRevealed
+                            ? cell.isMine
+                              ? 'bg-red-500 text-white'
+                              : cell.adjacentMines === 0
+                                ? 'bg-slate-200/50 text-transparent'
+                                : cn('bg-slate-50', NUMBER_COLORS[cell.adjacentMines as keyof typeof NUMBER_COLORS])
+                            : cell.isFlagged
+                              ? 'bg-amber-100'
+                              : isExplodedMine
+                                ? 'bg-red-600'
+                                : 'bg-gradient-to-b from-slate-200 to-slate-400 hover:from-slate-100 hover:to-slate-300',
+                          cell.isRevealed && cell.isMine && !isExplodedMine && 'bg-red-500'
                         )}
-                      />
-                      {cell.isFlagged && !cell.isRevealed && (
-                        <Flag className="h-3 w-3 text-yellow-500" />
-                      )}
-                      {cell.isRevealed && cell.adjacentMines > 0 && !cell.isMine && (
-                        <span>{cell.adjacentMines}</span>
-                      )}
-                      {isExplodedMine && <Bomb className="h-4 w-4" />}
-                      {cell.isRevealed && cell.isMine && !isExplodedMine && <Bomb className="h-3 w-3" />}
-                    </button>
-                  );
-                })}
+                        style={{ width: 'var(--cell-size)', height: 'var(--cell-size)', '--cell-size': getCellSize(config.columns) } as any}
+                      >
+                        {cell.isFlagged && !cell.isRevealed && (
+                          <Flag className="h-3 w-3 text-red-500" />
+                        )}
+                        {cell.isRevealed && cell.adjacentMines > 0 && !cell.isMine && (
+                          <span>{cell.adjacentMines}</span>
+                        )}
+                        {isExplodedMine && <Bomb className="h-4 w-4 text-white" />}
+                        {cell.isRevealed && cell.isMine && !isExplodedMine && <Bomb className="h-3 w-3 text-white" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
 
-          {status === 'won' && (
-            <div className="w-full rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-              <p className="font-medium">Grille nettoyee.</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {isSpeedrunDisplay
-                  ? `Temps ${formatDuration(lastScore)} · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`
-                  : `Score ${lastScore} · temps ${elapsedSeconds}s · ${wrongFlags} erreur${wrongFlags !== 1 ? 's' : ''} de drapeau.`}
-              </p>
-              {rewards && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Recompenses: +${rewards.money} · +${rewards.aura} aura{isNewHighScore ? ' · nouveau record' : ''}.
-                </p>
+            <div className="mt-6 w-full max-w-md">
+              {status === 'won' && (
+                <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-center">
+                  <p className="font-medium text-emerald-700 dark:text-emerald-400">Grille nettoyée !</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {isSpeedrunDisplay
+                      ? `Temps : ${formatDuration(lastScore)}`
+                      : `Score : ${lastScore.toLocaleString()} · ${elapsedSeconds}s`}
+                  </p>
+                  {rewards && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      +${rewards.money} · +{rewards.aura} aura {isNewHighScore && '· Nouveau record !'}
+                    </p>
+                  )}
+                  <Button variant="outline" size="sm" className="mt-3" onClick={() => resetBoard()}>
+                    <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                    Rejouer
+                  </Button>
+                </div>
+              )}
+
+              {status === 'lost' && (
+                <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-center">
+                  <p className="font-medium text-red-700 dark:text-red-400">BOUM ! Partie terminée.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {progress}% de progression · {elapsedSeconds}s
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-3" onClick={() => resetBoard()}>
+                    <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                    Réessayer
+                  </Button>
+                </div>
               )}
             </div>
-          )}
-
-          {status === 'lost' && (
-            <div className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
-              <p className="font-medium">Bombe declenchee.</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {progress}% de progression apres {elapsedSeconds}s.
-              </p>
-            </div>
-          )}
+          </div>
         </div>
 
         {showLeaderboard && !isFullscreen && (
-          <div className="w-[240px] shrink-0 hidden lg:block">
+          <div className="w-[280px] shrink-0 hidden lg:block">
             <GameLeaderboard
               entries={leaderboard}
               currentUserId={user?.id}
@@ -703,7 +707,8 @@ return (
               scoreFormatter={isSpeedrunDisplay ? formatDuration : undefined}
               isAdmin={user?.isAdmin}
               onDeleteScore={(userId) => handleDeleteScore(userId)}
-              maxHeight={500}
+              maxHeight={600}
+              hidden={false}
             />
           </div>
         )}

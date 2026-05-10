@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { gsap, Power1 } from 'gsap';
 import { useAuth } from '../contexts/AuthContext';
