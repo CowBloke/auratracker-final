@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
   CreditCard, Download, Edit2, ExternalLink, Factory, GraduationCap, Image, Landmark, Loader2, Percent,
@@ -1063,6 +1063,16 @@ export function ManageBusinessModal({
 
   const startResearch = async (product: YouStartupProduct) => {
     if (!business) return;
+
+    const confirmed = await confirm({
+      title: 'Lancer la recherche ?',
+      description: `Voulez-vous lancer la recherche pour "${product.name}" (niv. ${product.deployedLevel + 1}) pour ${product.nextResearchCost ? formatMoney(product.nextResearchCost) : '0'} money ?`,
+      confirmLabel: 'Lancer',
+      cancelLabel: 'Annuler',
+    });
+
+    if (!confirmed) return;
+
     setActingProductKey(`research:${product.slotIndex}`);
     try {
       await withRouteError(() => youApi.runBusinessAction(business.id, 'start_research', { slotIndex: product.slotIndex }), 'Impossible de lancer la recherche.');
@@ -1406,7 +1416,7 @@ export function ManageBusinessModal({
                         ? `Prêt à déployer · niv. ${product.activeResearchLevel}`
                         : product.isMaxLevel
                           ? 'Niveau maximum atteint'
-                          : `Lancer recherche niv. ${product.deployedLevel + 1} · ${product.nextResearchDurationMinutes ? formatDurationMinutes(product.nextResearchDurationMinutes) : '–'}`;
+                          : `Lancer recherche niv. ${product.deployedLevel + 1} · ${product.nextResearchCost ? formatMoney(product.nextResearchCost) : 'Gratuit'} · ${product.nextResearchDurationMinutes ? formatDurationMinutes(product.nextResearchDurationMinutes) : '–'}`;
                     const handleClick = () => {
                       if (isBusy) return;
                       if (product.canDeploy) { void deployProduct(product); return; }

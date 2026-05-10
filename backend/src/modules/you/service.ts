@@ -2330,6 +2330,8 @@ async function handleStartResearchAction(userId: string, business: any, input: {
     throw new Error('INSUFFICIENT_MONEY');
   }
 
+  console.log(`[StartupResearch] Business ${business.id} starting research for product "${product.name}" (level ${nextLevel}). Cost: ${researchCost}`);
+
   const startedAt = new Date();
   const endsAt = new Date(startedAt.getTime() + getStartupResearchDurationMinutes(nextLevel) * 60 * 1000);
 

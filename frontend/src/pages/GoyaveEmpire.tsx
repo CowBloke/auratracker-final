@@ -220,14 +220,19 @@ function defaultSave(): SaveState {
     clickPower: 1,
     buildings: { tree: 0, picker: 0, garden: 0, orchard: 0, factory: 0, plantation: 0, lab: 0, rocket: 0, dimension: 0, multiverse: 0, chrono: 0, divinity: 0 },
     upgrades: [],
-    lastTick: Date.now(),
+    lastTick: 0, // CRITICAL: 0 means "brand new/not yet ticking", prevents overwriting DB with newer empty saves
     cashOutScore: 0,
   };
 }
 
-function loadSave(): SaveState {
+function getSaveKey(userId?: string): string {
+  return userId ? `goyave_empire_save_${userId}` : 'goyave_empire_save';
+}
+
+function loadSave(userId?: string): SaveState {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
+    const key = getSaveKey(userId);
+    const raw = localStorage.getItem(key);
     if (!raw) return defaultSave();
     const parsed = JSON.parse(raw);
     const def = defaultSave();
@@ -241,8 +246,9 @@ function loadSave(): SaveState {
   }
 }
 
-function persistSave(state: SaveState): void {
-  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+function persistSave(state: SaveState, userId?: string): void {
+  const key = getSaveKey(userId);
+  localStorage.setItem(key, JSON.stringify(state));
 }
 
 // ---- Component ----
@@ -251,7 +257,8 @@ export default function GoyaveEmpire() {
   const { containerRef: gameContainerRef, isFullscreen, toggleFullscreen } = useGameFullscreen<HTMLDivElement>();
   const { user, refreshUser } = useAuth();
 
-  const [save, setSave] = useState<SaveState>(() => loadSave());
+  const [save, setSave] = useState<SaveState>(() => defaultSave());
+  const [isInitialized, setIsInitialized] = useState(false);
   const [offlineGuavas, setOfflineGuavas] = useState<number | null>(null);
   const [cashOutLeaderboard, setCashOutLeaderboard] = useState<GameLeaderboardEntry[]>([]);
   const [activeLeaderboard, setActiveLeaderboard] = useState<GameLeaderboardEntry[]>([]);
@@ -261,10 +268,10 @@ export default function GoyaveEmpire() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showActiveLeaderboard, setShowActiveLeaderboard] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
 
   const saveRef = useRef<SaveState>(save);
   saveRef.current = save;
-  const hasInitializedRef = useRef(false);
 
   const saveToDb = useCallback(async (state: SaveState) => {
     try {
@@ -277,7 +284,8 @@ export default function GoyaveEmpire() {
   // Load from localStorage + DB on mount, keep the freshest snapshot.
   useEffect(() => {
     const init = async () => {
-      let loaded = loadSave();
+      if (!user) return;
+      let loaded = loadSave(user.id);
       try {
         const res = await gamesApi.loadGoyaveSave();
         if (res.data.saveData) {
@@ -287,57 +295,63 @@ export default function GoyaveEmpire() {
           const localLastTick = Number.isFinite(loaded.lastTick) ? loaded.lastTick : 0;
           const dbLastTick = Number.isFinite(normalizedDb.lastTick) ? normalizedDb.lastTick : 0;
           loaded = dbLastTick > localLastTick ? normalizedDb : loaded;
-          persistSave(loaded);
+          persistSave(loaded, user.id);
         }
       } catch {
         // Fallback to localStorage already loaded above
       }
 
       const now = Date.now();
-      const elapsed = (now - loaded.lastTick) / 1000;
-      if (elapsed > OFFLINE_THRESHOLD_MS / 1000) {
-        const gps = totalGps(loaded.buildings, loaded.upgrades);
-        const earned = gps * elapsed;
-        if (earned >= 1) {
-          const updated: SaveState = { ...loaded, guavas: loaded.guavas + earned, totalGuavas: loaded.totalGuavas + earned, lastTick: now };
-          setSave(updated);
-          persistSave(updated);
-          hasInitializedRef.current = true;
-          setOfflineGuavas(earned);
-          return;
+      // If the save is brand new (lastTick 0), we don't calculate offline progress
+      if (loaded.lastTick > 0) {
+        const elapsed = (now - loaded.lastTick) / 1000;
+        if (elapsed > OFFLINE_THRESHOLD_MS / 1000) {
+          const gps = totalGps(loaded.buildings, loaded.upgrades);
+          const earned = gps * elapsed;
+          if (earned >= 1) {
+            const updated: SaveState = { ...loaded, guavas: loaded.guavas + earned, totalGuavas: loaded.totalGuavas + earned, lastTick: now };
+            setSave(updated);
+            persistSave(updated, user.id);
+            setIsInitialized(true);
+            setOfflineGuavas(earned);
+            return;
+          }
         }
       }
+      
       const updated = { ...loaded, lastTick: now };
       setSave(updated);
-      hasInitializedRef.current = true;
-      persistSave(updated);
+      setIsInitialized(true);
+      persistSave(updated, user.id);
     };
 
     init();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.id]);
 
   // Periodic DB save for persistence + active ranking updates.
   useEffect(() => {
     const interval = setInterval(() => {
-      saveToDb(saveRef.current);
+      if (isInitialized) {
+        saveToDb(saveRef.current);
+      }
     }, DB_SAVE_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [saveToDb]);
+  }, [saveToDb, isInitialized]);
 
   // Save to DB shortly after state changes to reduce data loss windows.
   useEffect(() => {
-    if (!hasInitializedRef.current) return;
+    if (!isInitialized) return;
     const timeout = setTimeout(() => {
       saveToDb(save);
     }, DB_SAVE_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
-  }, [save, saveToDb]);
+  }, [save, saveToDb, isInitialized]);
 
   // Best-effort flush when tab is hidden or page is unloading.
   useEffect(() => {
     const flushSave = () => {
-      if (hasInitializedRef.current) {
+      if (isInitialized) {
         saveToDb(saveRef.current);
       }
     };
@@ -355,24 +369,27 @@ export default function GoyaveEmpire() {
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('pagehide', flushSave);
     };
-  }, [saveToDb]);
+  }, [saveToDb, isInitialized]);
 
   // Game tick
   useEffect(() => {
     const interval = setInterval(() => {
-      if (isPaused) return;
+      if (isPaused || !isInitialized) return;
       setSave((prev) => {
         const now = Date.now();
+        // Skip tick if we somehow have a future tick or uninitialized tick
+        if (prev.lastTick <= 0) return { ...prev, lastTick: now };
+        
         const dt = (now - prev.lastTick) / 1000;
         const gps = totalGps(prev.buildings, prev.upgrades);
         const earned = gps * dt;
         const next: SaveState = { ...prev, guavas: prev.guavas + earned, totalGuavas: prev.totalGuavas + earned, lastTick: now };
-        persistSave(next);
+        persistSave(next, user?.id);
         return next;
       });
     }, TICK_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [isPaused]);
+  }, [isPaused, isInitialized, user?.id]);
 
   // Leaderboard
   const fetchCashOutLeaderboard = useCallback(async () => {
@@ -409,41 +426,41 @@ export default function GoyaveEmpire() {
 
   // Actions
   const handleClick = useCallback(() => {
-    if (isPaused) return;
+    if (isPaused || !isInitialized) return;
     setSave((prev) => {
       const power = effectiveClickPower(prev.clickPower, prev.upgrades);
       const next: SaveState = { ...prev, guavas: prev.guavas + power, totalGuavas: prev.totalGuavas + power };
-      persistSave(next);
+      persistSave(next, user?.id);
       return next;
     });
-  }, [isPaused]);
+  }, [isPaused, isInitialized, user?.id]);
 
   const buyBuilding = useCallback((defId: string) => {
-    if (isPaused) return;
+    if (isPaused || !isInitialized) return;
     setSave((prev) => {
       const def = BUILDINGS.find((b) => b.id === defId)!;
       const owned = prev.buildings[defId] ?? 0;
       const cost = buildingCost(def, owned);
       if (prev.guavas < cost) return prev;
       const next: SaveState = { ...prev, guavas: prev.guavas - cost, buildings: { ...prev.buildings, [defId]: owned + 1 } };
-      persistSave(next);
+      persistSave(next, user?.id);
       return next;
     });
-  }, [isPaused]);
+  }, [isPaused, isInitialized, user?.id]);
 
   const buyUpgrade = useCallback((upgradeId: string) => {
-    if (isPaused) return;
+    if (isPaused || !isInitialized) return;
     setSave((prev) => {
       const upg = UPGRADES.find((u) => u.id === upgradeId)!;
       if (prev.guavas < upg.cost || prev.upgrades.includes(upgradeId)) return prev;
       const next: SaveState = { ...prev, guavas: prev.guavas - upg.cost, upgrades: [...prev.upgrades, upgradeId] };
-      persistSave(next);
+      persistSave(next, user?.id);
       return next;
     });
-  }, [isPaused]);
+  }, [isPaused, isInitialized, user?.id]);
 
   const handleCashOut = useCallback(async () => {
-    if (!user || isCashingOut) return;
+    if (!user || isCashingOut || !isInitialized) return;
     const score = Math.floor(saveRef.current.totalGuavas);
     if (score < 100) return;
     setIsCashingOut(true);
@@ -456,14 +473,14 @@ export default function GoyaveEmpire() {
       fetchActiveLeaderboard();
       const freshSave: SaveState = { ...defaultSave(), cashOutScore: Math.max(score, saveRef.current.cashOutScore), lastTick: Date.now() };
       setSave(freshSave);
-      persistSave(freshSave);
+      persistSave(freshSave, user.id);
       saveToDb(freshSave);
     } catch (err) {
       console.error('Cash out failed:', err);
     } finally {
       setIsCashingOut(false);
     }
-  }, [user, isCashingOut, fetchCashOutLeaderboard, fetchActiveLeaderboard, refreshUser, saveToDb]);
+  }, [user, isCashingOut, isInitialized, fetchCashOutLeaderboard, fetchActiveLeaderboard, refreshUser, saveToDb]);
 
   const handleDeleteScore = async (userId: string, _username: string) => {
     try {
@@ -580,6 +597,14 @@ export default function GoyaveEmpire() {
         <div className="flex w-full max-w-[1200px] flex-col overflow-hidden">
           <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={1000} baseHeight={PANEL_HEIGHT}>
             <div className="relative flex items-stretch w-full h-full overflow-hidden rounded-[28px] border border-border/30 bg-card shadow-2xl">
+              {!isInitialized && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-green-500 border-t-transparent" />
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Initialisation de l'Empire...</p>
+                  </div>
+                </div>
+              )}
               <GamePauseOverlay visible={isPaused} onResume={() => setIsPaused(false)} />
 
               {/* ── LEFT: Upgrades ── */}

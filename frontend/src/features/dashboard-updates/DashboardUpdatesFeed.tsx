@@ -43,6 +43,25 @@ const CATEGORY_META: Record<DashboardUpdateEntry['feedCategory'], { label: strin
   },
 };
 
+const WELCOME_TEMPLATES = [
+  (name: string) => <>Yo <em>{name}</em>, y&apos;a du neuf.</>,
+  (name: string) => <>Salut <em>{name}</em>, quoi de beau ?</>,
+  (name: string) => <>Heureux de te revoir, <em>{name}</em> !</>,
+  (name: string) => <>Alors <em>{name}</em>, on chasse l&apos;Aura aujourd&apos;hui ?</>,
+  (name: string) => <>Bienvenue chez toi, <em>{name}</em>.</>,
+  (name: string) => <>Quelles sont les nouvelles, <em>{name}</em> ?</>,
+  (name: string) => <>Toujours au top, <em>{name}</em> !</>,
+  (name: string) => <>Prêt pour une nouvelle aventure, <em>{name}</em> ?</>,
+  (name: string) => <>AuraTracker t&apos;attendait, <em>{name}</em>.</>,
+  (name: string) => <>Tiens, voilà <em>{name}</em> ! Ça farte ?</>,
+  (name: string) => <>Wesh <em>{name}</em>, bien ou bien ?</>,
+  (name: string) => <>Oh, <em>{name}</em> ! Quel plaisir de te voir.</>,
+  (name: string) => <>Le boss <em>{name}</em> est dans la place !</>,
+  (name: string) => <><em>{name}</em>, t&apos;as une mine radieuse !</>,
+  (name: string) => <>Allez <em>{name}</em>, au boulot !</>,
+  (name: string) => <>C&apos;est reparti pour un tour, <em>{name}</em> !</>,
+];
+
 function ActionLink({
   href,
   className,
@@ -162,20 +181,25 @@ function applyOptimisticReaction(
 function Welcome({
   welcomeName,
   showWelcome,
+  welcomeIndex,
   heading,
   subheading,
   action,
 }: {
   welcomeName?: string | null;
   showWelcome: boolean;
+  welcomeIndex: number;
   heading: string;
   subheading?: string;
   action?: ReactNode;
 }) {
+  const name = welcomeName || 'toi';
+  const welcomeContent = WELCOME_TEMPLATES[welcomeIndex]?.(name) || WELCOME_TEMPLATES[0](name);
+
   return (
     <div className="db-welcome">
       <div className="db-welcome__copy">
-        <h1>{showWelcome ? <>Yo <em>{welcomeName || 'toi'}</em>, y&apos;a du neuf.</> : heading}</h1>
+        <h1>{showWelcome ? welcomeContent : heading}</h1>
         {subheading ? <p>{subheading}</p> : null}
       </div>
       {action ? <div className="db-welcome__action">{action}</div> : null}
@@ -430,6 +454,8 @@ export function DashboardUpdatesFeed({
   const [pendingReactionKey, setPendingReactionKey] = useState<string | null>(null);
   const [feedEntries, setFeedEntries] = useState<DashboardUpdateEntry[]>(entries);
 
+  const welcomeIndex = useMemo(() => Math.floor(Math.random() * WELCOME_TEMPLATES.length), []);
+
   useEffect(() => {
     setFeedEntries(entries);
   }, [entries]);
@@ -520,6 +546,7 @@ export function DashboardUpdatesFeed({
       <Welcome
         welcomeName={welcomeName}
         showWelcome={showWelcome}
+        welcomeIndex={welcomeIndex}
         heading={heading}
         subheading={subheading}
         action={action}
