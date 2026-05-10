@@ -7,6 +7,7 @@ import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameTopBar } from '@/components/game/GameTopBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;

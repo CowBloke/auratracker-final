@@ -11,6 +11,7 @@ import { GameTopBar } from '@/components/game/GameTopBar';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 
 const GAME_TYPE = 'hexgl';

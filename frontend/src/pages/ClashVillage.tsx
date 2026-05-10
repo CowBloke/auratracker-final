@@ -765,17 +765,17 @@ export default function ClashVillage() {
                   <div className="space-y-6">
                     <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-3"><Sparkles className="h-6 w-6 text-muted-foreground" /> Activités récentes</h3>
                     <div className="space-y-3">
-                       {state.activities.slice(0, 15).map((act, i) => (
+                       {(state?.activities ?? []).slice(0, 15).map((act, i) => (
                          <div key={i} className="text-xs p-4 rounded-2xl bg-muted/10 border border-border/20 flex gap-4 backdrop-blur-sm group hover:bg-muted/20 transition-colors">
                             <div className="h-2 w-2 rounded-full bg-primary/40 mt-1.5 shrink-0 group-hover:bg-primary transition-colors" />
                             <div className="space-y-1">
-                              <p className="leading-relaxed font-medium">{act.message}</p>
+                              <p className="leading-relaxed font-medium">{act.message ?? act.detail}</p>
                               <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-tight">{formatDate(act.createdAt)}</p>
                             </div>
                          </div>
                        ))}
 
-                       {state.activities.length === 0 && (
+                       {(state?.activities.length ?? 0) === 0 && (
                         <div className="text-center py-12 bg-muted/5 rounded-[32px] border border-dashed border-border/30">
                           <p className="text-sm font-bold text-muted-foreground/50">Aucune activité enregistrée</p>
                         </div>
@@ -797,9 +797,9 @@ export default function ClashVillage() {
                    </h3>
                    <div className="space-y-3">
                       {leaderboard.trophies.slice(0, 5).map((u, i) => (
-                        <div key={u.id} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-background/80 transition-all group shadow-sm border border-transparent hover:border-border/30">
+                        <div key={u.id ?? u.user?.id ?? `trophy-${i}`} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-background/80 transition-all group shadow-sm border border-transparent hover:border-border/30">
                           <span className={cn("text-xs font-black w-6 text-center", i < 3 ? "text-amber-500" : "text-muted-foreground/40")}>{i+1}</span>
-                          <UsernameDisplay username={u.username} usernameColor={u.usernameColor} usernameClassName="text-sm font-bold flex-1 truncate" />
+                          <UsernameDisplay username={u.username ?? u.user?.username ?? 'Inconnu'} usernameColor={u.usernameColor ?? u.user?.usernameColor} usernameClassName="text-sm font-bold flex-1 truncate" />
                           <span className="text-sm font-black tabular-nums">{u.trophies}</span>
                         </div>
                       ))}
@@ -815,10 +815,10 @@ export default function ClashVillage() {
                    </h3>
                    <div className="space-y-3">
                       {leaderboard.loot.slice(0, 5).map((u, i) => (
-                        <div key={u.id} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-background/80 transition-all group shadow-sm border border-transparent hover:border-border/30">
+                        <div key={u.id ?? u.user?.id ?? `loot-${i}`} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-background/80 transition-all group shadow-sm border border-transparent hover:border-border/30">
                           <span className={cn("text-xs font-black w-6 text-center", i < 3 ? "text-amber-600" : "text-muted-foreground/40")}>{i+1}</span>
-                          <UsernameDisplay username={u.username} usernameColor={u.usernameColor} usernameClassName="text-sm font-bold flex-1 truncate" />
-                          <span className="text-sm font-black tabular-nums">{formatMoney(u.moneyStolen)}</span>
+                          <UsernameDisplay username={u.username ?? u.user?.username ?? 'Inconnu'} usernameColor={u.usernameColor ?? u.user?.usernameColor} usernameClassName="text-sm font-bold flex-1 truncate" />
+                          <span className="text-sm font-black tabular-nums">{formatMoney(u.moneyStolen ?? u.totalLoot ?? 0)}</span>
                         </div>
                       ))}
                    </div>

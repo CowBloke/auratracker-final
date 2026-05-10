@@ -4803,14 +4803,7 @@ export default function Admin() {
           saveFiscalPaymentSource={saveFiscalPaymentSource}
           loadingFiscalUsers={loadingFiscalUsers}
         />
-        <GameLimitsTab
-          dailyGameAuraLimit={dailyGameAuraLimit}
-          setDailyGameAuraLimit={setDailyGameAuraLimit}
-          dailyGameMoneyLimit={dailyGameMoneyLimit}
-          setDailyGameMoneyLimit={setDailyGameMoneyLimit}
-          saveDailyGameLimits={saveDailyGameLimits}
-          savingDailyGameLimits={savingDailyGameLimits}
-        />
+        <GameLimitsTab />
 
         <SettingsTab
           fakeOnlineEnabled={fakeOnlineEnabled}

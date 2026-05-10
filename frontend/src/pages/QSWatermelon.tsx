@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Play, RotateCcw, SlidersHorizontal, Trophy } from 'lucide-react';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';

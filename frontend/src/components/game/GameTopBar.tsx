@@ -8,13 +8,15 @@ interface GameTopBarProps {
   title: string;
   score: number;
   highScore: number;
+  scoreSuffix?: string;
+  scoreFormatter?: (value: number) => string;
   isNewHighScore?: boolean;
   rewards?: { aura: number; money: number } | null;
   controls: ReactNode;
-  isFullscreen: boolean;
-  onToggleFullscreen: () => void;
-  showLeaderboard: boolean;
-  onToggleLeaderboard: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  showLeaderboard?: boolean;
+  onToggleLeaderboard?: () => void;
   children?: ReactNode;
   className?: string;
 }
@@ -23,12 +25,14 @@ export function GameTopBar({
   title,
   score,
   highScore,
+  scoreSuffix,
+  scoreFormatter,
   isNewHighScore,
   rewards,
   controls,
-  isFullscreen,
+  isFullscreen = false,
   onToggleFullscreen,
-  showLeaderboard,
+  showLeaderboard = false,
   onToggleLeaderboard,
   children,
   className,
@@ -53,6 +57,8 @@ export function GameTopBar({
     document.addEventListener('visibilitychange', onVisible);
     return () => { active = false; clearInterval(id); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
+
+  const formatScore = scoreFormatter ?? ((value: number) => value.toLocaleString());
 
   return (
     <div className={cn(
@@ -82,13 +88,14 @@ export function GameTopBar({
       <div className="flex items-center gap-5 shrink-0">
         <div className="text-center">
           <p className={cn('text-3xl font-semibold tabular-nums leading-none sm:text-[2.5rem]', isNewHighScore && 'text-amber-500')}>
-            {score.toLocaleString()}
+            {formatScore(score)}
+            {scoreSuffix ?? ''}
           </p>
           <p className="mt-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">Score</p>
         </div>
         <div className="h-6 w-px bg-border/50" />
         <div className="text-center">
-          <p className="text-[10px] font-medium tabular-nums leading-none text-gray-500">{highScore.toLocaleString()}</p>
+          <p className="text-[10px] font-medium tabular-nums leading-none text-gray-500">{formatScore(highScore)}</p>
           <p className="mt-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">Meilleur</p>
         </div>
         {rewards && (rewards.money > 0 || rewards.aura > 0) && (
@@ -141,28 +148,32 @@ export function GameTopBar({
 
         {children}
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 rounded-full"
-          onClick={onToggleLeaderboard}
-          title={showLeaderboard ? 'Masquer le classement' : 'Afficher le classement'}
-        >
-          <Trophy className={cn('h-3.5 w-3.5 transition-colors', showLeaderboard ? 'text-foreground' : 'text-muted-foreground')} />
-        </Button>
+        {onToggleLeaderboard && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-full"
+            onClick={onToggleLeaderboard}
+            title={showLeaderboard ? 'Masquer le classement' : 'Afficher le classement'}
+          >
+            <Trophy className={cn('h-3.5 w-3.5 transition-colors', showLeaderboard ? 'text-foreground' : 'text-muted-foreground')} />
+          </Button>
+        )}
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 rounded-full"
-          onClick={onToggleFullscreen}
-          title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
-        >
-          {isFullscreen
-            ? <Minimize2 className="h-3.5 w-3.5" />
-            : <Maximize2 className="h-3.5 w-3.5" />
-          }
-        </Button>
+        {onToggleFullscreen && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 rounded-full"
+            onClick={onToggleFullscreen}
+            title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+          >
+            {isFullscreen
+              ? <Minimize2 className="h-3.5 w-3.5" />
+              : <Maximize2 className="h-3.5 w-3.5" />
+            }
+          </Button>
+        )}
       </div>
     </div>
   );

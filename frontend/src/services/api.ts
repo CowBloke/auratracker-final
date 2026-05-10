@@ -1480,6 +1480,7 @@ export interface ClashActivity {
   type: string;
   title: string;
   detail: string;
+  message?: string;
   deltaMoney: number;
   deltaTrophies: number;
   relatedUserId: string | null;
@@ -1512,8 +1513,12 @@ export interface ClashTarget {
 export interface ClashLeaderboardEntry {
   rank: number;
   user: ClashPlayerSummary | null;
+  id?: string;
+  username?: string;
+  usernameColor?: string | null;
   trophies?: number;
   moneyInStorage?: number;
+  moneyStolen?: number;
   townHallLevel?: number;
   totalLoot?: number;
   averageDefense?: number | null;

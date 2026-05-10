@@ -5,7 +5,7 @@ import { TabsContent } from '@/components/ui/tabs';
 import { Loader2, Save, Search, Gamepad2, Coins, Sparkles, FilterX } from 'lucide-react';
 import { SPACING } from '@/lib/design-system';
 import { adminApi } from '@/services/api';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 import { GAME_TYPES } from '../adminPageModels';
 import { Badge } from '@/components/ui/badge';
 

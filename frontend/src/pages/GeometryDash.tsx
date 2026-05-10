@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { gamesApi } from '../services/api';
-import { PageShell } from '@/components/layout/page-shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -14,7 +13,7 @@ import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Play, RotateCcw, SlidersHorizontal, Users } from 'lucide-react';
-import { useHideGameLeaderboards } from '@/lib/game-preferences';
+import { useHideGameLeaderboards, useHideGameLeftInfo } from '@/lib/game-preferences';
 
 const CANVAS_WIDTH = 960;
 const CANVAS_HEIGHT = 540;
@@ -250,6 +249,7 @@ export default function GeometryDash() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const canPause = started && !gameOver;
 
   const fetchStats = useCallback(async () => {
     if (!user?.id) return;

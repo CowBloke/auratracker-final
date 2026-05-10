@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { PageShell } from '@/components/layout/page-shell';
 import { GameTopBar } from '@/components/game/GameTopBar';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
