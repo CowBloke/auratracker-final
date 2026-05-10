@@ -126,7 +126,7 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
       }
 
       const bankRate = bank.livretEpargneUnlocked ? BANK_LIVRET_DAILY_RATE : BANK_BASE_DAILY_RATE;
-      const bankRevenue = computeCompoundedDailyGain(bank.treasuryMoney, bankRate, creditedDays);
+      const bankRevenue = computeCompoundedDailyGain(Number(bank.treasuryMoney), bankRate, creditedDays);
 
       // Split bank revenue to shareholders first, then keep the remainder in treasury.
       const payoutPlan: Array<{ userId: string; amount: number }> = [];

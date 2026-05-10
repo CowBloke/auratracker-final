@@ -577,14 +577,14 @@ function serializeBusinessLoan(loan: any) {
 
 function computeBusinessSuggestedShareAmount(business: {
   startingCapital: number;
-  treasuryMoney: number;
+  treasuryMoney: number | bigint;
   monthlyRevenue: number;
   monthlyExpenses: number;
 }, sharePercent: number) {
   const safeSharePercent = Math.max(1, Math.min(95, sharePercent));
   const valuationBase = Math.max(
     1000,
-    business.startingCapital + business.treasuryMoney + Math.max(0, (business.monthlyRevenue - business.monthlyExpenses) * 6),
+    business.startingCapital + Number(business.treasuryMoney) + Math.max(0, (business.monthlyRevenue - business.monthlyExpenses) * 6),
   );
   return Math.max(500, Math.round((valuationBase * safeSharePercent) / 100));
 }
@@ -592,7 +592,7 @@ function computeBusinessSuggestedShareAmount(business: {
 export function getBusinessRevenueSnapshot(business: {
   id?: string;
   typeKey: string;
-  treasuryMoney: number;
+  treasuryMoney: number | bigint;
   monthlyRevenue: number;
   monthlyExpenses: number;
   customData?: string | null;
@@ -609,7 +609,7 @@ export function getBusinessRevenueSnapshot(business: {
     expenseMultiplier: 1,
   };
   const rawMonthlyRevenue = business.typeKey === 'bank'
-    ? Math.max(0, Math.floor(business.treasuryMoney * 0.04))
+    ? Math.max(0, Math.floor(Number(business.treasuryMoney) * 0.04))
     : business.typeKey === 'startup'
       ? startupProducts.reduce((total: number, product: any) => total + product.currentRevenue, 0)
       : business.typeKey === 'youtube'
@@ -2907,7 +2907,7 @@ export async function createBusinessShareProposal(
     throw new Error('INSUFFICIENT_MONEY');
   }
 
-  const suggestedAmount = computeBusinessSuggestedShareAmount(business, sharePercent);
+  const suggestedAmount = computeBusinessSuggestedShareAmount({ ...business, treasuryMoney: Number(business.treasuryMoney) }, sharePercent);
 
   const proposal = await prisma.$transaction(async (tx) => {
     await debitSharedMoney(tx, userId, amount);

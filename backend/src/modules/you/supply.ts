@@ -325,7 +325,7 @@ export async function fulfillActiveSupplyContracts(db: PrismaClient = prisma) {
     if (!inventory || inventory.quantity <= 0) continue;
 
     const affordable = contract.unitPrice > 0
-      ? Math.floor(contract.buyer.treasuryMoney / contract.unitPrice)
+      ? Math.floor(Number(contract.buyer.treasuryMoney) / contract.unitPrice)
       : remaining;
     const constructionMaterial = contract.constructionProject?.materials.find((material) => material.resourceType === contract.resourceType) ?? null;
     const constructionRemaining = constructionMaterial
@@ -493,7 +493,7 @@ export async function processSupplyLinks(db: PrismaClient = prisma) {
 
     const capacityLeft = Math.max(0, targetInventory.capacity - targetInventory.quantity);
     const logisticsUnitCost = Math.max(1, Math.floor(getResourceBasePrice(sourceInventory.business.typeKey, sourceInventory.resourceType) * LINK_LOGISTICS_PRICE_MULTIPLIER));
-    const affordableByLogistics = Math.max(0, Math.floor(sourceInventory.business.treasuryMoney / logisticsUnitCost));
+    const affordableByLogistics = Math.max(0, Math.floor(Number(sourceInventory.business.treasuryMoney) / logisticsUnitCost));
     const movedQuantity = Math.min(sourceInventory.quantity, transferable, capacityLeft, affordableByLogistics);
     if (movedQuantity <= 0) continue;
     const logisticsCost = movedQuantity * logisticsUnitCost;
