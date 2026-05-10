@@ -331,14 +331,6 @@ export default function Clans() {
   }, [clans, requestedClanId, selectedClanId, viewerClanId]);
 
   useEffect(() => {
-    if (!requestedClanId || !clans.some((clan) => clan.id === requestedClanId) || requestedClanId === selectedClanId) {
-      return;
-    }
-
-    setSelectedClanId(requestedClanId);
-  }, [clans, requestedClanId, selectedClanId]);
-
-  useEffect(() => {
     if (!selectedClanId || searchParams.get('clan') === selectedClanId) {
       return;
     }
