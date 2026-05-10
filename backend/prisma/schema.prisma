@@ -555,7 +555,7 @@ model Business {
   verified              Boolean   @default(false)
   hiring                Boolean   @default(true)
   startingCapital       Int
-  treasuryMoney         Int       @default(0)
+  treasuryMoney         BigInt    @default(0)
   monthlyRevenue        Int       @default(0)
   monthlyExpenses       Int       @default(0)
   satisfaction          Int       @default(70)
