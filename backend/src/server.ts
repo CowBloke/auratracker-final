@@ -51,6 +51,7 @@ import adsRoutes from './routes/ads.js';
 import messagesRoutes from './routes/messages.js';
 import justiceRoutes from './routes/justice.js';
 import braquageLegalRoutes, { drawBraquageLegalSession } from './routes/braquage-legal.js';
+import horseRaceRoutes from './routes/horse-race.js';
 import infoRoutes from './routes/info.js';
 import forumRoutes from './routes/forum.js';
 
@@ -181,6 +182,7 @@ app.use('/api/clash', clashRoutes);
 app.use('/api/polytrack', polytrackRoutes);
 app.use('/api/changelog', changelogRoutes);
 app.use('/api/braquage-legal', braquageLegalRoutes);
+app.use('/api/horse-race', horseRaceRoutes);
 app.use('/api/you', youRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/justice', justiceRoutes);

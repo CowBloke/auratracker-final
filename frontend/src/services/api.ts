@@ -4207,4 +4207,24 @@ export const forumApi = {
   deleteComment: (commentId: string) => api.delete(`/forum/comments/${commentId}`),
 };
 
+export type HorseRaceStateResponse = {
+  cycleIndex: number;
+  serverNow: number;
+  entries: Record<string, { count: number; amount: number }>;
+  totalBets: number;
+  totalAmount: number;
+  myBet: { horseId: string; amount: number; settled: boolean } | null;
+};
+
+export const horseRaceApi = {
+  placeBet: (data: { cycleIndex: number; horseId: string; amount: number }) =>
+    api.post<{ success: true; money: number }>('/horse-race/place-bet', data),
+  cancelBet: (data: { cycleIndex: number }) =>
+    api.post<{ success: true; money: number }>('/horse-race/cancel-bet', data),
+  settleBet: (data: { cycleIndex: number; payout: number }) =>
+    api.post<{ success: true; money: number; payout: number }>('/horse-race/settle-bet', data),
+  getState: (cycleIndex: number) =>
+    api.get<HorseRaceStateResponse>('/horse-race/state', { params: { cycle: cycleIndex } }),
+};
+
 export default api;

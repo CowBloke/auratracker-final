@@ -66,6 +66,7 @@ import HexGL from './pages/HexGL';
 import CrossyRoad from './pages/CrossyRoad';
 import BlockBlast from './pages/BlockBlast';
 import Hextris from './pages/Hextris';
+import HorseRace from './pages/HorseRace';
 import You from './pages/You';
 import Forum from './pages/Forum';
 import ForumPost from './pages/ForumPost';
@@ -276,6 +277,7 @@ function App() {
         <Route path="games/hexgl" element={<HexGL />} />
         <Route path="games/crossy-road" element={<CrossyRoad />} />
         <Route path="games/hextris" element={<Hextris />} />
+        <Route path="games/horse-race" element={<HorseRace />} />
         <Route path="polymarket" element={<Polymarket />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />

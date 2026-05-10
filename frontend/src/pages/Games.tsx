@@ -477,7 +477,21 @@ const games: Game[] = [
     releaseRank: 14,
     hasRewards: true,
   },
+  {
+    id: 'horse-race',
+    pageKey: 'game-horse-race',
+    name: 'Hippodrome',
+    description: 'Course de chevaux toutes les 5 minutes : paris, cotes en direct et commentaires en français.',
+    type: 'Chance',
+    emoji: '🏇',
+    image: '',
+    statsKeys: [],
+    releaseRank: 40,
+    hasRewards: false,
+  },
 ];
+
+const NEW_GAMES_SHOWCASE_IDS: string[] = ['horse-race'];
 
 const tabConfig: Array<{ id: GamesTab; label: string }> = [
   {
@@ -866,6 +880,9 @@ export default function Games() {
     if (gameId === 'echecs') {
       return '/games/echecs';
     }
+    if (gameId === 'horse-race') {
+      return '/games/horse-race';
+    }
     if (gameId === 'eaglercraft') {
       return '/games/eaglercraft';
     }
@@ -1090,8 +1107,29 @@ export default function Games() {
     ? games.find((game) => game.id === rewardDetailsGameId) ?? null
     : null;
 
+  const showcaseGames = useMemo(
+    () => NEW_GAMES_SHOWCASE_IDS
+      .map((id) => visibleGames.find((game) => game.id === id))
+      .filter((game): game is Game => Boolean(game)),
+    [visibleGames]
+  );
+
   return (
     <PageShell>
+      {showcaseGames.length > 0 && (
+        <section className="mb-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/90">Nouveaux jeux</h2>
+            <span className="rounded-full border border-emerald-300/60 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+              À découvrir
+            </span>
+            <div className="h-px flex-1 bg-border/70" />
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            {showcaseGames.map(renderGameCard)}
+          </div>
+        </section>
+      )}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as GamesTab)} className={SPACING.SECTION_SPACING}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList className="h-auto flex-wrap">
