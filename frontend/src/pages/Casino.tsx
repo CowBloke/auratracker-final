@@ -13,7 +13,7 @@ import { PageShell } from '@/components/layout/page-shell';
 import { GameTopBar } from '@/components/game/GameTopBar';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { startRouletteRound } from './casino/startRouletteRound';
+import { startRouletteRound } from './casino/start-roulette-round';
 import {
   BALL_DURATION,
   CHIP_VALUES,

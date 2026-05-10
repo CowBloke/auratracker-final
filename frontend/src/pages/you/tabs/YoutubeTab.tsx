@@ -5,21 +5,27 @@ import {
   Clock, 
   Play, 
   Filter,
-  Video as VideoIcon
+  Video as VideoIcon,
+  Upload,
+  Settings
 } from 'lucide-react';
-import { youApi, type YoutubeVideo } from '@/services/api';
+import { youApi, type YoutubeVideo, type YouBusiness } from '@/services/api';
 import { YoutubeVideoCard } from '../components/YoutubeVideoCard';
 import { YoutubeWatch } from '../components/YoutubeWatch';
+import { YoutubeOwnerDashboard } from '../components/YoutubeOwnerDashboard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export default function YoutubeTab() {
+export default function YoutubeTab({ ownedBusinesses, onReload }: { ownedBusinesses: YouBusiness[]; onReload: () => Promise<void> }) {
   const [videos, setVideos] = useState<YoutubeVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [watchVideoId, setWatchVideoId] = useState<string | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
+
+  const youtubeBusiness = ownedBusinesses.find(b => b.typeKey === 'youtube');
 
   useEffect(() => {
     fetchVideos();
@@ -72,14 +78,26 @@ export default function YoutubeTab() {
           <p className="text-sm text-muted-foreground">Découvre les contenus créés par les entrepreneurs de YOU.</p>
         </div>
 
-        <div className="relative w-full md:w-96 group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-          <Input 
-            placeholder="Rechercher une vidéo, un créateur..." 
-            className="pl-10 h-11 bg-muted/20 border-border/50 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="relative w-full md:w-96 group flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input 
+              placeholder="Rechercher une vidéo..." 
+              className="pl-10 h-11 bg-muted/20 border-border/50 focus:border-primary/50 focus:ring-primary/20 rounded-xl transition-all"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          
+          {youtubeBusiness && (
+            <Button 
+              className="h-11 rounded-xl px-5 gap-2 shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              onClick={() => setManageOpen(true)}
+            >
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Uploader</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -145,6 +163,15 @@ export default function YoutubeTab() {
             Tout afficher
           </Button>
         </div>
+      )}
+
+      {youtubeBusiness && (
+        <YoutubeOwnerDashboard 
+          open={manageOpen} 
+          onClose={() => setManageOpen(false)} 
+          business={youtubeBusiness} 
+          onSubmitted={onReload} 
+        />
       )}
     </div>
   );

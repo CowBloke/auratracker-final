@@ -103,7 +103,7 @@ export default function You() {
       {currentTab === 'finance' ? <FinanceTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'marche-actions' ? <ShareMarketTab data={data} userId={user.id} onReload={loadState} /> : null}
       {currentTab === 'publicites' ? <PublicitesTab ownedBusinesses={data.ownedBusinesses} onReload={loadState} /> : null}
-      {currentTab === 'youtube' ? <YoutubeTab /> : null}
+      {currentTab === 'youtube' ? <YoutubeTab ownedBusinesses={data.ownedBusinesses} onReload={loadState} /> : null}
     </div>
   );
 }
