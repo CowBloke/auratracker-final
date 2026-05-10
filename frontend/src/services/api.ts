@@ -3146,6 +3146,9 @@ export const adminApi = {
     api.put<{ settings: Record<string, string> }>('/admin/settings', { settings }),
   updateSetting: (key: string, value: string | number) =>
     api.put<{ setting: { key: string; value: string } }>(`/admin/settings/${key}`, { value }),
+  getGameLimits: () => api.get<{ limits: Record<string, string> }>('/admin/game-limits'),
+  updateGameLimits: (limits: Record<string, string | number>) =>
+    api.post<{ success: boolean }>('/admin/game-limits', { limits }),
   getTaxSettings: () =>
     api.get<{
       brackets: TaxBracket[];

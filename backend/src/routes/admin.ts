@@ -1,4 +1,4 @@
-﻿import { Router, Response } from 'express';
+import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 import { prisma, io } from '../server.js';
@@ -4044,10 +4044,10 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       }
     }
 
-    if ([DAILY_GAME_AURA_LIMIT_KEY, DAILY_GAME_MONEY_LIMIT_KEY].includes(key)) {
+    if ([DAILY_GAME_AURA_LIMIT_KEY, DAILY_GAME_MONEY_LIMIT_KEY].includes(key) || key.startsWith('game_limit_aura:') || key.startsWith('game_limit_money:')) {
       const numValue = Number.parseInt(normalizedValue, 10);
-      if (!Number.isInteger(numValue) || numValue < 0 || numValue > 100000) {
-        return res.status(400).json({ error: 'Daily game reward limits must be integers between 0 and 100000' });
+      if (!Number.isInteger(numValue) || numValue < 0 || numValue > 1000000) {
+        return res.status(400).json({ error: 'Reward limits must be integers between 0 and 1000000' });
       }
     }
 
@@ -4108,6 +4108,10 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       value: normalizedValue,
     });
 
+    if (key === DAILY_GAME_AURA_LIMIT_KEY || key === DAILY_GAME_MONEY_LIMIT_KEY || key.startsWith('game_limit_')) {
+      io.emit('game:limits-updated', { key, value: normalizedValue });
+    }
+
     // Clear cached settings in bombparty module if needed
     if (key.startsWith('bombparty_')) {
       try {
@@ -4127,6 +4131,71 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
   } catch (error) {
     console.error('Admin update setting error:', error);
     res.status(500).json({ error: 'Failed to update setting' });
+  }
+});
+
+// GET all game limits
+router.get('/game-limits', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const settings = await prisma.gameSettings.findMany({
+      where: {
+        OR: [
+          { key: DAILY_GAME_AURA_LIMIT_KEY },
+          { key: DAILY_GAME_MONEY_LIMIT_KEY },
+          { key: { startsWith: 'game_limit_aura:' } },
+          { key: { startsWith: 'game_limit_money:' } },
+        ],
+      },
+    });
+
+    const limits: Record<string, string> = {};
+    for (const s of settings) {
+      limits[s.key] = s.value;
+    }
+
+    res.json({ limits });
+  } catch (error) {
+    console.error('Admin fetch game limits error:', error);
+    res.status(500).json({ error: 'Failed to fetch game limits' });
+  }
+});
+
+// POST update multiple game limits
+router.post('/game-limits', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { limits } = req.body;
+    if (!limits || typeof limits !== 'object') {
+      return res.status(400).json({ error: 'Limits object is required' });
+    }
+
+    const updates = Object.entries(limits).map(([key, value]) => {
+      const stringValue = String(value);
+      
+      // Basic validation
+      const numValue = parseInt(stringValue, 10);
+      if (!Number.isInteger(numValue) || numValue < 0) {
+         throw new Error(`Invalid limit for ${key}: must be a non-negative integer`);
+      }
+
+      return prisma.gameSettings.upsert({
+        where: { key },
+        create: { key, value: stringValue },
+        update: { value: stringValue },
+      });
+    });
+
+    await Promise.all(updates);
+    
+    logAdmin('game_limits_bulk_update', req.user!.id, undefined, undefined, undefined, {
+      count: updates.length
+    });
+
+    io.emit('game:limits-updated', { bulk: true });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Admin update game limits error:', error);
+    res.status(400).json({ error: error.message || 'Failed to update game limits' });
   }
 });
 
@@ -4219,10 +4288,10 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
         }
       }
 
-      if ([DAILY_GAME_AURA_LIMIT_KEY, DAILY_GAME_MONEY_LIMIT_KEY].includes(key)) {
+      if ([DAILY_GAME_AURA_LIMIT_KEY, DAILY_GAME_MONEY_LIMIT_KEY].includes(key) || key.startsWith('game_limit_aura:') || key.startsWith('game_limit_money:')) {
         const numValue = Number.parseInt(normalizedValue, 10);
-        if (!Number.isInteger(numValue) || numValue < 0 || numValue > 100000) {
-          errors.push(`${key}: Daily game reward limits must be integers between 0 and 100000`);
+        if (!Number.isInteger(numValue) || numValue < 0 || numValue > 1000000) {
+          errors.push(`${key}: Reward limits must be integers between 0 and 1000000`);
           continue;
         }
       }

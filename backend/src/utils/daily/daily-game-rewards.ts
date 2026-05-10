@@ -1,4 +1,4 @@
-﻿import type { Prisma, PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { getNextParisMidnight, getParisDayKey } from './daily-aura.js';
 
 export const DAILY_GAME_AURA_LIMIT_SETTING_KEY = 'daily_game_aura_limit';
@@ -35,27 +35,31 @@ export type DailyGameRewardApplication = {
 };
 
 const DAILY_GAME_MONEY_TRACKER_KEY_PREFIX = 'daily_game_money_tracker';
+const DAILY_GAME_AURA_TRACKER_KEY_PREFIX = 'daily_game_aura_tracker';
 
-const buildDailyGameMoneyTrackerKey = (userId: string, gameType: string) => {
+const buildDailyGameTrackerKey = (userId: string, gameType: string, type: 'aura' | 'money') => {
   const normalizedGameType = gameType.trim().toLowerCase() || 'unknown';
-  return `${DAILY_GAME_MONEY_TRACKER_KEY_PREFIX}:${userId}:${normalizedGameType}`;
+  const prefix = type === 'aura' ? DAILY_GAME_AURA_TRACKER_KEY_PREFIX : DAILY_GAME_MONEY_TRACKER_KEY_PREFIX;
+  return `${prefix}:${userId}:${normalizedGameType}`;
 };
 
-const parseDailyGameMoneyTrackerValue = (value: string | null): { dayKey: string; moneyGiven: number } | null => {
+const parseDailyGameTrackerValue = (value: string | null): { dayKey: string; amountGiven: number } | null => {
   if (!value) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(value) as { dayKey?: unknown; moneyGiven?: unknown };
+    const parsed = JSON.parse(value) as { dayKey?: unknown; amountGiven?: unknown; moneyGiven?: unknown; auraGiven?: unknown };
     if (typeof parsed.dayKey !== 'string') {
       return null;
     }
 
-    const parsedMoney = Number.parseInt(String(parsed.moneyGiven ?? 0), 10);
+    // Support both old "moneyGiven" and new "amountGiven" keys for backward compatibility during migration
+    const rawAmount = parsed.amountGiven ?? parsed.moneyGiven ?? parsed.auraGiven ?? 0;
+    const parsedAmount = Number.parseInt(String(rawAmount), 10);
     return {
       dayKey: parsed.dayKey,
-      moneyGiven: Number.isInteger(parsedMoney) && parsedMoney >= 0 ? parsedMoney : 0,
+      amountGiven: Number.isInteger(parsedAmount) && parsedAmount >= 0 ? parsedAmount : 0,
     };
   } catch {
     return null;
@@ -89,6 +93,31 @@ export const getDailyGameRewardLimits = async (client: DailyGameRewardDbClient) 
     aura: Number.isInteger(parsedAura) && parsedAura >= 0 ? parsedAura : DEFAULT_DAILY_GAME_AURA_LIMIT,
     money: Number.isInteger(parsedMoney) && parsedMoney >= 0 ? parsedMoney : DEFAULT_DAILY_GAME_MONEY_LIMIT,
   };
+};
+
+/**
+ * Resolves the limit for a specific game and reward type.
+ * Priority: 
+ * 1. Specific game setting (e.g., game_limit_aura:doodle_jump)
+ * 2. Global default setting (e.g., daily_game_aura_limit)
+ * 3. Constant fallback
+ */
+export const resolveGameLimit = async (client: DailyGameRewardDbClient, gameType: string, type: 'aura' | 'money'): Promise<number> => {
+  const specificKey = `game_limit_${type}:${gameType}`;
+  const specificSetting = await client.gameSettings.findUnique({
+    where: { key: specificKey },
+    select: { value: true },
+  });
+
+  if (specificSetting?.value) {
+    const parsed = Number.parseInt(specificSetting.value, 10);
+    if (Number.isInteger(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+
+  const globalLimits = await getDailyGameRewardLimits(client);
+  return globalLimits[type];
 };
 
 export const syncUserDailyGameRewardState = async (client: DailyGameRewardDbClient, userId: string): Promise<DailyGameRewardState | null> => {
@@ -171,49 +200,80 @@ export const applyDailyGameRewardCaps = async (
     const requestedMoney = normalizeRewardAmount(reward.money);
     const now = new Date();
     const todayKey = getParisDayKey(now);
-    const trackerKey = buildDailyGameMoneyTrackerKey(userId, gameType);
-    const trackerSetting = await tx.gameSettings.findUnique({
-      where: { key: trackerKey },
-      select: { value: true },
-    });
-    const tracker = parseDailyGameMoneyTrackerValue(trackerSetting?.value ?? null);
-    const moneyGivenForGameToday = tracker?.dayKey === todayKey ? tracker.moneyGiven : 0;
-    const remainingMoneyForGame = Math.max(0, state.dailyGameMoneyLimit - moneyGivenForGameToday);
-    const appliedAura = Math.min(requestedAura, state.remainingAura);
+
+    // Resolve per-game limits
+    const auraLimitForGame = await resolveGameLimit(tx, gameType, 'aura');
+    const moneyLimitForGame = await resolveGameLimit(tx, gameType, 'money');
+
+    // Trackers for per-game progress today
+    const auraTrackerKey = buildDailyGameTrackerKey(userId, gameType, 'aura');
+    const moneyTrackerKey = buildDailyGameTrackerKey(userId, gameType, 'money');
+
+    const [auraTrackerSetting, moneyTrackerSetting] = await Promise.all([
+      tx.gameSettings.findUnique({ where: { key: auraTrackerKey }, select: { value: true } }),
+      tx.gameSettings.findUnique({ where: { key: moneyTrackerKey }, select: { value: true } }),
+    ]);
+
+    const auraTracker = parseDailyGameTrackerValue(auraTrackerSetting?.value ?? null);
+    const moneyTracker = parseDailyGameTrackerValue(moneyTrackerSetting?.value ?? null);
+
+    const auraGivenForGameToday = auraTracker?.dayKey === todayKey ? auraTracker.amountGiven : 0;
+    const moneyGivenForGameToday = moneyTracker?.dayKey === todayKey ? moneyTracker.amountGiven : 0;
+
+    const remainingAuraForGame = Math.max(0, auraLimitForGame - auraGivenForGameToday);
+    const remainingMoneyForGame = Math.max(0, moneyLimitForGame - moneyGivenForGameToday);
+
+    const appliedAura = Math.min(requestedAura, remainingAuraForGame);
     const appliedMoney = Math.min(requestedMoney, remainingMoneyForGame);
 
     if (appliedAura > 0 || appliedMoney > 0) {
       await Promise.all([
         tx.user.update({
-        where: { id: userId },
-        data: {
-          ...(appliedAura > 0
-            ? {
-                aura: { increment: BigInt(appliedAura) },
-                dailyGameAuraGiven: { increment: appliedAura },
-              }
-            : {}),
-          ...(appliedMoney > 0
-            ? {
-                money: { increment: appliedMoney },
-                dailyGameMoneyGiven: { increment: appliedMoney },
-              }
-            : {}),
-        },
-      }),
-        tx.gameSettings.upsert({
-          where: { key: trackerKey },
+          where: { id: userId },
+          data: {
+            ...(appliedAura > 0
+              ? {
+                  aura: { increment: BigInt(appliedAura) },
+                  dailyGameAuraGiven: { increment: appliedAura },
+                }
+              : {}),
+            ...(appliedMoney > 0
+              ? {
+                  money: { increment: appliedMoney },
+                  dailyGameMoneyGiven: { increment: appliedMoney },
+                }
+              : {}),
+          },
+        }),
+        appliedAura > 0 && tx.gameSettings.upsert({
+          where: { key: auraTrackerKey },
           create: {
-            key: trackerKey,
+            key: auraTrackerKey,
             value: JSON.stringify({
               dayKey: todayKey,
-              moneyGiven: appliedMoney,
+              amountGiven: appliedAura,
             }),
           },
           update: {
             value: JSON.stringify({
               dayKey: todayKey,
-              moneyGiven: moneyGivenForGameToday + appliedMoney,
+              amountGiven: auraGivenForGameToday + appliedAura,
+            }),
+          },
+        }),
+        appliedMoney > 0 && tx.gameSettings.upsert({
+          where: { key: moneyTrackerKey },
+          create: {
+            key: moneyTrackerKey,
+            value: JSON.stringify({
+              dayKey: todayKey,
+              amountGiven: appliedMoney,
+            }),
+          },
+          update: {
+            value: JSON.stringify({
+              dayKey: todayKey,
+              amountGiven: moneyGivenForGameToday + appliedMoney,
             }),
           },
         }),
@@ -224,7 +284,7 @@ export const applyDailyGameRewardCaps = async (
       userId,
       appliedAura,
       appliedMoney,
-      remainingAura: Math.max(0, state.remainingAura - appliedAura),
+      remainingAura: Math.max(0, remainingAuraForGame - appliedAura),
       remainingMoney: Math.max(0, remainingMoneyForGame - appliedMoney),
       nextResetAt: state.nextResetAt,
     };
