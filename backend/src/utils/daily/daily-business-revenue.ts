@@ -139,7 +139,7 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
           data: {
             businessId: business.id,
             type: 'DAILY_REVENUE',
-            amount: remainingRevenue,
+            amount: BigInt(remainingRevenue),
             label: totalShareholderPayout > 0
               ? `Revenu quotidien de ${business.name} (actionnaires: ${totalShareholderPayout.toLocaleString('fr-FR')})`
               : `Revenu quotidien de ${business.name}`,

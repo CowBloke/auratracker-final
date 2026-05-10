@@ -217,7 +217,7 @@ async function processBusinessInputDemand(db: PrismaClient = prisma) {
         data: {
           businessId: business.id,
           type: 'INPUT_CONSUMPTION',
-          amount: 0,
+          amount: BigInt(0),
           label: consumed.length > 0
             ? `Intrants consommes: ${consumed.map((entry) => `${entry.quantity} ${entry.resourceType}`).join(', ')}`
             : 'Intrants manquants: revenus projetes sous pression',
@@ -383,7 +383,7 @@ export async function fulfillActiveSupplyContracts(db: PrismaClient = prisma) {
         data: {
           businessId: contract.supplierBusinessId,
           type: 'SUPPLY_DELIVERY',
-          amount: payment,
+          amount: BigInt(payment),
           label: `${deliverNow} ${contract.resourceType} livres a ${contract.buyer.name}`,
           actorId: contract.requesterId,
         },
@@ -392,7 +392,7 @@ export async function fulfillActiveSupplyContracts(db: PrismaClient = prisma) {
         data: {
           businessId: contract.buyerBusinessId,
           type: 'SUPPLY_PURCHASE',
-          amount: -payment,
+          amount: BigInt(-payment),
           label: `${deliverNow} ${contract.resourceType} recus de ${contract.supplier.name}`,
           actorId: contract.requesterId,
         },
@@ -515,7 +515,7 @@ export async function processSupplyLinks(db: PrismaClient = prisma) {
         data: {
           businessId: link.sourceBusinessId,
           type: 'SUPPLY_LOGISTICS',
-          amount: -logisticsCost,
+          amount: BigInt(-logisticsCost),
           label: `Logistique ${movedQuantity} ${sourceInventory.resourceType} vers stock interne`,
           actorId: null,
         },
@@ -644,16 +644,16 @@ function serializeSupplyLink(link: any) {
 }
 
 function serializeLoanNode(loan: any) {
-  const totalOwed = Math.ceil(loan.amount * (1 + (loan.interestRate ?? 0) / 100));
+  const totalOwed = Math.ceil(Number(loan.amount) * (1 + (loan.interestRate ?? 0) / 100));
   return {
     id: loan.id,
     businessId: loan.businessId,
     kind: 'loan',
     title: `Pret ${loan.borrower?.username ?? 'joueur'}`,
     status: loan.status,
-    amount: loan.amount,
+    amount: Number(loan.amount),
     totalOwed,
-    repaidAmount: loan.repaidAmount ?? 0,
+    repaidAmount: Number(loan.repaidAmount ?? 0n),
     interestRate: loan.interestRate,
     collateralAura: loan.collateralAura ?? 0,
     collateralAuraHeld: loan.collateralAuraHeld ?? 0,
@@ -731,8 +731,8 @@ function buildSupplyBusinessFinancials(business: any, contracts: any[], marketOf
   const activeDebt = loans
     .filter((loan: any) => loan.status === 'ACTIVE')
     .reduce((sum: number, loan: any) => {
-      const totalOwed = Math.round(loan.amount * (1 + (loan.interestRate ?? 0) / 100));
-      return sum + Math.max(0, totalOwed - (loan.repaidAmount ?? 0));
+      const totalOwed = Math.round(Number(loan.amount) * (1 + (loan.interestRate ?? 0) / 100));
+      return sum + Math.max(0, totalOwed - Number(loan.repaidAmount ?? 0n));
     }, 0);
   const stockValueGlobal = inventories.reduce((sum: number, inventory: any) =>
     sum + inventory.quantity * getGlobalMarketUnitPrice(business.typeKey, inventory.resourceType), 0);
@@ -993,7 +993,7 @@ export async function getSupplyState(userId: string) {
       })),
       transferHistory: business.transferHistory.map((entry) => ({
         id: entry.id,
-        amount: entry.amount,
+        amount: Number(entry.amount),
         fee: entry.fee,
         feeRate: entry.feeRate,
         sender: entry.sender,

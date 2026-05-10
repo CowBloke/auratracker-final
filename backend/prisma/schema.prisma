@@ -879,14 +879,14 @@ model BusinessLoan {
   id           String    @id @default(uuid())
   businessId   String
   borrowerId   String
-  amount       Int
+  amount       BigInt
   termMonths   Int
   interestRate Float
   motivationMessage String?
   collateralAura Int       @default(0)
   collateralAuraHeld Int   @default(0)
   status       String    @default("PENDING")
-  repaidAmount Int       @default(0)
+  repaidAmount BigInt    @default(0)
   decidedAt    DateTime?
   collateralClaimedAt DateTime?
   createdAt    DateTime  @default(now())
@@ -903,7 +903,7 @@ model BusinessInvestment {
   id                String   @id @default(uuid())
   businessId        String
   investorId        String
-  amount            Int
+  amount            BigInt
   riskLevel         String
   expectedReturnMin Int
   expectedReturnMax Int
@@ -940,8 +940,8 @@ model BusinessShareProposal {
   investorId      String
   ownerId         String
   sharePercent    Float
-  amount          Int
-  suggestedAmount Int
+  amount          BigInt
+  suggestedAmount BigInt
   message         String?
   status          String    @default("PENDING")
   createdAt       DateTime  @default(now())
@@ -983,7 +983,7 @@ model BusinessBuyoutOffer {
   businessId String
   bidderId   String
   ownerId    String
-  amount     Int
+  amount     BigInt
   message    String?
   status     String    @default("PENDING")
   createdAt  DateTime  @default(now())
@@ -1003,7 +1003,7 @@ model BusinessTransferTransaction {
   businessId  String
   senderId    String
   recipientId String
-  amount      Int
+  amount      BigInt
   fee         Int
   feeRate     Float
   createdAt   DateTime @default(now())
@@ -1796,7 +1796,7 @@ model CryptoTransaction {
   coinKey     String
   type        String
   coinAmount  Float
-  moneyAmount Int
+  moneyAmount BigInt
   price       Float
   fee         Int
   createdAt   DateTime @default(now())
@@ -2729,7 +2729,7 @@ model BusinessTransaction {
   id         String   @id @default(uuid())
   businessId String
   type       String
-  amount     Int
+  amount     BigInt
   label      String
   actorId    String?
   createdAt  DateTime @default(now())

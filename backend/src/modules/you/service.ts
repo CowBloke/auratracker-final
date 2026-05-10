@@ -486,7 +486,7 @@ function serializeBuyoutOffer(offer: any, viewerId: string) {
   return {
     id: offer.id,
     businessId: offer.businessId,
-    amount: offer.amount,
+    amount: Number(offer.amount),
     message: offer.message,
     status: offer.status,
     createdAt: offer.createdAt.toISOString(),
@@ -500,7 +500,7 @@ function serializeBuyoutOffer(offer: any, viewerId: string) {
 function serializeTransferHistoryEntry(entry: any) {
   return {
     id: entry.id,
-    amount: entry.amount,
+    amount: Number(entry.amount),
     fee: entry.fee,
     feeRate: entry.feeRate,
     createdAt: entry.createdAt.toISOString(),
@@ -526,8 +526,8 @@ function serializeShareProposal(proposal: any, viewerId: string) {
     id: proposal.id,
     businessId: proposal.businessId,
     sharePercent: proposal.sharePercent,
-    amount: proposal.amount,
-    suggestedAmount: proposal.suggestedAmount,
+    amount: Number(proposal.amount),
+    suggestedAmount: Number(proposal.suggestedAmount),
     message: proposal.message ?? null,
     status: proposal.status,
     createdAt: proposal.createdAt.toISOString(),
@@ -560,14 +560,14 @@ function serializeShareMarketListing(listing: any, viewerId: string) {
 function serializeBusinessLoan(loan: any) {
   return {
     id: loan.id,
-    amount: loan.amount,
+    amount: Number(loan.amount),
     termDays: loan.termMonths,
     interestRate: loan.interestRate,
     motivationMessage: loan.motivationMessage ?? null,
     collateralAura: loan.collateralAura ?? 0,
     collateralAuraHeld: loan.collateralAuraHeld ?? 0,
     status: loan.status,
-    repaidAmount: loan.repaidAmount ?? 0,
+    repaidAmount: Number(loan.repaidAmount ?? 0n),
     decidedAt: loan.decidedAt ? loan.decidedAt.toISOString() : null,
     collateralClaimedAt: loan.collateralClaimedAt ? loan.collateralClaimedAt.toISOString() : null,
     createdAt: loan.createdAt.toISOString(),
@@ -695,8 +695,8 @@ function getBusinessFinancialSnapshot(business: any, monthlyRevenue: number, mon
   const activeDebt = (business.loans ?? [])
     .filter((loan: any) => loan.status === 'ACTIVE')
     .reduce((sum: number, loan: any) => {
-      const totalOwed = Math.round(loan.amount * (1 + (loan.interestRate ?? 0) / 100));
-      return sum + Math.max(0, totalOwed - (loan.repaidAmount ?? 0));
+      const totalOwed = Math.round(Number(loan.amount) * (1 + (loan.interestRate ?? 0) / 100));
+      return sum + Math.max(0, totalOwed - Number(loan.repaidAmount ?? 0n));
     }, 0);
   const inputCoverage = getBusinessInputCoverage(business.typeKey, inventories);
   const event = getBusinessFinancialEvent(business.id, business.typeKey);
@@ -936,7 +936,7 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     recentLoans: business.loans.map((loan: any) => serializeBusinessLoan(loan)),
     recentInvestments: business.investments.map((investment: any) => ({
       id: investment.id,
-      amount: investment.amount,
+      amount: Number(investment.amount),
       riskLevel: investment.riskLevel,
       expectedReturnMin: investment.expectedReturnMin,
       expectedReturnMax: investment.expectedReturnMax,
@@ -956,7 +956,7 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
     revenueHistory: (business.transactions ?? [])
       .filter((tx: any) => tx.type === 'DAILY_REVENUE')
       .reverse()
-      .map((tx: any) => tx.amount),
+      .map((tx: any) => Number(tx.amount)),
     pendingBuyoutOffers: business.buyoutOffers
       .filter((offer: any) => offer.status === 'PENDING')
       .map((offer: any) => serializeBuyoutOffer(offer, viewerId)),
@@ -2061,7 +2061,7 @@ async function handleLoanAction(
     data: {
       businessId: business.id,
       borrowerId: userId,
-      amount,
+      amount: BigInt(amount),
       termMonths: durationDays,
       interestRate,
       motivationMessage: motivationMessage || null,
@@ -2234,7 +2234,7 @@ export async function runTransferBusinessAction(userId: string, businessId: stri
         businessId: business.id,
         senderId: userId,
         recipientId,
-        amount,
+        amount: BigInt(amount),
         fee,
         feeRate,
       },
@@ -2476,7 +2476,7 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
       loanId: loan.id,
       borrowerId: loan.borrowerId,
       borrowerName: loan.borrower.username,
-      amount: loan.amount,
+      amount: Number(loan.amount),
       decision: 'reject',
     });
 
@@ -2561,7 +2561,7 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
     emitSharedBalanceUpdates(prisma, userId),
   ]);
 
-  await logBusinessTransaction(loan.businessId, 'LOAN_ISSUE', -loan.amount, `Pret accorde a ${loan.borrower.username}`, loan.borrowerId);
+  await logBusinessTransaction(loan.businessId, 'LOAN_ISSUE', Number(-loan.amount), `Pret accorde a ${loan.borrower.username}`, loan.borrowerId);
 
   await Promise.allSettled([
     createNotification({
@@ -2586,13 +2586,13 @@ export async function respondToBusinessLoan(userId: string, loanId: string, deci
     loanId: loan.id,
     borrowerId: loan.borrowerId,
     borrowerName: loan.borrower.username,
-    amount: loan.amount,
+    amount: Number(loan.amount),
     collateralAura: loan.collateralAura ?? 0,
     decision: 'accept',
   });
 
   // Finance XP pour l'emprunteur: proportionnel au montant du prêt (plus gros prêt = plus d'XP, évite le spam de petits prêts)
-  void grantSkillXp(loan.borrowerId, 'finance', Math.min(15, Math.max(3, Math.floor(loan.amount / 1000))));
+  void grantSkillXp(loan.borrowerId, 'finance', Math.min(15, Math.max(3, Math.floor(Number(loan.amount) / 1000))));
   // Affaires XP pour la banque: gérer des prêts = activité bancaire
   void grantSkillXp(userId, 'affaires', 3);
 
@@ -2873,7 +2873,7 @@ async function handleInvestAction(userId: string, business: any, input: { amount
       data: {
         businessId: business.id,
         investorId: investor.id,
-        amount,
+        amount: BigInt(amount),
         riskLevel,
         expectedReturnMin: riskRange.min,
         expectedReturnMax: riskRange.max,
@@ -2996,8 +2996,8 @@ export async function createBusinessShareProposal(
         investorId: userId,
         ownerId: business.ownerId,
         sharePercent,
-        amount,
-        suggestedAmount,
+        amount: BigInt(amount),
+        suggestedAmount: BigInt(suggestedAmount),
         message: input.message?.trim() ? input.message.trim() : null,
       },
       include: {
@@ -3407,7 +3407,7 @@ export async function respondToBusinessShareProposal(userId: string, proposalId:
       proposalId,
       decision,
       sharePercent: proposal.sharePercent,
-      amount: proposal.amount,
+      amount: Number(proposal.amount),
     });
 
     return { id: proposal.id, status: 'REJECTED', decidedAt: decidedAt.toISOString() };
@@ -3443,18 +3443,18 @@ export async function respondToBusinessShareProposal(userId: string, proposalId:
       },
       update: {
         sharePercent: { increment: proposal.sharePercent },
-        investedAmount: { increment: proposal.amount },
+        investedAmount: { increment: Number(proposal.amount) },
         averagePrice: existingShareholder
-          ? ((existingShareholder.averagePrice * existingShareholder.sharePercent) + proposal.amount)
+          ? ((existingShareholder.averagePrice * existingShareholder.sharePercent) + Number(proposal.amount))
             / Math.max(0.01, existingShareholder.sharePercent + proposal.sharePercent)
-          : proposal.amount / proposal.sharePercent,
+          : Number(proposal.amount) / proposal.sharePercent,
       },
       create: {
         businessId: proposal.businessId,
         userId: proposal.investorId,
         sharePercent: proposal.sharePercent,
-        investedAmount: proposal.amount,
-        averagePrice: proposal.amount / proposal.sharePercent,
+        investedAmount: Number(proposal.amount),
+        averagePrice: Number(proposal.amount) / proposal.sharePercent,
       },
     });
 
@@ -3527,7 +3527,7 @@ export async function respondToBusinessShareProposal(userId: string, proposalId:
     proposalId,
     decision,
     sharePercent: proposal.sharePercent,
-    amount: proposal.amount,
+    amount: Number(proposal.amount),
     investorId: proposal.investorId,
     investorName: proposal.investor.username,
     founderChanged: shouldTransferFounderRole,
@@ -3841,7 +3841,7 @@ export async function createBusinessShareBuybackOffer(
         businessId,
         bidderId: userId,
         ownerId: targetShareholderId,
-        amount,
+        amount: BigInt(amount),
         message: input.message?.trim() || null,
       },
       include: {
@@ -3937,7 +3937,7 @@ export async function createBusinessBuyoutOffer(userId: string, businessId: stri
         businessId,
         bidderId: userId,
         ownerId: business.ownerId,
-        amount,
+        amount: BigInt(amount),
         message: input.message?.trim() || null,
       },
       include: {
@@ -4057,7 +4057,7 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
       offerId,
       bidderId: offer.bidderId,
       bidderName: offer.bidder.username,
-      amount: offer.amount,
+      amount: Number(offer.amount),
       decision: 'reject',
     });
 
@@ -4130,7 +4130,7 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
       offerId,
       bidderId: offer.bidderId,
       bidderName: offer.bidder.username,
-      amount: offer.amount,
+      amount: Number(offer.amount),
       decision,
       soldSharePercent: shareholder.sharePercent,
     });
@@ -4179,7 +4179,7 @@ export async function respondToBusinessBuyoutOffer(userId: string, offerId: stri
   logYouAdmin('business_buyout_offer_respond', userId, offer.owner.username, offer.business.id, offer.business.name, {
     offerId,
     bidderId: offer.bidderId,
-    amount: offer.amount,
+    amount: Number(offer.amount),
     decision,
   });
 
@@ -4268,7 +4268,7 @@ export async function cancelBusinessShareProposal(userId: string, proposalId: st
 
   logYouAdmin('business_share_proposal_cancel', userId, undefined, proposal.businessId, proposal.business.name, {
     proposalId,
-    amount: proposal.amount,
+    amount: Number(proposal.amount),
     ownerId: proposal.ownerId,
   });
 
@@ -4319,7 +4319,7 @@ export async function cancelBusinessBuyoutOffer(userId: string, offerId: string)
 
   logYouAdmin('business_buyout_offer_cancel', userId, undefined, offer.businessId, offerId, {
     offerId,
-    amount: offer.amount,
+    amount: Number(offer.amount),
     ownerId: offer.ownerId,
   });
 
@@ -5416,7 +5416,7 @@ async function logBusinessTransaction(
   actorId?: string,
 ) {
   await prisma.businessTransaction.create({
-    data: { businessId, type, amount, label, actorId: actorId ?? null },
+    data: { businessId, type, amount: BigInt(Math.round(amount)), label, actorId: actorId ?? null },
   });
 }
 
@@ -5436,7 +5436,7 @@ export async function getBusinessTransactions(userId: string, businessId: string
   return transactions.map((tx) => ({
     id: tx.id,
     type: tx.type,
-    amount: tx.amount,
+    amount: Number(tx.amount),
     label: tx.label,
     actorId: tx.actorId,
     createdAt: tx.createdAt.toISOString(),
@@ -5480,8 +5480,8 @@ export async function repayLoanByBorrower(userId: string, loanId: string, percen
   if (loan.borrowerId !== userId) throw new Error('BUSINESS_LOAN_REVIEW_FORBIDDEN');
   if (loan.status !== 'ACTIVE') throw new Error('LOAN_NOT_ACTIVE');
 
-  const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
-  const remaining = totalOwed - (loan.repaidAmount ?? 0);
+  const totalOwed = Math.round(Number(loan.amount) * (1 + loan.interestRate / 100));
+  const remaining = totalOwed - Number(loan.repaidAmount ?? 0n);
   const collateralAuraHeld = loan.collateralAuraHeld ?? 0;
 
   if (remaining <= 0) throw new Error('LOAN_ALREADY_REPAID');
@@ -5492,7 +5492,7 @@ export async function repayLoanByBorrower(userId: string, loanId: string, percen
 
   if (actualAmount <= 0) throw new Error('BORROWER_INSUFFICIENT_MONEY');
 
-  const newRepaidTotal = (loan.repaidAmount ?? 0) + actualAmount;
+  const newRepaidTotal = Number(loan.repaidAmount ?? 0n) + actualAmount;
   const isFullyRepaid = newRepaidTotal >= totalOwed;
 
   await prisma.$transaction(async (tx) => {
@@ -5505,7 +5505,7 @@ export async function repayLoanByBorrower(userId: string, loanId: string, percen
       where: { id: loanId },
       data: {
         status: isFullyRepaid ? 'REPAID' : 'ACTIVE',
-        repaidAmount: newRepaidTotal,
+        repaidAmount: BigInt(newRepaidTotal),
         ...(isFullyRepaid ? { collateralAuraHeld: 0 } : {}),
       },
     });
@@ -5574,8 +5574,8 @@ export async function repayLoan(userId: string, loanId: string) {
   if (!(await isBusinessManager(loan.businessId, userId, loan.business.ownerId))) throw new Error('BUSINESS_LOAN_REVIEW_FORBIDDEN');
   if (loan.status !== 'ACTIVE') throw new Error('LOAN_NOT_ACTIVE');
 
-  const totalOwed = Math.round(loan.amount * (1 + loan.interestRate / 100));
-  const remaining = totalOwed - (loan.repaidAmount ?? 0);
+  const totalOwed = Math.round(Number(loan.amount) * (1 + loan.interestRate / 100));
+  const remaining = totalOwed - Number(loan.repaidAmount ?? 0n);
   const collateralAuraHeld = loan.collateralAuraHeld ?? 0;
   const dueDate = getLoanDueDateFromEntry(loan);
 
@@ -6648,8 +6648,8 @@ export async function sendLoanRepaymentReminder(userId: string, loanId: string) 
     throw new Error('BUSINESS_EDIT_FORBIDDEN');
   }
 
-  const totalOwed = Math.ceil(loan.amount * (1 + (loan.interestRate ?? 0) / 100));
-  const remaining = Math.max(0, totalOwed - (loan.repaidAmount ?? 0));
+  const totalOwed = Math.ceil(Number(loan.amount) * (1 + (loan.interestRate ?? 0) / 100));
+  const remaining = Math.max(0, totalOwed - Number(loan.repaidAmount ?? 0n));
 
   await createNotification({
     userId: loan.borrower.id,

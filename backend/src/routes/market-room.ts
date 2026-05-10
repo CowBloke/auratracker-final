@@ -460,7 +460,7 @@ router.post('/:coinKey/buy', authMiddleware, async (req: AuthRequest, res: Respo
           coinKey: config.key,
           type: 'BUY',
           coinAmount: coinsReceived,
-          moneyAmount,
+          moneyAmount: BigInt(moneyAmount),
           price: tradePrice,
           fee,
         },
@@ -563,7 +563,7 @@ router.post('/:coinKey/sell', authMiddleware, async (req: AuthRequest, res: Resp
           coinKey: config.key,
           type: 'SELL',
           coinAmount,
-          moneyAmount: netAmount,
+          moneyAmount: BigInt(Math.round(netAmount)),
           price: tradePrice,
           fee,
         },
@@ -628,7 +628,7 @@ router.get('/:coinKey/transactions/me', authMiddleware, async (req: AuthRequest,
       },
     });
 
-    res.json({ transactions });
+    res.json({ transactions: transactions.map((tx) => ({ ...tx, moneyAmount: Number(tx.moneyAmount) })) });
   } catch (error) {
     console.error('Market room my transactions error:', error);
     res.status(500).json({ error: 'Failed to get transactions' });
@@ -655,7 +655,7 @@ router.get('/:coinKey/transactions/all', authMiddleware, async (req: AuthRequest
       },
     });
 
-    res.json({ transactions });
+    res.json({ transactions: transactions.map((tx) => ({ ...tx, moneyAmount: Number(tx.moneyAmount) })) });
   } catch (error) {
     console.error('Market room all transactions error:', error);
     res.status(500).json({ error: 'Failed to get transactions' });
