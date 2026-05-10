@@ -252,7 +252,7 @@ export function getSupplierReliability(contracts: Array<{ status: string; totalQ
 }
 
 export function getBusinessCreditScore(input: {
-  treasuryMoney: number;
+  treasuryMoney: number | bigint;
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
@@ -260,9 +260,11 @@ export function getBusinessCreditScore(input: {
   reliabilityPercent: number;
   runwayDays: number | null;
 }) {
+  // Coerce BigInt to number to avoid mixing types
+  const treasuryNum = typeof input.treasuryMoney === 'bigint' ? Number(input.treasuryMoney) : input.treasuryMoney;
   const monthlyNet = input.monthlyRevenue - input.monthlyExpenses;
   const runwayScore = input.runwayDays == null ? 80 : Math.max(0, Math.min(110, input.runwayDays * 8));
-  const liquidityScore = Math.max(0, Math.min(120, input.treasuryMoney / 90));
+  const liquidityScore = Math.max(0, Math.min(120, treasuryNum / 90));
   const marginScore = Math.max(-80, Math.min(120, monthlyNet / 18));
   const debtPenalty = Math.max(0, Math.min(160, input.activeDebt / 80));
   const raw = 420
@@ -275,7 +277,9 @@ export function getBusinessCreditScore(input: {
   return Math.max(300, Math.min(850, Math.round(raw)));
 }
 
-export function getRunwayDays(treasuryMoney: number, dailyBurn: number) {
+export function getRunwayDays(treasuryMoney: number | bigint, dailyBurn: number) {
+  // Coerce BigInt to number to avoid mixing types
+  const treasuryNum = typeof treasuryMoney === 'bigint' ? Number(treasuryMoney) : treasuryMoney;
   if (dailyBurn <= 0) return null;
-  return Math.max(0, Math.floor(treasuryMoney / dailyBurn));
+  return Math.max(0, Math.floor(treasuryNum / dailyBurn));
 }
