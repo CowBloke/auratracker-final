@@ -4243,24 +4243,200 @@ export const forumApi = {
   deleteComment: (commentId: string) => api.delete(`/forum/comments/${commentId}`),
 };
 
+export type HorseRaceLineupEntry = {
+  lane: number;
+  betKey: string;
+  isComputer: boolean;
+  horseId: string | null;
+  name: string;
+  bodyColor: string;
+  pattern: string;
+  patternColor: string;
+  stableId: string | null;
+  stableName: string | null;
+  clanName: string | null;
+  ageYears: number | null;
+  experience: number | null;
+  stats: { speed: number; stamina: number; consistency: number } | null;
+  odds: number | null;
+  finishPos: number | null;
+  finishTimeMs: number | null;
+  prize: number;
+  wasDoped: boolean;
+  wasCaught: boolean;
+};
+
+export type HorseRaceMyBet = {
+  id: string;
+  horseId: string;
+  amount: number;
+  payout: number;
+  settled: boolean;
+};
+
 export type HorseRaceStateResponse = {
   cycleIndex: number;
   serverNow: number;
+  phase: 'betting' | 'racing' | 'results' | 'past' | 'future';
+  lineup: HorseRaceLineupEntry[];
   entries: Record<string, { count: number; amount: number }>;
   totalBets: number;
   totalAmount: number;
-  myBet: { horseId: string; amount: number; settled: boolean } | null;
+  myBets: HorseRaceMyBet[];
+};
+
+export type StableHorseDto = {
+  id: string;
+  name: string;
+  bodyColor: string;
+  pattern: string;
+  patternColor: string;
+  geneSpeed: number;
+  geneStamina: number;
+  geneConsistency: number;
+  trainSpeed: number;
+  trainStamina: number;
+  trainConsistency: number;
+  birthCycle: number;
+  ageYears: number;
+  experience: number;
+  races: number;
+  wins: number;
+  podiums: number;
+  earnings: number;
+  pendingEntries: number;
+  dopedForCycle: number | null;
+  parent1Id: string | null;
+  parent2Id: string | null;
+};
+
+export type StableMeDto = {
+  stable: {
+    id: string;
+    clanId: string;
+    name: string;
+    description: string | null;
+    logoUrl: string | null;
+    money: number;
+    totalWins: number;
+    totalPodiums: number;
+    totalRaces: number;
+    reputation: number;
+    horses: StableHorseDto[];
+  } | null;
+  clanId: string | null;
+  canManage: boolean;
+  hasClan: boolean;
+  unlockedPatterns?: string[];
+};
+
+export type PublicStableDto = {
+  id: string;
+  name: string;
+  description: string | null;
+  logoUrl: string | null;
+  clanName: string;
+  totalWins: number;
+  totalPodiums: number;
+  totalRaces: number;
+  reputation: number;
+  horseCount: number;
+  topHorses: Array<{
+    id: string;
+    name: string;
+    bodyColor: string;
+    pattern: string;
+    patternColor: string;
+    wins: number;
+    races: number;
+    ageYears: number;
+  }>;
+};
+
+export type PatternDto = {
+  key: string;
+  label: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  unlockWins: number | null;
+  unlocked: boolean;
+};
+
+export type HorseRaceConfig = {
+  CYCLE_MS: number;
+  RACE_MS: number;
+  RESULTS_MS: number;
+  BETTING_MS: number;
+  ENTRANTS: number;
+  HOUSE_EDGE: number;
+  MAX_BETS_PER_USER: number;
+  MAX_BET_TOTAL: number;
+  STABLE_CREATE_COST: number;
+  HORSE_BUY_COST: number;
+  HORSE_TRAIN_COST: number;
+  HORSE_TRAIN_INC: number;
+  HORSE_TRAIN_CAP: number;
+  BREED_COST: number;
+  CUSTOMIZE_COST: number;
+  DOPE_COST: number;
+  DOPE_CATCH_PCT: number;
+  DOPE_SPEED_BOOST: number;
+  DOPE_STAMINA_BOOST: number;
+  CYCLES_PER_YEAR: number;
+  MIN_AGE_TO_RACE: number;
+  MIN_AGE_TO_BREED: number;
+  DECLINE_START_AGE: number;
+  PRIZE_BASE_1ST: number;
+  PRIZE_BASE_2ND: number;
+  PRIZE_BASE_3RD: number;
+  PRIZE_POOL_1ST_PCT: number;
+  PRIZE_POOL_2ND_PCT: number;
+  PRIZE_POOL_3RD_PCT: number;
 };
 
 export const horseRaceApi = {
+  getState: (cycleIndex?: number) =>
+    api.get<HorseRaceStateResponse>('/horse-race/state', {
+      params: cycleIndex !== undefined ? { cycle: cycleIndex } : {},
+    }),
+  getConfig: () => api.get<HorseRaceConfig>('/horse-race/config'),
+
+  getMyStable: () => api.get<StableMeDto>('/horse-race/me/stable'),
+  createStable: (data: { name: string }) =>
+    api.post<{ success: true; stable: unknown }>('/horse-race/stable', data),
+  updateStable: (data: { name?: string; description?: string; logoUrl?: string | null }) =>
+    api.patch<{ success: true }>('/horse-race/stable', data),
+
+  listStables: () => api.get<{ stables: PublicStableDto[] }>('/horse-race/stables'),
+
+  buyHorse: (data: { name: string }) =>
+    api.post<{ success: true; horse: unknown }>('/horse-race/horses/buy', data),
+  updateHorse: (
+    id: string,
+    data: { name?: string; bodyColor?: string; pattern?: string; patternColor?: string },
+  ) => api.patch<{ success: true }>(`/horse-race/horses/${id}`, data),
+  trainHorse: (id: string, stat: 'speed' | 'stamina' | 'consistency') =>
+    api.post<{ success: true }>(`/horse-race/horses/${id}/train`, { stat }),
+  registerHorse: (id: string, count: number) =>
+    api.post<{ success: true; pendingEntries: number }>(
+      `/horse-race/horses/${id}/register`,
+      { count },
+    ),
+  dopeHorse: (id: string) =>
+    api.post<{ success: true; dopedForCycle: number }>(`/horse-race/horses/${id}/dope`),
+  retireHorse: (id: string) =>
+    api.delete<{ success: true; refund: number }>(`/horse-race/horses/${id}`),
+  breed: (data: { horse1Id: string; horse2Id: string; foalName: string }) =>
+    api.post<{ success: true; foal: unknown }>('/horse-race/breed', data),
+
   placeBet: (data: { cycleIndex: number; horseId: string; amount: number }) =>
-    api.post<{ success: true; money: number }>('/horse-race/place-bet', data),
-  cancelBet: (data: { cycleIndex: number }) =>
-    api.post<{ success: true; money: number }>('/horse-race/cancel-bet', data),
-  settleBet: (data: { cycleIndex: number; payout: number }) =>
-    api.post<{ success: true; money: number; payout: number }>('/horse-race/settle-bet', data),
-  getState: (cycleIndex: number) =>
-    api.get<HorseRaceStateResponse>('/horse-race/state', { params: { cycle: cycleIndex } }),
+    api.post<{ success: true }>('/horse-race/bets', data),
+  cancelBet: (betId: string) =>
+    api.delete<{ success: true }>(`/horse-race/bets/${betId}`),
+
+  getPatterns: () =>
+    api.get<{ patterns: PatternDto[]; totalWins: number }>('/horse-race/patterns'),
+  unlockPattern: (pattern: string) =>
+    api.post<{ success: true }>('/horse-race/patterns/unlock', { pattern }),
 };
 
 export default api;

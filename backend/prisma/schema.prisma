@@ -236,6 +236,9 @@ model User {
   youtubeComments YoutubeVideoComment[]
   youtubeLikes    YoutubeVideoLike[]
 
+  // Horse Racing
+  horseRaceBets HorseRaceBet[]
+
   @@index([aura])
   @@index([money])
   @@index([referredById])
@@ -1215,6 +1218,7 @@ model Clan {
   eventQuestProgresses  ClanEventQuestProgress[]
   eventMiniGameAttempts ClanEventMiniGameAttempt[]
   eventActivities       ClanEventActivity[]
+  stable                Stable?
 
   @@index([isPublic])
   @@index([createdAt])
@@ -3127,4 +3131,139 @@ model ForumCommentVote {
   comment   ForumComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@id([userId, commentId])
+}
+
+// ============================================================
+// Horse Racing — Stables, Horses, Races, Bets
+// ============================================================
+
+model Stable {
+  id          String   @id @default(uuid())
+  clanId      String   @unique
+  name        String
+  description String?
+  logoUrl     String?
+  money       Int      @default(0)
+  totalWins   Int      @default(0)
+  totalPodiums Int     @default(0)
+  totalRaces  Int      @default(0)
+  reputation  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clan            Clan                  @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  horses          Horse[]
+  patternUnlocks  StablePatternUnlock[]
+
+  @@index([reputation])
+  @@index([totalWins])
+}
+
+model Horse {
+  id              String   @id @default(uuid())
+  stableId        String
+  name            String
+  bodyColor       String   @default("#a16207")
+  pattern         String   @default("solid")
+  patternColor    String   @default("#f8fafc")
+
+  geneSpeed       Float
+  geneStamina     Float
+  geneConsistency Float
+
+  trainSpeed       Float   @default(0)
+  trainStamina     Float   @default(0)
+  trainConsistency Float   @default(0)
+
+  birthCycle      Int
+  experience      Int      @default(0)
+
+  races           Int      @default(0)
+  wins            Int      @default(0)
+  podiums         Int      @default(0)
+  earnings        Int      @default(0)
+
+  pendingEntries  Int      @default(0)
+  dopedForCycle   Int?
+  isConfiscated   Boolean  @default(false)
+  isRetired       Boolean  @default(false)
+
+  parent1Id       String?
+  parent2Id       String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  stable      Stable           @relation(fields: [stableId], references: [id], onDelete: Cascade)
+  parent1     Horse?           @relation("HorseParent1", fields: [parent1Id], references: [id], onDelete: SetNull)
+  parent2     Horse?           @relation("HorseParent2", fields: [parent2Id], references: [id], onDelete: SetNull)
+  childrenAs1 Horse[]          @relation("HorseParent1")
+  childrenAs2 Horse[]          @relation("HorseParent2")
+  raceEntries HorseRaceEntry[]
+  raceBets    HorseRaceBet[]
+
+  @@index([stableId])
+  @@index([isConfiscated, isRetired])
+}
+
+model HorseRaceEntry {
+  id                 String  @id @default(uuid())
+  cycleIndex         Int
+  horseId            String?
+  isComputer         Boolean @default(false)
+  computerName       String?
+  computerColor      String?
+  computerPattern    String  @default("solid")
+  computerPatternColor String @default("#f8fafc")
+  lane               Int
+  finishPos          Int?
+  finishTimeMs       Int?
+  prize              Int     @default(0)
+  expGained          Int     @default(0)
+  wasDoped           Boolean @default(false)
+  wasCaught          Boolean @default(false)
+  registeredByUserId String?
+
+  horse Horse? @relation(fields: [horseId], references: [id], onDelete: Cascade)
+
+  @@unique([cycleIndex, lane])
+  @@index([cycleIndex])
+  @@index([horseId])
+}
+
+model HorseRaceBet {
+  id         String   @id @default(uuid())
+  userId     String
+  cycleIndex Int
+  horseId    String
+  amount     Int
+  payout     Int      @default(0)
+  settled    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  horse Horse @relation(fields: [horseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, cycleIndex])
+  @@index([cycleIndex])
+  @@index([horseId])
+}
+
+model StablePatternUnlock {
+  id         String   @id @default(uuid())
+  stableId   String
+  pattern    String
+  unlockedAt DateTime @default(now())
+
+  stable Stable @relation(fields: [stableId], references: [id], onDelete: Cascade)
+
+  @@unique([stableId, pattern])
+}
+
+model HorseRaceResolution {
+  cycleIndex Int      @id
+  resolvedAt DateTime @default(now())
+  winnerName String
+  totalBets  Int      @default(0)
+  totalPool  Int      @default(0)
 }

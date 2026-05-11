@@ -46,6 +46,34 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-05-11-horse-stables',
+    date: '2026-05-11',
+    title: 'Hippodrome — écuries, élevage et paris multiples',
+    summary: 'Refonte complète du mode course. Chaque clan peut créer une écurie, acheter et entraîner ses propres chevaux, les inscrire en file, doper (à ses risques), customiser et croiser. Paris jusqu\'à 3 chevaux différents via un modal dédié.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-05-11-horse-stables-1', text: '**Hippodrome · Écuries de clan** — Chaque clan peut créer une écurie (50 000 €) et y acheter des chevaux (25 000 € pièce). Tous les membres du clan partagent la gestion.' },
+          { id: '2026-05-11-horse-stables-2', text: '**Hippodrome · Inscriptions en file** — Inscrivez un cheval pour 1, 3, 5 ou 10 courses à la suite. Le round-robin garantit qu\'une écurie ne monopolise pas les lignes. L\'IA remplit le reste.' },
+          { id: '2026-05-11-horse-stables-3', text: '**Hippodrome · Âge, expérience et gènes** — Chaque cheval a un âge (poulain → adulte → vétéran), de l\'expérience, et des stats divisées en gènes innés + entraînement (+0.1 par séance, plafond +1.5).' },
+          { id: '2026-05-11-horse-stables-4', text: '**Hippodrome · Élevage** — Croisez deux chevaux de votre écurie (50 000 €, min. 2 ans chacun) pour obtenir un poulain dont les gènes mélangent les parents avec un peu d\'aléatoire.' },
+          { id: '2026-05-11-horse-stables-5', text: '**Hippodrome · Dopage à vos risques** — Doper un cheval (5 000 €) lui donne un gros boost mais 33 % de chance d\'être attrapé — confiscation immédiate notifiée par modal.' },
+          { id: '2026-05-11-horse-stables-6', text: '**Hippodrome · Customisation et patterns** — Changez la robe et le motif de chaque cheval (10 000 €). 5 motifs rares à débloquer via les victoires de votre écurie : rayé, éclaboussé, givré, flamme, royal.' },
+          { id: '2026-05-11-horse-stables-7', text: '**Hippodrome · Récompenses propriétaire** — Les 3 premiers du podium rapportent prizemoney (15k/8k/4k + part des paris) et aura (100/50/25) à celui qui a inscrit le cheval.' },
+          { id: '2026-05-11-horse-stables-8', text: '**Hippodrome · Explorez les écuries** — Parcourez les écuries des autres clans, leur réputation, victoires et top chevaux.' },
+        ],
+      },
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-05-11-horse-stables-9', text: '**Hippodrome · Paris multiples** — Placez jusqu\'à 3 paris sur des chevaux différents par course via un modal dédié plus clair.' },
+          { id: '2026-05-11-horse-stables-10', text: '**Hippodrome · Nouvelle silhouette** — Le cheval SVG est redessiné avec corps, crinière, queue, sabots, et un calque de motifs personnalisables.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-04-30-supply-ux',
     date: '2026-04-30',
     title: 'Supply — canvas dépôts, chantier et navigation',
