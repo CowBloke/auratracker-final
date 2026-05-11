@@ -24,14 +24,14 @@ const MIN_BET = 1;
 const MAX_PAYOUT_MULTIPLIER = 50;
 const KEEP_BETS_CYCLES = 24;
 
-const STABLE_CREATE_COST = 50_000;
-const HORSE_BUY_COST = 25_000;
-const HORSE_TRAIN_COST = 5_000;
+const STABLE_CREATE_COST = 25_000;
+const HORSE_BUY_COST = 12_500;
+const HORSE_TRAIN_COST = 2_500;
 const HORSE_TRAIN_INC = 0.1;
 const HORSE_TRAIN_CAP = 1.5;
-const BREED_COST = 50_000;
-const CUSTOMIZE_COST = 10_000;
-const DOPE_COST = 5_000;
+const BREED_COST = 25_000;
+const CUSTOMIZE_COST = 5_000;
+const DOPE_COST = 2_500;
 const DOPE_CATCH_PCT = 0.33;
 const DOPE_SPEED_BOOST = 1.5;
 const DOPE_STAMINA_BOOST = 1.0;
@@ -1514,6 +1514,92 @@ router.post('/patterns/unlock', authMiddleware, async (req: AuthRequest, res: Re
     create: { stableId: info.stable.id, pattern },
   });
   return res.json({ success: true });
+});
+
+// Recent races (last N resolved cycles) + top horses leaderboard.
+router.get('/standings', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+  const limitRaces = Math.min(20, Math.max(1, Number(req.query.races) || 8));
+  const limitHorses = Math.min(30, Math.max(1, Number(req.query.horses) || 10));
+  const cycleIndex = currentCycleIndex();
+
+  const recentResolutions = await prisma.horseRaceResolution.findMany({
+    orderBy: { cycleIndex: 'desc' },
+    take: limitRaces,
+  });
+  const cycleIds = recentResolutions.map((r) => r.cycleIndex);
+  const entries = cycleIds.length
+    ? await prisma.horseRaceEntry.findMany({
+        where: { cycleIndex: { in: cycleIds }, finishPos: { in: [1, 2, 3] } },
+        include: {
+          horse: {
+            include: { stable: { select: { name: true, clan: { select: { name: true } } } } },
+          },
+        },
+        orderBy: [{ cycleIndex: 'desc' }, { finishPos: 'asc' }],
+      })
+    : [];
+
+  const recentRaces = recentResolutions.map((r) => {
+    const podium = entries
+      .filter((e) => e.cycleIndex === r.cycleIndex)
+      .sort((a, b) => (a.finishPos ?? 99) - (b.finishPos ?? 99))
+      .map((e) => ({
+        position: e.finishPos ?? 0,
+        name: e.isComputer || !e.horse ? e.computerName : e.horse.name,
+        bodyColor: e.isComputer || !e.horse ? e.computerColor : e.horse.bodyColor,
+        pattern: e.isComputer || !e.horse ? e.computerPattern : e.horse.pattern,
+        patternColor: e.isComputer || !e.horse ? e.computerPatternColor : e.horse.patternColor,
+        stableName: e.horse?.stable?.name ?? null,
+        clanName: e.horse?.stable?.clan?.name ?? null,
+        finishTimeMs: e.finishTimeMs ?? 0,
+        prize: e.prize,
+        wasCaught: e.wasCaught,
+        wasDoped: e.wasDoped,
+        isComputer: e.isComputer || !e.horse,
+      }));
+    return {
+      cycleIndex: r.cycleIndex,
+      winnerName: r.winnerName,
+      totalBets: r.totalBets,
+      totalPool: r.totalPool,
+      podium,
+    };
+  });
+
+  const topHorses = await prisma.horse.findMany({
+    where: { isConfiscated: false, isRetired: false, races: { gt: 0 } },
+    orderBy: [{ wins: 'desc' }, { podiums: 'desc' }, { earnings: 'desc' }],
+    take: limitHorses,
+    include: { stable: { select: { name: true, clan: { select: { name: true } } } } },
+  });
+
+  res.json({
+    recentRaces,
+    topHorses: topHorses.map((h) => {
+      const age = ageYears(h.birthCycle, cycleIndex);
+      return {
+        id: h.id,
+        name: h.name,
+        bodyColor: h.bodyColor,
+        pattern: h.pattern,
+        patternColor: h.patternColor,
+        stableName: h.stable?.name ?? null,
+        clanName: h.stable?.clan?.name ?? null,
+        ageYears: age,
+        races: h.races,
+        wins: h.wins,
+        podiums: h.podiums,
+        earnings: h.earnings,
+        experience: h.experience,
+        stats: {
+          speed: effectiveStat(h.geneSpeed, h.trainSpeed, age),
+          stamina: effectiveStat(h.geneStamina, h.trainStamina, age),
+          consistency: effectiveStat(h.geneConsistency, h.trainConsistency, age),
+        },
+      };
+    }),
+  });
 });
 
 // Constants exposed for the frontend.

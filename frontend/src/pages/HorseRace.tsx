@@ -13,6 +13,8 @@ import {
   ShieldAlert,
   Building2,
   Users,
+  Medal,
+  History,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,6 +41,9 @@ import {
   type PublicStableDto,
   type PatternDto,
   type HorseRaceConfig,
+  type HorseRaceStandingsResponse,
+  type RecentRaceDto,
+  type TopHorseDto,
 } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -53,14 +58,14 @@ const DEFAULT_CONFIG: HorseRaceConfig = {
   HOUSE_EDGE: 0.10,
   MAX_BETS_PER_USER: 3,
   MAX_BET_TOTAL: 100_000,
-  STABLE_CREATE_COST: 50_000,
-  HORSE_BUY_COST: 25_000,
-  HORSE_TRAIN_COST: 5_000,
+  STABLE_CREATE_COST: 25_000,
+  HORSE_BUY_COST: 12_500,
+  HORSE_TRAIN_COST: 2_500,
   HORSE_TRAIN_INC: 0.1,
   HORSE_TRAIN_CAP: 1.5,
-  BREED_COST: 50_000,
-  CUSTOMIZE_COST: 10_000,
-  DOPE_COST: 5_000,
+  BREED_COST: 25_000,
+  CUSTOMIZE_COST: 5_000,
+  DOPE_COST: 2_500,
   DOPE_CATCH_PCT: 0.33,
   DOPE_SPEED_BOOST: 1.5,
   DOPE_STAMINA_BOOST: 1.0,
@@ -1431,6 +1436,145 @@ function ExploreStablesModal({
   );
 }
 
+// ---------- Standings (palmarès) modal ----------
+function StatChip({ label, value, max = 12 }: { label: string; value: number; max?: number }) {
+  const pct = Math.max(0, Math.min(100, (value / max) * 100));
+  return (
+    <div className="flex items-center gap-1">
+      <span className="w-12 text-[9px] uppercase text-muted-foreground">{label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted/40">
+        <div className="h-full bg-amber-400" style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-7 text-right font-mono text-[10px] tabular-nums">{value.toFixed(1)}</span>
+    </div>
+  );
+}
+
+function StandingsModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [data, setData] = useState<HorseRaceStandingsResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    horseRaceApi.getStandings()
+      .then((r) => setData(r.data))
+      .catch(() => toast.error('Impossible de charger le palmarès.'))
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Medal className="h-5 w-5 text-amber-300" /> Palmarès
+          </DialogTitle>
+          <DialogDescription>
+            Derniers résultats et meilleurs chevaux.
+          </DialogDescription>
+        </DialogHeader>
+        <Tabs defaultValue="recent">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="recent"><History className="mr-1 h-3 w-3" /> Derniers résultats</TabsTrigger>
+            <TabsTrigger value="top"><Trophy className="mr-1 h-3 w-3" /> Top chevaux</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="recent" className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
+            {loading && <p className="py-4 text-center text-sm text-muted-foreground">Chargement...</p>}
+            {!loading && data && data.recentRaces.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">Aucune course résolue.</p>
+            )}
+            {data?.recentRaces.map((r: RecentRaceDto) => (
+              <div key={r.cycleIndex} className="rounded-lg border border-border/40 bg-card/50 p-2.5">
+                <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <span className="font-semibold">Course #{r.cycleIndex}</span>
+                  <span className="text-muted-foreground">
+                    {r.totalBets} paris · {formatMoney(r.totalPool)} pool
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {r.podium.map((p) => (
+                    <div key={p.position} className="flex items-center gap-2 rounded-md border border-border/30 bg-muted/20 px-2 py-1 text-xs">
+                      <span className={cn(
+                        'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold',
+                        p.position === 1 && 'bg-amber-400 text-amber-950',
+                        p.position === 2 && 'bg-slate-300 text-slate-900',
+                        p.position === 3 && 'bg-orange-400 text-orange-950',
+                      )}>
+                        {p.position}
+                      </span>
+                      <div className="h-7 w-10 shrink-0">
+                        <HorseSilhouette
+                          bodyColor={p.bodyColor ?? '#94a3b8'}
+                          pattern={p.pattern}
+                          patternColor={p.patternColor}
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{p.name ?? 'Cheval'}</p>
+                        <p className="truncate text-[10px] text-muted-foreground">
+                          {p.isComputer ? 'Cheval IA' : `${p.stableName ?? '—'}${p.clanName ? ' · ' + p.clanName : ''}`}
+                        </p>
+                      </div>
+                      <div className="text-right text-[10px]">
+                        <p className="font-mono tabular-nums">{(p.finishTimeMs / 1000).toFixed(2)}s</p>
+                        {p.prize > 0 && <p className="text-emerald-300">+{formatMoney(p.prize)}</p>}
+                      </div>
+                      {p.wasCaught && <span className="rounded bg-rose-500/30 px-1 py-0.5 text-[9px] text-rose-200">DQ</span>}
+                      {p.wasDoped && !p.wasCaught && <span className="rounded bg-amber-500/30 px-1 py-0.5 text-[9px] text-amber-200">D</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="top" className="max-h-[65vh] space-y-1.5 overflow-y-auto pr-1">
+            {loading && <p className="py-4 text-center text-sm text-muted-foreground">Chargement...</p>}
+            {!loading && data && data.topHorses.length === 0 && (
+              <p className="py-4 text-center text-sm text-muted-foreground">Aucun cheval qualifié.</p>
+            )}
+            {data?.topHorses.map((h: TopHorseDto, i: number) => (
+              <div key={h.id} className="flex items-center gap-2 rounded-lg border border-border/40 bg-card/50 p-2">
+                <span className="w-5 text-center font-mono text-sm text-muted-foreground">#{i + 1}</span>
+                <div className="h-12 w-16 shrink-0">
+                  <HorseSilhouette bodyColor={h.bodyColor} pattern={h.pattern} patternColor={h.patternColor} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-semibold">{h.name}</p>
+                    <span className="rounded bg-muted/40 px-1 py-0.5 text-[9px] text-muted-foreground">{h.ageYears.toFixed(1)} ans</span>
+                  </div>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {h.stableName ?? '—'}{h.clanName ? ' · ' + h.clanName : ''} · {h.experience} XP
+                  </p>
+                  <div className="mt-1 space-y-0.5">
+                    <StatChip label="VIT" value={h.stats.speed} />
+                    <StatChip label="END" value={h.stats.stamina} />
+                    <StatChip label="REG" value={h.stats.consistency} />
+                  </div>
+                </div>
+                <div className="shrink-0 text-right text-[11px]">
+                  <p className="font-semibold text-amber-200">{h.wins} V</p>
+                  <p className="text-muted-foreground">{h.podiums} P · {h.races} C</p>
+                  <p className="text-emerald-300">{formatMoney(h.earnings)}</p>
+                </div>
+              </div>
+            ))}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ---------- Confiscation notification modal ----------
 function ConfiscationModal({
   message,
@@ -1472,6 +1616,7 @@ export default function HorseRace() {
   const [stableModalOpen, setStableModalOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
   const [createStableOpen, setCreateStableOpen] = useState(false);
+  const [standingsOpen, setStandingsOpen] = useState(false);
   const [confiscationMsg, setConfiscationMsg] = useState<string | null>(null);
   const seenConfiscatedHorses = useRef<Set<string>>(new Set());
   const lastResolvedCycle = useRef<number>(-1);
@@ -1635,6 +1780,9 @@ export default function HorseRace() {
               <Wallet className="h-3 w-3" />
               <span className="tabular-nums font-semibold">{formatMoney(userMoney)}</span>
             </div>
+            <Button size="sm" variant="outline" className="h-7" onClick={() => setStandingsOpen(true)}>
+              <Medal className="mr-1 h-3 w-3" /> Palmarès
+            </Button>
             <Button size="sm" variant="outline" className="h-7" onClick={() => setExploreOpen(true)}>
               <Users className="mr-1 h-3 w-3" /> Écuries
             </Button>
@@ -1833,6 +1981,8 @@ export default function HorseRace() {
       />
 
       <ExploreStablesModal open={exploreOpen} onClose={() => setExploreOpen(false)} />
+
+      <StandingsModal open={standingsOpen} onClose={() => setStandingsOpen(false)} />
 
       <CreateStableModal
         open={createStableOpen}

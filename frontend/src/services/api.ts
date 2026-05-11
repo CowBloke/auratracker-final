@@ -4361,6 +4361,51 @@ export type PatternDto = {
   unlocked: boolean;
 };
 
+export type RecentRacePodiumEntry = {
+  position: number;
+  name: string | null;
+  bodyColor: string | null;
+  pattern: string;
+  patternColor: string;
+  stableName: string | null;
+  clanName: string | null;
+  finishTimeMs: number;
+  prize: number;
+  wasCaught: boolean;
+  wasDoped: boolean;
+  isComputer: boolean;
+};
+
+export type RecentRaceDto = {
+  cycleIndex: number;
+  winnerName: string | null;
+  totalBets: number;
+  totalPool: number;
+  podium: RecentRacePodiumEntry[];
+};
+
+export type TopHorseDto = {
+  id: string;
+  name: string;
+  bodyColor: string;
+  pattern: string;
+  patternColor: string;
+  stableName: string | null;
+  clanName: string | null;
+  ageYears: number;
+  races: number;
+  wins: number;
+  podiums: number;
+  earnings: number;
+  experience: number;
+  stats: { speed: number; stamina: number; consistency: number };
+};
+
+export type HorseRaceStandingsResponse = {
+  recentRaces: RecentRaceDto[];
+  topHorses: TopHorseDto[];
+};
+
 export type HorseRaceConfig = {
   CYCLE_MS: number;
   RACE_MS: number;
@@ -4407,6 +4452,7 @@ export const horseRaceApi = {
     api.patch<{ success: true }>('/horse-race/stable', data),
 
   listStables: () => api.get<{ stables: PublicStableDto[] }>('/horse-race/stables'),
+  getStandings: () => api.get<HorseRaceStandingsResponse>('/horse-race/standings'),
 
   buyHorse: (data: { name: string }) =>
     api.post<{ success: true; horse: unknown }>('/horse-race/horses/buy', data),

@@ -3200,7 +3200,6 @@ model Horse {
   childrenAs1 Horse[]          @relation("HorseParent1")
   childrenAs2 Horse[]          @relation("HorseParent2")
   raceEntries HorseRaceEntry[]
-  raceBets    HorseRaceBet[]
 
   @@index([stableId])
   @@index([isConfiscated, isRetired])
@@ -3241,8 +3240,7 @@ model HorseRaceBet {
   settled    Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  horse Horse @relation(fields: [horseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, cycleIndex])
   @@index([cycleIndex])
