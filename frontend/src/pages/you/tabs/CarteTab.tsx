@@ -5,10 +5,12 @@ import {
   BellRing,
   Building2,
   ChevronDown,
+  ChevronUp,
   ExternalLink,
   Globe,
   Map as MapIcon,
   MapPin,
+  Star,
   TrendingDown,
   TrendingUp,
   Users,
@@ -210,6 +212,7 @@ function BusinessInfoPanel({
   onViewDetail?: () => void;
   placementMode: boolean;
 }) {
+  const [showReviews, setShowReviews] = useState(false);
   const canPlace = business.ownerId === userId;
   const isPlaced = business.mapX != null && business.mapY != null;
   const pinColor = getBusinessPinColor(business.typeKey);
@@ -240,10 +243,15 @@ function BusinessInfoPanel({
           <p className="truncate text-sm font-semibold">{business.name}</p>
           <p className="truncate text-xs text-muted-foreground">@{business.owner.username}</p>
           {business.avgRating != null && business.ratingCount > 0 ? (
-            <p className="text-xs">
+            <button
+              type="button"
+              onClick={() => setShowReviews((v) => !v)}
+              className="flex items-center gap-1 text-xs hover:opacity-80"
+            >
               <span className="text-amber-500">★ {business.avgRating.toFixed(1)}</span>
-              <span className="ml-1 text-muted-foreground">{business.ratingCount} avis</span>
-            </p>
+              <span className="text-muted-foreground">{business.ratingCount} avis</span>
+              {showReviews ? <ChevronUp className="size-3 text-muted-foreground" /> : <ChevronDown className="size-3 text-muted-foreground" />}
+            </button>
           ) : (
             <p className="text-[11px] text-muted-foreground/60">Pas encore noté</p>
           )}
@@ -259,6 +267,25 @@ function BusinessInfoPanel({
       {business.description?.trim() && (
         <div className="border-t border-border px-4 py-2.5">
           <p className="break-words whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">{business.description}</p>
+        </div>
+      )}
+
+      {/* Reviews */}
+      {showReviews && (business.ratings ?? []).length > 0 && (
+        <div className="border-t border-border px-3 py-2 space-y-2 max-h-48 overflow-y-auto">
+          {(business.ratings ?? []).map((r) => (
+            <div key={r.id} className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-foreground">{r.user.username}</span>
+                <div className="flex items-center gap-0.5">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className={cn('size-3', i <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-amber-400/20')} />
+                  ))}
+                </div>
+              </div>
+              {r.comment && <p className="mt-1 text-[11px] text-muted-foreground">{r.comment}</p>}
+            </div>
+          ))}
         </div>
       )}
 

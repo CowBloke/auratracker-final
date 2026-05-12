@@ -860,7 +860,7 @@ function serializeBusiness(business: any, viewerId: string, options?: { viewerIs
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
   const viewerIsAdmin = Boolean(options?.viewerIsAdmin);
   const ownerKind = isBusinessManagerSync(business, viewerId) ? 'you' : 'player';
-  const treasuryMoney = business.treasuryMoney;
+  const treasuryMoney = Number(business.treasuryMoney);
   const businessRevenue = getBusinessRevenueSnapshot(business);
   const startupProducts = businessRevenue.startupProducts;
   const monthlyRevenue = businessRevenue.monthlyRevenue;

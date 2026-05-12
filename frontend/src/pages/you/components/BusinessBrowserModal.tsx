@@ -372,23 +372,45 @@ function FinanceModal({ open, onClose, business }: { open: boolean; onClose: () 
 // ── Reviews modal ─────────────────────────────────────────────────────────────
 
 function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () => void; business: YouBusiness }) {
+  const reviews = business.ratings ?? [];
   return (
     <ModalWrap open={open} onClose={onClose} title="Avis clients" desc={business.name}>
       {business.avgRating != null && business.ratingCount > 0 ? (
-        <div className="flex items-center gap-4 rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-4">
-          <span className="text-[40px] font-bold text-amber-400 tabular-nums leading-none">{business.avgRating.toFixed(1)}</span>
-          <div>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star key={i} className={cn('h-4 w-4',
-                  i <= Math.floor(business.avgRating!) ? 'fill-amber-400 text-amber-400'
-                  : i === Math.ceil(business.avgRating!) && business.avgRating! % 1 >= 0.3 ? 'fill-amber-400/40 text-amber-400'
-                  : 'text-amber-400/20',
-                )} />
+        <div className="space-y-3">
+          <div className="flex items-center gap-4 rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-4">
+            <span className="text-[40px] font-bold text-amber-400 tabular-nums leading-none">{business.avgRating.toFixed(1)}</span>
+            <div>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} className={cn('h-4 w-4',
+                    i <= Math.floor(business.avgRating!) ? 'fill-amber-400 text-amber-400'
+                    : i === Math.ceil(business.avgRating!) && business.avgRating! % 1 >= 0.3 ? 'fill-amber-400/40 text-amber-400'
+                    : 'text-amber-400/20',
+                  )} />
+                ))}
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">{business.ratingCount} avis · sur 5</p>
+            </div>
+          </div>
+          {reviews.length > 0 && (
+            <div className="space-y-2">
+              {reviews.map((r) => (
+                <div key={r.id} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-semibold text-foreground">{r.user.username}</span>
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <Star key={i} className={cn('h-3 w-3', i <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-amber-400/20')} />
+                      ))}
+                    </div>
+                  </div>
+                  {r.comment && (
+                    <p className="mt-1.5 text-[12px] text-muted-foreground">{r.comment}</p>
+                  )}
+                </div>
               ))}
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">{business.ratingCount} avis · sur 5</p>
-          </div>
+          )}
         </div>
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">Aucun avis pour le moment.</p>

@@ -953,7 +953,7 @@ export async function getSupplyState(userId: string) {
       typeKey: business.typeKey,
       ownerId: business.ownerId,
       owner: business.owner,
-      treasuryMoney: business.treasuryMoney,
+      treasuryMoney: Number(business.treasuryMoney),
       monthlyRevenue: business.monthlyRevenue,
       monthlyExpenses: business.monthlyExpenses,
       satisfaction: business.satisfaction,

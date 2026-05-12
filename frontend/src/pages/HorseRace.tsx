@@ -21,15 +21,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AppModal, TONES } from '@/components/ui/app-modal';
+import type { AppModalTone } from '@/components/ui/app-modal';
 import { PageShell } from '@/components/layout/PageShell';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -592,35 +586,58 @@ function CreateStableModal({
     }
   };
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" /> Créer une écurie</DialogTitle>
-          <DialogDescription>
-            Votre clan aura accès à toute l'écurie. Coût: {formatMoney(config.STABLE_CREATE_COST)}.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Nom de l'écurie</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Les Galopants" maxLength={40} />
-          </div>
-          <div className="flex justify-between rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-xs">
-            <span className="text-muted-foreground">Votre solde</span>
-            <span className={cn('font-semibold', userMoney < config.STABLE_CREATE_COST ? 'text-rose-300' : 'text-foreground')}>
-              {formatMoney(userMoney)}
-            </span>
-          </div>
-          <Button
-            className="w-full"
-            disabled={busy || userMoney < config.STABLE_CREATE_COST || name.trim().length < 3}
-            onClick={submit}
+    <AppModal open={open} onClose={onClose} tone="money" size="sm">
+      <AppModal.Header icon={<Building2 />} tone="money" title="Créer une écurie" subtitle="Votre clan aura accès à l'ensemble de l'écurie." />
+      <AppModal.Body>
+        <div className="space-y-3.5">
+          {/* Live preview tile */}
+          <div
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+            style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.18)' }}
           >
-            {busy ? '...' : `Créer pour ${formatMoney(config.STABLE_CREATE_COST)}`}
-          </Button>
+            <span className="text-2xl leading-none">🏇</span>
+            <div className="min-w-0">
+              {name.trim() ? (
+                <p className="truncate text-[13.5px] font-semibold">{name.trim()}</p>
+              ) : (
+                <p className="text-[13px] italic text-muted-foreground/40">Nom de l'écurie…</p>
+              )}
+              <p className="text-[11px] text-muted-foreground">Écurie de votre clan</p>
+            </div>
+          </div>
+
+          <AppModal.Field
+            label="Nom de l'écurie"
+            value={name}
+            onChange={setName}
+            placeholder="Ex: Les Galopants"
+          />
+
+          <div
+            className="flex items-center justify-between rounded-lg px-3 py-2.5"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            <span className="text-[12px] text-muted-foreground">Coût de création</span>
+            <div className="flex items-center gap-3">
+              <span className={cn('text-[12px] tabular-nums', userMoney < config.STABLE_CREATE_COST ? 'text-rose-300' : 'text-muted-foreground/60')}>
+                Solde: {formatMoney(userMoney)}
+              </span>
+              <span className="text-[13.5px] font-bold text-amber-300">{formatMoney(config.STABLE_CREATE_COST)}</span>
+            </div>
+          </div>
+
+          {userMoney < config.STABLE_CREATE_COST && (
+            <p className="text-center text-[11.5px] text-rose-300">Solde insuffisant.</p>
+          )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose}>Annuler</AppModal.Button>
+        <AppModal.Button tone="money" variant="solid" full disabled={busy || userMoney < config.STABLE_CREATE_COST || name.trim().length < 3} onClick={submit}>
+          {busy ? 'Création…' : 'Créer l\'écurie'}
+        </AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -698,166 +715,178 @@ function BetModal({
     }
   };
 
+  const selectedEntry = state?.lineup.find((x) => x.betKey === selected);
+  const potentialGain = selectedEntry?.odds ? Math.max(1, Math.floor(Number(amount) || 0)) * selectedEntry.odds : 0;
+
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Tag className="h-5 w-5" /> Placer un pari</DialogTitle>
-          <DialogDescription>
-            Jusqu'à {config.MAX_BETS_PER_USER} paris sur des chevaux différents. Cote × mise = gain potentiel.
-          </DialogDescription>
-        </DialogHeader>
+    <AppModal open={open} onClose={onClose} tone="orange" size="lg">
+      <AppModal.Header
+        icon={<Tag />}
+        tone="orange"
+        title="Placer un pari"
+        subtitle={
+          !isOpenForBets ? 'Paris fermés pour cette course.' :
+          !canAddMore ? `Limite de ${config.MAX_BETS_PER_USER} paris atteinte.` :
+          `${myBetsCount}/${config.MAX_BETS_PER_USER} paris · Plafond restant: ${formatMoney(remainingTotalCap)}`
+        }
+      />
+      <AppModal.Divider />
 
-        {/* Current bets list */}
-        {state && state.myBets.length > 0 && (
-          <div className="space-y-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
-              Mes paris ({state.myBets.length}/{config.MAX_BETS_PER_USER})
-            </p>
-            {state.myBets.map((b) => {
-              const entry = state.lineup.find((e) => e.betKey === b.horseId);
-              if (!entry) return null;
-              return (
-                <div key={b.id} className="flex items-center gap-2 rounded border border-border/40 bg-background/60 p-1.5 text-xs">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: entry.bodyColor }} />
-                  <span className="flex-1 truncate font-medium">{entry.name}</span>
-                  <span className="tabular-nums text-muted-foreground">{formatMoney(b.amount)}</span>
-                  <span className="tabular-nums text-amber-200">
-                    {entry.odds != null ? `→ ${formatMoney(b.amount * entry.odds)}` : ''}
-                  </span>
-                  {isOpenForBets && !b.settled && (
-                    <button
-                      type="button"
-                      onClick={() => cancelBet(b.id)}
-                      className="rounded px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/10"
-                      disabled={busy}
-                    >
-                      Annuler
-                    </button>
-                  )}
+      {/* Two-column layout: horse list | bet panel */}
+      <div className="grid" style={{ gridTemplateColumns: '1fr 220px', height: 420 }}>
+
+        {/* Left: horse picker */}
+        <div className="overflow-y-auto p-3 space-y-1" style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+          <AppModal.SectionTitle>Sélectionner un cheval</AppModal.SectionTitle>
+          {state?.lineup.map((entry) => {
+            const isAlreadyBet = myBetKeys.has(entry.betKey);
+            const isSelected = selected === entry.betKey;
+            return (
+              <button
+                key={entry.lane}
+                type="button"
+                onClick={() => !isAlreadyBet && canAddMore && isOpenForBets && setSelected(entry.betKey)}
+                disabled={isAlreadyBet || !isOpenForBets || !canAddMore}
+                className={cn(
+                  'flex w-full items-center gap-2.5 rounded-lg border px-2 py-1.5 text-left transition',
+                  isSelected
+                    ? 'border-orange-400/50 bg-orange-500/10'
+                    : isAlreadyBet
+                    ? 'cursor-default border-emerald-500/20 bg-emerald-500/5'
+                    : 'border-white/5 bg-white/[0.02] hover:border-white/12 hover:bg-white/[0.04]',
+                  (isAlreadyBet) && 'opacity-70',
+                )}
+              >
+                <div className="h-9 w-12 shrink-0">
+                  <HorseSilhouette bodyColor={entry.bodyColor} pattern={entry.pattern} patternColor={entry.patternColor} />
                 </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Lineup picker */}
-        <div>
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Sélectionnez un cheval
-          </p>
-          <div className="grid max-h-[40vh] grid-cols-1 gap-1 overflow-y-auto pr-1 sm:grid-cols-2">
-            {state?.lineup.map((entry) => {
-              const isAlreadyBet = myBetKeys.has(entry.betKey);
-              const isSelected = selected === entry.betKey;
-              return (
-                <button
-                  key={entry.lane}
-                  type="button"
-                  onClick={() => !isAlreadyBet && setSelected(entry.betKey)}
-                  disabled={isAlreadyBet || !isOpenForBets || !canAddMore}
-                  className={cn(
-                    'flex items-center gap-2 rounded-md border border-border/40 bg-card p-2 text-left transition',
-                    !isAlreadyBet && 'hover:border-amber-400/40',
-                    isSelected && 'border-amber-400/70 ring-1 ring-amber-400/60',
-                    isAlreadyBet && 'opacity-50',
-                  )}
-                >
-                  <div className="h-10 w-14 shrink-0">
-                    <HorseSilhouette
-                      bodyColor={entry.bodyColor}
-                      pattern={entry.pattern}
-                      patternColor={entry.patternColor}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold">
-                      {entry.name}
-                      {!entry.isComputer && <span className="ml-1 text-[10px] text-amber-300">🏠</span>}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {entry.clanName ?? 'Cheval de l\'ordi'}
-                      {entry.ageYears != null && ` · ${entry.ageYears.toFixed(1)} ans`}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono text-xs font-semibold text-amber-200">
-                      {entry.odds != null ? formatOdds(entry.odds) : '—'}
-                    </p>
-                    {isAlreadyBet && <p className="text-[9px] text-muted-foreground">parié</p>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12px] font-semibold">
+                    {entry.name}
+                    {!entry.isComputer && <span className="ml-1 text-[9px] text-amber-300/80">🏠</span>}
+                  </p>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {entry.clanName ?? 'IA'}{entry.ageYears != null && ` · ${entry.ageYears.toFixed(1)} ans`}
+                  </p>
+                </div>
+                {isAlreadyBet ? (
+                  <span className="shrink-0 text-[10px] font-semibold text-emerald-300">✓</span>
+                ) : (
+                  <span className={cn('shrink-0 font-mono text-[13px] font-bold', isSelected ? 'text-orange-200' : 'text-amber-200/80')}>
+                    {entry.odds != null ? formatOdds(entry.odds) : '—'}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Amount + place */}
-        <div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 p-2">
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>Mise (en €)</span>
-            <span>Disponible: {formatMoney(userMoney)} · Plafond total: {formatMoney(remainingTotalCap)}</span>
-          </div>
-          <Input
-            type="number"
-            min={1}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            disabled={!isOpenForBets || !canAddMore}
-          />
-          <div className="flex flex-wrap gap-1">
-            {[100, 500, 1000, 5000, 10000].map((v) => (
-              <Button
-                key={v}
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-[11px]"
-                disabled={!isOpenForBets || !canAddMore}
-                onClick={() => setAmount(String(v))}
+        {/* Right: bet panel */}
+        <div className="flex flex-col gap-2.5 p-3">
+          {selected && selectedEntry ? (
+            <>
+              {/* Selected horse preview */}
+              <div
+                className="rounded-xl pb-2 pt-1 text-center"
+                style={{ background: 'rgba(251,146,60,0.07)', border: '1px solid rgba(251,146,60,0.18)' }}
               >
-                ${v}
-              </Button>
-            ))}
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-[11px]"
-              disabled={!isOpenForBets || !canAddMore}
-              onClick={() => setAmount(String(Math.min(userMoney, remainingTotalCap)))}
-            >
-              Max
-            </Button>
-          </div>
-          {selected && (
-            <div className="rounded border border-amber-400/30 bg-amber-500/10 p-2 text-xs">
-              <p className="text-amber-200">
-                Gain potentiel:{' '}
-                <span className="font-semibold">
-                  {(() => {
-                    const e = state?.lineup.find((x) => x.betKey === selected);
-                    const amt = Math.max(1, Math.floor(Number(amount) || 0));
-                    return e?.odds ? formatMoney(amt * e.odds) : '—';
-                  })()}
-                </span>
-              </p>
+                <div className="mx-auto h-14 w-20">
+                  <HorseSilhouette bodyColor={selectedEntry.bodyColor} pattern={selectedEntry.pattern} patternColor={selectedEntry.patternColor} />
+                </div>
+                <p className="truncate px-2 text-[11.5px] font-semibold leading-tight">{selectedEntry.name}</p>
+                <div className="mt-1.5 border-t pt-1.5" style={{ borderColor: 'rgba(251,146,60,0.18)' }}>
+                  <p className="font-mono text-xl font-bold text-amber-200">{selectedEntry.odds ? formatOdds(selectedEntry.odds) : '—'}</p>
+                  <p className="text-[9.5px] text-muted-foreground/60">cote actuelle</p>
+                </div>
+              </div>
+
+              {/* Amount presets */}
+              <div className="grid grid-cols-3 gap-1">
+                {[100, 500, 1000, 5000, 10000].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setAmount(String(v))}
+                    disabled={!isOpenForBets || !canAddMore}
+                    className={cn(
+                      'rounded-lg py-1 text-[11px] font-semibold transition',
+                      amount === String(v) ? 'text-orange-200' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                    style={{
+                      background: amount === String(v) ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.04)',
+                      border: amount === String(v) ? '1px solid rgba(251,146,60,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    {v >= 1000 ? `${v / 1000}k` : v}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setAmount(String(Math.min(userMoney, remainingTotalCap)))}
+                  disabled={!isOpenForBets || !canAddMore}
+                  className="rounded-lg py-1 text-[11px] font-semibold text-muted-foreground transition hover:text-foreground"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  Max
+                </button>
+              </div>
+
+              <AppModal.Field label="Mise" value={amount} onChange={setAmount} type="number" suffix="€" />
+
+              {/* Potential gain */}
+              {potentialGain > 0 && (
+                <div
+                  className="rounded-lg py-2 text-center"
+                  style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.18)' }}
+                >
+                  <p className="text-[9.5px] text-muted-foreground/60">gain potentiel</p>
+                  <p className="text-[15px] font-bold text-amber-200">{formatMoney(potentialGain)}</p>
+                </div>
+              )}
+
+              <AppModal.Button
+                tone="orange"
+                variant="solid"
+                full
+                size="lg"
+                style={{ marginTop: 'auto' }}
+                disabled={!isOpenForBets || !canAddMore || busy || Number(amount) <= 0 || Number(amount) > userMoney}
+                onClick={submit}
+              >
+                {busy ? 'Envoi…' : 'Confirmer le pari'}
+              </AppModal.Button>
+            </>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+              <Tag className="h-7 w-7 opacity-15" />
+              <p className="text-[12px] leading-snug">Sélectionnez<br />un cheval</p>
             </div>
           )}
-          <Button
-            className="w-full"
-            disabled={!isOpenForBets || !canAddMore || !selected || busy || Number(amount) <= 0 || Number(amount) > userMoney}
-            onClick={submit}
-          >
-            {busy ? '...' : 'Placer le pari'}
-          </Button>
-          {!isOpenForBets && (
-            <p className="text-center text-[11px] text-rose-300">Les paris sont fermés pour cette course.</p>
-          )}
-          {!canAddMore && (
-            <p className="text-center text-[11px] text-amber-300">Limite de {config.MAX_BETS_PER_USER} paris atteinte.</p>
+
+          {/* Existing bets summary */}
+          {state && state.myBets.length > 0 && (
+            <div className="space-y-1 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: selected ? undefined : 'auto' }}>
+              <p className="text-[9.5px] font-semibold uppercase tracking-widest text-muted-foreground/50">Mes paris</p>
+              {state.myBets.map((b) => {
+                const entry = state.lineup.find((e) => e.betKey === b.horseId);
+                if (!entry) return null;
+                return (
+                  <div key={b.id} className="flex items-center gap-1.5 text-[11px]">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: entry.bodyColor }} />
+                    <span className="flex-1 truncate text-muted-foreground">{entry.name}</span>
+                    <span className="tabular-nums text-amber-200/80">{formatMoney(b.amount)}</span>
+                    {isOpenForBets && !b.settled && (
+                      <button type="button" onClick={() => cancelBet(b.id)} disabled={busy}
+                        className="text-[11px] text-rose-400/60 transition hover:text-rose-300">✕</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </AppModal>
   );
 }
 
@@ -1003,71 +1032,106 @@ function StableModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Écurie {stable?.stable?.name ?? ''}
-          </DialogTitle>
-          <DialogDescription>
-            {stable?.stable && (
-              <>
-                {stable.stable.totalWins} victoires · {stable.stable.totalRaces} courses · Réputation {stable.stable.reputation}
-              </>
-            )}
-          </DialogDescription>
-        </DialogHeader>
+    <AppModal open={open} onClose={onClose} tone="green" size="xl">
+      <AppModal.Header
+        icon={<Building2 />}
+        tone="green"
+        title={stable?.stable?.name ?? 'Mon écurie'}
+        subtitle={stable?.stable
+          ? `${stable.stable.totalWins} victoires · ${stable.stable.totalRaces} courses · Réputation ${stable.stable.reputation}`
+          : undefined}
+      />
+      <div className="grid h-[530px]" style={{ gridTemplateColumns: '190px 1fr', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* Side nav */}
+        <AppModal.SidebarNav>
+          <AppModal.Row
+            icon={<Sparkles />} tone="green"
+            title="Mes chevaux"
+            sub={`${horses.length} cheval${horses.length !== 1 ? 'x' : ''}`}
+            active={tab === 'horses'}
+            onClick={() => setTab('horses')}
+            chevron
+          />
+          <AppModal.Row
+            icon={<Plus />} tone="cyan"
+            title="Acheter"
+            sub={formatMoney(config.HORSE_BUY_COST)}
+            active={tab === 'buy'}
+            onClick={() => setTab('buy')}
+            chevron
+          />
+          <AppModal.Row
+            icon={<Dna />} tone="pink"
+            title="Élevage"
+            sub={formatMoney(config.BREED_COST)}
+            active={tab === 'breed'}
+            onClick={() => setTab('breed')}
+            chevron
+          />
+          <div className="mt-3 px-1 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="rounded-lg px-2 py-2 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-[9px] uppercase tracking-wider text-muted-foreground/50">Solde</p>
+              <p className="text-[13px] font-semibold text-amber-200">{formatMoney(userMoney)}</p>
+            </div>
+          </div>
+        </AppModal.SidebarNav>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'horses' | 'buy' | 'breed')}>
-          <TabsList>
-            <TabsTrigger value="horses">Chevaux ({horses.length})</TabsTrigger>
-            <TabsTrigger value="buy"><Plus className="mr-1 h-3 w-3" /> Acheter</TabsTrigger>
-            <TabsTrigger value="breed"><Dna className="mr-1 h-3 w-3" /> Élevage</TabsTrigger>
-          </TabsList>
+        {/* Content area */}
+        <AppModal.SidebarContent className="overflow-hidden p-0">
 
-          <TabsContent value="horses" className="space-y-3">
-            {horses.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border/60 bg-muted/30 p-4 text-center text-sm text-muted-foreground">
-                Pas encore de chevaux. Allez dans l'onglet "Acheter" pour commencer.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_320px]">
-                <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
-                  {horses.map((h) => (
-                    <HorseCard
-                      key={h.id}
-                      horse={h}
-                      config={config}
-                      onSelect={() => setSelectedHorseId(h.id)}
-                      selected={selectedHorseId === h.id}
-                    />
-                  ))}
-                </div>
+          {/* ── Horses tab: two-column list + actions ── */}
+          {tab === 'horses' && (
+            <div className="grid h-full" style={{ gridTemplateColumns: '1fr 260px' }}>
+              {/* Horse list */}
+              <div className="overflow-y-auto p-3 space-y-1.5" style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                {horses.length === 0 ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+                    <span className="text-4xl">🐴</span>
+                    <p className="text-sm text-muted-foreground">Pas encore de chevaux.</p>
+                    <button type="button" onClick={() => setTab('buy')} className="text-[12.5px] font-medium text-emerald-400 hover:underline">
+                      Acheter un premier cheval →
+                    </button>
+                  </div>
+                ) : horses.map((h) => (
+                  <HorseCard
+                    key={h.id}
+                    horse={h}
+                    config={config}
+                    onSelect={() => setSelectedHorseId(h.id)}
+                    selected={selectedHorseId === h.id}
+                  />
+                ))}
+              </div>
+
+              {/* Actions panel */}
+              <div className="overflow-y-auto p-3">
                 {selected ? (
-                  <div className="space-y-3 rounded-lg border border-border/50 bg-muted/10 p-3">
-                    <div>
-                      <p className="text-sm font-semibold">{selected.name}</p>
+                  <div className="space-y-2.5">
+                    {/* Horse preview */}
+                    <div className="rounded-xl pb-2 text-center" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
+                      <div className="mx-auto h-16 w-24">
+                        <HorseSilhouette bodyColor={selected.bodyColor} pattern={selected.pattern} patternColor={selected.patternColor} />
+                      </div>
+                      <p className="truncate px-2 text-[13px] font-semibold">{selected.name}</p>
                       <p className="text-[10px] text-muted-foreground">{selected.experience} XP · {selected.races} courses</p>
+                      <div className="mt-2 grid grid-cols-3 gap-1 px-2 pb-1">
+                        <StatBar label="Vit." value={selected.geneSpeed + selected.trainSpeed} />
+                        <StatBar label="End." value={selected.geneStamina + selected.trainStamina} />
+                        <StatBar label="Cst." value={selected.geneConsistency + selected.trainConsistency} />
+                      </div>
                     </div>
 
-                    {/* Register */}
-                    <div className="space-y-1.5 rounded-md border border-emerald-500/25 bg-emerald-500/5 p-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200">
-                        Inscriptions ({selected.pendingEntries} en file)
+                    {/* Inscriptions */}
+                    <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.2)' }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                        Inscriptions · {selected.pendingEntries} en file
                       </p>
                       <div className="flex gap-1">
                         {[1, 3, 5, 10].map((n) => (
-                          <Button
-                            key={n}
-                            size="sm"
-                            variant="outline"
-                            className="flex-1 h-7 px-1 text-[11px]"
+                          <AppModal.Button key={n} tone="green" variant="soft" size="sm" full
                             disabled={busy || selected.ageYears < config.MIN_AGE_TO_RACE}
                             onClick={() => doRegister(n)}
-                          >
-                            +{n}
-                          </Button>
+                          >+{n}</AppModal.Button>
                         ))}
                       </div>
                       {selected.ageYears < config.MIN_AGE_TO_RACE && (
@@ -1075,143 +1139,148 @@ function StableModal({
                       )}
                     </div>
 
-                    {/* Train */}
-                    <div className="space-y-1.5 rounded-md border border-sky-500/25 bg-sky-500/5 p-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-200">
-                        Entraînement · {formatMoney(config.HORSE_TRAIN_COST)} · +{config.HORSE_TRAIN_INC}
+                    {/* Entraînement */}
+                    <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.2)' }}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+                        Entraînement · {formatMoney(config.HORSE_TRAIN_COST)} / +{config.HORSE_TRAIN_INC}
                       </p>
                       <div className="grid grid-cols-3 gap-1">
-                        <Button size="sm" variant="outline" className="h-7 text-[11px]" disabled={busy || selected.trainSpeed >= config.HORSE_TRAIN_CAP} onClick={() => doTrain('speed')}>
-                          🏃 Vit. {selected.trainSpeed.toFixed(1)}
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 text-[11px]" disabled={busy || selected.trainStamina >= config.HORSE_TRAIN_CAP} onClick={() => doTrain('stamina')}>
-                          🫁 End. {selected.trainStamina.toFixed(1)}
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 text-[11px]" disabled={busy || selected.trainConsistency >= config.HORSE_TRAIN_CAP} onClick={() => doTrain('consistency')}>
-                          🎯 Cst. {selected.trainConsistency.toFixed(1)}
-                        </Button>
+                        <AppModal.Button tone="blue" variant="soft" size="sm" full
+                          disabled={busy || selected.trainSpeed >= config.HORSE_TRAIN_CAP}
+                          onClick={() => doTrain('speed')}
+                        >🏃 {selected.trainSpeed.toFixed(1)}</AppModal.Button>
+                        <AppModal.Button tone="blue" variant="soft" size="sm" full
+                          disabled={busy || selected.trainStamina >= config.HORSE_TRAIN_CAP}
+                          onClick={() => doTrain('stamina')}
+                        >🫁 {selected.trainStamina.toFixed(1)}</AppModal.Button>
+                        <AppModal.Button tone="blue" variant="soft" size="sm" full
+                          disabled={busy || selected.trainConsistency >= config.HORSE_TRAIN_CAP}
+                          onClick={() => doTrain('consistency')}
+                        >🎯 {selected.trainConsistency.toFixed(1)}</AppModal.Button>
                       </div>
                     </div>
 
                     {/* Customize */}
-                    <CustomizeBlock
-                      horse={selected}
-                      patterns={patterns}
-                      config={config}
-                      onUpdated={onUpdated}
-                    />
+                    <CustomizeBlock horse={selected} patterns={patterns} config={config} onUpdated={onUpdated} />
 
-                    {/* Dope (danger) */}
-                    <div className="space-y-1.5 rounded-md border border-rose-500/30 bg-rose-500/10 p-2">
-                      <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-rose-200">
+                    {/* Dopage */}
+                    <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.22)' }}>
+                      <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
                         <Skull className="h-3 w-3" /> Dopage · {formatMoney(config.DOPE_COST)}
                       </p>
-                      <p className="text-[10px] text-rose-200/80">
-                        Boost +{config.DOPE_SPEED_BOOST} vitesse, +{config.DOPE_STAMINA_BOOST} endurance.{' '}
-                        <span className="font-semibold">{Math.round(config.DOPE_CATCH_PCT * 100)}% de chance de contrôle positif</span> — cheval confisqué si attrapé.
+                      <p className="text-[10px] text-rose-200/70">
+                        +{config.DOPE_SPEED_BOOST} vitesse, +{config.DOPE_STAMINA_BOOST} endurance.{' '}
+                        <span className="font-semibold text-rose-300">{Math.round(config.DOPE_CATCH_PCT * 100)}% de risque</span> de confiscation.
                       </p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full h-7 text-[11px] border-rose-500/40 text-rose-200 hover:bg-rose-500/20"
+                      <AppModal.Button tone="red" variant="soft" size="sm" full
                         disabled={busy || selected.dopedForCycle != null}
                         onClick={doDope}
                       >
-                        {selected.dopedForCycle != null ? 'Dopé pour la prochaine' : 'Doper pour la prochaine course'}
-                      </Button>
+                        {selected.dopedForCycle != null ? '💉 Dopé' : 'Doper pour la prochaine'}
+                      </AppModal.Button>
                     </div>
 
                     {/* Retire */}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="w-full text-[11px] text-muted-foreground hover:text-rose-300"
+                    <AppModal.Button variant="ghost" size="sm" full
+                      style={{ color: 'var(--muted-foreground)', fontSize: 11 }}
                       disabled={busy}
                       onClick={doRetire}
                     >
-                      Vendre/retirer (rembours. {formatMoney(Math.floor(config.HORSE_BUY_COST * 0.3))})
-                    </Button>
+                      Vendre · rembours. {formatMoney(Math.floor(config.HORSE_BUY_COST * 0.3))}
+                    </AppModal.Button>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-dashed border-border/40 bg-muted/10 p-4 text-center text-sm text-muted-foreground">
-                    Sélectionnez un cheval pour le gérer.
+                  <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+                    <Sparkles className="h-7 w-7 opacity-15" />
+                    <p className="text-[12px] leading-snug">Sélectionnez un cheval<br />pour le gérer</p>
                   </div>
                 )}
               </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="buy" className="space-y-3">
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
-              <p className="text-sm font-semibold">Acheter un poulain de base</p>
-              <p className="text-[11px] text-muted-foreground">
-                Gènes aléatoires (5.5-7.5 par stat). Coût: {formatMoney(config.HORSE_BUY_COST)}.
-              </p>
             </div>
-            <Input
-              placeholder="Nom du cheval"
-              value={newHorseName}
-              onChange={(e) => setNewHorseName(e.target.value)}
-              maxLength={30}
-            />
-            <Button
-              className="w-full"
-              disabled={busy || userMoney < config.HORSE_BUY_COST || newHorseName.trim().length < 2}
-              onClick={doBuy}
-            >
-              {busy ? '...' : `Acheter pour ${formatMoney(config.HORSE_BUY_COST)}`}
-            </Button>
-          </TabsContent>
+          )}
 
-          <TabsContent value="breed" className="space-y-3">
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
-              <p className="text-sm font-semibold">Croisement (élevage)</p>
-              <p className="text-[11px] text-muted-foreground">
-                Le poulain hérite des gènes des parents avec un peu d'aléatoire. Min. {config.MIN_AGE_TO_BREED} ans par parent.
-                Coût: {formatMoney(config.BREED_COST)}.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Parent 1</label>
-                <Select value={breedH1} onValueChange={setBreedH1}>
-                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                  <SelectContent>
-                    {horses.filter((h) => h.ageYears >= config.MIN_AGE_TO_BREED).map((h) => (
-                      <SelectItem key={h.id} value={h.id}>{h.name} ({h.ageYears.toFixed(1)}a)</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Parent 2</label>
-                <Select value={breedH2} onValueChange={setBreedH2}>
-                  <SelectTrigger><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                  <SelectContent>
-                    {horses.filter((h) => h.ageYears >= config.MIN_AGE_TO_BREED && h.id !== breedH1).map((h) => (
-                      <SelectItem key={h.id} value={h.id}>{h.name} ({h.ageYears.toFixed(1)}a)</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {/* ── Buy tab ── */}
+          {tab === 'buy' && (
+            <div className="flex h-full items-center justify-center p-6">
+              <div className="w-full max-w-[300px] space-y-4">
+                <div className="text-center">
+                  <p className="text-2xl">🐴</p>
+                  <p className="mt-1 text-[14px] font-semibold">Acheter un poulain</p>
+                  <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                    Gènes aléatoires (5.5–7.5 / stat) · Coût: <span className="font-semibold text-amber-200">{formatMoney(config.HORSE_BUY_COST)}</span>
+                  </p>
+                </div>
+                <AppModal.Field
+                  label="Nom du cheval"
+                  value={newHorseName}
+                  onChange={setNewHorseName}
+                  placeholder="Ex: Éclair du Nord"
+                />
+                {userMoney < config.HORSE_BUY_COST && (
+                  <p className="text-center text-[11.5px] text-rose-300">Solde insuffisant.</p>
+                )}
+                <AppModal.Button tone="cyan" variant="solid" full size="lg"
+                  disabled={busy || userMoney < config.HORSE_BUY_COST || newHorseName.trim().length < 2}
+                  onClick={doBuy}
+                >
+                  {busy ? 'Achat…' : `Acheter pour ${formatMoney(config.HORSE_BUY_COST)}`}
+                </AppModal.Button>
               </div>
             </div>
-            <Input
-              placeholder="Nom du poulain"
-              value={foalName}
-              onChange={(e) => setFoalName(e.target.value)}
-              maxLength={30}
-            />
-            <Button
-              className="w-full"
-              disabled={busy || userMoney < config.BREED_COST || !breedH1 || !breedH2 || foalName.trim().length < 2}
-              onClick={doBreed}
-            >
-              {busy ? '...' : `Croiser pour ${formatMoney(config.BREED_COST)}`}
-            </Button>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+          )}
+
+          {/* ── Breed tab ── */}
+          {tab === 'breed' && (
+            <div className="flex h-full items-center justify-center p-6">
+              <div className="w-full max-w-[340px] space-y-4">
+              <div className="text-center">
+                <p className="text-2xl">🧬</p>
+                <p className="mt-1 text-[14px] font-semibold">Croisement</p>
+                <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                  Le poulain hérite des gènes de ses parents · Min. {config.MIN_AGE_TO_BREED} ans · <span className="font-semibold text-amber-200">{formatMoney(config.BREED_COST)}</span>
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted-foreground">Parent 1</label>
+                  <Select value={breedH1} onValueChange={setBreedH1}>
+                    <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                    <SelectContent>
+                      {horses.filter((h) => h.ageYears >= config.MIN_AGE_TO_BREED).map((h) => (
+                        <SelectItem key={h.id} value={h.id}>{h.name} ({h.ageYears.toFixed(1)}a)</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-muted-foreground">Parent 2</label>
+                  <Select value={breedH2} onValueChange={setBreedH2}>
+                    <SelectTrigger><SelectValue placeholder="Choisir…" /></SelectTrigger>
+                    <SelectContent>
+                      {horses.filter((h) => h.ageYears >= config.MIN_AGE_TO_BREED && h.id !== breedH1).map((h) => (
+                        <SelectItem key={h.id} value={h.id}>{h.name} ({h.ageYears.toFixed(1)}a)</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <AppModal.Field label="Nom du poulain" value={foalName} onChange={setFoalName} placeholder="Ex: Tempête" />
+              {userMoney < config.BREED_COST && (
+                <p className="text-center text-[11.5px] text-rose-300">Solde insuffisant.</p>
+              )}
+              <AppModal.Button tone="pink" variant="solid" full size="lg"
+                disabled={busy || userMoney < config.BREED_COST || !breedH1 || !breedH2 || foalName.trim().length < 2}
+                onClick={doBreed}
+              >
+                {busy ? 'Croisement…' : `Croiser pour ${formatMoney(config.BREED_COST)}`}
+              </AppModal.Button>
+              </div>
+            </div>
+          )}
+
+        </AppModal.SidebarContent>
+      </div>
+    </AppModal>
   );
 }
 
@@ -1353,86 +1422,109 @@ function ExploreStablesModal({
   }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> Écuries de la communauté</DialogTitle>
-          <DialogDescription>
-            Triées par réputation (victoires & podiums cumulés).
-          </DialogDescription>
-        </DialogHeader>
-        {selected ? (
-          <div className="space-y-3">
-            <button onClick={() => setSelected(null)} className="text-xs text-amber-300 hover:underline">
-              ← Retour
+    <AppModal open={open} onClose={onClose} tone="cyan" size="lg">
+      {/* Header adapts between list and detail views */}
+      {selected ? (
+        <AppModal.Header
+          iconSlot={
+            <button type="button" onClick={() => setSelected(null)}
+              className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] text-muted-foreground transition hover:bg-white/[0.06] hover:text-foreground"
+              style={{ background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.25)', color: '#22d3ee' }}
+            >
+              ←
             </button>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
-              <p className="text-lg font-bold">{selected.name}</p>
-              <p className="text-xs text-muted-foreground">
-                Clan {selected.clanName} · Réputation {selected.reputation}
-              </p>
-              {selected.description && <p className="mt-1 text-xs">{selected.description}</p>}
-              <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="rounded bg-amber-500/10 p-2">
-                  <p className="text-[10px] uppercase text-amber-200/70">Victoires</p>
-                  <p className="text-lg font-bold tabular-nums">{selected.totalWins}</p>
+          }
+          tone="cyan"
+          title={selected.name}
+          subtitle={`${selected.clanName} · Réputation ${selected.reputation}`}
+        />
+      ) : (
+        <AppModal.Header icon={<Users />} tone="cyan" title="Écuries de la communauté" subtitle="Triées par réputation." />
+      )}
+      <AppModal.Divider />
+
+      {selected ? (
+        /* ── Detail view ── */
+        <AppModal.Body scrollable maxHeight="60vh">
+          <div className="space-y-4">
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Victoires', value: selected.totalWins, color: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.25)', text: 'text-amber-200' },
+                { label: 'Podiums', value: selected.totalPodiums, color: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', text: 'text-slate-300' },
+                { label: 'Courses', value: selected.totalRaces, color: 'rgba(34,211,238,0.08)', border: 'rgba(34,211,238,0.2)', text: 'text-cyan-300' },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-xl py-3 text-center" style={{ background: stat.color, border: `1px solid ${stat.border}` }}>
+                  <p className={cn('text-2xl font-bold tabular-nums', stat.text)}>{stat.value}</p>
+                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground/60">{stat.label}</p>
                 </div>
-                <div className="rounded bg-slate-500/10 p-2">
-                  <p className="text-[10px] uppercase text-slate-200/70">Podiums</p>
-                  <p className="text-lg font-bold tabular-nums">{selected.totalPodiums}</p>
-                </div>
-                <div className="rounded bg-sky-500/10 p-2">
-                  <p className="text-[10px] uppercase text-sky-200/70">Courses</p>
-                  <p className="text-lg font-bold tabular-nums">{selected.totalRaces}</p>
-                </div>
-              </div>
+              ))}
             </div>
-            <div>
-              <p className="mb-1.5 text-xs font-semibold">Top chevaux ({selected.horseCount} au total)</p>
-              <div className="space-y-1">
-                {selected.topHorses.map((h) => (
-                  <div key={h.id} className="flex items-center gap-2 rounded-md border border-border/40 bg-card/50 p-2">
-                    <div className="h-10 w-14">
-                      <HorseSilhouette bodyColor={h.bodyColor} pattern={h.pattern} patternColor={h.patternColor} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold">{h.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{h.ageYears.toFixed(1)} ans · {h.races} courses · {h.wins} V</p>
-                    </div>
+
+            {selected.description && (
+              <p className="text-[12.5px] text-muted-foreground">{selected.description}</p>
+            )}
+
+            {/* Top horses */}
+            <div className="space-y-1.5">
+              <AppModal.SectionTitle>Top chevaux ({selected.horseCount} au total)</AppModal.SectionTitle>
+              {selected.topHorses.map((h) => (
+                <div key={h.id} className="flex items-center gap-2.5 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-2">
+                  <div className="h-11 w-16 shrink-0">
+                    <HorseSilhouette bodyColor={h.bodyColor} pattern={h.pattern} patternColor={h.patternColor} />
                   </div>
-                ))}
-              </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12.5px] font-semibold">{h.name}</p>
+                    <p className="text-[10.5px] text-muted-foreground">{h.ageYears.toFixed(1)} ans · {h.races} courses</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[13px] font-bold text-amber-200">{h.wins} V</p>
+                    <p className="text-[10px] text-muted-foreground">{h.podiums} podiums</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ) : (
-          <div className="max-h-[60vh] space-y-1.5 overflow-y-auto pr-1">
-            {loading && <p className="text-center text-sm text-muted-foreground">Chargement...</p>}
-            {!loading && stables.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground">Aucune écurie pour l'instant.</p>
-            )}
-            {stables.map((s) => (
+        </AppModal.Body>
+      ) : (
+        /* ── List view ── */
+        <AppModal.Body scrollable maxHeight="60vh">
+          {loading && (
+            <div className="flex items-center justify-center py-10 text-muted-foreground">
+              <p className="text-sm">Chargement…</p>
+            </div>
+          )}
+          {!loading && stables.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">Aucune écurie pour l'instant.</p>
+          )}
+          <div className="space-y-1.5">
+            {stables.map((s, i) => (
               <button
                 key={s.id}
+                type="button"
                 onClick={() => setSelected(s)}
-                className="flex w-full items-center gap-3 rounded-lg border border-border/40 bg-card p-2 text-left hover:border-amber-400/40"
+                className="flex w-full items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5 text-left transition hover:border-cyan-400/25 hover:bg-white/[0.04]"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-lg">
+                {/* Rank */}
+                <span className="w-5 shrink-0 text-center font-mono text-[11px] text-muted-foreground/40">#{i + 1}</span>
+                {/* Icon */}
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base" style={{ background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.2)' }}>
                   🏇
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{s.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{s.clanName} · {s.horseCount} chevaux</p>
+                  <p className="truncate text-[13px] font-semibold">{s.name}</p>
+                  <p className="text-[10.5px] text-muted-foreground">{s.clanName} · {s.horseCount} cheval{s.horseCount !== 1 ? 'x' : ''}</p>
                 </div>
-                <div className="text-right text-[11px]">
-                  <p className="font-semibold text-amber-200">{s.totalWins} V</p>
-                  <p className="text-muted-foreground">Réput. {s.reputation}</p>
+                <div className="shrink-0 text-right">
+                  <p className="text-[13px] font-bold text-amber-200">{s.totalWins} V</p>
+                  <p className="text-[10px] text-muted-foreground">Rép. {s.reputation}</p>
                 </div>
               </button>
             ))}
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+        </AppModal.Body>
+      )}
+    </AppModal>
   );
 }
 
@@ -1459,6 +1551,7 @@ function StandingsModal({
 }) {
   const [data, setData] = useState<HorseRaceStandingsResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<'recent' | 'top'>('recent');
 
   useEffect(() => {
     if (!open) return;
@@ -1470,108 +1563,123 @@ function StandingsModal({
   }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Medal className="h-5 w-5 text-amber-300" /> Palmarès
-          </DialogTitle>
-          <DialogDescription>
-            Derniers résultats et meilleurs chevaux.
-          </DialogDescription>
-        </DialogHeader>
-        <Tabs defaultValue="recent">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="recent"><History className="mr-1 h-3 w-3" /> Derniers résultats</TabsTrigger>
-            <TabsTrigger value="top"><Trophy className="mr-1 h-3 w-3" /> Top chevaux</TabsTrigger>
-          </TabsList>
+    <AppModal open={open} onClose={onClose} tone="money" size="xl">
+      <AppModal.Header icon={<Medal />} tone="money" title="Palmarès" subtitle="Résultats des courses et classement des chevaux." />
+      <div className="grid h-[480px]" style={{ gridTemplateColumns: '190px 1fr', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <AppModal.SidebarNav>
+          <AppModal.Row
+            icon={<History />} tone="neutral"
+            title="Résultats"
+            sub="Dernières courses"
+            active={tab === 'recent'}
+            onClick={() => setTab('recent')}
+            chevron
+          />
+          <AppModal.Row
+            icon={<Trophy />} tone="money"
+            title="Top chevaux"
+            sub="Classement général"
+            active={tab === 'top'}
+            onClick={() => setTab('top')}
+            chevron
+          />
+        </AppModal.SidebarNav>
 
-          <TabsContent value="recent" className="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
-            {loading && <p className="py-4 text-center text-sm text-muted-foreground">Chargement...</p>}
-            {!loading && data && data.recentRaces.length === 0 && (
-              <p className="py-4 text-center text-sm text-muted-foreground">Aucune course résolue.</p>
-            )}
-            {data?.recentRaces.map((r: RecentRaceDto) => (
-              <div key={r.cycleIndex} className="rounded-lg border border-border/40 bg-card/50 p-2.5">
-                <div className="mb-1.5 flex items-center justify-between text-xs">
-                  <span className="font-semibold">Course #{r.cycleIndex}</span>
-                  <span className="text-muted-foreground">
-                    {r.totalBets} paris · {formatMoney(r.totalPool)} pool
+        <AppModal.SidebarContent className="overflow-y-auto p-3">
+          {loading && (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm text-muted-foreground">Chargement…</p>
+            </div>
+          )}
+
+          {/* Recent races */}
+          {!loading && tab === 'recent' && (
+            <div className="space-y-2.5">
+              {data && data.recentRaces.length === 0 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">Aucune course résolue.</p>
+              )}
+              {data?.recentRaces.map((r: RecentRaceDto) => (
+                <div key={r.cycleIndex} className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[12.5px] font-bold">Course #{r.cycleIndex}</span>
+                    <span className="text-[10.5px] text-muted-foreground">{r.totalBets} paris · {formatMoney(r.totalPool)}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {r.podium.map((p) => (
+                      <div key={p.position} className="flex items-center gap-2 rounded-lg px-2 py-1.5" style={{
+                        background: p.position === 1 ? 'rgba(251,191,36,0.07)' : p.position === 2 ? 'rgba(148,163,184,0.06)' : p.position === 3 ? 'rgba(251,146,60,0.06)' : 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${p.position === 1 ? 'rgba(251,191,36,0.18)' : p.position === 2 ? 'rgba(148,163,184,0.15)' : p.position === 3 ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.05)'}`,
+                      }}>
+                        <span className={cn(
+                          'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
+                          p.position === 1 && 'bg-amber-400 text-amber-950',
+                          p.position === 2 && 'bg-slate-300 text-slate-900',
+                          p.position === 3 && 'bg-orange-400 text-orange-950',
+                          p.position > 3 && 'bg-white/10 text-muted-foreground',
+                        )}>{p.position}</span>
+                        <div className="h-8 w-10 shrink-0">
+                          <HorseSilhouette bodyColor={p.bodyColor ?? '#94a3b8'} pattern={p.pattern} patternColor={p.patternColor} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[12px] font-medium">{p.name ?? 'Cheval'}</p>
+                          <p className="truncate text-[10px] text-muted-foreground">
+                            {p.isComputer ? 'Cheval IA' : `${p.stableName ?? '—'}${p.clanName ? ' · ' + p.clanName : ''}`}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="font-mono text-[10.5px] tabular-nums text-muted-foreground">{(p.finishTimeMs / 1000).toFixed(2)}s</p>
+                          {p.prize > 0 && <p className="text-[11px] font-semibold text-emerald-300">+{formatMoney(p.prize)}</p>}
+                        </div>
+                        {p.wasCaught && <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-rose-200" style={{ background: 'rgba(248,113,113,0.2)' }}>DQ</span>}
+                        {p.wasDoped && !p.wasCaught && <span className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-amber-200" style={{ background: 'rgba(251,146,60,0.2)' }}>D</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Top horses */}
+          {!loading && tab === 'top' && (
+            <div className="space-y-1.5">
+              {data && data.topHorses.length === 0 && (
+                <p className="py-8 text-center text-sm text-muted-foreground">Aucun cheval qualifié.</p>
+              )}
+              {data?.topHorses.map((h: TopHorseDto, i: number) => (
+                <div key={h.id} className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-white/[0.02] p-2.5">
+                  <span className="w-6 shrink-0 text-center font-mono text-[11px] font-bold text-muted-foreground/40">
+                    {i < 3 ? ['🥇','🥈','🥉'][i] : `#${i + 1}`}
                   </span>
-                </div>
-                <div className="space-y-1">
-                  {r.podium.map((p) => (
-                    <div key={p.position} className="flex items-center gap-2 rounded-md border border-border/30 bg-muted/20 px-2 py-1 text-xs">
-                      <span className={cn(
-                        'flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold',
-                        p.position === 1 && 'bg-amber-400 text-amber-950',
-                        p.position === 2 && 'bg-slate-300 text-slate-900',
-                        p.position === 3 && 'bg-orange-400 text-orange-950',
-                      )}>
-                        {p.position}
-                      </span>
-                      <div className="h-7 w-10 shrink-0">
-                        <HorseSilhouette
-                          bodyColor={p.bodyColor ?? '#94a3b8'}
-                          pattern={p.pattern}
-                          patternColor={p.patternColor}
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{p.name ?? 'Cheval'}</p>
-                        <p className="truncate text-[10px] text-muted-foreground">
-                          {p.isComputer ? 'Cheval IA' : `${p.stableName ?? '—'}${p.clanName ? ' · ' + p.clanName : ''}`}
-                        </p>
-                      </div>
-                      <div className="text-right text-[10px]">
-                        <p className="font-mono tabular-nums">{(p.finishTimeMs / 1000).toFixed(2)}s</p>
-                        {p.prize > 0 && <p className="text-emerald-300">+{formatMoney(p.prize)}</p>}
-                      </div>
-                      {p.wasCaught && <span className="rounded bg-rose-500/30 px-1 py-0.5 text-[9px] text-rose-200">DQ</span>}
-                      {p.wasDoped && !p.wasCaught && <span className="rounded bg-amber-500/30 px-1 py-0.5 text-[9px] text-amber-200">D</span>}
+                  <div className="h-12 w-16 shrink-0">
+                    <HorseSilhouette bodyColor={h.bodyColor} pattern={h.pattern} patternColor={h.patternColor} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-[13px] font-semibold">{h.name}</p>
+                      <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] text-muted-foreground" style={{ background: 'rgba(255,255,255,0.06)' }}>{h.ageYears.toFixed(1)} ans</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </TabsContent>
-
-          <TabsContent value="top" className="max-h-[65vh] space-y-1.5 overflow-y-auto pr-1">
-            {loading && <p className="py-4 text-center text-sm text-muted-foreground">Chargement...</p>}
-            {!loading && data && data.topHorses.length === 0 && (
-              <p className="py-4 text-center text-sm text-muted-foreground">Aucun cheval qualifié.</p>
-            )}
-            {data?.topHorses.map((h: TopHorseDto, i: number) => (
-              <div key={h.id} className="flex items-center gap-2 rounded-lg border border-border/40 bg-card/50 p-2">
-                <span className="w-5 text-center font-mono text-sm text-muted-foreground">#{i + 1}</span>
-                <div className="h-12 w-16 shrink-0">
-                  <HorseSilhouette bodyColor={h.bodyColor} pattern={h.pattern} patternColor={h.patternColor} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <p className="truncate text-sm font-semibold">{h.name}</p>
-                    <span className="rounded bg-muted/40 px-1 py-0.5 text-[9px] text-muted-foreground">{h.ageYears.toFixed(1)} ans</span>
+                    <p className="truncate text-[10.5px] text-muted-foreground">
+                      {h.stableName ?? '—'}{h.clanName ? ' · ' + h.clanName : ''}
+                    </p>
+                    <div className="mt-1 space-y-0.5">
+                      <StatChip label="VIT" value={h.stats.speed} />
+                      <StatChip label="END" value={h.stats.stamina} />
+                      <StatChip label="CST" value={h.stats.consistency} />
+                    </div>
                   </div>
-                  <p className="truncate text-[10px] text-muted-foreground">
-                    {h.stableName ?? '—'}{h.clanName ? ' · ' + h.clanName : ''} · {h.experience} XP
-                  </p>
-                  <div className="mt-1 space-y-0.5">
-                    <StatChip label="VIT" value={h.stats.speed} />
-                    <StatChip label="END" value={h.stats.stamina} />
-                    <StatChip label="REG" value={h.stats.consistency} />
+                  <div className="shrink-0 text-right">
+                    <p className="text-[14px] font-bold text-amber-200">{h.wins} V</p>
+                    <p className="text-[10px] text-muted-foreground">{h.podiums} P · {h.races} C</p>
+                    <p className="text-[11px] font-semibold text-emerald-300">{formatMoney(h.earnings)}</p>
                   </div>
                 </div>
-                <div className="shrink-0 text-right text-[11px]">
-                  <p className="font-semibold text-amber-200">{h.wins} V</p>
-                  <p className="text-muted-foreground">{h.podiums} P · {h.races} C</p>
-                  <p className="text-emerald-300">{formatMoney(h.earnings)}</p>
-                </div>
-              </div>
-            ))}
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+              ))}
+            </div>
+          )}
+        </AppModal.SidebarContent>
+      </div>
+    </AppModal>
   );
 }
 
@@ -1584,22 +1692,28 @@ function ConfiscationModal({
   onClose: () => void;
 }) {
   return (
-    <Dialog open={!!message} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-rose-300">
-            <ShieldAlert className="h-5 w-5" /> Contrôle anti-dopage
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm">{message}</p>
-          <p className="text-xs text-muted-foreground">
+    <AppModal open={!!message} onClose={onClose} tone="red" size="sm" accent="#f87171">
+      <AppModal.Body>
+        <div className="flex flex-col items-center gap-3 px-2 pb-1 pt-6 text-center">
+          <div
+            className="flex h-14 w-14 items-center justify-center rounded-2xl"
+            style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.35)', boxShadow: '0 0 32px rgba(248,113,113,0.18)' }}
+          >
+            <ShieldAlert className="h-7 w-7 text-rose-400" />
+          </div>
+          <div>
+            <p className="text-[15px] font-semibold text-foreground">Contrôle positif</p>
+            <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">{message}</p>
+          </div>
+          <p className="rounded-lg px-3 py-2 text-[11.5px] text-rose-200/70" style={{ background: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.18)' }}>
             Les commissaires ont saisi votre cheval. Il n'est plus disponible dans votre écurie.
           </p>
-          <Button className="w-full" onClick={onClose}>J'ai compris</Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button tone="red" variant="solid" full onClick={onClose}>J'ai compris</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
