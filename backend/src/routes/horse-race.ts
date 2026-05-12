@@ -1065,7 +1065,7 @@ router.get('/stables', authMiddleware, async (_req: AuthRequest, res: Response) 
       clan: { select: { name: true, ownerId: true } },
       horses: {
         where: { isRetired: false, isConfiscated: false },
-        select: { id: true, name: true, bodyColor: true, pattern: true, patternColor: true, wins: true, races: true, birthCycle: true },
+        select: { id: true, name: true, bodyColor: true, pattern: true, patternColor: true, wins: true, podiums: true, races: true, birthCycle: true },
         orderBy: { wins: 'desc' },
         take: 8,
       },
@@ -1094,6 +1094,7 @@ router.get('/stables', authMiddleware, async (_req: AuthRequest, res: Response) 
         pattern: h.pattern,
         patternColor: h.patternColor,
         wins: h.wins,
+        podiums: h.podiums,
         races: h.races,
         ageYears: ageYears(h.birthCycle, cycleIndex),
       })),

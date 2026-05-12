@@ -4348,6 +4348,7 @@ export type PublicStableDto = {
     pattern: string;
     patternColor: string;
     wins: number;
+    podiums: number;
     races: number;
     ageYears: number;
   }>;
