@@ -6478,4 +6478,130 @@ router.patch('/pending-sanctions/:id/reject', authMiddleware, requireAdmin, asyn
   }
 });
 
+// ─── Wealth Stats ─────────────────────────────────────────────────────────────
+
+const computePercentiles = (sorted: number[]) => {
+  const n = sorted.length;
+  if (n === 0) return { mean: 0, median: 0, p25: 0, p75: 0, p90: 0, p95: 0, total: 0 };
+  const pct = (p: number) => {
+    const idx = (p / 100) * (n - 1);
+    const lo = Math.floor(idx);
+    const hi = Math.ceil(idx);
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  };
+  const total = sorted.reduce((a, b) => a + b, 0);
+  return { mean: total / n, median: pct(50), p25: pct(25), p75: pct(75), p90: pct(90), p95: pct(95), total };
+};
+
+const computeGini = (sorted: number[]): number => {
+  const n = sorted.length;
+  if (n === 0) return 0;
+  const mean = sorted.reduce((a, b) => a + b, 0) / n;
+  if (mean === 0) return 0;
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += (2 * (i + 1) - n - 1) * sorted[i];
+  return sum / (n * n * mean);
+};
+
+router.get('/wealth-stats', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const [users, latestPrice] = await Promise.all([
+      prisma.user.findMany({
+        where: { isApproved: true, isSuperAdmin: false },
+        select: { id: true, username: true, firstName: true, schoolLevel: true, classLetter: true, aura: true, money: true, auraCoinBalance: true, createdAt: true },
+      }),
+      prisma.auraCoinPrice.findFirst({ orderBy: { createdAt: 'desc' }, select: { price: true } }),
+    ]);
+
+    const auraCoinPrice = latestPrice?.price ?? 100;
+
+    const rows = users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      firstName: u.firstName ?? '',
+      schoolLevel: u.schoolLevel ?? '',
+      classLetter: u.classLetter ?? '',
+      aura: Number(u.aura),
+      money: Number(u.money),
+      auraCoinBalance: u.auraCoinBalance,
+      totalWealth: Number(u.money) + u.auraCoinBalance * auraCoinPrice,
+      createdAt: u.createdAt.toISOString(),
+    }));
+
+    const sortedAura = [...rows].map((r) => r.aura).sort((a, b) => a - b);
+    const sortedMoney = [...rows].map((r) => r.money).sort((a, b) => a - b);
+    const sortedWealth = [...rows].map((r) => r.totalWealth).sort((a, b) => a - b);
+
+    // Wealth distribution brackets (based on totalWealth / money)
+    const brackets = [
+      { label: '0–1 000', min: 0, max: 1_000 },
+      { label: '1 000–5 000', min: 1_000, max: 5_000 },
+      { label: '5 000–20 000', min: 5_000, max: 20_000 },
+      { label: '20 000–100 000', min: 20_000, max: 100_000 },
+      { label: '100 000–500 000', min: 100_000, max: 500_000 },
+      { label: '500 000+', min: 500_000, max: Infinity },
+    ];
+    const wealthBrackets = brackets.map((b) => ({
+      label: b.label,
+      count: rows.filter((r) => r.totalWealth >= b.min && r.totalWealth < b.max).length,
+    }));
+    const auraBrackets = brackets.map((b) => ({
+      label: b.label,
+      count: rows.filter((r) => r.aura >= b.min && r.aura < b.max).length,
+    }));
+
+    res.json({
+      userCount: rows.length,
+      auraCoinPrice,
+      aura: { ...computePercentiles(sortedAura), gini: computeGini(sortedAura) },
+      money: { ...computePercentiles(sortedMoney), gini: computeGini(sortedMoney) },
+      wealth: { ...computePercentiles(sortedWealth), gini: computeGini(sortedWealth) },
+      wealthBrackets,
+      auraBrackets,
+    });
+  } catch (error) {
+    console.error('Wealth stats error:', error);
+    res.status(500).json({ error: 'Erreur lors du calcul des statistiques.' });
+  }
+});
+
+router.get('/wealth-stats/export', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const [users, latestPrice] = await Promise.all([
+      prisma.user.findMany({
+        where: { isApproved: true, isSuperAdmin: false },
+        select: { username: true, firstName: true, schoolLevel: true, classLetter: true, aura: true, money: true, auraCoinBalance: true, createdAt: true },
+        orderBy: { money: 'desc' },
+      }),
+      prisma.auraCoinPrice.findFirst({ orderBy: { createdAt: 'desc' }, select: { price: true } }),
+    ]);
+
+    const auraCoinPrice = latestPrice?.price ?? 100;
+
+    const header = 'username,prenom,niveau,classe,aura,argent,auracoin_balance,richesse_totale,membre_depuis';
+    const lines = users.map((u) => {
+      const totalWealth = Number(u.money) + u.auraCoinBalance * auraCoinPrice;
+      return [
+        u.username,
+        u.firstName ?? '',
+        u.schoolLevel ?? '',
+        u.classLetter ?? '',
+        Number(u.aura),
+        Number(u.money),
+        u.auraCoinBalance.toFixed(4),
+        totalWealth.toFixed(2),
+        u.createdAt.toISOString().slice(0, 10),
+      ].join(',');
+    });
+
+    const csv = [header, ...lines].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="richesse_serveur_${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send('﻿' + csv); // BOM for Excel
+  } catch (error) {
+    console.error('Wealth export error:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'export.' });
+  }
+});
+
 export default router;

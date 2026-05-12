@@ -2,7 +2,7 @@
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage, type AdminWealthStats } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
@@ -39,6 +39,7 @@ import { ReferralsTab } from './tabs/ReferralsTab';
 import { TaxesTab } from './tabs/TaxesTab';
 import { UsersTab } from './tabs/UsersTab';
 import { DemographicsTab } from './tabs/DemographicsTab';
+import { WealthTab } from './tabs/WealthTab';
 import { AdsTab } from './tabs/AdsTab';
 import { ContentTab } from './tabs/ContentTab';
 import { FiscalTab } from './tabs/FiscalTab';
@@ -1249,6 +1250,9 @@ export default function Admin() {
   const [loadingReferralStats, setLoadingReferralStats] = useState(false);
   const [gamesLeaderboard, setGamesLeaderboard] = useState<any[]>([]);
   const [loadingGamesLeaderboard, setLoadingGamesLeaderboard] = useState(false);
+  const [wealthStats, setWealthStats] = useState<AdminWealthStats | null>(null);
+  const [wealthLoading, setWealthLoading] = useState(false);
+  const [wealthExporting, setWealthExporting] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
   const [hoveredActivity, setHoveredActivity] = useState<ActivityHoverState | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<ActivityHoverState | null>(null);
@@ -1701,6 +1705,36 @@ export default function Admin() {
       console.error('Failed to fetch referral stats:', error);
     } finally {
       setLoadingReferralStats(false);
+    }
+  };
+
+  const fetchWealthStats = async () => {
+    try {
+      setWealthLoading(true);
+      const res = await adminApi.getWealthStats();
+      setWealthStats(res.data);
+    } catch (error) {
+      console.error('Failed to fetch wealth stats:', error);
+    } finally {
+      setWealthLoading(false);
+    }
+  };
+
+  const exportWealthCSV = async () => {
+    try {
+      setWealthExporting(true);
+      const res = await adminApi.exportWealthStats();
+      const blob = new Blob([res.data as unknown as BlobPart], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `richesse_serveur_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export wealth CSV:', error);
+    } finally {
+      setWealthExporting(false);
     }
   };
 
@@ -4570,7 +4604,7 @@ export default function Admin() {
                 {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['activity', 'demographics', 'badges'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                    ['activity', 'demographics', 'wealth', 'badges'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                   )}>
                     <TrendingUp className="w-4 h-4 shrink-0" />
                     Statistiques
@@ -4583,6 +4617,7 @@ export default function Admin() {
                       {dropdownItemBtn('demographics', 'Répartition', <BarChart2 className="w-3.5 h-3.5" />, () => setActiveTab('demographics'),
                         <span className="text-xs text-muted-foreground">{totalDemographicUsers.toLocaleString('fr-FR')} users</span>
                       )}
+                      {dropdownItemBtn('wealth', 'Richesse', <Coins className="w-3.5 h-3.5" />, () => { setActiveTab('wealth'); fetchWealthStats(); })}
                       {dropdownItemBtn('badges', 'Badges', <Award className="w-3.5 h-3.5" />, () => { setActiveTab('badges'); fetchBadges(); })}
                     </div>
                   </div>
@@ -5204,6 +5239,13 @@ export default function Admin() {
           activityBreakdownColors={ACTIVITY_BREAKDOWN_COLORS}
           formatPercent={formatPercent}
           formatBigNumber={formatBigNumber}
+        />
+
+        <WealthTab
+          wealthStats={wealthStats}
+          wealthLoading={wealthLoading}
+          onExport={exportWealthCSV}
+          exporting={wealthExporting}
         />
 
         <BadgesTab

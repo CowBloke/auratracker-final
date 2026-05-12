@@ -2920,6 +2920,27 @@ export interface TaxBracket {
   updatedAt: string;
 }
 
+export interface WealthMetrics {
+  mean: number;
+  median: number;
+  p25: number;
+  p75: number;
+  p90: number;
+  p95: number;
+  total: number;
+  gini: number;
+}
+
+export interface AdminWealthStats {
+  userCount: number;
+  auraCoinPrice: number;
+  aura: WealthMetrics;
+  money: WealthMetrics;
+  wealth: WealthMetrics;
+  wealthBrackets: Array<{ label: string; count: number }>;
+  auraBrackets: Array<{ label: string; count: number }>;
+}
+
 export interface OnlineHistoryInsightPeakHour {
   hour: number;
   label: string;
@@ -3295,6 +3316,8 @@ export const adminApi = {
     totalEntries: number;
     limit: number;
   }>('/admin/playtime-leaderboard', { params }),
+  getWealthStats: () => api.get<AdminWealthStats>('/admin/wealth-stats'),
+  exportWealthStats: () => api.get<Blob>('/admin/wealth-stats/export', { responseType: 'blob' }),
   purgeAllBusinesses: () =>
     api.post<{ purged: number }>('/admin/businesses/purge', {}),
   resetBusinessUnlockLevels: () =>
