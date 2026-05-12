@@ -31,7 +31,8 @@ import {
   getLoanStatusPillColor,
   getLoanTimeLeftLabel,
 } from './modal-helpers';
-import { ActionCard, ActionRow, FieldRow, ModalWrap, Pill, SectionTitle, SelectBox, UserAvatar } from './YouPrimitives';
+import { ActionCard, ActionRow, FieldRow, Pill, SectionTitle, SelectBox, UserAvatar } from './YouPrimitives';
+import { AppModal } from '@/components/ui/app-modal';
 
 const PICKER_DEFAULT_STYLE = { card: 'border-border/40 bg-muted/10', badge: 'bg-muted text-muted-foreground', iconWrap: 'bg-muted/20', icon: 'text-foreground/60' };
 
@@ -123,10 +124,12 @@ function BusinessTypePickerModal({
   const previewType = businessTypes.find((bt) => bt.key === previewKey) ?? businessTypes[0];
 
   return (
-    <ModalWrap open={open} onClose={onClose} title="Choisir un type d'activité" wide contentDataTutorialId="business-type-picker-modal">
-      <div className="flex min-h-0 gap-5">
+    <AppModal open={open} onClose={onClose} tone="cyan" size="xl" description="Choisir un type d'activité">
+      <AppModal.Header tone="cyan" title="Choisir un type d'activité" />
+      <AppModal.Body scrollable>
+      <div className="flex min-h-0 gap-5" data-tutorial-id="business-type-picker-modal">
         {/* Left — flat scrollable grid */}
-        <div className="max-h-[68vh] min-w-0 flex-1 overflow-y-auto pr-1">
+        <div className="max-h-[60vh] min-w-0 flex-1 overflow-y-auto pr-1">
           <div className="grid grid-cols-3 gap-2">
             {businessTypes.map((type) => {
               const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
@@ -178,7 +181,7 @@ function BusinessTypePickerModal({
         <div className="flex w-64 shrink-0 flex-col gap-3">
           {previewType && (
             <>
-              <div className="max-h-[calc(68vh-60px)] overflow-y-auto">
+              <div className="max-h-[calc(60vh-60px)] overflow-y-auto">
                 <BusinessTypeDetailPanel type={previewType} />
               </div>
               <button
@@ -194,7 +197,8 @@ function BusinessTypePickerModal({
           )}
         </div>
       </div>
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -255,13 +259,16 @@ export function CreateBusinessModal({
 
   return (
     <>
-      <ModalWrap
+      <AppModal
         open={open}
         onClose={onClose}
-        title="Creer une entreprise"
-        desc={isBank ? 'La creation de la banque coute 10 000 money et la tresorerie demarre a 0.' : 'Le capital de depart est pris sur ton argent global.'}
-        contentDataTutorialId="create-business-modal"
+        tone="cyan"
+        size="md"
+        description="Creer une entreprise"
       >
+        <AppModal.Header tone="cyan" title="Creer une entreprise" subtitle={isBank ? 'La creation de la banque coute 10 000 money et la tresorerie demarre a 0.' : 'Le capital de depart est pris sur ton argent global.'} />
+        <AppModal.Body scrollable>
+        <div data-tutorial-id="create-business-modal" className="space-y-3">
         <FieldRow label="Type d activite">
           <button
             type="button"
@@ -317,8 +324,13 @@ export function CreateBusinessModal({
             />
           </FieldRow>
         ) : null}
-        <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedType || !name.trim() || !description.trim() || (!isBank && Number(capital) < selectedType.minCapital)} data-tutorial-id="create-business-submit">Creer</Button></div>
-      </ModalWrap>
+        </div>
+        </AppModal.Body>
+        <AppModal.Footer>
+          <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+          <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !selectedType || !name.trim() || !description.trim() || (!isBank && Number(capital) < selectedType.minCapital)} data-tutorial-id="create-business-submit">Creer</AppModal.Button>
+        </AppModal.Footer>
+      </AppModal>
       <BusinessTypePickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
@@ -384,7 +396,9 @@ export function InvitePlayersModal({
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business ? `Inviter des joueurs · ${business.name}` : 'Inviter des joueurs'} desc="Toutes les invitations ciblent de vrais joueurs." wide>
+    <AppModal open={open} onClose={onClose} tone="cyan" size="xl" description="Inviter des joueurs">
+      <AppModal.Header tone="cyan" title={business ? `Inviter des joueurs · ${business.name}` : 'Inviter des joueurs'} subtitle="Toutes les invitations ciblent de vrais joueurs." />
+      <AppModal.Body scrollable>
       <div className="grid gap-3 sm:grid-cols-[1fr_180px_140px]">
         <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
         <FieldRow label="Role propose"><SelectBox value={role} onChange={setRole}><option value="employee">Employe</option><option value="partner">Associe</option><option value="advisor">Conseiller</option></SelectBox></FieldRow>
@@ -401,8 +415,12 @@ export function InvitePlayersModal({
         {availablePlayers.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible pour cette recherche.</p> : null}
       </div>
       <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">{selectedIds.length === 0 ? 'Aucune invitation preparee.' : `${selectedIds.length} invitation(s) preparee(s) pour le role ${role} a ${Number(salary).toLocaleString('fr-FR')} money/jour.`}</div>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Fermer</Button><Button size="sm" onClick={submit} disabled={submitting || !business || selectedIds.length === 0}>Envoyer</Button></div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Fermer</AppModal.Button>
+        <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !business || selectedIds.length === 0}>Envoyer</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -440,7 +458,9 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business ? `Demander un pret · ${business.name}` : 'Demander un pret'} desc="Le proprietaire devra accepter la demande avant que le money soit debloque.">
+    <AppModal open={open} onClose={onClose} tone="orange" size="md" description="Demander un pret">
+      <AppModal.Header tone="orange" title={business ? `Demander un pret · ${business.name}` : 'Demander un pret'} subtitle="Le proprietaire devra accepter la demande avant que le money soit debloque." />
+      <AppModal.Body>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={500} /></FieldRow>
       <FieldRow label="Duree (jours)"><Input type="number" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} min={1} placeholder="ex : 7" /></FieldRow>
       <FieldRow label="Hypotheque (aura)"><Input type="number" value={collateralAura} onChange={(event) => setCollateralAura(event.target.value)} min={0} placeholder="0 si aucun gage" /></FieldRow>
@@ -463,8 +483,12 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
           ? `${Number(collateralAura).toLocaleString('fr-FR')} aura seront bloquees a l acceptation puis rendues au remboursement. Si l echeance est depassee et que le joueur ne peut pas payer, elles seront saisies.`
           : 'Sans hypothèque, le pret repose uniquement sur la capacite du joueur a rembourser.'}
       </div>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || Number(durationDays) < 1 || Number(collateralAura) < 0 || motivationMessage.length > 400}>Envoyer</Button></div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+        <AppModal.Button tone="orange" variant="soft" onClick={submit} disabled={submitting || !business || Number(durationDays) < 1 || Number(collateralAura) < 0 || motivationMessage.length > 400}>Envoyer</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -489,12 +513,18 @@ export function InvestModal({ open, onClose, business, onSubmitted }: { open: bo
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business ? `Investir · ${business.name}` : 'Investir'} desc="Le money est retire de ton argent personnel puis credite a la tresorerie du business.">
+    <AppModal open={open} onClose={onClose} tone="green" size="md" description="Investir">
+      <AppModal.Header tone="green" title={business ? `Investir · ${business.name}` : 'Investir'} subtitle="Le money est retire de ton argent personnel puis credite a la tresorerie du business." />
+      <AppModal.Body>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={100} /></FieldRow>
       <FieldRow label="Risque"><SelectBox value={riskLevel} onChange={(value) => setRiskLevel(value as 'low' | 'medium' | 'high')}><option value="low">Faible risque</option><option value="medium">Risque modere</option><option value="high">Risque eleve</option></SelectBox></FieldRow>
       <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/10 p-3 text-center"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Risque</p><p className={cn('text-sm font-bold', selected.color)}>{selected.label}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Min</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.min}%</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Max</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.max}%</p></div></div>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business}>Investir</Button></div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+        <AppModal.Button tone="green" variant="soft" onClick={submit} disabled={submitting || !business}>Investir</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -547,7 +577,9 @@ export function TransferBusinessModal({
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business ? `Transfert via ${business.name}` : 'Service de transfert'} desc="Le montant est envoye au joueur choisi et les frais sont credites a la tresorerie du service.">
+    <AppModal open={open} onClose={onClose} tone="cyan" size="lg" description="Service de transfert">
+      <AppModal.Header tone="cyan" title={business ? `Transfert via ${business.name}` : 'Service de transfert'} subtitle="Le montant est envoye au joueur choisi et les frais sont credites a la tresorerie du service." />
+      <AppModal.Body scrollable>
       <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {availablePlayers.map((player) => {
@@ -559,8 +591,12 @@ export function TransferBusinessModal({
       <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
         Frais de service actuels: {business?.transferFeeRate ?? 2}% du montant envoye.
       </div>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || !recipientId || Number(amount) <= 0}>Transferer</Button></div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+        <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !business || !recipientId || Number(amount) <= 0}>Transferer</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -590,11 +626,17 @@ export function BuyoutOfferModal({ open, onClose, business, onSubmitted }: { ope
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business ? `Faire une offre · ${business.name}` : 'Faire une offre'} desc="Le montant est debite tout de suite et garde en escrow jusqu a la decision du proprietaire.">
+    <AppModal open={open} onClose={onClose} tone="money" size="md" description="Faire une offre de rachat">
+      <AppModal.Header tone="money" title={business ? `Faire une offre · ${business.name}` : 'Faire une offre'} subtitle="Le montant est debite tout de suite et garde en escrow jusqu a la decision du proprietaire." />
+      <AppModal.Body>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={1} placeholder="Montant propose" /></FieldRow>
       <FieldRow label="Message (optionnel)"><Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ex : reprise complete, maintien de l equipe..." /></FieldRow>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || Number(amount) <= 0}>Envoyer l offre</Button></div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+        <AppModal.Button tone="money" variant="soft" onClick={submit} disabled={submitting || !business || Number(amount) <= 0}>Envoyer l offre</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -637,7 +679,9 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business ? `Devenir actionnaire · ${business.name}` : 'Devenir actionnaire'} desc="Propose un pourcentage et une somme. Le proprietaire devra accepter pour partager l entreprise.">
+    <AppModal open={open} onClose={onClose} tone="money" size="md" description="Devenir actionnaire">
+      <AppModal.Header tone="money" title={business ? `Devenir actionnaire · ${business.name}` : 'Devenir actionnaire'} subtitle="Propose un pourcentage et une somme. Le proprietaire devra accepter pour partager l entreprise." />
+      <AppModal.Body>
       <FieldRow label="Part souhaitee (%)">
         <Input type="number" min={1} max={99} step={0.5} value={sharePercent} onChange={(event) => setSharePercent(event.target.value)} />
       </FieldRow>
@@ -660,8 +704,12 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
       <FieldRow label="Message (optionnel)">
         <Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ex : je veux financer votre croissance." />
       </FieldRow>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !business || numericSharePercent <= 0 || numericSharePercent >= 100 || Number(amount) <= 0}>Envoyer</Button></div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+        <AppModal.Button tone="money" variant="soft" onClick={submit} disabled={submitting || !business || numericSharePercent <= 0 || numericSharePercent >= 100 || Number(amount) <= 0}>Envoyer</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -698,7 +746,9 @@ export function MeetModal({ open, onClose, players, onSubmitted }: { open: boole
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title="Nouvelle relation" desc="Choisis un vrai joueur avec qui ouvrir une relation sociale.">
+    <AppModal open={open} onClose={onClose} tone="pink" size="md" description="Nouvelle relation">
+      <AppModal.Header tone="pink" title="Nouvelle relation" subtitle="Choisis un vrai joueur avec qui ouvrir une relation sociale." />
+      <AppModal.Body scrollable>
       <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
       <div className="max-h-80 space-y-2 overflow-y-auto">
         {candidates.map((player) => {
@@ -707,8 +757,12 @@ export function MeetModal({ open, onClose, players, onSubmitted }: { open: boole
         })}
         {candidates.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible.</p> : null}
       </div>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedUserId}>Creer la relation</Button></div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+        <AppModal.Button tone="pink" variant="soft" onClick={submit} disabled={submitting || !selectedUserId}>Creer la relation</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -740,7 +794,9 @@ export function NewRelationModal({ open, onClose, players, onSubmitted }: { open
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title="Ajouter une relation" desc="Choisis un joueur et le type de relation.">
+    <AppModal open={open} onClose={onClose} tone="pink" size="md" description="Ajouter une relation">
+      <AppModal.Header tone="pink" title="Ajouter une relation" subtitle="Choisis un joueur et le type de relation." />
+      <AppModal.Body scrollable>
       <FieldRow label="Type">
         <div className="flex gap-2">
           {(['DATING', 'FRIEND'] as const).map((t) => (
@@ -758,8 +814,12 @@ export function NewRelationModal({ open, onClose, players, onSubmitted }: { open
         })}
         {candidates.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Aucun joueur disponible.</p>}
       </div>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !selectedUserId}>Ajouter</Button></div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+        <AppModal.Button tone="pink" variant="soft" onClick={submit} disabled={submitting || !selectedUserId}>Ajouter</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -789,11 +849,17 @@ export function MarriageModal({ open, onClose, relationships, onSubmitted }: { o
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title="Demander en mariage" desc="La demande reste en attente tant que l autre joueur ne repond pas.">
+    <AppModal open={open} onClose={onClose} tone="pink" size="md" description="Demander en mariage">
+      <AppModal.Header tone="pink" title="Demander en mariage" subtitle="La demande reste en attente tant que l autre joueur ne repond pas." />
+      <AppModal.Body>
       <FieldRow label="Relation eligible"><SelectBox value={relationshipId} onChange={setRelationshipId}>{relationships.map((relationship) => <option key={relationship.id} value={relationship.id}>{relationship.otherUser.username} · {relationship.connectionLevel}%</option>)}</SelectBox></FieldRow>
       <FieldRow label="Message (optionnel)"><Input value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Un petit mot..." /></FieldRow>
-      <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button><Button size="sm" onClick={submit} disabled={submitting || !relationshipId}>Envoyer</Button></div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+        <AppModal.Button tone="pink" variant="soft" onClick={submit} disabled={submitting || !relationshipId}>Envoyer</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -1180,17 +1246,23 @@ export function ManageBusinessModal({
 
   return (
     <>
-    <ModalWrap
+    <AppModal
       open={open}
       onClose={onClose}
-      title={business ? <span className="inline-flex items-center justify-center gap-2"><span className={cn('flex h-7 w-7 items-center justify-center rounded-lg', businessIconStyle.iconWrap)}><BusinessIcon className={cn('h-4 w-4', businessIconStyle.icon)} /></span><span>{business.name}</span></span> : 'Entreprise'}
-      desc="Gestion de ta structure."
-      wide
-      centerTitle
+      tone="money"
+      size="xl"
+      description="Gestion de ta structure."
     >
+      <AppModal.Header
+        tone="money"
+        title={business ? business.name : 'Entreprise'}
+        subtitle="Gestion de ta structure."
+        icon={<Building2 />}
+      />
       {business ? (
-        <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="grid h-[500px]" style={{ gridTemplateColumns: '360px minmax(0,1fr)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           {/* LEFT: Actions — all consistent ActionRow height */}
+          <div className="overflow-y-auto p-2" style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="space-y-3">
             <ActionCard>
               {/* Deposit */}
@@ -1472,8 +1544,10 @@ export function ManageBusinessModal({
               ) : null}
             </ActionCard>
           </div>
+          </div>
 
           {/* RIGHT: Treasury + Log */}
+          <div className="overflow-y-auto p-4">
           <div className="space-y-4">
             {/* Trésorerie */}
             <Card>
@@ -1746,9 +1820,10 @@ export function ManageBusinessModal({
               </Card>
             ) : null}
           </div>
+          </div>
         </div>
       ) : null}
-    </ModalWrap>
+    </AppModal>
 
     {business ? (
       <ManageTeamModal
@@ -1806,14 +1881,21 @@ export function ManageBusinessModal({
       <ProductionModal open={productionOpen} onClose={() => setProductionOpen(false)} business={business} currentUserId={currentUserId} onReload={onSubmitted} />
     ) : null}
 
-    <ModalWrap
+    <AppModal
       open={Boolean(buybackTarget)}
       onClose={closeShareBuybackDialog}
-      title="Proposer un rachat de parts"
-      desc={buybackTarget
-        ? `Tu proposes une offre pour racheter ${buybackTarget.sharePercent.toFixed(2)}% detenus par ${buybackTarget.username}.`
-        : 'Tu proposes une offre de rachat.'}
+      tone="money"
+      size="md"
+      description="Proposer un rachat de parts"
     >
+      <AppModal.Header
+        tone="money"
+        title="Proposer un rachat de parts"
+        subtitle={buybackTarget
+          ? `Tu proposes une offre pour racheter ${buybackTarget.sharePercent.toFixed(2)}% detenus par ${buybackTarget.username}.`
+          : 'Tu proposes une offre de rachat.'}
+      />
+      <AppModal.Body>
       <FieldRow label="Montant propose (money)">
         <Input
           type="number"
@@ -1824,14 +1906,15 @@ export function ManageBusinessModal({
           disabled={sendingBuybackOffer}
         />
       </FieldRow>
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={closeShareBuybackDialog} disabled={sendingBuybackOffer}>Annuler</Button>
-        <Button size="sm" onClick={() => void submitShareBuybackOffer()} disabled={sendingBuybackOffer || Number(buybackAmountInput) <= 0}>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={closeShareBuybackDialog} disabled={sendingBuybackOffer}>Annuler</AppModal.Button>
+        <AppModal.Button tone="money" variant="soft" onClick={() => void submitShareBuybackOffer()} disabled={sendingBuybackOffer || Number(buybackAmountInput) <= 0}>
           {sendingBuybackOffer ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
           Envoyer l offre
-        </Button>
-      </div>
-    </ModalWrap>
+        </AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
     </>
   );
 }
@@ -1896,7 +1979,9 @@ export function ManageTeamModal({
 
   return (
     <>
-      <ModalWrap open={open} onClose={onClose} title="Gérer l'équipe" desc={`${activeMembers.length} membre(s) actif(s)`}>
+      <AppModal open={open} onClose={onClose} tone="cyan" size="md" description="Gérer l'équipe">
+        <AppModal.Header tone="cyan" title="Gérer l'équipe" subtitle={`${activeMembers.length} membre(s) actif(s)`} />
+        <AppModal.Body scrollable>
         <Button size="sm" variant="outline" className="w-full justify-start" onClick={onInviteRequested}>
           <UserPlus className="mr-2 h-4 w-4" />Inviter des joueurs
         </Button>
@@ -1968,7 +2053,8 @@ export function ManageTeamModal({
             </div>
           </div>
         )}
-      </ModalWrap>
+        </AppModal.Body>
+      </AppModal>
 
       <MemberEditModal
         open={editingMember !== null}
@@ -2065,7 +2151,9 @@ export function MemberEditModal({
   const roleLabel = ({ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' } as Record<string, string>)[member.role] ?? member.role;
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={member.user.username} desc={`${roleLabel} · ${business.name}`}>
+    <AppModal open={open} onClose={onClose} tone="cyan" size="md" description={`${roleLabel} · ${business.name}`}>
+      <AppModal.Header tone="cyan" title={member.user.username} subtitle={`${roleLabel} · ${business.name}`} />
+      <AppModal.Body scrollable>
       <div className="flex items-center gap-4 rounded-xl border border-border/40 bg-muted/10 px-4 py-4">
         <UserAvatar player={member.user} className="h-12 w-12 shrink-0" />
         <div>
@@ -2163,14 +2251,15 @@ export function MemberEditModal({
         </div>
       ) : null}
 
-      <div className="flex gap-3 pt-2">
-        <Button variant="outline" className="flex-1" onClick={onClose} disabled={saving}>Annuler</Button>
-        <Button className="flex-1" onClick={() => void save()} disabled={saving}>
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={saving}>Annuler</AppModal.Button>
+        <AppModal.Button tone="cyan" variant="soft" onClick={() => void save()} disabled={saving}>
+          {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
           Sauvegarder
-        </Button>
-      </div>
-    </ModalWrap>
+        </AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -2208,7 +2297,9 @@ export function TeamRosterModal({
   const roleLabel = (role: string) => ({ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[role] ?? role);
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={`Équipe · ${business.name}`} desc={`${members.length} membre(s)`}>
+    <AppModal open={open} onClose={onClose} tone="cyan" size="md" description={`${members.length} membre(s)`}>
+      <AppModal.Header tone="cyan" title={`Équipe · ${business.name}`} subtitle={`${members.length} membre(s)`} />
+      <AppModal.Body scrollable>
       {members.length === 0 ? (
         <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
           Aucun membre pour le moment.
@@ -2230,7 +2321,8 @@ export function TeamRosterModal({
           ))}
         </div>
       )}
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -2308,12 +2400,9 @@ export function BankAccountModal({
   const hasEpargne = accounts.some((a) => a.accountType === 'EPARGNE');
 
   return (
-    <ModalWrap
-      open={open}
-      onClose={onClose}
-      title={business ? `Mes comptes · ${business.name}` : 'Mes comptes bancaires'}
-      desc="Déposez et retirez de l'argent. Vos fonds contribuent à la trésorerie de la banque."
-    >
+    <AppModal open={open} onClose={onClose} tone="money" size="md" description="Mes comptes bancaires">
+      <AppModal.Header tone="money" title={business ? `Mes comptes · ${business.name}` : 'Mes comptes bancaires'} subtitle="Déposez et retirez de l'argent." />
+      <AppModal.Body scrollable>
       {loading ? (
         <p className="py-4 text-center text-sm text-muted-foreground">Chargement…</p>
       ) : (
@@ -2379,7 +2468,8 @@ export function BankAccountModal({
           )}
         </div>
       )}
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -2419,12 +2509,9 @@ export function FormationPurchaseModal({
   const price = business?.formationPrice ?? 500;
 
   return (
-    <ModalWrap
-      open={open}
-      onClose={onClose}
-      title={business ? business.name : 'Formation'}
-      desc="Accède à la formation proposée par ce centre."
-    >
+    <AppModal open={open} onClose={onClose} tone="blue" size="md" description="Accède à la formation proposée par ce centre.">
+      <AppModal.Header tone="blue" title={business ? business.name : 'Formation'} subtitle="Accède à la formation proposée par ce centre." />
+      <AppModal.Body scrollable>
       {purchased ? (
         <div className="space-y-4 text-center">
           <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-6">
@@ -2453,15 +2540,18 @@ export function FormationPurchaseModal({
               <span className="font-bold text-amber-300">{price.toLocaleString('fr-FR')} €</span>
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose} disabled={buying}>Annuler</Button>
-            <Button size="sm" onClick={() => void buy()} disabled={buying}>
-              Acheter · {price.toLocaleString('fr-FR')} €
-            </Button>
-          </div>
         </div>
       )}
-    </ModalWrap>
+      </AppModal.Body>
+      {!purchased ? (
+        <AppModal.Footer>
+          <AppModal.Button variant="ghost" onClick={onClose} disabled={buying}>Annuler</AppModal.Button>
+          <AppModal.Button tone="blue" variant="soft" onClick={() => void buy()} disabled={buying}>
+            Acheter · {price.toLocaleString('fr-FR')} €
+          </AppModal.Button>
+        </AppModal.Footer>
+      ) : null}
+    </AppModal>
   );
 }
 
@@ -2587,7 +2677,9 @@ export function ManageFormationsModal({
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title="Gérer les formations" desc="Ajoute, modifie ou supprime les formations vendues sur ce centre." wide>
+    <AppModal open={open} onClose={onClose} tone="blue" size="xl" description="Ajoute, modifie ou supprime les formations vendues sur ce centre.">
+      <AppModal.Header tone="blue" title="Gérer les formations" subtitle="Ajoute, modifie ou supprime les formations vendues sur ce centre." />
+      <AppModal.Body scrollable>
       {products.length === 0 && !formOpen ? (
         <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
           Aucune formation configurée. Clique sur "Ajouter" pour commencer.
@@ -2685,7 +2777,8 @@ export function ManageFormationsModal({
           <Plus className="mr-2 h-4 w-4" />Ajouter une formation
         </Button>
       )}
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -2736,7 +2829,9 @@ export function BusinessProfileModal({
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title="Modifier le profil" desc="Personnalise le nom, la description et le logo de ton entreprise.">
+    <AppModal open={open} onClose={onClose} tone="neutral" size="md" description="Personnalise le nom, la description et le logo de ton entreprise.">
+      <AppModal.Header tone="neutral" title="Modifier le profil" subtitle="Personnalise le nom, la description et le logo de ton entreprise." />
+      <AppModal.Body scrollable>
       <FieldRow label="Nom">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom de l'entreprise" />
       </FieldRow>
@@ -2752,11 +2847,12 @@ export function BusinessProfileModal({
           <p className="text-xs text-muted-foreground">Apercu du logo</p>
         </div>
       ) : null}
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>Annuler</Button>
-        <Button size="sm" onClick={() => void save()} disabled={saving || !name.trim()}>Enregistrer</Button>
-      </div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={saving}>Annuler</AppModal.Button>
+        <AppModal.Button tone="neutral" variant="soft" onClick={() => void save()} disabled={saving || !name.trim()}>Enregistrer</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -2850,13 +2946,9 @@ export function FormationCatalogModal({
       : 'Telecharger le fichier';
 
   return (
-    <ModalWrap
-      open={open}
-      onClose={onClose}
-      title={business.name}
-      desc={catalogDescription}
-      wide
-    >
+    <AppModal open={open} onClose={onClose} tone="blue" size="xl" description={catalogDescription}>
+      <AppModal.Header tone="blue" title={business.name} subtitle={catalogDescription} />
+      <AppModal.Body scrollable>
       {purchasedAccess ? (
         <div className="space-y-4 text-center">
           <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-4 py-6">
@@ -2994,7 +3086,8 @@ export function FormationCatalogModal({
           })}
         </div>
       )}
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -3143,8 +3236,10 @@ export function ManageMenuModal({
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={`Menu : ${business.name}`} desc="Modifie au maximum 20 articles. Emoji ou image au choix.">
-      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+    <AppModal open={open} onClose={onClose} tone="orange" size="lg" description="Modifie au maximum 20 articles. Emoji ou image au choix.">
+      <AppModal.Header tone="orange" title={`Menu : ${business.name}`} subtitle="Modifie au maximum 20 articles. Emoji ou image au choix." />
+      <AppModal.Body scrollable>
+      <div className="space-y-3">
         {menu.map((item, idx) => (
           <div
             key={item.key}
@@ -3221,13 +3316,14 @@ export function ManageMenuModal({
           </Button>
         )}
       </div>
-      <div className="mt-6 flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose} disabled={saving}>Annuler</Button>
-        <Button onClick={() => void save()} disabled={saving || menu.length === 0 || menu.some(m => !m.label.trim() || Number(m.price) < 1)}>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={saving}>Annuler</AppModal.Button>
+        <AppModal.Button tone="orange" variant="soft" onClick={() => void save()} disabled={saving || menu.length === 0 || menu.some(m => !m.label.trim() || Number(m.price) < 1)}>
           {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Enregistrer
-        </Button>
-      </div>
-    </ModalWrap>
+        </AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }

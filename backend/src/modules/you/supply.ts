@@ -706,6 +706,9 @@ function serializePlainteNode(plainte: any) {
 }
 
 function buildSupplyBusinessFinancials(business: any, contracts: any[], marketOffers: any[]) {
+  const treasuryMoney = typeof business.treasuryMoney === 'bigint'
+    ? Number(business.treasuryMoney)
+    : Number(business.treasuryMoney ?? 0);
   const inventories = business.resourceInventories ?? [];
   const offers = business.supplyOffers ?? [];
   const loans = business.loans ?? [];
@@ -741,9 +744,9 @@ function buildSupplyBusinessFinancials(business: any, contracts: any[], marketOf
     return sum + inventory.quantity * (offer?.unitPrice ?? getGlobalMarketUnitPrice(business.typeKey, inventory.resourceType));
   }, 0);
   const reliability = getSupplierReliability(supplierContracts);
-  const runwayDays = getRunwayDays(business.treasuryMoney, Math.max(0, dailyExpenses - dailyRevenue));
+  const runwayDays = getRunwayDays(treasuryMoney, Math.max(0, dailyExpenses - dailyRevenue));
   const creditScore = getBusinessCreditScore({
-    treasuryMoney: business.treasuryMoney,
+    treasuryMoney,
     monthlyRevenue: projectedMonthlyRevenue,
     monthlyExpenses: projectedMonthlyExpenses + payrollDaily * 30,
     satisfaction: business.satisfaction ?? 70,
@@ -764,8 +767,8 @@ function buildSupplyBusinessFinancials(business: any, contracts: any[], marketOf
         }, 0);
         return {
           remainingCost,
-          fundedPercent: remainingCost <= 0 ? 100 : Math.min(100, Math.round((business.treasuryMoney / remainingCost) * 100)),
-          financingGap: Math.max(0, remainingCost - business.treasuryMoney),
+          fundedPercent: remainingCost <= 0 ? 100 : Math.min(100, Math.round((treasuryMoney / remainingCost) * 100)),
+          financingGap: Math.max(0, remainingCost - treasuryMoney),
         };
       })()
     : null;

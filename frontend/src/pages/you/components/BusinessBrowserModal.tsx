@@ -19,7 +19,8 @@ import {
   InvestModal, LoanModal, ShareholderProposalModal, TeamRosterModal, TransferBusinessModal,
 } from './modals';
 import { YoutubeChannelModal } from './YoutubeChannelModal';
-import { FieldRow, ModalWrap } from './YouPrimitives';
+import { FieldRow } from './YouPrimitives';
+import { AppModal } from '@/components/ui/app-modal';
 import { getBusinessPinColor, TYPE_LABELS_FR } from '../mapConstants';
 import { BUSINESS_ICON_MAP } from '../constants';
 import { withRouteError } from '../utils';
@@ -134,17 +135,20 @@ function ApplyBusinessModal({ open, onClose, business, onSubmitted }: { open: bo
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business ? `Postuler · ${business.name}` : 'Postuler'} desc="Le proprietaire doit valider le contrat pour l activer.">
+    <AppModal open={open} onClose={onClose} tone="cyan" size="md" description="Le proprietaire doit valider le contrat pour l activer.">
+      <AppModal.Header tone="cyan" title={business ? `Postuler · ${business.name}` : 'Postuler'} subtitle="Le proprietaire doit valider le contrat pour l activer." />
+      <AppModal.Body scrollable>
       <FieldRow label="Role vise"><Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="employee" /></FieldRow>
       <FieldRow label="Salaire demande / jour"><Input type="number" min={0} value={salary} onChange={(e) => setSalary(e.target.value)} /></FieldRow>
       <FieldRow label="Message">
         <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} maxLength={240} placeholder="Explique ce que tu peux apporter a cette entreprise." />
       </FieldRow>
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button>
-        <Button size="sm" onClick={submit} disabled={submitting || !business || !role.trim()}>Envoyer</Button>
-      </div>
-    </ModalWrap>
+      </AppModal.Body>
+      <AppModal.Footer>
+        <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+        <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !business || !role.trim()}>Envoyer</AppModal.Button>
+      </AppModal.Footer>
+    </AppModal>
   );
 }
 
@@ -177,7 +181,9 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title={business.name} desc={isAgency ? 'Acheter un bien immobilier. Gagne du XP Social.' : 'Parcourir les articles disponibles.'}>
+    <AppModal open={open} onClose={onClose} tone="cyan" size="md" description={isAgency ? 'Acheter un bien immobilier. Gagne du XP Social.' : 'Parcourir les articles disponibles.'}>
+      <AppModal.Header tone="cyan" title={business.name} subtitle={isAgency ? 'Acheter un bien immobilier. Gagne du XP Social.' : 'Parcourir les articles disponibles.'} />
+      <AppModal.Body scrollable>
       <div className="space-y-4">
         {Object.entries(groupedItems).map(([section, sectionItems]) => (
           <div key={section} className="space-y-2">
@@ -204,7 +210,8 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
           </div>
         ))}
       </div>
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -346,7 +353,9 @@ function ListRow({ business, onClick }: { business: YouBusiness; onClick: () => 
 function FinanceModal({ open, onClose, business }: { open: boolean; onClose: () => void; business: YouBusiness }) {
   const net = business.monthlyRevenue - business.monthlyExpenses;
   return (
-    <ModalWrap open={open} onClose={onClose} title="Finances" desc={business.name}>
+    <AppModal open={open} onClose={onClose} tone="money" size="sm" description={business.name}>
+      <AppModal.Header tone="money" title="Finances" subtitle={business.name} />
+      <AppModal.Body scrollable>
       <div className="space-y-3">
         <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-4">
           <p className="text-[10px] uppercase tracking-widest font-semibold text-emerald-500">Trésorerie</p>
@@ -365,7 +374,8 @@ function FinanceModal({ open, onClose, business }: { open: boolean; onClose: () 
           </div>
         </div>
       </div>
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -374,7 +384,9 @@ function FinanceModal({ open, onClose, business }: { open: boolean; onClose: () 
 function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () => void; business: YouBusiness }) {
   const reviews = business.ratings ?? [];
   return (
-    <ModalWrap open={open} onClose={onClose} title="Avis clients" desc={business.name}>
+    <AppModal open={open} onClose={onClose} tone="money" size="md" description={business.name}>
+      <AppModal.Header tone="money" title="Avis clients" subtitle={business.name} />
+      <AppModal.Body scrollable>
       {business.avgRating != null && business.ratingCount > 0 ? (
         <div className="space-y-3">
           <div className="flex items-center gap-4 rounded-xl border border-amber-400/20 bg-amber-400/8 px-4 py-4">
@@ -415,7 +427,8 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">Aucun avis pour le moment.</p>
       )}
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -423,7 +436,9 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
 
 function InvestmentsModal({ open, onClose, business }: { open: boolean; onClose: () => void; business: YouBusiness }) {
   return (
-    <ModalWrap open={open} onClose={onClose} title="Investissements reçus" desc={business.name}>
+    <AppModal open={open} onClose={onClose} tone="money" size="sm" description={business.name}>
+      <AppModal.Header tone="money" title="Investissements reçus" subtitle={business.name} />
+      <AppModal.Body scrollable>
       {business.recentInvestments.length > 0 ? (
         <div className="space-y-1.5">
           {business.recentInvestments.map((inv) => {
@@ -439,7 +454,8 @@ function InvestmentsModal({ open, onClose, business }: { open: boolean; onClose:
       ) : (
         <p className="py-4 text-center text-sm text-muted-foreground">Aucun investissement récent.</p>
       )}
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -449,13 +465,11 @@ function ShareholdersModal({ open, onClose, business, userId }: {
   open: boolean; onClose: () => void; business: YouBusiness | null; userId: string;
 }) {
   if (!business) return null;
+  const shareholderDesc = `${business.shareholders.length + 1} actionnaire(s)${business.viewerSharePercent > 0 ? ` · ta part : ${business.viewerSharePercent.toFixed(2)}%` : ''}`;
   return (
-    <ModalWrap
-      open={open}
-      onClose={onClose}
-      title={`Capital · ${business.name}`}
-      desc={`${business.shareholders.length + 1} actionnaire(s)${business.viewerSharePercent > 0 ? ` · ta part : ${business.viewerSharePercent.toFixed(2)}%` : ''}`}
-    >
+    <AppModal open={open} onClose={onClose} tone="money" size="md" description={shareholderDesc}>
+      <AppModal.Header tone="money" title={`Capital · ${business.name}`} subtitle={shareholderDesc} />
+      <AppModal.Body scrollable>
       <div className="space-y-1.5">
         <div className="rounded-lg border border-amber-400/15 bg-muted/10 px-3 py-2.5">
           <div className="flex items-center justify-between text-sm">
@@ -480,7 +494,8 @@ function ShareholdersModal({ open, onClose, business, userId }: {
           </div>
         ))}
       </div>
-    </ModalWrap>
+      </AppModal.Body>
+    </AppModal>
   );
 }
 
@@ -538,7 +553,9 @@ function FilePlainteModal({
   };
 
   return (
-    <ModalWrap open={open} onClose={onClose} title="Déposer une plainte" desc={business ? `Cour suprême · ${business.name}` : 'Cour suprême'}>
+    <AppModal open={open} onClose={onClose} tone="orange" size="md" description={business ? `Cour suprême · ${business.name}` : 'Cour suprême'}>
+      <AppModal.Header tone="orange" title="Déposer une plainte" subtitle={business ? `Cour suprême · ${business.name}` : 'Cour suprême'} />
+      <AppModal.Body scrollable>
       {business ? (
         <div className="space-y-4">
           <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2">
@@ -609,20 +626,18 @@ function FilePlainteModal({
               placeholder="Captures d'écran, liens, témoignages..."
             />
           </FieldRow>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose} disabled={submitting}>Annuler</Button>
-            <Button
-              size="sm"
-              onClick={() => void submit()}
-              disabled={submitting || title.trim().length < 5 || description.trim().length < 20}
-            >
-              {submitting ? 'Dépôt...' : 'Déposer'}
-            </Button>
-          </div>
         </div>
       ) : null}
-    </ModalWrap>
+      </AppModal.Body>
+      {business ? (
+        <AppModal.Footer>
+          <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
+          <AppModal.Button tone="orange" variant="soft" onClick={() => void submit()} disabled={submitting || title.trim().length < 5 || description.trim().length < 20}>
+            {submitting ? 'Dépôt...' : 'Déposer'}
+          </AppModal.Button>
+        </AppModal.Footer>
+      ) : null}
+    </AppModal>
   );
 }
 

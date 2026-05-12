@@ -20,8 +20,8 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AppModal } from '@/components/ui/app-modal';
 import { UsernameDisplay, type BadgeData, type UsernameDisplayPreset } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { PRODUCER_TYPES, RESOURCE_META, type ResourceType } from '@/lib/resources';
@@ -1365,10 +1365,7 @@ function DetailPanel({
     : '';
 
   return (
-    <Dialog open={!!selection} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
-        <DialogTitle className="sr-only">{titleText}</DialogTitle>
-
+    <AppModal open={!!selection} onClose={onClose} tone="cyan" size="md" description={titleText} accent={false}>
         {/* Colored header */}
         <div
           className="flex items-center gap-3 border-b border-border/40 px-5 py-4"
@@ -1828,8 +1825,7 @@ function DetailPanel({
 
           </div>
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+    </AppModal>
   );
 }
 

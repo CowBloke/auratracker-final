@@ -52,6 +52,12 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
     summary: 'La valeur totale du tableau de bord et les montants de trésorerie dans l\'onglet Supply affichaient des valeurs aberrantes dues à une conversion BigInt manquante.',
     sections: [
       {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-05-12-modal-style-1', text: '**Moi · Modales redessinées** — Toutes les fenêtres de gestion d\'entreprise (créer, gérer, inviter, emprunter, investir, formations, profil…) utilisent maintenant un design unifié plus sombre et plus lisible, avec un code couleur par type d\'action.' },
+        ],
+      },
+      {
         category: 'BUG_FIX',
         items: [
           { id: '2026-05-12-bigint-treasury-1', text: '**Moi · Valeur totale** — La trésorerie agrégée de vos entreprises s\'affichait comme une chaîne de chiffres concaténés (ex: 050003000 au lieu de 8 000 €). Corrigé.' },
