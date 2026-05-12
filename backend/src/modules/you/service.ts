@@ -608,7 +608,7 @@ function getUserBusinessStakePercent(userId: string, business: any) {
   // 3. Active investments
   const investments = (business.investments ?? []).filter((i: any) => (i.investorId === userId || i.investor?.id === userId));
   investments.forEach((i: any) => {
-    totalValue += i.amount;
+    totalValue += Number(i.amount ?? 0);
   });
 
   return (totalValue / valuation) * 100;
