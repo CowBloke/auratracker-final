@@ -77,7 +77,7 @@ const clanDetailInclude = Prisma.validator<Prisma.ClanInclude>()({
         select: clanMemberUserSelect,
       },
       role: {
-        select: { id: true, name: true, color: true, position: true },
+        select: { id: true, name: true, color: true, position: true, canManageHorses: true, canInviteMembers: true, canKickMembers: true, canManageRoles: true },
       },
     },
     orderBy: {
