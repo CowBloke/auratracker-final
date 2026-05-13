@@ -25,7 +25,7 @@ export const TONES: Record<AppModalTone, { fg: string; bg: string; ring: string 
   green:   { fg: '#4ade80', bg: 'rgba(74,222,128,0.13)',  ring: 'rgba(74,222,128,0.32)'  },
   red:     { fg: '#f87171', bg: 'rgba(248,113,113,0.14)', ring: 'rgba(248,113,113,0.34)' },
   blue:    { fg: '#60a5fa', bg: 'rgba(96,165,250,0.13)',  ring: 'rgba(96,165,250,0.32)'  },
-  neutral: { fg: '#fafafa', bg: 'rgba(255,255,255,0.06)', ring: 'rgba(255,255,255,0.12)' },
+  neutral: { fg: 'hsl(var(--foreground))', bg: 'hsl(var(--muted))', ring: 'hsl(var(--border))' },
 };
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
@@ -76,8 +76,7 @@ function AppModalRoot({
             'w-[calc(100vw-2rem)]',
             SIZE_CLASS[size],
             'max-h-[calc(100dvh-2rem)] overflow-hidden',
-            'rounded-2xl border',
-            'text-foreground',
+            'rounded-2xl border bg-card text-foreground',
             'duration-200',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
@@ -87,10 +86,8 @@ function AppModalRoot({
             className,
           )}
           style={{
-            background: '#1a1a1a',
-            borderColor: 'rgba(255,255,255,0.08)',
             boxShadow:
-              '0 24px 60px -20px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.02) inset',
+              '0 24px 60px -20px rgba(0,0,0,0.4), 0 0 0 1px hsl(var(--border) / 0.5) inset',
           }}
         >
           {accentColor && (
@@ -188,7 +185,7 @@ function AppModalHeader({
       </div>
 
       {!hideClose && (
-        <DialogPrimitive.Close className="flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20">
+        <DialogPrimitive.Close className="flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
           <X className="h-3.5 w-3.5" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
@@ -228,11 +225,7 @@ interface AppModalFooterProps {
 function AppModalFooter({ children, left, className }: AppModalFooterProps) {
   return (
     <div
-      className={cn('flex items-center gap-2 px-3.5 py-3', className)}
-      style={{
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        background: 'rgba(255,255,255,0.015)',
-      }}
+      className={cn('flex items-center gap-2 border-t bg-muted/30 px-3.5 py-3', className)}
     >
       {left && (
         <div className="mr-auto text-[11.5px] text-muted-foreground/60">{left}</div>
@@ -245,12 +238,7 @@ function AppModalFooter({ children, left, className }: AppModalFooterProps) {
 // ─── Divider ─────────────────────────────────────────────────────────────────
 
 function AppModalDivider({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn('h-px', className)}
-      style={{ background: 'rgba(255,255,255,0.06)' }}
-    />
-  );
+  return <div className={cn('h-px bg-border', className)} />;
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
@@ -282,19 +270,11 @@ function AppModalTabs({ tabs, value, onChange, className }: AppModalTabsProps) {
             type="button"
             onClick={() => onChange(tab.id)}
             className={cn(
-              'inline-flex h-[30px] items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
+              'inline-flex h-[30px] items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
               isActive
-                ? 'text-foreground'
+                ? 'bg-accent text-foreground'
                 : 'text-muted-foreground hover:text-foreground',
             )}
-            style={
-              isActive
-                ? {
-                    background: 'rgba(255,255,255,0.06)',
-                    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)',
-                  }
-                : undefined
-            }
           >
             {tab.icon &&
               React.cloneElement(tab.icon, {
@@ -332,11 +312,8 @@ function AppModalSidebarLayout({
 }) {
   return (
     <div
-      className={cn('grid', className)}
-      style={{
-        gridTemplateColumns: '160px 1fr',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-      }}
+      className={cn('grid border-t', className)}
+      style={{ gridTemplateColumns: '160px 1fr' }}
     >
       {children}
     </div>
@@ -351,10 +328,7 @@ function AppModalSidebarNav({
   className?: string;
 }) {
   return (
-    <div
-      className={cn('space-y-px p-2', className)}
-      style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}
-    >
+    <div className={cn('space-y-px border-r p-2', className)}>
       {children}
     </div>
   );
@@ -406,9 +380,9 @@ function AppModalRow({
         'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors',
         onClick ? 'cursor-pointer' : 'cursor-default',
         active
-          ? 'bg-white/[0.06]'
+          ? 'bg-accent'
           : onClick
-          ? 'hover:bg-white/[0.04]'
+          ? 'hover:bg-accent/60'
           : '',
         className,
       )}
@@ -493,14 +467,10 @@ function AppModalField({
       )}
       <div
         className={cn(
-          'flex items-center gap-2 rounded-[9px] px-2.5 transition-colors',
+          'flex items-center gap-2 rounded-[9px] border border-input bg-muted/50 px-2.5 transition-colors',
           rows ? 'py-2' : 'h-9',
-          'focus-within:border-white/20',
+          'focus-within:border-ring/50',
         )}
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.1)',
-        }}
       >
         {prefix && (
           <span className="flex-shrink-0 text-[12.5px] text-muted-foreground">
@@ -558,14 +528,14 @@ function AppModalChip({ children, tone = 'neutral', active, onClick, icon }: App
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       style={
         active
           ? { background: t.bg, color: t.fg, boxShadow: `inset 0 0 0 1px ${t.ring}` }
           : {
               background: 'transparent',
               color: 'var(--muted-foreground)',
-              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)',
+              boxShadow: 'inset 0 0 0 1px hsl(var(--border))',
             }
       }
     >
@@ -592,11 +562,11 @@ function AppModalToggle({ on, onChange, tone = 'aura' }: AppModalToggleProps) {
       role="switch"
       aria-checked={on}
       onClick={() => onChange?.(!on)}
-      className="flex-shrink-0 rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+      className="flex-shrink-0 rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       style={{
         width: 32,
         height: 18,
-        background: on ? t.fg : 'rgba(255,255,255,0.12)',
+        background: on ? t.fg : 'hsl(var(--input))',
       }}
     >
       <div
@@ -667,11 +637,11 @@ function AppModalButton({
 
   let bg = 'transparent';
   let color = 'var(--muted-foreground)';
-  let boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.12)';
+  let boxShadow = 'inset 0 0 0 1px hsl(var(--border))';
 
   if (variant === 'solid') {
-    bg = tone === 'neutral' ? '#fafafa' : t.fg;
-    color = '#0a0a0a';
+    bg = tone === 'neutral' ? 'hsl(var(--foreground))' : t.fg;
+    color = 'hsl(var(--background))';
     boxShadow = 'none';
   } else if (variant === 'soft') {
     bg = t.bg;
@@ -680,7 +650,7 @@ function AppModalButton({
   } else if (variant === 'ghost') {
     bg = 'transparent';
     color = 'var(--muted-foreground)';
-    boxShadow = 'inset 0 0 0 1px rgba(255,255,255,0.1)';
+    boxShadow = 'inset 0 0 0 1px hsl(var(--border))';
   } else if (variant === 'outline') {
     bg = 'transparent';
     color = t.fg;
@@ -695,7 +665,7 @@ function AppModalButton({
       disabled={disabled}
       className={cn(
         'inline-flex items-center justify-center gap-1.5 rounded-[9px] font-semibold tracking-[-0.005em] transition-opacity',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
         'hover:opacity-80 active:opacity-60',
         disabled && 'cursor-not-allowed opacity-50',
         full && 'w-full',
