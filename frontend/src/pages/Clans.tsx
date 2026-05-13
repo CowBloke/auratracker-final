@@ -1,6 +1,6 @@
 ﻿import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Axe, AlertTriangle, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
+import { Axe, AlertTriangle, Check, Crown, History, Loader2, LogOut, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +13,7 @@ import {
   ClanEventView,
   ClanOwnedItem,
   ClanPumpUpMessage,
+  ClanRole,
   ClanWarParticipantStats,
   ClanSummary,
   ClanWarDefenseState,
@@ -273,6 +274,15 @@ export default function Clans() {
   const [pumpUpColor, setPumpUpColor] = useState('#ffffff');
   const [pumpUpSaving, setPumpUpSaving] = useState(false);
   const [pumpUpEditId, setPumpUpEditId] = useState<string | null>(null);
+
+  // Role management
+  const [roleEditOpen, setRoleEditOpen] = useState(false);
+  const [roleEditId, setRoleEditId] = useState<string | null>(null);
+  const [roleEditName, setRoleEditName] = useState('');
+  const [roleEditColor, setRoleEditColor] = useState('#6b7280');
+  const [roleEditPerms, setRoleEditPerms] = useState({ canManageHorses: false, canInviteMembers: false, canKickMembers: false, canManageRoles: false });
+  const [roleEditIsSystem, setRoleEditIsSystem] = useState(false);
+  const [roleSaving, setRoleSaving] = useState(false);
 
   // War games
   const [gameStatus, setGameStatus] = useState<ClanWarGamesStatus | null>(null);
@@ -1122,6 +1132,74 @@ export default function Clans() {
     }
   };
 
+  const openRoleCreate = () => {
+    setRoleEditId(null);
+    setRoleEditName('');
+    setRoleEditColor('#6b7280');
+    setRoleEditPerms({ canManageHorses: false, canInviteMembers: false, canKickMembers: false, canManageRoles: false });
+    setRoleEditIsSystem(false);
+    setRoleEditOpen(true);
+  };
+
+  const openRoleEdit = (role: ClanRole) => {
+    setRoleEditId(role.id);
+    setRoleEditName(role.name);
+    setRoleEditColor(role.color);
+    setRoleEditPerms({ canManageHorses: role.canManageHorses, canInviteMembers: role.canInviteMembers, canKickMembers: role.canKickMembers, canManageRoles: role.canManageRoles });
+    setRoleEditIsSystem(role.isSystem);
+    setRoleEditOpen(true);
+  };
+
+  const handleSaveRole = async () => {
+    if (!selectedClan) return;
+    setRoleSaving(true);
+    try {
+      if (roleEditId) {
+        const res = await clansApi.updateRole(selectedClan.id, roleEditId, { name: roleEditIsSystem ? undefined : roleEditName, color: roleEditColor, ...roleEditPerms });
+        setSelectedClan((prev) => prev ? { ...prev, roles: prev.roles.map((r) => r.id === roleEditId ? res.data.role : r) } : prev);
+      } else {
+        const res = await clansApi.createRole(selectedClan.id, { name: roleEditName, color: roleEditColor, ...roleEditPerms });
+        setSelectedClan((prev) => prev ? { ...prev, roles: [...prev.roles, res.data.role] } : prev);
+      }
+      setRoleEditOpen(false);
+      toast({ title: roleEditId ? 'Rôle mis à jour' : 'Rôle créé' });
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de sauvegarder le rôle.', variant: 'destructive' });
+    } finally {
+      setRoleSaving(false);
+    }
+  };
+
+  const handleDeleteRole = async (roleId: string) => {
+    if (!selectedClan) return;
+    const confirmed = await confirm({ title: 'Supprimer ce rôle ?', description: 'Les membres avec ce rôle seront réinitialisés.' });
+    if (!confirmed) return;
+    try {
+      await clansApi.deleteRole(selectedClan.id, roleId);
+      setSelectedClan((prev) => prev ? { ...prev, roles: prev.roles.filter((r) => r.id !== roleId) } : prev);
+      toast({ title: 'Rôle supprimé' });
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de supprimer ce rôle.', variant: 'destructive' });
+    }
+  };
+
+  const handleAssignRole = async (userId: string, roleId: string | null) => {
+    if (!selectedClan) return;
+    try {
+      await clansApi.assignRole(selectedClan.id, userId, roleId);
+      setSelectedClan((prev) => {
+        if (!prev) return prev;
+        const role = roleId ? prev.roles.find((r) => r.id === roleId) : null;
+        return {
+          ...prev,
+          members: prev.members.map((m) => m.userId === userId ? { ...m, roleId: roleId ?? null, roleName: role?.name ?? null, roleColor: role?.color ?? null } : m),
+        };
+      });
+    } catch (error: any) {
+      toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible d\'assigner ce rôle.', variant: 'destructive' });
+    }
+  };
+
   const handleSaveImage = async () => {
     if (!selectedClan || !selectedClan.viewer.isLeader) return;
     try {
@@ -1565,19 +1643,22 @@ export default function Clans() {
                                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                     <span>{formatAura(member.aura)} aura</span>
                                     <span>•</span>
-                                    <span>
-                                      {selectedClan.leader.id === member.userId
-                                        ? 'Chef'
-                                        : member.isLeader
-                                          ? 'Officier'
-                                          : 'Membre'}
-                                    </span>
+                                    {member.roleName ? (
+                                      <span className="flex items-center gap-1">
+                                        <span className="inline-block h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: member.roleColor ?? '#6b7280' }} />
+                                        <span>{member.roleName}</span>
+                                      </span>
+                                    ) : (
+                                      <span>
+                                        {selectedClan.leader.id === member.userId ? 'Chef' : member.isLeader ? 'Officier' : 'Membre'}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               </div>
-                              {selectedClan.viewer.isLeader && member.userId !== user?.id ? (
+                              {member.userId !== user?.id ? (
                                 <div className="flex flex-wrap justify-end gap-1.5">
-                                  {selectedClan.leader.id !== member.userId ? (
+                                  {selectedClan.viewer.isLeader && selectedClan.leader.id !== member.userId ? (
                                     member.isLeader ? (
                                       <Button variant="outline" size="sm" onClick={() => handleDemoteMember(member.userId)} disabled={actionLoading}>
                                         Rétrograder
@@ -1588,12 +1669,26 @@ export default function Clans() {
                                       </Button>
                                     )
                                   ) : null}
-                                  {selectedClan.leader.id === user?.id && selectedClan.leader.id !== member.userId ? (
+                                  {selectedClan.viewer.isLeader && selectedClan.leader.id === user?.id && selectedClan.leader.id !== member.userId ? (
                                     <Button variant="secondary" size="sm" onClick={() => handleTransferLeadership(member.userId, member.username)} disabled={actionLoading}>
                                       Donner chef
                                     </Button>
                                   ) : null}
-                                  {!member.isLeader ? (
+                                  {selectedClan.viewer.permissions?.canManageRoles && (
+                                    <select
+                                      value={member.roleId ?? ''}
+                                      onChange={(e) => void handleAssignRole(member.userId, e.target.value || null)}
+                                      className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                                      disabled={actionLoading}
+                                      title="Changer le rôle"
+                                    >
+                                      <option value="">— aucun rôle —</option>
+                                      {selectedClan.roles?.filter((r) => r.name !== 'Chef').map((r) => (
+                                        <option key={r.id} value={r.id}>{r.name}</option>
+                                      ))}
+                                    </select>
+                                  )}
+                                  {selectedClan.viewer.permissions?.canKickMembers && !member.isLeader ? (
                                     <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.userId)} disabled={actionLoading}>
                                       <UserX className="h-3.5 w-3.5" />
                                     </Button>
@@ -1606,7 +1701,7 @@ export default function Clans() {
                       </Card>
 
                       {/* Candidatures (leader only) */}
-                      {selectedClan.viewer.isLeader && selectedClan.joinRequests.length > 0 ? (
+                      {(selectedClan.viewer.permissions?.canInviteMembers || selectedClan.viewer.isLeader) && selectedClan.joinRequests.length > 0 ? (
                         <Card className={panelClassName}>
                           <CardContent className="space-y-2 p-4">
                             <SectionTitle title="Candidatures" description={`${selectedClan.joinRequests.length} en attente`} />
@@ -1630,6 +1725,58 @@ export default function Clans() {
                                 </div>
                               </div>
                             ))}
+                          </CardContent>
+                        </Card>
+                      ) : null}
+
+                      {/* Rôles du clan */}
+                      {selectedClan.viewer.isMember && (selectedClan.roles?.length ?? 0) > 0 ? (
+                        <Card className={panelClassName}>
+                          <CardContent className="space-y-2 p-4">
+                            <SectionTitle
+                              title="Rôles"
+                              action={
+                                selectedClan.viewer.permissions?.canManageRoles ? (
+                                  <Button size="sm" variant="outline" onClick={openRoleCreate}>
+                                    <Plus className="mr-1 h-3.5 w-3.5" /> Nouveau rôle
+                                  </Button>
+                                ) : undefined
+                              }
+                            />
+                            {(selectedClan.roles ?? []).map((role) => (
+                              <div key={role.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-2">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <span className="inline-block h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: role.color }} />
+                                  <span className="text-sm font-medium">{role.name}</span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {role.canManageHorses && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600">Chevaux</span>}
+                                    {role.canInviteMembers && <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-600">Inviter</span>}
+                                    {role.canKickMembers && <span className="rounded bg-rose-500/15 px-1.5 py-0.5 text-[10px] text-rose-600">Exclure</span>}
+                                    {role.canManageRoles && <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[10px] text-purple-600">Rôles</span>}
+                                  </div>
+                                </div>
+                                {selectedClan.viewer.permissions?.canManageRoles ? (
+                                  <div className="flex gap-1 shrink-0">
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openRoleEdit(role)}>
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    {!role.isSystem ? (
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:text-destructive" onClick={() => void handleDeleteRole(role.id)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      ) : selectedClan.viewer.isMember && selectedClan.viewer.permissions?.canManageRoles ? (
+                        <Card className={panelClassName}>
+                          <CardContent className="p-4">
+                            <Button size="sm" variant="outline" onClick={openRoleCreate}>
+                              <Plus className="mr-1 h-3.5 w-3.5" /> Créer des rôles pour ce clan
+                            </Button>
                           </CardContent>
                         </Card>
                       ) : null}
@@ -3216,6 +3363,77 @@ export default function Clans() {
               onShoot={handleNavalShot}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Role edit / create modal ── */}
+      <Dialog open={roleEditOpen} onOpenChange={setRoleEditOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              {roleEditId ? 'Modifier le rôle' : 'Nouveau rôle'}
+            </DialogTitle>
+            <DialogDescription>
+              {roleEditId ? 'Modifiez les permissions et la couleur de ce rôle.' : 'Créez un rôle personnalisé pour les membres de votre clan.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Nom du rôle</label>
+              <Input
+                value={roleEditName}
+                onChange={(e) => setRoleEditName(e.target.value.slice(0, 32))}
+                placeholder="Ex: Stratège, Éleveur..."
+                disabled={roleEditIsSystem}
+                maxLength={32}
+              />
+              {roleEditIsSystem && <p className="text-xs text-muted-foreground">Le nom des rôles système ne peut pas être modifié.</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Couleur</label>
+              <div className="flex flex-wrap gap-1.5">
+                {TAG_PRESET_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={cn('h-6 w-6 rounded-full border-2 transition-transform hover:scale-110', roleEditColor === c ? 'border-foreground' : 'border-transparent')}
+                    style={{ backgroundColor: c }}
+                    onClick={() => setRoleEditColor(c)}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Permissions</label>
+              {([
+                { key: 'canManageHorses', label: 'Gérer les chevaux', desc: 'Acheter, entraîner, inscrire et soigner les chevaux', icon: '🐴' },
+                { key: 'canInviteMembers', label: 'Inviter des membres', desc: 'Accepter ou refuser les candidatures', icon: '👋' },
+                { key: 'canKickMembers', label: 'Exclure des membres', desc: 'Retirer des membres réguliers du clan', icon: '🚫' },
+                { key: 'canManageRoles', label: 'Gérer les rôles', desc: 'Créer, modifier et assigner des rôles', icon: '🛡️' },
+              ] as { key: keyof typeof roleEditPerms; label: string; desc: string; icon: string }[]).map(({ key, label, desc, icon }) => (
+                <label key={key} className="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/10 px-3 py-2.5 cursor-pointer hover:bg-muted/20">
+                  <input
+                    type="checkbox"
+                    checked={roleEditPerms[key]}
+                    onChange={(e) => setRoleEditPerms((prev) => ({ ...prev, [key]: e.target.checked }))}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <div className="text-sm font-medium">{icon} {label}</div>
+                    <div className="text-xs text-muted-foreground">{desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={handleSaveRole} disabled={roleSaving || (!roleEditIsSystem && !roleEditName.trim())}>
+                {roleSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Settings2 className="mr-1 h-4 w-4" />}
+                {roleEditId ? 'Enregistrer' : 'Créer'}
+              </Button>
+              <Button variant="outline" onClick={() => setRoleEditOpen(false)}>Annuler</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

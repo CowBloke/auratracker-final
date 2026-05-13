@@ -76,10 +76,16 @@ const clanDetailInclude = Prisma.validator<Prisma.ClanInclude>()({
       user: {
         select: clanMemberUserSelect,
       },
+      role: {
+        select: { id: true, name: true, color: true, position: true },
+      },
     },
     orderBy: {
       user: { aura: 'desc' },
     },
+  },
+  roles: {
+    orderBy: { position: 'asc' },
   },
   owner: {
     select: clanLeaderSelect,
@@ -1146,6 +1152,32 @@ const getClanMembership = (clanId: string, userId: string) =>
     },
   });
 
+type ClanPermKey = 'canManageHorses' | 'canInviteMembers' | 'canKickMembers' | 'canManageRoles';
+
+async function hasClanPerm(userId: string, clanId: string, perm: ClanPermKey): Promise<boolean> {
+  const member = await prisma.clanMember.findFirst({
+    where: { userId, clanId },
+    select: {
+      isLeader: true,
+      role: { select: { canManageHorses: true, canInviteMembers: true, canKickMembers: true, canManageRoles: true } },
+      clan: { select: { ownerId: true } },
+    },
+  });
+  if (!member) return false;
+  if (member.clan.ownerId === userId) return true;
+  if (member.role) return Boolean((member.role as Record<string, boolean>)[perm]);
+  return member.isLeader;
+}
+
+async function createDefaultRoles(clanId: string, tx: Prisma.TransactionClient) {
+  const [chef, officier, membre] = await Promise.all([
+    tx.clanRole.create({ data: { clanId, name: 'Chef', color: '#f59e0b', position: 0, isSystem: true, canManageHorses: true, canInviteMembers: true, canKickMembers: true, canManageRoles: true } }),
+    tx.clanRole.create({ data: { clanId, name: 'Officier', color: '#3b82f6', position: 1, isSystem: true, canManageHorses: true, canInviteMembers: true, canKickMembers: true, canManageRoles: false } }),
+    tx.clanRole.create({ data: { clanId, name: 'Membre', color: '#6b7280', position: 2, isSystem: true, isDefault: true } }),
+  ]);
+  return { chef, officier, membre };
+}
+
 // Get viewer's clan upgrade status (for shop page)
 router.get('/me/status', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -1421,6 +1453,13 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     const isMember = clan.members.some((member) => member.userId === userId);
     const isLeader = clan.members.some((member) => member.userId === userId && member.isLeader);
+    const isOwner = clan.ownerId === userId;
+    const viewerMember = clan.members.find((member) => member.userId === userId);
+    const viewerRole = viewerMember?.role ?? null;
+    const viewerCanInvite = isOwner || (viewerRole ? viewerRole.canInviteMembers : (viewerMember?.isLeader ?? false));
+    const viewerCanKick = isOwner || (viewerRole ? viewerRole.canKickMembers : (viewerMember?.isLeader ?? false));
+    const viewerCanManageRoles = isOwner || (viewerRole ? viewerRole.canManageRoles : (viewerMember?.isLeader ?? false));
+    const viewerCanManageHorses = isOwner || (viewerRole ? viewerRole.canManageHorses : (viewerMember?.isLeader ?? false));
 
     const [pendingRequest, currentWar, warHistory, cooldownEndsAt, eligibleOpponentsResult, clanOwnedItems, clanEffects, clanBankContributions] = await Promise.all([
       userId
@@ -1486,8 +1525,11 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           profilePicture: member.user.profilePicture,
           joinedAt: member.joinedAt,
           isLeader: member.isLeader,
+          roleId: member.roleId ?? null,
+          roleName: member.role?.name ?? null,
+          roleColor: member.role?.color ?? null,
         })),
-        joinRequests: isLeader
+        joinRequests: viewerCanInvite
           ? clan.joinRequests.map((request) => ({
               id: request.id,
               userId: request.userId,
@@ -1502,7 +1544,14 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
           isMember,
           isLeader,
           hasPendingRequest: Boolean(pendingRequest),
+          permissions: {
+            canInviteMembers: viewerCanInvite,
+            canKickMembers: viewerCanKick,
+            canManageRoles: viewerCanManageRoles,
+            canManageHorses: viewerCanManageHorses,
+          },
         },
+        roles: isMember ? clan.roles : [],
         bankContributionHistory: isMember ? clanBankContributions.map(mapClanBankContribution) : [],
         ownedItems: isMember ? clanOwnedItems.map(mapClanOwnedItem) : [],
         activeEffects: isMember ? clanEffects.map(serializeClanEffect) : [],
@@ -1967,14 +2016,13 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
           isPublic,
           maxMembers: CLAN_MAX_MEMBERS,
           ownerId: userId,
-          members: {
-            create: {
-              userId,
-              isLeader: true,
-            },
-          },
         },
-        include: clanSummaryInclude,
+      });
+
+      const { chef } = await createDefaultRoles(created.id, tx);
+
+      await tx.clanMember.create({
+        data: { clanId: created.id, userId, isLeader: true, roleId: chef.id },
       });
 
       await tx.user.update({
@@ -1984,7 +2032,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         },
       });
 
-      return created;
+      return tx.clan.findUniqueOrThrow({ where: { id: created.id }, include: clanSummaryInclude });
     });
 
     logAdmin('clan_create', userId, req.user!.username, null, null, { clanName: clan.name, clanId: clan.id });
@@ -2503,7 +2551,7 @@ router.post('/:id/war/attack', authMiddleware, async (req: AuthRequest, res: Res
   }
 });
 
-// Accept a join request (leader only)
+// Accept a join request (canInviteMembers permission)
 router.post('/:id/requests/:requestId/accept', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id, requestId } = req.params;
@@ -2513,17 +2561,9 @@ router.post('/:id/requests/:requestId/accept', authMiddleware, async (req: AuthR
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const leader = await prisma.clanMember.findFirst({
-      where: {
-        clanId: id,
-        userId,
-        isLeader: true,
-      },
-      select: { id: true },
-    });
-
-    if (!leader) {
-      return res.status(403).json({ error: 'Seul le chef peut accepter.' });
+    const canInvite = await hasClanPerm(userId, id, 'canInviteMembers');
+    if (!canInvite) {
+      return res.status(403).json({ error: 'Permission insuffisante pour accepter les candidatures.' });
     }
 
     const clan = await prisma.clan.findUnique({
@@ -2544,6 +2584,11 @@ router.post('/:id/requests/:requestId/accept', authMiddleware, async (req: AuthR
       return res.status(404).json({ error: 'Demande introuvable.' });
     }
 
+    const defaultRole = await prisma.clanRole.findFirst({
+      where: { clanId: id, isDefault: true },
+      select: { id: true },
+    });
+
     await prisma.$transaction(async (tx) => {
       const memberCount = await tx.clanMember.count({
         where: { clanId: id },
@@ -2557,6 +2602,7 @@ router.post('/:id/requests/:requestId/accept', authMiddleware, async (req: AuthR
           clanId: id,
           userId: request.userId,
           isLeader: false,
+          roleId: defaultRole?.id ?? null,
         },
       });
 
@@ -2589,7 +2635,7 @@ router.post('/:id/requests/:requestId/accept', authMiddleware, async (req: AuthR
   }
 });
 
-// Reject a join request (leader only)
+// Reject a join request (canInviteMembers permission)
 router.post('/:id/requests/:requestId/reject', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id, requestId } = req.params;
@@ -2599,17 +2645,9 @@ router.post('/:id/requests/:requestId/reject', authMiddleware, async (req: AuthR
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const leader = await prisma.clanMember.findFirst({
-      where: {
-        clanId: id,
-        userId,
-        isLeader: true,
-      },
-      select: { id: true },
-    });
-
-    if (!leader) {
-      return res.status(403).json({ error: 'Seul le chef peut refuser.' });
+    const canInvite = await hasClanPerm(userId, id, 'canInviteMembers');
+    if (!canInvite) {
+      return res.status(403).json({ error: 'Permission insuffisante pour refuser les candidatures.' });
     }
 
     const request = await prisma.clanJoinRequest.findUnique({
@@ -2693,9 +2731,14 @@ router.post('/:id/members/:targetUserId/promote', authMiddleware, async (req: Au
       return res.status(400).json({ error: 'Ce membre est deja promu.' });
     }
 
+    const officierRole = await prisma.clanRole.findFirst({
+      where: { clanId: id, name: 'Officier' },
+      select: { id: true },
+    });
+
     await prisma.clanMember.update({
       where: { id: member.id },
-      data: { isLeader: true },
+      data: { isLeader: true, ...(officierRole ? { roleId: officierRole.id } : {}) },
     });
 
     createNotification({
@@ -2774,9 +2817,14 @@ router.post('/:id/members/:targetUserId/demote', authMiddleware, async (req: Aut
       return res.status(400).json({ error: 'Le chef ne peut pas etre retrograde. Transfere le role de chef avant.' });
     }
 
+    const membreRole = await prisma.clanRole.findFirst({
+      where: { clanId: id, isDefault: true },
+      select: { id: true },
+    });
+
     await prisma.clanMember.update({
       where: { id: member.id },
-      data: { isLeader: false },
+      data: { isLeader: false, ...(membreRole ? { roleId: membreRole.id } : {}) },
     });
 
     createNotification({
@@ -2994,7 +3042,7 @@ router.delete('/:id/leave', authMiddleware, async (req: AuthRequest, res: Respon
   }
 });
 
-// Remove a member from the clan (leader only)
+// Remove a member from the clan (canKickMembers permission)
 router.delete('/:id/members/:targetUserId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id, targetUserId } = req.params;
@@ -3004,17 +3052,9 @@ router.delete('/:id/members/:targetUserId', authMiddleware, async (req: AuthRequ
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const leader = await prisma.clanMember.findFirst({
-      where: {
-        clanId: id,
-        userId,
-        isLeader: true,
-      },
-      select: { id: true },
-    });
-
-    if (!leader) {
-      return res.status(403).json({ error: 'Seul le chef peut retirer des membres.' });
+    const canKick = await hasClanPerm(userId, id, 'canKickMembers');
+    if (!canKick) {
+      return res.status(403).json({ error: 'Permission insuffisante pour retirer des membres.' });
     }
 
     if (targetUserId === userId) {
@@ -3640,6 +3680,138 @@ router.delete('/:id/pump-up/:msgId', authMiddleware, async (req: AuthRequest, re
   if (!existing) return res.status(404).json({ error: 'Message not found' });
 
   await prisma.clanPumpUpMessage.delete({ where: { id: msgId } });
+
+  return res.json({ success: true });
+});
+
+// ── Role management ──────────────────────────────────────────────────────────
+
+// Create a custom role (canManageRoles)
+router.post('/:id/roles', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const canManage = await hasClanPerm(userId, id, 'canManageRoles');
+  if (!canManage) return res.status(403).json({ error: 'Permission insuffisante.' });
+
+  const { name, color, canManageHorses, canInviteMembers, canKickMembers, canManageRoles: rolePerm } = req.body ?? {};
+  if (typeof name !== 'string' || name.trim().length < 1 || name.length > 32) {
+    return res.status(400).json({ error: 'Nom de rôle invalide (1-32 caractères).' });
+  }
+
+  const existingCount = await prisma.clanRole.count({ where: { clanId: id, isSystem: false } });
+  if (existingCount >= 10) return res.status(400).json({ error: 'Maximum 10 rôles personnalisés.' });
+
+  const maxPos = await prisma.clanRole.aggregate({ where: { clanId: id }, _max: { position: true } });
+
+  try {
+    const role = await prisma.clanRole.create({
+      data: {
+        clanId: id,
+        name: name.trim(),
+        color: typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color) ? color : '#6b7280',
+        position: (maxPos._max.position ?? 2) + 1,
+        isSystem: false,
+        isDefault: false,
+        canManageHorses: Boolean(canManageHorses),
+        canInviteMembers: Boolean(canInviteMembers),
+        canKickMembers: Boolean(canKickMembers),
+        canManageRoles: Boolean(rolePerm),
+      },
+    });
+    return res.json({ role });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return res.status(400).json({ error: 'Un rôle avec ce nom existe déjà.' });
+    }
+    console.error('Create role error:', err);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// Update a role (canManageRoles)
+router.patch('/:id/roles/:roleId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id, roleId } = req.params;
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const canManage = await hasClanPerm(userId, id, 'canManageRoles');
+  if (!canManage) return res.status(403).json({ error: 'Permission insuffisante.' });
+
+  const role = await prisma.clanRole.findUnique({ where: { id: roleId } });
+  if (!role || role.clanId !== id) return res.status(404).json({ error: 'Rôle introuvable.' });
+
+  const { name, color, canManageHorses, canInviteMembers, canKickMembers, canManageRoles: rolePerm } = req.body ?? {};
+  const data: Prisma.ClanRoleUpdateInput = {};
+  if (!role.isSystem && typeof name === 'string' && name.trim().length >= 1 && name.length <= 32) {
+    data.name = name.trim();
+  }
+  if (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) data.color = color;
+  if (typeof canManageHorses === 'boolean') data.canManageHorses = canManageHorses;
+  if (typeof canInviteMembers === 'boolean') data.canInviteMembers = canInviteMembers;
+  if (typeof canKickMembers === 'boolean') data.canKickMembers = canKickMembers;
+  if (typeof rolePerm === 'boolean') data.canManageRoles = rolePerm;
+
+  try {
+    const updated = await prisma.clanRole.update({ where: { id: roleId }, data });
+    return res.json({ role: updated });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return res.status(400).json({ error: 'Un rôle avec ce nom existe déjà.' });
+    }
+    console.error('Update role error:', err);
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
+// Delete a custom role (canManageRoles, system roles cannot be deleted)
+router.delete('/:id/roles/:roleId', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id, roleId } = req.params;
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const canManage = await hasClanPerm(userId, id, 'canManageRoles');
+  if (!canManage) return res.status(403).json({ error: 'Permission insuffisante.' });
+
+  const role = await prisma.clanRole.findUnique({ where: { id: roleId } });
+  if (!role || role.clanId !== id) return res.status(404).json({ error: 'Rôle introuvable.' });
+  if (role.isSystem) return res.status(400).json({ error: 'Impossible de supprimer un rôle système.' });
+
+  await prisma.clanMember.updateMany({ where: { clanId: id, roleId }, data: { roleId: null } });
+  await prisma.clanRole.delete({ where: { id: roleId } });
+  return res.json({ success: true });
+});
+
+// Assign a role to a member (canManageRoles)
+router.post('/:id/members/:targetUserId/role', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id, targetUserId } = req.params;
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const canManage = await hasClanPerm(userId, id, 'canManageRoles');
+  if (!canManage) return res.status(403).json({ error: 'Permission insuffisante.' });
+
+  const { roleId } = req.body ?? {};
+
+  if (roleId) {
+    const role = await prisma.clanRole.findUnique({ where: { id: roleId } });
+    if (!role || role.clanId !== id) return res.status(404).json({ error: 'Rôle introuvable.' });
+    if (role.name === 'Chef') {
+      const clan = await prisma.clan.findUnique({ where: { id }, select: { ownerId: true } });
+      if (clan?.ownerId !== targetUserId) {
+        return res.status(400).json({ error: 'Seul le chef du clan peut avoir le rôle Chef.' });
+      }
+    }
+  }
+
+  const member = await prisma.clanMember.findFirst({ where: { clanId: id, userId: targetUserId } });
+  if (!member) return res.status(404).json({ error: 'Membre introuvable.' });
+
+  await prisma.clanMember.update({
+    where: { id: member.id },
+    data: { roleId: roleId || null },
+  });
 
   return res.json({ success: true });
 });

@@ -823,9 +823,16 @@ async function getUnlockedPatterns(stableId: string): Promise<Set<string>> {
 async function getUserStable(userId: string) {
   const member = await prisma.clanMember.findUnique({
     where: { userId },
-    select: { clanId: true, isLeader: true, clan: { select: { ownerId: true } } },
+    select: {
+      clanId: true,
+      isLeader: true,
+      role: { select: { canManageHorses: true } },
+      clan: { select: { ownerId: true } },
+    },
   });
   if (!member) return null;
+  const isOwner = member.clan.ownerId === userId;
+  const canManage = isOwner || (member.role ? member.role.canManageHorses : member.isLeader);
   const stable = await prisma.stable.findUnique({
     where: { clanId: member.clanId },
     include: {
@@ -836,13 +843,8 @@ async function getUserStable(userId: string) {
     },
   });
   return stable
-    ? {
-        stable,
-        clanId: member.clanId,
-        canManage: true, // any clan member can manage
-        isLeader: member.isLeader || member.clan.ownerId === userId,
-      }
-    : { stable: null, clanId: member.clanId, canManage: true, isLeader: member.isLeader || member.clan.ownerId === userId };
+    ? { stable, clanId: member.clanId, canManage, isLeader: isOwner || member.isLeader }
+    : { stable: null, clanId: member.clanId, canManage, isLeader: isOwner || member.isLeader };
 }
 
 // ---------- Endpoints ----------
@@ -1014,6 +1016,7 @@ router.post('/stable', authMiddleware, async (req: AuthRequest, res: Response) =
   }
   const info = await getUserStable(req.user.id);
   if (!info) return res.status(400).json({ error: 'Vous devez rejoindre un clan pour créer une écurie.' });
+  if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent créer une écurie.' });
   if (info.stable) return res.status(400).json({ error: 'Votre clan a déjà une écurie.' });
 
   try {
@@ -1111,6 +1114,7 @@ router.post('/horses/buy', authMiddleware, async (req: AuthRequest, res: Respons
   }
   const info = await getUserStable(req.user.id);
   if (!info?.stable) return res.status(400).json({ error: 'Créez une écurie d\'abord.' });
+  if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent gérer l\'écurie.' });
 
   // Random genes for a basic foal.
   const rand = mulberry32(((Date.now() + Math.floor(Math.random() * 1e9)) | 0));
@@ -1155,6 +1159,7 @@ router.patch('/horses/:id', authMiddleware, async (req: AuthRequest, res: Respon
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
   const info = await getUserStable(req.user.id);
   if (!info?.stable) return res.status(404).json({ error: 'Pas d\'écurie.' });
+  if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent gérer l\'écurie.' });
   const horse = await prisma.horse.findUnique({ where: { id: req.params.id } });
   if (!horse || horse.stableId !== info.stable.id) return res.status(404).json({ error: 'Cheval introuvable.' });
   if (horse.isConfiscated || horse.isRetired) return res.status(400).json({ error: 'Cheval indisponible.' });
@@ -1211,6 +1216,7 @@ router.post('/horses/:id/train', authMiddleware, async (req: AuthRequest, res: R
   }
   const info = await getUserStable(req.user.id);
   if (!info?.stable) return res.status(404).json({ error: 'Pas d\'écurie.' });
+  if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent gérer l\'écurie.' });
   const horse = await prisma.horse.findUnique({ where: { id: req.params.id } });
   if (!horse || horse.stableId !== info.stable.id) return res.status(404).json({ error: 'Cheval introuvable.' });
   if (horse.isConfiscated || horse.isRetired) return res.status(400).json({ error: 'Cheval indisponible.' });
@@ -1246,6 +1252,7 @@ router.post('/horses/:id/register', authMiddleware, async (req: AuthRequest, res
 
   const info = await getUserStable(req.user.id);
   if (!info?.stable) return res.status(404).json({ error: 'Pas d\'écurie.' });
+  if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent gérer l\'écurie.' });
   const horse = await prisma.horse.findUnique({ where: { id: req.params.id } });
   if (!horse || horse.stableId !== info.stable.id) return res.status(404).json({ error: 'Cheval introuvable.' });
   if (horse.isConfiscated || horse.isRetired) return res.status(400).json({ error: 'Cheval indisponible.' });
@@ -1268,6 +1275,7 @@ router.post('/horses/:id/dope', authMiddleware, async (req: AuthRequest, res: Re
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
   const info = await getUserStable(req.user.id);
   if (!info?.stable) return res.status(404).json({ error: 'Pas d\'écurie.' });
+  if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent gérer l\'écurie.' });
   const horse = await prisma.horse.findUnique({ where: { id: req.params.id } });
   if (!horse || horse.stableId !== info.stable.id) return res.status(404).json({ error: 'Cheval introuvable.' });
   if (horse.isConfiscated || horse.isRetired) return res.status(400).json({ error: 'Cheval indisponible.' });
@@ -1314,6 +1322,7 @@ router.delete('/horses/:id', authMiddleware, async (req: AuthRequest, res: Respo
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
   const info = await getUserStable(req.user.id);
   if (!info?.stable) return res.status(404).json({ error: 'Pas d\'écurie.' });
+  if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent gérer l\'écurie.' });
   const horse = await prisma.horse.findUnique({ where: { id: req.params.id } });
   if (!horse || horse.stableId !== info.stable.id) return res.status(404).json({ error: 'Cheval introuvable.' });
   const refund = Math.floor(HORSE_BUY_COST * 0.3);
@@ -1337,6 +1346,7 @@ router.post('/breed', authMiddleware, async (req: AuthRequest, res: Response) =>
   }
   const info = await getUserStable(req.user.id);
   if (!info?.stable) return res.status(404).json({ error: 'Pas d\'écurie.' });
+  if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent gérer l\'écurie.' });
   const h1 = await prisma.horse.findUnique({ where: { id: horse1Id } });
   const h2 = await prisma.horse.findUnique({ where: { id: horse2Id } });
   if (!h1 || !h2 || h1.stableId !== info.stable.id || h2.stableId !== info.stable.id) {

@@ -133,6 +133,91 @@ const extractEconomyDeltaForUser = (
   };
 };
 
+const formatMoneyReason = (
+  log: { type: string; action: string; userId: string | null; targetId: string | null; metadata: string | null; details?: string | null },
+  userId: string,
+): { amount: number; reason: string } | null => {
+  const metadata = parseLogMetadata(log.metadata);
+  const details = parseLogMetadata(log.details ?? null);
+  const gameType = typeof metadata.gameType === 'string' ? metadata.gameType : 'jeu';
+
+  if (log.type === 'GAME' && log.userId === userId) {
+    if (log.action === 'game_complete') {
+      const amount = toNumericValue(metadata.moneyReward);
+      if (amount === 0) return null;
+      return { amount, reason: `Recompense ${gameType}` };
+    }
+
+    if (log.action === 'casino_start') {
+      const amount = toNumericValue(metadata.bet);
+      if (amount === 0) return null;
+      return { amount: -amount, reason: 'Mise casino' };
+    }
+  }
+
+  if (log.type === 'ECONOMY') {
+    if ((log.action === 'quest_reward' || log.action === 'pass_reward') && log.userId === userId) {
+      const amount = toNumericValue(metadata.moneyReward);
+      if (amount === 0) return null;
+      return { amount, reason: log.action === 'quest_reward' ? 'Recompense quete' : 'Recompense pass' };
+    }
+
+    if (log.action === 'balance_change' && log.userId === userId) {
+      const amount = toNumericValue(metadata.moneyDelta ?? metadata.deltaMoney);
+      if (amount === 0) return null;
+      return { amount, reason: 'Ajustement du solde' };
+    }
+  }
+
+  if (log.type === 'AURACOIN' && log.userId === userId) {
+    if (log.action === 'auracoin_buy') {
+      const amount = toNumericValue(metadata.moneySpent);
+      if (amount === 0) return null;
+      return { amount: -amount, reason: 'Achat AuraCoin' };
+    }
+
+    if (log.action === 'auracoin_sell') {
+      const amount = toNumericValue(metadata.moneyReceived);
+      if (amount === 0) return null;
+      return { amount, reason: 'Vente AuraCoin' };
+    }
+  }
+
+  if (log.type === 'MARKETPLACE' && log.userId === userId) {
+    if (log.action === 'item_purchase') {
+      const amount = toNumericValue(metadata.totalPrice);
+      const itemName = typeof metadata.itemName === 'string' ? metadata.itemName : 'boutique';
+      if (amount === 0) return null;
+      return { amount: -amount, reason: `Achat ${itemName}` };
+    }
+
+    if (log.action === 'listing_sold') {
+      const amount = toNumericValue(metadata.totalPrice);
+      const itemName = typeof metadata.itemName === 'string' ? metadata.itemName : 'marketplace';
+      if (amount === 0) return null;
+      return { amount: -amount, reason: `Achat marketplace: ${itemName}` };
+    }
+  }
+
+  if (log.type === 'ADMIN' && log.action === 'user_update' && log.targetId === userId) {
+    const changes = details.changes && typeof details.changes === 'object' && !Array.isArray(details.changes)
+      ? details.changes as Record<string, unknown>
+      : {};
+    const oldValues = details.oldValues && typeof details.oldValues === 'object' && !Array.isArray(details.oldValues)
+      ? details.oldValues as Record<string, unknown>
+      : {};
+
+    if (changes.money === undefined) return null;
+    const nextMoney = toNumericValue(changes.money);
+    const previousMoney = toNumericValue(oldValues.money);
+    const amount = nextMoney - previousMoney;
+    if (amount === 0) return null;
+    return { amount, reason: 'Ajustement admin' };
+  }
+
+  return null;
+};
+
 // Get all users (for the 40-user community)
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -357,6 +442,63 @@ router.get('/announcement', authMiddleware, async (req: AuthRequest, res: Respon
   } catch (error) {
     console.error('Get announcement error:', error);
     res.status(500).json({ error: 'Failed to get announcement' });
+  }
+});
+
+router.get('/me/money-history', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const limitParam = Number.parseInt(String(req.query.limit ?? '50'), 10);
+    const limit = Number.isInteger(limitParam) ? Math.min(100, Math.max(10, limitParam)) : 50;
+
+    const logs = await prisma.log.findMany({
+      where: {
+        OR: [
+          {
+            type: { in: ['GAME', 'ECONOMY', 'AURACOIN', 'MARKETPLACE'] },
+            OR: [{ userId }, { targetId: userId }],
+          },
+          {
+            type: 'ADMIN',
+            action: 'user_update',
+            targetId: userId,
+          },
+        ],
+      },
+      select: {
+        id: true,
+        type: true,
+        action: true,
+        userId: true,
+        targetId: true,
+        metadata: true,
+        details: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit * 3,
+    });
+
+    const entries = logs
+      .map((log) => {
+        const movement = formatMoneyReason(log, userId);
+        if (!movement) return null;
+
+        return {
+          id: log.id,
+          amount: Math.round(movement.amount),
+          direction: movement.amount >= 0 ? 'in' : 'out',
+          reason: movement.reason,
+          createdAt: log.createdAt.toISOString(),
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+      .slice(0, limit);
+
+    res.json({ entries });
+  } catch (error) {
+    console.error('Get money history error:', error);
+    res.status(500).json({ error: 'Failed to get money history' });
   }
 });
 

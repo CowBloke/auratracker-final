@@ -151,7 +151,8 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Sort-Object)",
       "Bash(git mv *)",
-      "Bash(grep -E \"\\\\.tsx$|\\\\.ts$\")"
+      "Bash(grep -E \"\\\\.tsx$|\\\\.ts$\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\" -Directory)"
     ]
   },
   "outputStyle": "default"

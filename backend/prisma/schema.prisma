@@ -1219,6 +1219,7 @@ model Clan {
   eventMiniGameAttempts ClanEventMiniGameAttempt[]
   eventActivities       ClanEventActivity[]
   stable                Stable?
+  roles                 ClanRole[]
 
   @@index([isPublic])
   @@index([createdAt])
@@ -1277,18 +1278,41 @@ model ClanEffect {
 }
 
 model ClanMember {
-  id       String   @id @default(uuid())
+  id       String    @id @default(uuid())
   clanId   String
   userId   String
-  isLeader Boolean  @default(false)
-  joinedAt DateTime @default(now())
+  isLeader Boolean   @default(false)
+  roleId   String?
+  joinedAt DateTime  @default(now())
 
-  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clan Clan      @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role ClanRole? @relation(fields: [roleId], references: [id], onDelete: SetNull)
 
   @@unique([clanId, userId])
   @@unique([userId])
   @@index([clanId])
+}
+
+model ClanRole {
+  id               String   @id @default(uuid())
+  clanId           String
+  name             String
+  color            String   @default("#6b7280")
+  position         Int      @default(99)
+  isDefault        Boolean  @default(false)
+  isSystem         Boolean  @default(false)
+  canManageHorses  Boolean  @default(false)
+  canInviteMembers Boolean  @default(false)
+  canKickMembers   Boolean  @default(false)
+  canManageRoles   Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  clan    Clan         @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  members ClanMember[]
+
+  @@unique([clanId, name])
+  @@index([clanId, position])
 }
 
 model ClanJoinRequest {

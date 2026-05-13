@@ -88,6 +88,8 @@ export const usersApi = {
   getById: (id: string) => api.get(`/users/${id}`),
   getEconomyHistory: (id: string, days = 30) =>
     api.get<UserEconomyHistoryResponse>(`/users/${id}/economy-history`, { params: { days } }),
+  getMyMoneyHistory: (limit = 50) =>
+    api.get<UserMoneyHistoryResponse>('/users/me/money-history', { params: { limit } }),
   update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
   requestNameChange: (data: { requestedUsername: string; reason?: string }) =>
     api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
@@ -162,6 +164,18 @@ export interface UserEconomyHistoryPoint {
 export interface UserEconomyHistoryResponse {
   days: number;
   history: UserEconomyHistoryPoint[];
+}
+
+export interface UserMoneyHistoryEntry {
+  id: string;
+  amount: number;
+  direction: 'in' | 'out';
+  reason: string;
+  createdAt: string;
+}
+
+export interface UserMoneyHistoryResponse {
+  entries: UserMoneyHistoryEntry[];
 }
 
 export interface YouPlayer {
@@ -1901,6 +1915,19 @@ export interface ClanSummary {
   clanBankMoney: number;
 }
 
+export interface ClanRole {
+  id: string;
+  name: string;
+  color: string;
+  position: number;
+  isDefault: boolean;
+  isSystem: boolean;
+  canManageHorses: boolean;
+  canInviteMembers: boolean;
+  canKickMembers: boolean;
+  canManageRoles: boolean;
+}
+
 export interface ClanMember {
   id: string;
   userId: string;
@@ -1910,6 +1937,9 @@ export interface ClanMember {
   profilePicture: string | null;
   joinedAt: string;
   isLeader: boolean;
+  roleId: string | null;
+  roleName: string | null;
+  roleColor: string | null;
 }
 
 export interface ClanJoinRequest {
@@ -1929,7 +1959,14 @@ export interface ClanDetail extends ClanSummary {
     isMember: boolean;
     isLeader: boolean;
     hasPendingRequest: boolean;
+    permissions: {
+      canInviteMembers: boolean;
+      canKickMembers: boolean;
+      canManageRoles: boolean;
+      canManageHorses: boolean;
+    };
   };
+  roles: ClanRole[];
   bankContributionHistory: ClanBankContribution[];
   ownedItems: ClanOwnedItem[];
   activeEffects: ClanActiveEffect[];
@@ -2350,6 +2387,14 @@ export const clansApi = {
     api.post(`/clans/${clanId}/members/${userId}/transfer-leadership`),
   removeMember: (clanId: string, userId: string) =>
     api.delete(`/clans/${clanId}/members/${userId}`),
+  createRole: (clanId: string, data: { name: string; color?: string; canManageHorses?: boolean; canInviteMembers?: boolean; canKickMembers?: boolean; canManageRoles?: boolean }) =>
+    api.post<{ role: ClanRole }>(`/clans/${clanId}/roles`, data),
+  updateRole: (clanId: string, roleId: string, data: { name?: string; color?: string; canManageHorses?: boolean; canInviteMembers?: boolean; canKickMembers?: boolean; canManageRoles?: boolean }) =>
+    api.patch<{ role: ClanRole }>(`/clans/${clanId}/roles/${roleId}`, data),
+  deleteRole: (clanId: string, roleId: string) =>
+    api.delete(`/clans/${clanId}/roles/${roleId}`),
+  assignRole: (clanId: string, userId: string, roleId: string | null) =>
+    api.post<{ success: boolean }>(`/clans/${clanId}/members/${userId}/role`, { roleId }),
   depositToBank: (clanId: string, amount: number) =>
     api.post<{ success: boolean; deposited: number; clanBankMoney: number; newBalance: { aura: number | string; money: number } }>(`/clans/${clanId}/bank/deposit`, { amount }),
   updateDescription: (id: string, description: string | null) =>

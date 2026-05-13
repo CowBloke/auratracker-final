@@ -24,6 +24,7 @@ import { usersApi, supportApi, youApi, type YouTemporaryEffect } from '@/service
 import { cn } from '@/lib/utils';
 import { getPageMetaForPath } from '@/lib/page-meta';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
+import { MoneyHistoryChip } from '@/components/currency/MoneyHistoryChip';
 import { TemporaryEffectBadges } from '@/components/temporary-effects/TemporaryEffectBadges';
 import {
   Breadcrumb,
@@ -39,7 +40,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { UserAccountMenu } from '@/components/UserAccountMenu';
 import { YouHeaderBar } from '@/components/you/YouHeaderBar';
 import { TopbarCommandPalette } from '@/components/layout/TopbarCommandPalette';
-import { setMoneyIndicatorElement } from '@/lib/money-income-effects';
 import { t } from '@/lib/i18n';
 
 export function SiteHeader() {
@@ -562,10 +562,10 @@ export function SiteHeader() {
           <CurrencyIcon type="aura" className="h-3.5 w-3.5 text-yellow-400" />
           <span className="tabular-nums">{user?.aura?.toLocaleString() ?? '0'}</span>
         </div>
-        <div ref={setMoneyIndicatorElement} className={cn(chromeChipClassName, 'text-emerald-600 dark:text-emerald-400')}>
-          <CurrencyIcon type="money" className="h-3.5 w-3.5 text-emerald-400" />
-          <span className="tabular-nums">{user?.money?.toLocaleString() ?? '0'} {'\u20AC'}</span>
-        </div>
+        <MoneyHistoryChip
+          amount={user?.money}
+          className={cn(chromeChipClassName, 'text-emerald-600 dark:text-emerald-400')}
+        />
         <UserAccountMenu
           showLabel
           className="h-10 rounded-full border border-border/60 bg-background/85 px-2 shadow-sm hover:bg-muted/70"

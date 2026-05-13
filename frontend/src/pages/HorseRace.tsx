@@ -916,6 +916,7 @@ function StableModal({
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<'horses' | 'buy' | 'breed'>('horses');
 
+  const canManage = stable?.canManage ?? false;
   const horses = stable?.stable?.horses ?? [];
   const selected = horses.find((h) => h.id === selectedHorseId);
 
@@ -1052,22 +1053,26 @@ function StableModal({
             onClick={() => setTab('horses')}
             chevron
           />
-          <AppModal.Row
-            icon={<Plus />} tone="cyan"
-            title="Acheter"
-            sub={formatMoney(config.HORSE_BUY_COST)}
-            active={tab === 'buy'}
-            onClick={() => setTab('buy')}
-            chevron
-          />
-          <AppModal.Row
-            icon={<Dna />} tone="pink"
-            title="Élevage"
-            sub={formatMoney(config.BREED_COST)}
-            active={tab === 'breed'}
-            onClick={() => setTab('breed')}
-            chevron
-          />
+          {canManage && (
+            <AppModal.Row
+              icon={<Plus />} tone="cyan"
+              title="Acheter"
+              sub={formatMoney(config.HORSE_BUY_COST)}
+              active={tab === 'buy'}
+              onClick={() => setTab('buy')}
+              chevron
+            />
+          )}
+          {canManage && (
+            <AppModal.Row
+              icon={<Dna />} tone="pink"
+              title="Élevage"
+              sub={formatMoney(config.BREED_COST)}
+              active={tab === 'breed'}
+              onClick={() => setTab('breed')}
+              chevron
+            />
+          )}
           <div className="mt-3 px-1 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <div className="rounded-lg px-2 py-2 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground/50">Solde</p>
@@ -1121,78 +1126,86 @@ function StableModal({
                       </div>
                     </div>
 
-                    {/* Inscriptions */}
-                    <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.2)' }}>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-                        Inscriptions · {selected.pendingEntries} en file
-                      </p>
-                      <div className="flex gap-1">
-                        {[1, 3, 5, 10].map((n) => (
-                          <AppModal.Button key={n} tone="green" variant="soft" size="sm" full
-                            disabled={busy || selected.ageYears < config.MIN_AGE_TO_RACE}
-                            onClick={() => doRegister(n)}
-                          >+{n}</AppModal.Button>
-                        ))}
+                    {canManage ? (
+                      <>
+                        {/* Inscriptions */}
+                        <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.2)' }}>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                            Inscriptions · {selected.pendingEntries} en file
+                          </p>
+                          <div className="flex gap-1">
+                            {[1, 3, 5, 10].map((n) => (
+                              <AppModal.Button key={n} tone="green" variant="soft" size="sm" full
+                                disabled={busy || selected.ageYears < config.MIN_AGE_TO_RACE}
+                                onClick={() => doRegister(n)}
+                              >+{n}</AppModal.Button>
+                            ))}
+                          </div>
+                          {selected.ageYears < config.MIN_AGE_TO_RACE && (
+                            <p className="text-[10px] text-rose-300">Trop jeune pour courir.</p>
+                          )}
+                        </div>
+
+                        {/* Entraînement */}
+                        <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.2)' }}>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+                            Entraînement · {formatMoney(config.HORSE_TRAIN_COST)} / +{config.HORSE_TRAIN_INC}
+                          </p>
+                          <div className="grid grid-cols-3 gap-1">
+                            <AppModal.Button tone="blue" variant="soft" size="sm" full
+                              disabled={busy || selected.trainSpeed >= config.HORSE_TRAIN_CAP}
+                              onClick={() => doTrain('speed')}
+                            >🏃 {selected.trainSpeed.toFixed(1)}</AppModal.Button>
+                            <AppModal.Button tone="blue" variant="soft" size="sm" full
+                              disabled={busy || selected.trainStamina >= config.HORSE_TRAIN_CAP}
+                              onClick={() => doTrain('stamina')}
+                            >🫁 {selected.trainStamina.toFixed(1)}</AppModal.Button>
+                            <AppModal.Button tone="blue" variant="soft" size="sm" full
+                              disabled={busy || selected.trainConsistency >= config.HORSE_TRAIN_CAP}
+                              onClick={() => doTrain('consistency')}
+                            >🎯 {selected.trainConsistency.toFixed(1)}</AppModal.Button>
+                          </div>
+                        </div>
+
+                        {/* Customize */}
+                        <CustomizeBlock horse={selected} patterns={patterns} config={config} onUpdated={onUpdated} />
+
+                        {/* Dopage */}
+                        <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.22)' }}>
+                          <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
+                            <Skull className="h-3 w-3" /> Dopage · {formatMoney(config.DOPE_COST)}
+                          </p>
+                          <p className="text-[10px] text-rose-200/70">
+                            +{config.DOPE_SPEED_BOOST} vitesse, +{config.DOPE_STAMINA_BOOST} endurance.{' '}
+                            <span className="font-semibold text-rose-300">{Math.round(config.DOPE_CATCH_PCT * 100)}% de risque</span> de confiscation.
+                          </p>
+                          <AppModal.Button tone="red" variant="soft" size="sm" full
+                            disabled={busy || selected.dopedForCycle != null}
+                            onClick={doDope}
+                          >
+                            {selected.dopedForCycle != null ? '💉 Dopé' : 'Doper pour la prochaine'}
+                          </AppModal.Button>
+                        </div>
+
+                        {/* Retire */}
+                        <AppModal.Button variant="ghost" size="sm" full
+                          style={{ color: 'var(--muted-foreground)', fontSize: 11 }}
+                          disabled={busy}
+                          onClick={doRetire}
+                        >
+                          Vendre · rembours. {formatMoney(Math.floor(config.HORSE_BUY_COST * 0.3))}
+                        </AppModal.Button>
+                      </>
+                    ) : (
+                      <div className="rounded-lg p-3 text-center text-[11px] text-muted-foreground" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                        Seul le chef et les officiers peuvent gérer l'écurie.
                       </div>
-                      {selected.ageYears < config.MIN_AGE_TO_RACE && (
-                        <p className="text-[10px] text-rose-300">Trop jeune pour courir.</p>
-                      )}
-                    </div>
-
-                    {/* Entraînement */}
-                    <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.2)' }}>
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-300">
-                        Entraînement · {formatMoney(config.HORSE_TRAIN_COST)} / +{config.HORSE_TRAIN_INC}
-                      </p>
-                      <div className="grid grid-cols-3 gap-1">
-                        <AppModal.Button tone="blue" variant="soft" size="sm" full
-                          disabled={busy || selected.trainSpeed >= config.HORSE_TRAIN_CAP}
-                          onClick={() => doTrain('speed')}
-                        >🏃 {selected.trainSpeed.toFixed(1)}</AppModal.Button>
-                        <AppModal.Button tone="blue" variant="soft" size="sm" full
-                          disabled={busy || selected.trainStamina >= config.HORSE_TRAIN_CAP}
-                          onClick={() => doTrain('stamina')}
-                        >🫁 {selected.trainStamina.toFixed(1)}</AppModal.Button>
-                        <AppModal.Button tone="blue" variant="soft" size="sm" full
-                          disabled={busy || selected.trainConsistency >= config.HORSE_TRAIN_CAP}
-                          onClick={() => doTrain('consistency')}
-                        >🎯 {selected.trainConsistency.toFixed(1)}</AppModal.Button>
-                      </div>
-                    </div>
-
-                    {/* Customize */}
-                    <CustomizeBlock horse={selected} patterns={patterns} config={config} onUpdated={onUpdated} />
-
-                    {/* Dopage */}
-                    <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.22)' }}>
-                      <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
-                        <Skull className="h-3 w-3" /> Dopage · {formatMoney(config.DOPE_COST)}
-                      </p>
-                      <p className="text-[10px] text-rose-200/70">
-                        +{config.DOPE_SPEED_BOOST} vitesse, +{config.DOPE_STAMINA_BOOST} endurance.{' '}
-                        <span className="font-semibold text-rose-300">{Math.round(config.DOPE_CATCH_PCT * 100)}% de risque</span> de confiscation.
-                      </p>
-                      <AppModal.Button tone="red" variant="soft" size="sm" full
-                        disabled={busy || selected.dopedForCycle != null}
-                        onClick={doDope}
-                      >
-                        {selected.dopedForCycle != null ? '💉 Dopé' : 'Doper pour la prochaine'}
-                      </AppModal.Button>
-                    </div>
-
-                    {/* Retire */}
-                    <AppModal.Button variant="ghost" size="sm" full
-                      style={{ color: 'var(--muted-foreground)', fontSize: 11 }}
-                      disabled={busy}
-                      onClick={doRetire}
-                    >
-                      Vendre · rembours. {formatMoney(Math.floor(config.HORSE_BUY_COST * 0.3))}
-                    </AppModal.Button>
+                    )}
                   </div>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
                     <Sparkles className="h-7 w-7 opacity-15" />
-                    <p className="text-[12px] leading-snug">Sélectionnez un cheval<br />pour le gérer</p>
+                    <p className="text-[12px] leading-snug">Sélectionnez un cheval<br />pour voir ses stats</p>
                   </div>
                 )}
               </div>

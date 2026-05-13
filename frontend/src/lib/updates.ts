@@ -52,6 +52,14 @@ export const UPDATE_ENTRIES: UpdateEntry[] = [
     summary: 'La valeur totale du tableau de bord et les montants de trésorerie dans l\'onglet Supply affichaient des valeurs aberrantes dues à une conversion BigInt manquante.',
     sections: [
       {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-05-12-clan-roles-1', text: '**Clans · Rôles personnalisés** — Créez des rôles sur mesure pour vos membres (nom, couleur, permissions). Par défaut : Chef et Officier gèrent les chevaux, invitent et excluent ; Membre n\'a pas accès.' },
+          { id: '2026-05-12-clan-roles-2', text: '**Clans · Permissions granulaires** — Chaque rôle configure quatre permissions : gérer l\'écurie, inviter des membres, exclure des membres, gérer les rôles. Assignez un rôle à chaque membre depuis l\'onglet Info.' },
+          { id: '2026-05-12-clan-roles-3', text: '**Hippodrome · Accès écurie restreint** — Seuls les membres avec la permission "Gérer les chevaux" peuvent acheter, entraîner, inscrire, doper ou croiser des chevaux. Les autres voient l\'écurie en lecture seule.' },
+        ],
+      },
+      {
         category: 'SMALL_FEATURE',
         items: [
           { id: '2026-05-12-modal-style-1', text: '**Moi · Modales redessinées** — Toutes les fenêtres de gestion d\'entreprise (créer, gérer, inviter, emprunter, investir, formations, profil…) utilisent maintenant un design unifié plus sombre et plus lisible, avec un code couleur par type d\'action.' },

@@ -100,15 +100,16 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       };
     });
 
-    // Sort by boosted score (highest first), then by score, then by creation date
+    // Sort by creation date (newest first), then by boosted score, then by score
     transformedSuggestions.sort((a, b) => {
+      const dateComparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (dateComparison !== 0) {
+        return dateComparison;
+      }
       if (b.boostedScore !== a.boostedScore) {
         return b.boostedScore - a.boostedScore;
       }
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return b.score - a.score;
     });
 
     res.json({ suggestions: transformedSuggestions });
