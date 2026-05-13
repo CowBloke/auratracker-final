@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -478,6 +478,18 @@ const games: Game[] = [
     hasRewards: true,
   },
   {
+    id: 'dotsandboxes',
+    pageKey: 'game-dotsandboxes',
+    name: 'Dots and Boxes',
+    description: 'Relie les points pour fermer des carres. Un duel tactique ou chaque carre compte.',
+    type: 'Duel',
+    requiresParty: true,
+    image: getGameImage('dotsandboxes'),
+    statsKeys: ['dotsandboxes'],
+    releaseRank: 41,
+    hasRewards: true,
+  },
+  {
     id: 'horse-race',
     pageKey: 'game-horse-race',
     name: 'Hippodrome',
@@ -691,6 +703,11 @@ const gameRewardTiers: Partial<Record<Game['id'], RewardTierLine[]>> = {
     { label: 'Défaite', reward: '20$' },
   ],
   morpion: [
+    { label: 'Victoire', reward: '40$ + 18 aura' },
+    { label: 'Match nul', reward: '24$ + 5 aura' },
+    { label: 'Défaite', reward: '20$' },
+  ],
+  dotsandboxes: [
     { label: 'Victoire', reward: '40$ + 18 aura' },
     { label: 'Match nul', reward: '24$ + 5 aura' },
     { label: 'Défaite', reward: '20$' },

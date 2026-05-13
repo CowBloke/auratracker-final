@@ -9,7 +9,7 @@ interface IncomingDuelChallenge {
   challengerId: string;
   challengerUsername: string;
   challengerUsernameColor?: string | null;
-  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion';
+  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' | 'dotsandboxes';
   timeLimit: number;
   sentAt: number;
 }
@@ -17,7 +17,7 @@ interface IncomingDuelChallenge {
 interface OutgoingDuelChallenge {
   targetId: string;
   targetUsername: string;
-  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion';
+  gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' | 'dotsandboxes';
 }
 
 interface DuelMatchmakingStats {
@@ -30,7 +30,7 @@ interface DuelSocketContextValue {
   outgoingDuelChallenge: OutgoingDuelChallenge | null;
   duelMatchmakingQueued: boolean;
   duelMatchmakingStats: DuelMatchmakingStats;
-  challengeUserToDuel: (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion') => void;
+  challengeUserToDuel: (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' | 'dotsandboxes') => void;
   acceptDuelChallenge: () => void;
   declineDuelChallenge: () => void;
   cancelDuelChallenge: () => void;
@@ -115,7 +115,7 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
       });
     });
 
-    s.on('duel:matchmaking-match-found', (data: { gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' }) => {
+    s.on('duel:matchmaking-match-found', (data: { gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' | 'dotsandboxes' }) => {
       const labels = {
         chess: t('duel_game_chess'),
         battleship: t('duel_game_battleship'),
@@ -123,6 +123,7 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
         ballarena: t('duel_game_ball_arena'),
         uno: t('duel_game_uno'),
         morpion: t('duel_game_morpion'),
+        dotsandboxes: 'Dots and Boxes',
       } as const;
       toast(t('duel_opponent_found_title'), { description: `${t('duel_opponent_found_prefix')} ${labels[data.gameType] ?? t('duel_game_random')} ${t('duel_opponent_found_suffix')}` });
     });
@@ -144,7 +145,7 @@ export function DuelSocketProvider({ children }: { children: React.ReactNode }) 
   }, [user?.id]);
 
   const challengeUserToDuel = useCallback(
-    (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion') => {
+    (targetId: string, targetUsername: string, gameType: 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' | 'dotsandboxes') => {
       if (!user) return;
       setOutgoingDuelChallenge({ targetId, targetUsername, gameType });
       duelEvents.challenge(targetId, gameType);

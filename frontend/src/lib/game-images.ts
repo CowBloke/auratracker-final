@@ -18,6 +18,7 @@ const GAME_IMAGE_BY_ID: Record<string, string> = {
   'doodle-jump': '/images/games/doodlejump.png',
   echecs: '/images/games/echecs.png',
   eaglercraft: '/images/games/minecraft.png',
+  dotsandboxes: '/images/games/dotsandboxes.png',
   'flappy-bird': '/images/games/flappy.png',
   'fruit-ninja': '/images/games/fruit.png',
   'geometry-dash': '/images/games/geometry.png',

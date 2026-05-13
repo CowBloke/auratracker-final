@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "prebuild": "prisma generate --no-engine",
-    "predev": "prisma generate && prisma db push --skip-generate",
+    "predev": "prisma generate && prisma db push --skip-generate --accept-data-loss",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "prestart": "prisma generate && prisma db push --skip-generate",

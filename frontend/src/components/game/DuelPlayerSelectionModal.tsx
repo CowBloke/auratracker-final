@@ -7,7 +7,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import type { OnlineUser } from '@/contexts/ChatSocketContext';
 import { usePrioritizedDuelUsers } from '@/hooks/use-prioritized-duel-users';
 
-type DuelGameType = 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion';
+type DuelGameType = 'chess' | 'battleship' | 'p4' | 'ballarena' | 'uno' | 'morpion' | 'dotsandboxes';
 
 interface OutgoingDuelChallenge {
   targetId: string;
