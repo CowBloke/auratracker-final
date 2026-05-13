@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, AxeIcon, BarChart3, Briefcase, Building2, Coffee, CreditCard, Flame, GraduationCap, Hammer, Landmark, Leaf, Scale, Scissors, ShieldAlert, ShoppingBasket, Stethoscope, Store, TrendingUp, UserPlus, Utensils, Video } from 'lucide-react';
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, AxeIcon, BarChart3, Briefcase, Building2, Coffee, CreditCard, Flame, GraduationCap, Hammer, Landmark, Leaf, Scale, Scissors, ShieldAlert, ShoppingBasket, Stethoscope, Store, TrendingUp, Trophy, UserPlus, Utensils, Video } from 'lucide-react';
 import { type BusinessAction } from './types';
 
 export const BUSINESS_ICON_MAP = {
@@ -19,6 +19,7 @@ export const BUSINESS_ICON_MAP = {
   coffee_shop: Coffee,
   youtube: Video,
   medecins: Stethoscope,
+  horse_business: Trophy,
   illegal_market: ShieldAlert,
   supreme_court: Scale,
   law_firm: Briefcase,
@@ -42,6 +43,7 @@ export const BUSINESS_STYLE_MAP = {
   coffee_shop: { card: 'border-orange-400/30 bg-orange-400/10', badge: 'bg-orange-400/15 text-orange-400', iconWrap: 'bg-orange-400/15', icon: 'text-orange-400' },
   youtube: { card: 'border-rose-400/30 bg-rose-400/10', badge: 'bg-rose-400/15 text-rose-400', iconWrap: 'bg-rose-400/15', icon: 'text-rose-400' },
   medecins: { card: 'border-teal-400/30 bg-teal-400/10', badge: 'bg-teal-400/15 text-teal-400', iconWrap: 'bg-teal-400/15', icon: 'text-teal-400' },
+  horse_business: { card: 'border-cyan-400/30 bg-cyan-400/10', badge: 'bg-cyan-400/15 text-cyan-400', iconWrap: 'bg-cyan-400/15', icon: 'text-cyan-400' },
   illegal_market: { card: 'border-fuchsia-400/30 bg-fuchsia-400/10', badge: 'bg-fuchsia-400/15 text-fuchsia-300', iconWrap: 'bg-fuchsia-400/15', icon: 'text-fuchsia-300' },
   supreme_court: { card: 'border-indigo-400/30 bg-indigo-400/10', badge: 'bg-indigo-400/15 text-indigo-300', iconWrap: 'bg-indigo-400/15', icon: 'text-indigo-300' },
   law_firm: { card: 'border-purple-400/30 bg-purple-400/10', badge: 'bg-purple-400/15 text-purple-400', iconWrap: 'bg-purple-400/15', icon: 'text-purple-400' },
@@ -60,6 +62,7 @@ export const BUSINESS_COLOR_HEX: Record<string, string> = {
   epicerie: '#84cc16',
   youtube: '#ef4444',
   medecins: '#10b981',
+  horse_business: '#06b6d4',
   startup: '#3b82f6',
   agency: '#8b5cf6',
   bank: '#eab308',
@@ -74,7 +77,7 @@ export const BUSINESS_MONO_MAP: Record<string, string> = {
   lemonade: 'LM', farm: 'FM', sawmill: 'SW', quarry: 'QR',
   iron_mine: 'IR', fuel_refinery: 'RF', textile_mill: 'TX',
   restaurant: 'RS', coffee_shop: 'CF', epicerie: 'EP',
-  youtube: 'YT', medecins: 'MD', startup: 'ST', agency: 'AG',
+  youtube: 'YT', medecins: 'MD', horse_business: 'HR', startup: 'ST', agency: 'AG',
   bank: 'BK', transfer: 'TR', formation: 'FO', law_firm: 'LW',
   illegal_market: 'IM', supreme_court: 'SC',
 };

@@ -24,6 +24,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AppModal, TONES } from '@/components/ui/app-modal';
 import type { AppModalTone } from '@/components/ui/app-modal';
+import { BusinessSelectionModal } from '@/components/business/BusinessSelectionModal';
 import { PageShell } from '@/components/layout/PageShell';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -38,6 +39,7 @@ import {
   type HorseRaceStandingsResponse,
   type RecentRaceDto,
   type TopHorseDto,
+  type HorseServiceBusinessDto,
 } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -55,6 +57,9 @@ const DEFAULT_CONFIG: HorseRaceConfig = {
   STABLE_CREATE_COST: 25_000,
   HORSE_BUY_COST: 12_500,
   HORSE_TRAIN_COST: 2_500,
+  HORSE_TRAIN_BASELINE_COST: 2_000,
+  HORSE_PRODUCTION_COST: 10_000,
+  HORSE_PRODUCTION_MS: 60 * 60 * 1000,
   HORSE_TRAIN_INC: 0.1,
   HORSE_TRAIN_CAP: 1.5,
   BREED_COST: 25_000,
@@ -898,6 +903,7 @@ function StableModal({
   config,
   patterns,
   userMoney,
+  horseBusinesses,
   onUpdated,
 }: {
   open: boolean;
@@ -906,6 +912,7 @@ function StableModal({
   config: HorseRaceConfig;
   patterns: PatternDto[];
   userMoney: number;
+  horseBusinesses: HorseServiceBusinessDto[];
   onUpdated: () => void;
 }) {
   const [selectedHorseId, setSelectedHorseId] = useState<string | null>(null);
@@ -915,10 +922,12 @@ function StableModal({
   const [newHorseName, setNewHorseName] = useState('');
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<'horses' | 'buy' | 'breed'>('horses');
+  const [businessPicker, setBusinessPicker] = useState<null | { action: 'buy' } | { action: 'train'; stat: 'speed' | 'stamina' | 'consistency' }>(null);
 
   const canManage = stable?.canManage ?? false;
   const horses = stable?.stable?.horses ?? [];
   const selected = horses.find((h) => h.id === selectedHorseId);
+  const horseSellers = horseBusinesses.filter((business) => business.availableHorseCount > 0);
 
   useEffect(() => {
     if (!open) setSelectedHorseId(null);
@@ -939,12 +948,13 @@ function StableModal({
     }
   };
 
-  const doTrain = async (stat: 'speed' | 'stamina' | 'consistency') => {
+  const doTrain = async (stat: 'speed' | 'stamina' | 'consistency', businessId: string) => {
     if (!selected) return;
     try {
       setBusy(true);
-      await horseRaceApi.trainHorse(selected.id, stat);
+      await horseRaceApi.trainHorse(selected.id, stat, businessId);
       toast.success(`+${config.HORSE_TRAIN_INC} ${stat}`);
+      setBusinessPicker(null);
       onUpdated();
     } catch (err) {
       const m = (err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Erreur.';
@@ -986,16 +996,17 @@ function StableModal({
     }
   };
 
-  const doBuy = async () => {
+  const doBuy = async (businessId: string) => {
     if (newHorseName.trim().length < 2) {
       toast.error('Nom invalide.');
       return;
     }
     try {
       setBusy(true);
-      await horseRaceApi.buyHorse({ name: newHorseName.trim() });
+      await horseRaceApi.buyHorse({ name: newHorseName.trim(), businessId });
       toast.success('Nouveau cheval !');
       setNewHorseName('');
+      setBusinessPicker(null);
       onUpdated();
       setTab('horses');
     } catch (err) {
@@ -1033,6 +1044,7 @@ function StableModal({
   };
 
   return (
+    <>
     <AppModal open={open} onClose={onClose} tone="green" size="xl">
       <AppModal.Header
         icon={<Building2 />}
@@ -1153,16 +1165,16 @@ function StableModal({
                           </p>
                           <div className="grid grid-cols-3 gap-1">
                             <AppModal.Button tone="blue" variant="soft" size="sm" full
-                              disabled={busy || selected.trainSpeed >= config.HORSE_TRAIN_CAP}
-                              onClick={() => doTrain('speed')}
+                              disabled={busy || selected.trainSpeed >= config.HORSE_TRAIN_CAP || horseBusinesses.length === 0}
+                              onClick={() => setBusinessPicker({ action: 'train', stat: 'speed' })}
                             >🏃 {selected.trainSpeed.toFixed(1)}</AppModal.Button>
                             <AppModal.Button tone="blue" variant="soft" size="sm" full
-                              disabled={busy || selected.trainStamina >= config.HORSE_TRAIN_CAP}
-                              onClick={() => doTrain('stamina')}
+                              disabled={busy || selected.trainStamina >= config.HORSE_TRAIN_CAP || horseBusinesses.length === 0}
+                              onClick={() => setBusinessPicker({ action: 'train', stat: 'stamina' })}
                             >🫁 {selected.trainStamina.toFixed(1)}</AppModal.Button>
                             <AppModal.Button tone="blue" variant="soft" size="sm" full
-                              disabled={busy || selected.trainConsistency >= config.HORSE_TRAIN_CAP}
-                              onClick={() => doTrain('consistency')}
+                              disabled={busy || selected.trainConsistency >= config.HORSE_TRAIN_CAP || horseBusinesses.length === 0}
+                              onClick={() => setBusinessPicker({ action: 'train', stat: 'consistency' })}
                             >🎯 {selected.trainConsistency.toFixed(1)}</AppModal.Button>
                           </div>
                         </div>
@@ -1233,8 +1245,8 @@ function StableModal({
                   <p className="text-center text-[11.5px] text-rose-300">Solde insuffisant.</p>
                 )}
                 <AppModal.Button tone="cyan" variant="solid" full size="lg"
-                  disabled={busy || userMoney < config.HORSE_BUY_COST || newHorseName.trim().length < 2}
-                  onClick={doBuy}
+                  disabled={busy || userMoney < config.HORSE_BUY_COST || newHorseName.trim().length < 2 || horseSellers.length === 0}
+                  onClick={() => setBusinessPicker({ action: 'buy' })}
                 >
                   {busy ? 'Achat…' : `Acheter pour ${formatMoney(config.HORSE_BUY_COST)}`}
                 </AppModal.Button>
@@ -1294,6 +1306,34 @@ function StableModal({
         </AppModal.SidebarContent>
       </div>
     </AppModal>
+    <BusinessSelectionModal
+      open={businessPicker !== null}
+      onClose={() => setBusinessPicker(null)}
+      title={businessPicker?.action === 'buy' ? 'Choisir le haras vendeur' : 'Choisir le haras entraineur'}
+      subtitle={businessPicker?.action === 'buy'
+        ? 'Le cheval sera retire du stock du haras selectionne.'
+        : `Le haras encaisse ${formatMoney(config.HORSE_TRAIN_COST)} et paie ${formatMoney(config.HORSE_TRAIN_BASELINE_COST)} de cout technique.`}
+      businesses={businessPicker?.action === 'buy' ? horseSellers : horseBusinesses}
+      confirmLabel={businessPicker?.action === 'buy' ? 'Acheter via ce haras' : 'Confier l entrainement'}
+      emptyLabel={businessPicker?.action === 'buy' ? 'Aucun haras avec cheval disponible.' : 'Aucun haras disponible.'}
+      renderMeta={(business) => (
+        <div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
+          <span>{business.availableHorseCount} cheval{business.availableHorseCount !== 1 ? 'x' : ''}</span>
+          {business.availableHorseRating != null && <span>stock {business.availableHorseRating.toFixed(1)}/5</span>}
+          <span>{business.activeProductionCount}/{business.productionSlots} prod.</span>
+        </div>
+      )}
+      onConfirm={(business) => {
+        if (businessPicker?.action === 'buy') {
+          void doBuy(business.id);
+          return;
+        }
+        if (businessPicker?.action === 'train') {
+          void doTrain(businessPicker.stat, business.id);
+        }
+      }}
+    />
+    </>
   );
 }
 
@@ -1737,6 +1777,7 @@ export default function HorseRace() {
   const [state, setState] = useState<HorseRaceStateResponse | null>(null);
   const [stable, setStable] = useState<StableMeDto | null>(null);
   const [patterns, setPatterns] = useState<PatternDto[]>([]);
+  const [horseBusinesses, setHorseBusinesses] = useState<HorseServiceBusinessDto[]>([]);
   const [now, setNow] = useState(() => Date.now());
 
   const [betModalOpen, setBetModalOpen] = useState(false);
@@ -1787,14 +1828,21 @@ export default function HorseRace() {
       setPatterns(r.data.patterns);
     } catch { /* ignore */ }
   }, []);
+  const refreshHorseBusinesses = useCallback(async () => {
+    try {
+      const r = await horseRaceApi.listHorseBusinesses();
+      setHorseBusinesses(r.data.businesses);
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     void refreshState();
     void refreshStable();
     void refreshPatterns();
+    void refreshHorseBusinesses();
     const id = window.setInterval(() => { void refreshState(); }, 3000);
     return () => window.clearInterval(id);
-  }, [refreshState, refreshStable, refreshPatterns]);
+  }, [refreshState, refreshStable, refreshPatterns, refreshHorseBusinesses]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 100);
@@ -2100,10 +2148,12 @@ export default function HorseRace() {
         config={config}
         patterns={patterns}
         userMoney={userMoney}
+        horseBusinesses={horseBusinesses}
         onUpdated={async () => {
           await refreshStable();
           await refreshUser();
           await refreshPatterns();
+          await refreshHorseBusinesses();
         }}
       />
 

@@ -24,6 +24,11 @@ import {
   getSupplyProfiles,
   type YouEconomyResourceType,
 } from './economy.js';
+import {
+  HORSE_BUSINESS_TYPE_KEY,
+  serializeHorseBusinessState,
+  settleHorseBusinessProductions,
+} from './horse-business.js';
 
 type ResourceType = YouEconomyResourceType;
 
@@ -338,7 +343,22 @@ export async function fulfillActiveSupplyContracts(db: PrismaClient = prisma) {
       });
       continue;
     }
-    const deliverNow = Math.min(remaining, inventory.quantity, affordable, constructionRemaining);
+    const buyerInventory = constructionMaterial
+      ? null
+      : await db.businessResourceInventory.findUnique({
+        where: {
+          businessId_resourceType: {
+            businessId: contract.buyerBusinessId,
+            resourceType: contract.resourceType,
+          },
+        },
+      });
+    const buyerCapacityRemaining = constructionMaterial
+      ? constructionRemaining
+      : buyerInventory
+        ? Math.max(0, buyerInventory.capacity - buyerInventory.quantity)
+        : 0;
+    const deliverNow = Math.min(remaining, inventory.quantity, affordable, constructionRemaining, buyerCapacityRemaining);
     if (deliverNow <= 0) continue;
 
     const payment = deliverNow * contract.unitPrice;
@@ -378,6 +398,11 @@ export async function fulfillActiveSupplyContracts(db: PrismaClient = prisma) {
             data: { status: CONSTRUCTION_STATUS_COMPLETED, completedAt: new Date() },
           });
         }
+      } else if (buyerInventory) {
+        await tx.businessResourceInventory.update({
+          where: { id: buyerInventory.id },
+          data: { quantity: { increment: deliverNow } },
+        });
       }
       await tx.businessTransaction.create({
         data: {
@@ -804,6 +829,7 @@ function buildSupplyBusinessFinancials(business: any, contracts: any[], marketOf
 export async function getSupplyState(userId: string) {
   await completeReadyConstructionProjects(prisma);
   await accrueBusinessSupply(prisma);
+  await settleHorseBusinessProductions(prisma);
 
   const businesses = await prisma.business.findMany({
     where: {
@@ -841,6 +867,12 @@ export async function getSupplyState(userId: string) {
         include: {
           materials: { orderBy: { resourceType: 'asc' } },
         },
+      },
+      horseBusinessProfile: true,
+      horseBusinessHorses: { where: { soldAt: null }, orderBy: { createdAt: 'asc' } },
+      horseBusinessProductions: {
+        where: { status: 'PENDING' },
+        orderBy: { endsAt: 'asc' },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -1023,6 +1055,9 @@ export async function getSupplyState(userId: string) {
         const workedCount = activeMembers.filter((m) => m.lastWorkDate === today).length;
         return workedCount >= 4 ? 1.25 : workedCount / activeMembers.length;
       })(),
+      horseBusiness: business.typeKey === HORSE_BUSINESS_TYPE_KEY
+        ? serializeHorseBusinessState(business)
+        : null,
       financials: buildSupplyBusinessFinancials(business, contracts, marketOffers),
     })),
     marketOffers: accessibleMarketOffers,

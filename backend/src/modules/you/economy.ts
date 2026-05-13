@@ -44,6 +44,12 @@ export const SUPPLY_PROFILES: Record<string, SupplyProfile[]> = {
   ],
   medecins: [{ resourceType: 'MEDICINE', rate: 2, capacity: 70, price: 50 }],
   illegal_market: [{ resourceType: 'CONTRABAND', rate: 2, capacity: 60, price: 90 }],
+  horse_business: [
+    { resourceType: 'FOOD', rate: 0, capacity: 160, price: 10 },
+    { resourceType: 'WOOD', rate: 0, capacity: 140, price: 24 },
+    { resourceType: 'CLOTH', rate: 0, capacity: 100, price: 26 },
+    { resourceType: 'MEDICINE', rate: 0, capacity: 80, price: 50 },
+  ],
   farm: [{ resourceType: 'FOOD', rate: 8, capacity: 180, price: 10 }],
   sawmill: [{ resourceType: 'WOOD', rate: 7, capacity: 160, price: 24 }],
   quarry: [
@@ -82,6 +88,10 @@ export const BUSINESS_INPUT_REQUIREMENTS: Record<string, BusinessInputRequiremen
   medecins: [
     { resourceType: 'MEDICINE', dailyQuantity: 2, weight: 0.8 },
     { resourceType: 'FOOD', dailyQuantity: 1, weight: 0.2 },
+  ],
+  horse_business: [
+    { resourceType: 'FOOD', dailyQuantity: 3, weight: 0.75 },
+    { resourceType: 'MEDICINE', dailyQuantity: 1, weight: 0.25 },
   ],
   illegal_market: [{ resourceType: 'CONTRABAND', dailyQuantity: 1, weight: 1 }],
 };

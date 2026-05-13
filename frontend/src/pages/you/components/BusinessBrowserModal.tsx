@@ -1,13 +1,12 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeftRight, Building2, CalendarDays, ChevronLeft, ChevronRight,
   GraduationCap, HandCoins, Landmark, LayoutGrid,
-  List as ListIcon, MapPin, MessageSquare, Search, ShoppingCart,
+  MapPin, MessageSquare, Search, ShoppingCart,
   Sparkles, Star, TrendingUp, UserCheck, Users, X, Scale, Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
@@ -88,7 +87,7 @@ function displayedMemberCount(b: YouBusiness) {
 }
 
 type SortMode = 'default' | 'treasury_desc' | 'date_desc' | 'date_asc' | 'rating_desc' | 'name_asc';
-type ViewMode = 'grid' | 'list';
+
 type ActionType = 'bank' | 'loan' | 'invest' | 'formation' | 'buyout' | 'shareholder' | 'transfer' | 'apply' | 'purchase' | 'plainte' | 'youtube';
 
 const SORT_OPTIONS: Array<{ key: SortMode; label: string; Icon: React.ComponentType<{ className?: string }> }> = [
@@ -285,68 +284,6 @@ function GridCard({ business, onClick }: { business: YouBusiness; onClick: () =>
   );
 }
 
-// ── Business list row ─────────────────────────────────────────────────────────
-
-function ListRow({ business, onClick }: { business: YouBusiness; onClick: () => void }) {
-  const pinColor = getBusinessPinColor(business.typeKey);
-  const BizIcon = getBizIcon(business.typeKey);
-  const underConstruction = Boolean(business.underConstruction && business.constructionProject);
-  const net = business.monthlyRevenue - business.monthlyExpenses;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex w-full items-center gap-3 border-b border-border/30 bg-card px-3 py-3 text-left transition-all hover:bg-muted/10 active:scale-[0.99]"
-    >
-      <div
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
-        style={{ backgroundColor: pinColor + '20', border: `1.5px solid ${pinColor}40` }}
-      >
-        <BizIcon className="h-[18px] w-[18px]" style={{ color: pinColor }} />
-      </div>
-
-      {/* Name + meta */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <p className="truncate text-[13px] font-semibold text-foreground">{business.name}</p>
-          {underConstruction && <span className="shrink-0 text-[10px] text-amber-500">🏗</span>}
-        </div>
-        <p className="truncate text-[11px] text-muted-foreground">
-          @{business.owner.username}
-          <span className="mx-1 text-muted-foreground/40">·</span>
-          {getBizLabel(business)}
-          {business.isStateOwned ? <span className="ml-1 rounded-full bg-muted/50 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">État</span> : null}
-        </p>
-      </div>
-
-      {/* Pastilles */}
-      <div className="hidden shrink-0 items-center gap-1.5 sm:flex">
-        <span
-          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums"
-          style={{ backgroundColor: pinColor + '25', color: pinColor }}
-        >
-          {fmt(business.treasuryMoney)}
-        </span>
-        {net !== 0 && (
-          <span className={cn(
-            'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums',
-            net >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400',
-          )}>
-            {net >= 0 ? '+' : ''}{fmt(net)}/mois
-          </span>
-        )}
-        {business.avgRating != null && business.ratingCount > 0 && (
-          <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">
-            <Star className="h-2.5 w-2.5 fill-amber-400/40" />{business.avgRating.toFixed(1)}
-          </span>
-        )}
-      </div>
-
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30 transition-colors group-hover:text-muted-foreground" />
-    </button>
-  );
-}
 
 // ── Finance stats modal ───────────────────────────────────────────────────────
 
@@ -677,17 +614,7 @@ function DetailPanel({
 
   return (
     <>
-      <DialogTitle className="sr-only">{business.name}</DialogTitle>
-      {underConstruction && <div className="h-2 shrink-0" style={{ background: CONSTRUCTION_STRIPES }} />}
-
-      {/* Nav bar */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-border/30 px-4 py-2.5">
-        <button type="button" onClick={onBack}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <p className="truncate text-[11px] text-muted-foreground">{getBizLabel(business)}</p>
-      </div>
+      {underConstruction && <div className="h-1.5 w-full shrink-0" style={{ background: CONSTRUCTION_STRIPES }} />}
 
       {/* Hero: icon + info left, action pills right */}
       <div
@@ -963,14 +890,13 @@ export function BusinessBrowserModal({
 }) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [typeFilters, setTypeFilters] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>('default');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [detailBusinessId, setDetailBusinessId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && initialBusinessId) setDetailBusinessId(initialBusinessId);
   }, [open, initialBusinessId]);
+
   const [teamRosterBusinessId, setTeamRosterBusinessId] = useState<string | null>(null);
   const [shareholdersViewBusinessId, setShareholdersViewBusinessId] = useState<string | null>(null);
   const [bankBusinessId, setBankBusinessId] = useState<string | null>(null);
@@ -988,7 +914,6 @@ export function BusinessBrowserModal({
   function handleClose() {
     onClose();
     setSearch('');
-    setTypeFilters([]);
     setDetailBusinessId(null);
   }
 
@@ -1006,57 +931,6 @@ export function BusinessBrowserModal({
     else if (action === 'youtube')      setYoutubeBusinessId(businessId);
   }
 
-  const typeChips = useMemo(() => {
-    const seen = new Set<string>();
-    const chips: Array<{ key: string; label: string }> = [];
-    businesses.forEach((b) => {
-      if (!seen.has(b.typeKey)) {
-        seen.add(b.typeKey);
-        chips.push({ key: b.typeKey, label: b.type?.label ?? TYPE_LABELS_FR[b.typeKey] ?? b.typeKey });
-      }
-    });
-    return chips;
-  }, [businesses]);
-
-  const typeSet = useMemo(() => new Set(typeFilters), [typeFilters]);
-
-  const filtered = useMemo(() => {
-    let result = businesses;
-    if (typeSet.size > 0) result = result.filter((b) => typeSet.has(b.typeKey));
-    const q = search.trim().toLowerCase();
-    if (q) result = result.filter((b) =>
-      [b.name, b.owner.username, b.type?.label ?? b.typeKey, b.location ?? ''].join(' ').toLowerCase().includes(q),
-    );
-    return result;
-  }, [businesses, search, typeSet]);
-
-  const showStateInstitutions = businesses.some((b) => b.isStateOwned) && typeFilters.length === 0 && !search;
-
-  const contentBusinesses = useMemo(
-    () => (businesses.some((business) => business.isStateOwned) && typeFilters.length === 0 && !search
-      ? filtered.filter((business) => !business.isStateOwned)
-      : filtered),
-    [businesses, filtered, search, typeFilters],
-  );
-
-  const sorted = useMemo(() => sortBusinesses(contentBusinesses, sortMode), [contentBusinesses, sortMode]);
-
-  const grouped = useMemo(() => {
-    if (sortMode !== 'default') return null;
-    const groups = new Map<string, { typeKey: string; label: string; businesses: YouBusiness[] }>();
-    sorted.forEach((b) => {
-      if (!groups.has(b.typeKey)) {
-        groups.set(b.typeKey, {
-          typeKey: b.typeKey,
-          label: b.type?.label ?? TYPE_LABELS_FR[b.typeKey] ?? b.typeKey,
-          businesses: [],
-        });
-      }
-      groups.get(b.typeKey)!.businesses.push(b);
-    });
-    return Array.from(groups.values()).sort((a, b) => b.businesses.length - a.businesses.length);
-  }, [sorted, sortMode]);
-
   const plainteBusiness = plainteBusinessId ? businesses.find((b) => b.id === plainteBusinessId) ?? null : null;
 
   const detailBusiness = detailBusinessId ? businesses.find((b) => b.id === detailBusinessId) ?? null : null;
@@ -1073,226 +947,186 @@ export function BusinessBrowserModal({
   const purchaseBusiness = purchaseBusinessId ? businesses.find((b) => b.id === purchaseBusinessId) ?? null : null;
   const youtubeBusiness = youtubeBusinessId ? businesses.find((b) => b.id === youtubeBusinessId) ?? null : null;
 
+  // Sidebar: "all" + one entry per type
+  const sidebarCategories = useMemo(() => {
+    const counts = new Map<string, number>();
+    businesses.forEach((b) => {
+      counts.set(b.typeKey, (counts.get(b.typeKey) ?? 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([key, count]) => ({
+        key,
+        label: TYPE_LABELS_FR[key] ?? key,
+        count,
+        color: getBusinessPinColor(key),
+        Icon: getBizIcon(key),
+      }));
+  }, [businesses]);
+
+  // Active sidebar filter (null = all)
+  const [sidebarType, setSidebarType] = useState<string | null>(null);
+
+  // Combine sidebar + search filtering
+  const visibleBusinesses = useMemo(() => {
+    let result = businesses;
+    if (sidebarType) result = result.filter((b) => b.typeKey === sidebarType);
+    const q = search.trim().toLowerCase();
+    if (q) result = result.filter((b) =>
+      [b.name, b.owner.username, b.type?.label ?? b.typeKey, b.location ?? ''].join(' ').toLowerCase().includes(q),
+    );
+    return sortBusinesses(result, sortMode);
+  }, [businesses, sidebarType, search, sortMode]);
+
   return (
     <>
-      <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-        <DialogContent className="flex h-[90vh] max-h-[900px] w-full max-w-5xl flex-col gap-0 overflow-hidden p-0">
-          {detailBusiness ? (
-            <DetailPanel
-              business={detailBusiness}
-              userId={userId}
-              onBack={() => setDetailBusinessId(null)}
-              onAction={handleAction}
-              onSelectOnMap={onSelectOnMap ? (b) => { onSelectOnMap(b); handleClose(); } : undefined}
-              onShowTeam={() => setTeamRosterBusinessId(detailBusiness.id)}
-              onShowShareholders={() => setShareholdersViewBusinessId(detailBusiness.id)}
-              onOpenSupport={
-                !detailBusiness.isStateOwned && detailBusiness.supportEnabled
-                  ? () => {
-                      void youApi.openBusinessSupportConversation(detailBusiness.id).then((res) => {
-                        handleClose();
-                        navigate(`/messages?conversation=${res.data.result.conversationId}`);
-                      }).catch(() => {
-                        toast({ title: 'Impossible d\'ouvrir le support.', variant: 'destructive' });
-                      });
-                    }
-                  : undefined
-              }
-            />
-          ) : (
-            <>
-              {/* ── Header ── */}
-              <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
-                {/* Row 1: title + search */}
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <DialogTitle className="text-base font-bold">Entreprises</DialogTitle>
-                    <p className="text-[12px] text-muted-foreground">{filtered.length} résultat{filtered.length !== 1 ? 's' : ''}</p>
-                  </div>
-                  <label className="ml-auto flex items-center gap-2 rounded-lg border border-input bg-muted/30 px-3 py-2">
-                    <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <Input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Rechercher par nom, propriétaire…"
-                      className="h-5 w-52 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
-                    />
-                    {search && (
-                      <button onClick={() => setSearch('')} className="text-muted-foreground hover:text-foreground">
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </label>
-                </div>
+      <AppModal open={open} onClose={handleClose} tone="cyan" size="xl" description="Parcourir les entreprises du serveur.">
+        <AppModal.Header icon={<Building2 />} tone="cyan" title="Entreprises" subtitle={`${visibleBusinesses.length} résultat${visibleBusinesses.length !== 1 ? 's' : ''}`} />
 
-                {/* Row 2: view toggle + sort */}
-                <div className="mt-2 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <div className="flex shrink-0 items-center rounded-md border border-border/50 p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('grid')}
-                      className={cn('flex h-6 w-6 items-center justify-center rounded transition-all',
-                        viewMode === 'grid' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
-                    >
-                      <LayoutGrid className="h-3 w-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode('list')}
-                      className={cn('flex h-6 w-6 items-center justify-center rounded transition-all',
-                        viewMode === 'list' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
-                    >
-                      <ListIcon className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <div className="h-4 w-px shrink-0 bg-border/40" />
-                  {SORT_OPTIONS.map(({ key, label, Icon }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setSortMode(key)}
-                      className={cn(
-                        'flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-all',
-                        sortMode === key
-                          ? 'border-primary/50 bg-primary/10 text-primary'
-                          : 'border-border/40 bg-muted/20 text-muted-foreground hover:border-border hover:text-foreground',
-                      )}
-                    >
-                      <Icon className="h-3 w-3" />
-                      <span>{label}{key === 'date_asc' ? ' ↑' : key === 'date_desc' ? ' ↓' : ''}</span>
-                    </button>
-                  ))}
-                </div>
+        {/* Sidebar layout — matches StableModal pattern */}
+        <div className="grid h-[530px]" style={{ gridTemplateColumns: '190px 1fr', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
 
-                {/* Row 3: type filter chips */}
-                {typeChips.length > 0 && (
-                  <div className="mt-2 flex items-center gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-                    {typeChips.map((chip) => {
-                      const active = typeSet.has(chip.key);
-                      const color = getBusinessPinColor(chip.key);
-                      const ChipIcon = getBizIcon(chip.key);
-                      return (
-                        <button
-                          key={chip.key}
-                          type="button"
-                          title={chip.label}
-                          onClick={() => setTypeFilters((prev) => active ? prev.filter((k) => k !== chip.key) : [...prev, chip.key])}
-                          className={cn(
-                            'flex shrink-0 items-center gap-1 rounded-full border transition-all',
-                            active
-                              ? 'px-2 py-0.5 text-[11px] font-medium'
-                              : 'h-6 w-6 justify-center',
-                            !active && 'border-border/40 bg-muted/20 text-muted-foreground hover:border-border hover:text-foreground',
-                          )}
-                          style={active ? { borderColor: color + '60', backgroundColor: color + '25', color } : {}}
-                        >
-                          <ChipIcon className="h-3 w-3 shrink-0" style={active ? { color } : {}} />
-                          {active && <><span className="whitespace-nowrap">{chip.label}</span><X className="ml-0.5 h-2.5 w-2.5 shrink-0" /></>}
-                        </button>
-                      );
-                    })}
-                    {typeFilters.length > 0 && (
-                      <button type="button" onClick={() => setTypeFilters([])}
-                        className="shrink-0 rounded-full border border-border/40 px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground">
-                        ×
-                      </button>
-                    )}
-                  </div>
+          {/* ── Left sidebar ── */}
+          <div className="flex flex-col overflow-hidden" style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+            {/* Search */}
+            <div className="shrink-0 p-2">
+              <div className="flex items-center gap-1.5 rounded-lg px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Search className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Rechercher…"
+                  className="w-full bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/40 outline-none"
+                />
+                {search && (
+                  <button type="button" onClick={() => setSearch('')} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-2.5 w-2.5" />
+                  </button>
                 )}
-              </DialogHeader>
+              </div>
+            </div>
 
-              {/* ── Content ── */}
+            {/* Category buttons */}
+            <div className="flex-1 space-y-px overflow-y-auto p-2 pt-0">
+              {/* All */}
+              <button
+                type="button"
+                onClick={() => setSidebarType(null)}
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-medium transition-colors',
+                  sidebarType === null
+                    ? 'text-white'
+                    : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
+                )}
+                style={sidebarType === null ? { background: 'rgba(34,211,238,0.55)' } : undefined}
+              >
+                <Building2 className="h-3.5 w-3.5 shrink-0" />
+                <span className="flex-1 truncate">Toutes</span>
+                <span className="text-[10px] tabular-nums opacity-60">{businesses.length}</span>
+              </button>
+
+              {sidebarCategories.map((cat) => (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => setSidebarType(sidebarType === cat.key ? null : cat.key)}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-medium transition-colors',
+                    sidebarType === cat.key
+                      ? 'text-white'
+                      : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
+                  )}
+                  style={sidebarType === cat.key ? { background: cat.color } : undefined}
+                >
+                  <cat.Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate">{cat.label}</span>
+                  <span className="text-[10px] tabular-nums opacity-60">{cat.count}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Sort pills */}
+            <div className="shrink-0 space-y-1.5 p-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">Tri</p>
+              <div className="flex flex-wrap gap-1">
+                {SORT_OPTIONS.map(({ key, label, Icon }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSortMode(key)}
+                    className={cn(
+                      'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-all',
+                      sortMode === key
+                        ? 'bg-cyan-500/15 text-cyan-300'
+                        : 'text-muted-foreground/60 hover:text-muted-foreground',
+                    )}
+                    style={sortMode === key ? { border: '1px solid rgba(34,211,238,0.25)' } : { border: '1px solid rgba(255,255,255,0.06)' }}
+                  >
+                    <Icon className="h-2.5 w-2.5" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── Right content area ── */}
+          <div className="flex flex-col overflow-hidden">
+            {detailBusiness ? (
+              <>
+                {/* Back bar */}
+                <div className="flex shrink-0 items-center gap-2 px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <button type="button" onClick={() => setDetailBusinessId(null)}
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <p className="truncate text-[11px] text-muted-foreground">{getBizLabel(detailBusiness)}</p>
+                </div>
+                <ScrollArea className="min-h-0 flex-1">
+                  <DetailPanel
+                    business={detailBusiness}
+                    userId={userId}
+                    onBack={() => setDetailBusinessId(null)}
+                    onAction={handleAction}
+                    onSelectOnMap={onSelectOnMap ? (b) => { onSelectOnMap(b); handleClose(); } : undefined}
+                    onShowTeam={() => setTeamRosterBusinessId(detailBusiness.id)}
+                    onShowShareholders={() => setShareholdersViewBusinessId(detailBusiness.id)}
+                    onOpenSupport={
+                      !detailBusiness.isStateOwned && detailBusiness.supportEnabled
+                        ? () => {
+                            void youApi.openBusinessSupportConversation(detailBusiness.id).then((res) => {
+                              handleClose();
+                              navigate(`/messages?conversation=${res.data.result.conversationId}`);
+                            }).catch(() => {
+                              toast({ title: 'Impossible d\'ouvrir le support.', variant: 'destructive' });
+                            });
+                          }
+                        : undefined
+                    }
+                  />
+                </ScrollArea>
+              </>
+            ) : (
               <ScrollArea className="min-h-0 flex-1">
-                <div className="space-y-5 px-5 pb-5 pt-4">
-                  {showStateInstitutions ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Crown className="h-3.5 w-3.5 shrink-0 text-indigo-300" />
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-indigo-300">Institutions de l'État</span>
-                        <span className="text-[10px] text-muted-foreground">{businesses.filter((b) => b.isStateOwned).length}</span>
-                        <div className="ml-1 flex-1 border-t border-border/30" />
-                      </div>
-                      {viewMode === 'grid' ? (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {businesses.filter((b) => b.isStateOwned).map((business) => (
-                            <GridCard key={business.id} business={business} onClick={() => setDetailBusinessId(business.id)} />
-                          ))}
-                        </div>
-                      ) : (
-                        <div>
-                          {businesses.filter((b) => b.isStateOwned).map((business) => (
-                            <ListRow key={business.id} business={business} onClick={() => setDetailBusinessId(business.id)} />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-
-                  {filtered.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                      <Search className="mb-3 h-10 w-10 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">Aucune entreprise ne correspond à tes filtres.</p>
-                    </div>
-                  ) : viewMode === 'grid' ? (
-                    <div className="space-y-3">
-                      {grouped ? (
-                        grouped.map((group) => (
-                          <div key={group.typeKey} className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              {(() => { const G = getBizIcon(group.typeKey); return <G className="h-3.5 w-3.5 shrink-0" style={{ color: getBusinessPinColor(group.typeKey) }} />; })()}
-                              <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: getBusinessPinColor(group.typeKey) }}>{group.label}</span>
-                              <span className="text-[10px] text-muted-foreground">{group.businesses.length}</span>
-                              <div className="ml-1 flex-1 border-t border-border/30" />
-                            </div>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                              {group.businesses.map((b) => (
-                                <GridCard key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
-                              ))}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {sorted.map((b) => (
-                            <GridCard key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
-                          ))}
-                        </div>
-                      )}
+                <div className="space-y-3 p-3">
+                  {visibleBusinesses.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Search className="mb-3 h-8 w-8 text-muted-foreground/20" />
+                      <p className="text-[12px] text-muted-foreground">Aucune entreprise ne correspond.</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {grouped ? (
-                        grouped.map((group) => (
-                          <div key={group.typeKey}>
-                            <div className="flex items-center gap-2 pb-2 pt-4 first:pt-0">
-                              {(() => { const G = getBizIcon(group.typeKey); return <G className="h-3.5 w-3.5 shrink-0" style={{ color: getBusinessPinColor(group.typeKey) }} />; })()}
-                              <span className="text-[11px] font-bold uppercase tracking-wide" style={{ color: getBusinessPinColor(group.typeKey) }}>{group.label}</span>
-                              <span className="text-[10px] text-muted-foreground">{group.businesses.length}</span>
-                              <div className="ml-1 flex-1 border-t border-border/30" />
-                            </div>
-                            <div>
-                              {group.businesses.map((b) => (
-                                <ListRow key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
-                              ))}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        sorted.map((b) => (
-                          <ListRow key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
-                        ))
-                      )}
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                      {visibleBusinesses.map((b) => (
+                        <GridCard key={b.id} business={b} onClick={() => setDetailBusinessId(b.id)} />
+                      ))}
                     </div>
                   )}
                 </div>
               </ScrollArea>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+          </div>
+        </div>
+      </AppModal>
 
       {/* Action modals */}
       <BankAccountModal open={Boolean(bankBusiness)} onClose={() => setBankBusinessId(null)} business={bankBusiness} onSubmitted={onReload} />

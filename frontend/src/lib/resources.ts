@@ -155,6 +155,7 @@ export const BUSINESS_PRODUCES: Partial<Record<string, ResourceType[]>> = {
   epicerie: ['LUXURY_GOODS'],
   youtube: ['DATA', 'PAPER'],
   medecins: ['MEDICINE'],
+  horse_business: [],
   startup: ['DATA'],
   agency: ['LUXURY_GOODS'],
   illegal_market: ['CONTRABAND'],

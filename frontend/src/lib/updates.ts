@@ -46,6 +46,23 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-05-13-actions-redesign',
+    date: '2026-05-13',
+    title: 'Moi — onglet Actions épuré',
+    summary: 'L\'onglet Actions a été repensé : chaque entreprise est codée par sa couleur, les statistiques et stocks tiennent en pastilles à côté du nom, et chaque action est désormais sur une seule ligne avec son sélecteur de source compact.',
+    sections: [
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-05-13-actions-redesign-1', text: '**Moi · Actions** — Onglet entièrement repensé : entreprises codées par couleur, statistiques (trésorerie, net/jour, satisfaction) et stocks affichés en pastilles à côté du nom de l\'entreprise.' },
+          { id: '2026-05-13-actions-redesign-2', text: '**Moi · Actions** — Chaque action tient désormais sur une seule ligne dans un petit conteneur coloré, avec sources, sortie, gain et bouton de lancement aux couleurs de l\'entreprise.' },
+          { id: '2026-05-13-actions-redesign-3', text: '**Moi · Actions** — Sélecteur de source remplacé par un menu déroulant propre qui affiche le nom de la source, la quantité disponible et le coût en un coup d\'œil.' },
+          { id: '2026-05-13-actions-redesign-4', text: '**Moi · Actions** — Le statut "En cours" ou la raison de blocage (trésorerie insuffisante, stock plein, source manquante) s\'affiche directement à côté du bouton.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-05-12-bigint-treasury',
     date: '2026-05-12',
     title: 'Moi — correction valeur totale et affichages monétaires',

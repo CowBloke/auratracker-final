@@ -5,6 +5,15 @@ import { prisma } from '../server.js';
 import { logGame } from '../utils/logger.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../utils/shared-balance.js';
 import { createNotification } from '../utils/notifications.js';
+import {
+  HORSE_BUSINESS_TYPE_KEY,
+  HORSE_PRODUCTION_COST,
+  HORSE_PRODUCTION_MS,
+  HORSE_TRAIN_BASELINE_COST,
+  listHorseServiceBusinesses,
+  settleHorseBusinessProductions,
+} from '../modules/you/horse-business.js';
+import { isConstructionActive } from '../modules/you/construction.js';
 
 const router = Router();
 
@@ -1105,10 +1114,16 @@ router.get('/stables', authMiddleware, async (_req: AuthRequest, res: Response) 
   });
 });
 
+// List horse businesses that can provide horses and training.
+router.get('/businesses', authMiddleware, async (_req: AuthRequest, res: Response) => {
+  const businesses = await listHorseServiceBusinesses();
+  return res.json({ businesses });
+});
+
 // Buy a foal.
 router.post('/horses/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
-  const { name } = req.body ?? {};
+  const { name, businessId } = req.body ?? {};
   if (typeof name !== 'string' || name.trim().length < 2 || name.length > 30) {
     return res.status(400).json({ error: 'Nom invalide (2-30 caractères).' });
   }
@@ -1116,11 +1131,11 @@ router.post('/horses/buy', authMiddleware, async (req: AuthRequest, res: Respons
   if (!info?.stable) return res.status(400).json({ error: 'Créez une écurie d\'abord.' });
   if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent gérer l\'écurie.' });
 
-  // Random genes for a basic foal.
-  const rand = mulberry32(((Date.now() + Math.floor(Math.random() * 1e9)) | 0));
-  const geneSpeed = 5.5 + rand() * 2;
-  const geneStamina = 5.5 + rand() * 2;
-  const geneConsistency = 6 + rand() * 2.5;
+  if (typeof businessId !== 'string' || businessId.length === 0) {
+    return res.status(400).json({ error: 'Selectionnez un haras.' });
+  }
+
+  await settleHorseBusinessProductions(prisma, [businessId]);
   const cycleIndex = currentCycleIndex();
 
   try {
@@ -1130,23 +1145,63 @@ router.post('/horses/buy', authMiddleware, async (req: AuthRequest, res: Respons
       if (Number(user.money) < HORSE_BUY_COST) {
         throw Object.assign(new Error(`Coût ${HORSE_BUY_COST.toLocaleString()}€ requis.`), { status: 400 });
       }
+      const supplier = await tx.business.findUnique({
+        where: { id: businessId },
+        include: { constructionProject: true },
+      });
+      if (!supplier || supplier.typeKey !== HORSE_BUSINESS_TYPE_KEY || isConstructionActive(supplier.constructionProject)) {
+        throw Object.assign(new Error('Haras indisponible.'), { status: 400 });
+      }
+      const unit = await tx.horseBusinessHorse.findFirst({
+        where: { businessId, soldAt: null },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (!unit) {
+        throw Object.assign(new Error('Ce haras n a pas de cheval disponible.'), { status: 400 });
+      }
+      const claimed = await tx.horseBusinessHorse.updateMany({
+        where: { id: unit.id, soldAt: null },
+        data: { soldAt: new Date(), soldToStableId: info.stable!.id },
+      });
+      if (claimed.count !== 1) {
+        throw Object.assign(new Error('Ce cheval vient deja d etre vendu.'), { status: 409 });
+      }
       await tx.user.update({ where: { id: req.user!.id }, data: { money: { decrement: BigInt(HORSE_BUY_COST) } } });
-      return tx.horse.create({
+      await tx.business.update({
+        where: { id: supplier.id },
+        data: { treasuryMoney: { increment: HORSE_BUY_COST } },
+      });
+      const createdHorse = await tx.horse.create({
         data: {
           stableId: info.stable!.id,
           name: name.trim(),
-          bodyColor: COMP_COLORS[Math.floor(rand() * COMP_COLORS.length)],
-          pattern: 'solid',
-          patternColor: '#f8fafc',
-          geneSpeed,
-          geneStamina,
-          geneConsistency,
+          bodyColor: unit.bodyColor,
+          pattern: unit.pattern,
+          patternColor: unit.patternColor,
+          geneSpeed: unit.geneSpeed,
+          geneStamina: unit.geneStamina,
+          geneConsistency: unit.geneConsistency,
           birthCycle: cycleIndex,
         },
       });
+      await tx.horseBusinessHorse.update({
+        where: { id: unit.id },
+        data: { soldHorseId: createdHorse.id },
+      });
+      await tx.businessTransaction.create({
+        data: {
+          businessId: supplier.id,
+          type: 'HORSE_SALE',
+          amount: BigInt(HORSE_BUY_COST),
+          label: `Vente du cheval ${createdHorse.name}`,
+          actorId: req.user!.id,
+        },
+      });
+      return createdHorse;
     });
-    await emitSharedBalanceUpdatesForUserIds(prisma, [req.user.id]);
-    logGame('horse_race_buy_horse', req.user.id, req.user.username, { horseId: horse.id, name: horse.name });
+    const supplier = await prisma.business.findUnique({ where: { id: businessId }, select: { ownerId: true } });
+    await emitSharedBalanceUpdatesForUserIds(prisma, Array.from(new Set([req.user.id, supplier?.ownerId].filter(Boolean) as string[])));
+    logGame('horse_race_buy_horse', req.user.id, req.user.username, { horseId: horse.id, name: horse.name, businessId });
     return res.json({ success: true, horse });
   } catch (err) {
     const status = (err as { status?: number }).status ?? 500;
@@ -1210,9 +1265,12 @@ router.patch('/horses/:id', authMiddleware, async (req: AuthRequest, res: Respon
 // Train a horse.
 router.post('/horses/:id/train', authMiddleware, async (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
-  const { stat } = req.body ?? {};
+  const { stat, businessId } = req.body ?? {};
   if (!['speed', 'stamina', 'consistency'].includes(stat)) {
     return res.status(400).json({ error: 'Statistique invalide.' });
+  }
+  if (typeof businessId !== 'string' || businessId.length === 0) {
+    return res.status(400).json({ error: 'Selectionnez un haras.' });
   }
   const info = await getUserStable(req.user.id);
   if (!info?.stable) return res.status(404).json({ error: 'Pas d\'écurie.' });
@@ -1231,11 +1289,45 @@ router.post('/horses/:id/train', authMiddleware, async (req: AuthRequest, res: R
       if (Number(user.money) < HORSE_TRAIN_COST) {
         throw Object.assign(new Error(`Coût ${HORSE_TRAIN_COST.toLocaleString()}€ requis.`), { status: 400 });
       }
+      const supplier = await tx.business.findUnique({
+        where: { id: businessId },
+        include: { constructionProject: true },
+      });
+      if (!supplier || supplier.typeKey !== HORSE_BUSINESS_TYPE_KEY || isConstructionActive(supplier.constructionProject)) {
+        throw Object.assign(new Error('Haras indisponible.'), { status: 400 });
+      }
       await tx.user.update({ where: { id: req.user!.id }, data: { money: { decrement: BigInt(HORSE_TRAIN_COST) } } });
+      await tx.business.update({
+        where: { id: supplier.id },
+        data: { treasuryMoney: { increment: HORSE_TRAIN_COST } },
+      });
+      await tx.business.update({
+        where: { id: supplier.id },
+        data: { treasuryMoney: { decrement: HORSE_TRAIN_BASELINE_COST } },
+      });
       await tx.horse.update({ where: { id: horse.id }, data: { [field]: { increment: HORSE_TRAIN_INC } } });
+      await tx.businessTransaction.create({
+        data: {
+          businessId: supplier.id,
+          type: 'HORSE_TRAINING',
+          amount: BigInt(HORSE_TRAIN_COST),
+          label: `Entrainement ${stat} pour ${horse.name}`,
+          actorId: req.user!.id,
+        },
+      });
+      await tx.businessTransaction.create({
+        data: {
+          businessId: supplier.id,
+          type: 'HORSE_TRAINING_BASELINE',
+          amount: BigInt(-HORSE_TRAIN_BASELINE_COST),
+          label: 'Cout technique entrainement cheval',
+          actorId: req.user!.id,
+        },
+      });
     });
-    await emitSharedBalanceUpdatesForUserIds(prisma, [req.user.id]);
-    logGame('horse_race_train', req.user.id, req.user.username, { horseId: horse.id, stat });
+    const supplier = await prisma.business.findUnique({ where: { id: businessId }, select: { ownerId: true } });
+    await emitSharedBalanceUpdatesForUserIds(prisma, Array.from(new Set([req.user.id, supplier?.ownerId].filter(Boolean) as string[])));
+    logGame('horse_race_train', req.user.id, req.user.username, { horseId: horse.id, stat, businessId });
     return res.json({ success: true });
   } catch (err) {
     const status = (err as { status?: number }).status ?? 500;
@@ -1627,6 +1719,9 @@ router.get('/config', authMiddleware, async (_req: AuthRequest, res: Response) =
     STABLE_CREATE_COST,
     HORSE_BUY_COST,
     HORSE_TRAIN_COST,
+    HORSE_TRAIN_BASELINE_COST,
+    HORSE_PRODUCTION_COST,
+    HORSE_PRODUCTION_MS,
     HORSE_TRAIN_INC,
     HORSE_TRAIN_CAP,
     BREED_COST,

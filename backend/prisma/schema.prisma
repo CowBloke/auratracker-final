@@ -613,6 +613,9 @@ model Business {
   supplyLinksAsTarget       BusinessSupplyLink[]            @relation("SupplyLinkTarget")
   constructionProject BusinessConstructionProject?
   youtubeVideos       YoutubeVideo[]
+  horseBusinessProfile HorseBusinessProfile?
+  horseBusinessHorses HorseBusinessHorse[]
+  horseBusinessProductions HorseBusinessProduction[]
 
   @@index([ownerId])
   @@index([supportAgentId])
@@ -2885,6 +2888,57 @@ model BusinessConstructionMaterial {
   @@unique([projectId, resourceType])
   @@index([projectId])
   @@index([resourceType])
+}
+
+model HorseBusinessProfile {
+  id              String   @id @default(uuid())
+  businessId      String   @unique
+  productionSlots Int      @default(2)
+  capacityLevel   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model HorseBusinessHorse {
+  id              String   @id @default(uuid())
+  businessId      String
+  bodyColor       String   @default("#a16207")
+  pattern         String   @default("solid")
+  patternColor    String   @default("#f8fafc")
+  geneSpeed       Float
+  geneStamina     Float
+  geneConsistency Float
+  soldAt          DateTime?
+  soldToStableId  String?
+  soldHorseId     String?
+  createdAt       DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, soldAt])
+}
+
+model HorseBusinessProduction {
+  id              String   @id @default(uuid())
+  businessId      String
+  bodyColor       String   @default("#a16207")
+  pattern         String   @default("solid")
+  patternColor    String   @default("#f8fafc")
+  geneSpeed       Float
+  geneStamina     Float
+  geneConsistency Float
+  status          String   @default("PENDING")
+  startedAt       DateTime @default(now())
+  endsAt          DateTime
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, status, endsAt])
 }
 
 // ============================================

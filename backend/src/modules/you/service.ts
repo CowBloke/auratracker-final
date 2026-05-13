@@ -57,7 +57,7 @@ import {
 const FORMATION_FILE_UPLOAD_DIR = 'uploads/formation-files';
 const MAX_FORMATION_FILE_SIZE_BYTES = 25 * 1024 * 1024;
 const YOUTUBE_VIDEO_UPLOAD_DIR = 'uploads/youtube-videos';
-const MAX_YOUTUBE_VIDEO_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+const MAX_YOUTUBE_VIDEO_SIZE_BYTES = 1024 * 1024 * 1024; // 1GB
 const YOU_CACHE_TTL_MS = 10_000;
 const _youStateCache = new Map<string, { data: any; expiresAt: number }>();
 const _startupProductCache = new Map<string, { data: any; expiresAt: number }>();

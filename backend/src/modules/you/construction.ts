@@ -109,6 +109,16 @@ export const BUSINESS_CONSTRUCTION_RECIPES: Record<string, ConstructionRecipe> =
       { resourceType: 'MEDICINE', quantity: 14 },
     ],
   },
+  horse_business: {
+    key: 'build_horse_business',
+    typeKey: 'horse_business',
+    materials: [
+      { resourceType: 'WOOD', quantity: 22 },
+      { resourceType: 'STONE', quantity: 12 },
+      { resourceType: 'FOOD', quantity: 18 },
+      { resourceType: 'CLOTH', quantity: 8 },
+    ],
+  },
   bank: {
     key: 'build_bank',
     typeKey: 'bank',

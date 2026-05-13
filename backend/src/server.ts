@@ -124,7 +124,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '2gb' }));
 app.use('/uploads', express.static(path.resolve('uploads')));
 app.use('/api/uploads', express.static(path.resolve('uploads')));
 app.use('/polytrack', express.static(path.resolve('../frontend/public/polytrack')));

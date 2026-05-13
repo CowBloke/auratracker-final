@@ -265,7 +265,7 @@ export default function Clans() {
   const [warListDialogOpen, setWarListDialogOpen] = useState(false);
   const [warGamesDialogOpen, setWarGamesDialogOpen] = useState(false);
   const [activeWarsDialogOpen, setActiveWarsDialogOpen] = useState(false);
-  const [clansPageTab, setClansPageTab] = useState<'current' | 'trophies'>('current');
+  const [directoryViewMode, setDirectoryViewMode] = useState<'regular' | 'war'>('regular');
 
   // Pump-up messages
   const [pumpUpMessages, setPumpUpMessages] = useState<ClanPumpUpMessage[]>([]);
@@ -432,12 +432,20 @@ export default function Clans() {
     }),
     [clans]
   );
+  const directoryClans = useMemo(
+    () => (directoryViewMode === 'war' ? clansByWarTrophies : clans),
+    [clans, clansByWarTrophies, directoryViewMode]
+  );
+  const clansAtWarIds = useMemo(
+    () =>
+      new Set(
+        activeWars.flatMap((war) => [war.attackerClan.id, war.defenderClan.id])
+      ),
+    [activeWars]
+  );
 
   const selectedWar = selectedClan?.warHub.currentWar ?? null;
   const isOwnClan = viewerClanId === selectedClan?.id;
-  const myWar = viewerClanId
-    ? (activeWars.find((w) => w.attackerClan.id === viewerClanId || w.defenderClan.id === viewerClanId) ?? null)
-    : null;
   const otherActiveWars = activeWars.filter(
     (w) => w.attackerClan.id !== viewerClanId && w.defenderClan.id !== viewerClanId
   );
@@ -680,12 +688,6 @@ export default function Clans() {
   const launchWarGameFromDialog = (type: 'MEMORY' | 'BOMB' | 'NAVAL') => {
     setWarGamesDialogOpen(false);
     openGame(type, false);
-  };
-
-  const openMyWarDialog = () => {
-    if (!viewerClanId || !myWar) return;
-    if (viewerClanId !== selectedClanId) setSelectedClanId(viewerClanId);
-    setWarGamesDialogOpen(true);
   };
 
   const afterGame = async () => {
@@ -1260,146 +1262,118 @@ export default function Clans() {
     <>
       <PageShell size="wide">
         <div className={SPACING.PAGE_CONTENT}>
-          <Tabs value={clansPageTab} onValueChange={(v) => setClansPageTab(v as 'current' | 'trophies')}>
-            <TabsList className="border-border/60 bg-muted/20 mb-4">
-              <TabsTrigger value="current" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">Actuel</TabsTrigger>
-              <TabsTrigger value="trophies" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">Classement trophées</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          {clansPageTab === 'current' ? (
           <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
             <div className="space-y-4">
-              <Card className={panelClassName}>
-                <CardContent className="grid gap-3 p-4">
-                  {/* Element 1: My clan war status */}
-                  <button
-                    type="button"
-                    onClick={openMyWarDialog}
-                    disabled={!viewerClanId || !myWar}
-                    className={cn(
-                      'w-full rounded-2xl border border-border/50 bg-muted/15 p-4 text-left transition-colors',
-                      viewerClanId && myWar ? 'hover:bg-muted/25' : 'cursor-default'
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="text-xs text-muted-foreground">Mon clan</div>
-                        <div className="text-sm font-medium">
-                          {!viewerClanId ? 'Aucun clan' : myWar ? 'En guerre' : 'Pas en guerre'}
-                        </div>
-                      </div>
-                      {!viewerClanId ? (
-                        <Badge variant="outline">Aucun</Badge>
-                      ) : myWar ? (
-                        <Badge variant={getStatusVariant(myWar.status)}>{getStatusLabel(myWar.status)}</Badge>
-                      ) : (
-                        <Badge variant="outline">Aucune</Badge>
-                      )}
-                    </div>
-                    {myWar && viewerClanId ? (
-                      <>
-                        <div className="mt-3 text-sm text-muted-foreground">
-                          {getWarOwnSide(myWar, viewerClanId).name} <span className="text-foreground/40">contre</span> {getWarOpponent(myWar, viewerClanId).name}
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-sm">
-                          <span className="font-medium tabular-nums">{myWar.viewerScore} - {myWar.opponentScore}</span>
-                          <span className="text-xs text-muted-foreground">Voir les parties</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="mt-3 text-sm text-muted-foreground">
-                        {!viewerClanId
-                          ? "Tu n'es dans aucun clan pour le moment."
-                          : "Ton clan n'est actuellement dans aucune guerre."}
-                      </div>
-                    )}
-                  </button>
-
-                  {/* Element 2: Other active wars */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveWarsDialogOpen(true)}
-                    disabled={otherActiveWars.length === 0}
-                    className={cn(
-                      'flex w-full items-center gap-2 rounded-xl border border-border/50 bg-muted/15 px-3 py-2 text-left transition-colors',
-                      otherActiveWars.length > 0 ? 'hover:bg-muted/25' : 'cursor-default opacity-50'
-                    )}
-                  >
-                    <Swords className="h-3.5 w-3.5 shrink-0 text-red-500" />
-                    <span className="flex-1 text-xs text-muted-foreground">Autres guerres actives</span>
-                    <span className="text-xs font-semibold tabular-nums">{otherActiveWars.length}</span>
-                  </button>
-                </CardContent>
-              </Card>
-
               <div className="space-y-3">
-                <SectionTitle
-                  title="Répertoire"
-                  description="Tous les clans disponibles."
-                  action={
-                    <>
-                      <span className={cn(TYPOGRAPHY.SMALL, 'text-muted-foreground tabular-nums')}>{clans.length}</span>
-                      {canCreateClan ? (
-                        <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Créer
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-5">
+                    <Tabs value={directoryViewMode} onValueChange={(value) => setDirectoryViewMode(value as 'regular' | 'war')} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 border-border/60 bg-muted/20">
+                        <TabsTrigger value="regular" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
+                          <Shield className="mr-2 h-4 w-4" />
+                          Normal
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="war"
+                          className="text-red-400 data-[state=active]:border-red-500/40 data-[state=active]:bg-red-500/15 data-[state=active]:text-red-500"
+                        >
+                          <Swords className="mr-2 h-4 w-4" />
+                          Guerre
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="inline-flex items-baseline gap-2">
+                        <span className="rounded-xl border border-border/60 bg-muted/20 px-3 py-1 text-lg font-semibold tabular-nums">
+                          {clans.length}
+                        </span>
+                        <span className="text-sm font-medium text-muted-foreground">Clans</span>
+                      </div>
+                      {directoryViewMode === 'war' ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setActiveWarsDialogOpen(true)}
+                          disabled={otherActiveWars.length === 0}
+                          className="border-red-500/30 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                        >
+                          <Swords className="mr-2 h-4 w-4" />
+                          Guerres actives ({otherActiveWars.length})
                         </Button>
                       ) : null}
-                    </>
-                  }
-                />
-                {loading ? (
-                  <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
-                    <ListSkeleton rows={4} />
+                    </div>
                   </div>
-                ) : clans.length === 0 ? (
-                  <div className={cn(TYPOGRAPHY.MUTED, 'py-6')}>Aucun clan pour le moment.</div>
-                ) : (
-                  clans.map((clan) => {
-                    const hasTag = clan.tagUnlocked && clan.tagText;
-                    const clanTagStyle = hasTag && clan.tagStyle ? parseClanTagStyle(clan.tagStyle) : null;
-                    return (
-                      <button
-                        key={clan.id}
-                        type="button"
-                        onClick={() => setSelectedClanId(clan.id)}
-                        className={cn(
-                          'w-full rounded-2xl border px-3 py-3 text-left transition-opacity',
-                          clan.id === selectedClanId ? 'opacity-100' : 'opacity-90 hover:opacity-100',
-                          !hasTag && 'border-border/50 hover:bg-muted/30',
-                          !hasTag && clan.id === selectedClanId && 'border-foreground/15 bg-muted/30',
-                        )}
-                        style={clanTagStyle ? {
-                          ...getClanTagBackground(clanTagStyle),
-                          borderColor: clanTagStyle.borderColor,
-                        } : undefined}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-11 w-11">
-                            <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
-                            <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <div
-                              className="truncate font-medium"
-                              style={clanTagStyle ? { color: clanTagStyle.textColor } : undefined}
-                            >
-                              {clan.name}
+                  <div className="flex items-center gap-2">
+                    {canCreateClan ? (
+                      <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Créer
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="max-h-[62vh] overflow-y-auto rounded-2xl border border-transparent pr-1">
+                  {loading ? (
+                    <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
+                      <ListSkeleton rows={4} />
+                    </div>
+                  ) : clans.length === 0 ? (
+                    <div className={cn(TYPOGRAPHY.MUTED, 'py-6')}>Aucun clan pour le moment.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {directoryClans.map((clan) => {
+                        const hasTag = clan.tagUnlocked && clan.tagText;
+                        const clanTagStyle = hasTag && clan.tagStyle ? parseClanTagStyle(clan.tagStyle) : null;
+                        const isClanAtWar = clansAtWarIds.has(clan.id);
+                        return (
+                          <button
+                            key={clan.id}
+                            type="button"
+                            onClick={() => setSelectedClanId(clan.id)}
+                            className={cn(
+                              'relative w-full overflow-visible rounded-2xl border px-3 py-3 text-left transition-opacity',
+                              clan.id === selectedClanId ? 'opacity-100' : 'opacity-90 hover:opacity-100',
+                              !hasTag && 'border-border/50 hover:bg-muted/30',
+                              !hasTag && clan.id === selectedClanId && 'border-foreground/15 bg-muted/30',
+                            )}
+                            style={clanTagStyle ? {
+                              ...getClanTagBackground(clanTagStyle),
+                              borderColor: clanTagStyle.borderColor,
+                            } : undefined}
+                          >
+                            {directoryViewMode === 'war' && isClanAtWar ? (
+                              <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-red-500/40 bg-background p-1 text-red-500 shadow-sm">
+                                <Swords className="h-3 w-3" />
+                              </span>
+                            ) : null}
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-11 w-11">
+                                <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
+                                <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <div
+                                  className="truncate font-medium"
+                                  style={clanTagStyle ? { color: clanTagStyle.textColor } : undefined}
+                                >
+                                  {clan.name}
+                                </div>
+                                <div
+                                  className={cn('text-xs', !clanTagStyle && 'text-muted-foreground')}
+                                  style={clanTagStyle ? { color: clanTagStyle.textColor, opacity: 0.75 } : undefined}
+                                >
+                                  {clan.memberCount}/{clan.maxMembers} membres • {directoryViewMode === 'war' ? `🏆 ${formatMoney(clan.warTrophies)}` : `${formatAura(clan.totalAura)} aura`}
+                                </div>
+                              </div>
+                              {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
                             </div>
-                            <div
-                              className={cn('text-xs', !clanTagStyle && 'text-muted-foreground')}
-                              style={clanTagStyle ? { color: clanTagStyle.textColor, opacity: 0.75 } : undefined}
-                            >
-                              {clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura
-                            </div>
-                          </div>
-                          {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -2946,64 +2920,6 @@ export default function Clans() {
               )}
             </div>
           </div>
-          ) : (
-            <Card className={panelClassName}>
-              <CardContent className="space-y-4 p-4">
-                <SectionTitle
-                  title="Classement des clans"
-                  description="Trié par trophées de guerre."
-                  action={<Badge variant="secondary">{clansByWarTrophies.length} clans</Badge>}
-                />
-                {loading ? (
-                  <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
-                    <ListSkeleton rows={8} />
-                  </div>
-                ) : clansByWarTrophies.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-border/50 p-6 text-center text-sm text-muted-foreground">
-                    Aucun clan pour le moment.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {clansByWarTrophies.map((clan, index) => {
-                      const isMyClan = viewerClanId === clan.id;
-                      return (
-                        <button
-                          key={clan.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedClanId(clan.id);
-                            setClansPageTab('current');
-                          }}
-                          className={cn(
-                            'flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors',
-                            isMyClan ? 'border-primary/40 bg-primary/10' : 'border-border/50 bg-muted/15 hover:bg-muted/30'
-                          )}
-                        >
-                          <div className="w-10 shrink-0 text-center font-semibold tabular-nums">
-                            {index < 3 ? <Crown className={cn('mx-auto h-4 w-4', index === 0 ? 'text-amber-500' : 'text-muted-foreground')} /> : null}
-                            <div>#{index + 1}</div>
-                          </div>
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
-                            <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium">{clan.name}</div>
-                            <div className="text-xs text-muted-foreground">{clan.memberCount}/{clan.maxMembers} membres • {formatAura(clan.totalAura)} aura</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-semibold tabular-nums">{formatMoney(clan.warTrophies)}</div>
-                            <div className="text-xs text-muted-foreground">trophées</div>
-                          </div>
-                          {isMyClan ? <Badge>Mon clan</Badge> : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </PageShell>
 

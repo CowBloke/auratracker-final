@@ -245,6 +245,19 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     level: 2,
     actions: ['invite', 'invest', 'deposit', 'withdraw', 'purchase_item'],
   },
+  {
+    key: 'horse_business',
+    label: 'Haras',
+    category: 'Sport',
+    description: 'Produit des chevaux de course et facture les entrainements des ecuries.',
+    minCapital: 5000,
+    creationFee: 4000,
+    monthlyRevenue: 900,
+    monthlyExpenses: 350,
+    satisfaction: 82,
+    level: 2,
+    actions: ['invite', 'invest', 'deposit', 'withdraw'],
+  },
   // --- Level 3 ---
   {
     key: 'bank',

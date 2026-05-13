@@ -906,6 +906,42 @@ export interface YouSupplyPlainteNode {
   defendant: Omit<YouPlayer, 'alreadyInRelationship'> | null;
 }
 
+export interface YouHorseBusinessProduction {
+  id: string;
+  businessId: string;
+  status: string;
+  startedAt: string | null;
+  endsAt: string | null;
+  completedAt: string | null;
+  remainingMs: number;
+  progressPercent: number;
+  stars: number;
+}
+
+export interface YouHorseBusinessState {
+  productionCost: number;
+  productionDurationMs: number;
+  trainBaselineCost: number;
+  productionSlots: number;
+  capacityLevel: number;
+  maxProductionSlots: number;
+  availableHorseCount: number;
+  availableHorseRating: number | null;
+  activeProductionCount: number;
+  pendingProductions: YouHorseBusinessProduction[];
+  upgrade: {
+    nextProductionSlots: number;
+    canUpgrade: boolean;
+    maxed: boolean;
+    requirements: Array<{
+      resourceType: YouSupplyResourceType;
+      quantity: number;
+      available: number;
+      missing: number;
+    }>;
+  };
+}
+
 export interface YouSupplyBusiness {
   id: string;
   name: string;
@@ -931,6 +967,7 @@ export interface YouSupplyBusiness {
   members: YouBusinessMember[];
   workRatio: number;
   youtubeVideos: YoutubeVideo[];
+  horseBusiness: YouHorseBusinessState | null;
 }
 
 export interface YouSupplyState {
@@ -938,6 +975,77 @@ export interface YouSupplyState {
   marketOffers: YouSupplyOffer[];
   contracts: YouSupplyContract[];
   links: YouSupplyLink[];
+}
+
+export interface YouResourceActionCost {
+  resourceType: YouSupplyResourceType;
+  quantity: number;
+}
+
+export interface YouResourceActionOutput {
+  resourceType: YouSupplyResourceType;
+  quantity: number;
+}
+
+export interface YouResourceAction {
+  key: string;
+  kind: 'PRODUCE' | 'OPERATE' | 'MAINTAIN' | string;
+  label: string;
+  description: string;
+  moneyCost: number;
+  resourceCosts: YouResourceActionCost[];
+  outputs: YouResourceActionOutput[];
+  rewardMoney: number;
+  satisfactionDelta: number;
+}
+
+export interface YouResourceActionBusiness {
+  id: string;
+  name: string;
+  typeKey: string;
+  typeLabel: string;
+  ownerId: string;
+  owner: Omit<YouPlayer, 'alreadyInRelationship'>;
+  treasuryMoney: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+  satisfaction: number;
+  underConstruction: boolean;
+  inventories: YouSupplyInventory[];
+  actions: YouResourceAction[];
+}
+
+export interface YouResourceActionSourceOption {
+  id: string;
+  kind: 'inventory' | 'offer';
+  resourceType: YouSupplyResourceType;
+  businessId: string;
+  businessName: string;
+  ownerName: string;
+  quantity: number;
+  unitPrice: number;
+  autoAccept: boolean;
+}
+
+export interface YouResourceActionState {
+  businesses: YouResourceActionBusiness[];
+  sourceOptions: YouResourceActionSourceOption[];
+}
+
+export type YouResourceActionSourceInput =
+  | { kind: 'inventory'; businessId: string }
+  | { kind: 'offer'; offerId: string };
+
+export interface YouResourceActionResult {
+  businessId: string;
+  actionKey: string;
+  moneyCost: number;
+  sourceMoneyCost: number;
+  totalMoneyCost: number;
+  rewardMoney: number;
+  satisfactionDelta: number;
+  consumed: YouResourceActionCost[];
+  outputs: YouResourceActionOutput[];
 }
 
 export interface YouTemporaryEffect {
@@ -951,6 +1059,9 @@ export interface YouTemporaryEffect {
 export const youApi = {
   getState: () => api.get<YouState>('/you/state'),
   getSupplyState: () => api.get<YouSupplyState>('/you/supply/state'),
+  getResourceActionState: () => api.get<YouResourceActionState>('/you/resource-actions/state'),
+  runResourceAction: (businessId: string, data: { actionKey: string; sources: Record<string, YouResourceActionSourceInput> }) =>
+    api.post<{ result: YouResourceActionResult }>(`/you/businesses/${businessId}/resource-actions/run`, data),
   upsertSupplyOffer: (businessId: string, data: { resourceType: YouSupplyResourceType; unitPrice: number; autoAccept: boolean; isActive?: boolean }) =>
     api.put<{ offer: YouSupplyOffer }>(`/you/businesses/${businessId}/supply-offers`, data),
   createSupplyLink: (businessId: string, data: { sourceResourceType: YouSupplyResourceType; targetBusinessId?: string | null; targetResourceType?: YouSupplyResourceType | null; targetKind?: 'BUSINESS' | 'GLOBAL_MARKET'; maxUnitsPerHour?: number | null }) =>
@@ -967,6 +1078,10 @@ export const youApi = {
     api.post<{ workedToday: boolean; workRatio: number }>(`/you/businesses/${businessId}/work`, {}),
   sendWorkReminder: (businessId: string, memberId: string) =>
     api.post<{ ok: boolean }>(`/you/businesses/${businessId}/members/${memberId}/work-reminder`, {}),
+  startHorseProduction: (businessId: string) =>
+    api.post<{ production: YouHorseBusinessProduction }>(`/you/businesses/${businessId}/horse-production`, {}),
+  upgradeHorseCapacity: (businessId: string) =>
+    api.post<{ profile: { productionSlots: number; capacityLevel: number } }>(`/you/businesses/${businessId}/horse-capacity-upgrade`, {}),
   getTemporaryEffects: () => api.get<{ effects: YouTemporaryEffect[] }>('/you/temporary-effects'),
   getSkills: () => api.get<{ skills: YouSkill[] }>('/you/skills'),
   trainSkill: (skillKey: string) =>
@@ -4487,6 +4602,9 @@ export type HorseRaceConfig = {
   STABLE_CREATE_COST: number;
   HORSE_BUY_COST: number;
   HORSE_TRAIN_COST: number;
+  HORSE_TRAIN_BASELINE_COST: number;
+  HORSE_PRODUCTION_COST: number;
+  HORSE_PRODUCTION_MS: number;
   HORSE_TRAIN_INC: number;
   HORSE_TRAIN_CAP: number;
   BREED_COST: number;
@@ -4507,6 +4625,21 @@ export type HorseRaceConfig = {
   PRIZE_POOL_3RD_PCT: number;
 };
 
+export type HorseServiceBusinessDto = {
+  id: string;
+  name: string;
+  typeKey: string;
+  ownerId: string;
+  owner: Omit<YouPlayer, 'alreadyInRelationship'> | null;
+  treasuryMoney: number;
+  avgRating: number | null;
+  ratingCount: number;
+  availableHorseCount: number;
+  availableHorseRating: number | null;
+  productionSlots: number;
+  activeProductionCount: number;
+};
+
 export const horseRaceApi = {
   getState: (cycleIndex?: number) =>
     api.get<HorseRaceStateResponse>('/horse-race/state', {
@@ -4521,16 +4654,17 @@ export const horseRaceApi = {
     api.patch<{ success: true }>('/horse-race/stable', data),
 
   listStables: () => api.get<{ stables: PublicStableDto[] }>('/horse-race/stables'),
+  listHorseBusinesses: () => api.get<{ businesses: HorseServiceBusinessDto[] }>('/horse-race/businesses'),
   getStandings: () => api.get<HorseRaceStandingsResponse>('/horse-race/standings'),
 
-  buyHorse: (data: { name: string }) =>
+  buyHorse: (data: { name: string; businessId: string }) =>
     api.post<{ success: true; horse: unknown }>('/horse-race/horses/buy', data),
   updateHorse: (
     id: string,
     data: { name?: string; bodyColor?: string; pattern?: string; patternColor?: string },
   ) => api.patch<{ success: true }>(`/horse-race/horses/${id}`, data),
-  trainHorse: (id: string, stat: 'speed' | 'stamina' | 'consistency') =>
-    api.post<{ success: true }>(`/horse-race/horses/${id}/train`, { stat }),
+  trainHorse: (id: string, stat: 'speed' | 'stamina' | 'consistency', businessId: string) =>
+    api.post<{ success: true }>(`/horse-race/horses/${id}/train`, { stat, businessId }),
   registerHorse: (id: string, count: number) =>
     api.post<{ success: true; pendingEntries: number }>(
       `/horse-race/horses/${id}/register`,

@@ -94,6 +94,14 @@ import {
   submitBusinessWork,
   upsertSupplyOffer,
 } from '../modules/you/supply.js';
+import {
+  startHorseBusinessProduction,
+  upgradeHorseBusinessCapacity,
+} from '../modules/you/horse-business.js';
+import {
+  getResourceActionState,
+  runResourceAction,
+} from '../modules/you/resource-actions.js';
 
 const router = Router();
 const YOU_LOGO_ADMIN_ONLY_KEY = 'you_logo_admin_only';
@@ -238,6 +246,12 @@ const ERROR_STATUS: Record<string, number> = {
   SHARE_BUYBACK_ALREADY_PENDING: 400,
   BUSINESS_UPGRADE_FORBIDDEN: 403,
   BUSINESS_UPGRADE_UNAVAILABLE: 400,
+  HORSE_BUSINESS_NOT_FOUND: 404,
+  HORSE_BUSINESS_FORBIDDEN: 403,
+  HORSE_PRODUCTION_SLOTS_FULL: 400,
+  HORSE_BUSINESS_TREASURY_LOW: 400,
+  HORSE_BUSINESS_RESOURCE_SHORTAGE: 400,
+  HORSE_BUSINESS_MAX_CAPACITY: 400,
   UPGRADE_ALREADY_OWNED: 400,
   UPGRADE_INSUFFICIENT_FUNDS: 400,
   SHARE_MARKET_LISTING_NOT_FOUND: 404,
@@ -253,6 +267,11 @@ const ERROR_STATUS: Record<string, number> = {
   SUPPLY_CONTRACT_NOT_FOUND: 404,
   SUPPLY_CONTRACT_SELF_FORBIDDEN: 400,
   SUPPLY_CONTRACT_ALREADY_DECIDED: 400,
+  RESOURCE_ACTION_NOT_FOUND: 404,
+  RESOURCE_ACTION_SOURCE_REQUIRED: 400,
+  RESOURCE_ACTION_SOURCE_INVALID: 400,
+  RESOURCE_ACTION_SOURCE_SHORTAGE: 400,
+  RESOURCE_ACTION_OUTPUT_FULL: 400,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -397,6 +416,11 @@ const ERROR_MESSAGE: Record<string, string> = {
   SUPPLY_CONTRACT_NOT_FOUND: 'Contrat de ressource introuvable.',
   SUPPLY_CONTRACT_SELF_FORBIDDEN: 'Tu ne peux pas demander des ressources a ce meme business.',
   SUPPLY_CONTRACT_ALREADY_DECIDED: 'Ce contrat a deja ete traite.',
+  RESOURCE_ACTION_NOT_FOUND: 'Action de ressources introuvable.',
+  RESOURCE_ACTION_SOURCE_REQUIRED: 'Choisis une source pour chaque ressource requise.',
+  RESOURCE_ACTION_SOURCE_INVALID: 'La source choisie n est pas disponible.',
+  RESOURCE_ACTION_SOURCE_SHORTAGE: 'La source choisie n a pas assez de stock.',
+  RESOURCE_ACTION_OUTPUT_FULL: 'Le stock du business est plein pour cette production.',
   CANNOT_LEAVE_OWN_BUSINESS: 'Tu ne peux pas quitter une entreprise dont tu es proprietaire.',
 };
 
@@ -461,6 +485,27 @@ router.get('/supply/state', authMiddleware, requireYouAccess, async (req: AuthRe
     res.json(state);
   } catch (error) {
     handleRouteError(error, res, 'Get supply state error');
+  }
+});
+
+router.get('/resource-actions/state', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const state = await getResourceActionState(req.user!.id);
+    res.json(state);
+  } catch (error) {
+    handleRouteError(error, res, 'Get resource action state error');
+  }
+});
+
+router.post('/businesses/:businessId/resource-actions/run', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await runResourceAction(req.user!.id, req.params.businessId, {
+      actionKey: String(req.body?.actionKey ?? ''),
+      sources: req.body?.sources,
+    });
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Run resource action error');
   }
 });
 
@@ -549,6 +594,24 @@ router.post('/businesses/:businessId/members/:memberId/work-reminder', authMiddl
     res.json({ ok: true });
   } catch (error) {
     handleRouteError(error, res, 'Send work reminder error');
+  }
+});
+
+router.post('/businesses/:businessId/horse-production', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const production = await startHorseBusinessProduction(req.user!.id, req.params.businessId);
+    res.status(201).json({ production });
+  } catch (error) {
+    handleRouteError(error, res, 'Start horse production error');
+  }
+});
+
+router.post('/businesses/:businessId/horse-capacity-upgrade', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const profile = await upgradeHorseBusinessCapacity(req.user!.id, req.params.businessId);
+    res.json({ profile });
+  } catch (error) {
+    handleRouteError(error, res, 'Upgrade horse business capacity error');
   }
 });
 

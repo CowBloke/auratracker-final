@@ -163,8 +163,8 @@ export function YoutubeOwnerDashboard({
                    onChange={(e) => {
                      const file = e.target.files?.[0];
                      if (file) {
-                         if (file.size > 50 * 1024 * 1024) {
-                             toast.error('Le fichier ne doit pas dépasser 50 Mo.');
+                         if (file.size > 1024 * 1024 * 1024) {
+                             toast.error('Le fichier ne doit pas dépasser 1 Go.');
                              if (fileInputRef.current) fileInputRef.current.value = '';
                              return;
                          }

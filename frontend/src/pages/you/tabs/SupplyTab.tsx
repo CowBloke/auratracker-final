@@ -4,6 +4,7 @@ import {
   Briefcase,
   Building2,
   Check,
+  Clock,
   Gauge,
   Gavel,
   GraduationCap,
@@ -15,8 +16,10 @@ import {
   Plus,
   RefreshCw,
   Settings,
+  Star,
   Tag,
   TrendingUp,
+  Trophy,
   User,
   X,
 } from 'lucide-react';
@@ -56,6 +59,9 @@ type NodeSelection =
   | { kind: 'offer'; business: YouSupplyBusiness; offer: YouSupplyOffer }
   | { kind: 'contract'; business: YouSupplyBusiness; contract: YouSupplyContract }
   | { kind: 'plainte'; business: YouSupplyBusiness; plainte: YouSupplyPlainteNode }
+  | { kind: 'horse-business'; business: YouSupplyBusiness }
+  | { kind: 'horse-production'; business: YouSupplyBusiness; item: NonNullable<YouSupplyBusiness['horseBusiness']>['pendingProductions'][number] }
+  | { kind: 'horse-upgrade'; business: YouSupplyBusiness }
   | { kind: 'loan' | 'case' | 'formation' | 'startup' | 'account' | 'transfer' | 'team'; business: YouSupplyBusiness; item: any }
   | null;
 type Vec2 = { x: number; y: number };
@@ -83,6 +89,7 @@ const BIZ_COLOR: Record<string, string> = {
   epicerie: '#84cc16',
   youtube: '#ef4444',
   medecins: '#10b981',
+  horse_business: '#06b6d4',
   startup: '#3b82f6',
   agency: '#8b5cf6',
   bank: '#eab308',
@@ -105,6 +112,7 @@ const BIZ_LABEL: Record<string, string> = {
   epicerie: 'Epicerie',
   youtube: 'Chaine YouTube',
   medecins: 'Cabinet medical',
+  horse_business: 'Haras',
   startup: 'Startup',
   agency: 'Agence immobiliere',
   bank: 'Banque',
@@ -127,6 +135,7 @@ const BIZ_DESC: Record<string, string> = {
   epicerie: 'L\'epicerie distribue des produits de luxe directement aux consommateurs.',
   youtube: 'La chaine produit du contenu numerique et valorise les donnees du marche.',
   medecins: 'Le cabinet genere des medicaments et soigne la communaute contre remuneration.',
+  horse_business: 'Le haras produit des chevaux de course et gere les entrainements.',
   startup: 'La startup developpe des produits technologiques et monetise les donnees.',
   agency: 'L\'agence immobiliere genere des revenus sur des transactions exclusives a forte valeur.',
   bank: 'La banque offre des prets et des comptes bancaires a vos clients.',
@@ -505,7 +514,7 @@ function Sidebar({
 type GraphMode = 'single' | 'full';
 type LinkHandleSide = 'top' | 'right' | 'bottom' | 'left';
 type GraphNodeGroup = 'business' | 'left' | 'depot' | 'right' | 'market' | 'bottom';
-type GraphNodeKind = 'business' | 'inventory' | 'construction-material' | 'contract' | 'loan' | 'case' | 'plainte' | 'formation' | 'startup' | 'account' | 'transfer' | 'team' | 'global-market';
+type GraphNodeKind = 'business' | 'inventory' | 'construction-material' | 'contract' | 'loan' | 'case' | 'plainte' | 'formation' | 'startup' | 'account' | 'transfer' | 'team' | 'horse-business' | 'horse-production' | 'horse-upgrade' | 'global-market';
 
 type GraphNodeModel = {
   id: string;
@@ -564,6 +573,15 @@ function formatEta(hours: number | null) {
   if (hours < 1) return `${Math.max(1, Math.ceil(hours * 60))} min`;
   if (hours < 24) return `${hours.toFixed(1)} h`;
   return `${Math.ceil(hours / 24)} j`;
+}
+
+function formatDurationMs(ms: number) {
+  if (!Number.isFinite(ms) || ms <= 0) return 'pret';
+  const minutes = Math.ceil(ms / 60000);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest > 0 ? `${hours} h ${rest} min` : `${hours} h`;
 }
 
 function beadDuration(ratePerHour: number) {
@@ -661,6 +679,50 @@ function buildBusinessNodes(business: YouSupplyBusiness, contracts: YouSupplyCon
         footer: business.inventories[0] ? `≈ ${business.inventories[0].globalMarketUnitPrice}/u` : 'Prix fixe',
         selection: null,
         group: 'market',
+      });
+    }
+
+    if (business.typeKey === 'horse_business' && business.horseBusiness) {
+      nodes.push({
+        id: `horse-stock:${business.id}`,
+        businessId: business.id,
+        kind: 'horse-business',
+        accent: '#06b6d4',
+        icon: <Trophy size={17} />,
+        title: 'Chevaux disponibles',
+        subtitle: `${business.horseBusiness.availableHorseCount} en stock`,
+        footer: business.horseBusiness.availableHorseRating != null
+          ? `${business.horseBusiness.availableHorseRating.toFixed(1)}/5`
+          : `${business.horseBusiness.activeProductionCount}/${business.horseBusiness.productionSlots} prod.`,
+        selection: { kind: 'horse-business', business },
+        group: 'depot',
+      });
+      business.horseBusiness.pendingProductions.forEach((production, index) => {
+        nodes.push({
+          id: `horse-production:${production.id}`,
+          businessId: business.id,
+          kind: 'horse-production',
+          accent: '#38bdf8',
+          icon: <Clock size={17} />,
+          title: `Production ${index + 1}`,
+          subtitle: `${production.progressPercent}%`,
+          footer: production.endsAt ? new Date(production.endsAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : undefined,
+          selection: { kind: 'horse-production', business, item: production },
+          group: 'right',
+          connectsTo: `horse-stock:${business.id}`,
+        });
+      });
+      nodes.push({
+        id: `horse-upgrade:${business.id}`,
+        businessId: business.id,
+        kind: 'horse-upgrade',
+        accent: business.horseBusiness.upgrade.maxed ? '#94a3b8' : business.horseBusiness.upgrade.canUpgrade ? '#22c55e' : '#f59e0b',
+        icon: <Star size={17} />,
+        title: 'Slots de production',
+        subtitle: `${business.horseBusiness.productionSlots}/${business.horseBusiness.maxProductionSlots}`,
+        footer: business.horseBusiness.upgrade.maxed ? 'Max' : `Prochain ${business.horseBusiness.upgrade.nextProductionSlots}`,
+        selection: { kind: 'horse-upgrade', business },
+        group: 'left',
       });
     }
   }
@@ -1279,6 +1341,8 @@ function DetailPanel({
   onRemindLoan,
   onClaimLoan,
   onAcceptPlainte,
+  onStartHorseProduction,
+  onUpgradeHorseCapacity,
 }: {
   selection: NodeSelection;
   marketOffers: YouSupplyOffer[];
@@ -1291,6 +1355,8 @@ function DetailPanel({
   onRemindLoan: (loanId: string) => Promise<void>;
   onClaimLoan: (loanId: string) => Promise<void>;
   onAcceptPlainte: (plainteId: string) => Promise<void>;
+  onStartHorseProduction: (businessId: string) => Promise<void>;
+  onUpgradeHorseCapacity: (businessId: string) => Promise<void>;
 }) {
   const [price, setPrice] = useState(10);
   const [autoAccept, setAutoAccept] = useState(false);
@@ -1337,6 +1403,9 @@ function DetailPanel({
      selection?.kind === 'team' ? User :
      selection?.kind === 'formation' ? GraduationCap :
      selection?.kind === 'startup' ? Play :
+     selection?.kind === 'horse-business' ? Trophy :
+     selection?.kind === 'horse-production' ? Clock :
+     selection?.kind === 'horse-upgrade' ? Star :
      (selection?.kind === 'transfer' || selection?.kind === 'account') ? Banknote :
      Package);
 
@@ -1346,6 +1415,9 @@ function DetailPanel({
        selection.kind === 'offer' ? `Offre · ${resourceLabel(selection.offer.resourceType)}` :
        selection.kind === 'contract' ? resourceLabel(selection.contract.resourceType) :
        selection.kind === 'plainte' ? selection.plainte.title :
+       selection.kind === 'horse-business' ? 'Chevaux disponibles' :
+       selection.kind === 'horse-production' ? 'Production cheval' :
+       selection.kind === 'horse-upgrade' ? 'Slots de production' :
        selection.kind === 'team' ? (selection.item as YouBusinessMember).user.username :
        selection.item.title ?? selection.business.name)
     : '';
@@ -1358,6 +1430,9 @@ function DetailPanel({
        selection.kind === 'construction-material' ? 'Matériau · chantier' :
        selection.kind === 'offer' ? 'Offre de vente' :
        selection.kind === 'plainte' ? 'Plainte en attente' :
+       selection.kind === 'horse-business' ? 'Haras' :
+       selection.kind === 'horse-production' ? 'Production en cours' :
+       selection.kind === 'horse-upgrade' ? 'Upgrade haras' :
        selection.kind === 'team' ? 'Employé' :
        selection.kind === 'contract'
          ? (selection.contract.supplierBusinessId === selection.business.id ? 'Contrat sortant →' : '← Contrat entrant')
@@ -1817,7 +1892,93 @@ function DetailPanel({
             )}
 
             {/* ── Fallback JSON ── */}
-            {selection && selection.kind !== 'inventory' && selection.kind !== 'construction-material' && selection.kind !== 'offer' && selection.kind !== 'contract' && selection.kind !== 'team' && selection.kind !== 'loan' && selection.kind !== 'account' && selection.kind !== 'case' && selection.kind !== 'plainte' && (
+            {selection?.kind === 'horse-business' && selection.business.horseBusiness && (() => {
+              const state = selection.business.horseBusiness;
+              const full = state.activeProductionCount >= state.productionSlots;
+              const lowCash = selection.business.treasuryMoney < state.productionCost;
+              return (
+                <>
+                  <div className="mb-4 grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                      <p className="text-[9px] uppercase tracking-wide text-muted-foreground/60">Stock</p>
+                      <p className="mt-1 text-[18px] font-bold tabular-nums text-cyan-300">{state.availableHorseCount}</p>
+                    </div>
+                    <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                      <p className="text-[9px] uppercase tracking-wide text-muted-foreground/60">Slots</p>
+                      <p className="mt-1 text-[18px] font-bold tabular-nums text-foreground">{state.activeProductionCount}/{state.productionSlots}</p>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-border/40">
+                    <StatRow label="Note stock" value={state.availableHorseRating != null ? `${state.availableHorseRating.toFixed(1)} / 5` : 'Aucun cheval'} />
+                    <StatRow label="Cout production" value={money(state.productionCost)} accent="text-amber-400" />
+                    <StatRow label="Duree production" value={formatDurationMs(state.productionDurationMs)} />
+                    <StatRow label="Cout technique entrainement" value={money(state.trainBaselineCost)} />
+                  </div>
+                  <button
+                    onClick={() => void onStartHorseProduction(selection.business.id)}
+                    disabled={full || lowCash}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-600 py-3 text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Trophy size={13} /> Lancer une production
+                  </button>
+                  {full && <p className="mt-2 text-center text-[10px] text-amber-400">Tous les slots sont occupes.</p>}
+                  {lowCash && <p className="mt-2 text-center text-[10px] text-rose-300">Tresorerie insuffisante.</p>}
+                </>
+              );
+            })()}
+
+            {selection?.kind === 'horse-production' && (
+              <>
+                <div className="mb-4">
+                  <div className="mb-1.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>Progression</span>
+                    <span className="font-mono font-semibold text-cyan-300">{selection.item.progressPercent}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted/40">
+                    <div className="h-full rounded-full bg-cyan-400 transition-all" style={{ width: `${selection.item.progressPercent}%` }} />
+                  </div>
+                </div>
+                <div className="divide-y divide-border/40">
+                  <StatRow label="Temps restant" value={formatDurationMs(selection.item.remainingMs)} />
+                  <StatRow label="Note estimee" value={`${selection.item.stars.toFixed(1)} / 5`} />
+                  <StatRow label="Fin prevue" value={selection.item.endsAt ? new Date(selection.item.endsAt).toLocaleString('fr-FR') : '-'} />
+                </div>
+              </>
+            )}
+
+            {selection?.kind === 'horse-upgrade' && selection.business.horseBusiness && (() => {
+              const state = selection.business.horseBusiness;
+              return (
+                <>
+                  <div className="divide-y divide-border/40">
+                    <StatRow label="Slots actuels" value={`${state.productionSlots}/${state.maxProductionSlots}`} />
+                    <StatRow label="Prochain niveau" value={state.upgrade.maxed ? 'Maximum' : `${state.upgrade.nextProductionSlots} slots`} />
+                  </div>
+                  <div className="mt-5 border-t border-border/40 pt-5">
+                    <SectionLabel>Ressources requises</SectionLabel>
+                    <div className="space-y-2">
+                      {state.upgrade.requirements.map((requirement) => (
+                        <div key={requirement.resourceType} className="flex items-center justify-between text-[11px]">
+                          <span className="text-muted-foreground">{resourceLabel(requirement.resourceType)}</span>
+                          <span className={cn('font-semibold tabular-nums', requirement.missing === 0 ? 'text-emerald-400' : 'text-amber-400')}>
+                            {requirement.available}/{requirement.quantity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => void onUpgradeHorseCapacity(selection.business.id)}
+                      disabled={!state.upgrade.canUpgrade || state.upgrade.maxed}
+                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-3 text-[12px] font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Star size={13} /> Augmenter la capacite
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+
+            {selection && selection.kind !== 'inventory' && selection.kind !== 'construction-material' && selection.kind !== 'offer' && selection.kind !== 'contract' && selection.kind !== 'team' && selection.kind !== 'loan' && selection.kind !== 'account' && selection.kind !== 'case' && selection.kind !== 'plainte' && selection.kind !== 'horse-business' && selection.kind !== 'horse-production' && selection.kind !== 'horse-upgrade' && (
               <pre className="max-h-64 overflow-auto rounded-xl bg-muted p-3 text-[10px] text-muted-foreground">
                 {JSON.stringify(selection.item, null, 2)}
               </pre>
@@ -2186,6 +2347,18 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
     });
   }
 
+  async function startHorseProduction(businessId: string) {
+    await mutate(async () => {
+      await youApi.startHorseProduction(businessId);
+    });
+  }
+
+  async function upgradeHorseCapacity(businessId: string) {
+    await mutate(async () => {
+      await youApi.upgradeHorseCapacity(businessId);
+    });
+  }
+
   async function createLink(input: { sourceBusinessId: string; sourceResourceType: YouSupplyResourceType; targetBusinessId?: string | null; targetResourceType?: YouSupplyResourceType | null; targetKind: 'BUSINESS' | 'GLOBAL_MARKET' }) {
     await mutate(async () => {
       await youApi.createSupplyLink(input.sourceBusinessId, input);
@@ -2313,6 +2486,8 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
               onRemindLoan={remindLoan}
               onClaimLoan={claimLoan}
               onAcceptPlainte={acceptPlainte}
+              onStartHorseProduction={startHorseProduction}
+              onUpgradeHorseCapacity={upgradeHorseCapacity}
             />
             <SourceModal
               target={sourceTarget}
