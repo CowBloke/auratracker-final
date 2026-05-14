@@ -1260,13 +1260,12 @@ export default function Clans() {
 
   return (
     <>
-      <PageShell size="wide">
-        <div className={SPACING.PAGE_CONTENT}>
-          <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1 space-y-5">
+      <PageShell size="wide" className="h-[calc(100vh-7rem)] overflow-hidden">
+        <div className={cn(SPACING.PAGE_CONTENT, 'h-full min-h-0 overflow-hidden')}>
+          <div className="grid h-full min-h-0 gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="flex min-h-0 flex-col">
+              <div className="flex min-h-0 flex-1 flex-col gap-3">
+                <div className="min-w-0 space-y-3">
                     <Tabs value={directoryViewMode} onValueChange={(value) => setDirectoryViewMode(value as 'regular' | 'war')} className="w-full">
                       <TabsList className="grid w-full grid-cols-2 border-border/60 bg-muted/20">
                         <TabsTrigger value="regular" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
@@ -1282,38 +1281,35 @@ export default function Clans() {
                         </TabsTrigger>
                       </TabsList>
                     </Tabs>
-                    <div className="flex flex-wrap items-center gap-3">
+                    {directoryViewMode === 'war' ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setActiveWarsDialogOpen(true)}
+                        disabled={otherActiveWars.length === 0}
+                        className="w-full border-red-500/30 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                      >
+                        <Swords className="mr-2 h-4 w-4" />
+                        Guerres actives ({otherActiveWars.length})
+                      </Button>
+                    ) : null}
+                    <div className="flex items-center justify-between gap-3">
                       <div className="inline-flex items-baseline gap-2">
                         <span className="rounded-xl border border-border/60 bg-muted/20 px-3 py-1 text-lg font-semibold tabular-nums">
                           {clans.length}
                         </span>
                         <span className="text-sm font-medium text-muted-foreground">Clans</span>
                       </div>
-                      {directoryViewMode === 'war' ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setActiveWarsDialogOpen(true)}
-                          disabled={otherActiveWars.length === 0}
-                          className="border-red-500/30 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
-                        >
-                          <Swords className="mr-2 h-4 w-4" />
-                          Guerres actives ({otherActiveWars.length})
+                      {canCreateClan ? (
+                        <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Créer
                         </Button>
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {canCreateClan ? (
-                      <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Créer
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="max-h-[62vh] overflow-y-auto rounded-2xl border border-transparent pr-1">
+                <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-transparent pr-1">
                   {loading ? (
                     <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
                       <ListSkeleton rows={4} />
@@ -1377,7 +1373,7 @@ export default function Clans() {
               </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="min-h-0 space-y-6 overflow-y-auto pr-1">
               {!selectedClanId || !selectedClanSummary ? (
                 <Card className={panelClassName}>
                   <CardContent className="p-10 text-center text-muted-foreground">

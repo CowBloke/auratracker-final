@@ -8,7 +8,7 @@ import path from 'node:path';
 
 const prisma = new PrismaClient();
 const prismaAny = prisma as any;
-const SEED_DATA_VERSION = 5; // Increment this whenever the seed data changes.
+const SEED_DATA_VERSION = 6; // Increment this whenever the seed data changes.
 const SEED_VERSION_MARKER_PATH = path.resolve('prisma', '.seed-version.json');
 
 const writeSeedVersionMarker = async () => {
@@ -318,6 +318,37 @@ async function clearMockData(mockUsernames: string[], existingTables: Set<string
 
 async function main() {
   console.log('Seeding mock data...');
+
+  const generatedClanProfiles = [
+    { clanName: 'Crimson Orbit', clanTag: 'CRO', username: 'elio_crimson', firstName: 'Elio', description: 'Clan orienté rush, mini-jeux et guerre active.', color: '#F43F5E', isPublic: true },
+    { clanName: 'Frost Circuit', clanTag: 'FRC', username: 'nova_frost', firstName: 'Nova', description: 'Clan chill avec focus quêtes et progression team.', color: '#38BDF8', isPublic: true },
+    { clanName: 'Solar Echo', clanTag: 'SLE', username: 'iris_solar', firstName: 'Irisa', description: 'Clan régulier pour events, cadeaux et support.', color: '#F59E0B', isPublic: false },
+    { clanName: 'Night Pulse', clanTag: 'NPS', username: 'kai_pulse', firstName: 'Kai', description: 'Clan nocturne spécialisé Polytrack et guerre.', color: '#A78BFA', isPublic: true },
+    { clanName: 'Pixel Forge', clanTag: 'PXF', username: 'maya_forge', firstName: 'Maya', description: 'Clan build-up défensif et rotation d équipes.', color: '#22C55E', isPublic: false },
+    { clanName: 'Quantum Drift', clanTag: 'QDR', username: 'soren_quantum', firstName: 'Soren', description: 'Clan compétitif avec suivi des scores et raids.', color: '#06B6D4', isPublic: true },
+    { clanName: 'Velvet Storm', clanTag: 'VST', username: 'lina_velvet', firstName: 'Lina', description: 'Clan social fort sur chat, inbox et cadeaux.', color: '#EC4899', isPublic: true },
+    { clanName: 'Iron Comets', clanTag: 'IRC', username: 'noe_comet', firstName: 'Noe', description: 'Clan orienté progression rapide et coffres.', color: '#F97316', isPublic: false },
+    { clanName: 'Aurora Grid', clanTag: 'AGD', username: 'yara_grid', firstName: 'Yara', description: 'Clan équilibré entre mini-jeux, quêtes et raids.', color: '#10B981', isPublic: true },
+    { clanName: 'Stellar Vault', clanTag: 'STV', username: 'axel_vault', firstName: 'Axel', description: 'Clan stable pour war prep et gestion de banque.', color: '#6366F1', isPublic: false },
+  ] as const;
+
+  const generatedClanUsers = generatedClanProfiles.map((profile, index) => ({
+    username: profile.username,
+    firstName: profile.firstName,
+    schoolLevel: index % 3 === 0 ? 'TERMINALE' : index % 3 === 1 ? 'PREMIERE' : 'SECONDE',
+    classLetter: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'][index]!,
+    email: `${profile.username}@auratracker.com`,
+    aura: BigInt(620 + index * 95),
+    money: 4200 + index * 530,
+    auraCoinBalance: Number((6.5 + index * 1.9).toFixed(1)),
+    usernameColor: profile.color,
+    profilePicture: index % 3 === 0 ? MOCK_IMAGE.lena : index % 3 === 1 ? MOCK_IMAGE.milo : MOCK_IMAGE.salma,
+    profileBanner: index % 3 === 0 ? MOCK_IMAGE.bannerA : index % 3 === 1 ? MOCK_IMAGE.bannerB : MOCK_IMAGE.bannerC,
+    bio: `Founder of ${profile.clanName}, focused on clan missions and weekly wars.`,
+    dailyPassStreak: (index % 8) + 1,
+    lastDailyPassClaim: daysAgo(index % 3, 7 + (index % 5)),
+    isApproved: true,
+  }));
 
   const mockUsers = [
     {
@@ -643,6 +674,7 @@ async function main() {
       motivationMessage: 'Je veux surtout suivre mes amis, jouer a Polytrack et rejoindre un clan actif.',
       isApproved: false,
     },
+    ...generatedClanUsers,
   ];
 
   const existingTables = await getExistingTables();
@@ -2322,6 +2354,32 @@ async function main() {
     },
   });
 
+  const extraClans = await Promise.all(
+    generatedClanProfiles.map((profile, index) =>
+      prisma.clan.create({
+        data: {
+          name: profile.clanName,
+          description: profile.description,
+          imageUrl: MOCK_IMAGE.clan,
+          banner: index % 3 === 0 ? MOCK_IMAGE.bannerA : index % 3 === 1 ? MOCK_IMAGE.bannerB : MOCK_IMAGE.bannerC,
+          isPublic: profile.isPublic,
+          maxMembers: 5,
+          clanBankMoney: 1500 + index * 260,
+          ownerId: userByName.get(profile.username)!.id,
+          tagUnlocked: true,
+          tagText: profile.clanTag,
+          tagStyle: JSON.stringify({ backgroundColor: '#111827', textColor: profile.color, borderColor: '#94A3B8' }),
+          slotUpgraded: index % 2 === 0,
+        },
+      })
+    )
+  );
+  const extraClanMemberRows = extraClans.map((clan, index) => ({
+    clanId: clan.id,
+    userId: userByName.get(generatedClanProfiles[index]!.username)!.id,
+    isLeader: true,
+  }));
+
   await prisma.clanMember.createMany({
     data: [
       { clanId: nebuleux.id, userId: userByName.get('zoe')!.id, isLeader: true },
@@ -2339,6 +2397,7 @@ async function main() {
       { clanId: voltage.id, userId: userByName.get('lucas')!.id, isLeader: false },
       { clanId: voltage.id, userId: userByName.get('ines')!.id, isLeader: false },
       { clanId: voltage.id, userId: userByName.get('camille')!.id, isLeader: false },
+      ...extraClanMemberRows,
     ],
   });
 
