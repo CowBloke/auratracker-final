@@ -4426,15 +4426,24 @@ export const forumApi = {
   deleteComment: (commentId: string) => api.delete(`/forum/comments/${commentId}`),
 };
 
-export type HorseRaceLineupEntry = {
+export type HorseCosmetics = {
+  bodyColor: string;
+  pattern: string;
+  patternColor: string;
+  mane: string;
+  silks1: string;
+  silks2: string;
+  silksDesign: string;
+  helmet: string;
+  accessory: string;
+};
+
+export type HorseRaceLineupEntry = HorseCosmetics & {
   lane: number;
   betKey: string;
   isComputer: boolean;
   horseId: string | null;
   name: string;
-  bodyColor: string;
-  pattern: string;
-  patternColor: string;
   stableId: string | null;
   stableName: string | null;
   clanName: string | null;
@@ -4468,12 +4477,9 @@ export type HorseRaceStateResponse = {
   myBets: HorseRaceMyBet[];
 };
 
-export type StableHorseDto = {
+export type StableHorseDto = HorseCosmetics & {
   id: string;
   name: string;
-  bodyColor: string;
-  pattern: string;
-  patternColor: string;
   geneSpeed: number;
   geneStamina: number;
   geneConsistency: number;
@@ -4524,12 +4530,9 @@ export type PublicStableDto = {
   totalRaces: number;
   reputation: number;
   horseCount: number;
-  topHorses: Array<{
+  topHorses: Array<HorseCosmetics & {
     id: string;
     name: string;
-    bodyColor: string;
-    pattern: string;
-    patternColor: string;
     wins: number;
     podiums: number;
     races: number;
@@ -4545,12 +4548,25 @@ export type PatternDto = {
   unlocked: boolean;
 };
 
+export type AccessoryDto = {
+  key: string;
+  label: string;
+  unlockWins: number | null;
+  unlocked: boolean;
+};
+
 export type RecentRacePodiumEntry = {
   position: number;
   name: string | null;
   bodyColor: string | null;
   pattern: string;
   patternColor: string;
+  mane: string;
+  silks1: string;
+  silks2: string;
+  silksDesign: string;
+  helmet: string;
+  accessory: string;
   stableName: string | null;
   clanName: string | null;
   finishTimeMs: number;
@@ -4568,12 +4584,9 @@ export type RecentRaceDto = {
   podium: RecentRacePodiumEntry[];
 };
 
-export type TopHorseDto = {
+export type TopHorseDto = HorseCosmetics & {
   id: string;
   name: string;
-  bodyColor: string;
-  pattern: string;
-  patternColor: string;
   stableName: string | null;
   clanName: string | null;
   ageYears: number;
@@ -4661,7 +4674,18 @@ export const horseRaceApi = {
     api.post<{ success: true; horse: unknown }>('/horse-race/horses/buy', data),
   updateHorse: (
     id: string,
-    data: { name?: string; bodyColor?: string; pattern?: string; patternColor?: string },
+    data: {
+      name?: string;
+      bodyColor?: string;
+      pattern?: string;
+      patternColor?: string;
+      mane?: string;
+      silks1?: string;
+      silks2?: string;
+      silksDesign?: string;
+      helmet?: string;
+      accessory?: string;
+    },
   ) => api.patch<{ success: true }>(`/horse-race/horses/${id}`, data),
   trainHorse: (id: string, stat: 'speed' | 'stamina' | 'consistency', businessId: string) =>
     api.post<{ success: true }>(`/horse-race/horses/${id}/train`, { stat, businessId }),
@@ -4683,7 +4707,13 @@ export const horseRaceApi = {
     api.delete<{ success: true }>(`/horse-race/bets/${betId}`),
 
   getPatterns: () =>
-    api.get<{ patterns: PatternDto[]; totalWins: number }>('/horse-race/patterns'),
+    api.get<{
+      patterns: PatternDto[];
+      accessories: AccessoryDto[];
+      silksDesigns: string[];
+      totalWins: number;
+      horseMaxWins: number;
+    }>('/horse-race/patterns'),
   unlockPattern: (pattern: string) =>
     api.post<{ success: true }>('/horse-race/patterns/unlock', { pattern }),
 };

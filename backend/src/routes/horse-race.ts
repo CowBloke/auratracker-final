@@ -82,18 +82,43 @@ export type PatternDef = {
   unlockWins?: number; // null/undefined => unlocked by default
 };
 const PATTERNS: PatternDef[] = [
-  { key: 'solid', label: 'Uni', rarity: 'common' },
-  { key: 'blaze', label: 'Liste (front)', rarity: 'common' },
+  { key: 'solid', label: 'Unie', rarity: 'common' },
+  { key: 'blaze', label: 'Liste', rarity: 'common' },
+  { key: 'snip', label: 'Tache museau', rarity: 'common' },
+  { key: 'star', label: 'Étoile', rarity: 'common' },
+  { key: 'socks', label: 'Balzanes', rarity: 'common' },
   { key: 'stockings', label: 'Chaussettes', rarity: 'common' },
   { key: 'dapple', label: 'Pommelé', rarity: 'common' },
-  { key: 'stripes', label: 'Rayé', rarity: 'rare', unlockWins: 5 },
-  { key: 'splash', label: 'Éclaboussé', rarity: 'rare', unlockWins: 15 },
-  { key: 'frost', label: 'Givré', rarity: 'epic', unlockWins: 35 },
-  { key: 'flame', label: 'Flamme', rarity: 'epic', unlockWins: 75 },
-  { key: 'royal', label: 'Royal', rarity: 'legendary', unlockWins: 150 },
+  { key: 'pinto', label: 'Pie', rarity: 'rare', unlockWins: 5 },
+  { key: 'overo', label: 'Overo', rarity: 'rare', unlockWins: 10 },
+  { key: 'roan', label: 'Rouan', rarity: 'rare', unlockWins: 18 },
+  { key: 'stripes', label: 'Rayures', rarity: 'rare', unlockWins: 25 },
+  { key: 'brindle', label: 'Bringé', rarity: 'epic', unlockWins: 40 },
+  { key: 'leopard', label: 'Léopard', rarity: 'epic', unlockWins: 60 },
+  { key: 'splash', label: 'Éclaboussé', rarity: 'epic', unlockWins: 80 },
+  { key: 'frost', label: 'Givré', rarity: 'epic', unlockWins: 100 },
+  { key: 'flame', label: 'Flamme', rarity: 'legendary', unlockWins: 140 },
+  { key: 'royal', label: 'Royal', rarity: 'legendary', unlockWins: 200 },
 ];
 const PATTERN_KEYS = new Set(PATTERNS.map((p) => p.key));
 const DEFAULT_PATTERNS = new Set(PATTERNS.filter((p) => !p.unlockWins).map((p) => p.key));
+
+// ---------- Silks designs ----------
+const SILKS_DESIGN_KEYS = new Set([
+  'solid', 'sash', 'hoops', 'stripes', 'quartered', 'diamond', 'star', 'chevron',
+]);
+
+// ---------- Accessories (unlocked by wins) ----------
+type AccessoryDef = { key: string; label: string; unlockWins?: number };
+const ACCESSORIES: AccessoryDef[] = [
+  { key: 'none', label: 'Aucun' },
+  { key: 'rosette', label: 'Rosette', unlockWins: 1 },
+  { key: 'shades', label: 'Lunettes', unlockWins: 10 },
+  { key: 'wreath', label: "Couronne d'olivier", unlockWins: 25 },
+  { key: 'flames', label: 'Aura de feu', unlockWins: 60 },
+  { key: 'crown', label: 'Couronne royale', unlockWins: 120 },
+];
+const ACCESSORY_KEYS = new Set(ACCESSORIES.map((a) => a.key));
 
 // ---------- RNG ----------
 function mulberry32(seedIn: number) {
@@ -157,6 +182,12 @@ type RaceableHorse = {
   bodyColor: string;
   pattern: string;
   patternColor: string;
+  mane: string;
+  silks1: string;
+  silks2: string;
+  silksDesign: string;
+  helmet: string;
+  accessory: string;
   speed: number;
   stamina: number;
   consistency: number;
@@ -167,12 +198,20 @@ type RaceableHorse = {
   doped: boolean;
 };
 
+// ---------- Cosmetic palettes for computer horses ----------
+const COMP_MANES = ['#1a1410', '#2c2418', '#5a4023', '#8b6a3a', '#c89860', '#3a3530', '#4a2218'];
+const COMP_SILKS = ['#dc2626', '#ea580c', '#facc15', '#16a34a', '#0ea5e9', '#2563eb', '#7c3aed', '#db2777', '#0f172a', '#f8fafc'];
+const COMP_SILK_DESIGNS = ['solid', 'sash', 'hoops', 'stripes', 'quartered', 'diamond', 'star', 'chevron'];
+
 // ---------- Computer horse generator for a cycle ----------
 function pickComputerHorses(cycleIndex: number, count: number): RaceableHorse[] {
   if (count <= 0) return [];
   const rand = mulberry32((POOL_SEED ^ (cycleIndex * 0x9e3779b1)) | 0);
   const namesShuffled = shuffleSeeded(COMP_NAMES, rand);
   const colorsShuffled = shuffleSeeded(COMP_COLORS, rand);
+  const manesShuffled = shuffleSeeded(COMP_MANES, rand);
+  const silksAShuffled = shuffleSeeded(COMP_SILKS, rand);
+  const silksBShuffled = shuffleSeeded(COMP_SILKS, rand);
   const out: RaceableHorse[] = [];
   for (let i = 0; i < count; i++) {
     const [adj, noun] = namesShuffled[i % namesShuffled.length];
@@ -182,6 +221,12 @@ function pickComputerHorses(cycleIndex: number, count: number): RaceableHorse[] 
       bodyColor: colorsShuffled[i % colorsShuffled.length],
       pattern: 'solid',
       patternColor: '#f8fafc',
+      mane: manesShuffled[i % manesShuffled.length],
+      silks1: silksAShuffled[i % silksAShuffled.length],
+      silks2: silksBShuffled[(i + 3) % silksBShuffled.length],
+      silksDesign: COMP_SILK_DESIGNS[Math.floor(rand() * COMP_SILK_DESIGNS.length)],
+      helmet: silksAShuffled[(i + 5) % silksAShuffled.length],
+      accessory: 'none',
       speed: 6.5 + rand() * 1.6,
       stamina: 6.5 + rand() * 1.6,
       consistency: 7 + rand() * 2,
@@ -300,36 +345,63 @@ async function doEnsureLineupForCycle(cycleIndex: number, now: number): Promise<
   const computers = pickComputerHorses(cycleIndex, compNeeded);
 
   // Lane assignment: shuffle final list deterministically.
-  const finalList: Array<{
+  type FinalEntry = {
     horseId: string | null;
-    computer: RaceableHorse | null;
     stableId?: string;
     name: string;
     pattern: string;
     patternColor: string;
     color: string;
+    mane: string;
+    silks1: string;
+    silks2: string;
+    silksDesign: string;
+    helmet: string;
+    accessory: string;
     registeredByUserId: string | null;
-  }> = [];
+  };
+  const finalList: FinalEntry[] = [];
+  // For player horses we still need silks/etc to persist on the entry for resolution snapshot.
+  const playerCosmeticIds = selected.map((h) => h.id);
+  const cosmeticById = playerCosmeticIds.length
+    ? new Map(
+        (await prisma.horse.findMany({
+          where: { id: { in: playerCosmeticIds } },
+          select: { id: true, mane: true, silks1: true, silks2: true, silksDesign: true, helmet: true, accessory: true },
+        })).map((h) => [h.id, h] as const),
+      )
+    : new Map();
   for (const h of selected) {
+    const c = cosmeticById.get(h.id);
     finalList.push({
       horseId: h.id,
-      computer: null,
       stableId: h.stableId,
       name: h.name,
       pattern: h.pattern,
       patternColor: h.patternColor,
       color: h.bodyColor,
+      mane: c?.mane ?? '#1a1410',
+      silks1: c?.silks1 ?? '#dc2626',
+      silks2: c?.silks2 ?? '#facc15',
+      silksDesign: c?.silksDesign ?? 'solid',
+      helmet: c?.helmet ?? '#0f172a',
+      accessory: c?.accessory ?? 'none',
       registeredByUserId: stableOwnerMap.get(h.stableId) ?? null,
     });
   }
   for (const c of computers) {
     finalList.push({
       horseId: null,
-      computer: c,
       name: c.name,
       pattern: c.pattern,
       patternColor: c.patternColor,
       color: c.bodyColor,
+      mane: c.mane,
+      silks1: c.silks1,
+      silks2: c.silks2,
+      silksDesign: c.silksDesign,
+      helmet: c.helmet,
+      accessory: c.accessory,
       registeredByUserId: null,
     });
   }
@@ -343,16 +415,23 @@ async function doEnsureLineupForCycle(cycleIndex: number, now: number): Promise<
 
       for (let i = 0; i < shuffled.length; i++) {
         const e = shuffled[i];
+        const isComp = e.horseId == null;
         await tx.horseRaceEntry.create({
           data: {
             cycleIndex,
             lane: i + 1,
             horseId: e.horseId,
-            isComputer: e.horseId == null,
-            computerName: e.horseId == null ? e.name : null,
-            computerColor: e.horseId == null ? e.color : null,
-            computerPattern: e.horseId == null ? e.pattern : 'solid',
-            computerPatternColor: e.horseId == null ? e.patternColor : '#f8fafc',
+            isComputer: isComp,
+            computerName: isComp ? e.name : null,
+            computerColor: isComp ? e.color : null,
+            computerPattern: isComp ? e.pattern : 'solid',
+            computerPatternColor: isComp ? e.patternColor : '#f8fafc',
+            computerMane: e.mane,
+            computerSilks1: e.silks1,
+            computerSilks2: e.silks2,
+            computerSilksDesign: e.silksDesign,
+            computerHelmet: e.helmet,
+            computerAccessory: e.accessory,
             registeredByUserId: e.registeredByUserId,
           },
         });
@@ -398,6 +477,12 @@ async function buildRaceableEntries(cycleIndex: number): Promise<RaceableHorse[]
         bodyColor: e.computerColor ?? '#888',
         pattern: e.computerPattern,
         patternColor: e.computerPatternColor,
+        mane: e.computerMane,
+        silks1: e.computerSilks1,
+        silks2: e.computerSilks2,
+        silksDesign: e.computerSilksDesign,
+        helmet: e.computerHelmet,
+        accessory: e.computerAccessory,
         speed: 6.5 + seedRand() * 1.6,
         stamina: 6.5 + seedRand() * 1.6,
         consistency: 7 + seedRand() * 2,
@@ -415,6 +500,12 @@ async function buildRaceableEntries(cycleIndex: number): Promise<RaceableHorse[]
         bodyColor: h.bodyColor,
         pattern: h.pattern,
         patternColor: h.patternColor,
+        mane: h.mane,
+        silks1: h.silks1,
+        silks2: h.silks2,
+        silksDesign: h.silksDesign,
+        helmet: h.helmet,
+        accessory: h.accessory,
         speed: effectiveStat(h.geneSpeed, h.trainSpeed, ageY) + (doped ? DOPE_SPEED_BOOST : 0),
         stamina: effectiveStat(h.geneStamina, h.trainStamina, ageY) + (doped ? DOPE_STAMINA_BOOST : 0),
         consistency: effectiveStat(h.geneConsistency, h.trainConsistency, ageY),
@@ -902,6 +993,12 @@ router.get('/state', authMiddleware, async (req: AuthRequest, res: Response) => 
       bodyColor: e.isComputer || !h ? e.computerColor : h.bodyColor,
       pattern: e.isComputer || !h ? e.computerPattern : h.pattern,
       patternColor: e.isComputer || !h ? e.computerPatternColor : h.patternColor,
+      mane: e.isComputer || !h ? e.computerMane : h.mane,
+      silks1: e.isComputer || !h ? e.computerSilks1 : h.silks1,
+      silks2: e.isComputer || !h ? e.computerSilks2 : h.silks2,
+      silksDesign: e.isComputer || !h ? e.computerSilksDesign : h.silksDesign,
+      helmet: e.isComputer || !h ? e.computerHelmet : h.helmet,
+      accessory: e.isComputer || !h ? e.computerAccessory : h.accessory,
       stableId: h?.stableId ?? null,
       stableName: h?.stable?.name ?? null,
       clanName: h?.stable?.clan?.name ?? null,
@@ -990,6 +1087,12 @@ router.get('/me/stable', authMiddleware, async (req: AuthRequest, res: Response)
         bodyColor: h.bodyColor,
         pattern: h.pattern,
         patternColor: h.patternColor,
+        mane: h.mane,
+        silks1: h.silks1,
+        silks2: h.silks2,
+        silksDesign: h.silksDesign,
+        helmet: h.helmet,
+        accessory: h.accessory,
         geneSpeed: h.geneSpeed,
         geneStamina: h.geneStamina,
         geneConsistency: h.geneConsistency,
@@ -1077,7 +1180,11 @@ router.get('/stables', authMiddleware, async (_req: AuthRequest, res: Response) 
       clan: { select: { name: true, ownerId: true } },
       horses: {
         where: { isRetired: false, isConfiscated: false },
-        select: { id: true, name: true, bodyColor: true, pattern: true, patternColor: true, wins: true, podiums: true, races: true, birthCycle: true },
+        select: {
+          id: true, name: true, bodyColor: true, pattern: true, patternColor: true,
+          mane: true, silks1: true, silks2: true, silksDesign: true, helmet: true, accessory: true,
+          wins: true, podiums: true, races: true, birthCycle: true,
+        },
         orderBy: { wins: 'desc' },
         take: 8,
       },
@@ -1105,6 +1212,12 @@ router.get('/stables', authMiddleware, async (_req: AuthRequest, res: Response) 
         bodyColor: h.bodyColor,
         pattern: h.pattern,
         patternColor: h.patternColor,
+        mane: h.mane,
+        silks1: h.silks1,
+        silks2: h.silks2,
+        silksDesign: h.silksDesign,
+        helmet: h.helmet,
+        accessory: h.accessory,
         wins: h.wins,
         podiums: h.podiums,
         races: h.races,
@@ -1219,18 +1332,48 @@ router.patch('/horses/:id', authMiddleware, async (req: AuthRequest, res: Respon
   if (!horse || horse.stableId !== info.stable.id) return res.status(404).json({ error: 'Cheval introuvable.' });
   if (horse.isConfiscated || horse.isRetired) return res.status(400).json({ error: 'Cheval indisponible.' });
 
-  const { name, bodyColor, pattern, patternColor } = req.body ?? {};
+  const {
+    name, bodyColor, pattern, patternColor,
+    mane, silks1, silks2, silksDesign, helmet, accessory,
+  } = req.body ?? {};
+  const hex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
   const data: Prisma.HorseUpdateInput = {};
   const wantsCustomize =
-    (typeof bodyColor === 'string' && bodyColor !== horse.bodyColor) ||
+    (hex(bodyColor) && bodyColor !== horse.bodyColor) ||
     (typeof pattern === 'string' && pattern !== horse.pattern) ||
-    (typeof patternColor === 'string' && patternColor !== horse.patternColor);
+    (hex(patternColor) && patternColor !== horse.patternColor) ||
+    (hex(mane) && mane !== horse.mane) ||
+    (hex(silks1) && silks1 !== horse.silks1) ||
+    (hex(silks2) && silks2 !== horse.silks2) ||
+    (typeof silksDesign === 'string' && silksDesign !== horse.silksDesign) ||
+    (hex(helmet) && helmet !== horse.helmet) ||
+    (typeof accessory === 'string' && accessory !== horse.accessory);
 
   if (typeof name === 'string' && name.trim().length >= 2 && name.length <= 30) {
     data.name = name.trim();
   }
-  if (typeof bodyColor === 'string' && /^#[0-9a-f]{6}$/i.test(bodyColor)) data.bodyColor = bodyColor;
-  if (typeof patternColor === 'string' && /^#[0-9a-f]{6}$/i.test(patternColor)) data.patternColor = patternColor;
+  if (hex(bodyColor)) data.bodyColor = bodyColor;
+  if (hex(patternColor)) data.patternColor = patternColor;
+  if (hex(mane)) data.mane = mane;
+  if (hex(silks1)) data.silks1 = silks1;
+  if (hex(silks2)) data.silks2 = silks2;
+  if (hex(helmet)) data.helmet = helmet;
+  if (typeof silksDesign === 'string') {
+    if (!SILKS_DESIGN_KEYS.has(silksDesign)) return res.status(400).json({ error: 'Design de soie inconnu.' });
+    data.silksDesign = silksDesign;
+  }
+  if (typeof accessory === 'string') {
+    if (!ACCESSORY_KEYS.has(accessory)) return res.status(400).json({ error: 'Accessoire inconnu.' });
+    if (accessory !== 'none') {
+      const def = ACCESSORIES.find((a) => a.key === accessory);
+      if (def?.unlockWins != null && horse.wins < def.unlockWins) {
+        return res.status(403).json({
+          error: `Accessoire verrouillé (${def.unlockWins} victoires requises).`,
+        });
+      }
+    }
+    data.accessory = accessory;
+  }
   if (typeof pattern === 'string') {
     if (!PATTERN_KEYS.has(pattern)) return res.status(400).json({ error: 'Pattern inconnu.' });
     const unlocked = await getUnlockedPatterns(info.stable.id);
@@ -1465,6 +1608,7 @@ router.post('/breed', authMiddleware, async (req: AuthRequest, res: Response) =>
   const geneStamina = mix(h1.geneStamina, h2.geneStamina);
   const geneConsistency = mix(h1.geneConsistency, h2.geneConsistency);
   const bodyColor = rand() < 0.5 ? h1.bodyColor : h2.bodyColor;
+  const mane = rand() < 0.5 ? h1.mane : h2.mane;
 
   try {
     const foal = await prisma.$transaction(async (tx) => {
@@ -1481,6 +1625,7 @@ router.post('/breed', authMiddleware, async (req: AuthRequest, res: Response) =>
           bodyColor,
           pattern: 'solid',
           patternColor: '#f8fafc',
+          mane,
           geneSpeed,
           geneStamina,
           geneConsistency,
@@ -1585,6 +1730,13 @@ router.get('/patterns', authMiddleware, async (req: AuthRequest, res: Response) 
   const info = await getUserStable(req.user.id);
   const unlocked = info?.stable ? await getUnlockedPatterns(info.stable.id) : new Set(DEFAULT_PATTERNS);
   const totalWins = info?.stable?.totalWins ?? 0;
+  // Highest single-horse wins (used for per-horse accessory unlocks display).
+  const horseMaxWins = info?.stable
+    ? (await prisma.horse.aggregate({
+        where: { stableId: info.stable.id, isRetired: false, isConfiscated: false },
+        _max: { wins: true },
+      }))._max.wins ?? 0
+    : 0;
   res.json({
     patterns: PATTERNS.map((p) => ({
       key: p.key,
@@ -1593,7 +1745,15 @@ router.get('/patterns', authMiddleware, async (req: AuthRequest, res: Response) 
       unlockWins: p.unlockWins ?? null,
       unlocked: unlocked.has(p.key) || (p.unlockWins ? totalWins >= p.unlockWins : true),
     })),
+    accessories: ACCESSORIES.map((a) => ({
+      key: a.key,
+      label: a.label,
+      unlockWins: a.unlockWins ?? null,
+      unlocked: a.key === 'none' || (a.unlockWins != null && horseMaxWins >= a.unlockWins),
+    })),
+    silksDesigns: Array.from(SILKS_DESIGN_KEYS),
     totalWins,
+    horseMaxWins,
   });
 });
 
@@ -1653,6 +1813,12 @@ router.get('/standings', authMiddleware, async (req: AuthRequest, res: Response)
         bodyColor: e.isComputer || !e.horse ? e.computerColor : e.horse.bodyColor,
         pattern: e.isComputer || !e.horse ? e.computerPattern : e.horse.pattern,
         patternColor: e.isComputer || !e.horse ? e.computerPatternColor : e.horse.patternColor,
+        mane: e.isComputer || !e.horse ? e.computerMane : e.horse.mane,
+        silks1: e.isComputer || !e.horse ? e.computerSilks1 : e.horse.silks1,
+        silks2: e.isComputer || !e.horse ? e.computerSilks2 : e.horse.silks2,
+        silksDesign: e.isComputer || !e.horse ? e.computerSilksDesign : e.horse.silksDesign,
+        helmet: e.isComputer || !e.horse ? e.computerHelmet : e.horse.helmet,
+        accessory: e.isComputer || !e.horse ? e.computerAccessory : e.horse.accessory,
         stableName: e.horse?.stable?.name ?? null,
         clanName: e.horse?.stable?.clan?.name ?? null,
         finishTimeMs: e.finishTimeMs ?? 0,
@@ -1687,6 +1853,12 @@ router.get('/standings', authMiddleware, async (req: AuthRequest, res: Response)
         bodyColor: h.bodyColor,
         pattern: h.pattern,
         patternColor: h.patternColor,
+        mane: h.mane,
+        silks1: h.silks1,
+        silks2: h.silks2,
+        silksDesign: h.silksDesign,
+        helmet: h.helmet,
+        accessory: h.accessory,
         stableName: h.stable?.name ?? null,
         clanName: h.stable?.clan?.name ?? null,
         ageYears: age,

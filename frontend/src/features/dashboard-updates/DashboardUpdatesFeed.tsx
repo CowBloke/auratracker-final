@@ -16,13 +16,7 @@ type FeedEntry = DashboardUpdateEntry & {
   authorAvatar: string;
 };
 
-const TABS: Array<{ id: FilterTab; label: string }> = [
-  { id: 'tout', label: 'Tout' },
-  { id: 'GAME', label: 'Jeux' },
-  { id: 'PATCH', label: 'Patchs' },
-  { id: 'COMMUNITY', label: 'Communaute' },
-  { id: 'DEV', label: 'Equipe' },
-];
+
 
 const CATEGORY_META: Record<DashboardUpdateEntry['feedCategory'], { label: string; className: string }> = {
   GAME: {
@@ -234,34 +228,7 @@ function TeamNote({ entry }: { entry: FeedEntry | null }) {
   );
 }
 
-function FeedTabs({
-  entries,
-  value,
-  onChange,
-}: {
-  entries: FeedEntry[];
-  value: FilterTab;
-  onChange: (value: FilterTab) => void;
-}) {
-  return (
-    <div className="db-tabs">
-      {TABS.map((tab) => {
-        const count = tab.id === 'tout' ? entries.length : entries.filter((entry) => entry.feedCategory === tab.id).length;
-        return (
-          <button
-            key={tab.id}
-            type="button"
-            className={cn('db-tabs__btn', value === tab.id && 'is-active')}
-            onClick={() => onChange(tab.id)}
-          >
-            {tab.label}
-            <span className="db-tabs__count">{count}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+
 
 function AuthorRow({ entry }: { entry: FeedEntry }) {
   return (
@@ -552,7 +519,6 @@ export function DashboardUpdatesFeed({
         action={action}
       />
       <TeamNote entry={tab === 'tout' || tab === 'DEV' ? teamNote : null} />
-      <FeedTabs entries={regularEntries} value={tab} onChange={setTab} />
 
       {loading ? (
         <div className="db-state">

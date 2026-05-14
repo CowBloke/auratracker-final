@@ -46,6 +46,31 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-05-14-horserace-redesign',
+    date: '2026-05-14',
+    title: 'Hippodrome — refonte de la course et atelier',
+    summary: 'L\'écran de course a été redessiné de fond en comble : nouveaux chevaux animés en course (vue de profil tournée vers la ligne d\'arrivée), tribune avec foule, piste avec couloirs lumineux, podium de fin de course et nouvel atelier de personnalisation très étendu.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-05-14-horserace-redesign-1', text: '**Hippodrome · Nouvelle piste** — Tribune avec foule animée, piste avec couloirs animés, ligne d\'arrivée en damier, et chevaux toujours visibles quelle que soit la taille de l\'écran. Le leader a un halo doré, vos paris brillent en émeraude.' },
+          { id: '2026-05-14-horserace-redesign-2', text: '**Hippodrome · Chevaux animés** — Nouveaux chevaux dessinés avec une vraie anatomie de profil (galop, queue qui flotte, jockey, casque) tournés vers la ligne d\'arrivée. Tous les chevaux (vôtres et IA) bénéficient des nouvelles options de personnalisation.' },
+          { id: '2026-05-14-horserace-redesign-3', text: '**Hippodrome · Atelier de personnalisation** — Nouvel atelier en onglets (Robe, Motif, Soie, Casque, Bonus) avec aperçu en temps réel. Couleur de la robe et de la crinière, 12 motifs (étoile, pommelé, pie, overo, léopard, balzanes, rouan, bringé…), 8 designs de soie (sash, cerceaux, chevron, losange, étoile…), couleur du casque, et bonus esthétiques débloqués par les victoires (rosette, couronne, lunettes, aura de feu).' },
+          { id: '2026-05-14-horserace-redesign-4', text: '**Hippodrome · Podium de fin de course** — À la fin de chaque course, un podium dramatique apparaît avec les trois premiers, confettis en cas de victoire, et le bilan de vos paris (mise totale → gain).' },
+        ],
+      },
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-05-14-horserace-redesign-5', text: '**Hippodrome · Rail des chevaux** — Une colonne dédiée à gauche affiche tous vos chevaux avec leur portrait, leur âge, leurs victoires et un aperçu de leurs stats. Cliquez sur un cheval pour ouvrir directement l\'atelier.' },
+          { id: '2026-05-14-horserace-redesign-6', text: '**Hippodrome · Panneau de paris en ligne** — La colonne de droite affiche désormais la liste complète des partants avec leurs cotes et permet de sélectionner, miser et confirmer sans ouvrir de modale. Vos paris en cours et leur gain potentiel sont visibles en permanence.' },
+          { id: '2026-05-14-horserace-redesign-7', text: '**Hippodrome · Cagnotte en direct** — La barre d\'informations affiche en temps réel la cagnotte totale, le nombre de parieurs, le prix du 1er et le favori actuel.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-05-13-actions-redesign',
     date: '2026-05-13',
     title: 'Moi — onglet Actions épuré',

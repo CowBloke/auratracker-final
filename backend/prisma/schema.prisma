@@ -3244,6 +3244,12 @@ model Horse {
   bodyColor       String   @default("#a16207")
   pattern         String   @default("solid")
   patternColor    String   @default("#f8fafc")
+  mane            String   @default("#1a1410")
+  silks1          String   @default("#dc2626")
+  silks2          String   @default("#facc15")
+  silksDesign     String   @default("solid")
+  helmet          String   @default("#0f172a")
+  accessory       String   @default("none")
 
   geneSpeed       Float
   geneStamina     Float
@@ -3292,6 +3298,12 @@ model HorseRaceEntry {
   computerColor      String?
   computerPattern    String  @default("solid")
   computerPatternColor String @default("#f8fafc")
+  computerMane       String  @default("#1a1410")
+  computerSilks1     String  @default("#dc2626")
+  computerSilks2     String  @default("#facc15")
+  computerSilksDesign String @default("solid")
+  computerHelmet     String  @default("#0f172a")
+  computerAccessory  String  @default("none")
   lane               Int
   finishPos          Int?
   finishTimeMs       Int?

@@ -152,7 +152,11 @@
       "Bash(Sort-Object)",
       "Bash(git mv *)",
       "Bash(grep -E \"\\\\.tsx$|\\\\.ts$\")",
-      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\" -Directory)"
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\cowbl\\\\source\\\\repos\\\\CRust\\\\auratracker-final\" -Directory)",
+      "Bash(mkdir -p /tmp/design)",
+      "Bash(tar -xzf \"C:\\\\Users\\\\cowbl\\\\.claude\\\\projects\\\\C--Users-cowbl-source-repos-CRust-auratracker-final\\\\b9673865-1d41-42c3-907e-886b7adcd676\\\\tool-results\\\\webfetch-1778769815792-nnlteh.bin\" -C /tmp/design)",
+      "Bash(cp \"/c/Users/cowbl/.claude/projects/C--Users-cowbl-source-repos-CRust-auratracker-final/b9673865-1d41-42c3-907e-886b7adcd676/tool-results/webfetch-1778769815792-nnlteh.bin\" /tmp/design.tar.gz)",
+      "Bash(tar -xzf /tmp/design.tar.gz -C /tmp/design)"
     ]
   },
   "outputStyle": "default"
