@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
   CreditCard, Download, Edit2, ExternalLink, Factory, GraduationCap, Image, Landmark, Loader2, Percent,
-  Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X, Utensils,
+  Megaphone, Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X, Utensils,
   ShieldAlert,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -1325,6 +1325,18 @@ export function ManageBusinessModal({
               {/* Gérer l'équipe */}
               {business.ownerKind === 'you' ? (
                 <ActionRow icon={Users} label="Gérer l'équipe" sub="Salaires, invitations et départs" iconBg="bg-violet-400/15" iconColor="text-violet-400" onClick={() => setManageTeamOpen(true)} />
+              ) : null}
+
+              {/* Créer une pub */}
+              {business.ownerKind === 'you' ? (
+                <ActionRow
+                  icon={Megaphone}
+                  label="Créer une pub"
+                  sub="Crée des annonces pour tes entreprises"
+                  iconBg="bg-fuchsia-400/15"
+                  iconColor="text-fuchsia-300"
+                  onClick={() => { window.location.href = '?tab=publicites'; }}
+                />
               ) : null}
 
               {/* Gérer le menu */}
