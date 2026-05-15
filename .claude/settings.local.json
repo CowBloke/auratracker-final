@@ -156,7 +156,12 @@
       "Bash(mkdir -p /tmp/design)",
       "Bash(tar -xzf \"C:\\\\Users\\\\cowbl\\\\.claude\\\\projects\\\\C--Users-cowbl-source-repos-CRust-auratracker-final\\\\b9673865-1d41-42c3-907e-886b7adcd676\\\\tool-results\\\\webfetch-1778769815792-nnlteh.bin\" -C /tmp/design)",
       "Bash(cp \"/c/Users/cowbl/.claude/projects/C--Users-cowbl-source-repos-CRust-auratracker-final/b9673865-1d41-42c3-907e-886b7adcd676/tool-results/webfetch-1778769815792-nnlteh.bin\" /tmp/design.tar.gz)",
-      "Bash(tar -xzf /tmp/design.tar.gz -C /tmp/design)"
+      "Bash(tar -xzf /tmp/design.tar.gz -C /tmp/design)",
+      "Bash(pnpm run *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(./node_modules/.bin/tsc --noEmit)"
     ]
   },
   "outputStyle": "default"

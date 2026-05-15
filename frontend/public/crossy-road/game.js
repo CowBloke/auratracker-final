@@ -517,7 +517,7 @@
         for (const log of lane.entities) {
           const logLeft = log.x - log.w / 2;
           const logRight = log.x + log.w / 2;
-          if (player.x + 0.5 >= logLeft && player.x + 0.5 <= logRight) {
+          if (player.x + 0.3 >= logLeft && player.x - 0.3 <= logRight) {
             onLog = true;
             const drift = lane.speed * dt;
             player.x += drift;
@@ -1089,7 +1089,7 @@
 
     const s = toScreen(visualX, visualY);
     const cx = s.x + TILE / 2;
-    const base = s.y + TILE - hopHeight;
+    const base = s.y + TILE - hopHeight - 2;
     const d = 7;
 
     const squash = player.squash;

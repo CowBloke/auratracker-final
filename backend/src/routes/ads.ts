@@ -7,12 +7,14 @@ const router = Router();
 
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 20;
-const MAX_ADS_PER_BUSINESS = 2;
+const MAX_ADS_PER_BUSINESS = 1;
+const MAX_ADS_PER_ACCOUNT = 10;
 
 const ERROR_STATUS: Record<string, number> = {
   AD_NOT_FOUND: 404,
   AD_FORBIDDEN: 403,
   AD_LIMIT_REACHED: 400,
+  AD_ACCOUNT_LIMIT_REACHED: 400,
   AD_TAGLINE_TOO_LONG: 400,
 };
 
@@ -108,6 +110,18 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     if (business.ownerId !== req.user.id) {
       return routeError(res, 'AD_FORBIDDEN');
+    }
+
+    const totalAds = await prisma.ad.count({
+      where: {
+        business: {
+          ownerId: req.user.id,
+        },
+      },
+    });
+
+    if (totalAds >= MAX_ADS_PER_ACCOUNT) {
+      return routeError(res, 'AD_ACCOUNT_LIMIT_REACHED');
     }
 
     const adCount = await prisma.ad.count({ where: { businessId } });

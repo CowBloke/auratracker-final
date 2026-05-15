@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Building2, Check, Megaphone, Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,7 @@ export function PublicitesTab({
     ctaLink: '',
   });
 
-  const activeAdsCount = useMemo(() => ads.filter((ad) => ad.isActive && ad.status === 'APPROVED').length, [ads]);
+
   const redirectBusiness = ownedBusinesses.find((b) => b.id === redirectBusinessId) ?? null;
 
   const loadAds = async () => {
@@ -108,7 +108,9 @@ export function PublicitesTab({
     } catch (error: any) {
       const code = error?.response?.data?.error;
       if (code === 'AD_LIMIT_REACHED') {
-        toast.error('Limite atteinte: 2 publicites maximum par entreprise.');
+        toast.error('Limite atteinte: 1 publicité maximum par entreprise.');
+      } else if (code === 'AD_ACCOUNT_LIMIT_REACHED') {
+        toast.error('Limite atteinte: 10 publicités maximum par compte.');
       } else if (code === 'AD_TAGLINE_TOO_LONG') {
         toast.error('L accroche est limitee a 100 caracteres.');
       } else {
@@ -145,8 +147,8 @@ export function PublicitesTab({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SectionTitle>{activeAdsCount}/2 publicites actives</SectionTitle>
-        <Button type="button" className="gap-2" onClick={() => setOpenCreate(true)} disabled={ownedBusinesses.length === 0}>
+        <SectionTitle>{ads.length}/10 publicités créées</SectionTitle>
+        <Button type="button" className="gap-2" onClick={() => setOpenCreate(true)} disabled={ownedBusinesses.length === 0 || ads.length >= 10}>
           <Plus className="h-4 w-4" />
           Nouvelle publicite
         </Button>
@@ -189,7 +191,7 @@ export function PublicitesTab({
         open={openCreate}
         onClose={() => { setOpenCreate(false); resetForm(); }}
         title={<span className="inline-flex items-center gap-2"><Megaphone className="h-4 w-4" />Creer une publicite</span>}
-        desc="Les publicites sont visibles dans la grille des jeux, la page You et avant certains lancements de jeu."
+        desc="Les publicites sont visibles dans la grille des jeux, la page You et avant certains lancements de jeu. (1 max par entreprise, 10 max au total)."
       >
         <FieldRow label="Entreprise">
           <SelectBox value={form.businessId} onChange={(value) => setForm((prev) => ({ ...prev, businessId: value }))}>

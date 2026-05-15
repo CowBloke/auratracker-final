@@ -399,22 +399,33 @@ export function InvitePlayersModal({
     <AppModal open={open} onClose={onClose} tone="cyan" size="xl" description="Inviter des joueurs">
       <AppModal.Header tone="cyan" title={business ? `Inviter des joueurs · ${business.name}` : 'Inviter des joueurs'} subtitle="Toutes les invitations ciblent de vrais joueurs." />
       <AppModal.Body scrollable>
-      <div className="grid gap-3 sm:grid-cols-[1fr_180px_140px]">
-        <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
-        <FieldRow label="Role propose"><SelectBox value={role} onChange={setRole}><option value="employee">Employe</option><option value="partner">Associe</option><option value="advisor">Conseiller</option></SelectBox></FieldRow>
-        <FieldRow label="Salaire / jour"><Input type="number" min={0} value={salary} onChange={(event) => setSalary(event.target.value)} /></FieldRow>
-      </div>
-      <FieldRow label="Message facultatif">
-        <Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={3} maxLength={240} placeholder="Propose le poste, explique l'objectif ou le cadre du contrat." />
-      </FieldRow>
-      <div className="max-h-80 space-y-2 overflow-y-auto">
-        {availablePlayers.map((player) => {
-          const selected = selectedIds.includes(player.id);
-          return <div key={player.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-2 text-xs text-muted-foreground">{player.bio?.trim() || 'Disponible pour une collaboration.'}</p></div><Button size="sm" variant={selected ? 'secondary' : 'outline'} className="h-8 text-xs" onClick={() => setSelectedIds((current) => current.includes(player.id) ? current.filter((entry) => entry !== player.id) : [...current, player.id])}>{selected ? 'Selectionne' : 'Inviter'}</Button></div>;
-        })}
-        {availablePlayers.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible pour cette recherche.</p> : null}
-      </div>
-      <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">{selectedIds.length === 0 ? 'Aucune invitation preparee.' : `${selectedIds.length} invitation(s) preparee(s) pour le role ${role} a ${Number(salary).toLocaleString('fr-FR')} money/jour.`}</div>
+        <div className="grid gap-3 sm:grid-cols-[1fr_180px_140px]">
+          <FieldRow label="Recherche"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Pseudo, prenom..." /></FieldRow>
+          <FieldRow label="Role propose"><SelectBox value={role} onChange={setRole}><option value="employee">Employe</option><option value="partner">Associe</option><option value="advisor">Conseiller</option></SelectBox></FieldRow>
+          <FieldRow label="Salaire / jour"><Input type="number" min={0} value={salary} onChange={(event) => setSalary(event.target.value)} /></FieldRow>
+        </div>
+        <FieldRow label="Message facultatif">
+          <Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={3} maxLength={240} placeholder="Propose le poste, explique l'objectif ou le cadre du contrat." />
+        </FieldRow>
+        <div className="max-h-80 space-y-2 overflow-y-auto">
+          {availablePlayers.map((player) => {
+            const selected = selectedIds.includes(player.id);
+            return (
+              <div key={player.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                <UserAvatar player={player} className="h-9 w-9" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{player.username}</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">{player.bio?.trim() || 'Disponible pour une collaboration.'}</p>
+                </div>
+                <Button size="sm" variant={selected ? 'secondary' : 'outline'} className="h-8 text-xs" onClick={() => setSelectedIds((current) => current.includes(player.id) ? current.filter((entry) => entry !== player.id) : [...current, player.id])}>
+                  {selected ? 'Selectionne' : 'Inviter'}
+                </Button>
+              </div>
+            );
+          })}
+          {availablePlayers.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible pour cette recherche.</p> : null}
+        </div>
+        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">{selectedIds.length === 0 ? 'Aucune invitation preparee.' : `${selectedIds.length} invitation(s) preparee(s) pour le role ${role} a ${Number(salary).toLocaleString('fr-FR')} money/jour.`}</div>
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Fermer</AppModal.Button>
@@ -461,28 +472,28 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
     <AppModal open={open} onClose={onClose} tone="orange" size="md" description="Demander un pret">
       <AppModal.Header tone="orange" title={business ? `Demander un pret · ${business.name}` : 'Demander un pret'} subtitle="Le proprietaire devra accepter la demande avant que le money soit debloque." />
       <AppModal.Body>
-      <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={500} /></FieldRow>
-      <FieldRow label="Duree (jours)"><Input type="number" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} min={1} placeholder="ex : 7" /></FieldRow>
-      <FieldRow label="Hypotheque (aura)"><Input type="number" value={collateralAura} onChange={(event) => setCollateralAura(event.target.value)} min={0} placeholder="0 si aucun gage" /></FieldRow>
-      <FieldRow label="Lettre de motivation">
-        <Textarea
-          value={motivationMessage}
-          onChange={(event) => setMotivationMessage(event.target.value)}
-          rows={4}
-          maxLength={400}
-          placeholder="Explique ce que tu comptes faire de l argent, comment tu vas rembourser et pourquoi ce pret a du sens."
-        />
-      </FieldRow>
-      <div className="grid grid-cols-3 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4">
-        <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Taux</p><p className="text-lg font-bold tabular-nums text-amber-400">{rate}%</p></div>
-        <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Remb. / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div>
-        <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-red-400">{formatMoney(total)}</p></div>
-      </div>
-      <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
-        {Number(collateralAura || 0) > 0
-          ? `${Number(collateralAura).toLocaleString('fr-FR')} aura seront bloquees a l acceptation puis rendues au remboursement. Si l echeance est depassee et que le joueur ne peut pas payer, elles seront saisies.`
-          : 'Sans hypothèque, le pret repose uniquement sur la capacite du joueur a rembourser.'}
-      </div>
+        <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={500} /></FieldRow>
+        <FieldRow label="Duree (jours)"><Input type="number" value={durationDays} onChange={(event) => setDurationDays(event.target.value)} min={1} placeholder="ex : 7" /></FieldRow>
+        <FieldRow label="Hypotheque (aura)"><Input type="number" value={collateralAura} onChange={(event) => setCollateralAura(event.target.value)} min={0} placeholder="0 si aucun gage" /></FieldRow>
+        <FieldRow label="Lettre de motivation">
+          <Textarea
+            value={motivationMessage}
+            onChange={(event) => setMotivationMessage(event.target.value)}
+            rows={4}
+            maxLength={400}
+            placeholder="Explique ce que tu comptes faire de l argent, comment tu vas rembourser et pourquoi ce pret a du sens."
+          />
+        </FieldRow>
+        <div className="grid grid-cols-3 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4">
+          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Taux</p><p className="text-lg font-bold tabular-nums text-amber-400">{rate}%</p></div>
+          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Remb. / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div>
+          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-red-400">{formatMoney(total)}</p></div>
+        </div>
+        <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
+          {Number(collateralAura || 0) > 0
+            ? `${Number(collateralAura).toLocaleString('fr-FR')} aura seront bloquees a l acceptation puis rendues au remboursement. Si l echeance est depassee et que le joueur ne peut pas payer, elles seront saisies.`
+            : 'Sans hypothèque, le pret repose uniquement sur la capacite du joueur a rembourser.'}
+        </div>
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
@@ -1994,77 +2005,77 @@ export function ManageTeamModal({
       <AppModal open={open} onClose={onClose} tone="cyan" size="md" description="Gérer l'équipe">
         <AppModal.Header tone="cyan" title="Gérer l'équipe" subtitle={`${activeMembers.length} membre(s) actif(s)`} />
         <AppModal.Body scrollable>
-        <Button size="sm" variant="outline" className="w-full justify-start" onClick={onInviteRequested}>
-          <UserPlus className="mr-2 h-4 w-4" />Inviter des joueurs
-        </Button>
+          <Button size="sm" variant="outline" className="w-full justify-start" onClick={onInviteRequested}>
+            <UserPlus className="mr-2 h-4 w-4" />Inviter des joueurs
+          </Button>
 
-        {pendingInvitations.length > 0 ? (
-          <div className="space-y-2">
-            <SectionTitle>Contrats en attente ({pendingInvitations.length})</SectionTitle>
-            <div className="max-h-52 space-y-2 overflow-y-auto">
-              {pendingInvitations.map((invitation) => (
-                <div key={invitation.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-medium">{invitation.employee.username}</p>
-                        <Pill label={invitation.initiatedByRole === 'EMPLOYER' ? 'Offre envoyée' : 'Candidature'} color="bg-violet-400/15 text-violet-300" />
-                        <Pill label={`${invitation.salary.toLocaleString('fr-FR')} €/j`} color="bg-emerald-400/15 text-emerald-300" />
+          {pendingInvitations.length > 0 ? (
+            <div className="space-y-2">
+              <SectionTitle>Contrats en attente ({pendingInvitations.length})</SectionTitle>
+              <div className="max-h-52 space-y-2 overflow-y-auto">
+                {pendingInvitations.map((invitation) => (
+                  <div key={invitation.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium">{invitation.employee.username}</p>
+                          <Pill label={invitation.initiatedByRole === 'EMPLOYER' ? 'Offre envoyée' : 'Candidature'} color="bg-violet-400/15 text-violet-300" />
+                          <Pill label={`${invitation.salary.toLocaleString('fr-FR')} €/j`} color="bg-emerald-400/15 text-emerald-300" />
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Rôle : {{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[invitation.role] ?? invitation.role}</p>
+                        {invitation.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{invitation.message}"</p> : null}
+                        {!invitation.needsViewerAcceptance ? (
+                          <p className="mt-1 text-xs text-muted-foreground/70">En attente de validation par {invitation.waitingOn === 'EMPLOYEE' ? "l'employé" : invitation.waitingOn === 'EMPLOYER' ? "l'employeur" : "les deux parties"}.</p>
+                        ) : null}
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">Rôle : {{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[invitation.role] ?? invitation.role}</p>
-                      {invitation.message ? <p className="mt-1 text-xs text-muted-foreground/80">"{invitation.message}"</p> : null}
-                      {!invitation.needsViewerAcceptance ? (
-                        <p className="mt-1 text-xs text-muted-foreground/70">En attente de validation par {invitation.waitingOn === 'EMPLOYEE' ? "l'employé" : invitation.waitingOn === 'EMPLOYER' ? "l'employeur" : "les deux parties"}.</p>
+                      {invitation.needsViewerAcceptance ? (
+                        <div className="flex gap-2">
+                          <Button size="sm" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'accept')} disabled={reviewingInvitationId !== null}>Accepter</Button>
+                          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'reject')} disabled={reviewingInvitationId !== null}>Refuser</Button>
+                        </div>
                       ) : null}
                     </div>
-                    {invitation.needsViewerAcceptance ? (
-                      <div className="flex gap-2">
-                        <Button size="sm" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'accept')} disabled={reviewingInvitationId !== null}>Accepter</Button>
-                        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => void reviewInvitation(invitation.id, 'reject')} disabled={reviewingInvitationId !== null}>Refuser</Button>
-                      </div>
-                    ) : null}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        {activeMembers.length === 0 ? (
-          <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
-            Aucun membre dans cette équipe.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <SectionTitle>Membres actifs</SectionTitle>
-            <div className="max-h-80 space-y-1.5 overflow-y-auto">
-              {activeMembers.map((member) => (
-                <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
-                  <UserAvatar player={member.user} className="h-8 w-8 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="text-sm font-medium">{member.user.username}</p>
-                      <Pill label={{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[member.role] ?? member.role} color="bg-violet-400/15 text-violet-400" />
-                      {isLawFirm && member.isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
-                    </div>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {(member.salary ?? 0).toLocaleString('fr-FR')} €/jour
-                      {member.specialty ? ` · ${member.specialty}` : ''}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1.5">
-                    <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => setEditingMember(member)}>
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={() => void sack(member.id)} disabled={sackingId !== null}>
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+          {activeMembers.length === 0 ? (
+            <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-6 text-center text-sm text-muted-foreground">
+              Aucun membre dans cette équipe.
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="space-y-2">
+              <SectionTitle>Membres actifs</SectionTitle>
+              <div className="max-h-80 space-y-1.5 overflow-y-auto">
+                {activeMembers.map((member) => (
+                  <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
+                    <UserAvatar player={member.user} className="h-8 w-8 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="text-sm font-medium">{member.user.username}</p>
+                        <Pill label={{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[member.role] ?? member.role} color="bg-violet-400/15 text-violet-400" />
+                        {isLawFirm && member.isPrimaryLawyer ? <Pill label="Principal" color="bg-amber-400/15 text-amber-300" /> : null}
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {(member.salary ?? 0).toLocaleString('fr-FR')} €/jour
+                        {member.specialty ? ` · ${member.specialty}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-1.5">
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => setEditingMember(member)}>
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-red-400/30 text-red-300 hover:bg-red-500/10" onClick={() => void sack(member.id)} disabled={sackingId !== null}>
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </AppModal.Body>
       </AppModal>
 
