@@ -36,7 +36,9 @@ export type AdminAction = 'user_update' | 'user_delete' | 'user_approve' | 'user
 export type BanAction = 'ban_create' | 'ban_remove';
 export type AuraCoinAction =
   | 'auracoin_buy'
-  | 'auracoin_sell';
+  | 'auracoin_sell'
+  | 'block_mined'
+  | 'gpu_purchase';
 export type ForumAction =
   | 'subreddit_create'
   | 'subreddit_join'

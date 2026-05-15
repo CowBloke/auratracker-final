@@ -1725,7 +1725,7 @@ export interface AuraCoinPriceHistory {
 export interface AuraCoinTransaction {
   id: string;
   userId: string;
-  type: 'BUY' | 'SELL';
+  type: 'BUY' | 'SELL' | 'MINE_REWARD' | 'GPU_PURCHASE' | 'GPU_FEE';
   coinAmount: number;
   moneyAmount: number;
   price: number;
@@ -1745,12 +1745,33 @@ export interface AuraCoinLeaderboardEntry {
   auraCoinBalance: number;
 }
 
+export interface MiningBlock {
+  blockNumber: number;
+  minedAt: string;
+  minerId: string | null;
+  minerName: string | null;
+  reward: number;
+}
+
+export interface MinerLeaderboardEntry {
+  userId: string;
+  username: string;
+  usernameColor: string | null;
+  gpuCount: number;
+  power: number;
+  share: number;
+  totalMined: number;
+}
+
 export const auraCoinApi = {
   getPrice: (hours?: number) =>
     api.get<{
       currentPrice: number;
+      basePrice: number;
       feePercentage: number;
       history: AuraCoinPriceHistory[];
+      pool: { coinX: number; moneyY: number; k: number; totalMined: number; blockNumber: number };
+      mining: { currentReward: number; halvings: number; nextHalvingMs: number };
       userBalance: { auraCoin: number; money: number };
     }>('/auracoin/price', { params: { hours } }),
   getLeaderboard: (limit?: number) =>
@@ -1758,109 +1779,61 @@ export const auraCoinApi = {
   buy: (moneyAmount: number) =>
     api.post<{
       success: boolean;
-      transaction: {
-        type: 'BUY';
-        coinsReceived: number;
-        moneySpent: number;
-        fee: number;
-        newPrice: number;
-      };
+      coinsReceived: number;
+      moneySpent: number;
+      fee: number;
+      executionPrice: number;
+      newPrice: number;
       newBalance: { money: number; auraCoin: number };
     }>('/auracoin/buy', { moneyAmount }),
   sell: (coinAmount: number) =>
     api.post<{
       success: boolean;
-      transaction: {
-        type: 'SELL';
-        coinsSold: number;
-        moneyReceived: number;
-        fee: number;
-        newPrice: number;
-      };
+      coinsSold: number;
+      moneyReceived: number;
+      fee: number;
+      executionPrice: number;
+      newPrice: number;
       newBalance: { money: number; auraCoin: number };
     }>('/auracoin/sell', { coinAmount }),
   getMyTransactions: (params?: { limit?: number; offset?: number }) =>
     api.get<{ transactions: AuraCoinTransaction[] }>('/auracoin/transactions/me', { params }),
   getAllTransactions: (params?: { limit?: number; offset?: number }) =>
     api.get<{ transactions: AuraCoinTransaction[] }>('/auracoin/transactions/all', { params }),
-  openPosition: (type: 'LONG' | 'SHORT', leverage: number, marginAmount: number) =>
+  getMiningStats: () =>
+    api.get<{
+      myMiner: {
+        gpuCount: number;
+        power: number;
+        share: number;
+        totalMined: number;
+        dailyFee: number;
+        nextGpuCost: number;
+        canAffordNext: boolean;
+      };
+      server: {
+        totalPower: number;
+        activeMiners: number;
+        blockNumber: number;
+        totalMined: number;
+        currentReward: number;
+        halvings: number;
+        blockIntervalMs: number;
+      };
+      recentBlocks: MiningBlock[];
+      gpuMax: number;
+    }>('/auracoin/mining/stats'),
+  buyGpu: () =>
     api.post<{
       success: boolean;
-      position: {
-        id: string;
-        type: string;
-        leverage: number;
-        entryPrice: number;
-        coinAmount: number;
-        marginAmount: number;
-        createdAt: string;
-      };
+      newGpuCount: number;
+      cost: number;
+      nextGpuCost: number;
       newBalance: { money: number };
-    }>('/auracoin/position/open', { type, leverage, marginAmount }),
-  closePosition: (positionId: string) =>
-    api.post<{
-      success: boolean;
-      position: {
-        id: string;
-        pnl: number;
-        exitPrice: number;
-        closedAt: string;
-      };
-      newBalance: { money: number };
-    }>(`/auracoin/position/close/${positionId}`),
-  getOpenPositions: () =>
-    api.get<{
-      positions: Array<{
-        id: string;
-        type: string;
-        leverage: number;
-        entryPrice: number;
-        coinAmount: number;
-        marginAmount: number;
-        currentPrice: number;
-        pnl: number;
-        currentMargin: number;
-        marginRatio: number;
-        pnlPercentage: number;
-        createdAt: string;
-      }>;
-    }>('/auracoin/positions/open'),
-  getClosedPositions: (params?: { limit?: number; offset?: number }) =>
-    api.get<{
-      positions: Array<{
-        id: string;
-        type: string;
-        leverage: number;
-        entryPrice: number;
-        exitPrice: number | null;
-        coinAmount: number;
-        marginAmount: number;
-        pnl: number | null;
-        liquidated: boolean;
-        createdAt: string;
-        closedAt: string | null;
-      }>;
-    }>('/auracoin/positions/closed', { params }),
+    }>('/auracoin/mining/buy-gpu'),
+  getMiningLeaderboard: () =>
+    api.get<{ leaderboard: MinerLeaderboardEntry[] }>('/auracoin/mining/leaderboard'),
 };
-
-export interface AuraCoinPosition {
-  id: string;
-  type: 'LONG' | 'SHORT';
-  leverage: number;
-  entryPrice: number;
-  coinAmount: number;
-  marginAmount: number;
-  currentPrice?: number;
-  pnl?: number;
-  currentMargin?: number;
-  marginRatio?: number;
-  pnlPercentage?: number;
-  isOpen: boolean;
-  liquidated: boolean;
-  createdAt: string;
-  closedAt?: string | null;
-  exitPrice?: number | null;
-}
 
 export type MarketCoinKey = 'stable-coin' | 'chaos-coin';
 

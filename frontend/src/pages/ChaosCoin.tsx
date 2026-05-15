@@ -1,4 +1,4 @@
-import { CryptoTradingTerminal } from './AuraCoin';
+import { CryptoTradingTerminal } from './CryptoTradingTerminal';
 import { marketRoomApi } from '../services/api';
 
 const chaosCoinApi = marketRoomApi.getCoin('chaos-coin');

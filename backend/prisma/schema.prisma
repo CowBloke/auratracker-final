@@ -97,7 +97,7 @@ model User {
   sentAccusations              CheatingAccusation[]          @relation("AccusationAccuser")
   receivedAccusations          CheatingAccusation[]          @relation("AccusationAccused")
   auraCoinTransactions         AuraCoinTransaction[]
-  auraCoinPositions            AuraCoinPosition[]
+  gpuMiner                     GpuMiner?
   bugReports                   BugReport[]
   suggestions                  Suggestion[]
   suggestionVotes              SuggestionVote[]
@@ -1795,6 +1795,44 @@ model AuraCoinPosition {
   @@index([userId])
   @@index([isOpen])
   @@index([createdAt])
+}
+
+// AuraCoin AMM Pool (singleton: id = "main")
+model AuraCoinPool {
+  id          String   @id @default("main")
+  coinX       Float    @default(10000)
+  moneyY      Float    @default(20000000)
+  totalMined  Float    @default(0)
+  blockNumber Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}
+
+// GPU Miner (one per user)
+model GpuMiner {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  gpuCount      Int      @default(0)
+  lastFeePaidAt DateTime @default(now())
+  totalMined    Float    @default(0)
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([gpuCount])
+  @@index([totalMined])
+}
+
+// Mined block history
+model MiningBlock {
+  id          String   @id @default(uuid())
+  blockNumber Int      @unique
+  minedAt     DateTime @default(now())
+  minerId     String?
+  minerName   String?
+  reward      Float
+  difficulty  Float    @default(1)
+
+  @@index([minedAt])
 }
 
 model UserCryptoBalance {

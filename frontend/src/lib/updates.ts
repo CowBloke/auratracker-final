@@ -46,6 +46,30 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-05-15-auracoin-mining',
+    date: '2026-05-15',
+    title: 'AuraCoin — Minage GPU & marché AMM',
+    summary: 'L\'AuraCoin passe d\'un marché stochastique à un vrai système de crypto : minage GPU probabiliste, pool AMM (x·y=k), halving toutes les 2 semaines, anti-whale et frais journaliers GPU.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-05-15-auracoin-mining-1', text: '**AuraCoin · Minage GPU** — Achetez des GPUs pour miner des blocs toutes les 3 minutes. Votre probabilité de remporter un bloc est proportionnelle à votre puissance (base × log(1 + GPUs)) sur la puissance totale du réseau. Le premier GPU coûte ~2 900 $, chaque suivant coûte 16 % de plus.' },
+          { id: '2026-05-15-auracoin-mining-2', text: '**AuraCoin · Pool AMM** — Le prix est désormais déterminé par un pool AMM (x·y=k) initialisé à 10 000 coins / 20 M$. Les achats poussent le prix à la hausse, les ventes le font baisser. Les frais AMM (2 %) restent dans le pool.' },
+          { id: '2026-05-15-auracoin-mining-3', text: '**AuraCoin · Halving** — La récompense par bloc démarre à 2 coins et est divisée par 2 toutes les 2 semaines. Un compteur de temps avant le prochain halving est visible dans le tableau de bord.' },
+          { id: '2026-05-15-auracoin-mining-4', text: '**AuraCoin · Anti-whale** — Limite de 250 GPUs par joueur. Les joueurs avec plus de 50 M$ de richesse totale paient une taxe supplémentaire de 1 % sur chaque trade. Les GPUs coûtent 250 $/GPU/jour de maintenance (déduit automatiquement).' },
+        ],
+      },
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-05-15-auracoin-mining-5', text: '**AuraCoin · Dashboard** — Nouvelle interface en deux colonnes : marché (graphique de prix hype-ajusté, trading AMM, transactions) et minage (statistiques GPU, puissance réseau, blocs récents, classements mineurs).' },
+          { id: '2026-05-15-auracoin-mining-6', text: '**AuraCoin · Hype factor** — Le prix affiché intègre un facteur d\'hype basé sur le nombre de joueurs actifs : prix_affiché = prix_pool × (1 + log(joueurs+1) × 0.015).' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-05-14-horserace-redesign',
     date: '2026-05-14',
     title: 'Hippodrome — refonte de la course et atelier',

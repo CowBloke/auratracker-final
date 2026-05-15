@@ -1,900 +1,645 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocketBase } from '../contexts/SocketContext';
-import { auraCoinApi, TradingTerminalApi, MarketCoinPosition, MarketCoinPriceHistory, MarketCoinTransaction } from '../services/api';
+import {
+  auraCoinApi,
+  AuraCoinPriceHistory,
+  AuraCoinTransaction,
+  MiningBlock,
+  MinerLeaderboardEntry,
+  AuraCoinLeaderboardEntry,
+} from '../services/api';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
+import { Cpu, TrendingUp, TrendingDown, Zap, Award } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
+import { SPACING } from '@/lib/design-system';
 import { UsernameDisplay } from '@/components/ui/username-display';
+import { format } from 'date-fns';
 
-type CryptoTradingTerminalProps = {
-  api: TradingTerminalApi;
-  coinLabel: string;
-  coinUnit: string;
-  socketEvent: string;
-  initialPrice?: number;
+const fmt = (n: number, decimals = 2) =>
+  n.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+
+const fmtCoin = (n: number) => {
+  if (n >= 1e6) return `${fmt(n / 1e6, 3)}M`;
+  if (n >= 1e3) return `${fmt(n / 1e3, 3)}k`;
+  return fmt(n, 6);
 };
 
-const auraCoinTerminalApi: TradingTerminalApi = {
-  getPrice: async (hours?: number) => {
-    const res = await auraCoinApi.getPrice(hours);
-    return {
-      data: {
-        currentPrice: res.data.currentPrice,
-        feePercentage: res.data.feePercentage,
-        history: res.data.history,
-        userBalance: {
-          coin: res.data.userBalance.auraCoin,
-          money: res.data.userBalance.money,
-        },
-      },
-    };
-  },
-  buy: async (moneyAmount: number) => {
-    const res = await auraCoinApi.buy(moneyAmount);
-    return {
-      data: {
-        ...res.data,
-        newBalance: {
-          money: res.data.newBalance.money,
-          coin: res.data.newBalance.auraCoin,
-        },
-      },
-    };
-  },
-  sell: async (coinAmount: number) => {
-    const res = await auraCoinApi.sell(coinAmount);
-    return {
-      data: {
-        ...res.data,
-        newBalance: {
-          money: res.data.newBalance.money,
-          coin: res.data.newBalance.auraCoin,
-        },
-      },
-    };
-  },
-  getMyTransactions: auraCoinApi.getMyTransactions,
-  getAllTransactions: auraCoinApi.getAllTransactions,
-  openPosition: auraCoinApi.openPosition,
-  closePosition: auraCoinApi.closePosition,
-  getOpenPositions: async () => {
-    const res = await auraCoinApi.getOpenPositions();
-    return {
-      data: {
-        positions: res.data.positions.map((position) => ({
-          ...position,
-          type: position.type as 'LONG' | 'SHORT',
-          isOpen: true,
-        })),
-      },
-    };
-  },
-  getClosedPositions: async (params?: { limit?: number; offset?: number }) => {
-    const res = await auraCoinApi.getClosedPositions(params);
-    return {
-      data: {
-        positions: res.data.positions.map((position) => ({
-          ...position,
-          type: position.type as 'LONG' | 'SHORT',
-          isOpen: false,
-        })),
-      },
-    };
-  },
+const fmtMoney = (n: number) => {
+  if (n >= 1e9) return `$${fmt(n / 1e9, 2)}B`;
+  if (n >= 1e6) return `$${fmt(n / 1e6, 2)}M`;
+  if (n >= 1e3) return `$${fmt(n / 1e3, 1)}k`;
+  return `$${fmt(n, 0)}`;
 };
 
-export function CryptoTradingTerminal({
-  api,
-  coinLabel,
-  coinUnit,
-  socketEvent,
-  initialPrice = 100,
-}: CryptoTradingTerminalProps) {
+const txTypeLabel = (type: string) => {
+  switch (type) {
+    case 'BUY': return { label: 'Achat', color: 'text-green-400' };
+    case 'SELL': return { label: 'Vente', color: 'text-red-400' };
+    case 'MINE_REWARD': return { label: 'Minage', color: 'text-yellow-400' };
+    case 'GPU_PURCHASE': return { label: 'GPU', color: 'text-blue-400' };
+    case 'GPU_FEE': return { label: 'Frais GPU', color: 'text-orange-400' };
+    default: return { label: type, color: 'text-muted-foreground' };
+  }
+};
+
+const halvingCountdown = (ms: number) => {
+  const d = Math.floor(ms / 86_400_000);
+  const h = Math.floor((ms % 86_400_000) / 3_600_000);
+  if (d > 0) return `${d}j ${h}h`;
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  return `${h}h ${m}min`;
+};
+
+export default function AuraCoin() {
   const { refreshUser } = useAuth();
   const { socket } = useSocketBase();
-  
-  const [currentPrice, setCurrentPrice] = useState(initialPrice);
-  const [feePercentage, setFeePercentage] = useState(0.02);
-  const [priceHistory, setPriceHistory] = useState<MarketCoinPriceHistory[]>([]);
-  const [coinBalance, setCoinBalance] = useState(0);
-  const [moneyBalance, setMoneyBalance] = useState(0);
-  
+
+  // Market state
+  const [currentPrice, setCurrentPrice] = useState(2000);
+  const [priceHistory, setPriceHistory] = useState<AuraCoinPriceHistory[]>([]);
+  const [pool, setPool] = useState<{ coinX: number; moneyY: number; k: number; totalMined: number; blockNumber: number } | null>(null);
+  const [miningInfo, setMiningInfo] = useState<{ currentReward: number; halvings: number; nextHalvingMs: number } | null>(null);
+  const [auraCoin, setAuraCoin] = useState(0);
+  const [money, setMoney] = useState(0);
+  const [timePeriod, setTimePeriod] = useState<'hour' | 'day' | 'week'>('day');
+
+  // Trading state
   const [buyAmount, setBuyAmount] = useState('');
   const [sellAmount, setSellAmount] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
-  const [activeTab, setActiveTab] = useState<'my' | 'all'>('my');
-  const [myTransactions, setMyTransactions] = useState<MarketCoinTransaction[]>([]);
-  const [allTransactions, setAllTransactions] = useState<MarketCoinTransaction[]>([]);
-  
-  const [timePeriod, setTimePeriod] = useState<'hour' | 'day' | 'week' | 'month'>('day');
-  
-  // Leveraged trading state
-  const [tradingMode, setTradingMode] = useState<'spot' | 'leverage'>('spot');
-  const [positionType, setPositionType] = useState<'LONG' | 'SHORT'>('LONG');
-  const [leverage, setLeverage] = useState(1);
-  const [marginAmount, setMarginAmount] = useState('');
-  const [openPositions, setOpenPositions] = useState<MarketCoinPosition[]>([]);
-  
-  const getHoursForPeriod = (period: 'hour' | 'day' | 'week' | 'month') => {
-    switch (period) {
-      case 'hour': return 1;
-      case 'day': return 24;
-      case 'week': return 168; // 7 * 24
-      case 'month': return 720; // 30 * 24
-      default: return 24;
-    }
-  };
-  
-  const fetchData = useCallback(async () => {
+  const [tradeLoading, setTradeLoading] = useState(false);
+  const [tradeError, setTradeError] = useState('');
+
+  // Mining state
+  const [miner, setMiner] = useState<{
+    gpuCount: number; power: number; share: number; totalMined: number;
+    dailyFee: number; nextGpuCost: number; canAffordNext: boolean;
+  } | null>(null);
+  const [serverStats, setServerStats] = useState<{
+    totalPower: number; activeMiners: number; blockNumber: number;
+    totalMined: number; currentReward: number; halvings: number; blockIntervalMs: number;
+  } | null>(null);
+  const [recentBlocks, setRecentBlocks] = useState<MiningBlock[]>([]);
+  const [gpuMax, setGpuMax] = useState(250);
+  const [miningLoading, setMiningLoading] = useState(false);
+  const [miningError, setMiningError] = useState('');
+
+  // Leaderboard state
+  const [coinLeaderboard, setCoinLeaderboard] = useState<AuraCoinLeaderboardEntry[]>([]);
+  const [minerLeaderboard, setMinerLeaderboard] = useState<MinerLeaderboardEntry[]>([]);
+
+  // Transaction state
+  const [myTxs, setMyTxs] = useState<AuraCoinTransaction[]>([]);
+  const [allTxs, setAllTxs] = useState<AuraCoinTransaction[]>([]);
+
+  const periodHours = timePeriod === 'hour' ? 1 : timePeriod === 'day' ? 24 : 168;
+
+  const fetchPrice = useCallback(async () => {
     try {
-      const hours = getHoursForPeriod(timePeriod);
-      const [priceRes, myTxRes, allTxRes, openPosRes] = await Promise.all([
-        api.getPrice(hours),
-        api.getMyTransactions({ limit: 50 }),
-        api.getAllTransactions({ limit: 50 }),
-        api.getOpenPositions().catch(() => ({ data: { positions: [] } })),
+      const res = await auraCoinApi.getPrice(periodHours);
+      setCurrentPrice(res.data.currentPrice);
+      setPriceHistory(res.data.history);
+      setPool(res.data.pool);
+      setMiningInfo(res.data.mining);
+      setAuraCoin(res.data.userBalance.auraCoin);
+      setMoney(res.data.userBalance.money);
+    } catch {}
+  }, [periodHours]);
+
+  const fetchMining = useCallback(async () => {
+    try {
+      const res = await auraCoinApi.getMiningStats();
+      setMiner(res.data.myMiner);
+      setServerStats(res.data.server);
+      setRecentBlocks(res.data.recentBlocks);
+      setGpuMax(res.data.gpuMax);
+    } catch {}
+  }, []);
+
+  const fetchLeaderboards = useCallback(async () => {
+    try {
+      const [coinRes, minerRes] = await Promise.all([
+        auraCoinApi.getLeaderboard(15),
+        auraCoinApi.getMiningLeaderboard(),
       ]);
-      
-      setCurrentPrice(priceRes.data.currentPrice);
-      setFeePercentage(priceRes.data.feePercentage);
-      setPriceHistory(priceRes.data.history);
-      setCoinBalance(priceRes.data.userBalance.coin);
-      setMoneyBalance(priceRes.data.userBalance.money);
-      setMyTransactions(myTxRes.data.transactions);
-      setAllTransactions(allTxRes.data.transactions);
-      setOpenPositions(openPosRes.data.positions as any);
-    } catch (err) {
-      console.error('Failed to fetch data:', err);
-    }
-  }, [api, timePeriod]);
-  
+      setCoinLeaderboard(coinRes.data.leaderboard);
+      setMinerLeaderboard(minerRes.data.leaderboard);
+    } catch {}
+  }, []);
+
+  const fetchTransactions = useCallback(async () => {
+    try {
+      const [myRes, allRes] = await Promise.all([
+        auraCoinApi.getMyTransactions({ limit: 30 }),
+        auraCoinApi.getAllTransactions({ limit: 30 }),
+      ]);
+      setMyTxs(myRes.data.transactions);
+      setAllTxs(allRes.data.transactions);
+    } catch {}
+  }, []);
+
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-  
-  // Listen for price updates via WebSocket
+    fetchPrice();
+    fetchMining();
+    fetchLeaderboards();
+    fetchTransactions();
+  }, [fetchPrice, fetchMining, fetchLeaderboards, fetchTransactions]);
+
+  // WebSocket: price updates
   useEffect(() => {
     if (!socket) return;
-    
-    const handlePriceUpdate = (data: { price: number; timestamp: string }) => {
+    const onPrice = (data: { price: number; timestamp: string }) => {
       setCurrentPrice(data.price);
-      setPriceHistory(prev => [
-        ...prev.slice(-249),
+      setPriceHistory((prev) => [
+        ...prev.slice(-299),
         { price: data.price, volume: 0, createdAt: data.timestamp },
       ]);
-      // Refresh open positions to update P&L
-      api.getOpenPositions()
-        .then(res => setOpenPositions(res.data.positions as any))
-        .catch(() => {});
     };
-    
-    socket.on(socketEvent, handlePriceUpdate);
-    
-    return () => {
-      socket.off(socketEvent, handlePriceUpdate);
-    };
-  }, [api, socket, socketEvent]);
-  
-  // Refresh positions periodically
+    socket.on('auracoin:price-update', onPrice);
+    return () => { socket.off('auracoin:price-update', onPrice); };
+  }, [socket]);
+
+  // WebSocket: new block mined
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (tradingMode === 'leverage') {
-        api.getOpenPositions()
-          .then(res => setOpenPositions(res.data.positions as any))
-          .catch(() => {});
-      }
-    }, 5000); // Every 5 seconds
-    
-    return () => clearInterval(interval);
-  }, [api, tradingMode]);
-  
+    if (!socket) return;
+    const onBlock = (data: MiningBlock & { minerColor?: string | null }) => {
+      setRecentBlocks((prev) => [data, ...prev.slice(0, 9)]);
+      fetchMining();
+      fetchPrice();
+    };
+    socket.on('auracoin:block-mined', onBlock);
+    return () => { socket.off('auracoin:block-mined', onBlock); };
+  }, [socket, fetchMining, fetchPrice]);
+
   const handleBuy = async () => {
     const amount = parseFloat(buyAmount);
     if (!amount || amount <= 0) return;
-    
-    setLoading(true);
-    setError('');
-    
+    setTradeLoading(true);
+    setTradeError('');
     try {
-      const res = await api.buy(amount);
-      setCoinBalance(res.data.newBalance.coin);
-      setMoneyBalance(res.data.newBalance.money);
-      setCurrentPrice(res.data.transaction.newPrice);
+      const res = await auraCoinApi.buy(amount);
+      setAuraCoin(res.data.newBalance.auraCoin);
+      setMoney(Number(res.data.newBalance.money));
+      setCurrentPrice(res.data.newPrice);
       setBuyAmount('');
       await refreshUser();
-      await fetchData();
+      fetchTransactions();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Échec de l\'achat');
+      setTradeError(err.response?.data?.error || "Échec de l'achat");
     } finally {
-      setLoading(false);
+      setTradeLoading(false);
     }
   };
-  
+
   const handleSell = async () => {
     const amount = parseFloat(sellAmount);
     if (!amount || amount <= 0) return;
-    
-    setLoading(true);
-    setError('');
-    
+    setTradeLoading(true);
+    setTradeError('');
     try {
-      const res = await api.sell(amount);
-      setCoinBalance(res.data.newBalance.coin);
-      setMoneyBalance(res.data.newBalance.money);
-      setCurrentPrice(res.data.transaction.newPrice);
+      const res = await auraCoinApi.sell(amount);
+      setAuraCoin(res.data.newBalance.auraCoin);
+      setMoney(Number(res.data.newBalance.money));
+      setCurrentPrice(res.data.newPrice);
       setSellAmount('');
       await refreshUser();
-      await fetchData();
+      fetchTransactions();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Échec de la vente');
+      setTradeError(err.response?.data?.error || 'Échec de la vente');
     } finally {
-      setLoading(false);
+      setTradeLoading(false);
     }
   };
-  
-  const handleOpenPosition = async () => {
-    if (!marginAmountNum || marginAmountNum <= 0) return;
-    if (marginAmountNum > moneyBalance) {
-      setError('Fonds insuffisants pour la marge');
-      return;
-    }
-    
-    setLoading(true);
-    setError('');
-    
+
+  const handleBuyGpu = async () => {
+    setMiningLoading(true);
+    setMiningError('');
     try {
-      const res = await api.openPosition(positionType, leverage, marginAmountNum);
-      setMoneyBalance(res.data.newBalance.money);
-      setMarginAmount('');
+      const res = await auraCoinApi.buyGpu();
+      setMoney(Number(res.data.newBalance.money));
+      await fetchMining();
       await refreshUser();
-      await fetchData();
+      fetchTransactions();
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Échec d\'ouverture de position');
+      setMiningError(err.response?.data?.error || 'Erreur achat GPU');
     } finally {
-      setLoading(false);
+      setMiningLoading(false);
     }
   };
-  
-  const handleClosePosition = async (positionId: string) => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      const res = await api.closePosition(positionId);
-      setMoneyBalance(res.data.newBalance.money);
-      await refreshUser();
-      await fetchData();
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Échec de fermeture de position');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Calculate price change
+
   const priceChange = priceHistory.length > 1
-    ? ((currentPrice - priceHistory[0].price) / priceHistory[0].price) * 100
+    ? ((priceHistory[priceHistory.length - 1].price - priceHistory[0].price) / priceHistory[0].price) * 100
     : 0;
-  
-  // Minimum fee constant (matches backend)
-  const MIN_FEE = 1;
-  
-  // Calculate estimates
-  const buyMoneyAmount = parseFloat(buyAmount) || 0;
-  const buyFee = Math.max(MIN_FEE, Math.floor(buyMoneyAmount * feePercentage));
-  const buyCoinsEstimate = (buyMoneyAmount - buyFee) / currentPrice;
-  
-  const sellCoinAmount = parseFloat(sellAmount) || 0;
-  const sellGrossAmount = Math.floor(sellCoinAmount * currentPrice);
-  const sellFee = Math.max(MIN_FEE, Math.floor(sellGrossAmount * feePercentage));
-  const sellNetAmount = sellGrossAmount - sellFee;
-  
-  // Leveraged trading calculations
-  const marginAmountNum = parseFloat(marginAmount) || 0;
-  const notionalValue = marginAmountNum * leverage;
-  const coinAmountLeveraged = notionalValue / currentPrice;
 
-  // Format chart data for Recharts based on time period
-  const formatChartTime = (date: Date, period: 'hour' | 'day' | 'week' | 'month') => {
-    switch (period) {
-      case 'hour':
-        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      case 'day':
-        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      case 'week':
-        return date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', hour: '2-digit' });
-      case 'month':
-        return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-      default:
-        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    }
-  };
-  
-  const MAX_CHART_POINTS = 250;
-  const sampledHistory = priceHistory.length > MAX_CHART_POINTS
-    ? priceHistory.filter((_, i) => i % Math.ceil(priceHistory.length / MAX_CHART_POINTS) === 0)
-    : priceHistory;
-
-  const chartData = sampledHistory.map((p) => ({
-    time: formatChartTime(new Date(p.createdAt), timePeriod),
-    price: p.price,
-    timestamp: p.createdAt,
-  }));
-
-  const transactions = activeTab === 'my' ? myTransactions : allTransactions;
-
-  // Custom tooltip component
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-background border border-border/30 p-3 shadow-lg">
-          <p className="text-sm font-medium">${data.price.toFixed(2)}</p>
-          <p className="text-xs text-muted-foreground">
-            {new Date(data.timestamp).toLocaleString('fr-FR')}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const chartColor = priceChange >= 0 ? '#22c55e' : '#ef4444';
 
   return (
-    <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-      {/* Main Trading Card */}
-      <Card>
-        <CardContent className={`p-6 ${SPACING.SECTION_SPACING}`}>
-          {/* Balances and Current Price */}
-          <div className="grid grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Solde Money</p>
-                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>${moneyBalance.toLocaleString()}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Solde {coinLabel}</p>
-                <p className={cn(TYPOGRAPHY.H2, "tabular-nums")}>{coinBalance.toFixed(4)} {coinUnit}</p>
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground tabular-nums")}>
-                  ≈ ${(coinBalance * currentPrice).toFixed(2)}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground  ")}>Prix Actuel</p>
-                <div className="flex items-center gap-2">
-                  <span className={cn(TYPOGRAPHY.H2, "tabular-nums")}>
-                    ${currentPrice.toFixed(2)}
-                  </span>
-                  <span className={cn(
-                    "flex items-center",
-                    TYPOGRAPHY.XS,
-                    priceChange >= 0 ? "text-emerald-500" : "text-red-500"
-                  )}>
-                    {priceChange >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}%
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+    <div className={cn(SPACING.PAGE_PADDING, 'space-y-4 max-w-7xl mx-auto pb-8')}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <span className="text-yellow-400">◈</span> AuraCoin
+          </h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            AMM décentralisé · Minage GPU · Anti-whale
+          </p>
+        </div>
+        <div className="text-right">
+          <p className={cn('text-3xl font-bold tabular-nums', priceChange >= 0 ? 'text-green-400' : 'text-red-400')}>
+            {fmtMoney(currentPrice)}
+          </p>
+          <p className={cn('text-sm font-medium', priceChange >= 0 ? 'text-green-400' : 'text-red-400')}>
+            {priceChange >= 0 ? <TrendingUp className="inline h-3 w-3 mr-0.5" /> : <TrendingDown className="inline h-3 w-3 mr-0.5" />}
+            {priceChange >= 0 ? '+' : ''}{fmt(priceChange, 2)}%
+          </p>
+        </div>
+      </div>
 
-          {/* Professional Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* LEFT COLUMN: Chart + Trading */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Chart */}
           <Card>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground  ")}>
-                  Cours {timePeriod === 'hour' ? '1h' : timePeriod === 'day' ? '24h' : timePeriod === 'week' ? '7j' : '30j'}
-                </span>
-                <div className="flex gap-1 border border-border/30 rounded-md">
-                  <Button
-                    onClick={() => setTimePeriod('hour')}
-                    variant={timePeriod === 'hour' ? 'default' : 'ghost'}
-                    size="sm"
-                    className="text-xs"
-                  >
-                    Heure
-                  </Button>
-                  <Button
-                    onClick={() => setTimePeriod('day')}
-                    variant={timePeriod === 'day' ? 'default' : 'ghost'}
-                    size="sm"
-                    className="text-xs"
-                  >
-                    Jour
-                  </Button>
-                  <Button
-                    onClick={() => setTimePeriod('week')}
-                    variant={timePeriod === 'week' ? 'default' : 'ghost'}
-                    size="sm"
-                    className="text-xs"
-                  >
-                    Semaine
-                  </Button>
-                  <Button
-                    onClick={() => setTimePeriod('month')}
-                    variant={timePeriod === 'month' ? 'default' : 'ghost'}
-                    size="sm"
-                    className="text-xs"
-                  >
-                    Mois
-                  </Button>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Prix (hype-ajusté)</CardTitle>
+                <div className="flex gap-1">
+                  {(['hour', 'day', 'week'] as const).map((p) => (
+                    <Button
+                      key={p}
+                      variant={timePeriod === p ? 'default' : 'ghost'}
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => setTimePeriod(p)}
+                    >
+                      {p === 'hour' ? '1H' : p === 'day' ? '24H' : '7J'}
+                    </Button>
+                  ))}
                 </div>
               </div>
-
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="currentColor"
-                opacity={0.1}
-                vertical={false}
-              />
-              <XAxis
-                dataKey="time"
-                stroke="currentColor"
-                opacity={0.5}
-                tick={{ fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="currentColor"
-                opacity={0.5}
-                tick={{ fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `$${value.toFixed(2)}`}
-                domain={['auto', 'auto']}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Line
-                type="monotone"
-                dataKey="price"
-                stroke={priceChange >= 0 ? '#10b981' : '#ef4444'}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5, strokeWidth: 2 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={priceHistory}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
+                  <XAxis
+                    dataKey="createdAt"
+                    tickFormatter={(v) => format(new Date(v), 'HH:mm')}
+                    tick={{ fontSize: 10, fill: '#888' }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tickFormatter={(v) => fmtMoney(v)}
+                    tick={{ fontSize: 10, fill: '#888' }}
+                    width={60}
+                    domain={['auto', 'auto']}
+                  />
+                  <Tooltip
+                    formatter={(v: number) => [fmtMoney(v), 'Prix']}
+                    labelFormatter={(l) => format(new Date(l), 'dd/MM HH:mm')}
+                    contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, fontSize: 12 }}
+                  />
+                  <Line type="monotone" dataKey="price" stroke={chartColor} strokeWidth={1.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* Trading Mode Selector */}
-          <Tabs value={tradingMode} onValueChange={(v) => setTradingMode(v as 'spot' | 'leverage')}>
-            <TabsList>
-              <TabsTrigger value="spot">Spot</TabsTrigger>
-              <TabsTrigger value="leverage">Levier (x10 max)</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="spot" className="mt-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                {/* Buy */}
-                <Card>
-                  <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
-                    <div className="flex items-center gap-2">
-                      <ArrowUpRight className="w-4 h-4 text-emerald-500" />
-                      <h2 className={TYPOGRAPHY.H6}>Acheter</h2>
-                    </div>
-
-                    <div>
-                      <label className={TYPOGRAPHY.XS}>Montant ($)</label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Input
-                          type="number"
-                          value={buyAmount}
-                          onChange={(e) => setBuyAmount(e.target.value)}
-                          placeholder="0"
-                          className="flex-1 tabular-nums"
-                        />
-                        <Button
-                          type="button"
-                          onClick={() => setBuyAmount(moneyBalance.toString())}
-                          disabled={loading || moneyBalance <= 0}
-                          variant="outline"
-                          size="sm"
-                          className="text-[10px]   whitespace-nowrap border-emerald-500/60 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                        >
-                          Max
-                        </Button>
-                        <Button
-                          onClick={handleBuy}
-                          disabled={loading || !buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > moneyBalance}
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "text-xs whitespace-nowrap",
-                            !loading && buyMoneyAmount > 0 && buyMoneyAmount <= moneyBalance
-                              ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                              : ""
-                          )}
-                        >
-                          Acheter
-                        </Button>
-                      </div>
-                    </div>
-
-                    {buyMoneyAmount > 0 && (
-                      <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
-                        <div className="flex justify-between">
-                          <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
-                          <span className="tabular-nums">-${buyFee}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Vous recevrez</span>
-                          <span className="tabular-nums text-foreground">{buyCoinsEstimate.toFixed(4)} {coinUnit}</span>
-                        </div>
-                      </div>
-                    )}
+          {/* Pool info strip */}
+          {pool && (
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Pool coins', value: fmtCoin(pool.coinX) },
+                { label: 'Pool liquidité', value: fmtMoney(pool.moneyY) },
+                { label: 'Coins minés (total)', value: fmtCoin(pool.totalMined) },
+              ].map(({ label, value }) => (
+                <Card key={label}>
+                  <CardContent className="p-3 text-center">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="font-semibold tabular-nums">{value}</p>
                   </CardContent>
                 </Card>
+              ))}
+            </div>
+          )}
 
-                {/* Sell */}
-                <Card>
-                  <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
-                    <div className="flex items-center gap-2">
-                      <ArrowDownRight className="w-4 h-4 text-red-500" />
-                      <h2 className={TYPOGRAPHY.H6}>Vendre</h2>
-                    </div>
-
-                    <div>
-                      <label className={TYPOGRAPHY.XS}>Quantité ({coinUnit})</label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Input
-                          type="number"
-                          value={sellAmount}
-                          onChange={(e) => setSellAmount(e.target.value)}
-                          placeholder="0"
-                          step="0.0001"
-                          className="flex-1 tabular-nums"
-                        />
-                        <Button
-                          type="button"
-                          onClick={() => setSellAmount(coinBalance.toFixed(4))}
-                          disabled={loading || coinBalance <= 0}
-                          variant="outline"
-                          size="sm"
-                          className="text-[10px]   whitespace-nowrap border-red-500/60 text-red-500 hover:bg-red-500 hover:text-background"
-                        >
-                          Max
-                        </Button>
-                        <Button
-                          onClick={handleSell}
-                          disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > coinBalance}
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "text-xs whitespace-nowrap",
-                            !loading && sellCoinAmount > 0 && sellCoinAmount <= coinBalance
-                              ? "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
-                              : ""
-                          )}
-                        >
-                          Vendre
-                        </Button>
-                      </div>
-                    </div>
-
-                    {sellCoinAmount > 0 && (
-                      <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
-                        <div className="flex justify-between">
-                          <span>Valeur brute</span>
-                          <span className="tabular-nums">${sellGrossAmount}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Frais ({(feePercentage * 100).toFixed(0)}%)</span>
-                          <span className="tabular-nums">-${sellFee}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Vous recevrez</span>
-                          <span className="tabular-nums text-foreground">${sellNetAmount}</span>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+          {/* Trading panel */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Trading AMM</CardTitle>
+              <div className="flex gap-4 text-xs text-muted-foreground">
+                <span>Solde: <strong className="text-foreground">{fmtMoney(money)}</strong></span>
+                <span>AuraCoin: <strong className="text-yellow-400">{fmtCoin(auraCoin)}</strong></span>
+                <span>Frais: <strong className="text-foreground">2%</strong></span>
               </div>
-            </TabsContent>
-            <TabsContent value="leverage" className="mt-4">
-              <div className={SPACING.CARD_SPACING}>
-                {/* Leverage Trading Interface */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* Open Position */}
-                  <Card>
-                    <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
-                      <div className="flex items-center gap-2">
-                        <h2 className={TYPOGRAPHY.H6}>Ouvrir une Position</h2>
-                      </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Acheter</p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Montant $"
+                      value={buyAmount}
+                      onChange={(e) => setBuyAmount(e.target.value)}
+                      className="h-8 text-sm"
+                      min="1"
+                    />
+                    <Button
+                      size="sm"
+                      className="h-8 bg-green-600 hover:bg-green-500"
+                      onClick={handleBuy}
+                      disabled={tradeLoading || !buyAmount}
+                    >
+                      Acheter
+                    </Button>
+                  </div>
+                  {buyAmount && parseFloat(buyAmount) > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      ≈ {pool ? fmtCoin(
+                        (() => {
+                          const net = parseFloat(buyAmount) * 0.98;
+                          const k = pool.coinX * pool.moneyY;
+                          const newY = pool.moneyY + net;
+                          return pool.coinX - k / newY;
+                        })()
+                      ) : '—'} AuraCoin reçus
+                    </p>
+                  )}
+                </div>
 
-                      {/* Position Type */}
-                      <div>
-                        <label className={TYPOGRAPHY.XS}>Type de Position</label>
-                        <div className="flex gap-2 mt-1">
-                          <Button
-                            type="button"
-                            onClick={() => setPositionType('LONG')}
-                            variant={positionType === 'LONG' ? 'default' : 'outline'}
-                            className="flex-1"
-                          >
-                            LONG
-                          </Button>
-                          <Button
-                            type="button"
-                            onClick={() => setPositionType('SHORT')}
-                            variant={positionType === 'SHORT' ? 'default' : 'outline'}
-                            className="flex-1"
-                          >
-                            SHORT
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Leverage Selector */}
-                      <div>
-                        <label className={TYPOGRAPHY.XS}>Effet de Levier</label>
-                        <div className="flex gap-1 mt-1 flex-wrap">
-                          {[1, 2, 3, 5, 10].map((lev) => (
-                            <Button
-                              key={lev}
-                              type="button"
-                              onClick={() => setLeverage(lev)}
-                              variant={leverage === lev ? 'default' : 'outline'}
-                              size="sm"
-                              className="text-xs"
-                            >
-                              {lev}x
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Margin Amount */}
-                      <div>
-                        <label className={TYPOGRAPHY.XS}>Marge ($)</label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Input
-                            type="number"
-                            value={marginAmount}
-                            onChange={(e) => setMarginAmount(e.target.value)}
-                            placeholder="0"
-                            className="flex-1 tabular-nums"
-                          />
-                          <Button
-                            type="button"
-                            onClick={() => setMarginAmount(moneyBalance.toString())}
-                            disabled={loading || moneyBalance <= 0}
-                            variant="outline"
-                            size="sm"
-                            className="text-[10px]   whitespace-nowrap"
-                          >
-                            Max
-                          </Button>
-                        </div>
-                      </div>
-
-                      {marginAmountNum > 0 && (
-                        <div className={cn(TYPOGRAPHY.XS, "text-muted-foreground space-y-1 pt-1")}>
-                          <div className="flex justify-between">
-                            <span>Valeur notionnelle</span>
-                            <span className="tabular-nums text-foreground">${notionalValue.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Quantité ({coinUnit})</span>
-                            <span className="tabular-nums text-foreground">{coinAmountLeveraged.toFixed(4)} {coinUnit}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Prix d'entrée</span>
-                            <span className="tabular-nums">${currentPrice.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <Button
-                        onClick={handleOpenPosition}
-                        disabled={loading || !marginAmount || marginAmountNum <= 0 || marginAmountNum > moneyBalance}
-                        variant="outline"
-                        className={cn(
-                          "w-full",
-                          !loading && marginAmountNum > 0 && marginAmountNum <= moneyBalance
-                            ? positionType === 'LONG'
-                              ? "border-emerald-500 text-emerald-500 hover:bg-emerald-500 hover:text-background"
-                              : "border-red-500 text-red-500 hover:bg-red-500 hover:text-background"
-                            : ""
-                        )}
-                      >
-                        Ouvrir {positionType}
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  {/* Open Positions */}
-                  <Card>
-                    <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
-                      <h2 className={TYPOGRAPHY.H6}>Positions Ouvertes</h2>
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {openPositions.length === 0 ? (
-                          <p className={cn(TYPOGRAPHY.MUTED, "text-center py-4")}>
-                            Aucune position ouverte
-                          </p>
-                        ) : (
-                          openPositions.map((pos) => (
-                            <Card
-                              key={pos.id}
-                              className={cn(
-                                "p-3",
-                                pos.type === 'LONG' ? "border-emerald-500/30" : "border-red-500/30"
-                              )}
-                            >
-                              <CardContent className="p-0 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className={cn(
-                                      TYPOGRAPHY.XS,
-                                      "font-medium",
-                                      pos.type === 'LONG' ? "text-emerald-500" : "text-red-500"
-                                    )}>
-                                      {pos.type} {pos.leverage}x
-                                    </span>
-                                  </div>
-                                  <Button
-                                    onClick={() => handleClosePosition(pos.id)}
-                                    disabled={loading}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                                <div className={cn(TYPOGRAPHY.XS, "space-y-1")}>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Prix d'entrée</span>
-                                    <span className="tabular-nums">${pos.entryPrice.toFixed(2)}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Prix actuel</span>
-                                    <span className="tabular-nums">${pos.currentPrice?.toFixed(2) || currentPrice.toFixed(2)}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Marge</span>
-                                    <span className="tabular-nums">${pos.marginAmount}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">P&L</span>
-                                    <span className={cn(
-                                      "tabular-nums font-medium",
-                                      (pos.pnl || 0) >= 0 ? "text-emerald-500" : "text-red-500"
-                                    )}>
-                                      {pos.pnl && pos.pnl >= 0 ? '+' : ''}{pos.pnl?.toFixed(2) || '0.00'} $
-                                      ({pos.pnlPercentage?.toFixed(2) || '0.00'}%)
-                                    </span>
-                                  </div>
-                                  {pos.marginRatio !== undefined && (
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Ratio de marge</span>
-                                      <span className={cn(
-                                        "tabular-nums",
-                                        pos.marginRatio < 1 ? "text-red-500" : "text-foreground"
-                                      )}>
-                                        {(pos.marginRatio * 100).toFixed(1)}%
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Vendre</p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Montant coins"
+                      value={sellAmount}
+                      onChange={(e) => setSellAmount(e.target.value)}
+                      className="h-8 text-sm"
+                      min="0"
+                      step="any"
+                    />
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-8"
+                      onClick={handleSell}
+                      disabled={tradeLoading || !sellAmount}
+                    >
+                      Vendre
+                    </Button>
+                  </div>
+                  {sellAmount && parseFloat(sellAmount) > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      ≈ {pool ? fmtMoney(
+                        (() => {
+                          const coins = parseFloat(sellAmount);
+                          const k = pool.coinX * pool.moneyY;
+                          const newX = pool.coinX + coins;
+                          return (pool.moneyY - k / newX) * 0.98;
+                        })()
+                      ) : '—'} reçus
+                    </p>
+                  )}
                 </div>
               </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              {tradeError && <p className="text-red-400 text-xs">{tradeError}</p>}
+            </CardContent>
+          </Card>
 
-      {/* Error */}
-      {error && (
-        <Card className="border-destructive/50">
-          <CardContent className="p-4">
-            <p className={cn(TYPOGRAPHY.SMALL, "text-center text-destructive")}>
-              {error}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+          {/* Transactions */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Transactions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="mine">
+                <TabsList className="h-7 mb-2">
+                  <TabsTrigger value="mine" className="text-xs h-6">Mes tx</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs h-6">Toutes</TabsTrigger>
+                </TabsList>
+                <TabsContent value="mine">
+                  <TxList txs={myTxs} />
+                </TabsContent>
+                <TabsContent value="all">
+                  <TxList txs={allTxs} showUser />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Transactions */}
-      <Card>
-        <CardContent className={`p-6 ${SPACING.CARD_SPACING}`}>
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'my' | 'all')}>
-            <TabsList>
-              <TabsTrigger value="my">Mes Transactions</TabsTrigger>
-              <TabsTrigger value="all">Toutes les Transactions</TabsTrigger>
-            </TabsList>
-            <TabsContent value={activeTab} className="mt-4">
-              <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                {transactions.length === 0 ? (
-                  <p className={cn(TYPOGRAPHY.MUTED, "text-center py-6")}>
-                    Aucune transaction
-                  </p>
-                ) : (
-                  transactions.map((tx) => (
-                    <div
-                      key={tx.id}
-                      className="flex items-center justify-between py-2 border-b border-border/10"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-7 h-7 flex items-center justify-center border rounded-md",
-                          tx.type === 'BUY'
-                            ? "border-emerald-500/30 text-emerald-500"
-                            : "border-red-500/30 text-red-500"
-                        )}>
-                          {tx.type === 'BUY' ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            {activeTab === 'all' && (
-                              <UsernameDisplay
-                                username={tx.user.username}
-                                usernameColor={tx.user.usernameColor}
-                                className={TYPOGRAPHY.XS}
-                              />
-                            )}
-                            <span className={cn(
-                              "text-[10px] ",
-                              tx.type === 'BUY' ? "text-emerald-500" : "text-red-500"
-                            )}>
-                              {tx.type === 'BUY' ? 'Achat' : 'Vente'}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">
-                            {new Date(tx.createdAt).toLocaleString('fr-FR')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={cn(TYPOGRAPHY.XS, "tabular-nums")}>
-                          {tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coinUnit}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground tabular-nums">
-                          @ ${tx.price.toFixed(2)} • Frais: ${tx.fee}
-                        </p>
-                      </div>
+        {/* RIGHT COLUMN: Mining + Leaderboards */}
+        <div className="space-y-4">
+          {/* Mining stats */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-1.5">
+                <Cpu className="h-4 w-4 text-blue-400" /> Minage GPU
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {miningInfo && (
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-muted/30 rounded p-2">
+                    <p className="text-muted-foreground">Récompense bloc</p>
+                    <p className="font-bold text-yellow-400">{fmtCoin(miningInfo.currentReward)} ◈</p>
+                  </div>
+                  <div className="bg-muted/30 rounded p-2">
+                    <p className="text-muted-foreground">Halvings</p>
+                    <p className="font-bold">×{miningInfo.halvings}</p>
+                  </div>
+                  <div className="bg-muted/30 rounded p-2 col-span-2">
+                    <p className="text-muted-foreground">Prochain halving dans</p>
+                    <p className="font-bold">{halvingCountdown(miningInfo.nextHalvingMs)}</p>
+                  </div>
+                </div>
+              )}
+
+              {serverStats && (
+                <div className="text-xs space-y-1 border-t border-border pt-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Mineurs actifs</span>
+                    <span>{serverStats.activeMiners}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Puissance totale</span>
+                    <span>{fmt(serverStats.totalPower, 1)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Bloc actuel</span>
+                    <span>#{serverStats.blockNumber}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-2 space-y-2">
+                <p className="text-xs font-medium">Mes GPUs</p>
+                {miner ? (
+                  <div className="text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">GPUs</span>
+                      <span className="font-bold">{miner.gpuCount} / {gpuMax}</span>
                     </div>
-                  ))
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Puissance</span>
+                      <span>{fmt(miner.power, 2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Part réseau</span>
+                      <span className="text-blue-400">{fmt(miner.share * 100, 2)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total miné</span>
+                      <span className="text-yellow-400">{fmtCoin(miner.totalMined)} ◈</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Frais/jour</span>
+                      <span className="text-orange-400">{fmtMoney(miner.dailyFee)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Aucun GPU. Achetez-en un pour commencer à miner.</p>
                 )}
+
+                {miner && miner.gpuCount < gpuMax && (
+                  <div className="bg-muted/20 rounded p-2 text-xs">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-muted-foreground">GPU #{(miner.gpuCount) + 1}</span>
+                      <span className="font-bold">{fmtMoney(miner.nextGpuCost)}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full h-7 text-xs"
+                      onClick={handleBuyGpu}
+                      disabled={miningLoading || !miner.canAffordNext}
+                    >
+                      <Cpu className="h-3 w-3 mr-1" />
+                      {miner.canAffordNext ? 'Acheter GPU' : 'Fonds insuffisants'}
+                    </Button>
+                  </div>
+                )}
+                {!miner && (
+                  <Button
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    onClick={handleBuyGpu}
+                    disabled={miningLoading}
+                  >
+                    <Cpu className="h-3 w-3 mr-1" /> Acheter premier GPU
+                  </Button>
+                )}
+                {miningError && <p className="text-red-400 text-xs">{miningError}</p>}
               </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          {/* Recent blocks */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-1.5">
+                <Zap className="h-4 w-4 text-yellow-400" /> Blocs récents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentBlocks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucun bloc miné.</p>
+              ) : (
+                <div className="space-y-1">
+                  {recentBlocks.map((b) => (
+                    <div key={b.blockNumber} className="flex items-center justify-between text-xs py-0.5">
+                      <span className="text-muted-foreground">#{b.blockNumber}</span>
+                      <span className="font-medium truncate max-w-[80px]">{b.minerName ?? '—'}</span>
+                      <span className="text-yellow-400">+{fmtCoin(b.reward)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Leaderboards */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-1.5">
+                <Award className="h-4 w-4 text-purple-400" /> Classements
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="holders">
+                <TabsList className="h-7 mb-2">
+                  <TabsTrigger value="holders" className="text-xs h-6">Détenteurs</TabsTrigger>
+                  <TabsTrigger value="miners" className="text-xs h-6">Mineurs</TabsTrigger>
+                </TabsList>
+                <TabsContent value="holders">
+                  <div className="space-y-1">
+                    {coinLeaderboard.slice(0, 10).map((u, i) => (
+                      <div key={u.id} className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground w-4">{i + 1}.</span>
+                        <UsernameDisplay username={u.username} usernameColor={u.usernameColor} className="flex-1 truncate text-xs" />
+                        <span className="text-yellow-400 tabular-nums">{fmtCoin(u.auraCoinBalance)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+                <TabsContent value="miners">
+                  <div className="space-y-1">
+                    {minerLeaderboard.slice(0, 10).map((m, i) => (
+                      <div key={m.userId} className="flex items-center gap-2 text-xs">
+                        <span className="text-muted-foreground w-4">{i + 1}.</span>
+                        <UsernameDisplay username={m.username} usernameColor={m.usernameColor} className="flex-1 truncate text-xs" />
+                        <span className="text-blue-400">{m.gpuCount} GPU</span>
+                        <span className="text-yellow-400 tabular-nums">{fmtCoin(m.totalMined)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
 
-export default function AuraCoin() {
+function TxList({ txs, showUser = false }: { txs: AuraCoinTransaction[]; showUser?: boolean }) {
+  if (txs.length === 0) return <p className="text-xs text-muted-foreground">Aucune transaction.</p>;
   return (
-    <CryptoTradingTerminal
-      api={auraCoinTerminalApi}
-      coinLabel="Aura Coin"
-      coinUnit="AuraCoin"
-      socketEvent="auracoin:price-update"
-      initialPrice={100}
-    />
+    <div className="space-y-1 max-h-48 overflow-y-auto">
+      {txs.map((tx) => {
+        const { label, color } = txTypeLabel(tx.type);
+        return (
+          <div key={tx.id} className="flex items-center gap-2 text-xs py-0.5 border-b border-border/30">
+            <span className={cn('font-medium w-14 shrink-0', color)}>{label}</span>
+            {showUser && (
+              <UsernameDisplay
+                username={tx.user.username}
+                usernameColor={tx.user.usernameColor}
+                className="truncate max-w-[70px] text-xs"
+              />
+            )}
+            {tx.coinAmount > 0 && (
+              <span className="text-yellow-400">{fmtCoin(tx.coinAmount)} ◈</span>
+            )}
+            {tx.moneyAmount !== 0 && (
+              <span className={tx.moneyAmount > 0 ? 'text-green-400' : 'text-red-400'}>
+                {tx.moneyAmount > 0 ? '+' : ''}{fmtMoney(Math.abs(tx.moneyAmount))}
+              </span>
+            )}
+            <span className="text-muted-foreground ml-auto shrink-0">
+              {format(new Date(tx.createdAt), 'dd/MM HH:mm')}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }

@@ -1,5 +1,4 @@
-﻿import { Router, Response } from 'express';
-import { randomBytes } from 'crypto';
+import { Router, Response } from 'express';
 import { prisma, io } from '../server.js';
 import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 import { logAuraCoin } from '../utils/logger.js';
@@ -8,481 +7,644 @@ import { emitSharedBalanceUpdates } from '../utils/shared-balance.js';
 
 const router = Router();
 
-// Configuration
-const INITIAL_PRICE = 100;
-const DEFAULT_FEE_PERCENTAGE = 0.02; // 2% fee
-const MIN_FEE = 1; // Minimum fee in money units
-const AURACOIN_BUY_FEE_PERCENTAGE_KEY = 'auracoin_buy_fee_percentage';
-const PRICE_UPDATE_INTERVAL_MIN = 3500; // 3.5 seconds
-const PRICE_UPDATE_INTERVAL_MAX = 8500; // 8.5 seconds
-const MAX_LEVERAGE = 10; // Maximum leverage (x10)
-const LIQUIDATION_THRESHOLD = 0.8; // Liquidate when margin drops to 80% of initial
-const BASE_SPREAD_PERCENTAGE = 0.004; // 0.4%
-const MAX_SPREAD_PERCENTAGE = 0.03; // 3%
-const MAX_SLIPPAGE_PERCENTAGE = 0.02; // 2%
+// =====================================================================
+// CONSTANTS
+// =====================================================================
+const GPU_BASE = 5;
+const BLOCK_TARGET_MS = 3 * 60 * 1000; // 3 minutes
+const INITIAL_REWARD = 2; // AuraCoin per block
+const HALVING_INTERVAL_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
+const GPU_PRICE_BASE = 2500;
+const GPU_PRICE_RATIO = 1.16;
+const GPU_MAX = 250;
+const GPU_DAILY_FEE = 250; // $ per GPU per day
+const WHALE_THRESHOLD = 50_000_000; // $50M wealth → extra tax
+const WHALE_EXTRA_FEE = 0.01; // +1% for whales
+const AMM_FEE = 0.02; // 2% base fee
+const HYPE_FACTOR = 0.015;
+const SYSTEM_START_KEY = 'auracoin_system_start';
+const INITIAL_COIN_X = 10_000;
+const INITIAL_MONEY_Y = 20_000_000;
+const MAX_HISTORY_POINTS = 300;
+const MAX_LEVERAGE = 10;
+const LIQUIDATION_THRESHOLD = 0.2;
 
-const parseAuraCoinFeePercentage = (rawValue: string | null | undefined): number => {
-  if (!rawValue) return DEFAULT_FEE_PERCENTAGE;
-  const parsed = Number.parseFloat(rawValue);
-  if (!Number.isFinite(parsed)) return DEFAULT_FEE_PERCENTAGE;
-  // Clamp to a safe [0, 50%] range.
-  return Math.min(0.5, Math.max(0, parsed));
+// =====================================================================
+// SYSTEM START DATE (stored in GameSettings so it persists)
+// =====================================================================
+let systemStartDate: Date | null = null;
+
+const getSystemStartDate = async (): Promise<Date> => {
+  if (systemStartDate) return systemStartDate;
+  const setting = await prisma.gameSettings.findUnique({ where: { key: SYSTEM_START_KEY } });
+  if (setting) {
+    systemStartDate = new Date(setting.value);
+  } else {
+    systemStartDate = new Date();
+    await prisma.gameSettings.create({ data: { key: SYSTEM_START_KEY, value: systemStartDate.toISOString() } });
+  }
+  return systemStartDate;
 };
 
-const getAuraCoinBuyFeePercentage = async (): Promise<number> => {
-  const setting = await prisma.gameSettings.findUnique({
-    where: { key: AURACOIN_BUY_FEE_PERCENTAGE_KEY },
-    select: { value: true },
-  });
-  return parseAuraCoinFeePercentage(setting?.value);
-};
-
-// Current price in memory (will be persisted to DB)
-let currentPrice = INITIAL_PRICE;
-let lastMoveMagnitude = 0;
-
-// Initialize price from database or create initial price
-const initializePrice = async () => {
-  try {
-    const latestPrice = await prisma.auraCoinPrice.findFirst({
-      orderBy: { createdAt: 'desc' },
+// =====================================================================
+// AMM HELPERS
+// =====================================================================
+const getPool = async () => {
+  let pool = await prisma.auraCoinPool.findUnique({ where: { id: 'main' } });
+  if (!pool) {
+    pool = await prisma.auraCoinPool.create({
+      data: { id: 'main', coinX: INITIAL_COIN_X, moneyY: INITIAL_MONEY_Y },
     });
-    
-    if (latestPrice) {
-      currentPrice = latestPrice.price;
-    } else {
-      // Create initial price record
-      await prisma.auraCoinPrice.create({
-        data: { price: INITIAL_PRICE, volume: 0 },
+  }
+  return pool;
+};
+
+const poolPrice = (coinX: number, moneyY: number) => moneyY / coinX;
+
+const getMarkPrice = async (): Promise<number> => {
+  const pool = await getPool();
+  return poolPrice(pool.coinX, pool.moneyY);
+};
+
+const getExecutionPrice = (
+  side: 'BUY' | 'SELL',
+  markPrice: number,
+  _notionalValue: number,
+): number => (side === 'BUY' ? markPrice * (1 + AMM_FEE / 2) : markPrice * (1 - AMM_FEE / 2));
+
+const hypePrice = async (base: number): Promise<number> => {
+  const count = await prisma.user.count({ where: { isSuperAdmin: false } });
+  return base * (1 + Math.log(count + 1) * HYPE_FACTOR);
+};
+
+const halvings = async (): Promise<number> => {
+  const start = await getSystemStartDate();
+  return Math.floor((Date.now() - start.getTime()) / HALVING_INTERVAL_MS);
+};
+
+const currentReward = async (): Promise<number> => {
+  const n = await halvings();
+  return INITIAL_REWARD * Math.pow(0.5, n);
+};
+
+// =====================================================================
+// GPU HELPERS
+// =====================================================================
+const gpuPower = (count: number) => GPU_BASE * Math.log(1 + count);
+
+const nextGpuCost = (currentCount: number): number =>
+  GPU_PRICE_BASE * Math.pow(GPU_PRICE_RATIO, currentCount + 1);
+
+// Deduct daily GPU maintenance fees since last payment (lazy).
+const deductGpuFees = async (userId: string): Promise<number> => {
+  const miner = await prisma.gpuMiner.findUnique({ where: { userId } });
+  if (!miner || miner.gpuCount === 0) return 0;
+
+  const now = new Date();
+  const daysSince = (now.getTime() - miner.lastFeePaidAt.getTime()) / 86_400_000;
+  const daysOwed = Math.floor(daysSince);
+  if (daysOwed <= 0) return 0;
+
+  const totalFee = daysOwed * miner.gpuCount * GPU_DAILY_FEE;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { money: true } });
+  if (!user) return 0;
+
+  const actualFee = Math.min(totalFee, Number(user.money));
+
+  await prisma.$transaction(async (tx) => {
+    await tx.gpuMiner.update({ where: { userId }, data: { lastFeePaidAt: now } });
+    if (actualFee > 0) {
+      await tx.user.update({ where: { id: userId }, data: { money: { decrement: BigInt(Math.floor(actualFee)) } } });
+      await tx.auraCoinTransaction.create({
+        data: {
+          userId,
+          type: 'GPU_FEE',
+          coinAmount: 0,
+          moneyAmount: -Math.floor(actualFee),
+          price: 0,
+          fee: Math.floor(actualFee),
+        },
       });
     }
-    console.log(`AuraCoin initialized at price: $${currentPrice.toFixed(2)}`);
-  } catch (error) {
-    console.error('Failed to initialize AuraCoin price:', error);
-  }
+  });
+
+  return actualFee;
 };
 
-const secureRandomUnit = () => {
-  const value = randomBytes(4).readUInt32BE(0);
-  return value / 0xffffffff;
+// Extra fee for wallets > $50M total wealth.
+const whaleTaxRate = async (userId: string, price: number): Promise<number> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { money: true, auraCoinBalance: true },
+  });
+  if (!user) return 0;
+  const wealth = Number(user.money) + user.auraCoinBalance * price;
+  return wealth > WHALE_THRESHOLD ? WHALE_EXTRA_FEE : 0;
 };
 
-const secureRandomRange = (min: number, max: number) => {
-  return min + (max - min) * secureRandomUnit();
-};
+// =====================================================================
+// MINING LOOP
+// =====================================================================
+let miningInterval: NodeJS.Timeout | null = null;
 
-const secureGaussian = () => {
-  const u1 = Math.max(secureRandomUnit(), 1e-12);
-  const u2 = secureRandomUnit();
-  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
-};
-
-const getDynamicSpread = () => {
-  const volatilityPremium = Math.min(lastMoveMagnitude * 1.2, MAX_SPREAD_PERCENTAGE - BASE_SPREAD_PERCENTAGE);
-  return Math.min(BASE_SPREAD_PERCENTAGE + volatilityPremium, MAX_SPREAD_PERCENTAGE);
-};
-
-const getExecutionPrice = (side: 'BUY' | 'SELL', referencePrice: number, tradeNotional: number) => {
-  const spread = getDynamicSpread();
-  const halfSpread = spread / 2;
-  const sizeImpact = Math.min(tradeNotional / 50000, 1) * 0.01;
-  const randomImpact = secureRandomRange(0, 0.003);
-  const slippage = Math.min(sizeImpact + randomImpact, MAX_SLIPPAGE_PERCENTAGE);
-
-  if (side === 'BUY') {
-    return referencePrice * (1 + halfSpread + slippage);
-  }
-
-  return Math.max(1, referencePrice * (1 - halfSpread - slippage));
-};
-
-// Stochastic price engine with random regimes and occasional shocks.
-const applyRandomVariation = () => {
-  const regimeRoll = secureRandomUnit();
-  const meanReversion = (INITIAL_PRICE - currentPrice) / INITIAL_PRICE;
-
-  let volatility = 0.01;
-  if (regimeRoll > 0.75 && regimeRoll <= 0.93) {
-    volatility = 0.02;
-  } else if (regimeRoll > 0.93 && regimeRoll <= 0.99) {
-    volatility = 0.035;
-  } else if (regimeRoll > 0.99) {
-    volatility = 0.06;
-  }
-
-  const shockRoll = secureRandomUnit();
-  let shock = 0;
-  if (shockRoll > 0.985) {
-    shock = secureRandomRange(-0.08, 0.08);
-  }
-
-  const randomMove = secureGaussian() * volatility;
-  const reversionMove = meanReversion * 0.02;
-  const totalMove = randomMove + reversionMove + shock;
-
-  currentPrice = currentPrice * (1 + totalMove);
-  currentPrice = Math.max(1, currentPrice);
-  lastMoveMagnitude = Math.abs(totalMove);
-};
-
-// Save price to database and broadcast
-const savePriceAndBroadcast = async (volume: number = 0) => {
+const mineBlock = async () => {
   try {
-    await prisma.auraCoinPrice.create({
-      data: { price: currentPrice, volume },
+    const miners = await prisma.gpuMiner.findMany({
+      where: { gpuCount: { gt: 0 } },
+      include: { user: { select: { id: true, username: true, usernameColor: true } } },
     });
-    
-    io.emit('auracoin:price-update', {
-      price: currentPrice,
+    if (miners.length === 0) return;
+
+    const powered = miners.map((m) => ({ ...m, power: gpuPower(m.gpuCount) }));
+    const totalPower = powered.reduce((s, m) => s + m.power, 0);
+    if (totalPower === 0) return;
+
+    // Weighted random selection
+    let roll = Math.random() * totalPower;
+    let winner = powered[powered.length - 1];
+    for (const m of powered) {
+      roll -= m.power;
+      if (roll <= 0) {
+        winner = m;
+        break;
+      }
+    }
+
+    const pool = await getPool();
+    const reward = await currentReward();
+    const price = poolPrice(pool.coinX, pool.moneyY);
+    const newBlockNumber = pool.blockNumber + 1;
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: winner.userId },
+        data: { auraCoinBalance: { increment: reward } },
+      }),
+      prisma.gpuMiner.update({
+        where: { userId: winner.userId },
+        data: { totalMined: { increment: reward } },
+      }),
+      prisma.auraCoinPool.update({
+        where: { id: 'main' },
+        data: { blockNumber: { increment: 1 }, totalMined: { increment: reward } },
+      }),
+      prisma.auraCoinTransaction.create({
+        data: {
+          userId: winner.userId,
+          type: 'MINE_REWARD',
+          coinAmount: reward,
+          moneyAmount: 0,
+          price,
+          fee: 0,
+        },
+      }),
+    ]);
+
+    await prisma.miningBlock.create({
+      data: {
+        blockNumber: newBlockNumber,
+        minerId: winner.userId,
+        minerName: winner.user.username,
+        reward,
+        difficulty: 1,
+      },
+    });
+
+    // Price snapshot for chart
+    await prisma.auraCoinPrice.create({ data: { price, volume: 0 } });
+
+    io.emit('auracoin:block-mined', {
+      blockNumber: newBlockNumber,
+      minerId: winner.userId,
+      minerName: winner.user.username,
+      minerColor: winner.user.usernameColor,
+      reward,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('Failed to save price:', error);
+
+    await emitSharedBalanceUpdates(prisma, winner.userId);
+
+    createNotification({
+      userId: winner.userId,
+      type: 'SYSTEM',
+      title: `Bloc #${newBlockNumber} miné!`,
+      body: `Tu as miné ${reward.toFixed(4)} AuraCoin.`,
+      data: { blockNumber: newBlockNumber, reward },
+      link: '/games/aura-coin',
+      icon: 'cpu',
+    }).catch(() => {});
+
+    logAuraCoin('block_mined', winner.userId, winner.user.username, {
+      blockNumber: newBlockNumber,
+      reward,
+      totalPower,
+      gpuCount: winner.gpuCount,
+    });
+  } catch (err) {
+    console.error('Mining block error:', err);
   }
 };
 
-// Start price variation interval
-let priceInterval: NodeJS.Timeout | null = null;
-
-const scheduleNextTick = () => {
-  const nextDelay = Math.floor(secureRandomRange(PRICE_UPDATE_INTERVAL_MIN, PRICE_UPDATE_INTERVAL_MAX));
-  priceInterval = setTimeout(async () => {
-    applyRandomVariation();
-    await savePriceAndBroadcast();
-    await checkLiquidations(); // Check for liquidations on each price update
-
-    if (priceInterval) {
-      scheduleNextTick();
-    }
-  }, nextDelay);
+export const startPriceEngine = () => {
+  // Initialize pool asynchronously (non-blocking)
+  Promise.all([getPool(), getSystemStartDate()]).catch(console.error);
+  miningInterval = setInterval(mineBlock, BLOCK_TARGET_MS);
+  console.log('AuraCoin mining engine started (3-min blocks)');
 };
 
 export const stopPriceEngine = () => {
-  if (priceInterval) {
-    clearTimeout(priceInterval);
-    priceInterval = null;
-    console.log('AuraCoin price engine stopped');
+  if (miningInterval) {
+    clearInterval(miningInterval);
+    miningInterval = null;
+    console.log('AuraCoin mining engine stopped');
   }
 };
 
-const MAX_CHART_POINTS = 250;
+// =====================================================================
+// ROUTES
+// =====================================================================
 
-// Get current price and history
+// GET /price – current price, pool state, chart history, user balances
 router.get('/price', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const feePercentage = await getAuraCoinBuyFeePercentage();
     const { hours = '24' } = req.query;
-    const hoursAgo = new Date(Date.now() - parseInt(hours as string) * 60 * 60 * 1000);
+    const since = new Date(Date.now() - parseInt(hours as string) * 3_600_000);
 
-    const allHistory = await prisma.auraCoinPrice.findMany({
-      where: { createdAt: { gte: hoursAgo } },
-      orderBy: { createdAt: 'asc' },
-      select: { price: true, volume: true, createdAt: true },
-    });
+    const [pool, user, rawHistory, userCount] = await Promise.all([
+      getPool(),
+      prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: { auraCoinBalance: true, money: true },
+      }),
+      prisma.auraCoinPrice.findMany({
+        where: { createdAt: { gte: since } },
+        orderBy: { createdAt: 'asc' },
+        select: { price: true, volume: true, createdAt: true },
+      }),
+      prisma.user.count({ where: { isSuperAdmin: false } }),
+    ]);
 
-    let history: { price: number; volume: number; createdAt: Date | string }[];
-    if (allHistory.length > MAX_CHART_POINTS) {
-      const step = Math.ceil(allHistory.length / MAX_CHART_POINTS);
-      history = allHistory.filter((_, i) => i % step === 0);
-    } else {
-      history = allHistory;
-    }
-    
-    // Get user's balance
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.id },
-      select: { auraCoinBalance: true, money: true },
-    });
-    
+    const base = poolPrice(pool.coinX, pool.moneyY);
+    const displayed = base * (1 + Math.log(userCount + 1) * HYPE_FACTOR);
+
+    // Downsample history if too many points
+    const history =
+      rawHistory.length > MAX_HISTORY_POINTS
+        ? rawHistory.filter((_, i) => i % Math.ceil(rawHistory.length / MAX_HISTORY_POINTS) === 0)
+        : rawHistory;
+
+    const n = await halvings();
+    const reward = INITIAL_REWARD * Math.pow(0.5, n);
+
     res.json({
-      currentPrice,
-      feePercentage,
+      currentPrice: displayed,
+      basePrice: base,
+      feePercentage: AMM_FEE,
       history,
+      pool: {
+        coinX: pool.coinX,
+        moneyY: pool.moneyY,
+        k: pool.coinX * pool.moneyY,
+        totalMined: pool.totalMined,
+        blockNumber: pool.blockNumber,
+      },
+      mining: {
+        currentReward: reward,
+        halvings: n,
+        nextHalvingMs: HALVING_INTERVAL_MS - ((Date.now() - (await getSystemStartDate()).getTime()) % HALVING_INTERVAL_MS),
+      },
       userBalance: {
-        auraCoin: user?.auraCoinBalance || 0,
-        money: user?.money || 0,
+        auraCoin: user?.auraCoinBalance ?? 0,
+        money: user?.money ?? 0,
       },
     });
-  } catch (error) {
-    console.error('Get price error:', error);
-    res.status(500).json({ error: 'Failed to get price' });
+  } catch (err) {
+    console.error('Get price error:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
-// Buy AuraCoin
+// POST /buy – AMM buy with 2% fee (+ whale tax)
 router.post('/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
     const { moneyAmount } = req.body;
-    
-    if (!moneyAmount || moneyAmount <= 0) {
-      return res.status(400).json({ error: 'Invalid money amount' });
-    }
-    
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-    });
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    if (user.money < moneyAmount) {
-      return res.status(400).json({ error: 'Insufficient funds' });
-    }
-    
-    const feePercentage = await getAuraCoinBuyFeePercentage();
+    if (!moneyAmount || moneyAmount <= 0) return res.status(400).json({ error: 'Montant invalide' });
 
-    // Calculate fee and coins received
-    const fee = Math.max(MIN_FEE, Math.floor(moneyAmount * feePercentage));
-    const netAmount = moneyAmount - fee;
-    if (netAmount <= 0) {
-      return res.status(400).json({ error: 'Amount too low to cover minimum fee' });
-    }
-    const tradePrice = getExecutionPrice('BUY', currentPrice, moneyAmount);
-    const coinsReceived = netAmount / tradePrice;
-    
-    // Update user balance and create transaction
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    if (Number(user.money) < moneyAmount) return res.status(400).json({ error: 'Solde insuffisant' });
+
+    const pool = await getPool();
+    const price = poolPrice(pool.coinX, pool.moneyY);
+    const extraFee = await whaleTaxRate(req.user!.id, price);
+    const totalFeeRate = AMM_FEE + extraFee;
+
+    const fee = Math.floor(moneyAmount * totalFeeRate);
+    const netMoney = moneyAmount - fee;
+    if (netMoney <= 0) return res.status(400).json({ error: 'Montant trop faible' });
+
+    const k = pool.coinX * pool.moneyY;
+    const newMoneyY = pool.moneyY + netMoney;
+    const newCoinX = k / newMoneyY;
+    const coinsOut = pool.coinX - newCoinX;
+    if (coinsOut <= 0) return res.status(400).json({ error: 'Liquidité insuffisante' });
+
+    const executionPrice = netMoney / coinsOut;
+
     const [updatedUser] = await prisma.$transaction([
       prisma.user.update({
-        where: { id: req.user.id },
-        data: {
-          money: { decrement: moneyAmount },
-          auraCoinBalance: { increment: coinsReceived },
-        },
+        where: { id: req.user!.id },
+        data: { money: { decrement: BigInt(moneyAmount) }, auraCoinBalance: { increment: coinsOut } },
       }),
+      prisma.auraCoinPool.update({ where: { id: 'main' }, data: { coinX: newCoinX, moneyY: newMoneyY } }),
       prisma.auraCoinTransaction.create({
-        data: {
-          userId: req.user.id,
-          type: 'BUY',
-          coinAmount: coinsReceived,
-          moneyAmount,
-          price: tradePrice,
-          fee,
-        },
+        data: { userId: req.user!.id, type: 'BUY', coinAmount: coinsOut, moneyAmount, price: executionPrice, fee },
       }),
     ]);
-    
-    // Save new price and broadcast
-    await savePriceAndBroadcast(moneyAmount);
-    
-    await emitSharedBalanceUpdates(prisma, req.user.id);
 
-    // Log buy
-    logAuraCoin('auracoin_buy', req.user.id, user.username, {
+    const newPrice = newMoneyY / newCoinX;
+    await prisma.auraCoinPrice.create({ data: { price: newPrice, volume: moneyAmount } });
+    io.emit('auracoin:price-update', { price: newPrice, timestamp: new Date().toISOString() });
+    await emitSharedBalanceUpdates(prisma, req.user!.id);
+
+    logAuraCoin('auracoin_buy', req.user!.id, user.username, {
       moneySpent: moneyAmount,
-      coinsReceived,
+      coinsReceived: coinsOut,
       fee,
-      priceAtPurchase: tradePrice,
+      price: executionPrice,
     });
 
     createNotification({
-      userId: req.user.id,
+      userId: req.user!.id,
       type: 'SYSTEM',
       title: 'Achat AuraCoin',
-      body: `Tu as achete ${coinsReceived.toFixed(4)} AuraCoin pour $${moneyAmount}.`,
-      data: {
-        type: 'BUY',
-        moneySpent: moneyAmount,
-        coinsReceived,
-        fee,
-        price: tradePrice,
-      },
+      body: `${coinsOut.toFixed(4)} AuraCoin achetés pour $${moneyAmount.toLocaleString()}.`,
+      data: { type: 'BUY', moneySpent: moneyAmount, coinsReceived: coinsOut, fee, price: executionPrice },
       link: '/games/aura-coin',
       icon: 'coins',
     }).catch(() => {});
 
     res.json({
       success: true,
-      transaction: {
-        type: 'BUY',
-        coinsReceived,
-        moneySpent: moneyAmount,
-        fee,
-        newPrice: tradePrice,
-      },
-      newBalance: {
-        money: updatedUser.money,
-        auraCoin: updatedUser.auraCoinBalance,
-      },
+      coinsReceived: coinsOut,
+      moneySpent: moneyAmount,
+      fee,
+      executionPrice,
+      newPrice,
+      newBalance: { money: updatedUser.money, auraCoin: updatedUser.auraCoinBalance },
     });
-  } catch (error) {
-    console.error('Buy error:', error);
-    res.status(500).json({ error: 'Failed to buy AuraCoin' });
+  } catch (err) {
+    console.error('Buy error:', err);
+    res.status(500).json({ error: "Erreur lors de l'achat" });
   }
 });
 
-// Sell AuraCoin
+// POST /sell – AMM sell with 2% fee (+ whale tax)
 router.post('/sell', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
     const { coinAmount } = req.body;
-    
-    if (!coinAmount || coinAmount <= 0) {
-      return res.status(400).json({ error: 'Invalid coin amount' });
-    }
-    
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-    });
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    if (user.auraCoinBalance < coinAmount) {
-      return res.status(400).json({ error: 'Insufficient AuraCoin balance' });
-    }
-    
-    const feePercentage = await getAuraCoinBuyFeePercentage();
+    if (!coinAmount || coinAmount <= 0) return res.status(400).json({ error: 'Montant invalide' });
 
-    // Calculate money received (before fee)
-    const tradePrice = getExecutionPrice('SELL', currentPrice, coinAmount * currentPrice);
-    const grossAmount = Math.floor(coinAmount * tradePrice);
-    const fee = Math.max(MIN_FEE, Math.floor(grossAmount * feePercentage));
-    const netAmount = grossAmount - fee;
-    if (netAmount <= 0) {
-      return res.status(400).json({ error: 'Amount too low to cover minimum fee' });
-    }
-    
-    // Update user balance and create transaction
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    if (user.auraCoinBalance < coinAmount) return res.status(400).json({ error: 'Solde AuraCoin insuffisant' });
+
+    const pool = await getPool();
+    const price = poolPrice(pool.coinX, pool.moneyY);
+    const extraFee = await whaleTaxRate(req.user!.id, price);
+    const totalFeeRate = AMM_FEE + extraFee;
+
+    const k = pool.coinX * pool.moneyY;
+    const newCoinX = pool.coinX + coinAmount;
+    const newMoneyY = k / newCoinX;
+    const grossMoney = pool.moneyY - newMoneyY;
+    if (grossMoney <= 0) return res.status(400).json({ error: 'Liquidité insuffisante' });
+
+    const fee = Math.floor(grossMoney * totalFeeRate);
+    const netMoney = Math.floor(grossMoney - fee);
+    const executionPrice = grossMoney / coinAmount;
+
     const [updatedUser] = await prisma.$transaction([
       prisma.user.update({
-        where: { id: req.user.id },
-        data: {
-          money: { increment: netAmount },
-          auraCoinBalance: { decrement: coinAmount },
-        },
+        where: { id: req.user!.id },
+        data: { money: { increment: BigInt(netMoney) }, auraCoinBalance: { decrement: coinAmount } },
       }),
+      prisma.auraCoinPool.update({ where: { id: 'main' }, data: { coinX: newCoinX, moneyY: newMoneyY } }),
       prisma.auraCoinTransaction.create({
-        data: {
-          userId: req.user.id,
-          type: 'SELL',
-          coinAmount,
-          moneyAmount: netAmount,
-          price: tradePrice,
-          fee,
-        },
+        data: { userId: req.user!.id, type: 'SELL', coinAmount, moneyAmount: netMoney, price: executionPrice, fee },
       }),
     ]);
-    
-    // Save new price and broadcast
-    await savePriceAndBroadcast(grossAmount);
-    
-    await emitSharedBalanceUpdates(prisma, req.user.id);
 
-    // Log sell
-    logAuraCoin('auracoin_sell', req.user.id, user.username, {
+    const newPrice = newMoneyY / newCoinX;
+    await prisma.auraCoinPrice.create({ data: { price: newPrice, volume: netMoney } });
+    io.emit('auracoin:price-update', { price: newPrice, timestamp: new Date().toISOString() });
+    await emitSharedBalanceUpdates(prisma, req.user!.id);
+
+    logAuraCoin('auracoin_sell', req.user!.id, user.username, {
       coinsSold: coinAmount,
-      moneyReceived: netAmount,
+      moneyReceived: netMoney,
       fee,
-      priceAtSale: tradePrice,
+      price: executionPrice,
     });
 
     createNotification({
-      userId: req.user.id,
+      userId: req.user!.id,
       type: 'SYSTEM',
       title: 'Vente AuraCoin',
-      body: `Tu as vendu ${coinAmount.toFixed(4)} AuraCoin pour $${netAmount}.`,
-      data: {
-        type: 'SELL',
-        coinsSold: coinAmount,
-        moneyReceived: netAmount,
-        fee,
-        price: tradePrice,
-      },
+      body: `${coinAmount.toFixed(4)} AuraCoin vendus pour $${netMoney.toLocaleString()}.`,
+      data: { type: 'SELL', coinsSold: coinAmount, moneyReceived: netMoney, fee, price: executionPrice },
       link: '/games/aura-coin',
       icon: 'coins',
     }).catch(() => {});
 
     res.json({
       success: true,
-      transaction: {
-        type: 'SELL',
-        coinsSold: coinAmount,
-        moneyReceived: netAmount,
-        fee,
-        newPrice: tradePrice,
-      },
-      newBalance: {
-        money: updatedUser.money,
-        auraCoin: updatedUser.auraCoinBalance,
-      },
+      coinsSold: coinAmount,
+      moneyReceived: netMoney,
+      fee,
+      executionPrice,
+      newPrice,
+      newBalance: { money: updatedUser.money, auraCoin: updatedUser.auraCoinBalance },
     });
-  } catch (error) {
-    console.error('Sell error:', error);
-    res.status(500).json({ error: 'Failed to sell AuraCoin' });
+  } catch (err) {
+    console.error('Sell error:', err);
+    res.status(500).json({ error: 'Erreur lors de la vente' });
   }
 });
 
-// Get user's transaction history
+// GET /mining/stats – user GPU info + server-wide stats
+router.get('/mining/stats', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await deductGpuFees(req.user!.id);
+
+    const [miner, allMiners, pool, recentBlocks] = await Promise.all([
+      prisma.gpuMiner.findUnique({ where: { userId: req.user!.id } }),
+      prisma.gpuMiner.findMany({ where: { gpuCount: { gt: 0 } } }),
+      getPool(),
+      prisma.miningBlock.findMany({
+        orderBy: { blockNumber: 'desc' },
+        take: 10,
+        select: { blockNumber: true, minedAt: true, minerId: true, minerName: true, reward: true },
+      }),
+    ]);
+
+    const myGpus = miner?.gpuCount ?? 0;
+    const myPower = gpuPower(myGpus);
+    const totalPower = allMiners.reduce((s, m) => s + gpuPower(m.gpuCount), 0);
+    const myShare = totalPower > 0 ? myPower / totalPower : 0;
+    const reward = await currentReward();
+    const n = await halvings();
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { money: true } });
+
+    res.json({
+      myMiner: {
+        gpuCount: myGpus,
+        power: myPower,
+        share: myShare,
+        totalMined: miner?.totalMined ?? 0,
+        dailyFee: myGpus * GPU_DAILY_FEE,
+        nextGpuCost: Math.floor(nextGpuCost(myGpus)),
+        canAffordNext: Number(user?.money ?? 0) >= Math.floor(nextGpuCost(myGpus)),
+      },
+      server: {
+        totalPower,
+        activeMiners: allMiners.length,
+        blockNumber: pool.blockNumber,
+        totalMined: pool.totalMined,
+        currentReward: reward,
+        halvings: n,
+        blockIntervalMs: BLOCK_TARGET_MS,
+      },
+      recentBlocks,
+      gpuMax: GPU_MAX,
+    });
+  } catch (err) {
+    console.error('Mining stats error:', err);
+    res.status(500).json({ error: 'Erreur stats minage' });
+  }
+});
+
+// POST /mining/buy-gpu – purchase one GPU
+router.post('/mining/buy-gpu', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    await deductGpuFees(req.user!.id);
+
+    const miner = await prisma.gpuMiner.findUnique({ where: { userId: req.user!.id } });
+    const currentGpus = miner?.gpuCount ?? 0;
+
+    if (currentGpus >= GPU_MAX)
+      return res.status(400).json({ error: `Maximum de ${GPU_MAX} GPUs atteint` });
+
+    const cost = Math.floor(nextGpuCost(currentGpus));
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { money: true, username: true },
+    });
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    if (Number(user.money) < cost)
+      return res.status(400).json({ error: `Solde insuffisant. Coût: $${cost.toLocaleString()}` });
+
+    const newGpuCount = currentGpus + 1;
+
+    await prisma.$transaction([
+      miner
+        ? prisma.gpuMiner.update({ where: { userId: req.user!.id }, data: { gpuCount: newGpuCount } })
+        : prisma.gpuMiner.create({ data: { userId: req.user!.id, gpuCount: 1 } }),
+      prisma.user.update({ where: { id: req.user!.id }, data: { money: { decrement: BigInt(cost) } } }),
+      prisma.auraCoinTransaction.create({
+        data: { userId: req.user!.id, type: 'GPU_PURCHASE', coinAmount: 0, moneyAmount: -cost, price: 0, fee: 0 },
+      }),
+    ]);
+
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { money: true },
+    });
+    await emitSharedBalanceUpdates(prisma, req.user!.id);
+
+    logAuraCoin('gpu_purchase', req.user!.id, user.username, { gpuCount: newGpuCount, cost });
+
+    res.json({
+      success: true,
+      newGpuCount,
+      cost,
+      nextGpuCost: Math.floor(nextGpuCost(newGpuCount)),
+      newBalance: { money: updatedUser?.money ?? 0 },
+    });
+  } catch (err) {
+    console.error('Buy GPU error:', err);
+    res.status(500).json({ error: 'Erreur achat GPU' });
+  }
+});
+
+// GET /mining/leaderboard – top miners by total mined
+router.get('/mining/leaderboard', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const miners = await prisma.gpuMiner.findMany({
+      where: { gpuCount: { gt: 0 } },
+      orderBy: { totalMined: 'desc' },
+      take: 20,
+      include: { user: { select: { id: true, username: true, usernameColor: true } } },
+    });
+    const totalPower = miners.reduce((s, m) => s + gpuPower(m.gpuCount), 0);
+
+    res.json({
+      leaderboard: miners.map((m) => ({
+        userId: m.userId,
+        username: m.user.username,
+        usernameColor: m.user.usernameColor,
+        gpuCount: m.gpuCount,
+        power: gpuPower(m.gpuCount),
+        share: totalPower > 0 ? gpuPower(m.gpuCount) / totalPower : 0,
+        totalMined: m.totalMined,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur mining leaderboard' });
+  }
+});
+
+// GET /transactions/me
 router.get('/transactions/me', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
     const { limit = '50', offset = '0' } = req.query;
-    
     const transactions = await prisma.auraCoinTransaction.findMany({
-      where: { userId: req.user.id },
+      where: { userId: req.user!.id },
       orderBy: { createdAt: 'desc' },
       take: parseInt(limit as string),
       skip: parseInt(offset as string),
-      include: {
-        user: {
-          select: { id: true, username: true, usernameColor: true },
-        },
-      },
+      include: { user: { select: { id: true, username: true, usernameColor: true } } },
     });
-    
     res.json({ transactions });
-  } catch (error) {
-    console.error('Get my transactions error:', error);
-    res.status(500).json({ error: 'Failed to get transactions' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur transactions' });
   }
 });
 
-// Get all transactions (global history)
+// GET /transactions/all – only BUY/SELL visible globally
 router.get('/transactions/all', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { limit = '50', offset = '0' } = req.query;
-    
     const transactions = await prisma.auraCoinTransaction.findMany({
+      where: { type: { in: ['BUY', 'SELL'] } },
       orderBy: { createdAt: 'desc' },
       take: parseInt(limit as string),
       skip: parseInt(offset as string),
-      include: {
-        user: {
-          select: { id: true, username: true, usernameColor: true },
-        },
-      },
+      include: { user: { select: { id: true, username: true, usernameColor: true } } },
     });
-    
     res.json({ transactions });
-  } catch (error) {
-    console.error('Get all transactions error:', error);
-    res.status(500).json({ error: 'Failed to get transactions' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur transactions' });
   }
 });
 
-// Get AuraCoin leaderboard (top holders)
+// GET /leaderboard – top holders by balance
 router.get('/leaderboard', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { limit = '10' } = req.query;
-    const take = Math.max(1, Math.min(parseInt(limit as string, 10) || 10, 100));
-
-    const leaderboard = await prisma.user.findMany({
-      where: { 
-        auraCoinBalance: { gt: 0 },
-        isSuperAdmin: false,
-      },
+    const { limit = '20' } = req.query;
+    const take = Math.max(1, Math.min(100, parseInt(limit as string, 10) || 20));
+    const users = await prisma.user.findMany({
+      where: { auraCoinBalance: { gt: 0 }, isSuperAdmin: false },
       orderBy: { auraCoinBalance: 'desc' },
       take,
       select: {
@@ -493,7 +655,7 @@ router.get('/leaderboard', authMiddleware, async (req: AuthRequest, res: Respons
       },
     });
 
-    res.json({ leaderboard });
+    res.json({ leaderboard: users });
   } catch (error) {
     console.error('Get AuraCoin leaderboard error:', error);
     res.status(500).json({ error: 'Failed to get leaderboard' });
@@ -516,16 +678,16 @@ const calculatePnL = (position: any, currentPrice: number): number => {
 // Check and liquidate positions if needed
 const checkLiquidations = async () => {
   try {
+    const currentPrice = await getMarkPrice();
     const openPositions = await prisma.auraCoinPosition.findMany({
       where: { isOpen: true },
       include: { user: true },
     });
 
     for (const position of openPositions) {
-      const pnlAmount = calculatePnL(position, currentPrice);
-      const pnl = BigInt(pnlAmount);
+      const pnl = calculatePnL(position, currentPrice);
       const currentMargin = position.marginAmount + pnl;
-      const marginRatio = Number(currentMargin) / Number(position.marginAmount);
+      const marginRatio = currentMargin / position.marginAmount;
 
       // Liquidate if margin drops below threshold
       if (marginRatio <= LIQUIDATION_THRESHOLD) {
@@ -543,7 +705,7 @@ const checkLiquidations = async () => {
           prisma.user.update({
             where: { id: position.userId },
             data: {
-              money: { increment: currentMargin > 0n ? currentMargin : 0n }, // Return remaining margin
+              money: { increment: Math.max(0, currentMargin) }, // Return remaining margin
             },
           }),
         ]);
@@ -610,6 +772,7 @@ router.post('/position/open', authMiddleware, async (req: AuthRequest, res: Resp
 
     // Calculate notional value (position size)
     const notionalValue = marginAmount * leverage;
+    const currentPrice = await getMarkPrice();
     const entrySide = type === 'LONG' ? 'BUY' : 'SELL';
     const entryPrice = getExecutionPrice(entrySide, currentPrice, notionalValue);
     const coinAmount = notionalValue / entryPrice;
@@ -697,12 +860,12 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
       return res.status(400).json({ error: 'Position is already closed' });
     }
 
+    const currentPrice = await getMarkPrice();
     const closeSide = position.type === 'LONG' ? 'SELL' : 'BUY';
     const closePrice = getExecutionPrice(closeSide, currentPrice, position.coinAmount * currentPrice);
 
     // Calculate P&L
-    const pnlAmount = calculatePnL(position, closePrice);
-    const pnl = BigInt(pnlAmount);
+    const pnl = calculatePnL(position, closePrice);
     const totalReturn = position.marginAmount + pnl;
 
     // Close position and return funds
@@ -719,7 +882,7 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
       prisma.user.update({
         where: { id: req.user.id },
         data: {
-          money: { increment: totalReturn > 0n ? totalReturn : 0n }, // Ensure non-negative
+          money: { increment: Math.max(0, totalReturn) }, // Ensure non-negative
         },
       }),
     ]);
@@ -773,23 +936,22 @@ router.get('/positions/open', authMiddleware, async (req: AuthRequest, res: Resp
       },
       orderBy: { createdAt: 'desc' },
     });
+    const currentPrice = await getMarkPrice();
 
     // Calculate current P&L for each position
     const positionsWithPnL = positions.map(pos => {
-      const pnlAmount = calculatePnL(pos, currentPrice);
-      const marginNum = Number(pos.marginAmount);
-      const currentMargin = marginNum + pnlAmount;
-      const marginRatio = currentMargin / marginNum;
-      const pnlPercentage = (pnlAmount / marginNum) * 100;
+      const pnl = calculatePnL(pos, currentPrice);
+      const currentMargin = pos.marginAmount + pnl;
+      const marginRatio = currentMargin / pos.marginAmount;
+      const pnlPercentage = (pnl / pos.marginAmount) * 100;
 
       return {
         ...pos,
         currentPrice,
-        pnl: pnlAmount,
+        pnl,
         currentMargin,
         marginRatio,
         pnlPercentage,
-        marginAmount: marginNum,
       };
     });
 
@@ -817,27 +979,24 @@ router.get('/positions/closed', authMiddleware, async (req: AuthRequest, res: Re
       orderBy: { closedAt: 'desc' },
       take: parseInt(limit as string),
       skip: parseInt(offset as string),
+      select: {
+        id: true,
+        type: true,
+        leverage: true,
+        entryPrice: true,
+        exitPrice: true,
+        coinAmount: true,
+        marginAmount: true,
+        pnl: true,
+        liquidated: true,
+        createdAt: true,
+        closedAt: true,
+      },
     });
-
     res.json({ positions });
-  } catch (error) {
-    console.error('Get closed positions error:', error);
-    res.status(500).json({ error: 'Failed to get positions' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur positions fermées' });
   }
 });
-
-// Update price engine to check liquidations
-export const startPriceEngine = () => {
-  initializePrice();
-
-  if (priceInterval) {
-    clearTimeout(priceInterval);
-    priceInterval = null;
-  }
-
-  scheduleNextTick();
-  
-  console.log('AuraCoin price engine started');
-};
 
 export default router;
