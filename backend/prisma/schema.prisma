@@ -97,6 +97,7 @@ model User {
   sentAccusations              CheatingAccusation[]          @relation("AccusationAccuser")
   receivedAccusations          CheatingAccusation[]          @relation("AccusationAccused")
   auraCoinTransactions         AuraCoinTransaction[]
+  auraCoinPositions            AuraCoinPosition[]
   gpuMiner                     GpuMiner?
   bugReports                   BugReport[]
   suggestions                  Suggestion[]
