@@ -522,9 +522,10 @@ const checkLiquidations = async () => {
     });
 
     for (const position of openPositions) {
-      const pnl = calculatePnL(position, currentPrice);
+      const pnlAmount = calculatePnL(position, currentPrice);
+      const pnl = BigInt(pnlAmount);
       const currentMargin = position.marginAmount + pnl;
-      const marginRatio = currentMargin / position.marginAmount;
+      const marginRatio = Number(currentMargin) / Number(position.marginAmount);
 
       // Liquidate if margin drops below threshold
       if (marginRatio <= LIQUIDATION_THRESHOLD) {
@@ -542,7 +543,7 @@ const checkLiquidations = async () => {
           prisma.user.update({
             where: { id: position.userId },
             data: {
-              money: { increment: Math.max(0, currentMargin) }, // Return remaining margin
+              money: { increment: currentMargin > 0n ? currentMargin : 0n }, // Return remaining margin
             },
           }),
         ]);
@@ -700,7 +701,8 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
     const closePrice = getExecutionPrice(closeSide, currentPrice, position.coinAmount * currentPrice);
 
     // Calculate P&L
-    const pnl = calculatePnL(position, closePrice);
+    const pnlAmount = calculatePnL(position, closePrice);
+    const pnl = BigInt(pnlAmount);
     const totalReturn = position.marginAmount + pnl;
 
     // Close position and return funds
@@ -717,7 +719,7 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
       prisma.user.update({
         where: { id: req.user.id },
         data: {
-          money: { increment: Math.max(0, totalReturn) }, // Ensure non-negative
+          money: { increment: totalReturn > 0n ? totalReturn : 0n }, // Ensure non-negative
         },
       }),
     ]);
@@ -774,18 +776,20 @@ router.get('/positions/open', authMiddleware, async (req: AuthRequest, res: Resp
 
     // Calculate current P&L for each position
     const positionsWithPnL = positions.map(pos => {
-      const pnl = calculatePnL(pos, currentPrice);
-      const currentMargin = pos.marginAmount + pnl;
-      const marginRatio = currentMargin / pos.marginAmount;
-      const pnlPercentage = (pnl / pos.marginAmount) * 100;
+      const pnlAmount = calculatePnL(pos, currentPrice);
+      const marginNum = Number(pos.marginAmount);
+      const currentMargin = marginNum + pnlAmount;
+      const marginRatio = currentMargin / marginNum;
+      const pnlPercentage = (pnlAmount / marginNum) * 100;
 
       return {
         ...pos,
         currentPrice,
-        pnl,
+        pnl: pnlAmount,
         currentMargin,
         marginRatio,
         pnlPercentage,
+        marginAmount: marginNum,
       };
     });
 

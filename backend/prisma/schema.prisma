@@ -1782,11 +1782,11 @@ model AuraCoinPosition {
   leverage     Int // 1 to 10
   entryPrice   Float // Price when position was opened
   coinAmount   Float // Notional value in coins
-  marginAmount Int // Collateral deposited (money)
+  marginAmount BigInt // Collateral deposited (money)
   isOpen       Boolean   @default(true)
   closedAt     DateTime?
   exitPrice    Float? // Price when position was closed
-  pnl          Int? // Profit/Loss when closed
+  pnl          BigInt? // Profit/Loss when closed
   liquidated   Boolean   @default(false)
   createdAt    DateTime  @default(now())
 
@@ -1846,11 +1846,11 @@ model CryptoPosition {
   leverage     Int
   entryPrice   Float
   coinAmount   Float
-  marginAmount Int
+  marginAmount BigInt
   isOpen       Boolean   @default(true)
   closedAt     DateTime?
   exitPrice    Float?
-  pnl          Int?
+  pnl          BigInt?
   liquidated   Boolean   @default(false)
   createdAt    DateTime  @default(now())
 

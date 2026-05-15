@@ -248,9 +248,10 @@ const checkLiquidations = async (config: CoinConfig) => {
   });
 
   for (const position of openPositions) {
-    const pnl = calculatePnL(position, state.currentPrice);
+    const pnlAmount = calculatePnL(position, state.currentPrice);
+    const pnl = BigInt(pnlAmount);
     const currentMargin = position.marginAmount + pnl;
-    const marginRatio = currentMargin / position.marginAmount;
+    const marginRatio = Number(currentMargin) / Number(position.marginAmount);
 
     if (marginRatio > config.liquidationThreshold) continue;
 
@@ -269,7 +270,7 @@ const checkLiquidations = async (config: CoinConfig) => {
       await tx.user.update({
         where: { id: position.userId },
         data: {
-          money: { increment: Math.max(0, currentMargin) },
+          money: { increment: currentMargin > 0n ? currentMargin : 0n },
         },
       });
     });
@@ -819,7 +820,8 @@ router.post('/:coinKey/position/close/:positionId', authMiddleware, async (req: 
     const state = RUNTIME_STATE[config.key];
     const closeSide = position.type === 'LONG' ? 'SELL' : 'BUY';
     const closePrice = getExecutionPrice(config, state, closeSide, state.currentPrice, position.coinAmount * state.currentPrice);
-    const pnl = calculatePnL(position, closePrice);
+    const pnlAmount = calculatePnL(position, closePrice);
+    const pnl = BigInt(pnlAmount);
     const totalReturn = position.marginAmount + pnl;
 
     const [updatedPosition, updatedUser] = await prisma.$transaction([
@@ -834,7 +836,7 @@ router.post('/:coinKey/position/close/:positionId', authMiddleware, async (req: 
       }),
       prisma.user.update({
         where: { id: req.user.id },
-        data: { money: { increment: Math.max(0, totalReturn) } },
+        data: { money: { increment: totalReturn > 0n ? totalReturn : 0n } },
         select: { money: true },
       }),
     ]);
@@ -888,18 +890,20 @@ router.get('/:coinKey/positions/open', authMiddleware, async (req: AuthRequest, 
 
     res.json({
       positions: positions.map((position) => {
-        const pnl = calculatePnL(position, state.currentPrice);
-        const currentMargin = position.marginAmount + pnl;
-        const marginRatio = currentMargin / position.marginAmount;
-        const pnlPercentage = (pnl / position.marginAmount) * 100;
+        const pnlAmount = calculatePnL(position, state.currentPrice);
+        const marginNum = Number(position.marginAmount);
+        const currentMargin = marginNum + pnlAmount;
+        const marginRatio = currentMargin / marginNum;
+        const pnlPercentage = (pnlAmount / marginNum) * 100;
 
         return {
           ...position,
           currentPrice: state.currentPrice,
-          pnl,
+          pnl: pnlAmount,
           currentMargin,
           marginRatio,
           pnlPercentage,
+          marginAmount: marginNum,
         };
       }),
     });
