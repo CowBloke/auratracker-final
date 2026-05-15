@@ -1830,8 +1830,8 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
     }
 
     res.json({
-      auraReward,
-      moneyReward,
+      auraReward: appliedAuraReward,
+      moneyReward: appliedMoneyReward,
       clanMoneyBoostBonus,
       clanMoneyBoostPercent,
       newStats: stats,
