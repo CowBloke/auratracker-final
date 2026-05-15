@@ -221,10 +221,14 @@ export const runDailyBusinessRevenue = async (prisma: PrismaClient): Promise<voi
 
 export const startDailyBusinessRevenueScheduler = (prisma: PrismaClient): void => {
   if (_timer) return;
-  void runDailyBusinessRevenue(prisma);
+  void runDailyBusinessRevenue(prisma).catch((err) => {
+    console.error('[daily-business-revenue] Initial run error:', err);
+  });
   _timer = setInterval(() => {
-    void runDailyBusinessRevenue(prisma);
-  }, 60 * 60_000);
+    void runDailyBusinessRevenue(prisma).catch((err) => {
+      console.error('[daily-business-revenue] Scheduled run error:', err);
+    });
+  }, 60 * 60 * 1000);
 };
 
 export const stopDailyBusinessRevenueScheduler = (): void => {

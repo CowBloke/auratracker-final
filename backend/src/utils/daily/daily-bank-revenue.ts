@@ -265,11 +265,15 @@ export const runDailyBankRevenue = async (prisma: PrismaClient): Promise<void> =
 export const startDailyBankRevenueScheduler = (prisma: PrismaClient): void => {
   if (_timer) return;
   _prisma = prisma;
-  void runDailyBankRevenue(prisma);
+  void runDailyBankRevenue(prisma).catch((err) => {
+    console.error('[daily-bank-revenue] Initial run error:', err);
+  });
   // Check every hour; the per-bank date guard prevents double-crediting
   _timer = setInterval(() => {
-    void runDailyBankRevenue(prisma);
-  }, 60 * 60_000);
+    void runDailyBankRevenue(prisma).catch((err) => {
+      console.error('[daily-bank-revenue] Scheduled run error:', err);
+    });
+  }, 60 * 60 * 1000);
 };
 
 export const stopDailyBankRevenueScheduler = (): void => {
