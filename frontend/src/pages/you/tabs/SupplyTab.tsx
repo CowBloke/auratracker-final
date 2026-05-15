@@ -2376,7 +2376,7 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
     : activeBusiness ? [activeBusiness] : [];
 
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden bg-background text-foreground">
+    <div className="flex min-h-0 flex-1 bg-background text-foreground">
       <CreateBusinessModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -2402,7 +2402,7 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
       />
       <Sidebar businesses={state?.businesses ?? []} selection={selection} onSelect={(next) => { setSelection(next); setNodeSelection(null); }} onCreateClick={() => setCreateOpen(true)} />
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden" data-tutorial-id="supply-nodes-pane">
+      <main className="flex min-w-0 flex-1 flex-col overflow-y-auto" data-tutorial-id="supply-nodes-pane">
         <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-border px-4">
           {activeBusiness ? (
             <>
