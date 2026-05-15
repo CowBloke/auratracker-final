@@ -1567,8 +1567,16 @@ function RouletteGame({
   const spinWheel = useCallback(async () => {
     if (!user || spinning || totalBet === 0) return;
 
-    if (totalBet > user.money) {
-      setError('Fonds insuffisants pour lancer la roue');
+    // Verify current balance before spinning (sync with server to avoid race conditions)
+    try {
+      const meResponse = await api.get('/auth/me');
+      const currentBalance = meResponse.data.user.money;
+      if (totalBet > currentBalance) {
+        setError('Fonds insuffisants pour lancer la roue');
+        return;
+      }
+    } catch {
+      setError('Erreur de vérification du solde. Veuillez réessayer.');
       return;
     }
 

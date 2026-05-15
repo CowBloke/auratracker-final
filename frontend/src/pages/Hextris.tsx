@@ -82,8 +82,8 @@ export default function Hextris() {
               won: true,
             });
             setRewards({
-              aura: response.data.auraAwarded || 0,
-              money: response.data.moneyAwarded || 0,
+              aura: response.data.auraReward || 0,
+              money: response.data.moneyReward || 0,
             });
             refreshUser();
             fetchLeaderboard();
@@ -96,7 +96,7 @@ export default function Hextris() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [user?.id, highScore, refreshUser, fetchLeaderboard]);
+  }, [user?.id, refreshUser, fetchLeaderboard]);
 
   const handleRestart = () => {
     setGameOver(false);

@@ -2121,7 +2121,7 @@ export default function Clans() {
                             ) : chatMessages.length === 0 ? (
                               <div className="py-8 text-center text-sm text-muted-foreground">Lance la conversation.</div>
                             ) : (
-                              [...chatMessages].reverse().map((entry) => {
+                              chatMessages.map((entry) => {
                                 const isOwnMessage = entry.user.id === user?.id;
                                 return (
                                   <div key={entry.id} className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}>
