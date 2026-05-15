@@ -161,7 +161,12 @@
       "Bash(npm run *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(./node_modules/.bin/tsc --noEmit)"
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(git commit -m 'fix: correct JSX indentation in team and invite modals *)",
+      "Bash(git update-index *)",
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(git hash-object *)"
     ]
   },
   "outputStyle": "default"
