@@ -448,6 +448,7 @@ function serializeStartupProduct(product: any) {
   const canDeploy = Boolean(product.activeResearchLevel && product.researchEndsAt && new Date(product.researchEndsAt).getTime() <= now);
   const nextLevel = product.activeResearchLevel ?? (product.deployedLevel + 1);
   const nextLevelCapped = Math.min(nextLevel, STARTUP_PRODUCT_MAX_LEVEL);
+  const nextLevelForResearch = Math.min(product.deployedLevel + 1, STARTUP_PRODUCT_MAX_LEVEL);
   const progressPercent = product.researchStartedAt && product.researchEndsAt
     ? Math.max(
         0,
@@ -472,8 +473,8 @@ function serializeStartupProduct(product: any) {
     researchStartedAt,
     researchEndsAt,
     researchCost: product.researchCost ?? (product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL ? null : getStartupResearchCost(nextLevelCapped)),
-    nextResearchCost: product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL || product.activeResearchLevel ? null : getStartupResearchCost(nextLevelCapped),
-    nextResearchDurationMinutes: product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL || product.activeResearchLevel ? null : getStartupResearchDurationMinutes(nextLevelCapped),
+    nextResearchCost: product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL || product.activeResearchLevel ? null : getStartupResearchCost(nextLevelForResearch),
+    nextResearchDurationMinutes: product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL || product.activeResearchLevel ? null : getStartupResearchDurationMinutes(nextLevelForResearch),
     progressPercent,
     canStartResearch: !product.activeResearchLevel && product.deployedLevel < STARTUP_PRODUCT_MAX_LEVEL,
     isMaxLevel: product.deployedLevel >= STARTUP_PRODUCT_MAX_LEVEL,
