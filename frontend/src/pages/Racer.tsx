@@ -445,12 +445,14 @@ export default function Racer() {
   const { user, refreshUser } = useAuth();
   const [score, setScore] = useState(0); // Lap time in seconds (lower is better)
   const [dailyBestLapTimeMs, setDailyBestLapTimeMs] = useState<number | null>(null);
+  const [allTimeBestLapTimeMs, setAllTimeBestLapTimeMs] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
   const [rewards, setRewards] = useState<{ aura: number; money: number } | null>(null);
   const [isNewDailyBest, setIsNewDailyBest] = useState(false);
+  const [isNewAllTimeBest, setIsNewAllTimeBest] = useState(false);
   const [rewardSummary, setRewardSummary] = useState<string | null>(null);
-  const [leaderboard, setLeaderboard] = useState<DailyRacerLeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [speed, setSpeed] = useState(0);
   const [currentLapTime, setCurrentLapTime] = useState(0);
@@ -529,18 +531,25 @@ export default function Racer() {
   // Fetch daily track state and leaderboard
   useEffect(() => {
     if (user) {
-      fetchDailyRacerState();
+      fetchRacerState();
     }
   }, [user]);
 
-  const fetchDailyRacerState = useCallback(async () => {
+  const fetchRacerState = useCallback(async () => {
     try {
-      const response = await gamesApi.getDailyRacerState(20);
-      setLeaderboard(response.data.leaderboard);
-      setDailyBestLapTimeMs(response.data.userBestLapTimeMs);
-      setDailyRunCount(response.data.userRunCount);
-      dailySeedRef.current = response.data.seed || 1;
-      const trackDate = new Date(response.data.trackDate);
+      const [dailyResponse, lbResponse, statsResponse] = await Promise.all([
+        gamesApi.getDailyRacerState(1),
+        gamesApi.getLeaderboard('racer', 20),
+        gamesApi.getStats('racer', user!.id)
+      ]);
+
+      setLeaderboard(lbResponse.data.rankings);
+      setDailyBestLapTimeMs(dailyResponse.data.userBestLapTimeMs);
+      setDailyRunCount(dailyResponse.data.userRunCount);
+      setAllTimeBestLapTimeMs(statsResponse.data.stats?.highScore || null);
+
+      dailySeedRef.current = dailyResponse.data.seed || 1;
+      const trackDate = new Date(dailyResponse.data.trackDate);
       if (!Number.isNaN(trackDate.getTime())) {
         setTrackDateLabel(
           new Intl.DateTimeFormat('en-CA', {
@@ -551,13 +560,15 @@ export default function Racer() {
           }).format(trackDate)
         );
       }
-      if (response.data.userBestLapTimeMs && response.data.userBestLapTimeMs > 0) {
-        fastestLapTimeRef.current = response.data.userBestLapTimeMs / 1000;
+      
+      const bestTimeMs = statsResponse.data.stats?.highScore || dailyResponse.data.userBestLapTimeMs;
+      if (bestTimeMs && bestTimeMs > 0) {
+        fastestLapTimeRef.current = bestTimeMs / 1000;
       }
     } catch (error) {
-      console.error('Failed to fetch daily racer state:', error);
+      console.error('Failed to fetch racer state:', error);
     }
-  }, []);
+  }, [user]);
 
   // Road building functions
   const lastY = useCallback((): number => {
@@ -1032,29 +1043,32 @@ export default function Racer() {
           money: totalMoneyReward,
         });
         setIsNewDailyBest(dailyResponse.data.isNewDailyBest);
+        setIsNewAllTimeBest(rewardResponse.data.isNewHighScore);
         setDailyBestLapTimeMs(dailyResponse.data.bestLapTimeMs);
+        setAllTimeBestLapTimeMs(rewardResponse.data.newStats.highScore);
         setDailyRunCount((prev) => prev + 1);
         setRewardSummary(
           [
             rewardResponse.data.moneyReward > 0 || rewardResponse.data.auraReward > 0 ? 'tour complete' : null,
             dailyResponse.data.rewards?.isFirstRunToday ? 'premiere tentative du jour' : null,
             dailyResponse.data.rewards?.isNewDailyBest ? 'meilleur tour perso du jour' : null,
+            rewardResponse.data.isNewHighScore ? 'Nouveau record personnel !' : null,
           ]
             .filter(Boolean)
             .join(' + ')
         );
 
-        if (dailyResponse.data.bestLapTimeMs > 0) {
-          fastestLapTimeRef.current = dailyResponse.data.bestLapTimeMs / 1000;
+        if (rewardResponse.data.newStats.highScore > 0) {
+          fastestLapTimeRef.current = rewardResponse.data.newStats.highScore / 1000;
         }
 
         await refreshUser();
-        fetchDailyRacerState();
+        fetchRacerState();
       } catch (error) {
         console.error('Failed to submit score:', error);
       }
     },
-    [refreshUser, fetchDailyRacerState]
+    [refreshUser, fetchRacerState]
   );
 
   // Render
@@ -1335,29 +1349,30 @@ export default function Racer() {
   };
 
   const leaderboardEntries: GameLeaderboardEntry[] = leaderboard.map((entry) => ({
-    id: `${entry.userId}-${entry.bestLapTimeMs}`,
-    highScore: entry.bestLapTimeMs,
+    id: `${entry.user?.id || entry.userId}-${entry.highScore || entry.value || entry.bestLapTimeMs}`,
+    highScore: entry.highScore || entry.value || entry.bestLapTimeMs,
     user: {
-      id: entry.userId,
-      username: entry.username,
-      usernameColor: entry.usernameColor,
+      id: entry.user?.id || entry.userId,
+      username: entry.user?.username || entry.username,
+      usernameColor: entry.user?.usernameColor || entry.usernameColor,
+      clanTag: entry.user?.clanTag,
     },
+    badges: entry.badges,
   }));
 
   const handleDeleteScore = useCallback(async (userId: string, _username: string) => {
     if (!user?.isAdmin) return;
 
     try {
-      await gamesApi.deleteDailyRacerRuns(userId);
+      await gamesApi.deleteStats('racer', userId);
       if (userId === user.id) {
-        setDailyBestLapTimeMs(null);
-        setDailyRunCount(0);
+        setAllTimeBestLapTimeMs(null);
       }
-      await fetchDailyRacerState();
+      await fetchRacerState();
     } catch (error) {
-      console.error('Failed to delete daily racer score:', error);
+      console.error('Failed to delete racer score:', error);
     }
-  }, [fetchDailyRacerState, user?.id, user?.isAdmin]);
+  }, [fetchRacerState, user?.id, user?.isAdmin]);
 
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
@@ -1371,9 +1386,9 @@ export default function Racer() {
     >
       <GameTopBar
         title="Racer"
-        score={dailyBestLapTimeMs ?? 0}
-        highScore={dailyBestLapTimeMs ?? 0}
-        isNewHighScore={isNewDailyBest}
+        score={allTimeBestLapTimeMs ?? 0}
+        highScore={allTimeBestLapTimeMs ?? 0}
+        isNewHighScore={isNewAllTimeBest}
         rewards={rewards}
         controls={(
           <div className="space-y-2">
@@ -1382,7 +1397,7 @@ export default function Racer() {
               Vitesse: {speed} mph · Temps: {formatTime(currentLapTime)}
             </p>
             <p className="text-xs text-muted-foreground tabular-nums">
-              Piste du jour ({trackDateLabel}) · Meilleur: {dailyBestLapTimeMs ? formatMsTime(dailyBestLapTimeMs) : '--'} · Tentatives: {dailyRunCount}
+              Piste du jour ({trackDateLabel}) · Record Perso: {allTimeBestLapTimeMs ? formatMsTime(allTimeBestLapTimeMs) : '--'} · Tentatives du jour: {dailyRunCount}
             </p>
             <div className="flex flex-wrap gap-1 pt-1 text-xs text-muted-foreground">
               <kbd className="px-1.5 py-0.5 border border-border/50 rounded text-[10px]">Left/Q</kbd>
@@ -1440,7 +1455,8 @@ export default function Racer() {
                     <p className="text-3xl tabular-nums">{formatTime(score)}</p>
                   </div>
 
-                  {isNewDailyBest && <p className="text-sm text-foreground">Nouveau record du jour !</p>}
+                  {isNewAllTimeBest && <p className="text-sm text-foreground">Nouveau record personnel !</p>}
+                  {!isNewAllTimeBest && isNewDailyBest && <p className="text-sm text-foreground">Nouveau record du jour !</p>}
 
                   {rewardSummary && <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{rewardSummary}</p>}
 
@@ -1470,11 +1486,11 @@ export default function Racer() {
             <GameLeaderboard
               entries={leaderboardEntries}
               currentUserId={user?.id}
-              personalHighScore={dailyBestLapTimeMs}
+              personalHighScore={allTimeBestLapTimeMs}
               scoreFormatter={formatMsTime}
               isAdmin={user?.isAdmin}
               onDeleteScore={handleDeleteScore}
-              title="Classement quotidien"
+              title="Classement général"
               maxHeight={420}
             />
           </div>
