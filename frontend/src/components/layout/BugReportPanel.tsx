@@ -49,8 +49,8 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.currentTarget.files;
-    if (!files) return;
+    const files = Array.from(e.currentTarget.files ?? []);
+    if (files.length === 0) return;
 
     if (images.length + files.length > 5) {
       setError(t('bug_report_error_max_images'));
@@ -62,19 +62,17 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
 
     try {
       for (const file of files) {
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          try {
-            const base64Data = event.target?.result as string;
-            const mimeType = file.type;
-            const { data } = await uploadUserImage({ base64Data, mimeType });
-            setImages((prev) => [...prev, data.imageUrl]);
-          } catch (err: any) {
-            setError(err.response?.data?.error || t('bug_report_error_upload'));
-          }
-        };
-        reader.readAsDataURL(file);
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => resolve(event.target?.result as string);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsDataURL(file);
+        });
+        const { data } = await uploadUserImage({ base64Data, mimeType: file.type });
+        setImages((prev) => [...prev, data.imageUrl]);
       }
+    } catch (err: any) {
+      setError(err.response?.data?.error || t('bug_report_error_upload'));
     } finally {
       setUploadingImage(false);
       if (fileInputRef.current) {

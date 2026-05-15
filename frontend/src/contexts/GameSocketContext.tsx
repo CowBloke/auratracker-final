@@ -139,6 +139,16 @@ interface MorpionPlayAgainPrompt {
   players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
   responses: Array<{ userId: string; playAgain: boolean }>;
 }
+interface DotsAndBoxesJoinPrompt {
+  partyId: string; leaderId: string; timeLimit: number; startTime: number;
+  members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; accepted: boolean }>;
+}
+interface DotsAndBoxesPlayAgainPrompt {
+  partyId: string; timeLimit: number; startTime: number;
+  players: Array<{ userId: string; username: string; usernameColor?: string | null }>;
+  responses: Array<{ userId: string; playAgain: boolean }>;
+}
 interface BallArenaJoinPrompt {
   partyId: string; leaderId: string; mode?: 'duo' | 'multiplayer'; timeLimit: number; startTime: number;
   members: Array<{ userId: string; username: string; usernameColor?: string | null }>;
@@ -247,6 +257,10 @@ interface GameSocketContextValue {
   respondToMorpionJoinPrompt: (accepted: boolean) => void;
   morpionPlayAgainPrompt: MorpionPlayAgainPrompt | null;
   respondToMorpionPlayAgainPrompt: (playAgain: boolean) => void;
+  dotsandboxesJoinPrompt: DotsAndBoxesJoinPrompt | null;
+  respondToDotsAndBoxesJoinPrompt: (accepted: boolean) => void;
+  dotsandboxesPlayAgainPrompt: DotsAndBoxesPlayAgainPrompt | null;
+  respondToDotsAndBoxesPlayAgainPrompt: (playAgain: boolean) => void;
   ballArenaJoinPrompt: BallArenaJoinPrompt | null;
   respondToBallArenaJoinPrompt: (accepted: boolean) => void;
   ballArenaPlayAgainPrompt: BallArenaPlayAgainPrompt | null;
@@ -307,6 +321,8 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
   const [p4PlayAgainPrompt, setP4PlayAgainPrompt] = useState<P4PlayAgainPrompt | null>(null);
   const [morpionJoinPrompt, setMorpionJoinPrompt] = useState<MorpionJoinPrompt | null>(null);
   const [morpionPlayAgainPrompt, setMorpionPlayAgainPrompt] = useState<MorpionPlayAgainPrompt | null>(null);
+  const [dotsandboxesJoinPrompt, setDotsandboxesJoinPrompt] = useState<DotsAndBoxesJoinPrompt | null>(null);
+  const [dotsandboxesPlayAgainPrompt, setDotsandboxesPlayAgainPrompt] = useState<DotsAndBoxesPlayAgainPrompt | null>(null);
   const [ballArenaJoinPrompt, setBallArenaJoinPrompt] = useState<BallArenaJoinPrompt | null>(null);
   const [ballArenaPlayAgainPrompt, setBallArenaPlayAgainPrompt] = useState<BallArenaPlayAgainPrompt | null>(null);
   const [battleshipPlayAgainPrompt, setBattleshipPlayAgainPrompt] = useState<BattleshipPlayAgainPrompt | null>(null);
@@ -593,6 +609,21 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     });
     s.on('morpion:play-again-cancelled', () => setMorpionPlayAgainPrompt(null));
 
+    // ── Dots and Boxes ──────────────────────────────────────────────────────────
+    s.on('dotsandboxes:join-prompt', (data: DotsAndBoxesJoinPrompt) => setDotsandboxesJoinPrompt({ ...data }));
+    s.on('dotsandboxes:join-response-update', (data: { responses: Array<{ userId: string; accepted: boolean }> }) => {
+      setDotsandboxesJoinPrompt((prev) => (prev ? { ...prev, responses: data.responses } : null));
+    });
+    s.on('dotsandboxes:join-cancelled', () => setDotsandboxesJoinPrompt(null));
+    s.on('dotsandboxes:state', () => { setDotsandboxesJoinPrompt(null); setDotsandboxesPlayAgainPrompt(null); });
+    s.on('dotsandboxes:play-again-prompt', (data: { partyId: string; timeLimit: number; startTime?: number; players: Array<{ userId: string; username: string; usernameColor?: string | null }>; responses?: Array<{ userId: string; playAgain: boolean }> }) => {
+      setDotsandboxesPlayAgainPrompt({ partyId: data.partyId, timeLimit: data.timeLimit, startTime: data.startTime ?? Date.now(), players: data.players, responses: data.responses || [] });
+    });
+    s.on('dotsandboxes:play-again-response-update', (data: { responses: Array<{ userId: string; playAgain: boolean }> }) => {
+      setDotsandboxesPlayAgainPrompt((prev) => prev ? { ...prev, responses: data.responses } : null);
+    });
+    s.on('dotsandboxes:play-again-cancelled', () => setDotsandboxesPlayAgainPrompt(null));
+
     // ── Ball Arena ──────────────────────────────────────────────────────────
     s.on('ballarena:join-prompt', (data: BallArenaJoinPrompt) => setBallArenaJoinPrompt({ ...data }));
     s.on('ballarena:join-response-update', (data: { responses: Array<{ userId: string; accepted: boolean }> }) => {
@@ -673,6 +704,8 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
        'p4:play-again-prompt','p4:play-again-response-update','p4:play-again-cancelled',
       'morpion:join-prompt','morpion:join-response-update','morpion:join-cancelled','morpion:state',
       'morpion:play-again-prompt','morpion:play-again-response-update','morpion:play-again-cancelled',
+      'dotsandboxes:join-prompt','dotsandboxes:join-response-update','dotsandboxes:join-cancelled','dotsandboxes:state',
+      'dotsandboxes:play-again-prompt','dotsandboxes:play-again-response-update','dotsandboxes:play-again-cancelled',
        'ballarena:state','ballarena:play-again-prompt','ballarena:play-again-response-update','ballarena:play-again-cancelled',
        'battleship:state','battleship:play-again-prompt','battleship:play-again-response-update','battleship:play-again-cancelled',
        'chess:join-prompt','chess:join-response-update','chess:join-cancelled','chess:state',
@@ -795,6 +828,17 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     if (morpionPlayAgainPrompt) getSocket()?.emit('morpion:play-again-response', { partyId: morpionPlayAgainPrompt.partyId, playAgain });
   }, [morpionPlayAgainPrompt]);
 
+  const respondToDotsAndBoxesJoinPrompt = useCallback((accepted: boolean) => {
+    if (dotsandboxesJoinPrompt) {
+      getSocket()?.emit('dotsandboxes:join-response', { partyId: dotsandboxesJoinPrompt.partyId, accepted });
+      if (!accepted) setDotsandboxesJoinPrompt(null);
+    }
+  }, [dotsandboxesJoinPrompt]);
+
+  const respondToDotsAndBoxesPlayAgainPrompt = useCallback((playAgain: boolean) => {
+    if (dotsandboxesPlayAgainPrompt) getSocket()?.emit('dotsandboxes:play-again-response', { partyId: dotsandboxesPlayAgainPrompt.partyId, playAgain });
+  }, [dotsandboxesPlayAgainPrompt]);
+
   const respondToBallArenaJoinPrompt = useCallback((accepted: boolean) => {
     if (ballArenaJoinPrompt) {
       getSocket()?.emit('ballarena:join-response', { partyId: ballArenaJoinPrompt.partyId, accepted });
@@ -849,11 +893,12 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     if (petitBacJoinPrompt) return { gameType: 'petitbac', title: 'Rejoindre Petit Bac ?', settingsText: `${petitBacJoinPrompt.rounds} manches · ${Math.round(petitBacJoinPrompt.roundDuration / 1000)}s · ${petitBacJoinPrompt.categories.join(' · ')}`, navigateTo: '/games/petit-bac', partyId: petitBacJoinPrompt.partyId, leaderId: petitBacJoinPrompt.leaderId, members: petitBacJoinPrompt.members, responses: petitBacJoinPrompt.responses, timeLimit: petitBacJoinPrompt.timeLimit, startTime: petitBacJoinPrompt.startTime };
     if (p4JoinPrompt) return { gameType: 'p4', title: 'Rejoindre Puissance 4 ?', navigateTo: '/games/puissance-quatre', partyId: p4JoinPrompt.partyId, leaderId: p4JoinPrompt.leaderId, members: p4JoinPrompt.members, responses: p4JoinPrompt.responses, timeLimit: p4JoinPrompt.timeLimit, startTime: p4JoinPrompt.startTime };
     if (morpionJoinPrompt) return { gameType: 'morpion', title: 'Rejoindre Morpion ?', navigateTo: '/games/morpion', partyId: morpionJoinPrompt.partyId, leaderId: morpionJoinPrompt.leaderId, members: morpionJoinPrompt.members, responses: morpionJoinPrompt.responses, timeLimit: morpionJoinPrompt.timeLimit, startTime: morpionJoinPrompt.startTime };
+    if (dotsandboxesJoinPrompt) return { gameType: 'dotsandboxes', title: 'Rejoindre Dots and Boxes ?', navigateTo: '/games/dotsandboxes', partyId: dotsandboxesJoinPrompt.partyId, leaderId: dotsandboxesJoinPrompt.leaderId, members: dotsandboxesJoinPrompt.members, responses: dotsandboxesJoinPrompt.responses, timeLimit: dotsandboxesJoinPrompt.timeLimit, startTime: dotsandboxesJoinPrompt.startTime };
     if (ballArenaJoinPrompt) return { gameType: 'ballarena', title: 'Rejoindre Arène des balles ?', settingsText: ballArenaJoinPrompt.mode === 'multiplayer' ? 'Mode multijoueur' : 'Mode duo', navigateTo: '/games/ball-arena', partyId: ballArenaJoinPrompt.partyId, leaderId: ballArenaJoinPrompt.leaderId, members: ballArenaJoinPrompt.members, responses: ballArenaJoinPrompt.responses, timeLimit: ballArenaJoinPrompt.timeLimit, startTime: ballArenaJoinPrompt.startTime };
     if (chessJoinPrompt) return { gameType: 'chess', title: 'Rejoindre Échecs ?', navigateTo: '/games/echecs', partyId: chessJoinPrompt.partyId, leaderId: chessJoinPrompt.leaderId, members: chessJoinPrompt.members, responses: chessJoinPrompt.responses, timeLimit: chessJoinPrompt.timeLimit, startTime: chessJoinPrompt.startTime };
     if (rouletteJoinPrompt) return { gameType: 'roulette', title: 'Rejoindre Roulette russe ?', navigateTo: '/games/russian-roulette', partyId: rouletteJoinPrompt.partyId, leaderId: rouletteJoinPrompt.leaderId, members: rouletteJoinPrompt.members, responses: rouletteJoinPrompt.responses, timeLimit: rouletteJoinPrompt.timeLimit, startTime: rouletteJoinPrompt.startTime };
     return null;
-  }, [bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, morpionJoinPrompt, ballArenaJoinPrompt, chessJoinPrompt, rouletteJoinPrompt]);
+  }, [bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, morpionJoinPrompt, dotsandboxesJoinPrompt, ballArenaJoinPrompt, chessJoinPrompt, rouletteJoinPrompt]);
 
   const activeReplayPrompt = useMemo((): ActiveReplayPrompt | null => {
     if (bombPartyPlayAgainPrompt) { const diff = bombPartyPlayAgainPrompt.difficulty === 'easy' ? 'Facile' : bombPartyPlayAgainPrompt.difficulty === 'medium' ? 'Moyen' : 'Difficile'; return { gameType: 'bombparty', settingsText: `${bombPartyPlayAgainPrompt.lives} vies · Difficulté ${diff}`, partyId: bombPartyPlayAgainPrompt.partyId, players: bombPartyPlayAgainPrompt.players, responses: bombPartyPlayAgainPrompt.responses, timeLimit: bombPartyPlayAgainPrompt.timeLimit, startTime: bombPartyPlayAgainPrompt.startTime }; }
@@ -861,12 +906,13 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     if (petitBacPlayAgainPrompt) return { gameType: 'petitbac', settingsText: `${petitBacPlayAgainPrompt.rounds} manches · ${Math.round(petitBacPlayAgainPrompt.roundDuration / 1000)}s`, partyId: petitBacPlayAgainPrompt.partyId, players: petitBacPlayAgainPrompt.players, responses: petitBacPlayAgainPrompt.responses, timeLimit: petitBacPlayAgainPrompt.timeLimit, startTime: petitBacPlayAgainPrompt.startTime };
     if (p4PlayAgainPrompt) return { gameType: 'p4', settingsText: 'Puissance 4', partyId: p4PlayAgainPrompt.partyId, players: p4PlayAgainPrompt.players, responses: p4PlayAgainPrompt.responses, timeLimit: p4PlayAgainPrompt.timeLimit, startTime: p4PlayAgainPrompt.startTime };
     if (morpionPlayAgainPrompt) return { gameType: 'morpion', settingsText: 'Morpion', partyId: morpionPlayAgainPrompt.partyId, players: morpionPlayAgainPrompt.players, responses: morpionPlayAgainPrompt.responses, timeLimit: morpionPlayAgainPrompt.timeLimit, startTime: morpionPlayAgainPrompt.startTime };
+    if (dotsandboxesPlayAgainPrompt) return { gameType: 'dotsandboxes', settingsText: 'Dots and Boxes', partyId: dotsandboxesPlayAgainPrompt.partyId, players: dotsandboxesPlayAgainPrompt.players, responses: dotsandboxesPlayAgainPrompt.responses, timeLimit: dotsandboxesPlayAgainPrompt.timeLimit, startTime: dotsandboxesPlayAgainPrompt.startTime };
     if (battleshipPlayAgainPrompt) return { gameType: 'battleship', settingsText: 'Bataille Navale', partyId: battleshipPlayAgainPrompt.partyId, players: battleshipPlayAgainPrompt.players, responses: battleshipPlayAgainPrompt.responses, timeLimit: battleshipPlayAgainPrompt.timeLimit, startTime: battleshipPlayAgainPrompt.startTime };
     if (chessPlayAgainPrompt) return { gameType: 'chess', settingsText: 'Échecs', partyId: chessPlayAgainPrompt.partyId, players: chessPlayAgainPrompt.players, responses: chessPlayAgainPrompt.responses, timeLimit: chessPlayAgainPrompt.timeLimit, startTime: chessPlayAgainPrompt.startTime };
     if (roulettePlayAgainPrompt) return { gameType: 'roulette', settingsText: 'Roulette russe', partyId: roulettePlayAgainPrompt.partyId, players: roulettePlayAgainPrompt.players, responses: roulettePlayAgainPrompt.responses, timeLimit: roulettePlayAgainPrompt.timeLimit, startTime: roulettePlayAgainPrompt.startTime };
     if (ballArenaPlayAgainPrompt) return { gameType: 'ballarena', settingsText: 'Arène des balles', partyId: ballArenaPlayAgainPrompt.partyId, players: ballArenaPlayAgainPrompt.players, responses: ballArenaPlayAgainPrompt.responses, timeLimit: ballArenaPlayAgainPrompt.timeLimit, startTime: ballArenaPlayAgainPrompt.startTime };
     return null;
-  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, morpionPlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt, ballArenaPlayAgainPrompt]);
+  }, [bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, morpionPlayAgainPrompt, dotsandboxesPlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt, ballArenaPlayAgainPrompt]);
 
   const respondToGameJoinPrompt = useCallback((accepted: boolean) => {
     if (!user) return;
@@ -875,10 +921,11 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     else if (petitBacJoinPrompt) petitBacEvents.respondToJoin(petitBacJoinPrompt.partyId, user.id, accepted);
     else if (p4JoinPrompt) { getSocket()?.emit('p4:join-response', { partyId: p4JoinPrompt.partyId, accepted }); if (!accepted) setP4JoinPrompt(null); }
     else if (morpionJoinPrompt) { getSocket()?.emit('morpion:join-response', { partyId: morpionJoinPrompt.partyId, accepted }); if (!accepted) setMorpionJoinPrompt(null); }
+    else if (dotsandboxesJoinPrompt) { getSocket()?.emit('dotsandboxes:join-response', { partyId: dotsandboxesJoinPrompt.partyId, accepted }); if (!accepted) setDotsandboxesJoinPrompt(null); }
     else if (ballArenaJoinPrompt) { getSocket()?.emit('ballarena:join-response', { partyId: ballArenaJoinPrompt.partyId, accepted }); if (!accepted) setBallArenaJoinPrompt(null); }
     else if (chessJoinPrompt) { getSocket()?.emit('chess:join-response', { partyId: chessJoinPrompt.partyId, accepted }); if (!accepted) setChessJoinPrompt(null); }
     else if (rouletteJoinPrompt) { getSocket()?.emit('roulette:join-response', { partyId: rouletteJoinPrompt.partyId, accepted }); if (!accepted) setRouletteJoinPrompt(null); }
-  }, [user?.id, bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, morpionJoinPrompt, ballArenaJoinPrompt, chessJoinPrompt, rouletteJoinPrompt]);
+  }, [user?.id, bombPartyJoinPrompt, pokerJoinPrompt, petitBacJoinPrompt, p4JoinPrompt, morpionJoinPrompt, dotsandboxesJoinPrompt, ballArenaJoinPrompt, chessJoinPrompt, rouletteJoinPrompt]);
 
   const respondToGameReplayPrompt = useCallback((playAgain: boolean) => {
     if (!user) return;
@@ -887,11 +934,12 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     else if (petitBacPlayAgainPrompt) petitBacEvents.respondToPlayAgain(petitBacPlayAgainPrompt.partyId, user.id, playAgain);
     else if (p4PlayAgainPrompt) getSocket()?.emit('p4:play-again-response', { partyId: p4PlayAgainPrompt.partyId, playAgain });
     else if (morpionPlayAgainPrompt) getSocket()?.emit('morpion:play-again-response', { partyId: morpionPlayAgainPrompt.partyId, playAgain });
+    else if (dotsandboxesPlayAgainPrompt) getSocket()?.emit('dotsandboxes:play-again-response', { partyId: dotsandboxesPlayAgainPrompt.partyId, playAgain });
     else if (battleshipPlayAgainPrompt) getSocket()?.emit('battleship:play-again-response', { userId: user.id, partyId: battleshipPlayAgainPrompt.partyId, playAgain });
     else if (chessPlayAgainPrompt) getSocket()?.emit('chess:play-again-response', { partyId: chessPlayAgainPrompt.partyId, playAgain });
     else if (roulettePlayAgainPrompt) getSocket()?.emit('roulette:play-again-response', { partyId: roulettePlayAgainPrompt.partyId, playAgain });
     else if (ballArenaPlayAgainPrompt) getSocket()?.emit('ballarena:play-again-response', { partyId: ballArenaPlayAgainPrompt.partyId, playAgain });
-  }, [user?.id, bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, morpionPlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt, ballArenaPlayAgainPrompt]);
+  }, [user?.id, bombPartyPlayAgainPrompt, pokerPlayAgainPrompt, petitBacPlayAgainPrompt, p4PlayAgainPrompt, morpionPlayAgainPrompt, dotsandboxesPlayAgainPrompt, battleshipPlayAgainPrompt, chessPlayAgainPrompt, roulettePlayAgainPrompt, ballArenaPlayAgainPrompt]);
 
   const value = useMemo(() => ({
     bombPartyGame, bombPartyGameOver, bombPartyRejection, bombPartyJoinPrompt, bombPartyPlayAgainPrompt,
@@ -902,6 +950,7 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     startPetitBac, respondToPetitBacJoinPrompt, submitPetitBac, submitPetitBacReview, leavePetitBac, respondToPetitBacPlayAgainPrompt, clearPetitBacGameOver,
     p4JoinPrompt, startP4, respondToP4JoinPrompt, p4PlayAgainPrompt, respondToP4PlayAgainPrompt,
     morpionJoinPrompt, startMorpion, respondToMorpionJoinPrompt, morpionPlayAgainPrompt, respondToMorpionPlayAgainPrompt,
+    dotsandboxesJoinPrompt, respondToDotsAndBoxesJoinPrompt, dotsandboxesPlayAgainPrompt, respondToDotsAndBoxesPlayAgainPrompt,
     ballArenaJoinPrompt, respondToBallArenaJoinPrompt, ballArenaPlayAgainPrompt, respondToBallArenaPlayAgainPrompt,
     battleshipPlayAgainPrompt, respondToBattleshipPlayAgainPrompt,
     chessJoinPrompt, respondToChessJoinPrompt, chessPlayAgainPrompt, respondToChessPlayAgainPrompt,
@@ -917,6 +966,7 @@ export function GameSocketProvider({ children }: { children: React.ReactNode }) 
     startPetitBac, respondToPetitBacJoinPrompt, submitPetitBac, submitPetitBacReview, leavePetitBac, respondToPetitBacPlayAgainPrompt, clearPetitBacGameOver,
     p4JoinPrompt, startP4, respondToP4JoinPrompt, p4PlayAgainPrompt, respondToP4PlayAgainPrompt,
     morpionJoinPrompt, startMorpion, respondToMorpionJoinPrompt, morpionPlayAgainPrompt, respondToMorpionPlayAgainPrompt,
+    dotsandboxesJoinPrompt, respondToDotsAndBoxesJoinPrompt, dotsandboxesPlayAgainPrompt, respondToDotsAndBoxesPlayAgainPrompt,
     ballArenaJoinPrompt, respondToBallArenaJoinPrompt, ballArenaPlayAgainPrompt, respondToBallArenaPlayAgainPrompt,
     battleshipPlayAgainPrompt, respondToBattleshipPlayAgainPrompt,
     chessJoinPrompt, respondToChessJoinPrompt, chessPlayAgainPrompt, respondToChessPlayAgainPrompt,
