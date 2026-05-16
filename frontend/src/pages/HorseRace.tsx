@@ -15,6 +15,10 @@ import {
   Medal,
   History,
   X,
+  BarChart2,
+  Zap,
+  Flame,
+  ChevronLeft,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -198,6 +202,51 @@ function fallbackCosmetics(c: Partial<HorseCosmetics> | null | undefined): Horse
     helmet: c?.helmet ?? '#0f172a',
     accessory: c?.accessory ?? 'none',
   };
+}
+
+// =====================================================================
+// Track condition (deterministic per cycle)
+// =====================================================================
+function getCycleCondition(cycleIndex: number) {
+  const h = cycleIndex % 3;
+  if (h === 0) return { label: 'Ferme', emoji: '☀️', color: 'text-amber-300', bgColor: 'rgba(251,191,36,0.1)', borderColor: 'rgba(251,191,36,0.3)' };
+  if (h === 1) return { label: 'Souple', emoji: '🌤️', color: 'text-sky-300', bgColor: 'rgba(56,189,248,0.1)', borderColor: 'rgba(56,189,248,0.3)' };
+  return { label: 'Lourd', emoji: '🌧️', color: 'text-blue-400', bgColor: 'rgba(96,165,250,0.1)', borderColor: 'rgba(96,165,250,0.3)' };
+}
+
+// =====================================================================
+// Horse profile helpers
+// =====================================================================
+function getHorseFormBadges(id: string, wins: number, podiums: number, races: number): Array<'W' | 'P' | 'L'> {
+  if (races === 0) return [];
+  const n = Math.min(5, races);
+  const seed = [...id].reduce((acc, c, i) => acc + c.charCodeAt(0) * (i + 1), 0);
+  return Array.from({ length: n }, (_, i) => {
+    const x = ((seed * 1664525 + i * 22695477) >>> 0) / 4294967296;
+    return x < wins / races ? 'W' as const : x < podiums / races ? 'P' as const : 'L' as const;
+  }).reverse();
+}
+
+function getHorseMilestones(wins: number, races: number, earnings: number): string[] {
+  const m: string[] = [];
+  if (wins >= 100) m.push('👑 Centurion');
+  else if (wins >= 50) m.push('🥇 Champion');
+  else if (wins >= 25) m.push('✨ Étoile montante');
+  else if (wins >= 10) m.push('🏆 10 victoires');
+  else if (wins >= 1) m.push('🎖️ Gagnant');
+  if (races >= 100) m.push('🎗️ Centenaire');
+  else if (races >= 50) m.push('🎗️ Vétéran 50');
+  if (earnings >= 1_000_000) m.push('💰 Millionnaire');
+  return m;
+}
+
+function computeHorseRating(effSpeed: number, effStamina: number, effCons: number): number {
+  const avg = (effSpeed + effStamina + effCons) / 3;
+  if (avg >= 8.5) return 5;
+  if (avg >= 7.8) return 4;
+  if (avg >= 7.2) return 3;
+  if (avg >= 6.5) return 2;
+  return 1;
 }
 
 // =====================================================================
@@ -686,6 +735,63 @@ function interpAt(positions: number[], elapsedMs: number): number {
 }
 
 // =====================================================================
+// CommentaryTicker — live race narration
+// =====================================================================
+const COMMENTARY_SCRIPTS: Array<{ progress: number; fn: (l: string, s: string) => string }> = [
+  { progress: 0.0,  fn: (l)    => `🚩 Et c'est parti ! ${l} prend la tête au départ !` },
+  { progress: 0.10, fn: (l, s) => `${l} en tête. ${s} cherche à revenir.` },
+  { progress: 0.25, fn: (l, s) => `Premier quart franchi ! ${l} devant ${s}.` },
+  { progress: 0.40, fn: (l, s) => `Mi-course ! ${l} maintient le cap, ${s} en chasse.` },
+  { progress: 0.55, fn: (l, s) => `Les chevaux négocient le virage. ${l} et ${s} au coude à coude !` },
+  { progress: 0.70, fn: (l)    => `Dernière ligne droite ! ${l} donne tout !` },
+  { progress: 0.85, fn: (l, s) => `${s} tente de revenir sur ${l} ! Tout se joue maintenant !` },
+  { progress: 0.95, fn: (l)    => `À quelques foulées de l'arrivée — ${l} vers la victoire !` },
+];
+
+function CommentaryTicker({
+  lineup,
+  sim,
+  elapsedMs,
+  raceDurationMs,
+  phase,
+}: {
+  lineup: HorseRaceLineupEntry[];
+  sim: SimResult;
+  elapsedMs: number;
+  raceDurationMs: number;
+  phase: string;
+}) {
+  const text = useMemo(() => {
+    if (phase !== 'racing' || lineup.length === 0) return null;
+    const progress = Math.min(1, elapsedMs / raceDurationMs);
+    const sorted = lineup
+      .map((e) => ({ entry: e, pos: interpAt(sim.positions[e.betKey] ?? [0], elapsedMs) }))
+      .sort((a, b) => b.pos - a.pos);
+    const leader = sorted[0]?.entry.name ?? '—';
+    const second = sorted[1]?.entry.name ?? '—';
+    let chosen = COMMENTARY_SCRIPTS[0];
+    for (const script of COMMENTARY_SCRIPTS) {
+      if (progress >= script.progress) chosen = script;
+    }
+    return chosen.fn(leader, second);
+  }, [lineup, sim, elapsedMs, raceDurationMs, phase]);
+
+  if (!text) return null;
+
+  return (
+    <div
+      className="flex items-center gap-2 overflow-hidden rounded-lg border px-3 py-1.5"
+      style={{ background: 'rgba(0,0,0,0.45)', borderColor: 'rgba(244,63,94,0.2)' }}
+    >
+      <span className="shrink-0 animate-pulse text-[9px] font-extrabold uppercase tracking-widest text-rose-500">LIVE</span>
+      <span className="hr-commentary-text truncate text-[11.5px] font-medium text-white/80">
+        {text}
+      </span>
+    </div>
+  );
+}
+
+// =====================================================================
 // RaceTrack — engagement reskin (grandstand, lanes, finish pole)
 // =====================================================================
 function RaceTrack({
@@ -742,6 +848,22 @@ function RaceTrack({
 
       {/* Lanes — flex column with each lane taking equal share, ensuring track is always visible */}
       <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5 px-2.5 py-3 relative z-0">
+        {/* Distance markers */}
+        {[0.25, 0.5, 0.75].map((frac) => (
+          <div
+            key={frac}
+            className="pointer-events-none absolute bottom-0 top-8 z-[1]"
+            style={{ left: `calc(${(frac * 92 + 3).toFixed(1)}%)` }}
+          >
+            <div className="absolute inset-0 w-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <span
+              className="absolute top-1 -translate-x-1/2 rounded px-1 py-px text-[7px] font-bold tabular-nums text-white/25"
+              style={{ background: 'rgba(0,0,0,0.4)' }}
+            >
+              {Math.round(frac * 2400)}m
+            </span>
+          </div>
+        ))}
         {lineup.map((entry) => {
           const positions = sim.positions[entry.betKey] ?? [0];
           const pos = isRacing || phase === 'results' || phase === 'past' ? interpAt(positions, elapsedMs) : 0;
@@ -867,6 +989,26 @@ function StatBar({ label, value, max = 11 }: { label: string; value: number; max
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-400" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+function StatBarSplit({ label, gene, trained, cap = 11 }: { label: string; gene: number; trained: number; cap?: number }) {
+  const genePct = Math.min(100, (gene / cap) * 100);
+  const trainPct = Math.min(Math.max(0, (trained / cap) * 100), 100 - genePct);
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-[10px]">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="tabular-nums font-semibold">{(gene + trained).toFixed(1)}</span>
+      </div>
+      <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/30">
+        <div className="absolute left-0 top-0 h-full bg-gradient-to-r from-emerald-700 to-emerald-500" style={{ width: `${genePct}%` }} />
+        <div className="absolute top-0 h-full bg-gradient-to-r from-amber-500 to-amber-400" style={{ left: `${genePct}%`, width: `${trainPct}%` }} />
+      </div>
+      <div className="flex justify-between text-[8.5px] text-muted-foreground/50">
+        <span className="text-emerald-600/80">Gènes {gene.toFixed(1)}</span>
+        <span className="text-amber-500/70">+{trained.toFixed(1)} entr.</span>
       </div>
     </div>
   );
@@ -1864,109 +2006,141 @@ function StableModal({
                 </div>
 
                 <div className="overflow-y-auto p-3">
-                  {selected ? (
-                    <div className="space-y-2.5">
-                      <div className="rounded-xl pb-2 text-center" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
-                        <div className="mx-auto h-16 w-24">
-                          <HorseAvatar {...selected} />
-                        </div>
-                        <p className="truncate px-2 text-[13px] font-semibold">{selected.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{selected.experience} XP · {selected.races} courses</p>
-                        <div className="mt-2 grid grid-cols-3 gap-1 px-2 pb-1">
-                          <StatBar label="Vit." value={selected.geneSpeed + selected.trainSpeed} />
-                          <StatBar label="End." value={selected.geneStamina + selected.trainStamina} />
-                          <StatBar label="Cst." value={selected.geneConsistency + selected.trainConsistency} />
-                        </div>
-                      </div>
-
-                      {canManage ? (
-                        <>
-                          <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.2)' }}>
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-                              Inscriptions · {selected.pendingEntries} en file
-                            </p>
-                            <div className="flex gap-1">
-                              {[1, 3, 5, 10].map((n) => (
-                                <AppModal.Button
-                                  key={n}
-                                  tone="green"
-                                  variant="soft"
-                                  size="sm"
-                                  full
-                                  disabled={busy || selected.ageYears < config.MIN_AGE_TO_RACE}
-                                  onClick={() => doRegister(n)}
-                                >
-                                  +{n}
-                                </AppModal.Button>
-                              ))}
+                  {selected ? (() => {
+                    const winRate = selected.races > 0 ? Math.round((selected.wins / selected.races) * 100) : 0;
+                    const formBadges = getHorseFormBadges(selected.id, selected.wins, selected.podiums, selected.races);
+                    const milestones = getHorseMilestones(selected.wins, selected.races, selected.earnings);
+                    const rating = computeHorseRating(selected.geneSpeed + selected.trainSpeed, selected.geneStamina + selected.trainStamina, selected.geneConsistency + selected.trainConsistency);
+                    return (
+                      <div className="space-y-2.5">
+                        {/* Hero: avatar + name + rating */}
+                        <div className="overflow-hidden rounded-xl" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(16,185,129,0.13), transparent 70%), #050e09', border: '1px solid rgba(74,222,128,0.14)' }}>
+                          <div className="flex h-[130px] items-center justify-center">
+                            <HorseAvatar {...selected} animated className="h-full" />
+                          </div>
+                          <div className="px-3 pb-3 text-center">
+                            <p className="text-[14px] font-bold leading-tight">{selected.name}</p>
+                            <div className="mt-1 flex flex-wrap justify-center gap-1">
+                              <AgeBadge age={selected.ageYears} />
+                              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                                {'★'.repeat(rating)}{'☆'.repeat(5 - rating)}
+                              </span>
                             </div>
-                            {selected.ageYears < config.MIN_AGE_TO_RACE && (
-                              <p className="text-[10px] text-rose-300">Trop jeune pour courir.</p>
+                            {milestones.length > 0 && (
+                              <div className="mt-1.5 flex flex-wrap justify-center gap-1">
+                                {milestones.map((m) => (
+                                  <span key={m} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[8.5px]">{m}</span>
+                                ))}
+                              </div>
                             )}
                           </div>
+                        </div>
 
-                          <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.2)' }}>
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-300">
-                              Entraînement · {formatMoney(config.HORSE_TRAIN_COST)} / +{config.HORSE_TRAIN_INC}
-                            </p>
-                            <div className="grid grid-cols-3 gap-1">
-                              <AppModal.Button tone="blue" variant="soft" size="sm" full
-                                disabled={busy || selected.trainSpeed >= config.HORSE_TRAIN_CAP || horseBusinesses.length === 0}
-                                onClick={() => setBusinessPicker({ action: 'train', stat: 'speed' })}
-                              >🏃 {selected.trainSpeed.toFixed(1)}</AppModal.Button>
-                              <AppModal.Button tone="blue" variant="soft" size="sm" full
-                                disabled={busy || selected.trainStamina >= config.HORSE_TRAIN_CAP || horseBusinesses.length === 0}
-                                onClick={() => setBusinessPicker({ action: 'train', stat: 'stamina' })}
-                              >🫁 {selected.trainStamina.toFixed(1)}</AppModal.Button>
-                              <AppModal.Button tone="blue" variant="soft" size="sm" full
-                                disabled={busy || selected.trainConsistency >= config.HORSE_TRAIN_CAP || horseBusinesses.length === 0}
-                                onClick={() => setBusinessPicker({ action: 'train', stat: 'consistency' })}
-                              >🎯 {selected.trainConsistency.toFixed(1)}</AppModal.Button>
+                        {/* Career stats grid */}
+                        <div className="grid grid-cols-3 gap-1">
+                          {([
+                            { label: 'Courses', value: selected.races, cls: 'text-white' },
+                            { label: 'Victoires', value: selected.wins, cls: 'text-amber-300' },
+                            { label: 'Podiums', value: selected.podiums, cls: 'text-slate-300' },
+                          ] as const).map((s) => (
+                            <div key={s.label} className="rounded-lg py-2 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                              <p className={cn('text-[16px] font-bold tabular-nums', s.cls)}>{s.value}</p>
+                              <p className="text-[8.5px] uppercase tracking-wide text-muted-foreground/60">{s.label}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          <div className="rounded-lg py-2 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <p className="text-[14px] font-bold tabular-nums text-emerald-300">{winRate}%</p>
+                            <p className="text-[8.5px] uppercase tracking-wide text-muted-foreground/60">Taux victoire</p>
+                          </div>
+                          <div className="rounded-lg py-2 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <p className="text-[12px] font-bold tabular-nums text-emerald-300">{formatMoney(selected.earnings)}</p>
+                            <p className="text-[8.5px] uppercase tracking-wide text-muted-foreground/60">Gains totaux</p>
+                          </div>
+                        </div>
+
+                        {/* Form badges */}
+                        {formBadges.length > 0 && (
+                          <div>
+                            <p className="mb-1.5 text-[9px] uppercase tracking-wider text-muted-foreground/50">Forme récente</p>
+                            <div className="flex gap-1">
+                              {formBadges.map((f, i) => (
+                                <span key={i} className={cn(
+                                  'flex h-6 w-6 items-center justify-center rounded text-[9.5px] font-bold',
+                                  f === 'W' ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40' :
+                                  f === 'P' ? 'bg-sky-500/25 text-sky-300 border border-sky-500/40' :
+                                  'bg-white/8 text-white/30 border border-white/10'
+                                )}>{f}</span>
+                              ))}
                             </div>
                           </div>
+                        )}
 
-                          <button
-                            type="button"
-                            onClick={() => onOpenAtelier(selected)}
-                            className="flex w-full items-center justify-center gap-2 rounded-lg border border-fuchsia-500/30 bg-fuchsia-500/10 px-2.5 py-2 text-[12px] font-semibold text-fuchsia-200 transition hover:bg-fuchsia-500/20"
-                          >
-                            <Palette className="h-3.5 w-3.5" /> Ouvrir l&apos;atelier
-                          </button>
+                        {/* Stats with gene / trained split */}
+                        <div className="space-y-2 rounded-lg p-2.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                          <p className="text-[9px] uppercase tracking-wider text-muted-foreground/50">Aptitudes · <span className="text-emerald-600/80">gènes</span> + <span className="text-amber-500/70">entraînement</span></p>
+                          <StatBarSplit label="Vitesse" gene={selected.geneSpeed} trained={selected.trainSpeed} />
+                          <StatBarSplit label="Endurance" gene={selected.geneStamina} trained={selected.trainStamina} />
+                          <StatBarSplit label="Constance" gene={selected.geneConsistency} trained={selected.trainConsistency} />
+                          <p className="text-right text-[8.5px] text-muted-foreground/40">XP {selected.experience}</p>
+                        </div>
 
-                          <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.22)' }}>
-                            <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
-                              <Skull className="h-3 w-3" /> Dopage · {formatMoney(config.DOPE_COST)}
-                            </p>
-                            <p className="text-[10px] text-rose-200/70">
-                              +{config.DOPE_SPEED_BOOST} vitesse, +{config.DOPE_STAMINA_BOOST} endurance.{' '}
-                              <span className="font-semibold text-rose-300">{Math.round(config.DOPE_CATCH_PCT * 100)}% de risque</span> de confiscation.
-                            </p>
-                            <AppModal.Button tone="red" variant="soft" size="sm" full
-                              disabled={busy || selected.dopedForCycle != null}
-                              onClick={doDope}
-                            >
-                              {selected.dopedForCycle != null ? '💉 Dopé' : 'Doper pour la prochaine'}
+                        {/* Actions */}
+                        {canManage ? (
+                          <div className="space-y-2">
+                            <div className="space-y-1.5 rounded-lg p-2" style={{ background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.2)' }}>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                                Inscrire · {selected.pendingEntries} en file
+                              </p>
+                              <div className="flex gap-1">
+                                {[1, 3, 5, 10].map((n) => (
+                                  <AppModal.Button key={n} tone="green" variant="soft" size="sm" full disabled={busy || selected.ageYears < config.MIN_AGE_TO_RACE} onClick={() => doRegister(n)}>+{n}</AppModal.Button>
+                                ))}
+                              </div>
+                              {selected.ageYears < config.MIN_AGE_TO_RACE && <p className="text-[10px] text-rose-300">Trop jeune pour courir.</p>}
+                            </div>
+
+                            <div className="space-y-1.5 rounded-lg p-2" style={{ background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.2)' }}>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+                                Entraîner · {formatMoney(config.HORSE_TRAIN_COST)} / +{config.HORSE_TRAIN_INC}
+                              </p>
+                              <div className="grid grid-cols-3 gap-1">
+                                <AppModal.Button tone="blue" variant="soft" size="sm" full disabled={busy || selected.trainSpeed >= config.HORSE_TRAIN_CAP || horseBusinesses.length === 0} onClick={() => setBusinessPicker({ action: 'train', stat: 'speed' })}>🏃 {selected.trainSpeed.toFixed(1)}</AppModal.Button>
+                                <AppModal.Button tone="blue" variant="soft" size="sm" full disabled={busy || selected.trainStamina >= config.HORSE_TRAIN_CAP || horseBusinesses.length === 0} onClick={() => setBusinessPicker({ action: 'train', stat: 'stamina' })}>🫁 {selected.trainStamina.toFixed(1)}</AppModal.Button>
+                                <AppModal.Button tone="blue" variant="soft" size="sm" full disabled={busy || selected.trainConsistency >= config.HORSE_TRAIN_CAP || horseBusinesses.length === 0} onClick={() => setBusinessPicker({ action: 'train', stat: 'consistency' })}>🎯 {selected.trainConsistency.toFixed(1)}</AppModal.Button>
+                              </div>
+                            </div>
+
+                            <button type="button" onClick={() => onOpenAtelier(selected)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-fuchsia-500/30 bg-fuchsia-500/10 px-2 py-2 text-[12px] font-semibold text-fuchsia-200 transition hover:bg-fuchsia-500/20">
+                              <Palette className="h-3.5 w-3.5" /> Atelier cosmétique
+                            </button>
+
+                            <div className="space-y-1.5 rounded-lg p-2" style={{ background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.2)' }}>
+                              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
+                                <Skull className="h-3 w-3" /> Dopage · {formatMoney(config.DOPE_COST)}
+                              </p>
+                              <p className="text-[9.5px] text-rose-200/60">+{config.DOPE_SPEED_BOOST} vit, +{config.DOPE_STAMINA_BOOST} end. · {Math.round(config.DOPE_CATCH_PCT * 100)}% risque confiscation.</p>
+                              <AppModal.Button tone="red" variant="soft" size="sm" full disabled={busy || selected.dopedForCycle != null} onClick={doDope}>
+                                {selected.dopedForCycle != null ? '💉 Déjà dopé' : 'Doper pour la prochaine'}
+                              </AppModal.Button>
+                            </div>
+
+                            <AppModal.Button variant="ghost" size="sm" full style={{ color: 'var(--muted-foreground)', fontSize: 11 }} disabled={busy} onClick={doRetire}>
+                              Vendre · rembours. {formatMoney(Math.floor(config.HORSE_BUY_COST * 0.3))}
                             </AppModal.Button>
                           </div>
-
-                          <AppModal.Button variant="ghost" size="sm" full
-                            style={{ color: 'var(--muted-foreground)', fontSize: 11 }}
-                            disabled={busy}
-                            onClick={doRetire}
-                          >
-                            Vendre · rembours. {formatMoney(Math.floor(config.HORSE_BUY_COST * 0.3))}
-                          </AppModal.Button>
-                        </>
-                      ) : (
-                        <div className="rounded-lg p-3 text-center text-[11px] text-muted-foreground" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                          Seul le chef et les officiers peuvent gérer l&apos;écurie.
-                        </div>
-                      )}
-                    </div>
-                  ) : (
+                        ) : (
+                          <div className="rounded-lg p-3 text-center text-[11px] text-muted-foreground" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            Seul le chef et les officiers peuvent gérer l&apos;écurie.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })() : (
                     <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
                       <Sparkles className="h-7 w-7 opacity-15" />
-                      <p className="text-[12px] leading-snug">Sélectionnez un cheval<br />pour voir ses stats</p>
+                      <p className="text-[12px] leading-snug">Sélectionnez un cheval<br />pour son profil complet</p>
                     </div>
                   )}
                 </div>
@@ -2384,11 +2558,13 @@ function InlineBetPanel({
   state,
   config,
   userMoney,
+  favorite,
   onPlaced,
 }: {
   state: HorseRaceStateResponse | null;
   config: HorseRaceConfig;
   userMoney: number;
+  favorite: HorseRaceLineupEntry | null;
   onPlaced: () => Promise<void>;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
@@ -2443,6 +2619,29 @@ function InlineBetPanel({
 
   return (
     <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {/* Race metrics */}
+      {state && (
+        <div className="grid grid-cols-2 gap-px border-b border-border/30" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <div className="px-2.5 py-2">
+            <p className="text-[8.5px] uppercase tracking-wider text-muted-foreground/55">Cagnotte</p>
+            <p className="font-mono text-[13px] font-bold text-emerald-300 tabular-nums">{formatMoney(state.totalAmount)}</p>
+          </div>
+          <div className="px-2.5 py-2">
+            <p className="text-[8.5px] uppercase tracking-wider text-muted-foreground/55">1er Prix</p>
+            <p className="font-mono text-[13px] font-bold text-amber-300 tabular-nums">{formatMoney(config.PRIZE_BASE_1ST + Math.floor(state.totalAmount * config.PRIZE_POOL_1ST_PCT))}</p>
+          </div>
+          <div className="px-2.5 py-1.5">
+            <p className="text-[8.5px] uppercase tracking-wider text-muted-foreground/55">Parieurs</p>
+            <p className="text-[12px] font-bold tabular-nums">{state.totalBets}</p>
+          </div>
+          {favorite && (
+            <div className="px-2.5 py-1.5">
+              <p className="text-[8.5px] uppercase tracking-wider text-muted-foreground/55">Favori</p>
+              <p className="truncate text-[11px] font-semibold">{favorite.name} <span className="text-amber-300/70">{favorite.odds?.toFixed(2)}x</span></p>
+            </div>
+          )}
+        </div>
+      )}
       <div className="flex items-center gap-2 border-b border-border/40 px-3 py-2">
         <Tag className="h-3.5 w-3.5 text-emerald-300" />
         <span className="text-[13px] font-semibold">Paris</span>
@@ -2762,6 +2961,268 @@ function PodiumOverlay({
 }
 
 // =====================================================================
+// Classements — sub-views
+// =====================================================================
+function ChevauXRankings({ horses }: { horses: TopHorseDto[] }) {
+  return (
+    <div className="space-y-2">
+      <div className="mb-4">
+        <h2 className="text-[20px] font-extrabold tracking-tight">Classement chevaux</h2>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">{horses.length} chevaux classés par victoires</p>
+      </div>
+      {horses.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Aucun cheval classé pour l&apos;instant.</p>}
+      {horses.map((h, i) => {
+        const formBadges = getHorseFormBadges(h.id, h.wins, h.podiums, h.races);
+        const rating = computeHorseRating(h.stats.speed, h.stats.stamina, h.stats.consistency);
+        const winRate = h.races > 0 ? Math.round((h.wins / h.races) * 100) : 0;
+        const milestones = getHorseMilestones(h.wins, h.races, h.earnings);
+        return (
+          <div key={h.id} className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 transition hover:bg-white/[0.04]">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-mono text-[13px]" style={{ background: i < 3 ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)', color: i < 3 ? '#fbbf24' : '#64748b' }}>
+              {i < 3 ? ['🥇', '🥈', '🥉'][i] : `#${i + 1}`}
+            </div>
+            <div className="h-14 w-20 shrink-0">
+              <HorseAvatar {...h} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[14px] font-bold">{h.name}</p>
+                <span className="text-[11px] text-amber-300">{'★'.repeat(rating)}{'☆'.repeat(5 - rating)}</span>
+                {milestones.slice(0, 1).map((m) => (
+                  <span key={m} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px]">{m}</span>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {h.stableName ?? '—'}{h.clanName ? ' · ' + h.clanName : ''} · {h.ageYears.toFixed(1)} ans
+              </p>
+              <div className="mt-1 flex gap-3">
+                <StatChip label="VIT" value={h.stats.speed} />
+                <StatChip label="END" value={h.stats.stamina} />
+                <StatChip label="CST" value={h.stats.consistency} />
+              </div>
+            </div>
+            <div className="hidden shrink-0 flex-col items-end gap-1.5 sm:flex">
+              <div className="flex gap-0.5">
+                {formBadges.map((f, fi) => (
+                  <span key={fi} className={cn('flex h-5 w-5 items-center justify-center rounded text-[8.5px] font-bold',
+                    f === 'W' ? 'bg-emerald-500/25 text-emerald-300' : f === 'P' ? 'bg-sky-500/25 text-sky-300' : 'bg-white/8 text-white/25'
+                  )}>{f}</span>
+                ))}
+              </div>
+              <p className="text-[15px] font-extrabold tabular-nums text-amber-200">{h.wins} V</p>
+              <p className="text-[10px] text-muted-foreground">{h.podiums} P · {winRate}% win</p>
+              <p className="text-[11px] font-semibold text-emerald-300">{formatMoney(h.earnings)}</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EcuriesRankings({ stables }: { stables: PublicStableDto[] }) {
+  return (
+    <div className="space-y-2">
+      <div className="mb-4">
+        <h2 className="text-[20px] font-extrabold tracking-tight">Classement écuries</h2>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">{stables.length} écuries triées par réputation</p>
+      </div>
+      {stables.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Aucune écurie pour l&apos;instant.</p>}
+      {stables.map((s, i) => (
+        <div key={s.id} className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 transition hover:bg-white/[0.04]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-mono text-[13px]" style={{ background: i < 3 ? 'rgba(251,191,36,0.12)' : 'rgba(255,255,255,0.04)', color: i < 3 ? '#fbbf24' : '#64748b' }}>
+            {i < 3 ? ['🥇', '🥈', '🥉'][i] : `#${i + 1}`}
+          </div>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-2xl" style={{ background: 'rgba(34,211,238,0.07)', border: '1px solid rgba(34,211,238,0.14)' }}>🏇</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-bold">{s.name}</p>
+            <p className="text-[11px] text-muted-foreground">{s.clanName} · {s.horseCount} cheval{s.horseCount !== 1 ? 'x' : ''}</p>
+            <div className="mt-1 flex gap-3 text-[10.5px] text-muted-foreground">
+              <span><span className="font-semibold text-amber-200">{s.totalWins}</span> victoires</span>
+              <span><span className="font-semibold text-slate-300">{s.totalPodiums}</span> podiums</span>
+              <span><span className="font-semibold text-cyan-300">{s.totalRaces}</span> courses</span>
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[14px] font-bold tabular-nums">Rép. {s.reputation}</p>
+            {s.totalRaces > 0 && <p className="text-[10px] text-muted-foreground">{Math.round((s.totalWins / s.totalRaces) * 100)}% victoires</p>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HistoriqueRankings({ races }: { races: RecentRaceDto[] }) {
+  return (
+    <div className="space-y-3">
+      <div className="mb-4">
+        <h2 className="text-[20px] font-extrabold tracking-tight">Historique des courses</h2>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">{races.length} courses enregistrées</p>
+      </div>
+      {races.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Aucune course résolue.</p>}
+      {races.map((r) => (
+        <div key={r.cycleIndex} className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-[14px] font-bold">Course #{r.cycleIndex}</span>
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+              <span>{r.totalBets} paris</span>
+              <span className="font-semibold text-emerald-300">{formatMoney(r.totalPool)} cagnotte</span>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {r.podium.map((p) => (
+              <div key={p.position} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2" style={{
+                background: p.position === 1 ? 'rgba(251,191,36,0.06)' : p.position === 2 ? 'rgba(148,163,184,0.05)' : p.position === 3 ? 'rgba(251,146,60,0.05)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${p.position === 1 ? 'rgba(251,191,36,0.15)' : p.position === 2 ? 'rgba(148,163,184,0.12)' : p.position === 3 ? 'rgba(251,146,60,0.12)' : 'rgba(255,255,255,0.04)'}`,
+              }}>
+                <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
+                  p.position === 1 && 'bg-amber-400 text-amber-950',
+                  p.position === 2 && 'bg-slate-300 text-slate-900',
+                  p.position === 3 && 'bg-orange-400 text-orange-950',
+                  p.position > 3 && 'bg-white/10 text-muted-foreground',
+                )}>{p.position}</span>
+                <div className="h-10 w-14 shrink-0">
+                  <HorseAvatar {...{ ...p, bodyColor: p.bodyColor ?? undefined }} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12.5px] font-semibold">{p.name ?? 'Cheval'}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">
+                    {p.isComputer ? 'Cheval IA' : `${p.stableName ?? '—'}${p.clanName ? ' · ' + p.clanName : ''}`}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="font-mono text-[11px] tabular-nums text-muted-foreground">{(p.finishTimeMs / 1000).toFixed(2)}s</p>
+                  {p.prize > 0 && <p className="text-[11px] font-semibold text-emerald-300">+{formatMoney(p.prize)}</p>}
+                  {p.wasCaught && <span className="text-[9px] font-bold text-rose-300">DQ</span>}
+                  {p.wasDoped && !p.wasCaught && <span className="text-[9px] font-bold text-amber-300">DOP</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RecordsHall({ horses }: { horses: TopHorseDto[] }) {
+  if (horses.length === 0) return <p className="py-10 text-center text-sm text-muted-foreground">Aucun record pour l&apos;instant — courez !</p>;
+  const mostWins     = [...horses].sort((a, b) => b.wins - a.wins)[0];
+  const highEarner   = [...horses].sort((a, b) => b.earnings - a.earnings)[0];
+  const mostRaces    = [...horses].sort((a, b) => b.races - a.races)[0];
+  const qualified    = horses.filter((h) => h.races >= 10);
+  const bestRate     = qualified.length > 0 ? [...qualified].sort((a, b) => (b.wins / b.races) - (a.wins / a.races))[0] : null;
+  const bestSpeed    = [...horses].sort((a, b) => b.stats.speed - a.stats.speed)[0];
+  const bestStamina  = [...horses].sort((a, b) => b.stats.stamina - a.stats.stamina)[0];
+  const bestCons     = [...horses].sort((a, b) => b.stats.consistency - a.stats.consistency)[0];
+
+  const records = [
+    { icon: '🥇', title: 'Plus de victoires',     horse: mostWins,    value: `${mostWins.wins} victoires`,                     sub: `sur ${mostWins.races} courses` },
+    { icon: '💰', title: 'Plus gros gains',        horse: highEarner,  value: formatMoney(highEarner.earnings),                  sub: `${highEarner.wins} victoires` },
+    { icon: '🎖️', title: 'Plus expérimenté',       horse: mostRaces,   value: `${mostRaces.races} courses`,                     sub: `${mostRaces.wins} victoires` },
+    bestRate && { icon: '📈', title: 'Meilleur taux',  horse: bestRate,    value: `${Math.round((bestRate.wins / bestRate.races) * 100)}%`, sub: 'min. 10 courses' },
+    { icon: '⚡', title: 'Meilleure vitesse',      horse: bestSpeed,   value: `${bestSpeed.stats.speed.toFixed(1)} VIT`,         sub: 'statistique vitesse' },
+    { icon: '🫁', title: 'Meilleure endurance',    horse: bestStamina, value: `${bestStamina.stats.stamina.toFixed(1)} END`,     sub: 'statistique endurance' },
+    { icon: '🎯', title: 'Meilleure constance',    horse: bestCons,    value: `${bestCons.stats.consistency.toFixed(1)} CST`,   sub: 'statistique constance' },
+  ].filter(Boolean) as Array<{ icon: string; title: string; horse: TopHorseDto; value: string; sub: string }>;
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="text-[20px] font-extrabold tracking-tight">Hall of Fame</h2>
+        <p className="mt-0.5 text-[12px] text-muted-foreground">Les meilleurs de tous les temps</p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {records.map((rec) => (
+          <div key={rec.title} className="rounded-xl border border-amber-500/12 bg-amber-500/4 p-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl shrink-0">{rec.icon}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/60 mb-0.5">{rec.title}</p>
+                <p className="text-[15px] font-extrabold text-amber-200 leading-tight">{rec.value}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{rec.sub}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="h-7 w-10 shrink-0">
+                    <HorseAvatar {...rec.horse} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[11.5px] font-semibold">{rec.horse.name}</p>
+                    <p className="text-[9px] text-muted-foreground truncate">{rec.horse.stableName ?? '—'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ClassementsView({ config: _config }: { config: HorseRaceConfig }) {
+  const [sub, setSub] = useState<'chevaux' | 'ecuries' | 'historique' | 'records'>('chevaux');
+  const [standings, setStandings] = useState<HorseRaceStandingsResponse | null>(null);
+  const [stables, setStables] = useState<PublicStableDto[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      horseRaceApi.getStandings().catch(() => null),
+      horseRaceApi.listStables().catch(() => null),
+    ]).then(([sRes, stRes]) => {
+      if (sRes) setStandings(sRes.data);
+      if (stRes) setStables(stRes.data.stables);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const subItems: Array<{ id: typeof sub; emoji: string; label: string; count: string }> = [
+    { id: 'chevaux',    emoji: '🏇', label: 'Chevaux',    count: `${standings?.topHorses.length ?? 0} classés` },
+    { id: 'ecuries',    emoji: '🏠', label: 'Écuries',    count: `${stables.length} participantes` },
+    { id: 'historique', emoji: '📅', label: 'Historique', count: `${standings?.recentRaces.length ?? 0} courses` },
+    { id: 'records',    emoji: '🏆', label: 'Records',    count: 'Hall of Fame' },
+  ];
+
+  return (
+    <div className="grid min-h-0 flex-1 gap-2.5 overflow-hidden" style={{ gridTemplateColumns: '200px 1fr' }}>
+      <aside className="flex flex-col gap-1 overflow-y-auto rounded-2xl border border-white/[0.06] bg-card/50 p-2">
+        <div className="px-2 py-2">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-muted-foreground/50">Classements</p>
+        </div>
+        {subItems.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => setSub(s.id)}
+            className={cn(
+              'flex w-full flex-col rounded-xl px-3 py-2.5 text-left transition',
+              sub === s.id
+                ? 'border border-amber-500/25 bg-amber-500/10 text-amber-100'
+                : 'border border-transparent text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
+            )}
+          >
+            <span className="text-[13px] font-semibold">{s.emoji} {s.label}</span>
+            <span className="text-[10px] opacity-55">{s.count}</span>
+          </button>
+        ))}
+      </aside>
+      <main className="min-h-0 overflow-y-auto rounded-2xl border border-white/[0.06] bg-card/50 p-5">
+        {loading && (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-muted-foreground">Chargement…</p>
+          </div>
+        )}
+        {!loading && sub === 'chevaux'    && <ChevauXRankings horses={standings?.topHorses ?? []} />}
+        {!loading && sub === 'ecuries'    && <EcuriesRankings stables={stables} />}
+        {!loading && sub === 'historique' && <HistoriqueRankings races={standings?.recentRaces ?? []} />}
+        {!loading && sub === 'records'    && <RecordsHall horses={standings?.topHorses ?? []} />}
+      </main>
+    </div>
+  );
+}
+
+// =====================================================================
 // Main page
 // =====================================================================
 export default function HorseRace() {
@@ -2775,6 +3236,7 @@ export default function HorseRace() {
   const [horseBusinesses, setHorseBusinesses] = useState<HorseServiceBusinessDto[]>([]);
   const [now, setNow] = useState(() => Date.now());
 
+  const [activeTab, setActiveTab] = useState<'course' | 'classements'>('course');
   const [betModalOpen, setBetModalOpen] = useState(false);
   const [stableModalOpen, setStableModalOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
@@ -3011,72 +3473,112 @@ export default function HorseRace() {
           0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
           100% { transform: translateY(120vh) rotate(720deg); opacity: 0.6; }
         }
+
+        .hr-commentary-text {
+          animation: hr-commentary-in 0.35s cubic-bezier(0.22,1,0.36,1);
+        }
+        @keyframes hr-commentary-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
 
       <div className="flex min-h-[calc(100vh-7rem)] flex-col gap-2.5 lg:h-[calc(100vh-7rem)]">
-        {/* Header */}
-        <header className="relative flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-2xl border border-white/10 bg-black/40 px-4 py-3 shadow-xl backdrop-blur-xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-amber-500/10" />
-          <div className="absolute -top-10 -left-10 h-32 w-32 rounded-full bg-emerald-500/20 blur-3xl" />
-          <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-amber-500/20 blur-3xl" />
-          
-          <div className="relative z-10 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 shadow-lg shadow-emerald-500/20">
-              <span className="text-xl drop-shadow-md">🏇</span>
-            </div>
-            <div>
-              <h1 className="text-base font-bold tracking-tight text-white drop-shadow-sm">
-                Hippodrome de Longchamp <span className="ml-1 text-emerald-300">— Course #{cycleIndex}</span>
-              </h1>
-              <p className="text-[11px] font-medium text-white/60">
-                Course toutes les 5 min · prizemoney + aura aux propriétaires · paris × cote
-              </p>
-            </div>
-          </div>
-          <div className="relative z-10 flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className={cn(
-                'gap-1.5 border-amber-400/40 bg-amber-500/15 text-amber-200 px-2.5 py-1 text-[11px]',
-                phase === 'racing' && 'border-rose-400/50 bg-rose-500/15 text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.3)]',
-                phase === 'results' && 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.3)]',
-              )}
-            >
-              <span className={cn('inline-block h-1.5 w-1.5 rounded-full bg-current', phase === 'racing' && 'animate-pulse')} />
-              <span className="font-semibold uppercase tracking-wider">{phaseLabel}</span>
-            </Badge>
-            <span className="hidden rounded-full bg-white/5 px-3 py-1 font-mono text-[11px] font-medium tracking-wide text-white/70 sm:inline-block">
-              {phase === 'betting' && `Départ dans ${formatMs(phaseRemaining)}`}
-              {phase === 'racing' && `${formatMs(elapsedInPhase)} / ${formatMs(config.RACE_MS)}`}
-              {phase === 'results' && `Prochaine dans ${formatMs(phaseRemaining)}`}
-            </span>
-            <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-              <Wallet className="h-3.5 w-3.5" />
-              <span className="tabular-nums font-bold tracking-tight">{formatMoney(userMoney)}</span>
-            </div>
-            <div className="ml-2 flex items-center gap-1.5">
-              <Button size="sm" variant="ghost" className="h-8 rounded-full bg-white/5 px-3 text-[11px] hover:bg-white/10" onClick={() => setStandingsOpen(true)}>
-                <Medal className="mr-1.5 h-3.5 w-3.5" /> Palmarès
-              </Button>
-              <Button size="sm" variant="ghost" className="h-8 rounded-full bg-white/5 px-3 text-[11px] hover:bg-white/10" onClick={() => setExploreOpen(true)}>
-                <Users className="mr-1.5 h-3.5 w-3.5" /> Écuries
-              </Button>
-              {stable?.stable ? (
-                <Button size="sm" className="h-8 rounded-full bg-gradient-to-b from-indigo-500 to-indigo-600 px-3 text-[11px] shadow-lg shadow-indigo-500/20 hover:from-indigo-400 hover:to-indigo-500" onClick={() => setStableModalOpen(true)}>
-                  <Building2 className="mr-1.5 h-3.5 w-3.5" /> Mon écurie ({stable.stable.horses.length})
-                </Button>
-              ) : stable?.hasClan ? (
-                <Button size="sm" className="h-8 rounded-full bg-emerald-600 px-3 text-[11px] shadow-lg shadow-emerald-500/20 hover:bg-emerald-500" onClick={() => setCreateStableOpen(true)}>
-                  <Plus className="mr-1 h-3.5 w-3.5" /> Créer écurie
-                </Button>
-              ) : (
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-medium text-amber-200">
-                  Rejoignez un clan pour gérer une écurie
+        {/* Compact topbar */}
+        {(() => {
+          const condition = getCycleCondition(cycleIndex);
+          return (
+            <header className="flex items-center justify-between gap-2 rounded-xl border border-white/[0.07] bg-black/55 px-3 py-2 shadow-lg backdrop-blur-xl">
+              {/* Left: identity */}
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className="text-[22px] leading-none select-none">🏇</span>
+                <div>
+                  <h1 className="text-[13px] font-bold leading-tight text-white tracking-tight">
+                    Hippodrome de Longchamp
+                    <span className="ml-1.5 font-mono text-[10.5px] font-normal text-white/35">#{cycleIndex}</span>
+                  </h1>
+                  <p className={cn('text-[10px] font-medium leading-none mt-0.5', condition.color)}>
+                    {condition.emoji} {condition.label} · Prix de l&apos;Arc
+                  </p>
+                </div>
+              </div>
+
+              {/* Center: phase pill + countdown */}
+              <div className="flex items-center gap-2">
+                <div className={cn(
+                  'flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest',
+                  phase === 'betting' && 'border border-amber-500/30 bg-amber-500/12 text-amber-200',
+                  phase === 'racing'  && 'border border-rose-500/30 bg-rose-500/12 text-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.22)]',
+                  phase === 'results' && 'border border-emerald-500/30 bg-emerald-500/12 text-emerald-200',
+                )}>
+                  <span className={cn('h-1.5 w-1.5 rounded-full bg-current', phase === 'racing' && 'animate-pulse')} />
+                  {phaseLabel}
+                </div>
+                <span className="w-14 text-center font-mono text-[15px] font-black tabular-nums text-white/90">
+                  {phase === 'betting'
+                    ? formatMs(phaseRemaining)
+                    : phase === 'racing'
+                    ? (elapsedInPhase / 1000).toFixed(1) + 's'
+                    : formatMs(phaseRemaining)}
                 </span>
-              )}
-            </div>
-          </div>
-        </header>
+              </div>
+
+              {/* Right: wallet + nav icons */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-200">
+                  <Wallet className="h-3 w-3 shrink-0" />
+                  <span className="font-bold tabular-nums">{formatMoney(userMoney)}</span>
+                </div>
+                <div className="h-5 w-px bg-white/10" />
+                <button
+                  type="button"
+                  title="Classements"
+                  onClick={() => setActiveTab(activeTab === 'classements' ? 'course' : 'classements')}
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center rounded-lg border transition',
+                    activeTab === 'classements'
+                      ? 'border-amber-500/40 bg-amber-500/15 text-amber-200'
+                      : 'border-white/[0.07] bg-white/[0.04] text-white/45 hover:border-white/14 hover:text-white/80',
+                  )}
+                >
+                  <BarChart2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  title="Écuries de la communauté"
+                  onClick={() => setExploreOpen(true)}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.07] bg-white/[0.04] text-white/45 transition hover:border-white/14 hover:text-white/80"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                </button>
+                {stable?.stable ? (
+                  <button
+                    type="button"
+                    onClick={() => setStableModalOpen(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/12 px-2.5 py-1.5 text-[12px] font-semibold text-indigo-200 shadow-[0_0_12px_rgba(99,102,241,0.12)] transition hover:bg-indigo-500/22"
+                  >
+                    <Building2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="hidden sm:inline">Écurie</span>
+                    <span className="text-indigo-300/70">({stable.stable.horses.length})</span>
+                  </button>
+                ) : stable?.hasClan ? (
+                  <button
+                    type="button"
+                    onClick={() => setCreateStableOpen(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/12 px-2.5 py-1.5 text-[12px] font-semibold text-emerald-200 transition hover:bg-emerald-500/22"
+                  >
+                    <Plus className="h-3.5 w-3.5 shrink-0" />
+                    <span className="hidden sm:inline">Créer écurie</span>
+                  </button>
+                ) : (
+                  <span className="hidden rounded-lg border border-amber-500/20 bg-amber-500/7 px-2.5 py-1.5 text-[11px] text-amber-200/60 sm:inline">
+                    Rejoindre un clan
+                  </span>
+                )}
+              </div>
+            </header>
+          );
+        })()}
 
         <Progress
           value={Math.min(100, (elapsedInPhase / totalPhase) * 100)}
@@ -3088,230 +3590,182 @@ export default function HorseRace() {
           )}
         />
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 overflow-hidden lg:grid-cols-[220px_minmax(0,1fr)_320px]">
-          {/* Far left: my horses rail */}
-          <aside className="hidden min-h-0 flex-col gap-2 overflow-y-auto rounded-2xl border border-border/40 bg-card/60 p-2.5 lg:flex">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-semibold">
-                Mes chevaux
-                <span className="ml-1 font-normal text-muted-foreground">
-                  · {stable?.stable?.horses.length ?? 0}
+        {activeTab === 'classements' ? (
+          <ClassementsView config={config} />
+        ) : (
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 overflow-hidden lg:grid-cols-[200px_minmax(0,1fr)_310px]">
+            {/* Far left: my horses rail */}
+            <aside className="hidden min-h-0 flex-col gap-2 overflow-y-auto rounded-2xl border border-border/40 bg-card/60 p-2.5 lg:flex">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-semibold">
+                  Mes chevaux
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    · {stable?.stable?.horses.length ?? 0}
+                  </span>
                 </span>
-              </span>
-              {stable?.stable && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-6 px-2 text-[10px]"
-                  onClick={() => setStableModalOpen(true)}
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-            {stable?.stable && stable.stable.horses.length > 0 ? (
-              <div className="flex flex-col gap-1.5">
-                {stable.stable.horses.map((h) => {
-                  const stats = (h.geneSpeed + h.trainSpeed + h.geneStamina + h.trainStamina + h.geneConsistency + h.trainConsistency) / 3;
-                  const inRace = state?.lineup.some((e) => e.horseId === h.id);
-                  return (
-                    <button
-                      key={h.id}
-                      type="button"
-                      onClick={() => setAtelierHorse(h)}
-                      className={cn(
-                        'flex items-center gap-2 rounded-xl border bg-card/70 p-1.5 text-left transition hover:border-amber-400/40 hover:bg-card',
-                        inRace ? 'border-amber-400/30' : 'border-border/40',
-                      )}
-                    >
-                      <div className="h-9 w-14 shrink-0 overflow-hidden rounded-md bg-emerald-950/40">
-                        <HorseAvatar {...h} showJockey={false} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-[12px] font-semibold">{h.name}</div>
-                        <div className="flex items-center gap-1.5 text-[9.5px] text-muted-foreground">
-                          <span>{h.ageYears.toFixed(1)}a</span>
-                          <span>·</span>
-                          <span>{h.races}c</span>
-                          {h.wins > 0 && <span className="font-semibold text-amber-300">{h.wins}V</span>}
-                        </div>
-                        <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-400"
-                            style={{ width: `${Math.min(100, Math.round(stats * 10))}%` }}
-                          />
-                        </div>
-                      </div>
-                      {h.pendingEntries > 0 && (
-                        <span className="rounded-full border border-emerald-500/30 bg-emerald-500/20 px-1 py-0.5 text-[9px] font-semibold text-emerald-200">
-                          {h.pendingEntries}
-                        </span>
-                      )}
-                      {h.dopedForCycle != null && <span title="Dopé">💉</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-1 flex-col items-center justify-center gap-2 px-2 py-6 text-center text-[11px] text-muted-foreground">
-                {stable?.stable ? (
-                  <>
-                    <p>Aucun cheval.</p>
-                    <Button size="sm" onClick={() => setStableModalOpen(true)}>
-                      <Building2 className="mr-1 h-3 w-3" /> Gérer
-                    </Button>
-                  </>
-                ) : stable?.hasClan ? (
-                  <>
-                    <p>Aucune écurie.</p>
-                    <Button size="sm" onClick={() => setCreateStableOpen(true)}>
-                      <Plus className="mr-1 h-3 w-3" /> Créer
-                    </Button>
-                  </>
-                ) : (
-                  <p>Rejoignez un clan<br />pour créer une écurie.</p>
+                {stable?.stable && (
+                  <button
+                    type="button"
+                    onClick={() => setStableModalOpen(true)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md border border-border/50 text-muted-foreground transition hover:border-border hover:text-foreground"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
                 )}
               </div>
-            )}
-          </aside>
-
-          {/* Center: race */}
-          <div className="flex min-h-0 flex-col gap-2.5">
-            {/* Quick info bar */}
-            <Card className="overflow-hidden">
-              <CardContent className="flex flex-wrap items-center justify-between gap-3 p-3">
-                <div className="flex items-center gap-5 flex-wrap">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Cagnotte</p>
-                    <p className="font-mono text-[16px] font-bold text-emerald-300">
-                      {formatMoney(state?.totalAmount ?? 0)}
-                    </p>
-                  </div>
-                  <div className="h-7 w-px bg-border" />
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Parieurs</p>
-                    <p className="text-[16px] font-bold">{state?.totalBets ?? 0}</p>
-                  </div>
-                  <div className="h-7 w-px bg-border" />
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">1er · prix</p>
-                    <p className="font-mono text-[16px] font-bold text-amber-300">
-                      {formatMoney(config.PRIZE_BASE_1ST + Math.floor((state?.totalAmount ?? 0) * config.PRIZE_POOL_1ST_PCT))}
-                    </p>
-                  </div>
-                  <div className="h-7 w-px bg-border" />
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Favori</p>
-                    <p className="truncate text-[12.5px] font-semibold">{favorite?.name ?? '—'}</p>
-                  </div>
+              {stable?.stable && stable.stable.horses.length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {stable.stable.horses.map((h) => {
+                    const effAvg = (h.geneSpeed + h.trainSpeed + h.geneStamina + h.trainStamina + h.geneConsistency + h.trainConsistency) / 3;
+                    const inRace = state?.lineup.some((e) => e.horseId === h.id);
+                    const formBadges = getHorseFormBadges(h.id, h.wins, h.podiums, h.races);
+                    const lastForm = formBadges[0];
+                    return (
+                      <button
+                        key={h.id}
+                        type="button"
+                        onClick={() => setAtelierHorse(h)}
+                        className={cn(
+                          'flex items-center gap-2 rounded-xl border bg-card/70 p-1.5 text-left transition hover:border-amber-400/40 hover:bg-card',
+                          inRace ? 'border-amber-400/30' : 'border-border/40',
+                        )}
+                      >
+                        <div className="h-9 w-14 shrink-0 overflow-hidden rounded-md bg-emerald-950/40">
+                          <HorseAvatar {...h} showJockey={false} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate text-[12px] font-semibold">{h.name}</span>
+                            {lastForm === 'W' && <Flame className="h-3 w-3 shrink-0 text-amber-400" />}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[9.5px] text-muted-foreground">
+                            <span>{h.ageYears.toFixed(1)}a</span>
+                            <span>·</span>
+                            <span>{h.races}c</span>
+                            {h.wins > 0 && <span className="font-semibold text-amber-300">{h.wins}V</span>}
+                          </div>
+                          <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-amber-400" style={{ width: `${Math.min(100, Math.round(effAvg * 10))}%` }} />
+                          </div>
+                        </div>
+                        {h.pendingEntries > 0 && (
+                          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/20 px-1 py-0.5 text-[9px] font-semibold text-emerald-200">{h.pendingEntries}</span>
+                        )}
+                        {h.dopedForCycle != null && <span title="Dopé">💉</span>}
+                      </button>
+                    );
+                  })}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Track */}
-            <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <CardContent className="flex min-h-0 flex-1 flex-col gap-2 p-2.5">
-                <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <span>Piste principale · cliquez sur un cheval pour parier</span>
-                  <span>{config.ENTRANTS} partants · ligne d&apos;arrivée à droite</span>
-                </div>
-                <div className="relative min-h-0 flex-1">
-                  {state && state.lineup.length > 0 ? (
-                    <RaceTrack
-                      lineup={state.lineup}
-                      sim={sim}
-                      elapsedMs={raceElapsedMs}
-                      isRacing={phase === 'racing'}
-                      phase={phase}
-                      betKeys={myBetKeys}
-                      onLaneClick={() => setBetModalOpen(true)}
-                      leaderKey={leaderKey}
-                    />
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 px-2 py-6 text-center text-[11px] text-muted-foreground">
+                  {stable?.stable ? (
+                    <>
+                      <p>Aucun cheval.</p>
+                      <Button size="sm" onClick={() => setStableModalOpen(true)}><Building2 className="mr-1 h-3 w-3" /> Gérer</Button>
+                    </>
+                  ) : stable?.hasClan ? (
+                    <>
+                      <p>Aucune écurie.</p>
+                      <Button size="sm" onClick={() => setCreateStableOpen(true)}><Plus className="mr-1 h-3 w-3" /> Créer</Button>
+                    </>
                   ) : (
-                    <p className="py-8 text-center text-sm text-muted-foreground">Chargement du peloton...</p>
-                  )}
-                  {showPodium && state && state.phase === 'results' && (
-                    <PodiumOverlay
-                      state={state}
-                      cycleIndex={state.cycleIndex}
-                      onClose={() => {
-                        setShowPodium(false);
-                        setPodiumDismissedCycle(state.cycleIndex);
-                      }}
-                    />
+                    <p>Rejoignez un clan<br />pour créer une écurie.</p>
                   )}
                 </div>
-                {phase === 'results' && winner && (
-                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm">
-                    <p className="flex items-center gap-2">
-                      <Trophy className="h-4 w-4 text-amber-300" />
-                      <span className="font-semibold">{winner.name}</span> remporte la course #{cycleIndex}
-                      {winner.stableName && <span className="text-amber-200/80"> — {winner.stableName}</span>}
-                    </p>
+              )}
+            </aside>
+
+            {/* Center: track + commentary */}
+            <div className="flex min-h-0 flex-col gap-2">
+              {/* Commentary ticker — only during race */}
+              {phase === 'racing' && state && state.lineup.length > 0 && (
+                <CommentaryTicker
+                  lineup={state.lineup}
+                  sim={sim}
+                  elapsedMs={raceElapsedMs}
+                  raceDurationMs={config.RACE_MS}
+                  phase={phase}
+                />
+              )}
+
+              {/* Track */}
+              <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <CardContent className="flex min-h-0 flex-1 flex-col gap-2 p-2">
+                  <div className="flex items-center justify-between text-[9.5px] uppercase tracking-wider text-muted-foreground/60">
+                    <span>Piste · cliquez pour parier</span>
+                    <span>{config.ENTRANTS} partants · arrivée à droite</span>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Action strip */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const first = stable?.stable?.horses[0];
-                  if (first) setAtelierHorse(first);
-                  else if (stable?.hasClan) setStableModalOpen(true);
-                  else toast.error('Rejoignez un clan pour créer une écurie.');
-                }}
-              >
-                <Palette className="mr-1 h-3.5 w-3.5" /> Atelier
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setStableModalOpen(true)} disabled={!stable?.stable}>
-                <Dumbbell className="mr-1 h-3.5 w-3.5" /> Entraîner
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setStableModalOpen(true)} disabled={!stable?.stable}>
-                <Dna className="mr-1 h-3.5 w-3.5" /> Élevage
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setStableModalOpen(true)} disabled={!stable?.stable}>
-                <Trophy className="mr-1 h-3.5 w-3.5" /> Inscrire à la course
-              </Button>
-            </div>
-          </div>
-
-          {/* Right column: inline bet panel */}
-          <div className="flex min-h-0 flex-col gap-2.5 overflow-hidden">
-            <InlineBetPanel
-              state={state}
-              config={config}
-              userMoney={userMoney}
-              onPlaced={async () => {
-                await refreshState();
-                await refreshUser();
-              }}
-            />
-
-            {myHorsesInRace.length > 0 && (
-              <Card className="shrink-0">
-                <CardContent className="space-y-1 p-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Mes chevaux dans la course
-                  </p>
-                  {myHorsesInRace.map((e) => (
-                    <div key={e.lane} className="flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-1.5 py-1 text-[11px]">
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: e.silks1 }} />
-                      <span className="flex-1 truncate font-medium">{e.name}</span>
-                      <span className="font-mono text-[9.5px] text-amber-200">{e.odds ? formatOdds(e.odds) : '—'}</span>
-                      {e.finishPos && <span className="rounded-full bg-amber-400/95 px-1.5 py-0.5 text-[9px] font-bold text-amber-950">#{e.finishPos}</span>}
-                      {e.prize > 0 && <span className="text-emerald-300">+{formatMoney(e.prize)}</span>}
-                      {e.wasCaught && <span className="rounded bg-rose-500/30 px-1 py-0.5 text-[9px] text-rose-200">DQ</span>}
+                  <div className="relative min-h-0 flex-1">
+                    {state && state.lineup.length > 0 ? (
+                      <RaceTrack
+                        lineup={state.lineup}
+                        sim={sim}
+                        elapsedMs={raceElapsedMs}
+                        isRacing={phase === 'racing'}
+                        phase={phase}
+                        betKeys={myBetKeys}
+                        onLaneClick={() => setBetModalOpen(true)}
+                        leaderKey={leaderKey}
+                      />
+                    ) : (
+                      <p className="py-8 text-center text-sm text-muted-foreground">Chargement du peloton...</p>
+                    )}
+                    {showPodium && state && state.phase === 'results' && (
+                      <PodiumOverlay
+                        state={state}
+                        cycleIndex={state.cycleIndex}
+                        onClose={() => {
+                          setShowPodium(false);
+                          setPodiumDismissedCycle(state.cycleIndex);
+                        }}
+                      />
+                    )}
+                  </div>
+                  {phase === 'results' && winner && (
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm">
+                      <p className="flex items-center gap-2">
+                        <Trophy className="h-4 w-4 text-amber-300" />
+                        <span className="font-semibold">{winner.name}</span> remporte la course #{cycleIndex}
+                        {winner.stableName && <span className="text-amber-200/80"> — {winner.stableName}</span>}
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </CardContent>
               </Card>
-            )}
+            </div>
+
+            {/* Right column: inline bet panel + my horses in race */}
+            <div className="flex min-h-0 flex-col gap-2 overflow-hidden">
+              <InlineBetPanel
+                state={state}
+                config={config}
+                userMoney={userMoney}
+                favorite={favorite}
+                onPlaced={async () => {
+                  await refreshState();
+                  await refreshUser();
+                }}
+              />
+              {myHorsesInRace.length > 0 && (
+                <Card className="shrink-0">
+                  <CardContent className="space-y-1 p-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Mes chevaux en course</p>
+                    {myHorsesInRace.map((e) => (
+                      <div key={e.lane} className="flex items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-1.5 py-1 text-[11px]">
+                        <span className="inline-block h-2 w-2 rounded-full" style={{ background: e.silks1 }} />
+                        <span className="flex-1 truncate font-medium">{e.name}</span>
+                        <span className="font-mono text-[9.5px] text-amber-200">{e.odds ? formatOdds(e.odds) : '—'}</span>
+                        {e.finishPos && <span className="rounded-full bg-amber-400/95 px-1.5 py-0.5 text-[9px] font-bold text-amber-950">#{e.finishPos}</span>}
+                        {e.prize > 0 && <span className="text-emerald-300">+{formatMoney(e.prize)}</span>}
+                        {e.wasCaught && <span className="rounded bg-rose-500/30 px-1 py-0.5 text-[9px] text-rose-200">DQ</span>}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Modals */}

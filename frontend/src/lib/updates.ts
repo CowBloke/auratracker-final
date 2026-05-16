@@ -46,6 +46,31 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-05-16-horserace-overhaul',
+    date: '2026-05-16',
+    title: 'Hippodrome — Refonte UI & nouvelles mécaniques',
+    summary: 'Topbar épuré, onglet Classements exhaustif, profil de cheval enrichi, commentaire en direct, conditions de piste et indicateurs de forme.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-05-16-horserace-1', text: '**Hippodrome · Classements** — Nouvel onglet dédié accessible depuis le bouton 📊 dans la topbar. Quatre sous-sections : Chevaux (classement détaillé avec stats, forme et gains), Écuries (palmarès par réputation et taux de victoire), Historique (toutes les courses résolues avec le podium complet) et Records (Hall of Fame : plus de victoires, meilleur taux, plus gros gains, meilleures stats).' },
+          { id: '2026-05-16-horserace-2', text: '**Hippodrome · Profil de cheval** — Dans la gestion d\'écurie, la fiche d\'un cheval affiche désormais : portrait animé, notation en étoiles (1–5), badges de carrière automatiques (Gagnant, Étoile, Champion, Centurion, Vétéran, Millionnaire…), statistiques de carrière (victoires, podiums, taux, gains totaux), indicateur de forme récente (W/P/L sur les 5 dernières courses) et barres de stats divisées en gènes (vert) + entraînement (ambre).' },
+        ],
+      },
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-05-16-horserace-3', text: '**Hippodrome · Topbar épuré** — La barre de navigation est maintenant une ligne compacte unique : logo + numéro de course à gauche, phase + chrono au centre, solde + icônes de navigation à droite. La cagnotte, le 1er prix et le favori sont intégrés en haut du panneau de paris.' },
+          { id: '2026-05-16-horserace-4', text: '**Hippodrome · Commentaire en direct** — Pendant la course, une ligne de narration apparaît sous la topbar et se met à jour au fil des positions : départ, mi-course, virage final, arrivée imminente.' },
+          { id: '2026-05-16-horserace-5', text: '**Hippodrome · Condition de piste** — Chaque course a une condition affichée dans la topbar (☀️ Ferme, 🌤️ Souple, 🌧️ Lourd) déterminée par le numéro de cycle.' },
+          { id: '2026-05-16-horserace-6', text: '**Hippodrome · Repères de distance** — Des marqueurs subtils à 600m, 1200m et 1800m sont désormais visibles sur la piste pour situer la position des chevaux.' },
+          { id: '2026-05-16-horserace-7', text: '**Hippodrome · Indicateur de forme** — Dans le rail latéral, une flamme 🔼 apparaît à côté des chevaux dont la dernière course était une victoire.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-05-15-auracoin-mining',
     date: '2026-05-15',
     title: 'AuraCoin — Minage GPU & marché AMM',

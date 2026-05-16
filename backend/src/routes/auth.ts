@@ -108,7 +108,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
 
     if (existingUser) {
       return res.status(400).json({
-        error: existingUser.email === email
+        error: existingUser.email === normalizedEmail
           ? 'Email already registered'
           : 'Username already taken',
       });
@@ -129,7 +129,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const isSuperAdmin = email === config.adminEmail;
+    const isSuperAdmin = normalizedEmail === config.adminEmail;
     const isAdmin = isSuperAdmin;
     const generatedReferralCode = await createUniqueReferralCode();
 
@@ -154,7 +154,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       },
     });
 
-    logAuth('register', undefined, username, { email, isAdmin, isSuperAdmin, school, schoolLevel, classLetter, referredById: referrerId }, getIpAddress(req));
+    logAuth('register', undefined, normalizedUsername, { email: normalizedEmail, isAdmin, isSuperAdmin, school, schoolLevel, classLetter, referredById: referrerId }, getIpAddress(req));
 
     res.status(201).json({
       success: true,
