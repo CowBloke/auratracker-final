@@ -3205,6 +3205,24 @@ export const adminApi = {
   transferClanLeadership: (id: string, targetUserId: string) =>
     api.post<{ success: boolean }>(`/admin/clans/${id}/transfer-leadership`, { targetUserId }),
   deleteClan: (id: string) => api.delete<{ success: boolean }>(`/admin/clans/${id}`),
+  resetAllHorses: () =>
+    api.post<{
+      success: boolean;
+      message: string;
+      stablesRemoved: number;
+      horsesRemoved: number;
+      refundPerHorse: number;
+      totalReimbursed: string;
+      clans?: Array<{
+        clanId: string;
+        clanName: string;
+        stableId: string;
+        stableName: string;
+        membersCount: number;
+        horsesRemoved: number;
+        reimbursed: number;
+      }>;
+    }>('/admin/clans/reset-horses', {}),
   updateUser: (id: string, data: { username?: string; firstName?: string | null; aura?: number; money?: number; auraCoinBalance?: number; dailyAuraLimit?: number; password?: string; isChatMuted?: boolean; role?: 'USER' | 'BETA_TESTER' | 'ADMIN' | 'SUPER_ADMIN' | 'FISCAL_INSPECTOR' | 'JUDGE' }) =>
     api.put<{ user: AdminUser }>(`/admin/users/${id}`, data),
   forceDivorceUser: (id: string) => api.post<{ success: boolean; message: string }>(`/admin/users/${id}/force-divorce`),

@@ -119,6 +119,7 @@ export const ACTION_LABELS: Record<string, string> = {
   clan_update: 'Clan modifié',
   clan_transfer_leadership: 'Chef de clan modifié',
   clan_delete: 'Clan supprimé',
+  horses_reset: 'Chevaux et ecuries reinitialises',
   ban_create: 'Bannissement créé',
   ban_remove: 'Bannissement levé',
   auracoin_buy: 'Achat AuraCoin',

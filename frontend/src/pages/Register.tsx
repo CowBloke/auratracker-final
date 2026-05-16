@@ -49,9 +49,10 @@ const registerSchema = z.object({
   schoolLevel: z.enum(['SECONDE', 'PREMIERE', 'TERMINALE']),
   classLetter: z.enum(['A', 'B', 'C', 'D', 'E', 'F', 'G']),
   username: z.string()
+    .trim()
     .min(3, t('register_min_3_chars'))
     .max(20, t('register_max_20_chars')),
-  email: z.string().email(t('register_email_invalid')).min(1, t('register_email_required')),
+  email: z.string().trim().email(t('register_email_invalid')).min(1, t('register_email_required')),
   password: z.string().min(6, t('register_min_6_chars')),
   confirmPassword: z.string().min(1, t('register_confirm_required')),
   motivationMessage: z.string()
@@ -220,12 +221,12 @@ export default function Register() {
       setError('');
       setLoading(true);
       const response = await authApi.register({
-        username: data.username,
+        username: data.username.trim(),
         firstName: data.firstName,
         school: data.school.trim(),
         schoolLevel: data.schoolLevel,
         classLetter: data.classLetter,
-        email: data.email,
+        email: data.email.trim(),
         password: data.password,
         motivationMessage: data.motivationMessage,
         referralCode: referralEnabled && data.referralCode?.trim() ? data.referralCode.trim() : undefined,

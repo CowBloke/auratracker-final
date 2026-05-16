@@ -1289,6 +1289,7 @@ export default function Admin() {
   });
   const [savingClan, setSavingClan] = useState(false);
   const [deletingClan, setDeletingClan] = useState<string | null>(null);
+  const [resettingAllHorses, setResettingAllHorses] = useState(false);
   const [transferringClanLeader, setTransferringClanLeader] = useState<string | null>(null);
   const [clanEvents, setClanEvents] = useState<AdminClanEvent[]>([]);
   const [loadingClanEvents, setLoadingClanEvents] = useState(false);
@@ -3598,6 +3599,19 @@ export default function Admin() {
     }
   };
 
+  const resetAllHorses = async () => {
+    setResettingAllHorses(true);
+    try {
+      const res = await adminApi.resetAllHorses();
+      await fetchClans();
+      showMessage('success', res.data.message);
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur');
+    } finally {
+      setResettingAllHorses(false);
+    }
+  };
+
   const resetClanEventForm = () => {
     setEditingClanEventId(null);
     setClanEventForm(DEFAULT_CLAN_EVENT_FORM);
@@ -4755,6 +4769,8 @@ export default function Admin() {
           startEditingClan={startEditingClan}
           deletingClan={deletingClan}
           deleteClan={deleteClan}
+          resettingAllHorses={resettingAllHorses}
+          resetAllHorses={resetAllHorses}
           editingClanId={editingClanId}
           clans={clans}
           clanForm={clanForm}

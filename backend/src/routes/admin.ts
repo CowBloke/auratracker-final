@@ -75,6 +75,7 @@ import {
 } from '../utils/daily/daily-tax.js';
 
 const router = Router();
+const HORSE_RESET_REFUND_PER_HORSE = 12_500;
 
 const getCryptoBuyFeeMaxPercentage = (key: string) => (key === CHAOS_COIN_BUY_FEE_PERCENTAGE_KEY ? 1 : 0.5);
 const CHAT_BLOCK_ENABLED_KEY = 'chat_block_enabled';
@@ -2070,6 +2071,131 @@ router.delete('/clans/:id', authMiddleware, requireAdmin, async (req: AuthReques
   } catch (error) {
     console.error('Admin delete clan error:', error);
     res.status(500).json({ error: 'Failed to delete clan' });
+  }
+});
+
+router.post('/clans/reset-horses', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const stables = await prisma.stable.findMany({
+      select: {
+        id: true,
+        name: true,
+        clanId: true,
+        _count: {
+          select: {
+            horses: true,
+          },
+        },
+        clan: {
+          select: {
+            id: true,
+            name: true,
+            members: {
+              select: {
+                userId: true,
+              },
+              orderBy: [
+                { isLeader: 'desc' },
+                { joinedAt: 'asc' },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    if (stables.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Aucune ecurie a reinitialiser.',
+        stablesRemoved: 0,
+        horsesRemoved: 0,
+        refundPerHorse: HORSE_RESET_REFUND_PER_HORSE,
+        totalReimbursed: '0',
+      });
+    }
+
+    const reimbursementsByUserId = new Map<string, bigint>();
+    const clanSummaries: Array<{
+      clanId: string;
+      clanName: string;
+      stableId: string;
+      stableName: string;
+      membersCount: number;
+      horsesRemoved: number;
+      reimbursed: number;
+    }> = [];
+
+    let horsesRemoved = 0;
+    let totalReimbursed = 0n;
+
+    for (const stable of stables) {
+      const stableHorsesCount = stable._count.horses;
+      const members = stable.clan.members;
+      const membersCount = members.length;
+
+      horsesRemoved += stableHorsesCount;
+
+      let reimbursedForStable = 0;
+      if (stableHorsesCount > 0 && membersCount > 0) {
+        const totalRefundForStable = stableHorsesCount * HORSE_RESET_REFUND_PER_HORSE;
+        const baseShare = Math.floor(totalRefundForStable / membersCount);
+        const remainder = totalRefundForStable % membersCount;
+
+        members.forEach((member, index) => {
+          const share = baseShare + (index < remainder ? 1 : 0);
+          if (share <= 0) return;
+          const previous = reimbursementsByUserId.get(member.userId) ?? 0n;
+          reimbursementsByUserId.set(member.userId, previous + BigInt(share));
+          reimbursedForStable += share;
+        });
+      }
+
+      totalReimbursed += BigInt(reimbursedForStable);
+      clanSummaries.push({
+        clanId: stable.clan.id,
+        clanName: stable.clan.name,
+        stableId: stable.id,
+        stableName: stable.name,
+        membersCount,
+        horsesRemoved: stableHorsesCount,
+        reimbursed: reimbursedForStable,
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const [userId, amount] of reimbursementsByUserId.entries()) {
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            money: { increment: amount },
+          },
+        });
+      }
+
+      await tx.stable.deleteMany({});
+    });
+
+    logAdmin('horses_reset', req.user!.id, req.user!.username, undefined, undefined, {
+      stablesRemoved: stables.length,
+      horsesRemoved,
+      refundPerHorse: HORSE_RESET_REFUND_PER_HORSE,
+      totalReimbursed: totalReimbursed.toString(),
+      clans: clanSummaries,
+    });
+
+    res.json({
+      success: true,
+      message: `${stables.length} ecurie(s) supprimee(s), ${horsesRemoved} cheval(aux) retire(s).`,
+      stablesRemoved: stables.length,
+      horsesRemoved,
+      refundPerHorse: HORSE_RESET_REFUND_PER_HORSE,
+      totalReimbursed: totalReimbursed.toString(),
+      clans: clanSummaries,
+    });
+  } catch (error) {
+    console.error('Admin reset horses error:', error);
+    res.status(500).json({ error: 'Failed to reset horses' });
   }
 });
 

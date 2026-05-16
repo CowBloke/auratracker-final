@@ -8,7 +8,7 @@ import path from 'node:path';
 
 const prisma = new PrismaClient();
 const prismaAny = prisma as any;
-const SEED_DATA_VERSION = 6; // Increment this whenever the seed data changes.
+const SEED_DATA_VERSION = 7; // Increment this whenever the seed data changes.
 const SEED_VERSION_MARKER_PATH = path.resolve('prisma', '.seed-version.json');
 
 const writeSeedVersionMarker = async () => {
@@ -1268,6 +1268,26 @@ async function main() {
           isStateOwned: true,
           createdAt: daysAgo(4, 10),
         },
+        {
+          ownerId: admin.id,
+          supportAgentId: null,
+          name: 'Haras Test',
+          typeKey: 'horse_business',
+          description: 'Haras de test avec un stock d environ 100 chevaux pour les validations.',
+          logoUrl: MOCK_IMAGE.cardC,
+          location: 'Piste Sandbox',
+          mapX: 8,
+          mapY: 84,
+          verified: true,
+          hiring: false,
+          startingCapital: 0,
+          treasuryMoney: 1000000,
+          monthlyRevenue: 0,
+          monthlyExpenses: 0,
+          satisfaction: 100,
+          isStateOwned: true,
+          createdAt: daysAgo(3, 11),
+        },
       ] : []),
     ],
     select: {
@@ -1279,6 +1299,33 @@ async function main() {
   const businessByName = new Map(businesses.map((business) => [business.name, business]));
 
   if (process.env.NODE_ENV !== 'production') {
+    if (existingTables.has('HorseBusinessProfile') && existingTables.has('HorseBusinessHorse')) {
+      const testHorseBusiness = businessByName.get('Haras Test');
+      if (testHorseBusiness) {
+        await prisma.horseBusinessProfile.upsert({
+          where: { businessId: testHorseBusiness.id },
+          update: { productionSlots: 8, capacityLevel: 6 },
+          create: {
+            businessId: testHorseBusiness.id,
+            productionSlots: 8,
+            capacityLevel: 6,
+          },
+        });
+
+        await prisma.horseBusinessHorse.createMany({
+          data: Array.from({ length: 100 }, (_, index) => ({
+            businessId: testHorseBusiness.id,
+            bodyColor: index % 3 === 0 ? '#92400e' : index % 3 === 1 ? '#a16207' : '#78350f',
+            pattern: 'solid',
+            patternColor: '#f8fafc',
+            geneSpeed: 6.8 + (index % 5) * 0.12,
+            geneStamina: 6.6 + (index % 6) * 0.1,
+            geneConsistency: 7.2 + (index % 4) * 0.15,
+          })),
+        });
+      }
+    }
+
     const supplySeeds: Array<{ name: string; resources: Array<{ resourceType: string; quantity: number; capacity: number; rate: number; price: number }> }> = [
       { name: 'Ferme Basse Plaine', resources: [{ resourceType: 'FOOD', quantity: 420, capacity: 500, rate: 8, price: 3 }] },
       { name: 'Scierie Yanis', resources: [{ resourceType: 'WOOD', quantity: 360, capacity: 450, rate: 7, price: 4 }] },

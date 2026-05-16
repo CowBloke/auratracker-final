@@ -24,7 +24,7 @@ import { normalizeDefaultLandingPage } from '@/lib/default-landing-page';
 import { t } from '@/lib/i18n';
 
 const loginSchema = z.object({
-  username: z.string().min(1, t('login_username_required')),
+  username: z.string().trim().min(1, t('login_username_required')),
   password: z.string().min(1, t('login_password_required')),
 });
 
@@ -59,7 +59,7 @@ export default function Login() {
     try {
       setError('');
       setLoading(true);
-      await login(data.username, data.password);
+      await login(data.username.trim(), data.password);
       const statusRes = await maintenanceApi.getStatus().catch(() => null);
       navigate(normalizeDefaultLandingPage(statusRes?.data.defaultLandingPage ?? defaultLandingPage));
     } catch (err: any) {

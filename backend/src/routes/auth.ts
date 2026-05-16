@@ -95,12 +95,14 @@ const generateToken = (userId: string, email: string): string => {
 router.post('/register', validate(registerSchema), async (req, res) => {
   try {
     const { username, firstName, school, schoolLevel, classLetter, email, password, motivationMessage } = req.body;
+    const normalizedUsername = typeof username === 'string' ? username.trim() : username;
+    const normalizedEmail = typeof email === 'string' ? email.trim() : email;
     const referralsEnabled = await isReferralEnabled();
     const referralCode = referralsEnabled ? normalizeReferralCode(req.body.referralCode) : null;
 
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ email }, { username }],
+        OR: [{ email: normalizedEmail }, { username: normalizedUsername }],
       },
     });
 
@@ -133,12 +135,12 @@ router.post('/register', validate(registerSchema), async (req, res) => {
 
     await prisma.user.create({
       data: {
-        username,
+        username: normalizedUsername,
         firstName: typeof firstName === 'string' ? firstName.trim() : firstName,
         school: typeof school === 'string' ? school.trim() : school,
         schoolLevel,
         classLetter,
-        email,
+        email: normalizedEmail,
         passwordHash,
         motivationMessage: typeof motivationMessage === 'string' ? motivationMessage.trim() : motivationMessage,
         isAdmin,
@@ -172,25 +174,32 @@ router.post('/register', validate(registerSchema), async (req, res) => {
 router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     const { username, password } = req.body;
+    const normalizedUsername = typeof username === 'string' ? username.trim() : username;
 
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { username },
     });
 
+    if (!user && normalizedUsername !== username) {
+      user = await prisma.user.findUnique({
+        where: { username: normalizedUsername },
+      });
+    }
+
     if (!user) {
-      logAuth('login_failed', undefined, username, { reason: 'user_not_found' }, getIpAddress(req));
+      logAuth('login_failed', undefined, normalizedUsername, { reason: 'user_not_found' }, getIpAddress(req));
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
 
     if (!isValidPassword) {
-      logAuth('login_failed', user.id, username, { reason: 'invalid_password' }, getIpAddress(req));
+      logAuth('login_failed', user.id, normalizedUsername, { reason: 'invalid_password' }, getIpAddress(req));
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     if (!user.isApproved) {
-      logAuth('login_failed', user.id, username, { reason: 'pending_approval' }, getIpAddress(req));
+      logAuth('login_failed', user.id, normalizedUsername, { reason: 'pending_approval' }, getIpAddress(req));
       return res.status(403).json({
         error: 'Votre compte est en attente d\'approbation par un administrateur.',
         pendingApproval: true,
@@ -209,7 +218,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     });
 
     if (activeBan) {
-      logAuth('login_banned', user.id, username, { banType: activeBan.type, reason: activeBan.reason }, getIpAddress(req));
+      logAuth('login_banned', user.id, normalizedUsername, { banType: activeBan.type, reason: activeBan.reason }, getIpAddress(req));
       return res.status(403).json({
         error: activeBan.type === 'PERMANENT'
           ? `Votre compte a ete banni definitivement. Raison: ${activeBan.reason}`

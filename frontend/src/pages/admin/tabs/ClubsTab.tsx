@@ -31,6 +31,8 @@ type ClubsTabProps = {
   startEditingClan: (clan: any) => void;
   deletingClan: string | null;
   deleteClan: (clanId: string) => void;
+  resettingAllHorses: boolean;
+  resetAllHorses: () => Promise<void>;
   editingClanId: string | null;
   clans: any[];
   clanForm: any;
@@ -64,6 +66,8 @@ export function ClubsTab(props: ClubsTabProps) {
     startEditingClan,
     deletingClan,
     deleteClan,
+    resettingAllHorses,
+    resetAllHorses,
     editingClanId,
     clans,
     clanForm,
@@ -124,6 +128,31 @@ export function ClubsTab(props: ClubsTabProps) {
               <Swords className="h-4 w-4 mr-1" />
               Gérer événements ({clanEvents.length})
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="destructive" className="h-9 shrink-0" disabled={resettingAllHorses}>
+                  {resettingAllHorses ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                  Reset chevaux
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset toutes les ecuries et tous les chevaux ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action supprime toutes les ecuries, tous les chevaux, et rembourse 12 500 money par cheval retire, repartis entre les membres de chaque clan.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => { void resetAllHorses(); }}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    Confirmer le reset
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
           <CardDescription>{filteredClans.length} clan(s) affiché(s)</CardDescription>
         </CardHeader>
