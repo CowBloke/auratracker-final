@@ -686,8 +686,8 @@ const checkLiquidations = async () => {
 
     for (const position of openPositions) {
       const pnl = calculatePnL(position, currentPrice);
-      const currentMargin = position.marginAmount + pnl;
-      const marginRatio = currentMargin / position.marginAmount;
+      const currentMargin = Number(position.marginAmount) + pnl;
+      const marginRatio = currentMargin / Number(position.marginAmount);
 
       // Liquidate if margin drops below threshold
       if (marginRatio <= LIQUIDATION_THRESHOLD) {
@@ -866,7 +866,7 @@ router.post('/position/close/:positionId', authMiddleware, async (req: AuthReque
 
     // Calculate P&L
     const pnl = calculatePnL(position, closePrice);
-    const totalReturn = position.marginAmount + pnl;
+    const totalReturn = Number(position.marginAmount) + pnl;
 
     // Close position and return funds
     const [updatedPosition, updatedUser] = await prisma.$transaction([
@@ -941,9 +941,9 @@ router.get('/positions/open', authMiddleware, async (req: AuthRequest, res: Resp
     // Calculate current P&L for each position
     const positionsWithPnL = positions.map(pos => {
       const pnl = calculatePnL(pos, currentPrice);
-      const currentMargin = pos.marginAmount + pnl;
-      const marginRatio = currentMargin / pos.marginAmount;
-      const pnlPercentage = (pnl / pos.marginAmount) * 100;
+      const currentMargin = Number(pos.marginAmount) + pnl;
+      const marginRatio = currentMargin / Number(pos.marginAmount);
+      const pnlPercentage = (pnl / Number(pos.marginAmount)) * 100;
 
       return {
         ...pos,
