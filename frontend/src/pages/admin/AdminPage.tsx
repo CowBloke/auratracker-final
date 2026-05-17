@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -1484,6 +1484,8 @@ export default function Admin() {
   const [businessCreationEnabled, setBusinessCreationEnabled] = useState(true);
   const [savingBusinessCreation, setSavingBusinessCreation] = useState(false);
   const [purgingBusinesses, setPurgingBusinesses] = useState(false);
+  const [purgingMarketplaceListings, setPurgingMarketplaceListings] = useState(false);
+  const [purgingResourceMarketListings, setPurgingResourceMarketListings] = useState(false);
   const [resettingUnlockLevels, setResettingUnlockLevels] = useState(false);
   const uploadItemImageFile = async (file: File): Promise<string> => {
     try {
@@ -3311,6 +3313,46 @@ export default function Admin() {
     }
   };
 
+  const purgeAllMarketplaceListings = async () => {
+    const confirmed = await confirm({
+      title: "Purger toutes les offres de la marketplace d'objets ?",
+      description: "Toutes les offres actives seront annulées et les objets seront restitués aux vendeurs dans leur inventaire. Action irréversible.",
+      confirmLabel: 'Purger la marketplace',
+      cancelLabel: 'Annuler',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
+    setPurgingMarketplaceListings(true);
+    try {
+      const res = await adminApi.purgeAllMarketplaceListings();
+      showMessage('success', `${res.data.count} offre(s) marketplace annulée(s) et objets restitués.`);
+    } catch {
+      showMessage('error', "Erreur lors de la purge de la marketplace d'objets");
+    } finally {
+      setPurgingMarketplaceListings(false);
+    }
+  };
+
+  const purgeAllResourceMarketListings = async () => {
+    const confirmed = await confirm({
+      title: 'Purger toutes les offres du marché de ressources ?',
+      description: 'Toutes les offres actives seront annulées et les ressources seront restituées aux entreprises dans leur inventaire. Action irréversible.',
+      confirmLabel: 'Purger le marché de ressources',
+      cancelLabel: 'Annuler',
+      variant: 'destructive',
+    });
+    if (!confirmed) return;
+    setPurgingResourceMarketListings(true);
+    try {
+      const res = await adminApi.purgeAllResourceMarketListings();
+      showMessage('success', `${res.data.count} offre(s) de ressources annulée(s) et ressources restituées.`);
+    } catch {
+      showMessage('error', 'Erreur lors de la purge du marché de ressources');
+    } finally {
+      setPurgingResourceMarketListings(false);
+    }
+  };
+
   const resetBusinessUnlockLevels = async () => {
     const confirmed = await confirm({
       title: 'Reinitialiser les niveaux debloques ?',
@@ -4947,6 +4989,10 @@ export default function Admin() {
           savingBusinessCreation={savingBusinessCreation}
           purgeAllBusinesses={purgeAllBusinesses}
           purgingBusinesses={purgingBusinesses}
+          purgeAllMarketplaceListings={purgeAllMarketplaceListings}
+          purgingMarketplaceListings={purgingMarketplaceListings}
+          purgeAllResourceMarketListings={purgeAllResourceMarketListings}
+          purgingResourceMarketListings={purgingResourceMarketListings}
           resetBusinessUnlockLevels={resetBusinessUnlockLevels}
           resettingUnlockLevels={resettingUnlockLevels}
           deployOutput={deployOutput}

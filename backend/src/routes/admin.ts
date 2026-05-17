@@ -6195,6 +6195,90 @@ router.post('/businesses/purge', authMiddleware, async (req: AuthRequest, res: R
   }
 });
 
+router.post('/marketplace/purge-listings', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const activeListings = await prisma.marketplaceListing.findMany({
+      where: { status: 'ACTIVE' },
+    });
+
+    if (activeListings.length === 0) {
+      return res.json({ success: true, count: 0 });
+    }
+
+    const now = new Date();
+    await prisma.$transaction(async (tx) => {
+      for (const listing of activeListings) {
+        await tx.userItem.upsert({
+          where: {
+            userId_itemId: {
+              userId: listing.sellerId,
+              itemId: listing.itemId,
+            },
+          },
+          create: {
+            userId: listing.sellerId,
+            itemId: listing.itemId,
+            quantity: listing.quantity,
+          },
+          update: {
+            quantity: { increment: listing.quantity },
+          },
+        });
+      }
+
+      await tx.marketplaceListing.updateMany({
+        where: { id: { in: activeListings.map(l => l.id) } },
+        data: {
+          status: 'CANCELLED',
+          cancelledAt: now,
+        },
+      });
+    });
+
+    logAdmin('marketplace_purge_listings', req.user.id, req.user.username, undefined, undefined, { count: activeListings.length });
+
+    res.json({ success: true, count: activeListings.length });
+  } catch (error) {
+    console.error('Admin purge marketplace listings error:', error);
+    res.status(500).json({ error: 'Failed to purge marketplace listings' });
+  }
+});
+
+router.post('/resource-market/purge-listings', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const activeListings = await prisma.resourceMarketListing.findMany({
+      where: { isActive: true },
+    });
+
+    if (activeListings.length === 0) {
+      return res.json({ success: true, count: 0 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const listing of activeListings) {
+        await tx.businessResourceInventory.updateMany({
+          where: { businessId: listing.businessId, resourceType: listing.resourceType },
+          data: { quantity: { increment: listing.quantity } },
+        });
+      }
+
+      await tx.resourceMarketListing.updateMany({
+        where: { id: { in: activeListings.map(l => l.id) } },
+        data: { isActive: false },
+      });
+    });
+
+    logAdmin('resource_market_purge_listings', req.user.id, req.user.username, undefined, undefined, { count: activeListings.length });
+
+    res.json({ success: true, count: activeListings.length });
+  } catch (error) {
+    console.error('Admin purge resource market listings error:', error);
+    res.status(500).json({ error: 'Failed to purge resource market listings' });
+  }
+});
+
 router.post('/businesses/reset-unlock-levels', authMiddleware, async (req: AuthRequest, res: Response) => {
   if (!req.user?.isAdmin) return res.status(403).json({ error: 'Forbidden' });
   try {

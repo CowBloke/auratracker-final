@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,7 +28,7 @@ import { DashboardUpdatesManagerDialog } from '@/features/dashboard-updates/Dash
 import { BLOCKABLE_PAGES } from '@/config/blockedPages';
 import { SPACING } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Download, Gamepad2, Loader2, LogIn, MessageCircle, Save, Sparkles, Terminal, Trash2, Trophy } from 'lucide-react';
+import { AlertTriangle, Download, Gamepad2, Loader2, LogIn, MessageCircle, Save, Sparkles, Terminal, Trash2, Trophy, Search, ShieldAlert, Sparkle, Ban } from 'lucide-react';
 import { ANNOUNCEMENT_MAX_LENGTH, CHAT_BLOCK_MESSAGE_MAX_LENGTH, CHAT_BLOCK_TIMEZONE } from '../constants';
 import { DEFAULT_LANDING_PAGE_OPTIONS } from '@/lib/default-landing-page';
 
@@ -125,6 +126,10 @@ export function SettingsTab(props: SettingsTabProps) {
     savingBusinessCreation,
     purgeAllBusinesses,
     purgingBusinesses,
+    purgeAllMarketplaceListings,
+    purgingMarketplaceListings,
+    purgeAllResourceMarketListings,
+    purgingResourceMarketListings,
     resetBusinessUnlockLevels,
     resettingUnlockLevels,
     deployOutput,
@@ -157,430 +162,456 @@ export function SettingsTab(props: SettingsTabProps) {
     clearChat,
   } = props as any;
 
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const matchesSearch = (terms: string[]) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return terms.some(term => term.toLowerCase().includes(q));
+  };
+
+  const showPresence = matchesSearch(['presence', 'utilisateurs en ligne fictifs', 'connectes', 'fake online']);
+  const showReferral = matchesSearch(['parrainage', 'matchmaking duel', 'code de parrainage', 'recompense', 'aura distribuable par jour', 'limits']);
+  const showMarket = matchesSearch(['frais', 'aura coin', 'stable coin', 'chaos coin', 'salle de marche', 'crypto']);
+  const showClash = matchesSearch(['clash', 'village', 'temps de recharge', 'raid', 'cooldown']);
+  const showComm = matchesSearch(['chat block', 'communication', 'blocage du chat', 'message', 'annonce topbar', 'page de connexion', 'landing page', 'logo sidebar', 'updates', 'maintenance']);
+  const showFeatures = matchesSearch(['fonctionnalites', 'pages du site', 'bloquer']);
+  const showDeploy = matchesSearch(['deploiement', 'deploy', 'version', 'git']);
+  const showDanger = matchesSearch(['danger', 'zone de danger', 'vider le chat', 'purger toutes les entreprises', 'reinitialiser les niveaux', 'purger la marketplace', 'purger le marche de ressources', 'cancel listings', 'delete offers', 'delete listings']);
+
   return (
-    <TabsContent value="settings" className={SPACING.SECTION_SPACING}>
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Systeme de presence</p>
-        <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Utilisateurs en ligne fictifs</div>
-              <div className="text-xs text-muted-foreground">Complete la liste des connectes avec des utilisateurs hors-ligne pour maintenir un minimum de 10 % affiches.</div>
-            </div>
-            <Switch checked={fakeOnlineEnabled} disabled={savingFakeOnline} onCheckedChange={saveFakeOnline} />
-          </div>
-        </div>
+    <TabsContent value="settings" className={cn(SPACING.SECTION_SPACING, "space-y-6")}>
+      {/* Dynamic Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Rechercher un paramètre... (ex: chat, frais, marketplace, parrainage...)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 pr-10 py-5 bg-card/40 border-border/40 focus-visible:ring-primary focus-visible:bg-card/75 transition-all rounded-xl text-sm"
+        />
+        {searchQuery && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSearchQuery('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-7 px-2 hover:bg-transparent text-muted-foreground hover:text-foreground text-xs"
+          >
+            Effacer
+          </Button>
+        )}
       </div>
 
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Parrainage</p>
-        <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Matchmaking duel</div>
-              <div className="text-xs text-muted-foreground">Affiche le bouton cote joueur et autorise l&apos;entree dans la file de matchmaking duel.</div>
-            </div>
-            <Switch checked={duelMatchmakingEnabled} disabled={savingDuelMatchmakingEnabled} onCheckedChange={saveDuelMatchmakingEnabled} />
+      {/* Presence Section */}
+      {showPresence && (
+        <div className="space-y-2 border-l-4 border-l-cyan-500/80 bg-cyan-950/5 dark:bg-cyan-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-cyan-950/10">
+          <div className="flex items-center gap-2 px-1">
+            <Sparkle className="h-4 w-4 text-cyan-400" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-400">Système de présence</p>
           </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Systeme de parrainage</div>
-              <div className="text-xs text-muted-foreground">Coupe l&apos;usage des codes de parrainage sur l&apos;inscription et masque le module cote joueur.</div>
-            </div>
-            <Switch checked={referralEnabled} disabled={savingReferralEnabled} onCheckedChange={saveReferralEnabled} />
-          </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Carte de parrainage sur le dashboard</div>
-              <div className="text-xs text-muted-foreground">Affiche la carte de suivi du parrainage sur la page dashboard des joueurs.</div>
-            </div>
-            <Switch
-              checked={referralDashboardCardEnabled}
-              disabled={savingReferralDashboardCardEnabled}
-              onCheckedChange={saveReferralDashboardCardEnabled}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Recompense par inscription</div>
-              <div className="text-xs text-muted-foreground">Montant verse au parrain et au filleul quand un compte parraine est approuve.</div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Input
-                id="referral-reward-amount"
-                type="number"
-                min={0}
-                step={1}
-                value={referralRewardAmount}
-                disabled={!referralEnabled}
-                onChange={(event) => setReferralRewardAmount(event.target.value)}
-                className="w-24 h-8 text-sm"
-              />
-              <Button size="sm" onClick={saveReferralReward} disabled={savingReferralReward || !referralEnabled}>
-                {savingReferralReward ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Aura distribuable par jour</div>
-              <div className="text-xs text-muted-foreground">Quota global disponible pour chaque joueur a chaque reset de minuit. Valeur par defaut: 100.</div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Input
-                id="daily-aura-distribution-limit"
-                type="number"
-                min={0}
-                max={10000}
-                step={1}
-                value={dailyAuraDistributionLimit}
-                onChange={(event) => setDailyAuraDistributionLimit(event.target.value)}
-                className="w-24 h-8 text-sm"
-              />
-              <Button size="sm" onClick={saveDailyAuraDistributionLimit} disabled={savingDailyAuraDistributionLimit}>
-                {savingDailyAuraDistributionLimit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Salle de marche</p>
-        <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Frais Aura Coin</div>
-              <div className="text-xs text-muted-foreground">Taux applique sur les achats et ventes AuraCoin (0 = 0 %, 0.5 = 50 %).</div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Input
-                id="auracoin-buy-fee"
-                type="number"
-                min={0}
-                max={0.5}
-                step={0.0001}
-                value={auraCoinBuyFeePercentage}
-                onChange={(event) => setAuraCoinBuyFeePercentage(event.target.value)}
-                className="w-28 h-8 text-sm"
-              />
-              <Button size="sm" onClick={saveAuraCoinBuyFee} disabled={savingAuraCoinBuyFee}>
-                {savingAuraCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Frais Aura Stable</div>
-              <div className="text-xs text-muted-foreground">Stable coin a faible volatilite. Meme logique de frais modifiable depuis l&apos;admin.</div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Input
-                id="stable-coin-buy-fee"
-                type="number"
-                min={0}
-                max={0.5}
-                step={0.0001}
-                value={stableCoinBuyFeePercentage}
-                onChange={(event) => setStableCoinBuyFeePercentage(event.target.value)}
-                className="w-28 h-8 text-sm"
-              />
-              <Button size="sm" onClick={saveStableCoinBuyFee} disabled={savingStableCoinBuyFee}>
-                {savingStableCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Frais Chaos Coin</div>
-              <div className="text-xs text-muted-foreground">Coin tres instable avec frais separes pour equilibrer le risque et les spreads.</div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Input
-                id="chaos-coin-buy-fee"
-                type="number"
-                min={0}
-                max={1}
-                step={0.0001}
-                value={chaosCoinBuyFeePercentage}
-                onChange={(event) => setChaosCoinBuyFeePercentage(event.target.value)}
-                className="w-28 h-8 text-sm"
-              />
-              <Button size="sm" onClick={saveChaosCoinBuyFee} disabled={savingChaosCoinBuyFee}>
-                {savingChaosCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Clash Village</p>
-        <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Temps de recharge d&apos;attaque</div>
-              <div className="text-xs text-muted-foreground">Temps d&apos;attente applique apres un raid reussi ou rate. Mettre `0` pour desactiver ce temps de recharge.</div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Input
-                id="clash-attack-cooldown"
-                type="number"
-                min={0}
-                max={1440}
-                step={1}
-                value={clashAttackCooldownMinutes}
-                onChange={(event) => setClashAttackCooldownMinutes(event.target.value)}
-                className="w-24 h-8 text-sm"
-              />
-              <span className="text-xs text-muted-foreground">min</span>
-              <Button size="sm" onClick={saveClashAttackCooldown} disabled={savingClashAttackCooldown}>
-                {savingClashAttackCooldown ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Communication</p>
-        <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-          <div className="px-4 py-3.5 space-y-4">
-            <div className="flex items-center justify-between gap-4">
+          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
-                <div className="text-sm font-medium">Blocage du chat</div>
-                <div className="text-xs text-muted-foreground">
-                  Coupe l&apos;envoi de messages pour les joueurs. Les admins gardent l&apos;acces pour moderer.
-                </div>
+                <div className="text-sm font-medium text-cyan-200/90">Utilisateurs en ligne fictifs</div>
+                <div className="text-xs text-muted-foreground">Complète la liste des connectés avec des utilisateurs hors-ligne pour maintenir un minimum de 10 % affichés.</div>
               </div>
-              <Switch checked={chatBlockEnabled} onCheckedChange={setChatBlockEnabled} disabled={savingChatBlockSettings} />
+              <Switch checked={fakeOnlineEnabled} disabled={savingFakeOnline} onCheckedChange={saveFakeOnline} />
             </div>
+          </div>
+        </div>
+      )}
 
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-              <div className="space-y-2">
-                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Message affiche aux joueurs
-                </label>
-                <Textarea
-                  value={chatBlockMessage}
-                  onChange={(event) => setChatBlockMessage(event.target.value)}
-                  placeholder="Ex: Le chat est ferme pendant les heures de cours."
-                  className="min-h-[88px]"
-                  maxLength={CHAT_BLOCK_MESSAGE_MAX_LENGTH}
+      {/* Referral & Limits Section */}
+      {showReferral && (
+        <div className="space-y-2 border-l-4 border-l-indigo-500/80 bg-indigo-950/5 dark:bg-indigo-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-indigo-950/10">
+          <div className="flex items-center gap-2 px-1">
+            <Trophy className="h-4 w-4 text-indigo-400" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-indigo-400">Parrainage & Quotas</p>
+          </div>
+          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-indigo-200/90">Matchmaking duel</div>
+                <div className="text-xs text-muted-foreground">Affiche le bouton côté joueur et autorise l'entrée dans la file de matchmaking duel.</div>
+              </div>
+              <Switch checked={duelMatchmakingEnabled} disabled={savingDuelMatchmakingEnabled} onCheckedChange={saveDuelMatchmakingEnabled} />
+            </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-indigo-200/90">Système de parrainage</div>
+                <div className="text-xs text-muted-foreground">Coupe l'usage des codes de parrainage sur l'inscription et masque le module côté joueur.</div>
+              </div>
+              <Switch checked={referralEnabled} disabled={savingReferralEnabled} onCheckedChange={saveReferralEnabled} />
+            </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-indigo-200/90">Carte de parrainage sur le dashboard</div>
+                <div className="text-xs text-muted-foreground">Affiche la carte de suivi du parrainage sur la page dashboard des joueurs.</div>
+              </div>
+              <Switch
+                checked={referralDashboardCardEnabled}
+                disabled={savingReferralDashboardCardEnabled}
+                onCheckedChange={saveReferralDashboardCardEnabled}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-indigo-200/90">Récompense par inscription</div>
+                <div className="text-xs text-muted-foreground">Montant versé au parrain et au filleul quand un compte parrainé est approuvé.</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Input
+                  id="referral-reward-amount"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={referralRewardAmount}
+                  disabled={!referralEnabled}
+                  onChange={(event) => setReferralRewardAmount(event.target.value)}
+                  className="w-24 h-8 text-sm"
                 />
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Visible dans le chat et au moment d&apos;une tentative d&apos;envoi.</span>
-                  <span>{chatBlockMessage.length}/{CHAT_BLOCK_MESSAGE_MAX_LENGTH}</span>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-border/40 bg-background/40 p-3 text-xs text-muted-foreground md:w-64">
-                <p className="font-medium text-foreground">Etat actuel</p>
-                <p className="mt-1">
-                  {chatBlockEnabled
-                    ? 'Blocage manuel active'
-                    : chatAutoBlockEnabled
-                      ? `Blocage auto configure de ${chatAutoBlockStart} a ${chatAutoBlockEnd}`
-                      : 'Chat ouvert'}
-                </p>
-                <p className="mt-1">Fuseau horaire: {CHAT_BLOCK_TIMEZONE}</p>
+                <Button size="sm" onClick={saveReferralReward} disabled={savingReferralReward || !referralEnabled} className="bg-indigo-600 hover:bg-indigo-700">
+                  {savingReferralReward ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
               </div>
             </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-indigo-200/90">Aura distribuable par jour</div>
+                <div className="text-xs text-muted-foreground">Quota global disponible pour chaque joueur à chaque reset de minuit. Valeur par défaut: 100.</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Input
+                  id="daily-aura-distribution-limit"
+                  type="number"
+                  min={0}
+                  max={10000}
+                  step={1}
+                  value={dailyAuraDistributionLimit}
+                  onChange={(event) => setDailyAuraDistributionLimit(event.target.value)}
+                  className="w-24 h-8 text-sm"
+                />
+                <Button size="sm" onClick={saveDailyAuraDistributionLimit} disabled={savingDailyAuraDistributionLimit} className="bg-indigo-600 hover:bg-indigo-700">
+                  {savingDailyAuraDistributionLimit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <div className="rounded-lg border border-border/40 bg-background/30 p-4 space-y-3">
+      {/* Market Section */}
+      {showMarket && (
+        <div className="space-y-2 border-l-4 border-l-emerald-500/80 bg-emerald-950/5 dark:bg-emerald-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-emerald-950/10">
+          <div className="flex items-center gap-2 px-1">
+            <Sparkles className="h-4 w-4 text-emerald-400" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-400">Salle de marché (Frais & Cryptos)</p>
+          </div>
+          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-emerald-200/90">Frais Aura Coin</div>
+                <div className="text-xs text-muted-foreground">Taux appliqué sur les achats et ventes AuraCoin (0 = 0 %, 0.5 = 50 %).</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Input
+                  id="auracoin-buy-fee"
+                  type="number"
+                  min={0}
+                  max={0.5}
+                  step={0.0001}
+                  value={auraCoinBuyFeePercentage}
+                  onChange={(event) => setAuraCoinBuyFeePercentage(event.target.value)}
+                  className="w-28 h-8 text-sm"
+                />
+                <Button size="sm" onClick={saveAuraCoinBuyFee} disabled={savingAuraCoinBuyFee} className="bg-emerald-600 hover:bg-emerald-700">
+                  {savingAuraCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-emerald-200/90">Frais Aura Stable</div>
+                <div className="text-xs text-muted-foreground">Stable coin à faible volatilité. Même logique de frais modifiable depuis l'admin.</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Input
+                  id="stable-coin-buy-fee"
+                  type="number"
+                  min={0}
+                  max={0.5}
+                  step={0.0001}
+                  value={stableCoinBuyFeePercentage}
+                  onChange={(event) => setStableCoinBuyFeePercentage(event.target.value)}
+                  className="w-28 h-8 text-sm"
+                />
+                <Button size="sm" onClick={saveStableCoinBuyFee} disabled={savingStableCoinBuyFee} className="bg-emerald-600 hover:bg-emerald-700">
+                  {savingStableCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-emerald-200/90">Frais Chaos Coin</div>
+                <div className="text-xs text-muted-foreground">Coin très instable avec frais séparés pour équilibrer le risque et les spreads.</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Input
+                  id="chaos-coin-buy-fee"
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.0001}
+                  value={chaosCoinBuyFeePercentage}
+                  onChange={(event) => setChaosCoinBuyFeePercentage(event.target.value)}
+                  className="w-28 h-8 text-sm"
+                />
+                <Button size="sm" onClick={saveChaosCoinBuyFee} disabled={savingChaosCoinBuyFee} className="bg-emerald-600 hover:bg-emerald-700">
+                  {savingChaosCoinBuyFee ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clash Section */}
+      {showClash && (
+        <div className="space-y-2 border-l-4 border-l-amber-500/80 bg-amber-950/5 dark:bg-amber-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-amber-950/10">
+          <div className="flex items-center gap-2 px-1">
+            <Gamepad2 className="h-4 w-4 text-amber-400" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400">Clash Village</p>
+          </div>
+          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-amber-200/90">Temps de recharge d'attaque</div>
+                <div className="text-xs text-muted-foreground">Temps d'attente appliqué après un raid réussi ou raté. Mettre `0` pour désactiver ce temps de recharge.</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Input
+                  id="clash-attack-cooldown"
+                  type="number"
+                  min={0}
+                  max={1440}
+                  step={1}
+                  value={clashAttackCooldownMinutes}
+                  onChange={(event) => setClashAttackCooldownMinutes(event.target.value)}
+                  className="w-24 h-8 text-sm"
+                />
+                <span className="text-xs text-muted-foreground">min</span>
+                <Button size="sm" onClick={saveClashAttackCooldown} disabled={savingClashAttackCooldown} className="bg-amber-600 hover:bg-amber-700 text-black font-semibold">
+                  {savingClashAttackCooldown ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Communication Section */}
+      {showComm && (
+        <div className="space-y-2 border-l-4 border-l-violet-500/80 bg-violet-950/5 dark:bg-violet-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-violet-950/10">
+          <div className="flex items-center gap-2 px-1">
+            <MessageCircle className="h-4 w-4 text-violet-400" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-violet-400">Communication & Contenu</p>
+          </div>
+          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+            <div className="px-4 py-3.5 space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-sm font-medium">Blocage automatique quotidien</div>
+                  <div className="text-sm font-medium text-violet-200/90">Blocage du chat</div>
                   <div className="text-xs text-muted-foreground">
-                    Active un blocage chaque jour sur un creneau fixe. Gere aussi les plages qui passent minuit.
+                    Coupe l'envoi de messages pour les joueurs. Les admins gardent l'accès pour modérer.
                   </div>
                 </div>
-                <Switch checked={chatAutoBlockEnabled} onCheckedChange={setChatAutoBlockEnabled} disabled={savingChatBlockSettings} />
+                <Switch checked={chatBlockEnabled} onCheckedChange={setChatBlockEnabled} disabled={savingChatBlockSettings} />
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Debut
+                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">
+                    Message affiché aux joueurs
                   </label>
-                  <Input
-                    type="time"
-                    step={60}
-                    value={chatAutoBlockStart}
-                    disabled={!chatAutoBlockEnabled || savingChatBlockSettings}
-                    onChange={(event) => setChatAutoBlockStart(event.target.value)}
+                  <Textarea
+                    value={chatBlockMessage}
+                    onChange={(event) => setChatBlockMessage(event.target.value)}
+                    placeholder="Ex: Le chat est fermé pendant les heures de cours."
+                    className="min-h-[88px]"
+                    maxLength={CHAT_BLOCK_MESSAGE_MAX_LENGTH}
                   />
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span>Visible dans le chat et au moment d'une tentative d'envoi.</span>
+                    <span>{chatBlockMessage.length}/{CHAT_BLOCK_MESSAGE_MAX_LENGTH}</span>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Fin
-                  </label>
-                  <Input
-                    type="time"
-                    step={60}
-                    value={chatAutoBlockEnd}
-                    disabled={!chatAutoBlockEnabled || savingChatBlockSettings}
-                    onChange={(event) => setChatAutoBlockEnd(event.target.value)}
-                  />
+
+                <div className="rounded-lg border border-border/20 bg-background/40 p-3 text-xs text-muted-foreground md:w-64">
+                  <p className="font-medium text-foreground">État actuel</p>
+                  <p className="mt-1">
+                    {chatBlockEnabled
+                      ? 'Blocage manuel activé'
+                      : chatAutoBlockEnabled
+                        ? `Blocage auto configuré de ${chatAutoBlockStart} à ${chatAutoBlockEnd}`
+                        : 'Chat ouvert'}
+                  </p>
+                  <p className="mt-1">Fuseau horaire: {CHAT_BLOCK_TIMEZONE}</p>
                 </div>
               </div>
 
-              <p className="text-[11px] text-muted-foreground">
-                Exemple: `22:00` → `07:00` bloque le chat toute la nuit.
-              </p>
+              <div className="rounded-lg border border-border/20 bg-background/30 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm font-medium">Blocage automatique quotidien</div>
+                    <div className="text-xs text-muted-foreground">
+                      Active un blocage chaque jour sur un créneau fixe. Gère aussi les plages qui passent minuit.
+                    </div>
+                  </div>
+                  <Switch checked={chatAutoBlockEnabled} onCheckedChange={setChatAutoBlockEnabled} disabled={savingChatBlockSettings} />
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">
+                      Début
+                    </label>
+                    <Input
+                      type="time"
+                      step={60}
+                      value={chatAutoBlockStart}
+                      disabled={!chatAutoBlockEnabled || savingChatBlockSettings}
+                      onChange={(event) => setChatAutoBlockStart(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">
+                      Fin
+                    </label>
+                    <Input
+                      type="time"
+                      step={60}
+                      value={chatAutoBlockEnd}
+                      disabled={!chatAutoBlockEnabled || savingChatBlockSettings}
+                      onChange={(event) => setChatAutoBlockEnd(event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-muted-foreground">
+                  Exemple: `22:00` → `07:00` bloque le chat toute la nuit.
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={saveChatBlockSettings} disabled={savingChatBlockSettings} className="bg-violet-600 hover:bg-violet-700">
+                  {savingChatBlockSettings ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+                  Sauvegarder le chat
+                </Button>
+              </div>
             </div>
 
-            <div className="flex justify-end">
-              <Button onClick={saveChatBlockSettings} disabled={savingChatBlockSettings}>
-                {savingChatBlockSettings ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
-                Sauvegarder le chat
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-violet-200/90">Annonce topbar</div>
+                <div className="text-xs text-muted-foreground">
+                  {announcementMessage.trim()
+                    ? `"${announcementMessage.trim().slice(0, 48)}${announcementMessage.trim().length > 48 ? '…' : ''}"`
+                    : 'Aucune annonce active'}
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setAnnouncementOpen(true)} className="shrink-0">
+                <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                Configurer
               </Button>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Annonce topbar</div>
-              <div className="text-xs text-muted-foreground">
-                {announcementMessage.trim()
-                  ? `"${announcementMessage.trim().slice(0, 48)}${announcementMessage.trim().length > 48 ? '…' : ''}"`
-                  : 'Aucune annonce active'}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-violet-200/90">Page de connexion</div>
+                <div className="text-xs text-muted-foreground">
+                  {loginMessage.trim()
+                    ? `Message actif · CTA ${loginRegisterCtaEnabled ? 'active' : 'desactive'}`
+                    : `Pas de message · CTA ${loginRegisterCtaEnabled ? 'active' : 'desactive'}`}
+                </div>
               </div>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setAnnouncementOpen(true)} className="shrink-0">
-              <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-              Configurer
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Page de connexion</div>
-              <div className="text-xs text-muted-foreground">
-                {loginMessage.trim()
-                  ? `Message actif · CTA ${loginRegisterCtaEnabled ? 'active' : 'desactive'}`
-                  : `Pas de message · CTA ${loginRegisterCtaEnabled ? 'active' : 'desactive'}`}
-              </div>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setLoginCommOpen(true)} className="shrink-0">
-              <LogIn className="h-3.5 w-3.5 mr-1.5" />
-              Configurer
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Page principale du site</div>
-              <div className="text-xs text-muted-foreground">
-                {DEFAULT_LANDING_PAGE_OPTIONS.find((option) => option.value === defaultLandingPage)?.label ?? 'Tableau de bord'} ouvre quand un utilisateur connecte arrive sur `auratracker.xyz`.
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Select value={defaultLandingPage} onValueChange={setDefaultLandingPage}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Choisir une page" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DEFAULT_LANDING_PAGE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button size="sm" onClick={saveDefaultLandingPage} disabled={savingDefaultLandingPage}>
-                {savingDefaultLandingPage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              <Button variant="outline" size="sm" onClick={() => setLoginCommOpen(true)} className="shrink-0">
+                <LogIn className="h-3.5 w-3.5 mr-1.5" />
+                Configurer
               </Button>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Logo sidebar → acces a Moi reserve aux admins</div>
-              <div className="text-xs text-muted-foreground">
-                Quand active, seul un admin peut ouvrir la section Moi en cliquant sur le logo en haut a gauche.
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-violet-200/90">Page principale du site</div>
+                <div className="text-xs text-muted-foreground">
+                  {DEFAULT_LANDING_PAGE_OPTIONS.find((option) => option.value === defaultLandingPage)?.label ?? 'Tableau de bord'} s'ouvre quand un utilisateur connecté arrive sur `auratracker.xyz`.
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Select value={defaultLandingPage} onValueChange={setDefaultLandingPage}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Choisir une page" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEFAULT_LANDING_PAGE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" onClick={saveDefaultLandingPage} disabled={savingDefaultLandingPage} className="bg-violet-600 hover:bg-violet-700">
+                  {savingDefaultLandingPage ? <Loader2 className="h-3.5 w-3.5 animate-pulse" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
               </div>
             </div>
-            <Switch
-              checked={youLogoAdminOnly}
-              onCheckedChange={saveYouLogoAdminOnly}
-              disabled={savingYouLogoAdminOnly}
-            />
-          </div>
 
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Dashboard et mises a jour</div>
-              <div className="text-xs text-muted-foreground">
-                Une seule interface pour composer les mises a jour visibles sur le dashboard.
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-violet-200/90">Logo sidebar → accès à Moi réservé aux admins</div>
+                <div className="text-xs text-muted-foreground">
+                  Quand activé, seul un admin peut ouvrir la section Moi en cliquant sur le logo en haut à gauche.
+                </div>
               </div>
+              <Switch
+                checked={youLogoAdminOnly}
+                onCheckedChange={saveYouLogoAdminOnly}
+                disabled={savingYouLogoAdminOnly}
+              />
             </div>
-            <Button variant="outline" size="sm" onClick={() => setUpdatesOpen(true)} className="shrink-0">
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-              Ouvrir
-            </Button>
-          </div>
 
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Maintenance</div>
-              <div className={cn('text-xs', maintenanceEnabled ? 'text-amber-500' : 'text-muted-foreground')}>
-                {maintenanceEnabled
-                  ? 'Maintenance globale active'
-                  : maintenanceAutoWeekendEnabled
-                    ? 'Activation automatique le week-end'
-                    : 'Site accessible normalement'}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-violet-200/90">Dashboard et mises à jour</div>
+                <div className="text-xs text-muted-foreground">
+                  Une seule interface pour composer les mises à jour visibles sur le dashboard.
+                </div>
               </div>
+              <Button variant="outline" size="sm" onClick={() => setUpdatesOpen(true)} className="shrink-0">
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Ouvrir
+              </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setMaintenanceOpen(true)} className="shrink-0">
-              <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
-              Configurer
-            </Button>
-          </div>
 
-          <div className="mx-4 border-t border-border/30 pt-3 pb-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Entreprises</p>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Creation d'entreprise</div>
-              <div className="text-xs text-muted-foreground">
-                Quand desactive, les joueurs ne peuvent plus creer de nouvelles entreprises.
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-violet-200/90">Maintenance</div>
+                <div className={cn('text-xs', maintenanceEnabled ? 'text-amber-500' : 'text-muted-foreground')}>
+                  {maintenanceEnabled
+                    ? 'Maintenance globale active'
+                    : maintenanceAutoWeekendEnabled
+                      ? 'Activation automatique le week-end'
+                      : 'Site accessible normalement'}
+                </div>
               </div>
+              <Button variant="outline" size="sm" onClick={() => setMaintenanceOpen(true)} className="shrink-0">
+                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                Configurer
+              </Button>
             </div>
-            <Switch
-              checked={businessCreationEnabled}
-              onCheckedChange={saveBusinessCreationEnabled}
-              disabled={savingBusinessCreation}
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Purger toutes les entreprises</div>
-              <div className="text-xs text-muted-foreground">
-                Supprime toutes les entreprises et rembourse chaque proprietaire.
-              </div>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => void purgeAllBusinesses()} disabled={purgingBusinesses} className="shrink-0 border-red-400/30 text-red-300 hover:bg-red-500/10">
-              {purgingBusinesses ? 'Purge...' : 'Purger'}
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Reinitialiser les niveaux debloques</div>
-              <div className="text-xs text-muted-foreground">
-                Remet le niveau debloque de tous les joueurs a 0 (niveau 1 accessible a nouveau).
-              </div>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => void resetBusinessUnlockLevels()} disabled={resettingUnlockLevels} className="shrink-0">
-              {resettingUnlockLevels ? 'Reset...' : 'Reinitialiser'}
-            </Button>
           </div>
         </div>
-      </div>
+      )}
 
       <Dialog open={announcementOpen} onOpenChange={setAnnouncementOpen}>
         <DialogContent className="max-w-lg">
@@ -710,119 +741,204 @@ export function SettingsTab(props: SettingsTabProps) {
         </DialogContent>
       </Dialog>
 
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Fonctionnalites</p>
-        <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div>
-              <div className="text-sm font-medium">Pages du site</div>
-              <div className="text-xs text-muted-foreground">
-                {blockedPages.length > 0
-                  ? `${blockedPages.length} page${blockedPages.length > 1 ? 's' : ''} desactivee${blockedPages.length > 1 ? 's' : ''}`
-                  : 'Toutes les pages sont actives'}
+      {/* Features Section */}
+      {showFeatures && (
+        <div className="space-y-2 border-l-4 border-l-teal-500/80 bg-teal-950/5 dark:bg-teal-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-teal-950/10">
+          <div className="flex items-center gap-2 px-1">
+            <Gamepad2 className="h-4 w-4 text-teal-400" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-teal-400">Fonctionnalités</p>
+          </div>
+          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-medium text-teal-200/90">Pages du site</div>
+                <div className="text-xs text-muted-foreground">
+                  {blockedPages.length > 0
+                    ? `${blockedPages.length} page${blockedPages.length > 1 ? 's' : ''} désactivée${blockedPages.length > 1 ? 's' : ''}`
+                    : 'Toutes les pages sont actives'}
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setFonctionnalitesOpen(true)} className="shrink-0">
+                <Gamepad2 className="h-3.5 w-3.5 mr-1.5" />
+                Gérer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deployment Section */}
+      {showDeploy && (
+        <div className="space-y-2 border-l-4 border-l-slate-500/80 bg-slate-950/5 dark:bg-slate-950/10 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-slate-950/10">
+          <div className="flex items-center gap-2 px-1">
+            <Terminal className="h-4 w-4 text-slate-400" />
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Déploiement</p>
+          </div>
+          <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-slate-200/90">Déployer la dernière version</div>
+                <div className="text-xs text-muted-foreground flex flex-wrap gap-1 items-center">
+                  Exécute <code className="font-mono bg-muted/40 px-1 rounded text-slate-300">/var/scripts/deploy.sh</code> sur le serveur pour mettre en ligne les derniers changements Git.
+                </div>
+                {deployOutput && (
+                  <button
+                    onClick={() => setDeployModalOpen(true)}
+                    className={`mt-1.5 text-xs font-semibold underline-offset-2 hover:underline ${deployOutput.success ? 'text-green-500' : 'text-destructive'}`}
+                  >
+                    {deployOutput.success ? 'Succès - voir la sortie' : 'Échec - voir la sortie'}
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={deploying}
+                  onClick={async () => {
+                    const confirmed = await confirm({
+                      title: 'Lancer le déploiement ?',
+                      description: 'Le serveur va pull les changements Git puis redémarrer.',
+                      confirmLabel: 'Lancer',
+                      cancelLabel: 'Annuler',
+                      variant: 'destructive',
+                    });
+                    if (!confirmed) return;
+                    setDeploying(true);
+                    setDeployOutput(null);
+                    try {
+                      const res = await adminApi.deploy();
+                      setDeployOutput({ success: true, stdout: res.data.stdout || '', stderr: res.data.stderr || '', message: res.data.message });
+                      setDeployModalOpen(true);
+                    } catch (err: unknown) {
+                      const d = (err as { response?: { data?: { message?: string; stdout?: string; stderr?: string } } })?.response?.data;
+                      setDeployOutput({ success: false, stdout: d?.stdout || '', stderr: d?.stderr || '', message: d?.message || String(err) });
+                      setDeployModalOpen(true);
+                    } finally {
+                      setDeploying(false);
+                    }
+                  }}
+                >
+                  {deploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Terminal className="h-3.5 w-3.5" />}
+                </Button>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setFonctionnalitesOpen(true)} className="shrink-0">
-              <Gamepad2 className="h-3.5 w-3.5 mr-1.5" />
-              Gerer
-            </Button>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Actions sensibles</p>
-        <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+      {/* Danger Zone Section */}
+      {showDanger && (
+        <div className="space-y-3 border-2 border-red-500/30 bg-red-950/5 dark:bg-red-950/10 p-4 rounded-2xl transition-all shadow-lg shadow-red-950/20">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-red-500 animate-pulse shrink-0" />
             <div>
-              <div className="text-sm font-medium text-destructive">Vider le chat</div>
-              <div className="text-xs text-muted-foreground">Masque visuellement tous les messages du chat global, sans supprimer l&apos;historique stocke.</div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={() => void exportChat()} disabled={exportingChat}>
-                {exportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
-                Exporter
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-destructive/50 text-destructive hover:bg-destructive/10" disabled={clearingChat}>
-                    {clearingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-destructive" />
-                      Vider le chat ?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tous les messages du chat seront masques visuellement pour les joueurs. L&apos;historique restera disponible dans l&apos;onglet Historique chat.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={clearChat} className="bg-destructive hover:bg-destructive/90">
-                      Vider le chat
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <p className="text-xs font-bold uppercase tracking-widest text-red-500">Zone de Danger (Actions Destructives)</p>
+              <p className="text-[10px] text-red-400/70">Ces actions ont un impact irréversible sur la base de données et l'expérience de jeu.</p>
             </div>
           </div>
-        </div>
-      </div>
+          <div className="rounded-xl border border-red-500/20 overflow-hidden bg-card/60 backdrop-blur-sm divide-y divide-red-500/10">
+            {/* Vider le chat */}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-semibold text-red-200">Vider le chat global</div>
+                <div className="text-xs text-muted-foreground">Masque visuellement tous les messages du chat global pour les joueurs, sans supprimer l'historique stocké.</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" onClick={() => void exportChat()} disabled={exportingChat}>
+                  {exportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                  Exporter
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="border-red-500/40 text-red-400 hover:bg-red-500/10" disabled={clearingChat}>
+                      {clearingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                        Vider le chat ?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tous les messages du chat seront masqués visuellement pour les joueurs. L'historique restera disponible dans l'onglet Historique chat.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction onClick={clearChat} className="bg-red-600 hover:bg-red-700">
+                        Vider le chat
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
 
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Deploiement</p>
-        <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-          <div className="flex items-center justify-between gap-4 px-4 py-3.5">
-            <div className="min-w-0">
-              <div className="text-sm font-medium">Deployer la derniere version</div>
-              <div className="text-xs text-muted-foreground">Execute <code className="font-mono bg-muted/40 px-1 rounded">/var/scripts/deploy.sh</code> sur le serveur pour mettre en ligne les derniers changements Git.</div>
-              {deployOutput && (
-                <button
-                  onClick={() => setDeployModalOpen(true)}
-                  className={`mt-1.5 text-xs font-medium underline-offset-2 hover:underline ${deployOutput.success ? 'text-green-500' : 'text-destructive'}`}
-                >
-                  {deployOutput.success ? 'Succes - voir la sortie' : 'Echec - voir la sortie'}
-                </button>
-              )}
+            {/* Entreprises */}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-semibold text-red-200">Création d'entreprise</div>
+                <div className="text-xs text-muted-foreground">Active ou désactive la possibilité pour les joueurs de fonder de nouvelles entreprises.</div>
+              </div>
+              <Switch
+                checked={businessCreationEnabled}
+                onCheckedChange={saveBusinessCreationEnabled}
+                disabled={savingBusinessCreation}
+              />
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={deploying}
-                onClick={async () => {
-                  const confirmed = await confirm({
-                    title: 'Lancer le deploiement ?',
-                    description: 'Le serveur va pull les changements Git puis redemarrer.',
-                    confirmLabel: 'Lancer',
-                    cancelLabel: 'Annuler',
-                    variant: 'destructive',
-                  });
-                  if (!confirmed) return;
-                  setDeploying(true);
-                  setDeployOutput(null);
-                  try {
-                    const res = await adminApi.deploy();
-                    setDeployOutput({ success: true, stdout: res.data.stdout || '', stderr: res.data.stderr || '', message: res.data.message });
-                    setDeployModalOpen(true);
-                  } catch (err: unknown) {
-                    const d = (err as { response?: { data?: { message?: string; stdout?: string; stderr?: string } } })?.response?.data;
-                    setDeployOutput({ success: false, stdout: d?.stdout || '', stderr: d?.stderr || '', message: d?.message || String(err) });
-                    setDeployModalOpen(true);
-                  } finally {
-                    setDeploying(false);
-                  }
-                }}
-              >
-                {deploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Terminal className="h-3.5 w-3.5" />}
+
+            {/* Purger toutes les entreprises */}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-semibold text-red-200">Purger toutes les entreprises</div>
+                <div className="text-xs text-muted-foreground">Supprime définitivement toutes les entreprises en cours et rembourse les propriétaires.</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void purgeAllBusinesses()} disabled={purgingBusinesses} className="shrink-0 border-red-500/30 text-red-400 hover:bg-red-500/10">
+                {purgingBusinesses ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                Purger les entreprises
+              </Button>
+            </div>
+
+            {/* Reinitialiser les niveaux */}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-semibold text-red-200">Réinitialiser les niveaux débloqués</div>
+                <div className="text-xs text-muted-foreground">Remet le niveau débloqué de tous les joueurs à 0 (tous devront repartir du niveau 1).</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void resetBusinessUnlockLevels()} disabled={resettingUnlockLevels} className="shrink-0 border-red-500/30 text-red-400 hover:bg-red-500/10">
+                {resettingUnlockLevels ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                Réinitialiser les niveaux
+              </Button>
+            </div>
+
+            {/* Purger Marketplace d'objets */}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-semibold text-red-200">Purger la marketplace d'objets</div>
+                <div className="text-xs text-muted-foreground">Supprime/annule toutes les offres d'objets en cours et restitue la totalité des items aux vendeurs.</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void purgeAllMarketplaceListings()} disabled={purgingMarketplaceListings} className="shrink-0 border-red-500/30 text-red-400 hover:bg-red-500/10">
+                {purgingMarketplaceListings ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Ban className="h-3.5 w-3.5 mr-1" />}
+                Annuler toutes les offres d'objets
+              </Button>
+            </div>
+
+            {/* Purger Marché de ressources */}
+            <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div>
+                <div className="text-sm font-semibold text-red-200">Purger le marché de ressources</div>
+                <div className="text-xs text-muted-foreground">Désactive/annule toutes les offres de ressources actives et restitue les stocks aux entreprises.</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => void purgeAllResourceMarketListings()} disabled={purgingResourceMarketListings} className="shrink-0 border-red-500/30 text-red-400 hover:bg-red-500/10">
+                {purgingResourceMarketListings ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Ban className="h-3.5 w-3.5 mr-1" />}
+                Annuler toutes les offres de ressources
               </Button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <Dialog open={deployModalOpen} onOpenChange={setDeployModalOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">

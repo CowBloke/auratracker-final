@@ -3529,6 +3529,10 @@ export const adminApi = {
   exportWealthStats: () => api.get<Blob>('/admin/wealth-stats/export', { responseType: 'blob' }),
   purgeAllBusinesses: () =>
     api.post<{ purged: number }>('/admin/businesses/purge', {}),
+  purgeAllMarketplaceListings: () =>
+    api.post<{ success: boolean; count: number }>('/admin/marketplace/purge-listings', {}),
+  purgeAllResourceMarketListings: () =>
+    api.post<{ success: boolean; count: number }>('/admin/resource-market/purge-listings', {}),
   resetBusinessUnlockLevels: () =>
     api.post<{ ok: boolean }>('/admin/businesses/reset-unlock-levels', {}),
   getBusinessCreationEnabled: () =>
