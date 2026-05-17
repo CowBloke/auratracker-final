@@ -4546,6 +4546,8 @@ export type StableHorseDto = HorseCosmetics & {
   dopedForCycle: number | null;
   parent1Id: string | null;
   parent2Id: string | null;
+  isForSale?: boolean;
+  salePrice?: number | null;
 };
 
 export type StableMeDto = {

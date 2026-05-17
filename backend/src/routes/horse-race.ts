@@ -1537,7 +1537,7 @@ router.post('/horses/buy', authMiddleware, async (req: AuthRequest, res: Respons
     });
 
     await emitSharedBalanceUpdatesForUserIds(prisma, Array.from(new Set([req.user.id, result.sellerOwnerId].filter(Boolean) as string[])));
-    logGame('horse_race_buy_horse', req.user.id, req.user.username, { horseId: result.horse.id, name: result.horse.name, businessId, horseId });
+    logGame('horse_race_buy_horse', req.user.id, req.user.username, { horseId: result.horse.id, name: result.horse.name, businessId });
     return res.json({ success: true, horse: result.horse });
   } catch (err) {
     const status = (err as { status?: number }).status ?? 500;

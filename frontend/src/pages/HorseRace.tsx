@@ -45,6 +45,7 @@ import {
   type TopHorseDto,
   type HorseServiceBusinessDto,
   type HorseCosmetics,
+  type HorseBusinessHorseDto,
 } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -2191,7 +2192,7 @@ function StableModal({
                               {selected.isForSale ? (
                                 <div className="space-y-1.5">
                                   <p className="text-[10.5px] text-purple-200">En vente pour <span className="font-bold text-amber-300">{formatMoney(selected.salePrice ?? 0)}</span></p>
-                                  <AppModal.Button tone="purple" variant="soft" size="sm" full disabled={busy} onClick={doCancelSell}>
+                                  <AppModal.Button tone="aura" variant="soft" size="sm" full disabled={busy} onClick={doCancelSell}>
                                     Retirer de la vente
                                   </AppModal.Button>
                                 </div>
@@ -2206,7 +2207,7 @@ function StableModal({
                                       className="flex-1 rounded border border-purple-500/30 bg-black/40 px-2 py-1 text-[11px] font-semibold text-white focus:outline-none focus:border-purple-500"
                                       style={{ minWidth: 0 }}
                                     />
-                                    <AppModal.Button tone="purple" variant="solid" size="sm" disabled={busy} onClick={doSell}>
+                                    <AppModal.Button tone="aura" variant="solid" size="sm" disabled={busy} onClick={doSell}>
                                       Vendre
                                     </AppModal.Button>
                                   </div>
@@ -2583,7 +2584,7 @@ function StableModal({
                               </div>
 
                               <AppModal.Button
-                                tone="purple"
+                                tone="aura"
                                 variant="solid"
                                 full
                                 size="md"
