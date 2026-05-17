@@ -9,6 +9,7 @@ import {
   getSupplyProfiles,
   type YouEconomyResourceType,
 } from './economy.js';
+import { autoListOutput } from './resource-market.js';
 import { isBusinessManager } from './service.js';
 
 type ResourceType = YouEconomyResourceType;
@@ -247,6 +248,8 @@ function serializeInventory(entry: any) {
     quantity: entry.quantity,
     capacity: entry.capacity,
     productionRatePerHour: entry.productionRatePerHour,
+    autoSellEnabled: Boolean(entry.autoSellEnabled),
+    autoSellPrice: Number(entry.autoSellPrice ?? 0),
     globalMarketUnitPrice: getGlobalMarketUnitPrice(entry.business?.typeKey ?? '', entry.resourceType),
     lastProducedAt: serializeDate(entry.lastProducedAt),
   };
@@ -543,22 +546,26 @@ export async function runResourceAction(userId: string, businessId: string, inpu
 
     for (const output of action.outputs) {
       const profile = getSupplyProfiles(business.typeKey).find((entry) => entry.resourceType === output.resourceType);
-      await tx.businessResourceInventory.upsert({
-        where: {
-          businessId_resourceType: {
+      const existingInv = await tx.businessResourceInventory.findUnique({
+        where: { businessId_resourceType: { businessId: business.id, resourceType: output.resourceType } },
+      });
+      const autoSell = existingInv?.autoSellEnabled && (existingInv.autoSellPrice ?? 0) > 0;
+      if (autoSell) {
+        // Route output directly to a market listing instead of inventory
+        await autoListOutput(tx, business.ownerId, business.id, output.resourceType, output.quantity, existingInv!.autoSellPrice);
+      } else {
+        await tx.businessResourceInventory.upsert({
+          where: { businessId_resourceType: { businessId: business.id, resourceType: output.resourceType } },
+          update: { quantity: { increment: output.quantity } },
+          create: {
             businessId: business.id,
             resourceType: output.resourceType,
+            quantity: output.quantity,
+            capacity: profile?.capacity ?? Math.max(80, output.quantity * 5),
+            productionRatePerHour: profile?.rate ?? 0,
           },
-        },
-        update: { quantity: { increment: output.quantity } },
-        create: {
-          businessId: business.id,
-          resourceType: output.resourceType,
-          quantity: output.quantity,
-          capacity: profile?.capacity ?? Math.max(80, output.quantity * 5),
-          productionRatePerHour: profile?.rate ?? 0,
-        },
-      });
+        });
+      }
     }
 
     if (action.rewardMoney > 0) {

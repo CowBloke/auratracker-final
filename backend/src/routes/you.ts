@@ -102,6 +102,13 @@ import {
   getResourceActionState,
   runResourceAction,
 } from '../modules/you/resource-actions.js';
+import {
+  getMarketState,
+  createListing,
+  cancelListing,
+  buyListing,
+  setAutoSell,
+} from '../modules/you/resource-market.js';
 
 const router = Router();
 const YOU_LOGO_ADMIN_ONLY_KEY = 'you_logo_admin_only';
@@ -1456,6 +1463,64 @@ router.post('/businesses/:businessId/youtube-exit', authMiddleware, requireYouAc
     res.json(eligibility);
   } catch (error) {
     handleRouteError(error, res, 'Check youtube review eligibility error');
+  }
+});
+
+// ── Resource Marketplace ──────────────────────────────────────────────────────
+
+router.get('/resource-market/listings', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const state = await getMarketState(req.user!.id);
+    res.json(state);
+  } catch (error) {
+    handleRouteError(error, res, 'Get resource market state error');
+  }
+});
+
+router.post('/resource-market/listings', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await createListing(req.user!.id, {
+      businessId: String(req.body?.businessId ?? ''),
+      resourceType: String(req.body?.resourceType ?? ''),
+      quantity: Number(req.body?.quantity ?? 0),
+      unitPrice: Number(req.body?.unitPrice ?? 0),
+    });
+    res.status(201).json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Create resource market listing error');
+  }
+});
+
+router.delete('/resource-market/listings/:listingId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    await cancelListing(req.user!.id, req.params.listingId);
+    res.json({ ok: true });
+  } catch (error) {
+    handleRouteError(error, res, 'Cancel resource market listing error');
+  }
+});
+
+router.post('/resource-market/listings/:listingId/buy', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    await buyListing(req.user!.id, req.params.listingId, {
+      quantity: Number(req.body?.quantity ?? 1),
+      targetBusinessId: String(req.body?.targetBusinessId ?? ''),
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    handleRouteError(error, res, 'Buy resource market listing error');
+  }
+});
+
+router.put('/businesses/:businessId/inventories/:resourceType/auto-sell', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    await setAutoSell(req.user!.id, req.params.businessId, req.params.resourceType, {
+      enabled: Boolean(req.body?.enabled),
+      price: Number(req.body?.price ?? 0),
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    handleRouteError(error, res, 'Set auto sell error');
   }
 });
 

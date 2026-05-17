@@ -46,6 +46,23 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-05-17-actions-marketplace',
+    date: '2026-05-17',
+    title: 'Actions — Chaîne de production & Salle de marché',
+    summary: 'L\'onglet Actions adopte un design en pipeline (Sources → Produire → Vendre). La Salle de marché permet d\'acheter et vendre des ressources entre joueurs.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-05-17-actions-1', text: '**Actions · Pipeline V2** — Chaque action s\'affiche maintenant en trois étapes visuelles : Sources (inputs avec détection de manque), Produire (bouton + coût) et Vendre (stock + toggle auto-vente). Le stock de chaque ressource est visible en tête de carte avec le prix marché en temps réel.' },
+          { id: '2026-05-17-actions-2', text: '**Salle de marché** — Nouvel onglet pour acheter et vendre des ressources entre joueurs. Filtres par ressource, sparklines 7 jours, indicateurs « bon prix » / « cher ». Formulaire d\'annonce inline sans modal.' },
+          { id: '2026-05-17-actions-3', text: '**Auto-vente** — Toggle par ressource produite : quand activé, chaque production crée automatiquement une annonce au marché au prix configuré au lieu d\'aller en stock.' },
+          { id: '2026-05-17-actions-4', text: '**Acheter au marché depuis Actions** — Quand un input est manquant, un bouton « Acheter au marché » ouvre la Salle de marché pré-filtrée sur la ressource et le business concerné.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-05-16-horserace-overhaul',
     date: '2026-05-16',
     title: 'Hippodrome — Refonte UI & nouvelles mécaniques',

@@ -755,6 +755,8 @@ export interface YouSupplyInventory {
   quantity: number;
   capacity: number;
   productionRatePerHour: number;
+  autoSellEnabled: boolean;
+  autoSellPrice: number;
   globalMarketUnitPrice: number;
   lastProducedAt: string | null;
 }
@@ -1056,6 +1058,30 @@ export interface YouTemporaryEffect {
   remainingMs: number;
 }
 
+export interface YouResourceMarketListing {
+  id: string;
+  resourceType: YouSupplyResourceType;
+  quantity: number;
+  unitPrice: number;
+  sellerName: string;
+  sellerId: string;
+  businessName: string;
+  businessId: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+export interface YouResourceMarketResourceStats {
+  avg: number;
+  trend: number[];
+  change: number;
+}
+
+export interface YouResourceMarketState {
+  listings: YouResourceMarketListing[];
+  resourceStats: Record<string, YouResourceMarketResourceStats>;
+}
+
 export const youApi = {
   getState: () => api.get<YouState>('/you/state'),
   getSupplyState: () => api.get<YouSupplyState>('/you/supply/state'),
@@ -1242,6 +1268,17 @@ export const youApi = {
     api.post<{ video: { id: string; views: number } }>(`/you/youtube-videos/${videoId}/view`),
   checkYoutubeExitReview: (businessId: string) =>
     api.post<{ eligible: boolean }>(`/you/businesses/${businessId}/youtube-exit`),
+  // ── Resource Marketplace ──────────────────────────────────────────────
+  getMarketListings: () =>
+    api.get<YouResourceMarketState>('/you/resource-market/listings'),
+  createMarketListing: (data: { businessId: string; resourceType: YouSupplyResourceType; quantity: number; unitPrice: number }) =>
+    api.post<{ listing: YouResourceMarketListing }>('/you/resource-market/listings', data),
+  cancelMarketListing: (listingId: string) =>
+    api.delete<{ ok: boolean }>(`/you/resource-market/listings/${listingId}`),
+  buyMarketListing: (listingId: string, data: { quantity: number; targetBusinessId: string }) =>
+    api.post<{ ok: boolean }>(`/you/resource-market/listings/${listingId}/buy`, data),
+  setAutoSell: (businessId: string, resourceType: YouSupplyResourceType, data: { enabled: boolean; price: number }) =>
+    api.put<{ ok: boolean }>(`/you/businesses/${businessId}/inventories/${resourceType}/auto-sell`, data),
 };
 
 export interface Ad {

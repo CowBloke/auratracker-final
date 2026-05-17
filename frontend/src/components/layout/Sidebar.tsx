@@ -28,6 +28,7 @@ import {
   TrendingUp,
   Megaphone,
   Eye,
+  ShoppingBasket,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -77,6 +78,7 @@ const youNavItems = [
   { tab: 'publicites', label: 'Publicités', icon: Megaphone },
   { tab: 'supply', label: t('sidebar_you_supply'), icon: Boxes },
   { tab: 'actions', label: 'Actions', icon: Workflow },
+  { tab: 'salle-de-marche', label: 'Marché ressources', icon: ShoppingBasket },
   { tab: 'youtube', label: 'YouTube', icon: Video },
 ];
 

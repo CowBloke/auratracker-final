@@ -213,6 +213,7 @@ model User {
   lawyerReviewEligibilities ReviewEligibility[]            @relation("ReviewEligibilityLawyer")
   businessPurchasedItems    BusinessPurchasedItem[]
   requestedSupplyContracts  BusinessSupplyContract[]        @relation("SupplyContractRequester")
+  resourceMarketListings    ResourceMarketListing[]
   // Braquage Légal
   isBraquageLegalOwner       Boolean                       @default(false)
   braquageLegalWins          BraquageLegalSession[]        @relation("BraquageLegalWinner")
@@ -617,6 +618,7 @@ model Business {
   horseBusinessProfile HorseBusinessProfile?
   horseBusinessHorses HorseBusinessHorse[]
   horseBusinessProductions HorseBusinessProduction[]
+  resourceMarketListings   ResourceMarketListing[]
 
   @@index([ownerId])
   @@index([supportAgentId])
@@ -2816,6 +2818,8 @@ model BusinessResourceInventory {
   quantity              Int      @default(0)
   capacity              Int
   productionRatePerHour Int      @default(0)
+  autoSellEnabled       Boolean  @default(false)
+  autoSellPrice         Int      @default(0)
   lastProducedAt        DateTime @default(now())
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -3393,4 +3397,23 @@ model HorseRaceResolution {
   winnerName String
   totalBets  Int      @default(0)
   totalPool  Int      @default(0)
+}
+
+model ResourceMarketListing {
+  id           String   @id @default(uuid())
+  sellerId     String
+  businessId   String
+  resourceType String
+  quantity     Int
+  unitPrice    Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  seller   User     @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([resourceType, isActive])
+  @@index([sellerId])
+  @@index([businessId])
 }
