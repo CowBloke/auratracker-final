@@ -1,7 +1,9 @@
 type ResourceType =
   | 'WOOD' | 'STONE' | 'IRON' | 'FOOD' | 'CLOTH'
   | 'CONCRETE' | 'STEEL' | 'FUEL' | 'PAPER'
-  | 'LUXURY_GOODS' | 'MEDICINE' | 'DATA' | 'CONTRABAND';
+  | 'LUXURY_GOODS' | 'MEDICINE' | 'DATA' | 'CONTRABAND' | 'HORSES'
+  | 'ADBLOCK_TOKEN' | 'JUICE_ABRICOT' | 'JUICE_GINGEMBRE'
+  | 'JUICE_GOYAVE' | 'JUICE_MALAKOUKOU' | 'JUICE_PAPAYE';
 
 export type YouEconomyResourceType = ResourceType;
 
@@ -45,9 +47,8 @@ export const SUPPLY_PROFILES: Record<string, SupplyProfile[]> = {
   medecins: [{ resourceType: 'MEDICINE', rate: 2, capacity: 70, price: 50 }],
   illegal_market: [{ resourceType: 'CONTRABAND', rate: 2, capacity: 60, price: 90 }],
   horse_business: [
+    { resourceType: 'HORSES', rate: 2, capacity: 60, price: 80 },
     { resourceType: 'FOOD', rate: 0, capacity: 160, price: 10 },
-    { resourceType: 'WOOD', rate: 0, capacity: 140, price: 24 },
-    { resourceType: 'CLOTH', rate: 0, capacity: 100, price: 26 },
     { resourceType: 'MEDICINE', rate: 0, capacity: 80, price: 50 },
   ],
   farm: [{ resourceType: 'FOOD', rate: 8, capacity: 180, price: 10 }],
@@ -62,6 +63,17 @@ export const SUPPLY_PROFILES: Record<string, SupplyProfile[]> = {
   ],
   fuel_refinery: [{ resourceType: 'FUEL', rate: 3, capacity: 100, price: 48 }],
   textile_mill: [{ resourceType: 'CLOTH', rate: 5, capacity: 130, price: 26 }],
+  // ── Item producers ────────────────────────────────────────────────────────
+  juterie: [
+    { resourceType: 'JUICE_ABRICOT',    rate: 2, capacity: 30, price: 100 },
+    { resourceType: 'JUICE_GINGEMBRE',  rate: 2, capacity: 30, price: 100 },
+    { resourceType: 'JUICE_PAPAYE',     rate: 2, capacity: 30, price: 350 },
+    { resourceType: 'JUICE_MALAKOUKOU', rate: 1, capacity: 20, price: 1500 },
+    { resourceType: 'JUICE_GOYAVE',     rate: 1, capacity: 10, price: 80000 },
+  ],
+  labo_pub: [
+    { resourceType: 'ADBLOCK_TOKEN', rate: 2, capacity: 40, price: 500 },
+  ],
 };
 
 export const BUSINESS_INPUT_REQUIREMENTS: Record<string, BusinessInputRequirement[]> = {
@@ -94,12 +106,33 @@ export const BUSINESS_INPUT_REQUIREMENTS: Record<string, BusinessInputRequiremen
     { resourceType: 'MEDICINE', dailyQuantity: 1, weight: 0.25 },
   ],
   illegal_market: [{ resourceType: 'CONTRABAND', dailyQuantity: 1, weight: 1 }],
+  juterie: [
+    { resourceType: 'FOOD', dailyQuantity: 3, weight: 0.7 },
+    { resourceType: 'LUXURY_GOODS', dailyQuantity: 1, weight: 0.3 },
+  ],
+  labo_pub: [
+    { resourceType: 'DATA', dailyQuantity: 2, weight: 0.6 },
+    { resourceType: 'PAPER', dailyQuantity: 1, weight: 0.4 },
+  ],
 };
 
 export const GLOBAL_MARKET_PRICE_MULTIPLIER = 0.55;
 
 export function getSupplyProfiles(typeKey: string) {
   return SUPPLY_PROFILES[typeKey] ?? [];
+}
+
+export function getBusinessSupplyProfiles(typeKey: string, customData?: string | null) {
+  const profiles = SUPPLY_PROFILES[typeKey] ?? [];
+  if (typeKey === 'juterie' && customData) {
+    try {
+      const data = JSON.parse(customData) as { juiceSpecialization?: string };
+      if (data.juiceSpecialization) {
+        return profiles.filter((p) => p.resourceType === data.juiceSpecialization);
+      }
+    } catch {}
+  }
+  return profiles;
 }
 
 export function getBusinessInputRequirements(typeKey: string) {

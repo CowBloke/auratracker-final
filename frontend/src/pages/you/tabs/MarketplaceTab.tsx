@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Building2, ChevronDown, Loader2, Minus, Plus, RefreshCw,
-  Search, ShoppingCart, Tag, TrendingDown, TrendingUp, Trash2, X,
+  Search, ShoppingCart, Sparkles, Tag, TrendingDown, TrendingUp, Trash2, X,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,9 @@ import { Input } from '@/components/ui/input';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { AppModal } from '@/components/ui/app-modal';
 import { RESOURCE_META, type ResourceType } from '@/lib/resources';
+import { ITEM_RESOURCE_TYPES, SHOP_ITEM_DEFS } from '@/lib/shop-items';
 import { cn } from '@/lib/utils';
 import {
   type YouBusiness,
@@ -25,23 +27,6 @@ function fmt(v: number) { return Math.round(v).toLocaleString('fr-FR'); }
 function fmtDec(v: number) { return v.toFixed(v < 10 ? 1 : 0).replace('.', ','); }
 function resourceLabel(rt: string) { return RESOURCE_META[rt as ResourceType]?.label ?? rt; }
 
-// Deterministic sparkline matching the backend seed (visual only)
-function MiniSparkline({ trend, change }: { trend: number[]; change: number }) {
-  if (trend.length < 2) return null;
-  const w = 56, h = 18;
-  const min = Math.min(...trend), max = Math.max(...trend), range = max - min || 1;
-  const step = w / (trend.length - 1);
-  const toY = (v: number) => h - 2 - ((v - min) / range) * (h - 4);
-  const path = trend.map((v, i) => `${i === 0 ? 'M' : 'L'}${i * step},${toY(v)}`).join(' ');
-  const color = change >= 0 ? '#34d399' : '#f87171';
-  const last = trend[trend.length - 1];
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0">
-      <path d={path} fill="none" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={(trend.length - 1) * step} cy={toY(last)} r="1.8" fill={color} />
-    </svg>
-  );
-}
 
 // Resource type filter chip
 function ResourcePill({
@@ -66,24 +51,82 @@ function ResourcePill({
   );
 }
 
-// Inline post-listing form
-function PostListingForm({
+type BizInventory = { resourceType: string; quantity: number };
+
+// Modal for creating a new listing
+function CreateListingModal({
   ownedBusinesses, resourceStats, onCreated,
+  initialOpen = false, initialBusinessId = '', initialResourceType = ''
 }: {
   ownedBusinesses: YouBusiness[];
   resourceStats: YouResourceMarketState['resourceStats'];
   onCreated: () => void;
+  initialOpen?: boolean;
+  initialBusinessId?: string;
+  initialResourceType?: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const [businessId, setBusinessId] = useState(ownedBusinesses[0]?.id ?? '');
-  const [resourceType, setResourceType] = useState<string>('');
+  const [open, setOpen] = useState(initialOpen);
+  const [businessId, setBusinessId] = useState(initialBusinessId || (ownedBusinesses[0]?.id ?? ''));
+  const [resourceType, setResourceType] = useState<string>(initialResourceType);
   const [quantity, setQuantity] = useState(1);
   const [unitPrice, setUnitPrice] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [bizInventories, setBizInventories] = useState<Record<string, BizInventory[]>>({});
 
-  const avgPrice = resourceType && resourceStats[resourceType]
-    ? resourceStats[resourceType].avg
-    : null;
+  const loadInventories = useCallback(async () => {
+    setInventoryLoading(true);
+    try {
+      const res = await youApi.getResourceActionState();
+      const map: Record<string, BizInventory[]> = {};
+      for (const biz of res.data.businesses) {
+        map[biz.id] = biz.inventories
+          .filter((inv: any) => inv.quantity > 0)
+          .map((inv: any) => ({ resourceType: inv.resourceType, quantity: inv.quantity }));
+      }
+      setBizInventories(map);
+    } catch {
+      // silently fail — all resources shown as fallback
+    } finally {
+      setInventoryLoading(false);
+    }
+  }, []);
+
+  const handleOpen = () => {
+    setOpen(true);
+    void loadInventories();
+  };
+
+  useEffect(() => {
+    if (initialOpen && Object.keys(bizInventories).length === 0 && !inventoryLoading) {
+      void loadInventories();
+    }
+  }, [initialOpen, bizInventories, inventoryLoading, loadInventories]);
+
+  useEffect(() => {
+    if (initialResourceType && resourceStats[initialResourceType] && unitPrice === 1) {
+      setUnitPrice(resourceStats[initialResourceType].avg);
+    }
+  }, [initialResourceType, resourceStats, unitPrice]);
+
+  const availableResources = useMemo(() => {
+    const inv = bizInventories[businessId];
+    if (!inv || inv.length === 0) return Object.keys(RESOURCE_META);
+    return inv.map((i) => i.resourceType);
+  }, [bizInventories, businessId]);
+
+  const maxQty = useMemo(() => {
+    const inv = bizInventories[businessId];
+    if (!inv) return 9999;
+    return inv.find((i) => i.resourceType === resourceType)?.quantity ?? 9999;
+  }, [bizInventories, businessId, resourceType]);
+
+  const stats = resourceType ? resourceStats[resourceType] : null;
+
+  const handleBusinessChange = (id: string) => {
+    setBusinessId(id);
+    setResourceType('');
+  };
 
   const submit = async () => {
     if (!businessId || !resourceType || quantity <= 0 || unitPrice <= 0) {
@@ -103,93 +146,151 @@ function PostListingForm({
     }
   };
 
-  if (!open) {
-    return (
+  const meta = resourceType ? RESOURCE_META[resourceType as ResourceType] : null;
+  const ResourceIcon = meta?.Icon ?? Building2;
+
+  return (
+    <>
+      {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border/50 bg-background/30 px-4 py-3 text-[12.5px] font-medium text-muted-foreground transition hover:border-border hover:text-foreground"
+        onClick={handleOpen}
+        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-[13px] font-semibold text-emerald-600 dark:text-emerald-400 transition hover:border-emerald-500/60 hover:bg-emerald-500/10"
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border/40 bg-background/60">
-          <Plus className="h-3.5 w-3.5" />
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/15">
+          <Tag className="h-4 w-4" />
         </span>
         Vendre une ressource au marché
       </button>
-    );
-  }
 
-  return (
-    <div className="rounded-xl border border-border/50 bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-semibold">Nouvelle annonce</span>
-        <button type="button" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="col-span-2 sm:col-span-1">
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Business</label>
-          <Select value={businessId} onValueChange={setBusinessId}>
-            <SelectTrigger className="h-9 text-xs">
-              <SelectValue placeholder="Choisir…" />
-            </SelectTrigger>
-            <SelectContent>
-              {ownedBusinesses.map((b) => (
-                <SelectItem key={b.id} value={b.id}><span className="text-xs">{b.name}</span></SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="col-span-2 sm:col-span-1">
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ressource</label>
-          <Select value={resourceType} onValueChange={(v) => {
-            setResourceType(v);
-            if (resourceStats[v]) setUnitPrice(resourceStats[v].avg);
-          }}>
-            <SelectTrigger className="h-9 text-xs">
-              <SelectValue placeholder="Choisir…" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(RESOURCE_META).map((rt) => (
-                <SelectItem key={rt} value={rt}>
-                  <span className="text-xs">{resourceLabel(rt)}</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Quantité</label>
-          <Input
-            type="number" min={1} value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
-            className="h-9 text-xs tabular-nums"
-          />
-        </div>
-        <div>
-          <label className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Prix/u
-            {avgPrice && (
-              <span className="font-normal normal-case text-[9px] text-muted-foreground/70">cours ~{fmtDec(avgPrice)}m</span>
-            )}
-          </label>
-          <Input
-            type="number" min={1} value={unitPrice}
-            onChange={(e) => setUnitPrice(Math.max(1, Number(e.target.value)))}
-            className="h-9 text-xs tabular-nums"
-          />
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground tabular-nums">
-          Total estimé: <strong>{fmt(quantity * unitPrice)}m</strong>
-        </span>
-        <Button size="sm" onClick={() => void submit()} disabled={loading}>
-          {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Tag className="mr-1.5 h-3.5 w-3.5" />}
-          Publier
-        </Button>
-      </div>
-    </div>
+      {/* Modal */}
+      <AppModal open={open} onClose={() => setOpen(false)} tone="money" size="md">
+        <AppModal.Header
+          tone="money"
+          icon={<Tag />}
+          title="Nouvelle Annonce"
+          subtitle="Mettez en vente vos stocks excédentaires sur le marché."
+        />
+        <AppModal.Body className="py-4 space-y-6">
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">1. Business source</label>
+              <Select value={businessId} onValueChange={handleBusinessChange}>
+                <SelectTrigger className="h-10 text-sm font-semibold">
+                  <SelectValue placeholder="Choisir…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ownedBusinesses.map((b) => (
+                    <SelectItem key={b.id} value={b.id}><span className="font-semibold">{b.name}</span></SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5 flex items-center justify-between">
+                <span>2. Produit à vendre</span>
+                {inventoryLoading && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+              </label>
+              <Select
+                value={resourceType}
+                onValueChange={(v) => {
+                  setResourceType(v);
+                  if (resourceStats[v]) setUnitPrice(resourceStats[v].avg);
+                  setQuantity(1);
+                }}
+              >
+                <SelectTrigger className="h-10 text-sm font-semibold">
+                  <SelectValue placeholder={availableResources.length === 0 ? 'Stock vide' : 'Choisir…'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableResources.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">Aucun stock disponible</div>
+                  ) : availableResources.map((rt) => {
+                    const inv = bizInventories[businessId]?.find((i) => i.resourceType === rt);
+                    const rtMeta = RESOURCE_META[rt as ResourceType];
+                    const RIcon = rtMeta?.Icon ?? Building2;
+                    return (
+                      <SelectItem key={rt} value={rt}>
+                        <div className="flex items-center gap-2">
+                          <RIcon className={cn("h-3.5 w-3.5", rtMeta?.iconColor)} />
+                          <span className="font-semibold text-sm">
+                            {resourceLabel(rt)}
+                            {inv && <span className="ml-1.5 text-muted-foreground font-normal">({inv.quantity})</span>}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {resourceType && (
+            <div className={cn("rounded-2xl border p-4 shadow-sm", meta?.bg ? meta.bg.replace('bg-', 'border-').replace('/15', '/30') : 'border-border/40', meta?.bg ?? 'bg-muted/10')}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg shadow-sm', meta?.bg ? meta.bg.replace('/15', '/30') : 'bg-muted/40')}>
+                  <ResourceIcon className={cn("h-4 w-4", meta?.iconColor)} />
+                </span>
+                <span className="font-bold text-foreground">{resourceLabel(resourceType)}</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-auto">Stats du marché</span>
+              </div>
+              
+              {stats ? (
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="bg-background/80 rounded-xl p-3 border border-border/50 flex items-center justify-between px-4 shadow-sm">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Prix moyen global actuel</div>
+                    <div className="font-black text-foreground text-[14px]">{fmtDec(stats.avg)}€/u</div>
+                  </div>
+                </div>
+              ) : (
+                 <div className="bg-background/50 rounded-xl p-3 border border-border/30 text-xs text-muted-foreground text-center">
+                   Aucune donnée de marché récente pour ce produit.
+                 </div>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5 relative">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">3. Quantité</label>
+                <span className="text-[10px] font-bold text-muted-foreground">Max: {maxQty} unités</span>
+              </div>
+              <Input
+                type="number" min={1} max={maxQty} value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, Math.min(maxQty, Number(e.target.value))))}
+                className="h-10 text-sm tabular-nums font-bold"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">4. Prix unitaire</label>
+              <Input
+                type="number" min={1} value={unitPrice}
+                onChange={(e) => setUnitPrice(Math.max(1, Number(e.target.value)))}
+                className="h-10 text-sm tabular-nums font-bold"
+              />
+            </div>
+          </div>
+
+        </AppModal.Body>
+        <AppModal.Footer left={
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground">Total estimé :</span>
+            <span className="text-sm font-black text-emerald-500">{fmt(quantity * unitPrice)}€</span>
+          </div>
+        }>
+          <AppModal.Button variant="ghost" onClick={() => setOpen(false)}>Annuler</AppModal.Button>
+          <AppModal.Button tone="money" onClick={() => void submit()} disabled={loading || !resourceType}>
+            {loading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Tag className="mr-1.5 h-4 w-4" />}
+            Publier l'annonce
+          </AppModal.Button>
+        </AppModal.Footer>
+      </AppModal>
+    </>
   );
 }
 
@@ -212,7 +313,7 @@ function BuyFlow({
     setLoading(true);
     try {
       await youApi.buyMarketListing(listing.id, { quantity: qty, targetBusinessId: targetId });
-      toast.success(`Achat effectué — ${qty}× ${resourceLabel(listing.resourceType)} pour ${fmt(total)}m.`);
+      toast.success(`Achat effectué — ${qty}× ${resourceLabel(listing.resourceType)} pour ${fmt(total)}€.`);
       onBought();
     } catch (error: any) {
       toast.error(error?.response?.data?.error || 'Achat impossible.');
@@ -259,8 +360,122 @@ function BuyFlow({
         className="flex items-center gap-1.5 rounded-lg border-none bg-emerald-500 px-3 py-1.5 text-[12.5px] font-bold text-[#06281c] shadow-[0_2px_8px_-2px_rgba(52,211,153,0.5)] transition hover:bg-emerald-400 disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingCart className="h-3.5 w-3.5" />}
-        Acheter · {fmt(total)}m
+        Acheter · {fmt(total)}€
       </button>
+    </div>
+  );
+}
+
+// One-click buy for item listings (applies effect directly, no target business)
+function ItemBuyFlow({ listing, onBought }: { listing: YouResourceMarketListing; onBought: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const def = SHOP_ITEM_DEFS.find((d) => d.craftableResourceType === listing.resourceType);
+
+  const buy = async () => {
+    setLoading(true);
+    try {
+      const res = await youApi.buyItemMarketListing(listing.id);
+      const eff = res.data.effect;
+      let msg = 'Item obtenu !';
+      if (eff?.type === 'BONUS_AURA') msg = `+${eff.bonusAura} aura ajouté à ton compte.`;
+      else if (eff?.type === 'BONUS_MONEY') msg = `+${eff.bonusMoney}€ ajouté à ton compte.`;
+      else if (eff?.type === 'YOU_ADBLOCK') msg = 'ADblock activé 60 min.';
+      else if (eff?.type === 'PROFILE_PICTURE') msg = "Jus d'abricot ajouté à ton inventaire.";
+      else if (eff?.type === 'USERNAME_COLOR') msg = 'Jus de gingembre ajouté à ton inventaire.';
+      else if (eff?.type === 'PROFILE_BANNER') msg = 'Jus de malakoukou ajouté à ton inventaire.';
+      toast.success(msg);
+      onBought();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Achat impossible.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const effectLabel = def
+    ? (def.effect.type === 'BONUS_AURA' ? `+${def.effect.bonusAura} aura`
+      : def.effect.type === 'BONUS_MONEY' ? `+${def.effect.bonusMoney as number}€`
+      : def.effect.type === 'YOU_ADBLOCK' ? 'ADblock 60 min'
+      : def.effect.type === 'PROFILE_PICTURE' ? 'Changer PDP'
+      : def.effect.type === 'USERNAME_COLOR' ? 'Couleur pseudo'
+      : def.effect.type === 'PROFILE_BANNER' ? 'Bannière profil'
+      : '')
+    : '';
+
+  return (
+    <div className="flex items-center gap-2">
+      {effectLabel && (
+        <span className="rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-bold text-pink-500 border border-pink-500/20">
+          {effectLabel}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => void buy()}
+        disabled={loading}
+        className="flex items-center gap-1.5 rounded-lg bg-pink-500 px-3 py-1.5 text-[12.5px] font-bold text-white shadow-[0_2px_8px_-2px_rgba(236,72,153,0.5)] transition hover:bg-pink-400 disabled:opacity-60"
+      >
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+        Acheter · {fmt(listing.unitPrice)}€
+      </button>
+    </div>
+  );
+}
+
+// Item listing row (no quantity selector, 1 unit per purchase)
+function ItemListingRow({ listing, onCancelled, onBought }: {
+  listing: YouResourceMarketListing;
+  onCancelled: () => void;
+  onBought: () => void;
+}) {
+  const [cancelling, setCancelling] = useState(false);
+  const meta = RESOURCE_META[listing.resourceType as ResourceType];
+  const Icon = meta?.Icon ?? Building2;
+  const def = SHOP_ITEM_DEFS.find((d) => d.craftableResourceType === listing.resourceType);
+
+  const cancel = async () => {
+    setCancelling(true);
+    try {
+      await youApi.cancelMarketListing(listing.id);
+      toast.success('Annonce retirée.');
+      onCancelled();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Impossible de retirer l\'annonce.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <div className={cn('flex flex-wrap items-center gap-3 border-t border-border/30 px-4 py-3.5', listing.mine && 'bg-amber-500/4')}>
+      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', meta?.bg ?? 'bg-muted')}>
+        <Icon className={cn('h-4.5 w-4.5', meta?.iconColor ?? 'text-muted-foreground')} />
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground leading-tight">
+          {def?.name ?? resourceLabel(listing.resourceType)}
+          {listing.mine && <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-500">toi</span>}
+        </div>
+        <div className="text-[10.5px] text-muted-foreground">{listing.businessName} · {listing.sellerName}</div>
+      </div>
+      <div className="text-right">
+        <div className="text-[13px] font-bold tabular-nums">{listing.quantity} u. dispo</div>
+      </div>
+      <div className="flex items-center gap-2">
+        {listing.mine ? (
+          <button
+            type="button"
+            onClick={() => void cancel()}
+            disabled={cancelling}
+            className="flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/8 px-3 py-1.5 text-[12px] font-semibold text-red-500 transition hover:bg-red-500/15 disabled:opacity-50"
+          >
+            {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            Retirer
+          </button>
+        ) : (
+          <ItemBuyFlow listing={listing} onBought={onBought} />
+        )}
+      </div>
     </div>
   );
 }
@@ -334,25 +549,22 @@ function ListingRow({
       {/* Unit price + flag */}
       <div className="text-right">
         <div className="flex items-baseline gap-1.5 justify-end">
-          <span className="text-[15px] font-bold tabular-nums text-foreground leading-tight">{fmtDec(listing.unitPrice)}m</span>
+          <span className="text-[15px] font-bold tabular-nums text-foreground leading-tight">{fmtDec(listing.unitPrice)}€/u</span>
           {priceFlag && (
             <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide', priceFlag.cls)}>
               {priceFlag.label}
             </span>
           )}
         </div>
-        <div className="text-[10px] text-muted-foreground tabular-nums">total {fmt(listing.quantity * listing.unitPrice)}m</div>
+        <div className="text-[10px] text-muted-foreground tabular-nums">total {fmt(listing.quantity * listing.unitPrice)}€</div>
       </div>
 
-      {/* Trend */}
+      {/* Avg Price */}
       <div className="flex items-center gap-2">
-        {stats && <MiniSparkline trend={stats.trend} change={stats.change} />}
         {stats && (
-          <div>
-            <div className={cn('text-[11px] font-bold tabular-nums leading-tight', stats.change >= 0 ? 'text-emerald-500' : 'text-red-500')}>
-              {stats.change >= 0 ? '+' : ''}{stats.change}%
-            </div>
-            <div className="text-[10px] text-muted-foreground">7j · {fmtDec(stats.avg)}m moy</div>
+          <div className="bg-muted/30 px-2.5 py-1.5 rounded-lg border border-border/40 shadow-sm">
+            <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground leading-tight mb-0.5">Prix moyen</div>
+            <div className="text-[12px] font-black text-foreground">{fmtDec(stats.avg)}€/u</div>
           </div>
         )}
       </div>
@@ -389,7 +601,7 @@ function ColumnHeaders() {
       <span className="flex cursor-pointer items-center justify-end gap-1 text-right hover:text-foreground">
         Prix / u <ChevronDown className="h-3 w-3" />
       </span>
-      <span>Tendance 7j</span>
+      <span>Prix Moyen</span>
       <span className="text-right">Action</span>
     </div>
   );
@@ -445,15 +657,28 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
     if (filterResource) result = result.filter((l) => l.resourceType === filterResource);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
+      const getLabel = (l: YouResourceMarketListing) => {
+        const def = SHOP_ITEM_DEFS.find((d) => d.craftableResourceType === l.resourceType);
+        return def?.name ?? resourceLabel(l.resourceType);
+      };
       result = result.filter(
         (l) =>
-          resourceLabel(l.resourceType).toLowerCase().includes(q)
+          getLabel(l).toLowerCase().includes(q)
           || l.businessName.toLowerCase().includes(q)
           || l.sellerName.toLowerCase().includes(q),
       );
     }
     return result;
   }, [listings, tab, filterResource, search]);
+
+  const filteredItems = useMemo(
+    () => filtered.filter((l) => ITEM_RESOURCE_TYPES.has(l.resourceType)),
+    [filtered],
+  );
+  const filteredResources = useMemo(
+    () => filtered.filter((l) => !ITEM_RESOURCE_TYPES.has(l.resourceType)),
+    [filtered],
+  );
 
   const myListingsCount = listings.filter((l) => l.mine).length;
 
@@ -473,12 +698,15 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
         </Button>
       </div>
 
-      {/* Inline post form */}
+      {/* Inline post form trigger / Modal */}
       {ownedBusinesses.length > 0 && (
-        <PostListingForm
+        <CreateListingModal
           ownedBusinesses={ownedBusinesses}
           resourceStats={resourceStats}
           onCreated={() => void load()}
+          initialOpen={!!presellResource}
+          initialBusinessId={presellFrom ?? ''}
+          initialResourceType={presellResource ?? ''}
         />
       )}
 
@@ -533,7 +761,7 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
         </div>
       )}
 
-      {/* Listings table */}
+      {/* Listings */}
       {loading && !state ? (
         <div className="flex min-h-[240px] items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Chargement du marché…
@@ -545,26 +773,64 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
           </CardContent>
         </Card>
       ) : (
-        <Card className="overflow-hidden">
-          <ColumnHeaders />
-          <div>
-            {filtered.map((listing) => (
-              <ListingRow
-                key={listing.id}
-                listing={listing}
-                stats={resourceStats[listing.resourceType]}
-                ownedBusinesses={
-                  // If we arrived via "Acheter au marché" → pre-select the target business
-                  prefilledBusiness
-                    ? [prefilledBusiness, ...ownedBusinesses.filter((b) => b.id !== prefilledBusiness.id)]
-                    : ownedBusinesses
-                }
-                onCancelled={() => void load()}
-                onBought={() => void load()}
-              />
-            ))}
-          </div>
-        </Card>
+        <div className="space-y-4">
+          {/* Items section */}
+          {filteredItems.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-pink-500" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-pink-500">Marché des Items</span>
+                <div className="flex-1 border-t border-pink-500/20" />
+                <span className="text-[10px] text-muted-foreground">{filteredItems.length} annonce{filteredItems.length > 1 ? 's' : ''}</span>
+              </div>
+              <Card className="overflow-hidden">
+                <div>
+                  {filteredItems.map((listing) => (
+                    <ItemListingRow
+                      key={listing.id}
+                      listing={listing}
+                      onCancelled={() => void load()}
+                      onBought={() => void load()}
+                    />
+                  ))}
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Resources section */}
+          {filteredResources.length > 0 && (
+            <div className="space-y-2">
+              {filteredItems.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-500">Marché des Ressources</span>
+                  <div className="flex-1 border-t border-emerald-500/20" />
+                  <span className="text-[10px] text-muted-foreground">{filteredResources.length} annonce{filteredResources.length > 1 ? 's' : ''}</span>
+                </div>
+              )}
+              <Card className="overflow-hidden">
+                <ColumnHeaders />
+                <div>
+                  {filteredResources.map((listing) => (
+                    <ListingRow
+                      key={listing.id}
+                      listing={listing}
+                      stats={resourceStats[listing.resourceType]}
+                      ownedBusinesses={
+                        prefilledBusiness
+                          ? [prefilledBusiness, ...ownedBusinesses.filter((b) => b.id !== prefilledBusiness.id)]
+                          : ownedBusinesses
+                      }
+                      onCancelled={() => void load()}
+                      onBought={() => void load()}
+                    />
+                  ))}
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

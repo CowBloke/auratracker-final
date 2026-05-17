@@ -64,6 +64,7 @@ export const authApi = {
   getReferralSummary: () => api.get<ReferralSummary>('/auth/referral-summary'),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.post('/auth/change-password', data),
+  markIntroSeen: () => api.post('/auth/intro-seen'),
 };
 
 export interface ReferralSummary {
@@ -746,7 +747,9 @@ export interface YouState {
 export type YouSupplyResourceType =
   | 'WOOD' | 'STONE' | 'IRON' | 'FOOD' | 'CLOTH'
   | 'CONCRETE' | 'STEEL' | 'FUEL' | 'PAPER'
-  | 'LUXURY_GOODS' | 'MEDICINE' | 'DATA' | 'CONTRABAND';
+  | 'LUXURY_GOODS' | 'MEDICINE' | 'DATA' | 'CONTRABAND'
+  | 'ADBLOCK_TOKEN' | 'JUICE_ABRICOT' | 'JUICE_GINGEMBRE'
+  | 'JUICE_GOYAVE' | 'JUICE_MALAKOUKOU' | 'JUICE_PAPAYE';
 
 export interface YouSupplyInventory {
   id: string;
@@ -999,6 +1002,7 @@ export interface YouResourceAction {
   outputs: YouResourceActionOutput[];
   rewardMoney: number;
   satisfactionDelta: number;
+  durationMs?: number;
 }
 
 export interface YouResourceActionBusiness {
@@ -1012,9 +1016,19 @@ export interface YouResourceActionBusiness {
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
+  description?: string | null;
+  avgRating: number | null;
   underConstruction: boolean;
   inventories: YouSupplyInventory[];
   actions: YouResourceAction[];
+  activeActions?: Array<{ id: string; actionKey: string; startedAt: string; endsAt: string; label: string }>;
+  queuedActions?: Array<{ actionKey: string; label: string }>;
+  upgrades?: {
+    productionSpeedLvl: number;
+    stockSizeLvl: number;
+    queueLvl: number;
+  };
+  customData?: string | null;
 }
 
 export interface YouResourceActionSourceOption {
@@ -1022,6 +1036,7 @@ export interface YouResourceActionSourceOption {
   kind: 'inventory' | 'offer';
   resourceType: YouSupplyResourceType;
   businessId: string;
+  businessTypeKey: string;
   businessName: string;
   ownerName: string;
   quantity: number;
@@ -1086,7 +1101,7 @@ export const youApi = {
   getState: () => api.get<YouState>('/you/state'),
   getSupplyState: () => api.get<YouSupplyState>('/you/supply/state'),
   getResourceActionState: () => api.get<YouResourceActionState>('/you/resource-actions/state'),
-  runResourceAction: (businessId: string, data: { actionKey: string; sources: Record<string, YouResourceActionSourceInput> }) =>
+  runResourceAction: (businessId: string, data: { actionKey: string; sources: Record<string, YouResourceActionSourceInput>; payFromPersonal?: boolean }) =>
     api.post<{ result: YouResourceActionResult }>(`/you/businesses/${businessId}/resource-actions/run`, data),
   upsertSupplyOffer: (businessId: string, data: { resourceType: YouSupplyResourceType; unitPrice: number; autoAccept: boolean; isActive?: boolean }) =>
     api.put<{ offer: YouSupplyOffer }>(`/you/businesses/${businessId}/supply-offers`, data),
@@ -1112,7 +1127,7 @@ export const youApi = {
   getSkills: () => api.get<{ skills: YouSkill[] }>('/you/skills'),
   trainSkill: (skillKey: string) =>
     api.post<{ skill: YouSkill }>(`/you/skills/${skillKey}/train`),
-  createBusiness: (data: { name: string; typeKey: string; capital: number; description: string; location?: string }) =>
+  createBusiness: (data: { name: string; typeKey: string; capital: number; description: string; location?: string; juiceSpecialization?: string }) =>
     api.post<{ business: YouBusiness }>('/you/businesses', data),
   runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item', data?: Record<string, unknown>) =>
     api.post<{ result: Record<string, unknown> }>(`/you/businesses/${businessId}/actions/${actionKey}`, data ?? {}),
@@ -1277,8 +1292,14 @@ export const youApi = {
     api.delete<{ ok: boolean }>(`/you/resource-market/listings/${listingId}`),
   buyMarketListing: (listingId: string, data: { quantity: number; targetBusinessId: string }) =>
     api.post<{ ok: boolean }>(`/you/resource-market/listings/${listingId}/buy`, data),
+  buyItemMarketListing: (listingId: string) =>
+    api.post<{ ok: boolean; effect: Record<string, unknown> }>(`/you/resource-market/listings/${listingId}/buy-item`),
   setAutoSell: (businessId: string, resourceType: YouSupplyResourceType, data: { enabled: boolean; price: number }) =>
     api.put<{ ok: boolean }>(`/you/businesses/${businessId}/inventories/${resourceType}/auto-sell`, data),
+  buyBusinessUpgrade: (businessId: string, upgradeType: 'productionSpeed' | 'stockSize' | 'queue', level: number) =>
+    api.post<{ result: { upgradeType: string; level: number; newTreasury: number } }>(`/you/businesses/${businessId}/resource-actions/upgrades/buy`, { upgradeType, level }),
+  toggleConstantProduction: (businessId: string, actionKey: string, enabled: boolean) =>
+    api.post<{ result: { actionKey: string; enabled: boolean } }>(`/you/businesses/${businessId}/resource-actions/${actionKey}/toggle-constant-production`, { enabled }),
 };
 
 export interface Ad {
@@ -4666,6 +4687,18 @@ export type HorseRaceConfig = {
   PRIZE_POOL_3RD_PCT: number;
 };
 
+export type HorseBusinessHorseDto = {
+  id: string;
+  bodyColor: string;
+  pattern: string;
+  patternColor: string;
+  geneSpeed: number;
+  geneStamina: number;
+  geneConsistency: number;
+  stars: number;
+  createdAt: string;
+};
+
 export type HorseServiceBusinessDto = {
   id: string;
   name: string;
@@ -4679,6 +4712,36 @@ export type HorseServiceBusinessDto = {
   availableHorseRating: number | null;
   productionSlots: number;
   activeProductionCount: number;
+  availableHorses?: HorseBusinessHorseDto[];
+};
+
+export type MarketHorseDto = {
+  id: string;
+  stableId: string;
+  stableName: string;
+  name: string;
+  bodyColor: string;
+  pattern: string;
+  patternColor: string;
+  mane: string;
+  silks1: string;
+  silks2: string;
+  silksDesign: string;
+  helmet: string;
+  accessory: string;
+  geneSpeed: number;
+  geneStamina: number;
+  geneConsistency: number;
+  trainSpeed: number;
+  trainStamina: number;
+  trainConsistency: number;
+  birthCycle: number;
+  races: number;
+  wins: number;
+  podiums: number;
+  earnings: number;
+  salePrice: number;
+  forSaleAt: string;
 };
 
 export const horseRaceApi = {
@@ -4696,10 +4759,15 @@ export const horseRaceApi = {
 
   listStables: () => api.get<{ stables: PublicStableDto[] }>('/horse-race/stables'),
   listHorseBusinesses: () => api.get<{ businesses: HorseServiceBusinessDto[] }>('/horse-race/businesses'),
+  listMarketHorses: () => api.get<{ horses: MarketHorseDto[] }>('/horse-race/market/horses'),
   getStandings: () => api.get<HorseRaceStandingsResponse>('/horse-race/standings'),
 
-  buyHorse: (data: { name: string; businessId: string }) =>
+  buyHorse: (data: { name?: string; businessId?: string; horseBusinessHorseId?: string; horseId?: string }) =>
     api.post<{ success: true; horse: unknown }>('/horse-race/horses/buy', data),
+  sellHorse: (id: string, data: { price: number }) =>
+    api.post<{ success: true }>(`/horse-race/horses/${id}/sell`, data),
+  cancelSellHorse: (id: string) =>
+    api.post<{ success: true }>(`/horse-race/horses/${id}/cancel-sell`),
   updateHorse: (
     id: string,
     data: {

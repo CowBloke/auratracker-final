@@ -19,15 +19,8 @@ import {
   Target,
   Info,
   MessagesSquare,
-  Boxes,
   Video,
   Workflow,
-  Briefcase,
-  Compass,
-  Landmark,
-  TrendingUp,
-  Megaphone,
-  Eye,
   ShoppingBasket,
 } from 'lucide-react';
 import {
@@ -68,18 +61,11 @@ const economyItems: SidebarRouteItem[] = [
 ];
 
 const youNavItems = [
-  { tab: 'overview', label: 'Overview', icon: Eye },
-  { tab: 'carte',  label: t('sidebar_you_map'),    icon: Map   },
-  { tab: 'travail', label: 'Travail', icon: Briefcase },
-  { tab: 'social', label: 'Social', icon: Users },
-  { tab: 'explore', label: 'Explore', icon: Compass },
-  { tab: 'finance', label: 'Finance', icon: Landmark },
-  { tab: 'marche-actions', label: 'Marché', icon: TrendingUp },
-  { tab: 'publicites', label: 'Publicités', icon: Megaphone },
-  { tab: 'supply', label: t('sidebar_you_supply'), icon: Boxes },
-  { tab: 'actions', label: 'Actions', icon: Workflow },
-  { tab: 'salle-de-marche', label: 'Marché ressources', icon: ShoppingBasket },
-  { tab: 'youtube', label: 'YouTube', icon: Video },
+  { tab: 'carte',           label: t('sidebar_you_map'),   icon: Map           },
+  { tab: 'actions',         label: 'Actions',              icon: Workflow      },
+  { tab: 'social',         label: 'Social',              icon: Users      },
+  { tab: 'salle-de-marche', label: 'Marché ressources',    icon: ShoppingBasket},
+  { tab: 'youtube',         label: 'YouTube',              icon: Video         },
 ];
 
 export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...props }: ComponentProps<typeof Sidebar>) {

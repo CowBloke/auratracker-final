@@ -9,6 +9,24 @@ const RESOURCE_CANONICAL_PRICES: Record<string, number> = {
   WOOD: 13, STONE: 10, IRON: 17, FOOD: 6, CLOTH: 14,
   CONCRETE: 23, STEEL: 32, FUEL: 26, PAPER: 11,
   LUXURY_GOODS: 28, MEDICINE: 28, DATA: 20, CONTRABAND: 50,
+  // Craftable items
+  ADBLOCK_TOKEN: 500, JUICE_ABRICOT: 100, JUICE_GINGEMBRE: 100,
+  JUICE_GOYAVE: 800000, JUICE_MALAKOUKOU: 8000, JUICE_PAPAYE: 350,
+};
+
+// Items whose purchase applies an effect to the buyer's account directly.
+export const CRAFTABLE_ITEM_TYPES = new Set([
+  'ADBLOCK_TOKEN', 'JUICE_ABRICOT', 'JUICE_GINGEMBRE',
+  'JUICE_GOYAVE', 'JUICE_MALAKOUKOU', 'JUICE_PAPAYE',
+]);
+
+const ITEM_EFFECTS: Record<string, { type: string; [k: string]: unknown }> = {
+  ADBLOCK_TOKEN:    { type: 'YOU_ADBLOCK',     durationMinutes: 60 },
+  JUICE_GOYAVE:     { type: 'BONUS_AURA',      bonusAura: 10 },
+  JUICE_PAPAYE:     { type: 'BONUS_MONEY',     bonusMoney: 100 },
+  JUICE_ABRICOT:    { type: 'PROFILE_PICTURE', itemName: "Jus d'abricot" },
+  JUICE_GINGEMBRE:  { type: 'USERNAME_COLOR',  itemName: 'Jus de gingembre' },
+  JUICE_MALAKOUKOU: { type: 'PROFILE_BANNER',  itemName: 'Jus de malakoukou' },
 };
 
 function getCanonicalPrice(resourceType: string): number {
@@ -248,6 +266,85 @@ export async function setAutoSell(
       autoSellPrice: Math.max(1, input.price),
     },
   });
+}
+
+// Purchases a craftable-item listing. Applies the item effect to the buyer's
+// account directly instead of transferring to a business inventory.
+export async function buyItemListing(userId: string, listingId: string) {
+  const listing = await prisma.resourceMarketListing.findUnique({
+    where: { id: listingId },
+    include: {
+      seller: { select: { id: true } },
+      business: { select: { id: true, ownerId: true } },
+    },
+  });
+  if (!listing || !listing.isActive) throw new Error('LISTING_NOT_FOUND');
+  if (!CRAFTABLE_ITEM_TYPES.has(listing.resourceType)) throw new Error('NOT_AN_ITEM');
+  if (listing.sellerId === userId) throw new Error('CANNOT_BUY_OWN_LISTING');
+
+  const totalCost = listing.unitPrice;
+
+  const buyer = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, money: true } });
+  if (!buyer) throw new Error('USER_NOT_FOUND');
+  if (Number(buyer.money) < totalCost) throw new Error('INSUFFICIENT_FUNDS');
+
+  const effect = ITEM_EFFECTS[listing.resourceType];
+  if (!effect) throw new Error('UNKNOWN_ITEM_EFFECT');
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({ where: { id: userId }, data: { money: { decrement: totalCost } } });
+    await tx.business.update({
+      where: { id: listing.businessId },
+      data: { treasuryMoney: { increment: totalCost } },
+    });
+
+    // Apply item effect
+    if (effect.type === 'BONUS_AURA') {
+      await tx.user.update({ where: { id: userId }, data: { aura: { increment: Number(effect.bonusAura ?? 0) } } });
+    } else if (effect.type === 'BONUS_MONEY') {
+      await tx.user.update({ where: { id: userId }, data: { money: { increment: Number(effect.bonusMoney ?? 0) } } });
+    } else if (effect.type === 'YOU_ADBLOCK') {
+      const durationMs = Number(effect.durationMinutes ?? 60) * 60 * 1000;
+      const currentUser = await tx.user.findUnique({ where: { id: userId }, select: { youAdblockExpiresAt: true } });
+      const now = Date.now();
+      const existingExpiry = currentUser?.youAdblockExpiresAt ? new Date(currentUser.youAdblockExpiresAt).getTime() : 0;
+      const base = existingExpiry > now ? existingExpiry : now;
+      await tx.user.update({ where: { id: userId }, data: { youAdblockExpiresAt: new Date(base + durationMs) } });
+    } else {
+      // Cosmetic unlock: find corresponding shop item by name and create a UserItem
+      const itemName = String(effect.itemName ?? '');
+      const shopItem = itemName ? await tx.item.findFirst({ where: { name: itemName } }) : null;
+      if (shopItem) {
+        const existing = await tx.userItem.findFirst({ where: { userId, itemId: shopItem.id } });
+        if (existing) {
+          await tx.userItem.update({ where: { id: existing.id }, data: { quantity: { increment: 1 } } });
+        } else {
+          await tx.userItem.create({ data: { userId, itemId: shopItem.id, quantity: 1 } });
+        }
+      }
+    }
+
+    // Consume one unit from the listing
+    const remaining = listing.quantity - 1;
+    await tx.resourceMarketListing.update({
+      where: { id: listingId },
+      data: { quantity: remaining, isActive: remaining > 0 },
+    });
+
+    await tx.businessTransaction.create({
+      data: {
+        businessId: listing.businessId,
+        type: 'RESOURCE_MARKET_SALE',
+        amount: BigInt(totalCost),
+        label: `Vente item: 1× ${listing.resourceType} à ${listing.unitPrice}m`,
+        actorId: userId,
+      },
+    });
+  });
+
+  await emitSharedBalanceUpdatesForUserIds(prisma, [userId, listing.business.ownerId]);
+
+  return { effect };
 }
 
 // Called internally by runResourceAction when autoSell is enabled.

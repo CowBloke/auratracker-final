@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Axe, AlertTriangle, Check, ChevronDown, ChevronUp, Crown, History, Info, Landmark, Loader2, LogOut, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Tag, Target, Trash2, UserX, X } from 'lucide-react';
+import { Axe, AlertTriangle, Check, ChevronDown, ChevronUp, Crown, History, Info, Landmark, Loader2, LogOut, Lock, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Tag, Target, Trash2, UserX, X } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,6 +38,7 @@ import { ImagePicker } from '@/components/ui/image-picker';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { ClanTag, ClanTagStyle, DEFAULT_CLAN_TAG_STYLE, getClanTagBackground, parseClanTagStyle } from '@/components/clans/ClanTag';
 import { useAuth } from '@/contexts/AuthContext';
@@ -1279,7 +1280,7 @@ export default function Clans() {
 
       <div className={cn(SPACING.PAGE_CONTENT, 'relative h-full min-h-0 overflow-hidden bg-transparent')}>
         <div className="grid h-full min-h-0 gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="flex min-h-0 flex-col rounded-2xl border border-border/50 bg-background/30 p-1 backdrop-blur-xl">
+          <div className="flex min-h-0 flex-col bg-transparent p-0">
             <div className="flex min-h-0 flex-1 flex-col gap-3">
               <div className="min-w-0 space-y-3">
                 <Tabs value={directoryViewMode} onValueChange={(value) => setDirectoryViewMode(value as 'regular' | 'war')} className="w-full">
@@ -1325,7 +1326,7 @@ export default function Clans() {
                       ) : null}
                     </div>
                   </div>
-                <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-transparent pr-1">
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
                   {loading ? (
                     <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
                       <ListSkeleton rows={4} />
@@ -1344,10 +1345,10 @@ export default function Clans() {
                             type="button"
                             onClick={() => setSelectedClanId(clan.id)}
                             className={cn(
-                              'relative w-full overflow-visible rounded-2xl border px-3 py-3 text-left transition-opacity',
-                              clan.id === selectedClanId ? 'opacity-100' : 'opacity-90 hover:opacity-100',
-                              !hasTag && 'border-border/50 hover:bg-muted/30',
-                              !hasTag && clan.id === selectedClanId && 'border-foreground/15 bg-muted/30',
+                              'relative w-full overflow-visible rounded-2xl border px-3.5 py-3.5 text-left transition-all duration-200 backdrop-blur-sm',
+                              clan.id === selectedClanId ? 'shadow-[0_8px_35px_rgba(0,0,0,0.05)] scale-[1.01]' : 'hover:scale-[1.005] hover:shadow-[0_4px_20px_rgba(0,0,0,0.02)]',
+                              !hasTag && 'border-border/30 bg-background/15 hover:bg-background/25 hover:border-border/50',
+                              !hasTag && clan.id === selectedClanId && 'border-primary/30 bg-background/35 shadow-md',
                             )}
                             style={clanTagStyle ? {
                               ...getClanTagBackground(clanTagStyle),
@@ -1453,6 +1454,27 @@ export default function Clans() {
                             </div>
                             <span className="opacity-40">•</span>
                             <span>{formatAura(selectedClan.totalAura)} aura</span>
+                            {!selectedClan.isPublic ? (
+                              <>
+                                <span className="opacity-40">•</span>
+                                <TooltipProvider>
+                                  <Tooltip delayDuration={200}>
+                                    <TooltipTrigger asChild>
+                                      <span className="cursor-help inline-flex items-center gap-1 text-amber-400 bg-amber-500/15 hover:bg-amber-500/25 px-2 py-0.5 rounded-full text-xs font-semibold border border-amber-500/25 transition-colors">
+                                        <Lock className="h-3 w-3 animate-pulse" />
+                                        <span>Privé</span>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs bg-slate-950 border-slate-800 text-slate-100 p-3 shadow-xl z-50">
+                                      <p className="font-semibold text-amber-400 mb-1">Clan Privé</p>
+                                      <p className="text-xs leading-relaxed text-slate-300">
+                                        Ce clan est privé. Les joueurs doivent soumettre une candidature pour le rejoindre, et les informations internes ne sont visibles que par ses membres.
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </>
+                            ) : null}
                           </div>
                         </div>
                       </div>
@@ -1504,11 +1526,6 @@ export default function Clans() {
                               <span>{formatMoney(selectedClan.warTrophies)} trophées</span>
                             </div>
                           ) : null}
-                          {!selectedClan.isPublic ? (
-                            <Badge variant="outline" className="h-8 rounded-full px-3 text-xs uppercase tracking-wider">
-                              Clan Privé
-                            </Badge>
-                          ) : null}
                         </div>
                       </div>
 
@@ -1534,6 +1551,131 @@ export default function Clans() {
                           Quitter
                         </Button>
                       ) : null}
+                    </div>
+
+                    {/* Sleek Member List */}
+                    <div className="!mt-1">
+                      <div className="divide-y divide-border/10">
+                        {selectedClan.members.map((member) => {
+                          const isSelf = member.userId === user?.id;
+                          const isClanLeader = selectedClan.leader.id === member.userId;
+                          const displayRole = isClanLeader ? 'Chef' : member.roleName ? member.roleName : member.isLeader ? 'Officier' : 'Membre';
+
+                          return (
+                            <div
+                              key={member.id}
+                              className="group flex items-center justify-between gap-3 py-2 transition-all duration-205"
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="relative shrink-0">
+                                  <Avatar className="h-8 w-8 transition-transform duration-300 group-hover:scale-105">
+                                    <AvatarImage src={resolveImageUrl(member.profilePicture)} alt={member.username} />
+                                    <AvatarFallback className="bg-muted/20 text-xs">{getAvatarFallback(member.username)}</AvatarFallback>
+                                  </Avatar>
+                                  {isClanLeader ? (
+                                    <span className="absolute -right-1 -top-1 rounded-full bg-background p-0.5 shadow-sm border border-border/30">
+                                      <Crown className="h-2.5 w-2.5 text-amber-500 fill-amber-500" />
+                                    </span>
+                                  ) : member.isLeader ? (
+                                    <span className="absolute -right-1 -top-1 rounded-full bg-background p-0.5 shadow-sm border border-border/30">
+                                      <Shield className="h-2.5 w-2.5 text-blue-500" />
+                                    </span>
+                                  ) : null}
+                                </div>
+
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 text-sm font-medium">
+                                    <UsernameDisplay
+                                      username={member.username}
+                                      usernameColor={member.usernameColor}
+                                      clanTag={selectedClan.tagUnlocked && selectedClan.tagText ? { text: selectedClan.tagText, style: parseClanTagStyle(selectedClan.tagStyle) } : null}
+                                    />
+                                    {isSelf ? (
+                                      <Badge variant="outline" className="h-3.5 border-primary/20 bg-primary/5 px-1 text-[9px] text-primary">
+                                        Toi
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                                    <span className="font-semibold text-foreground/75">{formatAura(member.aura)} aura</span>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1">
+                                      {member.roleColor ? (
+                                        <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: member.roleColor }} />
+                                      ) : null}
+                                      <span>{displayRole}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Admin actions (fade in on hover) */}
+                              {!isSelf ? (
+                                <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100">
+                                  {(selectedClan.viewer.isLeader || selectedClan.viewer.permissions?.canManageRoles) && !isClanLeader ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 rounded-lg bg-muted/20 hover:bg-muted text-muted-foreground hover:text-foreground"
+                                      onClick={() => setRoleAssignMemberId(member.userId)}
+                                      disabled={actionLoading}
+                                      title="Gérer le rôle"
+                                    >
+                                      <Shield className="h-3 w-3" style={{ color: member.roleColor ?? undefined }} />
+                                    </Button>
+                                  ) : null}
+                                  {selectedClan.viewer.isLeader && selectedClan.leader.id === user?.id && !isClanLeader ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 rounded-lg bg-muted/20 hover:bg-muted text-muted-foreground hover:text-amber-500"
+                                      onClick={() => handleTransferLeadership(member.userId, member.username)}
+                                      disabled={actionLoading}
+                                      title="Transférer le rôle de chef"
+                                    >
+                                      <Crown className="h-3 w-3" />
+                                    </Button>
+                                  ) : null}
+                                  {selectedClan.viewer.permissions?.canKickMembers && !isClanLeader && !member.isLeader ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 rounded-lg bg-muted/20 hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
+                                      onClick={() => handleRemoveMember(member.userId)}
+                                      disabled={actionLoading}
+                                      title="Exclure du clan"
+                                    >
+                                      <UserX className="h-3.5 w-3.5" />
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+
+                        {/* Unfilled slots as empty placeholders */}
+                        {Array.from({ length: Math.max(0, selectedClan.maxMembers - selectedClan.members.length) }).map((_, index) => (
+                          <div
+                            key={`empty-slot-${index}`}
+                            className="flex items-center justify-between gap-3 py-2 border-t border-border/10 first:border-t-0"
+                          >
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="relative shrink-0 flex items-center justify-center h-8 w-8 rounded-full border border-dashed border-border/50 bg-muted/10 text-muted-foreground/35">
+                                <Plus className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-muted-foreground/50 italic">
+                                  Slot libre
+                                </div>
+                                <div className="text-[11px] text-muted-foreground/35">
+                                  En attente d'un membre
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     <Dialog
@@ -1587,8 +1729,9 @@ export default function Clans() {
                   </div>
 
                   {/* Tabs: side-tab layout */}
-                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages')} orientation="vertical">
-                    <div className="grid gap-0 overflow-hidden rounded-2xl border border-border/50" style={{ gridTemplateColumns: selectedClan.viewer.isMember ? '170px minmax(0,1fr)' : '1fr' }}>
+                  {selectedClan.viewer.isMember ? (
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages')} orientation="vertical">
+                      <div className="grid gap-0 overflow-hidden rounded-2xl border border-border/50" style={{ gridTemplateColumns: selectedClan.viewer.isMember ? '170px minmax(0,1fr)' : '1fr' }}>
                       {/* ── Vertical side tabs ── */}
                       {selectedClan.viewer.isMember ? (
                         <TabsList className="flex flex-col items-stretch gap-1 rounded-none rounded-l-xl border-r border-border/40 bg-muted/10 p-2" style={{ minHeight: 0 }}>
@@ -1647,71 +1790,28 @@ export default function Clans() {
 
                     {/* ── Info tab ── */}
                     <TabsContent value="info" className="mt-0 space-y-4 p-4">
-                      {/* Roster */}
-                        <div className="space-y-2">
-                          <SectionTitle title="Membres" description={`${selectedClan.memberCount}/${selectedClan.maxMembers}`} />
-                          {selectedClan.members.map((member) => (
-                            <div key={member.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-2">
-                              <div className="flex items-center gap-2.5">
-                                <Avatar className="h-7 w-7">
-                                  <AvatarImage src={resolveImageUrl(member.profilePicture)} alt={member.username} />
-                                  <AvatarFallback>{getAvatarFallback(member.username)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="flex items-center gap-1.5 text-sm">
-                                    <UsernameDisplay
-                                      username={member.username}
-                                      usernameColor={member.usernameColor}
-                                      clanTag={selectedClan.tagUnlocked && selectedClan.tagText ? { text: selectedClan.tagText, style: parseClanTagStyle(selectedClan.tagStyle) } : null}
-                                    />
-                                    {member.isLeader ? <Crown className="h-3.5 w-3.5 text-amber-500" /> : null}
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <span>{formatAura(member.aura)} aura</span>
-                                    <span>•</span>
-                                    {member.roleName ? (
-                                      <span className="flex items-center gap-1">
-                                        <span className="inline-block h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: member.roleColor ?? '#6b7280' }} />
-                                        <span>{member.roleName}</span>
-                                      </span>
-                                    ) : (
-                                      <span>
-                                        {selectedClan.leader.id === member.userId ? 'Chef' : member.isLeader ? 'Officier' : 'Membre'}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              {member.userId !== user?.id ? (
-                                <div className="flex flex-wrap justify-end gap-1.5">
-                                  {(selectedClan.viewer.isLeader || selectedClan.viewer.permissions?.canManageRoles) && selectedClan.leader.id !== member.userId ? (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 w-7 p-0"
-                                      onClick={() => setRoleAssignMemberId(member.userId)}
-                                      disabled={actionLoading}
-                                      title="Gérer le rôle"
-                                    >
-                                      <Shield className="h-3.5 w-3.5" style={{ color: member.roleColor ?? undefined }} />
-                                    </Button>
-                                  ) : null}
-                                  {selectedClan.viewer.isLeader && selectedClan.leader.id === user?.id && selectedClan.leader.id !== member.userId ? (
-                                    <Button variant="secondary" size="sm" onClick={() => handleTransferLeadership(member.userId, member.username)} disabled={actionLoading}>
-                                      Donner chef
-                                    </Button>
-                                  ) : null}
-                                  {selectedClan.viewer.permissions?.canKickMembers && !member.isLeader ? (
-                                    <Button variant="ghost" size="sm" onClick={() => handleRemoveMember(member.userId)} disabled={actionLoading}>
-                                      <UserX className="h-3.5 w-3.5" />
-                                    </Button>
-                                  ) : null}
-                                </div>
-                              ) : null}
+                      {/* Vue d'ensemble */}
+                      <Card className={panelClassName}>
+                        <CardContent className="space-y-4 p-4">
+                          <SectionTitle title="Vue d'ensemble" description="Statistiques et performance globale du clan" />
+                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 space-y-1">
+                              <span className="text-xs text-muted-foreground uppercase tracking-wide">Aura Totale</span>
+                              <div className="text-lg font-semibold">{formatAura(selectedClan.totalAura)} aura</div>
                             </div>
-                          ))}
-
-                        </div>
+                            <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 space-y-1">
+                              <span className="text-xs text-muted-foreground uppercase tracking-wide">Trophées de Guerre</span>
+                              <div className="text-lg font-semibold">{formatMoney(selectedClan.warTrophies)} trophées</div>
+                            </div>
+                            <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 space-y-1">
+                              <span className="text-xs text-muted-foreground uppercase tracking-wide">Bilan de Guerre</span>
+                              <div className="text-lg font-semibold">
+                                {selectedClan.warWins}V • {selectedClan.warLosses}D • {selectedClan.warDraws}N
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
 
                       {/* Candidatures (leader only) */}
                       {(selectedClan.viewer.permissions?.canInviteMembers || selectedClan.viewer.isLeader) && selectedClan.joinRequests.length > 0 ? (
@@ -2768,6 +2868,7 @@ export default function Clans() {
                       </div>
                     </div>
                   </Tabs>
+                  ) : null}
                   <Dialog open={bankHistoryOpen} onOpenChange={setBankHistoryOpen}>
                     <DialogContent className="max-w-2xl">
                       <DialogHeader>

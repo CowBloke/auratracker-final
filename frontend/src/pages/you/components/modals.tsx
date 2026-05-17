@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownCircle, ArrowUpCircle, Building2, CalendarDays, Check, ChevronRight,
-  CreditCard, Download, Edit2, ExternalLink, Factory, GraduationCap, Image, Landmark, Loader2, Percent,
+  CreditCard, Download, Droplets, Edit2, ExternalLink, Factory, GraduationCap, Image, Landmark, Loader2, Percent,
   Megaphone, Plus, Scale, Sparkles, Star, Trash2, TrendingUp, UserPlus, Users, Wallet, X, Utensils,
   ShieldAlert,
 } from 'lucide-react';
@@ -128,50 +128,62 @@ function BusinessTypePickerModal({
       <AppModal.Header tone="cyan" title="Choisir un type d'activité" />
       <AppModal.Body scrollable>
       <div className="flex min-h-0 gap-5" data-tutorial-id="business-type-picker-modal">
-        {/* Left — flat scrollable grid */}
+        {/* Left — grouped scrollable grid */}
         <div className="max-h-[60vh] min-w-0 flex-1 overflow-y-auto pr-1">
-          <div className="grid grid-cols-3 gap-2">
-            {businessTypes.map((type) => {
-              const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
-              const style = BUSINESS_STYLE_MAP[type.key as keyof typeof BUSINESS_STYLE_MAP] ?? PICKER_DEFAULT_STYLE;
-              const color = BUSINESS_COLOR_HEX[type.key] ?? '#9ca3af';
-              const isPreviewing = previewKey === type.key;
-              const isConfirmed = selectedKey === type.key;
-              return (
-                <button
-                  key={type.key}
-                  type="button"
-                  onClick={() => setPreviewKey(type.key)}
-                  data-tutorial-id={`business-type-option-${type.key}`}
-                  className={cn(
-                    'relative overflow-hidden rounded-xl border p-3 text-left transition-all',
-                    isPreviewing ? style.card : 'border-border/40 bg-muted/10 hover:bg-muted/20',
-                  )}
-                >
-                  {/* Watermark */}
-                  <div className="pointer-events-none absolute bottom-0 right-0 select-none overflow-hidden">
-                    <Icon className="h-16 w-16 translate-x-4 translate-y-4" style={{ color, opacity: 0.11 }} />
-                  </div>
-                  {/* Confirmed dot */}
-                  {isConfirmed && (
-                    <div className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full" style={{ background: color }} />
-                  )}
-                  {/* Content */}
-                  <div className="relative flex flex-col gap-2.5">
-                    <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg transition-colors', isPreviewing ? style.iconWrap : 'bg-muted/20')}>
-                      <Icon className={cn('h-[18px] w-[18px] transition-colors', isPreviewing ? style.icon : 'text-foreground/55')} />
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold leading-tight text-foreground">{type.label}</p>
-                      <p className="mt-0.5 font-mono text-[9px] text-muted-foreground/45">
-                        {type.creationFee > 0 ? type.creationFee.toLocaleString('fr-FR') : 'Gratuit'}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          {(() => {
+            const groups = businessTypes.reduce<Record<string, typeof businessTypes>>((acc, type) => {
+              const cat = type.category ?? 'Autre';
+              (acc[cat] ??= []).push(type);
+              return acc;
+            }, {});
+            return Object.entries(groups).map(([cat, types]) => (
+              <div key={cat} className="mb-4">
+                <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 px-0.5">{cat}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {types.map((type) => {
+                    const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
+                    const style = BUSINESS_STYLE_MAP[type.key as keyof typeof BUSINESS_STYLE_MAP] ?? PICKER_DEFAULT_STYLE;
+                    const color = BUSINESS_COLOR_HEX[type.key] ?? '#9ca3af';
+                    const isPreviewing = previewKey === type.key;
+                    const isConfirmed = selectedKey === type.key;
+                    return (
+                      <button
+                        key={type.key}
+                        type="button"
+                        onClick={() => setPreviewKey(type.key)}
+                        data-tutorial-id={`business-type-option-${type.key}`}
+                        className={cn(
+                          'relative overflow-hidden rounded-xl border p-3 text-left transition-all',
+                          isPreviewing ? style.card : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+                        )}
+                      >
+                        {/* Watermark */}
+                        <div className="pointer-events-none absolute bottom-0 right-0 select-none overflow-hidden">
+                          <Icon className="h-16 w-16 translate-x-4 translate-y-4" style={{ color, opacity: 0.11 }} />
+                        </div>
+                        {/* Confirmed dot */}
+                        {isConfirmed && (
+                          <div className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+                        )}
+                        {/* Content */}
+                        <div className="relative flex flex-col gap-2.5">
+                          <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg transition-colors', isPreviewing ? style.iconWrap : 'bg-muted/20')}>
+                            <Icon className={cn('h-[18px] w-[18px] transition-colors', isPreviewing ? style.icon : 'text-foreground/55')} />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-semibold leading-tight text-foreground">{type.label}</p>
+                            <p className="mt-0.5 font-mono text-[9px] text-muted-foreground/45">
+                              {type.creationFee > 0 ? type.creationFee.toLocaleString('fr-FR') : 'Gratuit'}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ));
+          })()}
         </div>
 
         {/* Divider */}
@@ -222,6 +234,7 @@ export function CreateBusinessModal({
   const [description, setDescription] = useState('');
   const [typeKey, setTypeKey] = useState(accessibleTypes[0]?.key ?? '');
   const [capital, setCapital] = useState('');
+  const [juiceSpecialization, setJuiceSpecialization] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -234,16 +247,34 @@ export function CreateBusinessModal({
     }
     setName('');
     setDescription('');
+    setJuiceSpecialization('');
   }, [businessTypes, open]);
 
   const selectedType = accessibleTypes.find((type) => type.key === typeKey) ?? accessibleTypes[0];
   const isBank = selectedType?.key === 'bank';
 
+  const isJuterie = selectedType?.key === 'juterie';
+  const JUICE_OPTIONS = [
+    { value: 'JUICE_ABRICOT',    label: "Jus d'abricot",    desc: 'Change ta photo de profil' },
+    { value: 'JUICE_GINGEMBRE',  label: 'Jus de gingembre', desc: 'Change la couleur de ton pseudo' },
+    { value: 'JUICE_PAPAYE',     label: 'Jus de papaye',    desc: '+100€ par unité achetée' },
+    { value: 'JUICE_MALAKOUKOU', label: 'Jus de malakoukou', desc: 'Change la bannière de profil' },
+    { value: 'JUICE_GOYAVE',     label: 'Jus de Goyave',    desc: '+10 aura par unité achetée' },
+  ] as const;
+
   const submit = async () => {
     if (!selectedType) return;
+    if (isJuterie && !juiceSpecialization) {
+      toast.error('Choisissez une spécialisation pour la juicerie.');
+      return;
+    }
     setSubmitting(true);
     try {
-      await withRouteError(() => youApi.createBusiness({ name, description, typeKey: selectedType.key, capital: isBank ? 0 : Number(capital) }), 'Impossible de creer le business.');
+      await withRouteError(() => youApi.createBusiness({
+        name, description, typeKey: selectedType.key,
+        capital: isBank ? 0 : Number(capital),
+        juiceSpecialization: isJuterie ? juiceSpecialization : undefined,
+      }), 'Impossible de creer le business.');
       toast.success('Business cree');
       await onCreated();
       onClose();
@@ -324,11 +355,40 @@ export function CreateBusinessModal({
             />
           </FieldRow>
         ) : null}
+        {isJuterie && (
+          <FieldRow label="Spécialisation">
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground">Chaque juicerie ne produit qu'un seul type de jus. Choisissez votre spécialité :</p>
+              <div className="grid grid-cols-1 gap-1.5">
+                {JUICE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setJuiceSpecialization(opt.value)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all',
+                      juiceSpecialization === opt.value
+                        ? 'border-pink-500/50 bg-pink-500/10'
+                        : 'border-border/40 bg-muted/10 hover:bg-muted/20',
+                    )}
+                  >
+                    <Droplets className={cn('h-4 w-4 shrink-0', juiceSpecialization === opt.value ? 'text-pink-500' : 'text-muted-foreground')} />
+                    <div className="min-w-0 flex-1">
+                      <p className={cn('text-[13px] font-semibold leading-tight', juiceSpecialization === opt.value ? 'text-pink-500' : 'text-foreground')}>{opt.label}</p>
+                      <p className="text-[10.5px] text-muted-foreground">{opt.desc}</p>
+                    </div>
+                    {juiceSpecialization === opt.value && <Check className="h-3.5 w-3.5 shrink-0 text-pink-500" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </FieldRow>
+        )}
         </div>
         </AppModal.Body>
         <AppModal.Footer>
           <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
-          <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !selectedType || !name.trim() || !description.trim() || (!isBank && Number(capital) < selectedType.minCapital)} data-tutorial-id="create-business-submit">Creer</AppModal.Button>
+          <AppModal.Button tone="cyan" variant="soft" onClick={submit} disabled={submitting || !selectedType || !name.trim() || !description.trim() || (!isBank && Number(capital) < selectedType.minCapital) || (isJuterie && !juiceSpecialization)} data-tutorial-id="create-business-submit">Creer</AppModal.Button>
         </AppModal.Footer>
       </AppModal>
       <BusinessTypePickerModal
@@ -339,6 +399,7 @@ export function CreateBusinessModal({
         onSelect={(type) => {
           setTypeKey(type.key);
           setCapital(String(type.minCapital));
+          setJuiceSpecialization('');
         }}
       />
     </>

@@ -27,6 +27,7 @@ interface User {
   createdAt: string;
   clanEffects: ClanActiveEffect[];
   hasAdblock: boolean;
+  hasSeenIntroVideo: boolean;
 }
 
 interface AuthContextType {
@@ -37,6 +38,7 @@ interface AuthContextType {
   logout: () => void;
   updateBalance: (aura: number, money: number) => void;
   refreshUser: () => Promise<void>;
+  markIntroSeen: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -121,8 +123,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const markIntroSeen = async () => {
+    await authApi.markIntroSeen();
+    setUser((prev) => prev ? { ...prev, hasSeenIntroVideo: true } : prev);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateBalance, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateBalance, refreshUser, markIntroSeen }}>
       {children}
     </AuthContext.Provider>
   );

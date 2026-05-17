@@ -52,6 +52,7 @@ model User {
   referredAt              DateTime?
   referralRewardGrantedAt DateTime?
   welcomeInboxSentAt      DateTime?
+  hasSeenIntroVideo       Boolean   @default(false)
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -619,12 +620,27 @@ model Business {
   horseBusinessHorses HorseBusinessHorse[]
   horseBusinessProductions HorseBusinessProduction[]
   resourceMarketListings   ResourceMarketListing[]
+  activeResourceActions    BusinessActiveResourceAction[]
 
   @@index([ownerId])
   @@index([supportAgentId])
   @@index([typeKey, createdAt])
   @@index([hiring])
   @@index([isStateOwned])
+}
+
+model BusinessActiveResourceAction {
+  id              String   @id @default(uuid())
+  businessId      String
+  actionKey       String
+  outputsJson     String   // To store expected outputs
+  startedAt       DateTime @default(now())
+  endsAt          DateTime
+  status          String   @default("PENDING") // PENDING | COMPLETED
+
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, status])
 }
 
 model YoutubeVideo {
@@ -3314,6 +3330,9 @@ model Horse {
   dopedForCycle   Int?
   isConfiscated   Boolean  @default(false)
   isRetired       Boolean  @default(false)
+  isForSale       Boolean  @default(false)
+  salePrice       Int?
+  forSaleAt       DateTime?
 
   parent1Id       String?
   parent2Id       String?

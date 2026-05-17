@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, AxeIcon, BarChart3, Briefcase, Building2, Coffee, CreditCard, Flame, GraduationCap, Hammer, Landmark, Leaf, Scale, Scissors, ShieldAlert, ShoppingBasket, Stethoscope, Store, TrendingUp, Trophy, UserPlus, Utensils, Video } from 'lucide-react';
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, AxeIcon, BarChart3, Briefcase, Building2, Coffee, CreditCard, Droplets, Flame, GraduationCap, Hammer, Landmark, Leaf, Scale, Scissors, ShieldAlert, ShieldOff, ShoppingBasket, Stethoscope, Store, TrendingUp, Trophy, UserPlus, Utensils, Video } from 'lucide-react';
 import { type BusinessAction } from './types';
 
 export const BUSINESS_ICON_MAP = {
@@ -23,6 +23,8 @@ export const BUSINESS_ICON_MAP = {
   illegal_market: ShieldAlert,
   supreme_court: Scale,
   law_firm: Briefcase,
+  juterie: Droplets,
+  labo_pub: ShieldOff,
 } as const;
 
 export const BUSINESS_STYLE_MAP = {
@@ -47,6 +49,8 @@ export const BUSINESS_STYLE_MAP = {
   illegal_market: { card: 'border-fuchsia-400/30 bg-fuchsia-400/10', badge: 'bg-fuchsia-400/15 text-fuchsia-300', iconWrap: 'bg-fuchsia-400/15', icon: 'text-fuchsia-300' },
   supreme_court: { card: 'border-indigo-400/30 bg-indigo-400/10', badge: 'bg-indigo-400/15 text-indigo-300', iconWrap: 'bg-indigo-400/15', icon: 'text-indigo-300' },
   law_firm: { card: 'border-purple-400/30 bg-purple-400/10', badge: 'bg-purple-400/15 text-purple-400', iconWrap: 'bg-purple-400/15', icon: 'text-purple-400' },
+  juterie: { card: 'border-pink-400/30 bg-pink-400/10', badge: 'bg-pink-400/15 text-pink-400', iconWrap: 'bg-pink-400/15', icon: 'text-pink-400' },
+  labo_pub: { card: 'border-orange-400/30 bg-orange-400/10', badge: 'bg-orange-400/15 text-orange-400', iconWrap: 'bg-orange-400/15', icon: 'text-orange-400' },
 } as const;
 
 export const BUSINESS_COLOR_HEX: Record<string, string> = {
@@ -71,6 +75,8 @@ export const BUSINESS_COLOR_HEX: Record<string, string> = {
   law_firm: '#06b6d4',
   illegal_market: '#dc2626',
   supreme_court: '#4f46e5',
+  juterie: '#ec4899',
+  labo_pub: '#f97316',
 };
 
 export const BUSINESS_MONO_MAP: Record<string, string> = {
@@ -79,7 +85,7 @@ export const BUSINESS_MONO_MAP: Record<string, string> = {
   restaurant: 'RS', coffee_shop: 'CF', epicerie: 'EP',
   youtube: 'YT', medecins: 'MD', horse_business: 'HR', startup: 'ST', agency: 'AG',
   bank: 'BK', transfer: 'TR', formation: 'FO', law_firm: 'LW',
-  illegal_market: 'IM', supreme_court: 'SC',
+  illegal_market: 'IM', supreme_court: 'SC', juterie: 'JT', labo_pub: 'LP',
 };
 
 export const ACTION_META: Record<BusinessAction, { label: string; help: string; icon: typeof UserPlus; tone: string }> = {

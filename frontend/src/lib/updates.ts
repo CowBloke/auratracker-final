@@ -46,6 +46,56 @@ export type UpdateEntry = {
 
 export const UPDATE_ENTRIES: UpdateEntry[] = [
   {
+    id: '2026-05-17-items-market',
+    date: '2026-05-17',
+    title: 'Marché des Items & Nouveaux Businesses',
+    summary: 'Juterie et Labo Pub produisent des items craftables (jus, ADblock) vendables sur la Salle de marché. La boutique est désormais réservée aux cosmétiques.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-05-17-items-1', text: '**Juterie** — Nouveau business de production capable de presser 5 types de jus (abricot, gingembre, papaye, malakoukou, goyave). Chaque jus peut être vendu à la Salle de marché et consommé directement depuis le marché.' },
+          { id: '2026-05-17-items-2', text: '**Labo Pub** — Nouveau business spécialisé dans la compilation de tokens ADblock. L\'ADblock acheté sur le marché active la protection publicitaire 60 min sur ton compte.' },
+          { id: '2026-05-17-items-3', text: '**Marché des Items** — La Salle de marché dispose maintenant d\'une section dédiée aux items (jus, ADblock), séparée du marché des ressources. Achat en 1 clic avec effet immédiat.' },
+          { id: '2026-05-17-items-4', text: '**Boutique cosmétique uniquement** — La boutique ne vend plus les items fonctionnels (jus, ADblock). Une bannière indique de les chercher sur la Salle de marché.' },
+        ],
+      },
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-05-17-items-5', text: '**Sélecteur de business par catégories** — Le modal de création de business regroupe les types par catégorie (Commerce, Extraction, Production d\'Items, etc.) avec des en-têtes séparateurs.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: '2026-05-17-tab-cleanup',
+    date: '2026-05-17',
+    title: 'Interface YOU — Simplification & recettes de production',
+    summary: 'La navigation YOU passe à 4 onglets (Carte, Actions, Marché ressources, YouTube). Les recettes de production ont des noms précis. La Salle de marché filtre sur le stock réel du business.',
+    sections: [
+      {
+        category: 'BIG_FEATURE',
+        items: [
+          { id: '2026-05-17-tab-1', text: '**Navigation simplifiée** — Seuls 4 onglets restent dans la barre latérale : Carte (gestion des businesses, feed), Actions (production + création/gestion de business), Marché ressources et YouTube. Toutes les fonctions des onglets supprimés sont accessibles depuis ces 4 onglets.' },
+          { id: '2026-05-17-tab-2', text: '**Recettes de production claires** — Chaque action a un nom spécifique à son business : « Récolte journalière » (ferme), « Bétonner » (carrière), « Fonderie Acier » (mine de fer), « Service du jour » (restaurant), etc. Les actions génériques « Faire tourner le business » et « Améliorer le service » sont supprimées.' },
+        ],
+      },
+      {
+        category: 'SMALL_FEATURE',
+        items: [
+          { id: '2026-05-17-tab-3', text: '**Stock en cartes** — Les stocks de ressources s\'affichent désormais en vraies cartes avec jauge de remplissage (quantité / capacité) dans l\'en-tête du business, et non plus en pastilles. La colonne Vendre affiche aussi la carte de stock complète.' },
+          { id: '2026-05-17-tab-4', text: '**Marché : stock réel uniquement** — Lors de la création d\'une annonce, seules les ressources que le business possède en stock (quantité > 0) apparaissent dans la liste déroulante.' },
+          { id: '2026-05-17-tab-5', text: '**Actions · Création de business intégrée** — Bouton « Créer » directement dans l\'onglet Actions. Bouton « Gérer » sur chaque carte de business.' },
+          { id: '2026-05-17-tab-6', text: '**Haras → produit des chevaux** — Le haras dispose maintenant d\'une vraie recette : consomme de la nourriture et produit des Chevaux (nouvelle ressource), pour 1 000m de base.' },
+          { id: '2026-05-17-tab-7', text: '**Coût de production de base** — Toutes les actions de production coûtent désormais au minimum 1 000m de trésorerie (reflet du coût opérationnel réel).' },
+          { id: '2026-05-17-tab-8', text: '**Étape Produire colorée** — La colonne Produire prend la couleur du business et affiche clairement le nom et la quantité de la ressource produite.' },
+          { id: '2026-05-17-tab-9', text: '**Sélecteur de source amélioré** — Chaque source disponible affiche maintenant l\'icône colorée du business, le nombre d\'unités disponibles, le prix, et le propriétaire.' },
+        ],
+      },
+    ],
+  },
+  {
     id: '2026-05-17-actions-marketplace',
     date: '2026-05-17',
     title: 'Actions — Chaîne de production & Salle de marché',

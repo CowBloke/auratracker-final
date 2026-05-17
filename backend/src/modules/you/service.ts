@@ -1635,7 +1635,7 @@ export async function trainUserSkill(userId: string, skillKey: string) {
   return serialized;
 }
 
-export async function createBusiness(userId: string, input: { name: string; typeKey: string; capital: number; description: string; location?: string }, callerIsAdmin = false) {
+export async function createBusiness(userId: string, input: { name: string; typeKey: string; capital: number; description: string; location?: string; juiceSpecialization?: string }, callerIsAdmin = false) {
   await ensureUserSkills(userId);
 
   const type = BUSINESS_TYPE_MAP.get(input.typeKey);
@@ -1646,6 +1646,12 @@ export async function createBusiness(userId: string, input: { name: string; type
   // Admin-only business types
   if (type.isAdminOnly && !callerIsAdmin) {
     throw new Error('BUSINESS_TYPE_ADMIN_ONLY');
+  }
+
+  // Juterie requires a juice specialization
+  const JUICE_TYPES = new Set(['JUICE_ABRICOT', 'JUICE_GINGEMBRE', 'JUICE_PAPAYE', 'JUICE_MALAKOUKOU', 'JUICE_GOYAVE']);
+  if (type.key === 'juterie' && (!input.juiceSpecialization || !JUICE_TYPES.has(input.juiceSpecialization))) {
+    throw new Error('JUTERIE_SPECIALIZATION_REQUIRED');
   }
 
   const name = input.name.trim();
@@ -1728,6 +1734,8 @@ export async function createBusiness(userId: string, input: { name: string; type
           ? JSON.stringify({ videos: [], totalViews: 0, sponsors: [] })
           : type.key === 'illegal_market'
             ? JSON.stringify(getDefaultIllegalBusinessCustomData())
+          : type.key === 'juterie' && input.juiceSpecialization
+            ? JSON.stringify({ juiceSpecialization: input.juiceSpecialization })
           : null,
       },
     });

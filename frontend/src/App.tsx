@@ -69,6 +69,7 @@ import Hextris from './pages/Hextris';
 import DotsAndBoxes from './pages/DotsAndBoxes';
 import HorseRace from './pages/HorseRace';
 import You from './pages/You';
+import IntroVideo from './components/IntroVideo';
 import Forum from './pages/Forum';
 import ForumPost from './pages/ForumPost';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
@@ -217,6 +218,8 @@ function App() {
   }
 
   return (
+    <>
+    {user && !user.hasSeenIntroVideo && <IntroVideo />}
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/banned" element={<Banned />} />
@@ -305,6 +308,7 @@ function App() {
         <Route path="forum/c/:subredditName/post/:postId" element={<ForumPost />} />
       </Route>
     </Routes>
+    </>
   );
 }
 

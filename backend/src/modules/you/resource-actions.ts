@@ -4,6 +4,7 @@ import { emitSharedBalanceUpdatesForUserIds } from '../../utils/shared-balance.j
 import { BUSINESS_TYPE_MAP } from './config.js';
 import {
   getBusinessInputRequirements,
+  getBusinessSupplyProfiles,
   getGlobalMarketUnitPrice,
   getResourceBasePrice,
   getSupplyProfiles,
@@ -26,7 +27,7 @@ type ResourceOutput = {
   quantity: number;
 };
 
-type ResourceActionDefinition = {
+export type ResourceActionDefinition = {
   key: string;
   kind: ResourceActionKind;
   label: string;
@@ -36,7 +37,79 @@ type ResourceActionDefinition = {
   outputs: ResourceOutput[];
   rewardMoney: number;
   satisfactionDelta: number;
+  durationMs?: number;
 };
+
+export interface ActiveResourceAction {
+  id: string;
+  businessId: string;
+  ownerId: string;
+  actionKey: string;
+  startedAt: Date;
+  endsAt: Date;
+  outputs: ResourceOutput[];
+  rewardMoney: number;
+  label: string;
+  userId: string;
+}
+
+export interface QueuedResourceAction {
+  businessId: string;
+  actionKey: string;
+  outputs: ResourceOutput[];
+  rewardMoney: number;
+  label: string;
+  userId: string;
+  durationMs: number;
+}
+
+export const activeResourceActions = new Map<string, ActiveResourceAction>();
+export const queuedResourceActions = new Map<string, QueuedResourceAction[]>();
+
+export interface BusinessUpgrades {
+  productionSpeedLvl: number;
+  stockSizeLvl: number;
+  queueLvl: number;
+}
+
+export const UPGRADE_CONFIGS = {
+  productionSpeed: [
+    { level: 0, label: 'Standard', multiplier: 1.0, cost: 0, desc: 'Vitesse de production normale.' },
+    { level: 1, label: 'Optimisé (+100%)', multiplier: 2.0, cost: 15000, desc: 'Production 2x plus rapide.' },
+    { level: 2, label: 'Turbine (+200%)', multiplier: 3.0, cost: 45000, desc: 'Production 3x plus rapide (300% au total).' },
+  ],
+  stockSize: [
+    { level: 0, label: 'Standard', multiplier: 1.0, cost: 0, desc: 'Capacité de stockage par défaut.' },
+    { level: 1, label: 'Élargi (+50%)', multiplier: 1.5, cost: 10000, desc: 'Augmente le stockage de 50%.' },
+    { level: 2, label: 'Entrepôt (+100%)', multiplier: 2.0, cost: 25000, desc: 'Augmente le stockage de 100% (2x).' },
+    { level: 3, label: 'Hangar Géant (+200%)', multiplier: 3.0, cost: 60000, desc: 'Augmente le stockage de 200% (3x).' },
+  ],
+  queue: [
+    { level: 0, label: 'Manuel', queueSize: 1, cost: 0, desc: 'Une action à la fois.' },
+    { level: 1, label: 'Double queue', queueSize: 2, cost: 20000, desc: "Permet de lancer 1 action et d'en mettre 1 en attente." },
+    { level: 2, label: 'Série (5 actions)', queueSize: 5, cost: 50000, desc: "Permet d'enfiler jusqu'à 5 actions à la suite." },
+    { level: 3, label: 'Production Continue', queueSize: 20, cost: 120000, desc: 'Production en continu (redémarrage auto si ingrédients disponibles).' },
+  ],
+};
+
+export function getBusinessUpgrades(customDataStr: string | null | undefined): BusinessUpgrades {
+  const defaultUpgrades: BusinessUpgrades = {
+    productionSpeedLvl: 0,
+    stockSizeLvl: 0,
+    queueLvl: 0,
+  };
+  if (!customDataStr) return defaultUpgrades;
+  try {
+    const parsed = JSON.parse(customDataStr);
+    return {
+      productionSpeedLvl: typeof parsed.productionSpeedLvl === 'number' ? parsed.productionSpeedLvl : 0,
+      stockSizeLvl: typeof parsed.stockSizeLvl === 'number' ? parsed.stockSizeLvl : 0,
+      queueLvl: typeof parsed.queueLvl === 'number' ? parsed.queueLvl : 0,
+    };
+  } catch {
+    return defaultUpgrades;
+  }
+}
 
 type ActionSourceInput =
   | { kind: 'inventory'; businessId: string }
@@ -54,6 +127,46 @@ const USER_PREVIEW_SELECT = {
 
 const RAW_RESOURCES = new Set<ResourceType>(['WOOD', 'STONE', 'IRON', 'FOOD', 'CLOTH']);
 
+// Resource inputs needed to craft each item type
+const ITEM_INPUT_RECIPES: Partial<Record<string, Array<{ resourceType: ResourceType; ratio: number }>>> = {
+  JUICE_ABRICOT:    [{ resourceType: 'FOOD', ratio: 0.5 }],
+  JUICE_GINGEMBRE:  [{ resourceType: 'FOOD', ratio: 0.5 }],
+  JUICE_PAPAYE:     [{ resourceType: 'FOOD', ratio: 0.5 }, { resourceType: 'LUXURY_GOODS', ratio: 0.25 }],
+  JUICE_MALAKOUKOU: [{ resourceType: 'FOOD', ratio: 0.6 }, { resourceType: 'LUXURY_GOODS', ratio: 0.4 }],
+  JUICE_GOYAVE:     [{ resourceType: 'FOOD', ratio: 0.8 }, { resourceType: 'LUXURY_GOODS', ratio: 0.5 }, { resourceType: 'MEDICINE', ratio: 0.2 }],
+  ADBLOCK_TOKEN:    [{ resourceType: 'DATA', ratio: 0.5 }, { resourceType: 'PAPER', ratio: 0.3 }],
+};
+
+const PRODUCE_ACTION_LABELS: Record<string, Record<string, string>> = {
+  farm:           { FOOD:         'Récolte journalière' },
+  sawmill:        { WOOD:         'Coupe de bois' },
+  quarry:         { STONE:        'Extraction de pierre', CONCRETE: 'Bétonner' },
+  iron_mine:      { IRON:         'Extraction de fer',    STEEL:    'Fonderie (Fer → Acier)' },
+  fuel_refinery:  { FUEL:         'Raffiner du carburant' },
+  textile_mill:   { CLOTH:        'Production textile' },
+  lemonade:       { FOOD:         'Préparer la limonade' },
+  epicerie:       { LUXURY_GOODS: 'Remplir les rayons' },
+  restaurant:     { FOOD:         'Service du jour' },
+  coffee_shop:    { FOOD:         'Préparer les commandes', LUXURY_GOODS: 'Offre premium' },
+  startup:        { DATA:         'Sprint data' },
+  agency:         { LUXURY_GOODS: 'Campagne premium' },
+  formation:      { PAPER:        'Créer une formation' },
+  youtube:        { DATA:         'Tourner une vidéo', PAPER: 'Rédiger un script' },
+  medecins:       { MEDICINE:     'Préparer les ordonnances' },
+  illegal_market: { CONTRABAND:   'Gérer les stocks' },
+  horse_business: { HORSES:       'Élever des chevaux' },
+  juterie: {
+    JUICE_ABRICOT:    "Presser des abricots",
+    JUICE_GINGEMBRE:  'Presser du gingembre',
+    JUICE_PAPAYE:     'Presser des papayes',
+    JUICE_MALAKOUKOU: 'Préparer le jus de malakoukou',
+    JUICE_GOYAVE:     'Presser les goyaves (rare)',
+  },
+  labo_pub: {
+    ADBLOCK_TOKEN: 'Compiler un ADblock',
+  },
+};
+
 const BUSINESS_FALLBACK_INPUTS: Record<string, ResourceCost[]> = {
   farm: [{ resourceType: 'FUEL', quantity: 1 }],
   sawmill: [{ resourceType: 'FUEL', quantity: 1 }],
@@ -68,14 +181,15 @@ const BUSINESS_FALLBACK_INPUTS: Record<string, ResourceCost[]> = {
 };
 
 const RESOURCE_INPUT_RECIPES: Partial<Record<ResourceType, Array<{ resourceType: ResourceType; ratio: number }>>> = {
-  CONCRETE: [{ resourceType: 'STONE', ratio: 0.5 }],
-  STEEL: [{ resourceType: 'IRON', ratio: 0.5 }],
-  FUEL: [{ resourceType: 'IRON', ratio: 0.2 }],
-  PAPER: [{ resourceType: 'WOOD', ratio: 0.4 }],
+  CONCRETE:     [{ resourceType: 'STONE', ratio: 0.5 }],
+  STEEL:        [{ resourceType: 'IRON', ratio: 0.5 }],
+  FUEL:         [{ resourceType: 'IRON', ratio: 0.2 }],
+  PAPER:        [{ resourceType: 'WOOD', ratio: 0.4 }],
   LUXURY_GOODS: [{ resourceType: 'CLOTH', ratio: 0.5 }, { resourceType: 'PAPER', ratio: 0.2 }],
-  MEDICINE: [{ resourceType: 'FOOD', ratio: 0.4 }],
-  DATA: [{ resourceType: 'PAPER', ratio: 0.25 }],
-  CONTRABAND: [{ resourceType: 'FUEL', ratio: 0.4 }],
+  MEDICINE:     [{ resourceType: 'FOOD', ratio: 0.4 }],
+  DATA:         [{ resourceType: 'PAPER', ratio: 0.25 }],
+  CONTRABAND:   [{ resourceType: 'FUEL', ratio: 0.4 }],
+  HORSES:       [{ resourceType: 'FOOD', ratio: 0.5 }],
 };
 
 function serializeDate(value: Date | null | undefined) {
@@ -92,7 +206,7 @@ function mergeResourceCosts(costs: ResourceCost[]) {
 }
 
 function getProductionInputs(resourceType: ResourceType, outputQuantity: number) {
-  const recipe = RESOURCE_INPUT_RECIPES[resourceType] ?? [];
+  const recipe = ITEM_INPUT_RECIPES[resourceType] ?? RESOURCE_INPUT_RECIPES[resourceType] ?? [];
   return mergeResourceCosts(recipe.map((entry) => ({
     resourceType: entry.resourceType,
     quantity: Math.max(1, Math.ceil(outputQuantity * entry.ratio)),
@@ -122,11 +236,11 @@ function getActionMoneyBase(business: { monthlyRevenue: number; monthlyExpenses:
   return Math.max(25, Math.round(monthlyExpenses / 30) + Math.round(monthlyRevenue / 90));
 }
 
-async function ensureResourceActionInventories(db: PrismaClient, businesses: Array<{ id: string; typeKey: string }>) {
+async function ensureResourceActionInventories(db: PrismaClient, businesses: Array<{ id: string; typeKey: string; customData?: string | null }>) {
   const writes = businesses.flatMap((business) => {
     const profilesByResource = new Map<ResourceType, { resourceType: ResourceType; rate: number; capacity: number }>();
 
-    for (const profile of getSupplyProfiles(business.typeKey)) {
+    for (const profile of getBusinessSupplyProfiles(business.typeKey, business.customData)) {
       profilesByResource.set(profile.resourceType, {
         resourceType: profile.resourceType,
         rate: profile.rate,
@@ -182,81 +296,84 @@ function buildResourceActions(business: {
   monthlyRevenue: number;
   monthlyExpenses: number;
   satisfaction: number;
+  customData?: string | null;
 }) {
-  const type = BUSINESS_TYPE_MAP.get(business.typeKey);
-  const level = type?.level ?? 1;
   const actions: ResourceActionDefinition[] = [];
+  const upgrades = getBusinessUpgrades(business.customData);
+  const speedConfig = UPGRADE_CONFIGS.productionSpeed[upgrades.productionSpeedLvl] ?? UPGRADE_CONFIGS.productionSpeed[0];
 
-  for (const profile of getSupplyProfiles(business.typeKey)) {
+  for (const profile of getBusinessSupplyProfiles(business.typeKey, business.customData)) {
     if (profile.rate <= 0) continue;
     const outputQuantity = Math.max(4, Math.min(60, profile.rate * 4));
     const unitCostMultiplier = RAW_RESOURCES.has(profile.resourceType) ? 0.42 : 0.34;
     const setupFee = Math.max(15, Math.round(getActionMoneyBase(business) * 0.35));
-    const moneyCost = Math.max(10, Math.round((profile.price * outputQuantity * unitCostMultiplier) + setupFee));
+    const moneyCost = Math.max(1000, Math.round((profile.price * outputQuantity * unitCostMultiplier) + setupFee));
+    const label = PRODUCE_ACTION_LABELS[business.typeKey]?.[profile.resourceType]
+      ?? `Produire ${profile.resourceType}`;
+
+    const baseDuration = profile.resourceType === 'HORSES' ? 60000 : 30000;
+    const finalDurationMs = Math.round(baseDuration / speedConfig.multiplier);
+
     actions.push({
       key: `produce:${profile.resourceType}`,
       kind: 'PRODUCE',
-      label: `Produire ${profile.resourceType}`,
-      description: `Ajoute ${outputQuantity} unites au stock du business. La production coute maintenant de la tresorerie.`,
+      label,
+      description: `Ajoute ${outputQuantity} unites au stock.`,
       moneyCost,
       resourceCosts: getProductionInputs(profile.resourceType, outputQuantity),
       outputs: [{ resourceType: profile.resourceType, quantity: outputQuantity }],
       rewardMoney: 0,
       satisfactionDelta: 0,
+      durationMs: finalDurationMs,
     });
   }
-
-  const operationInputs = getOperationInputs(business.typeKey, level);
-  const operationMoneyCost = getActionMoneyBase(business);
-  const operationReward = Math.max(0, Math.round((business.monthlyRevenue || type?.monthlyRevenue || 0) / 30));
-  actions.push({
-    key: 'operate:daily',
-    kind: 'OPERATE',
-    label: 'Faire tourner le business',
-    description: 'Consomme les intrants choisis, paie les frais du jour et encaisse les recettes immediates.',
-    moneyCost: operationMoneyCost,
-    resourceCosts: operationInputs,
-    outputs: [],
-    rewardMoney: operationReward,
-    satisfactionDelta: 0,
-  });
-
-  const maintainCost = Math.max(20, Math.round(operationMoneyCost * 0.65));
-  actions.push({
-    key: 'maintain:quality',
-    kind: 'MAINTAIN',
-    label: 'Ameliorer le service',
-    description: 'Consomme quelques fournitures pour stabiliser la qualite et la satisfaction.',
-    moneyCost: maintainCost,
-    resourceCosts: operationInputs.slice(0, 1).map((entry) => ({
-      resourceType: entry.resourceType,
-      quantity: Math.max(1, Math.ceil(entry.quantity / 2)),
-    })),
-    outputs: [],
-    rewardMoney: 0,
-    satisfactionDelta: business.satisfaction >= 100 ? 0 : 1,
-  });
 
   return actions;
 }
 
-function serializeInventory(entry: any) {
+function serializeInventory(entry: any, business?: any) {
+  const customData = business?.customData ?? entry.business?.customData;
+  const upgrades = getBusinessUpgrades(customData);
+  const stockConfig = UPGRADE_CONFIGS.stockSize[upgrades.stockSizeLvl] ?? UPGRADE_CONFIGS.stockSize[0];
+  const upgradedCapacity = Math.round(entry.capacity * stockConfig.multiplier);
+
   return {
     id: entry.id,
     businessId: entry.businessId,
     resourceType: entry.resourceType,
     quantity: entry.quantity,
-    capacity: entry.capacity,
+    capacity: upgradedCapacity,
     productionRatePerHour: entry.productionRatePerHour,
     autoSellEnabled: Boolean(entry.autoSellEnabled),
     autoSellPrice: Number(entry.autoSellPrice ?? 0),
-    globalMarketUnitPrice: getGlobalMarketUnitPrice(entry.business?.typeKey ?? '', entry.resourceType),
+    globalMarketUnitPrice: getGlobalMarketUnitPrice(business?.typeKey ?? entry.business?.typeKey ?? '', entry.resourceType),
     lastProducedAt: serializeDate(entry.lastProducedAt),
   };
 }
 
 function serializeActionBusiness(business: any) {
   const type = BUSINESS_TYPE_MAP.get(business.typeKey);
+  const activeActions = Array.from(activeResourceActions.values())
+    .filter((a) => a.businessId === business.id)
+    .map((a) => ({
+      id: a.id,
+      actionKey: a.actionKey,
+      startedAt: a.startedAt.toISOString(),
+      endsAt: a.endsAt.toISOString(),
+      label: a.label,
+    }));
+
+  const queue = queuedResourceActions.get(business.id) ?? [];
+  const queuedActions = queue.map((q) => ({
+    actionKey: q.actionKey,
+    label: q.label,
+  }));
+
+  const upgrades = getBusinessUpgrades(business.customData);
+  const avgRating = business.ratings && business.ratings.length > 0
+    ? Math.round((business.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / business.ratings.length) * 10) / 10
+    : null;
+
   return {
     id: business.id,
     name: business.name,
@@ -268,9 +385,15 @@ function serializeActionBusiness(business: any) {
     monthlyRevenue: business.monthlyRevenue,
     monthlyExpenses: business.monthlyExpenses,
     satisfaction: business.satisfaction,
+    avgRating,
+    description: business.description,
     underConstruction: Boolean(business.constructionProject && business.constructionProject.status === 'UNDER_CONSTRUCTION'),
-    inventories: business.resourceInventories.map(serializeInventory),
+    inventories: business.resourceInventories.map((inv: any) => serializeInventory(inv, business)),
     actions: buildResourceActions(business),
+    activeActions,
+    queuedActions,
+    upgrades,
+    customData: business.customData,
   };
 }
 
@@ -283,6 +406,7 @@ function serializeSourceOptions(businesses: any[], offers: any[]) {
         kind: 'inventory' as const,
         resourceType: inventory.resourceType,
         businessId: business.id,
+        businessTypeKey: business.typeKey,
         businessName: business.name,
         ownerName: business.owner?.username ?? 'vous',
         quantity: inventory.quantity,
@@ -299,6 +423,7 @@ function serializeSourceOptions(businesses: any[], offers: any[]) {
       kind: 'offer' as const,
       resourceType: offer.resourceType,
       businessId: offer.businessId,
+      businessTypeKey: offer.business?.typeKey ?? '',
       businessName: offer.business?.name ?? 'Business',
       ownerName: offer.business?.owner?.username ?? 'joueur',
       quantity: inventory?.quantity ?? 0,
@@ -314,7 +439,138 @@ function serializeSourceOptions(businesses: any[], offers: any[]) {
   );
 }
 
+export async function settleActiveResourceActions() {
+  const now = Date.now();
+  const completedList: ActiveResourceAction[] = [];
+  for (const [id, active] of activeResourceActions.entries()) {
+    if (active.endsAt.getTime() <= now) {
+      completedList.push(active);
+      activeResourceActions.delete(id);
+    }
+  }
+
+  if (completedList.length === 0) return;
+
+  for (const active of completedList) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        const biz = await tx.business.findUnique({ where: { id: active.businessId } });
+        if (!biz) return;
+
+        for (const output of active.outputs) {
+          const profile = getBusinessSupplyProfiles(biz.typeKey, biz.customData).find((entry) => entry.resourceType === output.resourceType);
+          const existingInv = await tx.businessResourceInventory.findUnique({
+            where: { businessId_resourceType: { businessId: biz.id, resourceType: output.resourceType } },
+          });
+          const autoSell = existingInv?.autoSellEnabled && (existingInv.autoSellPrice ?? 0) > 0;
+          if (autoSell) {
+            await autoListOutput(tx, active.ownerId, biz.id, output.resourceType, output.quantity, existingInv!.autoSellPrice);
+          } else {
+            const baseCapacity = profile?.capacity ?? Math.max(80, output.quantity * 5);
+            const upgrades = getBusinessUpgrades(biz.customData);
+            const stockConfig = UPGRADE_CONFIGS.stockSize[upgrades.stockSizeLvl] ?? UPGRADE_CONFIGS.stockSize[0];
+            const upgradedCapacity = Math.round(baseCapacity * stockConfig.multiplier);
+
+            await tx.businessResourceInventory.upsert({
+              where: { businessId_resourceType: { businessId: biz.id, resourceType: output.resourceType } },
+              update: { quantity: { increment: output.quantity } },
+              create: {
+                businessId: biz.id,
+                resourceType: output.resourceType,
+                quantity: output.quantity,
+                capacity: upgradedCapacity,
+                productionRatePerHour: profile?.rate ?? 0,
+              },
+            });
+          }
+        }
+
+        if (active.rewardMoney > 0) {
+          await tx.business.update({
+            where: { id: biz.id },
+            data: { treasuryMoney: { increment: active.rewardMoney } },
+          });
+        }
+      });
+
+      // Process queue or constant production
+      const queue = queuedResourceActions.get(active.businessId);
+      if (queue && queue.length > 0) {
+        const next = queue.shift()!;
+        if (queue.length === 0) {
+          queuedResourceActions.delete(active.businessId);
+        } else {
+          queuedResourceActions.set(active.businessId, queue);
+        }
+
+        const actionRunId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        const endsAt = new Date(Date.now() + next.durationMs);
+        activeResourceActions.set(actionRunId, {
+          id: actionRunId,
+          businessId: next.businessId,
+          ownerId: active.ownerId,
+          actionKey: next.actionKey,
+          startedAt: new Date(),
+          endsAt,
+          outputs: next.outputs,
+          rewardMoney: next.rewardMoney,
+          label: next.label,
+          userId: next.userId,
+        });
+      } else {
+        const biz = await prisma.business.findUnique({
+          where: { id: active.businessId },
+          select: { customData: true, ownerId: true },
+        });
+        if (biz) {
+          const upgrades = getBusinessUpgrades(biz.customData);
+          if (upgrades.queueLvl >= 3) {
+            const parsed = biz.customData ? JSON.parse(biz.customData) : {};
+            const constantProductionEnabled = parsed.constantProduction?.[active.actionKey];
+            if (constantProductionEnabled) {
+              const lastSources = parsed.lastActionSources?.[active.actionKey];
+              const payFromPersonal = parsed.lastActionPayFromPersonal?.[active.actionKey] ?? false;
+              if (lastSources) {
+                try {
+                  await runResourceAction(active.userId, active.businessId, {
+                    actionKey: active.actionKey,
+                    sources: lastSources,
+                    payFromPersonal,
+                  });
+                } catch (err: any) {
+                  console.log(`Constant production stopped for ${active.businessId} action ${active.actionKey}:`, err.message);
+                  const latestBiz = await prisma.business.findUnique({ where: { id: active.businessId } });
+                  if (latestBiz) {
+                    const latestParsed = latestBiz.customData ? JSON.parse(latestBiz.customData) : {};
+                    if (!latestParsed.constantProduction) latestParsed.constantProduction = {};
+                    latestParsed.constantProduction[active.actionKey] = false;
+                    await prisma.business.update({
+                      where: { id: active.businessId },
+                      data: { customData: JSON.stringify(latestParsed) },
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to settle active resource action:', active, err);
+    }
+  }
+
+  const ownerIds = Array.from(new Set(completedList.map((a) => a.ownerId)));
+  await emitSharedBalanceUpdatesForUserIds(prisma as PrismaClient, ownerIds);
+  io.emit('you_state_changed');
+}
+
+setInterval(() => {
+  settleActiveResourceActions().catch((err) => console.error('setInterval settle active action error:', err));
+}, 5000);
+
 export async function getResourceActionState(userId: string) {
+  await settleActiveResourceActions();
   const accessibleBusinesses = await prisma.business.findMany({
     where: {
       OR: [
@@ -322,7 +578,7 @@ export async function getResourceActionState(userId: string) {
         { members: { some: { userId, status: 'ACTIVE' } } },
       ],
     },
-    select: { id: true, typeKey: true },
+    select: { id: true, typeKey: true, customData: true },
   });
   await ensureResourceActionInventories(prisma, accessibleBusinesses);
 
@@ -337,6 +593,7 @@ export async function getResourceActionState(userId: string) {
       owner: { select: USER_PREVIEW_SELECT },
       resourceInventories: { orderBy: { resourceType: 'asc' } },
       constructionProject: true,
+      ratings: true,
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -379,10 +636,11 @@ function toResourceType(value: string): ResourceType {
   return value as ResourceType;
 }
 
-export async function runResourceAction(userId: string, businessId: string, input: { actionKey: string; sources?: unknown }) {
+export async function runResourceAction(userId: string, businessId: string, input: { actionKey: string; sources?: unknown; payFromPersonal?: boolean }) {
+  await settleActiveResourceActions();
   const actionBusiness = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, typeKey: true },
+    select: { id: true, typeKey: true, customData: true },
   });
   if (actionBusiness) {
     await ensureResourceActionInventories(prisma, [actionBusiness]);
@@ -405,8 +663,28 @@ export async function runResourceAction(userId: string, businessId: string, inpu
     monthlyRevenue: business.monthlyRevenue,
     monthlyExpenses: business.monthlyExpenses,
     satisfaction: business.satisfaction,
+    customData: business.customData,
   }).find((entry) => entry.key === input.actionKey);
   if (!action) throw new Error('RESOURCE_ACTION_NOT_FOUND');
+
+  const upgrades = getBusinessUpgrades(business.customData);
+  const queueConfig = UPGRADE_CONFIGS.queue[upgrades.queueLvl] ?? UPGRADE_CONFIGS.queue[0];
+  const maxQueueSize = queueConfig.queueSize - 1;
+
+  const isAlreadyActive = Array.from(activeResourceActions.values()).some(
+    (a) => a.businessId === business.id && a.actionKey === action.key
+  );
+
+  if (isAlreadyActive) {
+    if (maxQueueSize <= 0) {
+      throw new Error('RESOURCE_ACTION_ALREADY_ACTIVE');
+    }
+    const currentQueue = queuedResourceActions.get(business.id) ?? [];
+    const currentQueueForAction = currentQueue.filter((q) => q.actionKey === action.key);
+    if (currentQueueForAction.length >= maxQueueSize) {
+      throw new Error('QUEUE_FULL');
+    }
+  }
 
   const sources = parseActionSources(input.sources);
   const resourceCosts = mergeResourceCosts(action.resourceCosts);
@@ -501,7 +779,15 @@ export async function runResourceAction(userId: string, businessId: string, inpu
     }
 
     const totalMoneyCost = action.moneyCost + sourceMoneyCost;
-    if (Number(target.treasuryMoney) < totalMoneyCost) throw new Error('BUSINESS_TREASURY_TOO_LOW');
+    if (input.payFromPersonal) {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { money: true },
+      });
+      if (!user || Number(user.money) < totalMoneyCost) throw new Error('USER_MONEY_TOO_LOW');
+    } else {
+      if (Number(target.treasuryMoney) < totalMoneyCost) throw new Error('BUSINESS_TREASURY_TOO_LOW');
+    }
 
     for (const output of action.outputs) {
       const existing = await tx.businessResourceInventory.findUnique({
@@ -512,21 +798,40 @@ export async function runResourceAction(userId: string, businessId: string, inpu
           },
         },
       });
-      const capacity = existing?.capacity ?? Math.max(80, output.quantity * 5);
+      
+      const baseCapacity = existing?.capacity ?? Math.max(80, output.quantity * 5);
+      const stockConfig = UPGRADE_CONFIGS.stockSize[upgrades.stockSizeLvl] ?? UPGRADE_CONFIGS.stockSize[0];
+      const upgradedCapacity = Math.round(baseCapacity * stockConfig.multiplier);
+
       const currentQuantity = existing?.quantity ?? 0;
-      if (currentQuantity + output.quantity > capacity) throw new Error('RESOURCE_ACTION_OUTPUT_FULL');
+      if (currentQuantity + output.quantity > upgradedCapacity) throw new Error('RESOURCE_ACTION_OUTPUT_FULL');
     }
 
     await Promise.all(inventoryUpdates);
-    await tx.business.update({
-      where: { id: business.id },
-      data: {
-        treasuryMoney: { decrement: totalMoneyCost },
-        ...(action.satisfactionDelta !== 0
-          ? { satisfaction: Math.max(0, Math.min(100, target.satisfaction + action.satisfactionDelta)) }
-          : {}),
-      },
-    });
+    if (input.payFromPersonal) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { money: { decrement: BigInt(totalMoneyCost) } },
+      });
+      if (action.satisfactionDelta !== 0) {
+        await tx.business.update({
+          where: { id: business.id },
+          data: {
+            satisfaction: Math.max(0, Math.min(100, target.satisfaction + action.satisfactionDelta)),
+          },
+        });
+      }
+    } else {
+      await tx.business.update({
+        where: { id: business.id },
+        data: {
+          treasuryMoney: { decrement: totalMoneyCost },
+          ...(action.satisfactionDelta !== 0
+            ? { satisfaction: Math.max(0, Math.min(100, target.satisfaction + action.satisfactionDelta)) }
+            : {}),
+        },
+      });
+    }
 
     for (const [supplierBusinessId, payment] of supplierBusinessPayments.entries()) {
       await tx.business.update({
@@ -544,50 +849,106 @@ export async function runResourceAction(userId: string, businessId: string, inpu
       });
     }
 
-    for (const output of action.outputs) {
-      const profile = getSupplyProfiles(business.typeKey).find((entry) => entry.resourceType === output.resourceType);
-      const existingInv = await tx.businessResourceInventory.findUnique({
-        where: { businessId_resourceType: { businessId: business.id, resourceType: output.resourceType } },
-      });
-      const autoSell = existingInv?.autoSellEnabled && (existingInv.autoSellPrice ?? 0) > 0;
-      if (autoSell) {
-        // Route output directly to a market listing instead of inventory
-        await autoListOutput(tx, business.ownerId, business.id, output.resourceType, output.quantity, existingInv!.autoSellPrice);
-      } else {
-        await tx.businessResourceInventory.upsert({
+    const isInstant = !action.durationMs || action.durationMs <= 0;
+
+    if (isInstant) {
+      for (const output of action.outputs) {
+        const profile = getBusinessSupplyProfiles(business.typeKey, business.customData).find((entry) => entry.resourceType === output.resourceType);
+        const existingInv = await tx.businessResourceInventory.findUnique({
           where: { businessId_resourceType: { businessId: business.id, resourceType: output.resourceType } },
-          update: { quantity: { increment: output.quantity } },
-          create: {
-            businessId: business.id,
-            resourceType: output.resourceType,
-            quantity: output.quantity,
-            capacity: profile?.capacity ?? Math.max(80, output.quantity * 5),
-            productionRatePerHour: profile?.rate ?? 0,
-          },
+        });
+        const autoSell = existingInv?.autoSellEnabled && (existingInv.autoSellPrice ?? 0) > 0;
+        if (autoSell) {
+          await autoListOutput(tx, business.ownerId, business.id, output.resourceType, output.quantity, existingInv!.autoSellPrice);
+        } else {
+          const baseCapacity = profile?.capacity ?? Math.max(80, output.quantity * 5);
+          const stockConfig = UPGRADE_CONFIGS.stockSize[upgrades.stockSizeLvl] ?? UPGRADE_CONFIGS.stockSize[0];
+          const upgradedCapacity = Math.round(baseCapacity * stockConfig.multiplier);
+
+          await tx.businessResourceInventory.upsert({
+            where: { businessId_resourceType: { businessId: business.id, resourceType: output.resourceType } },
+            update: { quantity: { increment: output.quantity } },
+            create: {
+              businessId: business.id,
+              resourceType: output.resourceType,
+              quantity: output.quantity,
+              capacity: upgradedCapacity,
+              productionRatePerHour: profile?.rate ?? 0,
+            },
+          });
+        }
+      }
+
+      if (action.rewardMoney > 0) {
+        await tx.business.update({
+          where: { id: business.id },
+          data: { treasuryMoney: { increment: action.rewardMoney } },
+        });
+      }
+    } else {
+      if (isAlreadyActive) {
+        const queue = queuedResourceActions.get(business.id) ?? [];
+        queue.push({
+          businessId: business.id,
+          actionKey: action.key,
+          outputs: action.outputs,
+          rewardMoney: action.rewardMoney,
+          label: action.label,
+          userId,
+          durationMs: action.durationMs!,
+        });
+        queuedResourceActions.set(business.id, queue);
+      } else {
+        const endsAt = new Date(Date.now() + action.durationMs!);
+        const actionRunId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        activeResourceActions.set(actionRunId, {
+          id: actionRunId,
+          businessId: business.id,
+          ownerId: business.ownerId,
+          actionKey: action.key,
+          startedAt: new Date(),
+          endsAt,
+          outputs: action.outputs,
+          rewardMoney: action.rewardMoney,
+          label: action.label,
+          userId,
         });
       }
     }
 
-    if (action.rewardMoney > 0) {
+    // Save last action sources for constant production
+    const latestBiz = await tx.business.findUnique({ where: { id: business.id } });
+    if (latestBiz) {
+      const parsed = latestBiz.customData ? JSON.parse(latestBiz.customData) : {};
+      if (!parsed.lastActionSources) parsed.lastActionSources = {};
+      if (!parsed.lastActionPayFromPersonal) parsed.lastActionPayFromPersonal = {};
+      parsed.lastActionSources[action.key] = input.sources;
+      parsed.lastActionPayFromPersonal[action.key] = input.payFromPersonal || false;
       await tx.business.update({
         where: { id: business.id },
-        data: { treasuryMoney: { increment: action.rewardMoney } },
+        data: { customData: JSON.stringify(parsed) },
       });
     }
 
-    const netAmount = action.rewardMoney - totalMoneyCost;
+    const netAmount = isInstant ? (action.rewardMoney - totalMoneyCost) : -totalMoneyCost;
     await tx.businessTransaction.create({
       data: {
         businessId: business.id,
         type: 'RESOURCE_ACTION',
         amount: BigInt(netAmount),
-        label: `${action.label}: cout ${totalMoneyCost.toLocaleString('fr-FR')}, gain ${action.rewardMoney.toLocaleString('fr-FR')}`,
+        label: isInstant
+          ? `${action.label}: cout ${totalMoneyCost.toLocaleString('fr-FR')}€ ${input.payFromPersonal ? '(poche)' : '(trésorerie)'}, gain ${action.rewardMoney.toLocaleString('fr-FR')}€`
+          : (isAlreadyActive
+              ? `${action.label} (mis en file d'attente): cout ${totalMoneyCost.toLocaleString('fr-FR')}€ ${input.payFromPersonal ? '(poche)' : '(trésorerie)'}`
+              : `${action.label} (lance): cout ${totalMoneyCost.toLocaleString('fr-FR')}€ ${input.payFromPersonal ? '(poche)' : '(trésorerie)'}, duree ${Math.round(action.durationMs! / 1000)}s`),
         actorId: userId,
       },
     });
 
     balanceUserIds.add(target.ownerId);
     for (const userIdToNotify of supplierUserIds) balanceUserIds.add(userIdToNotify);
+
+    const endsAtString = (isInstant || isAlreadyActive) ? null : new Date(Date.now() + action.durationMs!).toISOString();
 
     return {
       businessId: business.id,
@@ -599,10 +960,99 @@ export async function runResourceAction(userId: string, businessId: string, inpu
       satisfactionDelta: action.satisfactionDelta,
       consumed,
       outputs: action.outputs,
+      running: !isInstant && !isAlreadyActive,
+      queued: isAlreadyActive,
+      endsAt: endsAtString,
     };
   });
 
   io.emit('you:supply-updated', { businessId: business.id });
   await emitSharedBalanceUpdatesForUserIds(prisma as PrismaClient, Array.from(balanceUserIds));
   return result;
+}
+
+export async function buyBusinessUpgrade(userId: string, businessId: string, upgradeType: 'productionSpeed' | 'stockSize' | 'queue', targetLevel: number) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, treasuryMoney: true, customData: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  const config = UPGRADE_CONFIGS[upgradeType];
+  if (!config) throw new Error('BUSINESS_UPGRADE_UNAVAILABLE');
+  
+  const upgradeLevelDef = config.find((c) => c.level === targetLevel);
+  if (!upgradeLevelDef) throw new Error('BUSINESS_UPGRADE_UNAVAILABLE');
+
+  const upgrades = getBusinessUpgrades(business.customData);
+  const currentLvl = upgradeType === 'productionSpeed' 
+    ? upgrades.productionSpeedLvl 
+    : upgradeType === 'stockSize'
+      ? upgrades.stockSizeLvl
+      : upgrades.queueLvl;
+
+  if (targetLevel <= currentLvl) throw new Error('UPGRADE_ALREADY_OWNED');
+  if (targetLevel !== currentLvl + 1) throw new Error('BUSINESS_UPGRADE_UNAVAILABLE');
+
+  const cost = upgradeLevelDef.cost;
+  if (Number(business.treasuryMoney) < cost) throw new Error('BUSINESS_TREASURY_TOO_LOW');
+
+  const parsed = business.customData ? JSON.parse(business.customData) : {};
+  if (upgradeType === 'productionSpeed') parsed.productionSpeedLvl = targetLevel;
+  else if (upgradeType === 'stockSize') parsed.stockSizeLvl = targetLevel;
+  else if (upgradeType === 'queue') parsed.queueLvl = targetLevel;
+
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.business.update({
+      where: { id: business.id },
+      data: {
+        treasuryMoney: { decrement: cost },
+        customData: JSON.stringify(parsed),
+      },
+    });
+
+    await tx.businessTransaction.create({
+      data: {
+        businessId: business.id,
+        type: 'UPGRADE_PURCHASE',
+        amount: BigInt(-cost),
+        label: `Achat amélioration: ${upgradeType} (Niveau ${targetLevel})`,
+        actorId: userId,
+      },
+    });
+
+    return {
+      upgradeType,
+      level: targetLevel,
+      newTreasury: Number(business.treasuryMoney) - cost,
+    };
+  });
+
+  io.emit('you_state_changed');
+  return result;
+}
+
+export async function toggleConstantProduction(userId: string, businessId: string, actionKey: string, enabled: boolean) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, ownerId: true, customData: true },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (!(await isBusinessManager(business.id, userId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  const upgrades = getBusinessUpgrades(business.customData);
+  if (upgrades.queueLvl < 3) throw new Error('BUSINESS_UPGRADE_UNAVAILABLE');
+
+  const parsed = business.customData ? JSON.parse(business.customData) : {};
+  if (!parsed.constantProduction) parsed.constantProduction = {};
+  parsed.constantProduction[actionKey] = enabled;
+
+  await prisma.business.update({
+    where: { id: business.id },
+    data: { customData: JSON.stringify(parsed) },
+  });
+
+  io.emit('you_state_changed');
+  return { actionKey, enabled };
 }

@@ -12,14 +12,22 @@ import {
   Mountain,
   Scissors,
   ShieldAlert,
+  Wind,
+  Droplets,
+  ShieldOff,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 
 export type ResourceType =
   | 'WOOD' | 'STONE' | 'IRON' | 'FOOD' | 'CLOTH'
   | 'CONCRETE' | 'STEEL' | 'FUEL' | 'PAPER'
-  | 'LUXURY_GOODS' | 'MEDICINE' | 'DATA' | 'CONTRABAND';
+  | 'LUXURY_GOODS' | 'MEDICINE' | 'DATA' | 'CONTRABAND' | 'HORSES'
+  // ── Craftable items ───────────────────────────────────────────────────────
+  | 'ADBLOCK_TOKEN' | 'JUICE_ABRICOT' | 'JUICE_GINGEMBRE'
+  | 'JUICE_GOYAVE' | 'JUICE_MALAKOUKOU' | 'JUICE_PAPAYE';
 
-export type ResourceTier = 'RAW' | 'REFINED' | 'FINISHED' | 'SPECIAL';
+export type ResourceTier = 'RAW' | 'REFINED' | 'FINISHED' | 'SPECIAL' | 'ITEM';
 
 export interface ResourceMeta {
   label: string;
@@ -44,7 +52,15 @@ export const RESOURCE_META: Record<ResourceType, ResourceMeta> = {
   LUXURY_GOODS: { label: 'Luxe',        tier: 'FINISHED', description: 'Vente haut de gamme, dons aura multipliés',                    bg: 'bg-violet-500/15', iconColor: 'text-violet-500 dark:text-violet-400', Icon: Gem },
   MEDICINE:     { label: 'Médicaments', tier: 'FINISHED', description: 'Soins en guerre, produits des médecins',                       bg: 'bg-emerald-500/15',iconColor: 'text-emerald-600 dark:text-emerald-400',Icon: Heart },
   DATA:         { label: 'Données',     tier: 'FINISHED', description: 'Avantage Polymarket, startups et YouTube',                     bg: 'bg-cyan-500/15',   iconColor: 'text-cyan-500 dark:text-cyan-400',     Icon: Database },
-  CONTRABAND:   { label: 'Contrebande', tier: 'SPECIAL',  description: 'Carburant des guerres de clan et armes du marché noir',        bg: 'bg-red-500/15',    iconColor: 'text-red-500 dark:text-red-400',       Icon: ShieldAlert },
+  CONTRABAND:       { label: 'Contrebande',     tier: 'SPECIAL', description: 'Carburant des guerres de clan et armes du marché noir',    bg: 'bg-red-500/15',      iconColor: 'text-red-500 dark:text-red-400',         Icon: ShieldAlert },
+  HORSES:           { label: 'Chevaux',         tier: 'SPECIAL', description: 'Animaux de course élevés au haras',                        bg: 'bg-cyan-500/15',     iconColor: 'text-cyan-600 dark:text-cyan-400',       Icon: Wind },
+  // ── Craftable items ───────────────────────────────────────────────────────
+  ADBLOCK_TOKEN:    { label: 'ADblock',          tier: 'ITEM',   description: 'Bloque les pubs 60 min. Craftable par un Labo Pub.',        bg: 'bg-orange-500/15',   iconColor: 'text-orange-500 dark:text-orange-400',   Icon: ShieldOff },
+  JUICE_ABRICOT:    { label: "Jus d'abricot",    tier: 'ITEM',   description: 'Change ta photo de profil. Craftable en juicerie.',         bg: 'bg-amber-500/15',    iconColor: 'text-amber-600 dark:text-amber-400',     Icon: Droplets },
+  JUICE_GINGEMBRE:  { label: 'Jus de gingembre', tier: 'ITEM',   description: 'Change la couleur de ton pseudo. Craftable en juicerie.',   bg: 'bg-yellow-500/15',   iconColor: 'text-yellow-600 dark:text-yellow-400',   Icon: Droplets },
+  JUICE_GOYAVE:     { label: 'Jus de Goyave',    tier: 'ITEM',   description: '+10 aura permanent. Craftable en juicerie (rare).',         bg: 'bg-pink-500/15',     iconColor: 'text-pink-500 dark:text-pink-400',       Icon: Sparkles },
+  JUICE_MALAKOUKOU: { label: 'Jus de malakoukou',tier: 'ITEM',   description: 'Change ta bannière de profil. Craftable en juicerie.',      bg: 'bg-purple-500/15',   iconColor: 'text-purple-500 dark:text-purple-400',   Icon: Zap },
+  JUICE_PAPAYE:     { label: 'Jus de papaye',    tier: 'ITEM',   description: '+100 argent. Craftable en juicerie.',                       bg: 'bg-lime-500/15',     iconColor: 'text-lime-600 dark:text-lime-400',       Icon: Droplets },
 };
 
 export const TIER_META: Record<ResourceTier, { label: string; cls: string }> = {
@@ -52,6 +68,7 @@ export const TIER_META: Record<ResourceTier, { label: string; cls: string }> = {
   REFINED:  { label: 'Raffiné', cls: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20' },
   FINISHED: { label: 'Fini',    cls: 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20' },
   SPECIAL:  { label: 'Spécial', cls: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20' },
+  ITEM:     { label: 'Item',    cls: 'bg-pink-500/10 text-pink-700 dark:text-pink-400 border-pink-500/20' },
 };
 
 export interface RecipeInput {
@@ -133,12 +150,68 @@ export const RECIPES: Recipe[] = [
     output: { type: 'business', id: 'textile_mill', label: 'Manufacture créée' },
     forTypes: ['sawmill', 'iron_mine'],
   },
+  // ── Items craftables ──────────────────────────────────────────────────────
+  {
+    id: 'item_juice_abricot',
+    name: "Jus d'abricot",
+    description: 'Débloque le changement de photo de profil.',
+    inputs: [{ resource: 'FOOD', qty: 2 }],
+    moneyCost: 50,
+    output: { type: 'item', id: 'JUICE_ABRICOT', label: "Jus d'abricot" },
+    forTypes: ['juterie'],
+  },
+  {
+    id: 'item_juice_gingembre',
+    name: 'Jus de gingembre',
+    description: 'Débloque la couleur de pseudo.',
+    inputs: [{ resource: 'FOOD', qty: 2 }],
+    moneyCost: 50,
+    output: { type: 'item', id: 'JUICE_GINGEMBRE', label: 'Jus de gingembre' },
+    forTypes: ['juterie'],
+  },
+  {
+    id: 'item_juice_papaye',
+    name: 'Jus de papaye',
+    description: '+100 argent pour l\'acheteur.',
+    inputs: [{ resource: 'FOOD', qty: 2 }, { resource: 'LUXURY_GOODS', qty: 1 }],
+    moneyCost: 200,
+    output: { type: 'item', id: 'JUICE_PAPAYE', label: 'Jus de papaye' },
+    forTypes: ['juterie'],
+  },
+  {
+    id: 'item_juice_malakoukou',
+    name: 'Jus de malakoukou',
+    description: 'Débloque la bannière de profil.',
+    inputs: [{ resource: 'FOOD', qty: 3 }, { resource: 'LUXURY_GOODS', qty: 2 }],
+    moneyCost: 500,
+    output: { type: 'item', id: 'JUICE_MALAKOUKOU', label: 'Jus de malakoukou' },
+    forTypes: ['juterie'],
+  },
+  {
+    id: 'item_juice_goyave',
+    name: 'Jus de Goyave',
+    description: '+10 aura permanent pour l\'acheteur. Très rare.',
+    inputs: [{ resource: 'FOOD', qty: 5 }, { resource: 'LUXURY_GOODS', qty: 3 }, { resource: 'MEDICINE', qty: 1 }],
+    moneyCost: 5000,
+    output: { type: 'item', id: 'JUICE_GOYAVE', label: 'Jus de Goyave' },
+    forTypes: ['juterie'],
+  },
+  {
+    id: 'item_adblock',
+    name: 'ADblock',
+    description: 'Bloque les pubs 60 min.',
+    inputs: [{ resource: 'DATA', qty: 2 }, { resource: 'PAPER', qty: 1 }],
+    moneyCost: 100,
+    output: { type: 'item', id: 'ADBLOCK_TOKEN', label: 'ADblock' },
+    forTypes: ['labo_pub'],
+  },
 ];
 
 // Business types that produce resources (producers/extractors)
 export const PRODUCER_TYPES = new Set([
   'farm', 'lemonade', 'sawmill', 'quarry', 'iron_mine', 'fuel_refinery', 'textile_mill',
   'coffee_shop', 'restaurant', 'epicerie', 'youtube', 'medecins', 'startup', 'agency', 'illegal_market',
+  'juterie', 'labo_pub',
 ]);
 
 // What each business type produces
@@ -164,6 +237,8 @@ export const BUSINESS_PRODUCES: Partial<Record<string, ResourceType[]>> = {
   formation: ['PAPER'],
   supreme_court: [],
   law_firm: [],
+  juterie: ['JUICE_ABRICOT', 'JUICE_GINGEMBRE', 'JUICE_GOYAVE', 'JUICE_MALAKOUKOU', 'JUICE_PAPAYE'],
+  labo_pub: ['ADBLOCK_TOKEN'],
 };
 
 // Mini-game type per business
@@ -173,8 +248,9 @@ export function getMiniGameType(typeKey: string): MiniGameType {
   if (typeKey === 'bank' || typeKey === 'transfer') return 'FINANCE';
   if (typeKey === 'formation' || typeKey === 'medecins') return 'MEMORY';
   if (typeKey === 'sawmill' || typeKey === 'quarry' || typeKey === 'iron_mine' || typeKey === 'fuel_refinery' || typeKey === 'textile_mill') return 'TYPING';
-  if (typeKey === 'startup' || typeKey === 'youtube' || typeKey === 'agency') return 'MATH';
+  if (typeKey === 'startup' || typeKey === 'youtube' || typeKey === 'agency' || typeKey === 'labo_pub') return 'MATH';
   if (typeKey === 'illegal_market') return 'SORT';
+  if (typeKey === 'juterie') return 'TIMING';
   return 'TIMING';
 }
 

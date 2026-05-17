@@ -101,12 +101,15 @@ import {
 import {
   getResourceActionState,
   runResourceAction,
+  buyBusinessUpgrade,
+  toggleConstantProduction,
 } from '../modules/you/resource-actions.js';
 import {
   getMarketState,
   createListing,
   cancelListing,
   buyListing,
+  buyItemListing,
   setAutoSell,
 } from '../modules/you/resource-market.js';
 
@@ -279,6 +282,8 @@ const ERROR_STATUS: Record<string, number> = {
   RESOURCE_ACTION_SOURCE_INVALID: 400,
   RESOURCE_ACTION_SOURCE_SHORTAGE: 400,
   RESOURCE_ACTION_OUTPUT_FULL: 400,
+  RESOURCE_ACTION_ALREADY_ACTIVE: 400,
+  QUEUE_FULL: 400,
 };
 
 const ERROR_MESSAGE: Record<string, string> = {
@@ -428,6 +433,8 @@ const ERROR_MESSAGE: Record<string, string> = {
   RESOURCE_ACTION_SOURCE_INVALID: 'La source choisie n est pas disponible.',
   RESOURCE_ACTION_SOURCE_SHORTAGE: 'La source choisie n a pas assez de stock.',
   RESOURCE_ACTION_OUTPUT_FULL: 'Le stock du business est plein pour cette production.',
+  RESOURCE_ACTION_ALREADY_ACTIVE: 'Cette action est déjà active et en cours de production.',
+  QUEUE_FULL: 'La file d\'attente de cette action est pleine.',
   CANNOT_LEAVE_OWN_BUSINESS: 'Tu ne peux pas quitter une entreprise dont tu es proprietaire.',
 };
 
@@ -509,10 +516,39 @@ router.post('/businesses/:businessId/resource-actions/run', authMiddleware, requ
     const result = await runResourceAction(req.user!.id, req.params.businessId, {
       actionKey: String(req.body?.actionKey ?? ''),
       sources: req.body?.sources,
+      payFromPersonal: Boolean(req.body?.payFromPersonal),
     });
     res.json({ result });
   } catch (error) {
     handleRouteError(error, res, 'Run resource action error');
+  }
+});
+
+router.post('/businesses/:businessId/resource-actions/upgrades/buy', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await buyBusinessUpgrade(
+      req.user!.id,
+      req.params.businessId,
+      req.body?.upgradeType,
+      Number(req.body?.level ?? 0)
+    );
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Buy business upgrade error');
+  }
+});
+
+router.post('/businesses/:businessId/resource-actions/:actionKey/toggle-constant-production', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await toggleConstantProduction(
+      req.user!.id,
+      req.params.businessId,
+      req.params.actionKey,
+      Boolean(req.body?.enabled)
+    );
+    res.json({ result });
+  } catch (error) {
+    handleRouteError(error, res, 'Toggle constant production error');
   }
 });
 
@@ -645,6 +681,7 @@ router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthReq
       capital: Number(req.body?.capital ?? 0),
       description: String(req.body?.description ?? ''),
       location: typeof req.body?.location === 'string' ? req.body.location : undefined,
+      juiceSpecialization: typeof req.body?.juiceSpecialization === 'string' ? req.body.juiceSpecialization : undefined,
     }, isAdmin);
     res.status(201).json({ business });
   } catch (error) {
@@ -1509,6 +1546,15 @@ router.post('/resource-market/listings/:listingId/buy', authMiddleware, requireY
     res.json({ ok: true });
   } catch (error) {
     handleRouteError(error, res, 'Buy resource market listing error');
+  }
+});
+
+router.post('/resource-market/listings/:listingId/buy-item', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await buyItemListing(req.user!.id, req.params.listingId);
+    res.json({ ok: true, effect: result.effect });
+  } catch (error) {
+    handleRouteError(error, res, 'Buy item listing error');
   }
 });
 

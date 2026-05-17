@@ -6,7 +6,7 @@ import { isBusinessManager } from './service.js';
 
 export const HORSE_BUSINESS_TYPE_KEY = 'horse_business';
 export const HORSE_PRODUCTION_COST = 10_000;
-export const HORSE_PRODUCTION_MS = 60 * 60 * 1000;
+export const HORSE_PRODUCTION_MS = 60 * 1000; // 1 minute
 export const HORSE_BASE_PRODUCTION_SLOTS = 2;
 export const HORSE_MAX_PRODUCTION_SLOTS = 8;
 export const HORSE_TRAIN_BASELINE_COST = 2_000;
@@ -322,6 +322,17 @@ export function serializeHorseServiceBusiness(business: any) {
     availableHorseRating: horseState.availableHorseRating,
     productionSlots: horseState.productionSlots,
     activeProductionCount: horseState.activeProductionCount,
+    availableHorses: (business.horseBusinessHorses ?? []).filter((horse: any) => !horse.soldAt).map((horse: any) => ({
+      id: horse.id,
+      bodyColor: horse.bodyColor,
+      pattern: horse.pattern,
+      patternColor: horse.patternColor,
+      geneSpeed: horse.geneSpeed,
+      geneStamina: horse.geneStamina,
+      geneConsistency: horse.geneConsistency,
+      stars: horseUnitStars(horse),
+      createdAt: horse.createdAt.toISOString(),
+    })),
   };
 }
 

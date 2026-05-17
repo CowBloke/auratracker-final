@@ -1816,14 +1816,72 @@ function StableModal({
   const [tab, setTab] = useState<'horses' | 'buy' | 'breed'>('horses');
   const [businessPicker, setBusinessPicker] = useState<null | { action: 'buy' } | { action: 'train'; stat: 'speed' | 'stamina' | 'consistency' }>(null);
 
+  const [salePriceInput, setSalePriceInput] = useState('');
+  const [marketHorses, setMarketHorses] = useState<any[]>([]);
+  const [buySubTab, setBuySubTab] = useState<'foals' | 'p2p'>('foals');
+  const [selectedFoalId, setSelectedFoalId] = useState<string | null>(null);
+  const [selectedFoalBusinessId, setSelectedFoalBusinessId] = useState<string | null>(null);
+  const [selectedMarketHorseId, setSelectedMarketHorseId] = useState<string | null>(null);
+
   const canManage = stable?.canManage ?? false;
   const horses = stable?.stable?.horses ?? [];
   const selected = horses.find((h) => h.id === selectedHorseId);
   const horseSellers = horseBusinesses.filter((business) => business.availableHorseCount > 0);
 
+  const loadMarketHorses = async () => {
+    try {
+      const res = await horseRaceApi.listMarketHorses();
+      setMarketHorses(res.data.horses);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'buy') {
+      loadMarketHorses();
+    }
+  }, [tab]);
+
   useEffect(() => {
     if (!open) setSelectedHorseId(null);
   }, [open]);
+
+  const doSell = async () => {
+    if (!selected) return;
+    const price = parseInt(salePriceInput, 10);
+    if (isNaN(price) || price <= 0) {
+      toast.error('Prix invalide.');
+      return;
+    }
+    try {
+      setBusy(true);
+      await horseRaceApi.sellHorse(selected.id, { price });
+      toast.success('Cheval mis en vente !');
+      setSalePriceInput('');
+      await onUpdated();
+    } catch (err) {
+      const m = (err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Erreur.';
+      toast.error(m);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doCancelSell = async () => {
+    if (!selected) return;
+    try {
+      setBusy(true);
+      await horseRaceApi.cancelSellHorse(selected.id);
+      toast.success('Vente annulée.');
+      await onUpdated();
+    } catch (err) {
+      const m = (err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Erreur.';
+      toast.error(m);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const doRegister = async (count: number) => {
     if (!selected) return;
@@ -2126,6 +2184,37 @@ function StableModal({
                               </AppModal.Button>
                             </div>
 
+                            <div className="space-y-1.5 rounded-lg p-2" style={{ background: 'rgba(168,85,247,0.05)', border: '1px solid rgba(168,85,247,0.2)' }}>
+                              <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-purple-300">
+                                <Tag className="h-3 w-3" /> Marché entre joueurs
+                              </p>
+                              {selected.isForSale ? (
+                                <div className="space-y-1.5">
+                                  <p className="text-[10.5px] text-purple-200">En vente pour <span className="font-bold text-amber-300">{formatMoney(selected.salePrice ?? 0)}</span></p>
+                                  <AppModal.Button tone="purple" variant="soft" size="sm" full disabled={busy} onClick={doCancelSell}>
+                                    Retirer de la vente
+                                  </AppModal.Button>
+                                </div>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  <div className="flex gap-1">
+                                    <input
+                                      type="number"
+                                      placeholder="Prix de vente (€)"
+                                      value={salePriceInput}
+                                      onChange={(e) => setSalePriceInput(e.target.value)}
+                                      className="flex-1 rounded border border-purple-500/30 bg-black/40 px-2 py-1 text-[11px] font-semibold text-white focus:outline-none focus:border-purple-500"
+                                      style={{ minWidth: 0 }}
+                                    />
+                                    <AppModal.Button tone="purple" variant="solid" size="sm" disabled={busy} onClick={doSell}>
+                                      Vendre
+                                    </AppModal.Button>
+                                  </div>
+                                  <p className="text-[8.5px] text-muted-foreground/60">Le cheval restera dans votre écurie jusqu&apos;à son achat.</p>
+                                </div>
+                              )}
+                            </div>
+
                             <AppModal.Button variant="ghost" size="sm" full style={{ color: 'var(--muted-foreground)', fontSize: 11 }} disabled={busy} onClick={doRetire}>
                               Vendre · rembours. {formatMoney(Math.floor(config.HORSE_BUY_COST * 0.3))}
                             </AppModal.Button>
@@ -2148,36 +2237,385 @@ function StableModal({
             )}
 
             {tab === 'buy' && (
-              <div className="flex h-full items-center justify-center p-6">
-                <div className="w-full max-w-[300px] space-y-4">
-                  <div className="text-center">
-                    <p className="text-2xl">🐴</p>
-                    <p className="mt-1 text-[14px] font-semibold">Acheter un poulain</p>
-                    <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-                      Gènes aléatoires (5.5–7.5 / stat) · Coût: <span className="font-semibold text-amber-200">{formatMoney(config.HORSE_BUY_COST)}</span>
-                    </p>
+              <div className="flex h-full flex-col">
+                {/* Internal sub-tabs for Poulains (Foals) vs Marché (Market) */}
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-2 bg-black/20">
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setBuySubTab('foals'); setSelectedFoalId(null); setSelectedMarketHorseId(null); }}
+                      className={cn(
+                        'px-3 py-1.5 rounded-lg text-[12px] font-bold transition flex items-center gap-1.5',
+                        buySubTab === 'foals'
+                          ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/40'
+                          : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                      )}
+                    >
+                      🍼 Poulains de l&apos;élevage
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setBuySubTab('p2p'); setSelectedFoalId(null); setSelectedMarketHorseId(null); }}
+                      className={cn(
+                        'px-3 py-1.5 rounded-lg text-[12px] font-bold transition flex items-center gap-1.5',
+                        buySubTab === 'p2p'
+                          ? 'bg-purple-500/25 text-purple-300 border border-purple-500/40'
+                          : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                      )}
+                    >
+                      🤝 Marché d&apos;occasion
+                    </button>
                   </div>
-                  <AppModal.Field
-                    label="Nom du cheval"
-                    value={newHorseName}
-                    onChange={setNewHorseName}
-                    placeholder="Ex: Éclair du Nord"
-                  />
-                  {userMoney < config.HORSE_BUY_COST && (
-                    <p className="text-center text-[11.5px] text-rose-300">Solde insuffisant.</p>
-                  )}
-                  {userMoney >= config.HORSE_BUY_COST && newHorseName.trim().length > 0 && newHorseName.trim().length < 2 && (
-                    <p className="text-center text-[11.5px] text-amber-300">Le nom doit faire au moins 2 caractères.</p>
-                  )}
-                  {userMoney >= config.HORSE_BUY_COST && newHorseName.trim().length >= 2 && horseSellers.length === 0 && (
-                    <p className="text-center text-[11.5px] text-rose-300">Aucun haras n&apos;a de chevaux en stock actuellement.</p>
-                  )}
-                  <AppModal.Button tone="cyan" variant="solid" full size="lg"
-                    disabled={busy || userMoney < config.HORSE_BUY_COST || newHorseName.trim().length < 2 || horseSellers.length === 0}
-                    onClick={() => setBusinessPicker({ action: 'buy' })}
-                  >
-                    {busy ? 'Achat…' : `Acheter pour ${formatMoney(config.HORSE_BUY_COST)}`}
-                  </AppModal.Button>
+                  <div className="text-[11px] text-muted-foreground">
+                    Votre solde: <span className="font-bold text-emerald-300">{formatMoney(userMoney)}</span>
+                  </div>
+                </div>
+
+                {/* Main Split Pane */}
+                <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+                  {/* Left Column: Listings */}
+                  <div className="w-[320px] border-r border-white/10 overflow-y-auto p-3 space-y-2 bg-black/10">
+                    {buySubTab === 'foals' ? (
+                      (() => {
+                        // Gather all produced foals from stud farms
+                        const foalsList: { foal: HorseBusinessHorseDto; business: HorseServiceBusinessDto }[] = [];
+                        horseBusinesses.forEach((biz) => {
+                          if (biz.availableHorses) {
+                            biz.availableHorses.forEach((f) => {
+                              foalsList.push({ foal: f, business: biz });
+                            });
+                          }
+                        });
+
+                        if (foalsList.length === 0) {
+                          return (
+                            <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground gap-2">
+                              <Sparkles className="h-6 w-6 opacity-20" />
+                              <p className="text-[11.5px]">Aucun poulain n&apos;est disponible dans les haras pour le moment.</p>
+                            </div>
+                          );
+                        }
+
+                        // Sort by created descending
+                        foalsList.sort((a, b) => new Date(b.foal.createdAt).getTime() - new Date(a.foal.createdAt).getTime());
+
+                        return foalsList.map(({ foal, business }) => {
+                          const isSel = selectedFoalId === foal.id;
+                          return (
+                            <div
+                              key={foal.id}
+                              onClick={() => {
+                                setSelectedFoalId(foal.id);
+                                setSelectedFoalBusinessId(business.id);
+                              }}
+                              className={cn(
+                                'flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition border',
+                                isSel
+                                  ? 'bg-cyan-500/10 border-cyan-500/50 shadow-md shadow-cyan-500/5'
+                                  : 'bg-white/3 border-white/5 hover:bg-white/6 hover:border-white/10'
+                              )}
+                            >
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-black/40 border border-white/10">
+                                <HorseAvatar
+                                  bodyColor={foal.bodyColor}
+                                  pattern={foal.pattern}
+                                  patternColor={foal.patternColor}
+                                  mane="#1a1410"
+                                  silks1="#ccc"
+                                  silks2="#666"
+                                  silksDesign="solid"
+                                  helmet="#000"
+                                  accessory="none"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[12px] font-bold text-white truncate">Poulain d&apos;Élite</p>
+                                <p className="text-[9.5px] text-cyan-300 truncate">Haras: {business.name}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[9.5px] text-amber-200 font-semibold">{foal.stars} ⭐</span>
+                                  <span className="text-[8.5px] text-muted-foreground/60">· {formatMoney(config.HORSE_BUY_COST)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()
+                    ) : (
+                      (() => {
+                        if (marketHorses.length === 0) {
+                          return (
+                            <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground gap-2">
+                              <Sparkles className="h-6 w-6 opacity-20" />
+                              <p className="text-[11.5px]">Aucun cheval d&apos;occasion n&apos;est mis en vente par les écuries.</p>
+                            </div>
+                          );
+                        }
+
+                        return marketHorses.map((h) => {
+                          const isSel = selectedMarketHorseId === h.id;
+                          const stars = computeHorseRating(h.geneSpeed + h.trainSpeed, h.geneStamina + h.trainStamina, h.geneConsistency + h.trainConsistency);
+                          return (
+                            <div
+                              key={h.id}
+                              onClick={() => {
+                                setSelectedMarketHorseId(h.id);
+                              }}
+                              className={cn(
+                                'flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition border',
+                                isSel
+                                  ? 'bg-purple-500/10 border-purple-500/50 shadow-md shadow-purple-500/5'
+                                  : 'bg-white/3 border-white/5 hover:bg-white/6 hover:border-white/10'
+                              )}
+                            >
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-black/40 border border-white/10">
+                                <HorseAvatar
+                                  bodyColor={h.bodyColor}
+                                  pattern={h.pattern}
+                                  patternColor={h.patternColor}
+                                  mane={h.mane}
+                                  silks1={h.silks1}
+                                  silks2={h.silks2}
+                                  silksDesign={h.silksDesign}
+                                  helmet={h.helmet}
+                                  accessory={h.accessory}
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[12px] font-bold text-white truncate">{h.name}</p>
+                                <p className="text-[9.5px] text-purple-300 truncate">Écurie: {h.stableName}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[9.5px] text-amber-200 font-semibold">{stars.toFixed(1)} ⭐</span>
+                                  <span className="text-[8.5px] text-emerald-300 font-bold">· {formatMoney(h.salePrice)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()
+                    )}
+                  </div>
+
+                  {/* Right Column: Detailed View & Purchase Form */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {buySubTab === 'foals' ? (
+                      (() => {
+                        const foalsList: { foal: HorseBusinessHorseDto; business: HorseServiceBusinessDto }[] = [];
+                        horseBusinesses.forEach((biz) => {
+                          if (biz.availableHorses) {
+                            biz.availableHorses.forEach((f) => {
+                              foalsList.push({ foal: f, business: biz });
+                            });
+                          }
+                        });
+                        const match = foalsList.find((f) => f.foal.id === selectedFoalId);
+
+                        if (!match) {
+                          return (
+                            <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground gap-2 py-12">
+                              <Sparkles className="h-8 w-8 opacity-15" />
+                              <p className="text-[12px]">Sélectionnez un poulain sur la gauche<br />pour afficher ses détails génétiques.</p>
+                            </div>
+                          );
+                        }
+
+                        const { foal, business } = match;
+
+                        return (
+                          <div className="space-y-4">
+                            {/* Horse Preview */}
+                            <div className="flex items-center gap-4 p-3 rounded-lg border border-white/5 bg-white/2">
+                              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-black/50 border border-white/10 shadow-inner">
+                                <HorseAvatar
+                                  bodyColor={foal.bodyColor}
+                                  pattern={foal.pattern}
+                                  patternColor={foal.patternColor}
+                                  mane="#1a1410"
+                                  silks1="#ccc"
+                                  silks2="#666"
+                                  silksDesign="solid"
+                                  helmet="#000"
+                                  accessory="none"
+                                />
+                              </div>
+                              <div>
+                                <h3 className="text-[14px] font-bold text-white">Nouveau Poulain</h3>
+                                <p className="text-[11px] text-muted-foreground">Fournisseur: <span className="text-cyan-300 font-semibold">{business.name}</span></p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">Né de l&apos;élevage industriel • Statut: Disponible</p>
+                              </div>
+                            </div>
+
+                            {/* Gene Stats */}
+                            <div className="space-y-2 rounded-lg p-3 bg-white/2 border border-white/5">
+                              <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-bold">Potentiel Génétique de base (non entraîné)</p>
+                              <div className="space-y-1.5">
+                                <div>
+                                  <div className="flex justify-between text-[11px] mb-0.5">
+                                    <span className="text-muted-foreground">Vitesse</span>
+                                    <span className="font-semibold text-cyan-200">{foal.geneSpeed.toFixed(2)}</span>
+                                  </div>
+                                  <div className="h-1.5 w-full rounded bg-white/5 overflow-hidden">
+                                    <div className="h-full bg-cyan-400" style={{ width: `${(foal.geneSpeed / 10) * 100}%` }} />
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="flex justify-between text-[11px] mb-0.5">
+                                    <span className="text-muted-foreground">Endurance</span>
+                                    <span className="font-semibold text-cyan-200">{foal.geneStamina.toFixed(2)}</span>
+                                  </div>
+                                  <div className="h-1.5 w-full rounded bg-white/5 overflow-hidden">
+                                    <div className="h-full bg-cyan-400" style={{ width: `${(foal.geneStamina / 10) * 100}%` }} />
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="flex justify-between text-[11px] mb-0.5">
+                                    <span className="text-muted-foreground">Constance</span>
+                                    <span className="font-semibold text-cyan-200">{foal.geneConsistency.toFixed(2)}</span>
+                                  </div>
+                                  <div className="h-1.5 w-full rounded bg-white/5 overflow-hidden">
+                                    <div className="h-full bg-cyan-400" style={{ width: `${(foal.geneConsistency / 10) * 100}%` }} />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Purchase Name Input & Action */}
+                            <div className="space-y-3 p-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5">
+                              <AppModal.Field
+                                label="Donner un nom à votre poulain"
+                                value={newHorseName}
+                                onChange={setNewHorseName}
+                                placeholder="Ex: Éclair du Nord"
+                              />
+
+                              <AppModal.Button
+                                tone="cyan"
+                                variant="solid"
+                                full
+                                size="md"
+                                disabled={busy || userMoney < config.HORSE_BUY_COST || newHorseName.trim().length < 2}
+                                onClick={async () => {
+                                  if (newHorseName.trim().length < 2) {
+                                    toast.error('Nom trop court.');
+                                    return;
+                                  }
+                                  try {
+                                    setBusy(true);
+                                    await horseRaceApi.buyHorse({
+                                      name: newHorseName.trim(),
+                                      businessId: selectedFoalBusinessId!,
+                                      horseBusinessHorseId: foal.id,
+                                    });
+                                    toast.success('Poulain acheté avec succès !');
+                                    setNewHorseName('');
+                                    setSelectedFoalId(null);
+                                    await onUpdated();
+                                    setTab('horses');
+                                  } catch (err) {
+                                    const m = (err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Erreur.';
+                                    toast.error(m);
+                                  } finally {
+                                    setBusy(false);
+                                  }
+                                }}
+                              >
+                                {busy ? 'Achat en cours…' : `Acheter le poulain pour ${formatMoney(config.HORSE_BUY_COST)}`}
+                              </AppModal.Button>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      (() => {
+                        const h = marketHorses.find((x) => x.id === selectedMarketHorseId);
+
+                        if (!h) {
+                          return (
+                            <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground gap-2 py-12">
+                              <Sparkles className="h-8 w-8 opacity-15" />
+                              <p className="text-[12px]">Sélectionnez un cheval sur la gauche<br />pour afficher son profil complet.</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-4">
+                            {/* Horse Preview */}
+                            <div className="flex items-center gap-4 p-3 rounded-lg border border-white/5 bg-white/2">
+                              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-black/50 border border-white/10 shadow-inner">
+                                <HorseAvatar
+                                  bodyColor={h.bodyColor}
+                                  pattern={h.pattern}
+                                  patternColor={h.patternColor}
+                                  mane={h.mane}
+                                  silks1={h.silks1}
+                                  silks2={h.silks2}
+                                  silksDesign={h.silksDesign}
+                                  helmet={h.helmet}
+                                  accessory={h.accessory}
+                                />
+                              </div>
+                              <div>
+                                <h3 className="text-[14px] font-bold text-white">{h.name}</h3>
+                                <p className="text-[11px] text-muted-foreground">Écurie d&apos;origine: <span className="text-purple-300 font-semibold">{h.stableName}</span></p>
+                                <div className="flex gap-2 text-[9.5px] text-muted-foreground/60 mt-1">
+                                  <span>🏁 {h.races} courses</span>
+                                  <span>🏆 {h.wins} victoires</span>
+                                  <span>💰 {formatMoney(h.earnings)} gagnés</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Gene & Train Stats */}
+                            <div className="space-y-2.5 rounded-lg p-3 bg-white/2 border border-white/5">
+                              <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-bold">Performances · Gènes + Entraînement</p>
+                              <div className="space-y-2">
+                                <StatBarSplit label="Vitesse" gene={h.geneSpeed} trained={h.trainSpeed} />
+                                <StatBarSplit label="Endurance" gene={h.geneStamina} trained={h.trainStamina} />
+                                <StatBarSplit label="Constance" gene={h.geneConsistency} trained={h.trainConsistency} />
+                              </div>
+                            </div>
+
+                            {/* P2P Purchase Action */}
+                            <div className="space-y-3 p-3 rounded-lg border border-purple-500/20 bg-purple-500/5">
+                              <div className="text-center pb-1">
+                                <p className="text-[11.5px] text-muted-foreground">Ce cheval est vendu directement par son écurie propriétaire.</p>
+                                <p className="text-[16px] font-bold text-purple-300 mt-1">{formatMoney(h.salePrice)}</p>
+                              </div>
+
+                              <AppModal.Button
+                                tone="purple"
+                                variant="solid"
+                                full
+                                size="md"
+                                disabled={busy || userMoney < h.salePrice}
+                                onClick={async () => {
+                                  if (!confirm(`Confirmer l'achat de ${h.name} pour ${formatMoney(h.salePrice)} ?`)) return;
+                                  try {
+                                    setBusy(true);
+                                    await horseRaceApi.buyHorse({
+                                      horseId: h.id,
+                                    });
+                                    toast.success(`${h.name} a rejoint votre écurie !`);
+                                    setSelectedMarketHorseId(null);
+                                    await onUpdated();
+                                    await loadMarketHorses();
+                                    setTab('horses');
+                                  } catch (err) {
+                                    const m = (err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Erreur.';
+                                    toast.error(m);
+                                  } finally {
+                                    setBusy(false);
+                                  }
+                                }}
+                              >
+                                {busy ? 'Transfert en cours…' : `Acheter le cheval pour ${formatMoney(h.salePrice)}`}
+                              </AppModal.Button>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    )}
+                  </div>
                 </div>
               </div>
             )}

@@ -285,6 +285,33 @@ export const BUSINESS_TYPES: BusinessTypeDefinition[] = [
     level: 3,
     actions: ['invite', 'deposit', 'withdraw', 'purchase_item'],
   },
+  // --- Production d'Items ---
+  {
+    key: 'juterie',
+    label: 'Juterie',
+    category: "Production d'Items",
+    description: 'Fabrique des jus à effets spéciaux vendables sur le marché des items : abricot, gingembre, papaye, malakoukou, goyave.',
+    minCapital: 1000,
+    creationFee: 2000,
+    monthlyRevenue: 450,
+    monthlyExpenses: 150,
+    satisfaction: 77,
+    level: 2,
+    actions: ['invite', 'deposit', 'withdraw'],
+  },
+  {
+    key: 'labo_pub',
+    label: 'Labo Pub',
+    category: "Production d'Items",
+    description: 'Produit des tokens ADblock vendables sur le marché. Bloquent les pubs 60 min pour l\'acheteur.',
+    minCapital: 2000,
+    creationFee: 3000,
+    monthlyRevenue: 550,
+    monthlyExpenses: 200,
+    satisfaction: 75,
+    level: 2,
+    actions: ['invite', 'deposit', 'withdraw'],
+  },
   // --- Justice ---
   {
     key: 'law_firm',

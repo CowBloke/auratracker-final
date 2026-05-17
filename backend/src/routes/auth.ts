@@ -268,6 +268,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         referredById: user.referredById,
         createdAt: user.createdAt,
         clanEffects,
+        hasSeenIntroVideo: user.hasSeenIntroVideo,
       },
       token,
     });
@@ -321,6 +322,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         referredById: true,
         createdAt: true,
         youAdblockExpiresAt: true,
+        hasSeenIntroVideo: true,
       },
     });
 
@@ -345,6 +347,22 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get me error:', error);
     res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+router.post('/intro-seen', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { hasSeenIntroVideo: true },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Intro seen error:', error);
+    res.status(500).json({ error: 'Failed to mark intro as seen' });
   }
 });
 

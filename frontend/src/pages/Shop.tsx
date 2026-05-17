@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { type Ad, adsApi, marketplaceApi, clansApi, ShopItem, ShopCategory, AdminInventoryItem } from '../services/api';
 import { AdCard } from '@/components/ads/AdCard';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,9 +11,25 @@ import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from '@/hooks/use-toast';
 import {
-  Loader2, Package,
+  Loader2, Package, ShoppingBasket,
   Timer, Gamepad2, RotateCcw, ShoppingCart,
 } from 'lucide-react';
+
+// Effect types that are now craftable and sold on the items market — hidden from shop
+const CRAFTABLE_EFFECT_TYPES = new Set([
+  'YOU_ADBLOCK', 'BONUS_AURA', 'PROFILE_PICTURE', 'USERNAME_COLOR', 'PROFILE_BANNER',
+]);
+
+function isCraftableItem(item: ShopItem): boolean {
+  const et = parseEffectType(item.effect);
+  if (et && CRAFTABLE_EFFECT_TYPES.has(et)) return true;
+  // Jus de papaye has bonusMoney in effect, no explicit type
+  try {
+    const p = JSON.parse(item.effect ?? '{}');
+    if (typeof p.bonusMoney === 'number') return true;
+  } catch { /**/ }
+  return false;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -535,13 +552,13 @@ export default function Shop() {
       .map(entry => entry.item.id),
   ), [inventoryItems]);
 
-  // Exclude DJ skins from the main grid (they get their own section)
+  // Exclude DJ skins and craftable items from the main grid
   const nonDjItems = useMemo(() =>
     items.filter(item => {
-      if (!item.expiresAt || new Date(item.expiresAt) >= new Date()) {
-        return parseEffectType(item.effect) !== 'DOODLE_JUMP_SKIN';
-      }
-      return false;
+      if (item.expiresAt && new Date(item.expiresAt) < new Date()) return false;
+      if (parseEffectType(item.effect) === 'DOODLE_JUMP_SKIN') return false;
+      if (isCraftableItem(item)) return false;
+      return true;
     }),
     [items],
   );
@@ -650,6 +667,18 @@ export default function Shop() {
 
   return (
     <PageShell>
+      {/* Items market banner */}
+      <Link
+        to="/you?tab=salle-de-marche"
+        className="flex items-center gap-3 rounded-xl border border-pink-500/25 bg-pink-500/5 px-4 py-3 text-sm text-pink-700 dark:text-pink-300 transition hover:bg-pink-500/10 mb-6"
+      >
+        <ShoppingBasket className="h-5 w-5 shrink-0 text-pink-500" />
+        <span>
+          <strong>Jus, ADblock et items fonctionnels</strong> sont désormais craftés par des entreprises et vendus sur le{' '}
+          <span className="underline underline-offset-2">Marché des Items</span> — disponible dans l'onglet <em>Salle de marché</em> de ta page <em>You</em>.
+        </span>
+      </Link>
+
       <Tabs value={filter} onValueChange={setFilter} className="space-y-6">
         <TabsList className="h-auto flex-wrap border-border/60 bg-muted/20">
           {VIRTUAL_FILTERS.map(entry => (
