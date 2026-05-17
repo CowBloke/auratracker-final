@@ -167,7 +167,9 @@
       "Bash(git reset *)",
       "Bash(git checkout *)",
       "Bash(git hash-object *)",
-      "Skill(frontend-design:frontend-design)"
+      "Skill(frontend-design:frontend-design)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\cowbloke\\\\Programming\\\\Repositories\\\\auratracker-final\" -Directory)",
+      "Bash(Select-Object Name)"
     ]
   },
   "outputStyle": "default"

@@ -101,6 +101,7 @@ model User {
   auraCoinPositions            AuraCoinPosition[]
   gpuMiner                     GpuMiner?
   bugReports                   BugReport[]
+  bugReportMessages            BugReportMessage[]
   suggestions                  Suggestion[]
   suggestionVotes              SuggestionVote[]
   suggestionComments           SuggestionComment[]
@@ -241,6 +242,10 @@ model User {
 
   // Horse Racing
   horseRaceBets HorseRaceBet[]
+
+  // Social Contracts
+  createdContracts       SocialContract[]           @relation("SocialContractCreator")
+  contractParticipations SocialContractParticipant[]
 
   @@index([aura])
   @@index([money])
@@ -1925,14 +1930,30 @@ model BugReport {
   description String
   images      String? // JSON array of image URLs: ["url1", "url2"]
   status      String    @default("PENDING") // PENDING, DONE
-  adminReply  String? // Admin's response to the bug report
+  adminReply  String? // Latest admin message body (for notifications/email)
   createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages BugReportMessage[]
 
   @@index([status])
   @@index([createdAt])
+}
+
+model BugReportMessage {
+  id          String   @id @default(uuid())
+  bugReportId String
+  userId      String
+  isAdmin     Boolean  @default(false)
+  body        String
+  images      String? // JSON array of image URLs
+  createdAt   DateTime @default(now())
+
+  bugReport BugReport @relation(fields: [bugReportId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([bugReportId, createdAt])
 }
 
 // Suggestion
@@ -3435,4 +3456,34 @@ model ResourceMarketListing {
   @@index([resourceType, isActive])
   @@index([sellerId])
   @@index([businessId])
+}
+
+// Social Contract System
+model SocialContract {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  creatorId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator      User                       @relation("SocialContractCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  participants SocialContractParticipant[]
+
+  @@index([creatorId])
+}
+
+model SocialContractParticipant {
+  id         String    @id @default(uuid())
+  contractId String
+  userId     String
+  signedAt   DateTime?
+  createdAt  DateTime  @default(now())
+
+  contract SocialContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, userId])
+  @@index([contractId])
+  @@index([userId])
 }

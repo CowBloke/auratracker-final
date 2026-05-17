@@ -86,6 +86,90 @@ export const runDailyTax = async (
     totalCollected += taxAmount;
   }
 
+  const businesses = await prisma.business.findMany({
+    where: { treasuryMoney: { gte: minThreshold } },
+    select: { id: true, name: true, ownerId: true, treasuryMoney: true },
+  });
+
+  let businessesAffected = 0;
+
+  for (const business of businesses) {
+    const currentTreasury = Number(business.treasuryMoney);
+    const rate = getApplicableRate(currentTreasury, effectiveBrackets);
+    if (rate <= 0) continue;
+
+    const taxAmount = Math.max(1, Math.floor(currentTreasury * (rate / 100)));
+    const newTreasury = Math.max(0, currentTreasury - taxAmount);
+
+    await prisma.business.update({
+      where: { id: business.id },
+      data: { treasuryMoney: newTreasury },
+    });
+
+    await prisma.businessTransaction.create({
+      data: {
+        businessId: business.id,
+        type: 'TAX',
+        amount: BigInt(-taxAmount),
+        label: `Impôt journalier : ${taxAmount.toLocaleString('fr-FR')}€ prélevés (taux ${rate}%)`,
+      },
+    });
+
+    await createNotification({
+      userId: business.ownerId,
+      type: 'TAX',
+      title: `Impôt journalier — ${business.name}`,
+      body: `${taxAmount.toLocaleString('fr-FR')} € ont été prélevés sur la trésorerie de ${business.name} au titre de l'impôt journalier (taux appliqué : ${rate}%).`,
+      icon: 'landmark',
+      data: { taxAmount, rate, previousTreasury: currentTreasury, newTreasury, businessId: business.id },
+    });
+
+    businessesAffected++;
+    totalCollected += taxAmount;
+  }
+
+  const bankAccounts = await prisma.bankAccount.findMany({
+    where: { balance: { gte: minThreshold } },
+    include: { business: { select: { name: true } } },
+  });
+
+  let bankAccountsAffected = 0;
+
+  for (const account of bankAccounts) {
+    const currentBalance = account.balance;
+    const rate = getApplicableRate(currentBalance, effectiveBrackets);
+    if (rate <= 0) continue;
+
+    const taxAmount = Math.max(1, Math.floor(currentBalance * (rate / 100)));
+    const newBalance = Math.max(0, currentBalance - taxAmount);
+
+    await prisma.bankAccount.update({
+      where: { id: account.id },
+      data: { balance: newBalance },
+    });
+
+    await prisma.businessTransaction.create({
+      data: {
+        businessId: account.businessId,
+        type: 'TAX',
+        amount: BigInt(-taxAmount),
+        label: `Impôt journalier (compte ${account.accountType}) : ${taxAmount.toLocaleString('fr-FR')}€ prélevés (taux ${rate}%)`,
+      },
+    });
+
+    await createNotification({
+      userId: account.userId,
+      type: 'TAX',
+      title: `Impôt journalier — compte ${account.accountType}`,
+      body: `${taxAmount.toLocaleString('fr-FR')} € ont été prélevés sur votre compte ${account.accountType} chez ${account.business.name} au titre de l'impôt journalier (taux appliqué : ${rate}%).`,
+      icon: 'landmark',
+      data: { taxAmount, rate, previousBalance: currentBalance, newBalance, accountId: account.id },
+    });
+
+    bankAccountsAffected++;
+    totalCollected += taxAmount;
+  }
+
   await prisma.gameSettings.upsert({
     where: { key: LAST_TAX_RUN_KEY },
     update: { value: todayKey },
@@ -96,12 +180,14 @@ export const runDailyTax = async (
     dayKey: todayKey,
     forced: force,
     usersAffected,
+    businessesAffected,
+    bankAccountsAffected,
     totalCollected,
     bracketsCount: brackets.length,
   });
 
   console.log(
-    `[daily-tax] ${todayKey}: taxed ${usersAffected} user(s), collected ${totalCollected}$`,
+    `[daily-tax] ${todayKey}: taxed ${usersAffected} user(s), ${businessesAffected} business(es), and ${bankAccountsAffected} bank account(s), collected ${totalCollected}$`,
   );
 
   return { skipped: false, usersAffected, totalCollected };

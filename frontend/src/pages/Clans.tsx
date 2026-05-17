@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Axe, AlertTriangle, Check, ChevronDown, ChevronUp, Crown, History, Info, Landmark, Loader2, LogOut, Lock, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Tag, Target, Trash2, UserX, X } from 'lucide-react';
+import { Axe, AlertTriangle, Check, ChevronDown, ChevronUp, Crown, History, Info, Landmark, Loader2, LogOut, Lock, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -241,11 +241,10 @@ export default function Clans() {
   const [depositingBank, setDepositingBank] = useState(false);
   const [usingClanItemId, setUsingClanItemId] = useState<string | null>(null);
 
-  // Image editor state
-  const [imageEditOpen, setImageEditOpen] = useState(false);
+  // Settings modal state
+  const [clanSettingsOpen, setClanSettingsOpen] = useState(false);
   const [editImageUrl, setEditImageUrl] = useState('');
   const [savingImage, setSavingImage] = useState(false);
-  const [descriptionEditOpen, setDescriptionEditOpen] = useState(false);
   const [editDescription, setEditDescription] = useState('');
   const [savingDescription, setSavingDescription] = useState(false);
 
@@ -261,7 +260,7 @@ export default function Clans() {
   const [tagStyle, setTagStyle] = useState<ClanTagStyle>(DEFAULT_CLAN_TAG_STYLE);
   const [savingTag, setSavingTag] = useState(false);
   // Tab state
-  const [activeTab, setActiveTab] = useState<'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'messages'>('info');
   const [bankHistoryOpen, setBankHistoryOpen] = useState(false);
   const [warListDialogOpen, setWarListDialogOpen] = useState(false);
   const [warGamesDialogOpen, setWarGamesDialogOpen] = useState(false);
@@ -366,7 +365,6 @@ export default function Clans() {
 
   useEffect(() => {
     setEditDescription(selectedClan?.description ?? '');
-    setDescriptionEditOpen(false);
   }, [selectedClan?.id, selectedClan?.description]);
 
   useEffect(() => {
@@ -1215,7 +1213,6 @@ export default function Clans() {
       const res = await clansApi.updateImage(selectedClan.id, editImageUrl.trim() || null);
       setSelectedClan((prev) => prev ? { ...prev, imageUrl: res.data.imageUrl } : prev);
       setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, imageUrl: res.data.imageUrl } : c));
-      setImageEditOpen(false);
       toast({ title: 'Image mise à jour' });
     } catch (error: any) {
       toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de modifier l\'image.', variant: 'destructive' });
@@ -1231,7 +1228,6 @@ export default function Clans() {
       const res = await clansApi.updateDescription(selectedClan.id, editDescription.trim() || null);
       setSelectedClan((prev) => prev ? { ...prev, description: res.data.description } : prev);
       setClans((prev) => prev.map((c) => c.id === selectedClan.id ? { ...c, description: res.data.description } : c));
-      setDescriptionEditOpen(false);
       toast({ title: 'Description mise à jour' });
     } catch (error: any) {
       toast({ title: 'Erreur', description: error.response?.data?.error || 'Impossible de modifier la description.', variant: 'destructive' });
@@ -1429,7 +1425,7 @@ export default function Clans() {
                             <button
                               type="button"
                               className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/50 opacity-0 transition-opacity hover:opacity-100"
-                              onClick={() => { setEditImageUrl(selectedClan.imageUrl ?? ""); setImageEditOpen(true); }}
+                              onClick={() => { setEditImageUrl(selectedClan.imageUrl ?? ""); setClanSettingsOpen(true); }}
                             >
                               <Pencil className="h-5 w-5 text-white" />
                             </button>
@@ -1492,6 +1488,17 @@ export default function Clans() {
                             Quitter
                           </Button>
                         ) : null}
+                        {selectedClan.viewer.isLeader ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-9 rounded-full border-white/20 bg-white/10 px-4 text-white backdrop-blur-md hover:bg-white/20 hover:text-white"
+                            onClick={() => { setEditImageUrl(selectedClan.imageUrl ?? ""); setClanSettingsOpen(true); }}
+                          >
+                            <Settings2 className="mr-2 h-4 w-4" />
+                            Paramètres
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -1505,18 +1512,6 @@ export default function Clans() {
                           <p className="text-base leading-relaxed text-muted-foreground">
                             {selectedClan.description || 'Aucune description pour le moment.'}
                           </p>
-                          {selectedClan.viewer.isLeader ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 rounded-full px-3"
-                              onClick={() => setDescriptionEditOpen(true)}
-                            >
-                              <Pencil className="mr-2 h-3.5 w-3.5" />
-                              Modifier la description
-                            </Button>
-                          ) : null}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -1678,59 +1673,11 @@ export default function Clans() {
                       </div>
                     </div>
 
-                    <Dialog
-                      open={descriptionEditOpen}
-                      onOpenChange={(open) => {
-                        if (!open && savingDescription) return;
-                        if (!open) {
-                          setEditDescription(selectedClan.description ?? '');
-                        }
-                        setDescriptionEditOpen(open);
-                      }}
-                    >
-                      <DialogContent className="max-w-lg">
-                        <DialogHeader>
-                          <DialogTitle>Modifier la description du clan</DialogTitle>
-                          <DialogDescription>
-                            Decris l identite, le style de jeu et l objectif du clan.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-2">
-                          <Textarea
-                            value={editDescription}
-                            onChange={(event) => setEditDescription(event.target.value)}
-                            maxLength={300}
-                            rows={4}
-                            placeholder="Description du clan"
-                            disabled={savingDescription}
-                          />
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button type="button" size="sm" onClick={handleSaveDescription} disabled={savingDescription}>
-                              {savingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                              Enregistrer
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setEditDescription(selectedClan.description ?? '');
-                                setDescriptionEditOpen(false);
-                              }}
-                              disabled={savingDescription}
-                            >
-                              Annuler
-                            </Button>
-                            <span className="text-xs text-muted-foreground">{editDescription.length}/300</span>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
                   </div>
 
                   {/* Tabs: side-tab layout */}
                   {selectedClan.viewer.isMember ? (
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'tag' | 'messages')} orientation="vertical">
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'messages')} orientation="vertical">
                       <div className="grid gap-0 overflow-hidden rounded-2xl border border-border/50" style={{ gridTemplateColumns: selectedClan.viewer.isMember ? '170px minmax(0,1fr)' : '1fr' }}>
                       {/* ── Vertical side tabs ── */}
                       {selectedClan.viewer.isMember ? (
@@ -1761,12 +1708,6 @@ export default function Clans() {
                           <TabsTrigger value="chat" className="flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-muted-foreground data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground" title="Chat">
                             <MessageSquare className="h-4 w-4 shrink-0 text-sky-400" />
                             <span className="text-sm font-medium">Chat</span>
-                          </TabsTrigger>
-                        ) : null}
-                        {selectedClan.viewer.isLeader && selectedClan.tagUnlocked ? (
-                          <TabsTrigger value="tag" className="flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-muted-foreground data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground" title="Tag">
-                            <Tag className="h-4 w-4 shrink-0 text-rose-400" />
-                            <span className="text-sm font-medium">Tag</span>
                           </TabsTrigger>
                         ) : null}
                         {selectedClan.viewer.isMember ? (
@@ -2254,83 +2195,6 @@ export default function Clans() {
                               </Button>
                             </div>
                           </form>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    {/* ── Tag tab ── */}
-                    <TabsContent value="tag" className="mt-0 space-y-4 p-4">
-                      <Card className={panelClassName}>
-                        <CardContent className="space-y-4 p-4">
-                          <SectionTitle title="Tag du clan" description="Personnalise le tag affiché après les noms des membres." />
-                          {/* Preview */}
-                          <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-3">
-                            <span className="text-sm text-muted-foreground">Aperçu :</span>
-                            <span className="font-medium">Nom</span>
-                            {tagText.trim() ? (
-                              <ClanTag tag={{ text: tagText.trim(), style: tagStyle }} />
-                            ) : (
-                              <span className="text-xs text-muted-foreground italic">aucun texte</span>
-                            )}
-                          </div>
-                          {/* Text */}
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-muted-foreground">Texte (1–6 caractères)</label>
-                            <Input value={tagText} onChange={(e) => setTagText(e.target.value.slice(0, 6))} maxLength={6} placeholder="OG" className="w-28 font-mono" />
-                          </div>
-                          {/* Background type */}
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-muted-foreground">Fond</label>
-                            <div className="flex gap-2">
-                              {(['solid', 'gradient'] as const).map((type) => (
-                                <Button key={type} type="button" size="sm" variant={tagStyle.backgroundType === type ? 'default' : 'outline'} onClick={() => setTagStyle((s) => ({ ...s, backgroundType: type }))}>
-                                  {type === 'solid' ? 'Uni' : 'Dégradé'}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                          {/* Background colors */}
-                          {tagStyle.backgroundType === 'solid' ? (
-                            <div className="space-y-1">
-                              <label className="text-xs font-medium text-muted-foreground">Couleur de fond</label>
-                              <div className="flex flex-wrap gap-1.5">
-                                {TAG_PRESET_COLORS.map((c) => (
-                                  <button type="button" key={c} onClick={() => setTagStyle((s) => ({ ...s, backgroundColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.backgroundColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />
-                                ))}
-                                <input type="color" value={tagStyle.backgroundColor} onChange={(e) => setTagStyle((s) => ({ ...s, backgroundColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              <label className="text-xs font-medium text-muted-foreground">Couleurs du dégradé</label>
-                              <div className="flex items-center gap-2">
-                                <input type="color" value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').from ?? '#374151'; } catch { return '#374151'; } })()} onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, from: e.target.value }) })); }} className="h-6 w-6 cursor-pointer rounded border p-0" />
-                                <span className="text-xs text-muted-foreground">→</span>
-                                <input type="color" value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').to ?? '#6366f1'; } catch { return '#6366f1'; } })()} onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, to: e.target.value }) })); }} className="h-6 w-6 cursor-pointer rounded border p-0" />
-                              </div>
-                            </div>
-                          )}
-                          {/* Text color */}
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-muted-foreground">Couleur du texte</label>
-                            <div className="flex flex-wrap gap-1.5">
-                              {TAG_PRESET_COLORS.map((c) => (<button type="button" key={c} onClick={() => setTagStyle((s) => ({ ...s, textColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.textColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />))}
-                              <input type="color" value={tagStyle.textColor} onChange={(e) => setTagStyle((s) => ({ ...s, textColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
-                            </div>
-                          </div>
-                          {/* Border color */}
-                          <div className="space-y-1">
-                            <label className="text-xs font-medium text-muted-foreground">Couleur de bordure</label>
-                            <div className="flex flex-wrap gap-1.5">
-                              {TAG_PRESET_COLORS.map((c) => (<button type="button" key={c} onClick={() => setTagStyle((s) => ({ ...s, borderColor: c }))} className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.borderColor === c ? 'border-foreground scale-110' : 'border-transparent')} style={{ backgroundColor: c }} />))}
-                              <input type="color" value={tagStyle.borderColor} onChange={(e) => setTagStyle((s) => ({ ...s, borderColor: e.target.value }))} className="h-5 w-5 cursor-pointer rounded border p-0" />
-                            </div>
-                          </div>
-                          {/* Save */}
-                          <Button type="button" onClick={saveTag} disabled={savingTag || !tagText.trim()} size="sm" className="w-full">
-                            {savingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Sauvegarder
-                          </Button>
                         </CardContent>
                       </Card>
                     </TabsContent>
@@ -3215,25 +3079,209 @@ export default function Clans() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={imageEditOpen} onOpenChange={setImageEditOpen}>
-        <DialogContent className="sm:max-w-sm">
+      {/* ── Clan Settings Modal ── */}
+      <Dialog
+        open={clanSettingsOpen}
+        onOpenChange={(open) => {
+          if (!open && (savingImage || savingDescription || savingTag)) return;
+          if (!open && selectedClan) {
+            setEditDescription(selectedClan.description ?? '');
+            setEditImageUrl(selectedClan.imageUrl ?? '');
+          }
+          setClanSettingsOpen(open);
+        }}
+      >
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Modifier l'emblème du clan</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5" />
+              Paramètres du clan
+            </DialogTitle>
+            <DialogDescription>
+              Personnalise l'apparence et les informations de ton clan.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <ImagePicker
-              value={editImageUrl}
-              onChange={setEditImageUrl}
-              uploadFn={uploadClanImageFile}
-              disabled={savingImage}
-            />
-          </div>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setImageEditOpen(false)} disabled={savingImage}>Annuler</Button>
-            <Button onClick={handleSaveImage} disabled={savingImage}>
-              {savingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Enregistrer
-            </Button>
+
+          <div className="space-y-6 py-1">
+            {/* Emblème */}
+            <div className="space-y-3">
+              <p className="text-sm font-semibold">Emblème</p>
+              <ImagePicker
+                value={editImageUrl}
+                onChange={setEditImageUrl}
+                uploadFn={uploadClanImageFile}
+                disabled={savingImage}
+              />
+              <Button size="sm" className="w-full" onClick={handleSaveImage} disabled={savingImage}>
+                {savingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                Enregistrer l'emblème
+              </Button>
+            </div>
+
+            <div className="border-t border-border/50" />
+
+            {/* Description */}
+            <div className="space-y-3">
+              <p className="text-sm font-semibold">Description</p>
+              <Textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                maxLength={300}
+                rows={4}
+                placeholder="Décris l'identité, le style de jeu et l'objectif du clan…"
+                disabled={savingDescription}
+              />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">{editDescription.length}/300</span>
+                <Button size="sm" onClick={handleSaveDescription} disabled={savingDescription}>
+                  {savingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                  Enregistrer
+                </Button>
+              </div>
+            </div>
+
+            {/* Tag (if unlocked) */}
+            {selectedClan?.tagUnlocked ? (
+              <>
+                <div className="border-t border-border/50" />
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold">Tag du clan</p>
+
+                  {/* Preview */}
+                  <div className="flex items-center gap-2 rounded-lg bg-muted/30 p-3">
+                    <span className="text-xs text-muted-foreground">Aperçu :</span>
+                    <span className="text-sm font-medium">Nom</span>
+                    {tagText.trim() ? (
+                      <ClanTag tag={{ text: tagText.trim(), style: tagStyle }} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">aucun texte</span>
+                    )}
+                  </div>
+
+                  {/* Text input */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Texte (1–6 caractères)</label>
+                    <Input
+                      value={tagText}
+                      onChange={(e) => setTagText(e.target.value.slice(0, 6))}
+                      maxLength={6}
+                      placeholder="OG"
+                      className="w-28 font-mono"
+                    />
+                  </div>
+
+                  {/* Background type */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Fond</label>
+                    <div className="flex gap-2">
+                      {(['solid', 'gradient'] as const).map((type) => (
+                        <Button
+                          key={type}
+                          type="button"
+                          size="sm"
+                          variant={tagStyle.backgroundType === type ? 'default' : 'outline'}
+                          onClick={() => setTagStyle((s) => ({ ...s, backgroundType: type }))}
+                        >
+                          {type === 'solid' ? 'Uni' : 'Dégradé'}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Background colors */}
+                  {tagStyle.backgroundType === 'solid' ? (
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Couleur de fond</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {TAG_PRESET_COLORS.map((c) => (
+                          <button
+                            type="button"
+                            key={c}
+                            onClick={() => setTagStyle((s) => ({ ...s, backgroundColor: c }))}
+                            className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.backgroundColor === c ? 'border-foreground scale-110' : 'border-transparent')}
+                            style={{ backgroundColor: c }}
+                          />
+                        ))}
+                        <input
+                          type="color"
+                          value={tagStyle.backgroundColor}
+                          onChange={(e) => setTagStyle((s) => ({ ...s, backgroundColor: e.target.value }))}
+                          className="h-5 w-5 cursor-pointer rounded border p-0"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Couleurs du dégradé</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').from ?? '#374151'; } catch { return '#374151'; } })()}
+                          onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, from: e.target.value }) })); }}
+                          className="h-6 w-6 cursor-pointer rounded border p-0"
+                        />
+                        <span className="text-xs text-muted-foreground">→</span>
+                        <input
+                          type="color"
+                          value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').to ?? '#6366f1'; } catch { return '#6366f1'; } })()}
+                          onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, to: e.target.value }) })); }}
+                          className="h-6 w-6 cursor-pointer rounded border p-0"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Text color */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Couleur du texte</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TAG_PRESET_COLORS.map((c) => (
+                        <button
+                          type="button"
+                          key={c}
+                          onClick={() => setTagStyle((s) => ({ ...s, textColor: c }))}
+                          className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.textColor === c ? 'border-foreground scale-110' : 'border-transparent')}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={tagStyle.textColor}
+                        onChange={(e) => setTagStyle((s) => ({ ...s, textColor: e.target.value }))}
+                        className="h-5 w-5 cursor-pointer rounded border p-0"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Border color */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Couleur de bordure</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TAG_PRESET_COLORS.map((c) => (
+                        <button
+                          type="button"
+                          key={c}
+                          onClick={() => setTagStyle((s) => ({ ...s, borderColor: c }))}
+                          className={cn('h-5 w-5 rounded-full border-2 transition-transform hover:scale-110', tagStyle.borderColor === c ? 'border-foreground scale-110' : 'border-transparent')}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={tagStyle.borderColor}
+                        onChange={(e) => setTagStyle((s) => ({ ...s, borderColor: e.target.value }))}
+                        className="h-5 w-5 cursor-pointer rounded border p-0"
+                      />
+                    </div>
+                  </div>
+
+                  <Button type="button" size="sm" className="w-full" onClick={saveTag} disabled={savingTag || !tagText.trim()}>
+                    {savingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                    Enregistrer le tag
+                  </Button>
+                </div>
+              </>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>

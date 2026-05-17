@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage, type AdminWealthStats } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, BugReportMessage, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage, type AdminWealthStats } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
@@ -1331,6 +1331,8 @@ export default function Admin() {
   const [loadingBugs, setLoadingBugs] = useState(false);
   const [updatingBug, setUpdatingBug] = useState<string | null>(null);
   const [bugReply, setBugReply] = useState<Record<string, string>>({});
+  const [bugMessages, setBugMessages] = useState<Record<string, BugReportMessage[]>>({});
+  const [loadingBugMessages, setLoadingBugMessages] = useState(false);
   const [selectedInboxItem, setSelectedInboxItem] = useState<string | null>(null);
   const [inboxFilter, setInboxFilter] = useState<'all' | 'registrations' | 'bugs' | 'appeals' | 'namechanges' | 'badges' | 'formations' | 'sanctions' | 'archived'>('all');
 
@@ -2113,6 +2115,19 @@ export default function Admin() {
       showMessage('error', 'Erreur lors du chargement des bugs');
     } finally {
       setLoadingBugs(false);
+    }
+  };
+
+  const loadBugMessages = async (bugId: string) => {
+    if (bugMessages[bugId]) return;
+    setLoadingBugMessages(true);
+    try {
+      const res = await adminApi.getBugMessages(bugId);
+      setBugMessages(prev => ({ ...prev, [bugId]: res.data.messages }));
+    } catch (error) {
+      console.error('Failed to load bug messages:', error);
+    } finally {
+      setLoadingBugMessages(false);
     }
   };
 
@@ -3509,8 +3524,11 @@ export default function Admin() {
     if (!reply) return;
     setUpdatingBug(bug.id);
     try {
-      const res = await adminApi.updateBugReport(bug.id, { status: bug.status, adminReply: reply });
-      setBugReports(prev => prev.map(b => b.id === bug.id ? res.data.bugReport : b));
+      const res = await adminApi.sendBugMessage(bug.id, { body: reply });
+      setBugMessages(prev => ({
+        ...prev,
+        [bug.id]: [...(prev[bug.id] ?? []), res.data.message],
+      }));
       setBugReply(prev => { const next = { ...prev }; delete next[bug.id]; return next; });
       showMessage('success', 'Réponse envoyée');
     } catch (error: any) {
@@ -4745,6 +4763,8 @@ export default function Admin() {
           approvingSanction={approvingSanction}
           rejectingSanction={rejectingSanction}
           bugReply={bugReply}
+          bugMessages={bugMessages}
+          loadingBugMessages={loadingBugMessages}
           rejectNotes={rejectNotes}
           importArchivedRegistrations={importArchivedRegistrations}
           setInboxFilter={setInboxFilter}
@@ -4754,6 +4774,7 @@ export default function Admin() {
           setBugReply={setBugReply}
           setRejectNotes={setRejectNotes}
           sendBugReply={sendBugReply}
+          loadBugMessages={loadBugMessages}
           toggleBugStatus={toggleBugStatus}
           reviewBanAppeal={reviewBanAppeal}
           reviewNameChangeRequest={reviewNameChangeRequest}

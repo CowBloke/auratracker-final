@@ -33,7 +33,8 @@ import {
   X,
 } from 'lucide-react';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
-import type { BanAppeal, BugReport, CustomBadgeRequest, NameChangeRequest, PendingFormationReviewItem, PendingSanction, PendingUser } from '../../../services/api';
+import { useEffect, useRef } from 'react';
+import type { BanAppeal, BugReport, BugReportMessage, CustomBadgeRequest, NameChangeRequest, PendingFormationReviewItem, PendingSanction, PendingUser } from '../../../services/api';
 
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
@@ -72,6 +73,8 @@ type InboxTabProps = {
   approvingSanction: string | null;
   rejectingSanction: string | null;
   bugReply: Record<string, string>;
+  bugMessages: Record<string, BugReportMessage[]>;
+  loadingBugMessages: boolean;
   rejectNotes: Record<string, string>;
   importArchivedRegistrations: () => void;
   setInboxFilter: (value: InboxFilter) => void;
@@ -81,6 +84,7 @@ type InboxTabProps = {
   setBugReply: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setRejectNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   sendBugReply: (bug: BugReport) => void;
+  loadBugMessages: (bugId: string) => void;
   toggleBugStatus: (bug: BugReport) => void;
   reviewBanAppeal: (appealId: string, action: 'approve' | 'reject') => void;
   reviewNameChangeRequest: (requestId: string, action: 'approve' | 'reject') => void;
@@ -121,6 +125,8 @@ export function InboxTab(props: InboxTabProps) {
     approvingSanction,
     rejectingSanction,
     bugReply,
+    bugMessages,
+    loadingBugMessages,
     rejectNotes,
     importArchivedRegistrations,
     setInboxFilter,
@@ -130,6 +136,7 @@ export function InboxTab(props: InboxTabProps) {
     setBugReply,
     setRejectNotes,
     sendBugReply,
+    loadBugMessages,
     toggleBugStatus,
     reviewBanAppeal,
     reviewNameChangeRequest,
@@ -139,6 +146,19 @@ export function InboxTab(props: InboxTabProps) {
     approveSanction,
     rejectSanction,
   } = props;
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!selectedInboxItem) return;
+    const bug = bugReports.find(b => b.id === selectedInboxItem);
+    if (!bug) return;
+    loadBugMessages(bug.id);
+  }, [selectedInboxItem]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [bugMessages, selectedInboxItem]);
 
   return (
     <TabsContent value="inbox" className={SPACING.SECTION_SPACING}>
@@ -508,55 +528,73 @@ export function InboxTab(props: InboxTabProps) {
                     const bug = selectedItem.data as BugReport;
                     const isArchived = bug.status === 'DONE';
                     const replyValue = bugReply[bug.id] ?? '';
+                    const messages = bugMessages[bug.id] ?? [];
                     return (
-                      <div className="p-6 space-y-5">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
+                      <div className="flex flex-col h-full">
+                        {/* Header */}
+                        <div className="px-5 py-4 border-b border-border/40 shrink-0">
+                          <div className="flex items-center gap-2 mb-1">
                             <span className={cn('text-xs px-2 py-0.5 rounded', isArchived ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400')}>
-                              {isArchived ? 'Résolu' : 'Bug'}
+                              {isArchived ? 'Résolu' : 'En cours'}
                             </span>
                             <span className="text-xs text-muted-foreground/60">
                               {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <h3 className={cn('text-lg font-semibold', isArchived && 'opacity-60')}>{bug.title}</h3>
-                          <p className="text-sm text-muted-foreground">Par {bug.user.username}</p>
+                          <h3 className={cn('text-base font-semibold leading-tight', isArchived && 'opacity-60')}>{bug.title}</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">Signalement de {bug.user.username}</p>
                         </div>
-                        <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
-                          <p className="text-sm whitespace-pre-wrap break-words">{bug.description}</p>
-                        </div>
-                        {bug.images && JSON.parse(bug.images).length > 0 && (
-                          <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
-                            <p className="text-xs font-medium text-muted-foreground/70 mb-3">Images jointes</p>
-                            <div className="grid grid-cols-2 gap-2">
-                              {JSON.parse(bug.images).map((imgUrl: string, idx: number) => (
-                                <img
-                                  key={idx}
-                                  src={imgUrl}
-                                  alt={`Bug image ${idx + 1}`}
-                                  className="w-full h-32 object-cover rounded border border-border/30"
-                                />
-                              ))}
+
+                        {/* Messages thread */}
+                        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-0">
+                          {loadingBugMessages && messages.length === 0 ? (
+                            <div className="flex justify-center py-8">
+                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/40" />
                             </div>
-                          </div>
-                        )}
-                        {bug.adminReply && (
-                          <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/5 p-4">
-                            <p className="text-xs font-medium text-indigo-400/70 mb-2">Réponse envoyée</p>
-                            <p className="text-sm whitespace-pre-wrap break-words text-muted-foreground">{bug.adminReply}</p>
-                          </div>
-                        )}
-                        <div className="space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground/70">
-                            {bug.adminReply ? 'Modifier la réponse' : 'Répondre au signalement'}
-                          </p>
+                          ) : messages.map(msg => (
+                            <div key={msg.id} className={cn('flex', msg.isAdmin ? 'justify-start' : 'justify-end')}>
+                              <div className={cn(
+                                'max-w-[80%] rounded-lg px-3 py-2 text-sm',
+                                msg.isAdmin
+                                  ? 'bg-indigo-500/10 border border-indigo-500/20'
+                                  : 'bg-muted/40 border border-border/40'
+                              )}>
+                                <p className="text-[10px] text-muted-foreground/60 mb-1">
+                                  {msg.isAdmin ? 'Support' : bug.user.username}
+                                  {' · '}
+                                  {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                                <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                                {msg.images && (() => {
+                                  const imgs: string[] = JSON.parse(msg.images);
+                                  return imgs.length > 0 ? (
+                                    <div className="mt-2 grid grid-cols-2 gap-1">
+                                      {imgs.map((url, i) => (
+                                        <img key={i} src={url} alt="" className="w-full h-20 object-cover rounded border border-border/30" />
+                                      ))}
+                                    </div>
+                                  ) : null;
+                                })()}
+                              </div>
+                            </div>
+                          ))}
+                          <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Compose */}
+                        <div className="px-5 py-4 border-t border-border/40 shrink-0 space-y-2">
                           <textarea
                             className="w-full rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 placeholder:text-muted-foreground/40"
                             rows={3}
-                            placeholder="Écrivez votre réponse… Elle sera envoyée par notification et par e-mail."
+                            placeholder="Répondre… La réponse sera notifiée par e-mail."
                             value={replyValue}
                             onChange={e => setBugReply(prev => ({ ...prev, [bug.id]: e.target.value }))}
                             disabled={updatingBug === bug.id}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && replyValue.trim()) {
+                                sendBugReply(bug);
+                              }
+                            }}
                           />
                           <div className="flex items-center gap-2">
                             {replyValue.trim() && (

@@ -3498,6 +3498,17 @@ router.post('/bugs', authMiddleware, async (req: AuthRequest, res: Response) => 
       },
     });
 
+    // Create the first message from the user's report
+    await prisma.bugReportMessage.create({
+      data: {
+        bugReportId: bugReport.id,
+        userId: req.user!.id,
+        isAdmin: false,
+        body: description.trim(),
+        images: imagesJson,
+      },
+    });
+
     // Log bug report
     logSuggestion('bug_report', req.user!.id, bugReport.user.username, {
       bugReportId: bugReport.id,
@@ -3538,6 +3549,115 @@ router.get('/bugs', authMiddleware, requireAdmin, async (req: AuthRequest, res: 
   } catch (error) {
     console.error('Admin get bug reports error:', error);
     res.status(500).json({ error: 'Failed to get bug reports' });
+  }
+});
+
+// Get current user's own bug reports
+router.get('/bugs/my', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const bugReports = await prisma.bugReport.findMany({
+      where: { userId: req.user!.id },
+      include: {
+        user: { select: { id: true, username: true } },
+        messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ bugReports });
+  } catch (error) {
+    console.error('Get my bug reports error:', error);
+    res.status(500).json({ error: 'Failed to get bug reports' });
+  }
+});
+
+// Get messages for a bug report (admin or report owner)
+router.get('/bugs/:id/messages', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const bug = await prisma.bugReport.findUnique({ where: { id }, select: { id: true, userId: true } });
+    if (!bug) return res.status(404).json({ error: 'Bug report not found' });
+    if (!req.user!.isAdmin && bug.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const messages = await prisma.bugReportMessage.findMany({
+      where: { bugReportId: id },
+      orderBy: { createdAt: 'asc' },
+      include: { user: { select: { id: true, username: true, profilePicture: true } } },
+    });
+    res.json({ messages });
+  } catch (error) {
+    console.error('Get bug messages error:', error);
+    res.status(500).json({ error: 'Failed to get messages' });
+  }
+});
+
+// Send a message in a bug report conversation (admin or report owner)
+router.post('/bugs/:id/messages', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { body, images } = req.body;
+
+    if (!body?.trim()) return res.status(400).json({ error: 'Message body is required' });
+    if (body.length > 2000) return res.status(400).json({ error: 'Message too long (max 2000 chars)' });
+
+    const bug = await prisma.bugReport.findUnique({
+      where: { id },
+      include: { user: { select: { id: true, username: true, email: true } } },
+    });
+    if (!bug) return res.status(404).json({ error: 'Bug report not found' });
+    if (!req.user!.isAdmin && bug.userId !== req.user!.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    let imagesJson: string | undefined;
+    if (images) {
+      if (!Array.isArray(images) || images.length > 5 || !images.every((img) => typeof img === 'string')) {
+        return res.status(400).json({ error: 'Invalid images' });
+      }
+      imagesJson = JSON.stringify(images);
+    }
+
+    const isAdmin = req.user!.isAdmin;
+    const message = await prisma.bugReportMessage.create({
+      data: {
+        bugReportId: id,
+        userId: req.user!.id,
+        isAdmin,
+        body: body.trim(),
+        images: imagesJson,
+      },
+      include: { user: { select: { id: true, username: true, profilePicture: true } } },
+    });
+
+    if (isAdmin) {
+      // Update adminReply so notifications/email still work
+      await prisma.bugReport.update({
+        where: { id },
+        data: { adminReply: body.trim() },
+      });
+
+      const notifBody = `Votre bug "${bug.title}" a reçu une réponse.\n\n${body.trim()}`;
+      await createNotification({
+        userId: bug.userId,
+        type: 'ADMIN',
+        title: 'Réponse à votre signalement',
+        body: notifBody,
+        icon: 'Bug',
+      });
+
+      sendBugReportReplyEmail({
+        to: bug.user.email,
+        username: bug.user.username,
+        bugTitle: bug.title,
+        adminReply: body.trim(),
+        status: bug.status as 'PENDING' | 'DONE',
+      }).catch((err: Error) => console.error('Bug report email error:', err));
+    }
+
+    res.status(201).json({ message });
+  } catch (error) {
+    console.error('Send bug message error:', error);
+    res.status(500).json({ error: 'Failed to send message' });
   }
 });
 

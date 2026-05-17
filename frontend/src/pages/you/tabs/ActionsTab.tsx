@@ -90,6 +90,7 @@ function getOptions(
       o.resourceType === cost.resourceType
       && o.quantity >= cost.quantity
       && !(o.kind === 'offer' && o.businessId === biz.id)
+      && (o.kind !== 'inventory' || o.businessId === biz.id)
     ),
   );
 }
@@ -530,9 +531,16 @@ function ActionPipeline({
     <div className="border border-border bg-card/45 dark:bg-card/25 rounded-2xl p-4 shadow-sm flex flex-col gap-3 transition hover:shadow-md hover:border-border/80">
       {/* Header with big title and running job details */}
       <div className="flex items-center justify-between pl-0.5">
-        <span className="text-sm font-bold text-foreground">
-          {action.label}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-foreground">
+            {action.label}
+          </span>
+          {action.rewardMoney > 0 && (
+            <span className="text-[10.5px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/15">
+              +{fmt(action.rewardMoney)}€ à la fin
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {upgrades.queueLvl >= 3 && (
             <Button
@@ -565,7 +573,7 @@ function ActionPipeline({
 
       <div className="flex items-stretch gap-2.5">
         {/* Left: Ingrédients */}
-        <div className="flex flex-1 flex-col gap-2 min-w-0">
+        <div className="flex flex-1 flex-col gap-2 min-w-0" data-tutorial-id="actions-ingredients">
           <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50 pl-0.5">Ingrédients</div>
 
           {/* Action Money Cost (if any) */}
@@ -619,7 +627,7 @@ function ActionPipeline({
         <PipelineArrow />
 
         {/* Middle: Produire button */}
-        <div className="flex shrink-0 flex-col items-center justify-center gap-2 px-1">
+        <div className="flex shrink-0 flex-col items-center justify-center gap-2 px-1" data-tutorial-id="actions-produce-button">
           {blockedReason && !running && (!isCooldownActive || isPlayDisabled) && (
             <div className="flex items-center gap-1 rounded-lg border border-red-500/25 bg-red-500/8 px-2 py-1 text-[9px] font-semibold text-red-500 text-center max-w-[72px]">
               <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
@@ -660,7 +668,7 @@ function ActionPipeline({
         {action.outputs.length > 0 && (
           <>
             <PipelineArrow />
-            <div className="flex flex-1 flex-col gap-2 min-w-0">
+            <div className="flex flex-1 flex-col gap-2 min-w-0" data-tutorial-id="actions-stock">
               <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50 pl-0.5">Stock</div>
               {action.outputs.map((o) => {
                 const inv = biz.inventories.find((i) => i.resourceType === o.resourceType);
@@ -720,7 +728,7 @@ function BusinessCard({
   const upgrades = biz.upgrades ?? { productionSpeedLvl: 0, stockSizeLvl: 0, queueLvl: 0 };
 
   return (
-    <Card className="overflow-hidden border-l-[3px]" style={{ borderLeftColor: hex }}>
+    <Card className="overflow-hidden border-l-[3px]" style={{ borderLeftColor: hex }} data-tutorial-id="actions-business-card">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-muted/5">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -758,6 +766,7 @@ function BusinessCard({
           )}
           <button
             type="button"
+            data-tutorial-id="actions-upgrade-button"
             onClick={() => onUpgradeClick(biz)}
             className="inline-flex h-8 items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 text-xs font-bold text-purple-600 dark:text-purple-400 transition hover:bg-purple-500/20 shadow-sm"
           >
@@ -765,6 +774,7 @@ function BusinessCard({
           </button>
           <button
             type="button"
+            data-tutorial-id="actions-manage-button"
             onClick={() => onManage(biz.id)}
             className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/40 bg-background/60 px-3.5 text-xs font-bold text-muted-foreground transition hover:text-foreground shadow-sm"
           >
@@ -1107,6 +1117,7 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
           <Button
             size="sm"
             variant="outline"
+            data-tutorial-id="actions-create-button"
             onClick={() => {
               if (canCreate) setCreateOpen(true);
               else toast.error('Monte Affaires pour débloquer un slot business.');

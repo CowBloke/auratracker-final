@@ -697,6 +697,25 @@ export interface YouCourtCase {
   createdAt: string;
 }
 
+export interface YouContractParticipant {
+  id: string;
+  userId: string;
+  signedAt: string | null;
+  createdAt: string;
+  user: Omit<YouPlayer, 'alreadyInRelationship'>;
+}
+
+export interface YouContract {
+  id: string;
+  title: string;
+  content: string;
+  creatorId: string;
+  createdAt: string;
+  updatedAt: string;
+  creator: Omit<YouPlayer, 'alreadyInRelationship'>;
+  participants: YouContractParticipant[];
+}
+
 export interface YouJobOffer {
   id: string;
   role: string;
@@ -1181,6 +1200,14 @@ export const youApi = {
     api.post<{ correct: boolean }>(`/you/relationships/${relationshipId}/actions/suspect-cheating`, {}),
   respondToCourtCase: (accusationId: string, decision: 'court' | 'drop') =>
     api.post<{ decision: string }>(`/you/cheating-accusations/${accusationId}/respond`, { decision }),
+  getContracts: () =>
+    api.get<{ contracts: YouContract[] }>('/you/contracts'),
+  createContract: (data: { title: string; content: string; participantIds: string[] }) =>
+    api.post<{ contract: YouContract }>('/you/contracts', data),
+  signContract: (contractId: string) =>
+    api.post<{ contract: YouContract }>(`/you/contracts/${contractId}/sign`, {}),
+  deleteContract: (contractId: string) =>
+    api.delete<{ ok: boolean }>(`/you/contracts/${contractId}`),
   deleteBusiness: (businessId: string) =>
     api.delete<{ result: { id: string } }>(`/you/businesses/${businessId}`),
   updateBusinessProfile: (businessId: string, data: { name?: string; description?: string | null; logoUrl?: string | null; mapX?: number | null; mapY?: number | null }) =>
@@ -2890,6 +2917,21 @@ export interface BugReport {
   };
 }
 
+export interface BugReportMessage {
+  id: string;
+  bugReportId: string;
+  userId: string;
+  isAdmin: boolean;
+  body: string;
+  images?: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    profilePicture?: string | null;
+  };
+}
+
 export interface Ban {
   id: string;
   userId: string;
@@ -3348,6 +3390,10 @@ export const adminApi = {
   updateBugReport: (id: string, data: { status: 'PENDING' | 'DONE'; adminReply?: string }) =>
     api.put<{ bugReport: BugReport }>(`/admin/bugs/${id}`, data),
   deleteBugReport: (id: string) => api.delete<{ success: boolean }>(`/admin/bugs/${id}`),
+  getBugMessages: (bugReportId: string) =>
+    api.get<{ messages: BugReportMessage[] }>(`/admin/bugs/${bugReportId}/messages`),
+  sendBugMessage: (bugReportId: string, data: { body: string; images?: string[] }) =>
+    api.post<{ message: BugReportMessage }>(`/admin/bugs/${bugReportId}/messages`, data),
   // Ban management
   getBans: () => api.get<{ bans: Ban[] }>('/admin/bans'),
   createBan: (data: { userId: string; reason: string; type: 'TEMPORARY' | 'PERMANENT'; durationHours?: number }) =>
@@ -3574,6 +3620,12 @@ export const maintenanceApi = {
 export const bugReportApi = {
   create: (data: { title: string; description: string; images?: string[] }) =>
     api.post<{ bugReport: BugReport }>('/admin/bugs', data),
+  getMyReports: () =>
+    api.get<{ bugReports: BugReport[] }>('/admin/bugs/my'),
+  getMessages: (bugReportId: string) =>
+    api.get<{ messages: BugReportMessage[] }>(`/admin/bugs/${bugReportId}/messages`),
+  sendMessage: (bugReportId: string, data: { body: string; images?: string[] }) =>
+    api.post<{ message: BugReportMessage }>(`/admin/bugs/${bugReportId}/messages`, data),
 };
 
 // Ban Appeal Interface

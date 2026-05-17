@@ -3,49 +3,43 @@ import type { TutorialFlow } from '@/components/tutorial/types';
 export const buildBusinessAToZ: TutorialFlow = {
   id: 'build-business-a-to-z',
   title: 'Construire un business de A à Z',
-  description: 'Un parcours interactif complet: créer, placer, financer, produire, vendre, connecter et piloter une entreprise.',
+  description: 'Un parcours interactif complet: créer, produire, améliorer et piloter une entreprise depuis l\'onglet Actions.',
   sections: [
-    { id: 'setup', title: 'Cap', startIndex: 0, endIndex: 3 },
-    { id: 'creation', title: 'Création', startIndex: 4, endIndex: 12 },
-    { id: 'dashboard', title: 'Pilotage', startIndex: 13, endIndex: 18 },
-    { id: 'supply', title: 'Supply', startIndex: 19, endIndex: 29 },
-    { id: 'finance', title: 'Finance', startIndex: 30, endIndex: 34 },
+    { id: 'intro', title: 'Cap', startIndex: 0, endIndex: 0 },
+    { id: 'creation', title: 'Création', startIndex: 1, endIndex: 7 },
+    { id: 'production', title: 'Production', startIndex: 8, endIndex: 11 },
+    { id: 'pilotage', title: 'Pilotage', startIndex: 12, endIndex: 15 },
   ],
   steps: [
+    // ── INTRO ───────────────────────────────────────────────────────────────
     {
       id: 'mission',
       placement: 'center',
       title: 'Objectif: une vraie entreprise',
       content: (
         <div className="space-y-2">
-          <p>On va construire une entreprise complète: capital, carte, production, prix, stock, contrats, risques et lecture financière.</p>
-          <p className="text-muted-foreground">Ce guide avance quand tu cliques ou remplis les éléments demandés. Garde le rythme: chaque action sert ton business.</p>
+          <p>On va créer une entreprise complète depuis l'onglet Actions: type d'activité, capital, production, stock et ventes.</p>
+          <p className="text-muted-foreground">Ce guide avance quand tu cliques sur les éléments demandés. Chaque action compte.</p>
         </div>
       ),
-      route: '/you?tab=carte',
+      route: '/you?tab=actions',
     },
+    // ── CRÉATION ────────────────────────────────────────────────────────────
     {
-      id: 'dashboard-map',
-      targetId: 'you-dashboard-map',
-      placement: 'left',
-      title: 'Le terrain de jeu',
-      content: <p>La carte est le centre opérationnel: tu y places tes entreprises et tu surveilles ce qui vit autour de toi.</p>,
-      route: '/you?tab=carte',
-    },
-    {
-      id: 'left-rail',
-      targetId: 'you-dashboard-left-rail',
+      id: 'actions-tab-overview',
+      targetId: 'you-tab-actions',
       placement: 'right',
-      title: 'Ton tableau de bord propriétaire',
-      content: <p>Cette colonne suit ta trésorerie, ton net journalier, ton score de crédit, les intrants et les alertes de travail.</p>,
+      title: 'L\'onglet Actions',
+      content: <p>L'onglet Actions centralise tout: créer un business, lancer des productions et gérer tes entreprises depuis un seul endroit.</p>,
+      route: '/you?tab=actions',
     },
     {
-      id: 'create-from-dashboard',
-      targetId: 'you-dashboard-create-business',
-      placement: 'right',
-      title: 'Lancer la création',
-      content: <p>On commence par ouvrir le formulaire depuis ton empire.</p>,
-      actionText: 'Clique sur « Créer ». Le guide continuera quand le formulaire apparaît.',
+      id: 'create-button',
+      targetId: 'actions-create-button',
+      placement: 'bottom',
+      title: 'Créer un business',
+      content: <p>Ce bouton ouvre le formulaire de création. Tu peux créer autant de businesses que ton niveau le permet.</p>,
+      actionText: 'Clique sur « Créer » pour ouvrir le formulaire.',
       advanceOn: 'target-click',
       advanceDelayMs: 700,
     },
@@ -54,7 +48,7 @@ export const buildBusinessAToZ: TutorialFlow = {
       targetId: 'create-business-modal',
       placement: 'auto',
       title: 'Formulaire de création',
-      content: <p>Ici tu choisis l’activité, le nom et le capital. Chaque choix a un impact financier.</p>,
+      content: <p>Ici tu choisis l'activité, le nom, la description et le capital. Chaque choix a un impact direct sur tes coûts et revenus.</p>,
       advanceOn: 'target-present',
       advanceDelayMs: 900,
     },
@@ -62,9 +56,9 @@ export const buildBusinessAToZ: TutorialFlow = {
       id: 'open-type-picker',
       targetId: 'create-business-type',
       placement: 'auto',
-      title: 'Choisir le secteur',
-      content: <p>Le secteur décide de tes ressources, de tes revenus, de tes coûts et de tes futurs besoins d’approvisionnement.</p>,
-      actionText: 'Clique sur le bloc du type d’activité.',
+      title: 'Choisir le type d\'activité',
+      content: <p>Le type d'activité détermine ce que tu produis, tes coûts fixes et les ressources nécessaires pour chaque production.</p>,
+      actionText: 'Clique sur le bloc du type d\'activité pour voir toutes les options.',
       advanceOn: 'target-click',
       advanceDelayMs: 500,
     },
@@ -72,9 +66,9 @@ export const buildBusinessAToZ: TutorialFlow = {
       id: 'select-lemonade',
       targetId: 'business-type-option-lemonade',
       placement: 'auto',
-      title: 'Démarrage prudent',
-      content: <p>Le stand de limonade est volontairement simple: peu de frais, production lisible, parfait pour apprendre les marges.</p>,
-      actionText: 'Clique sur « Stand de limonade » ou choisis un autre niveau 1 si tu préfères.',
+      title: 'Un démarrage simple',
+      content: <p>Le stand de limonade est idéal pour débuter: peu de frais, production lisible et marges faciles à comprendre.</p>,
+      actionText: 'Clique sur « Stand de limonade » ou choisis un autre type niveau 1.',
       advanceOn: 'target-click',
       advanceDelayMs: 350,
     },
@@ -82,226 +76,121 @@ export const buildBusinessAToZ: TutorialFlow = {
       id: 'confirm-type',
       targetId: 'business-type-picker-confirm',
       placement: 'left',
-      title: 'Valider l’activité',
-      content: <p>Confirme le secteur. Tu peux ensuite régler le capital et le nom.</p>,
+      title: 'Confirmer le type',
+      content: <p>Valide ton choix d'activité. Le formulaire va afficher les champs de nom, description et capital.</p>,
       actionText: 'Clique sur le bouton de confirmation.',
       advanceOn: 'target-click',
       advanceDelayMs: 500,
     },
     {
-      id: 'name-business',
-      targetId: 'create-business-name',
-      placement: 'auto',
-      title: 'Nommer ton entreprise',
-      content: <p>Le nom apparaîtra dans les contrats, les offres, la carte et le marché. Fais court, clair, reconnaissable.</p>,
-      actionText: 'Tape un nom pour continuer.',
-      advanceOn: 'target-input',
-      advanceDelayMs: 500,
-    },
-    {
-      id: 'capital-business',
-      targetId: 'create-business-capital',
-      placement: 'auto',
-      title: 'Capital de départ',
-      content: <p>Le capital devient ta trésorerie. Il finance les premiers jours, les salaires, les achats de ressources et les coûts logistiques.</p>,
-      actionText: 'Ajuste le capital si le champ est présent.',
-      requireManualAdvance: true,
-    },
-    {
-      id: 'submit-business',
+      id: 'fill-and-submit',
       targetId: 'create-business-submit',
       placement: 'left',
-      title: 'Créer officiellement',
-      content: <p>Quand le bouton est actif, tu peux valider. Le business entrera dans ton empire.</p>,
-      actionText: 'Clique sur « Créer ». Le guide attendra le retour à la liste.',
+      title: 'Remplir et lancer',
+      content: (
+        <div className="space-y-2">
+          <p>Tape un nom court, écris une courte description, ajuste le capital si besoin — puis clique sur « Créer ».</p>
+          <p className="text-muted-foreground">Le bouton reste grisé tant que le nom ou la description est vide.</p>
+        </div>
+      ),
+      actionText: 'Remplis le nom, la description et le capital, puis clique sur « Créer ».',
       advanceOn: 'target-click',
       advanceDelayMs: 1200,
     },
+    // ── PRODUCTION ──────────────────────────────────────────────────────────
     {
-      id: 'owned-business-list',
-      targetId: 'travail-owned-businesses',
-      placement: 'auto',
-      title: 'Vérifier la création',
-      content: <p>Ton entreprise doit apparaître ici. Ouvre-la plus tard pour gérer l’équipe, les dépôts, retraits, menus et actions propres au secteur.</p>,
-      route: '/you?tab=travail',
-    },
-    {
-      id: 'back-to-dashboard',
-      targetId: 'you-tab-carte',
-      placement: 'right',
-      title: 'Retour au cockpit',
-      content: <p>On passe au pilotage réel: carte, placement, indicateurs financiers et production.</p>,
-      actionText: 'Clique sur l’onglet Carte.',
-      advanceOn: 'target-click',
-      advanceDelayMs: 700,
-    },
-    {
-      id: 'business-card-finance',
-      targetId: 'you-dashboard-owned-business-card',
-      placement: 'right',
-      title: 'Lire la carte financière',
-      content: <p>Regarde le net par jour, le runway, le crédit et les intrants. Si le net est négatif ou le runway court, ta priorité est la trésorerie.</p>,
-      route: '/you?tab=carte',
-    },
-    {
-      id: 'place-business',
-      targetId: 'you-dashboard-place-business',
-      placement: 'right',
-      title: 'Placer sur la carte',
-      content: <p>Si ton entreprise n’est pas encore placée, utilise ce bouton puis clique sur la carte. Le placement rend l’empire plus concret.</p>,
-      actionText: 'Clique sur « Placer » si le bouton est visible, puis clique sur la carte.',
-      requireManualAdvance: true,
-    },
-    {
-      id: 'map-click-place',
-      targetId: 'you-dashboard-map',
-      placement: 'left',
-      title: 'Choisir l’emplacement',
-      content: <p>Un bon emplacement aide à lire ton réseau. Place les producteurs près des clients que tu veux approvisionner.</p>,
-      actionText: 'Clique sur la carte pour confirmer un emplacement si tu es en mode placement.',
-      requireManualAdvance: true,
-    },
-    {
-      id: 'work-warning',
-      targetId: 'you-dashboard-work-button',
-      placement: 'right',
-      title: 'Travail quotidien',
-      content: <p>Les entreprises productrices dépendent de l’équipe. Plus les membres travaillent, plus la production monte, avec un bonus à 4 personnes actives.</p>,
-      actionText: 'Si le bouton existe, clique pour faire le mini-jeu de travail. Sinon continue.',
-      requireManualAdvance: true,
-    },
-    {
-      id: 'news-feed',
-      targetId: 'you-dashboard-left-rail',
-      placement: 'right',
-      title: 'Priorités de propriétaire',
-      content: <p>Chaque jour, regarde dans cet ordre: cash, runway, intrants, offres en attente, travail requis. C’est ta checklist anti-faillite.</p>,
-    },
-    {
-      id: 'go-supply',
-      targetId: 'you-tab-supply',
-      placement: 'right',
-      title: 'Passer au supply',
-      content: <p>La supply chain transforme ton business en système: stock, prix, contrats, sourcing et ventes automatiques.</p>,
-      actionText: 'Clique sur l’onglet Supply.',
-      advanceOn: 'target-click',
-      advanceDelayMs: 800,
-    },
-    {
-      id: 'supply-register',
-      targetId: 'supply-businesses-sidebar',
-      placement: 'right',
-      title: 'Registre des entreprises',
-      content: <p>Sélectionne ici l’entreprise à piloter. Les jauges montrent stock, chantier, demandes et alertes de travail.</p>,
-      route: '/you?tab=supply',
-    },
-    {
-      id: 'finance-strip',
-      targetId: 'supply-finance-strip',
-      placement: 'bottom',
-      title: 'P&L instantané',
-      content: <p>Ce bandeau résume la santé: net journalier, score de crédit et couverture d’intrants. C’est ton feu tricolore financier.</p>,
-    },
-    {
-      id: 'supply-node',
-      targetId: 'supply-inventory-node',
-      placement: 'auto',
-      title: 'Ouvrir un dépôt',
-      content: <p>Chaque dépôt a quantité, capacité, production horaire, prix global et prix joueur. C’est ici que la marge se décide.</p>,
-      actionText: 'Clique sur un dépôt de ressource.',
-      advanceOn: 'target-click',
-      advanceDelayMs: 700,
-    },
-    {
-      id: 'financial-panel',
-      targetId: 'supply-financial-panel',
-      placement: 'auto',
-      title: 'Lire le risque avant d’agir',
-      content: <p>Avant de publier une offre, vérifie le P&L, le runway, le risque et l’événement du jour. Un pic de demande peut justifier un prix plus haut.</p>,
-    },
-    {
-      id: 'price-field',
-      targetId: 'supply-offer-submit',
-      placement: 'auto',
-      title: 'Publier une offre',
-      content: <p>Le panneau compare ton prix au marché, estime la marge et montre le prix de liquidation globale. Vise une marge positive sans bloquer les ventes.</p>,
-      actionText: 'Ajuste le prix si besoin, puis publie ou mets à jour l’offre.',
-      requireManualAdvance: true,
-    },
-    {
-      id: 'market-panel',
-      targetId: 'supply-market-panel',
-      placement: 'left',
-      title: 'Acheter aux autres joueurs',
-      content: <p>Ce marché liste les sources disponibles. Les contrats créent de vrais flux d’argent et de stock entre entreprises.</p>,
-    },
-    {
-      id: 'orders-panel',
-      targetId: 'supply-orders-sidebar',
-      placement: 'left',
-      title: 'Répondre aux demandes',
-      content: <p>Accepter une demande engage ton stock, mais crée un revenu futur. Refuser protège ton inventaire et ta fiabilité quand tu ne peux pas livrer.</p>,
-    },
-    {
-      id: 'link-inventory',
-      targetId: 'supply-inventory-node',
-      placement: 'auto',
-      title: 'Automatiser prudemment',
-      content: <p>Survole un dépôt: les poignées permettent de relier un stock à une autre entreprise ou au marché global. Les liens internes ont maintenant un coût logistique.</p>,
-      actionText: 'Essaie de tirer une liaison vers une cible compatible, ou continue si tu veux garder la main.',
-      requireManualAdvance: true,
-    },
-    {
-      id: 'global-market',
-      targetId: 'supply-global-market-node',
-      placement: 'left',
-      title: 'Vente de secours',
-      content: <p>Le marché global liquide vite, mais à prix cassé. Utilise-le pour vider un stock plein, pas comme stratégie principale.</p>,
-    },
-    {
-      id: 'full-view',
-      targetId: 'supply-nodes-pane',
+      id: 'business-card',
+      targetId: 'actions-business-card',
       placement: 'top',
-      title: 'Penser réseau',
-      content: <p>Quand tu possèdes plusieurs entreprises, passe en vue totale et connecte producteurs, clients et chantiers. Le but: moins de stock mort, plus de marge.</p>,
+      title: 'Ton entreprise est créée',
+      content: <p>Elle apparaît ici sous forme d'une carte de production avec sa trésorerie, sa note et ses lignes de fabrication.</p>,
+      route: '/you?tab=actions',
     },
     {
-      id: 'credit-score',
-      targetId: 'supply-finance-strip',
-      placement: 'bottom',
-      title: 'Préparer le financement',
-      content: <p>Le score de crédit combine cash, dette, fiabilité, satisfaction et runway. Plus il est haut, plus les banques peuvent te faire confiance.</p>,
-    },
-    {
-      id: 'finance-tab',
-      targetId: 'you-tab-finance',
+      id: 'ingredients-column',
+      targetId: 'actions-ingredients',
       placement: 'right',
-      title: 'Contrôler les comptes',
-      content: <p>La finance consolide transactions, banques, dettes et cash personnel. C’est là que tu vérifies si la croissance reste saine.</p>,
-      actionText: 'Clique sur Finance.',
-      advanceOn: 'target-click',
-      advanceDelayMs: 700,
+      title: 'Colonne Ingrédients',
+      content: (
+        <div className="space-y-2">
+          <p>Liste tout ce qu'il faut pour lancer une production: ressources, frais fixes et source de paiement.</p>
+          <p className="text-muted-foreground">Une carte rouge signale un stock manquant ou une trésorerie insuffisante — clique dessus pour acheter au marché.</p>
+        </div>
+      ),
     },
     {
-      id: 'share-market',
-      targetId: 'you-tab-marche-actions',
-      placement: 'right',
-      title: 'Lever ou sortir du capital',
-      content: <p>Le marché d’actions permet de vendre une part, acheter une participation ou valoriser une entreprise selon ses revenus et sa trésorerie.</p>,
-      actionText: 'Tu peux ouvrir le marché actions maintenant ou continuer.',
+      id: 'run-action',
+      targetId: 'actions-produce-button',
+      placement: 'left',
+      title: 'Lancer la production',
+      content: (
+        <div className="space-y-2">
+          <p>Ce bouton lance la production. Il reste grisé si une condition manque (source, trésorerie ou stock plein).</p>
+          <p className="text-muted-foreground">Clique dessus quand tous les ingrédients sont disponibles. Le timer démarre et le stock se remplit à la fin.</p>
+        </div>
+      ),
+      actionText: 'Lance une production si les ingrédients sont disponibles, sinon continue.',
       requireManualAdvance: true,
+    },
+    {
+      id: 'stock-and-sell',
+      targetId: 'actions-stock',
+      placement: 'left',
+      title: 'Stock et vente',
+      content: (
+        <div className="space-y-2">
+          <p>La colonne de droite montre le stock produit. Le bouton « Vendre » t'envoie à la salle de marché pour publier une offre.</p>
+          <p className="text-muted-foreground">Garde un œil sur la jauge: un stock plein bloque la production.</p>
+        </div>
+      ),
+    },
+    // ── PILOTAGE ────────────────────────────────────────────────────────────
+    {
+      id: 'upgrades',
+      targetId: 'actions-upgrade-button',
+      placement: 'bottom',
+      title: 'Améliorer ton business',
+      content: (
+        <div className="space-y-2">
+          <p>Ouvre le panneau d'upgrades: vitesse de production, taille des stocks et file d'attente.</p>
+          <p className="text-muted-foreground">Commence par la file d'attente pour ne pas surveiller en permanence, puis accélère quand la demande suit.</p>
+        </div>
+      ),
+      actionText: 'Clique sur « Améliorer » pour voir les options, puis ferme le panneau et continue.',
+      requireManualAdvance: true,
+    },
+    {
+      id: 'manage',
+      targetId: 'actions-manage-button',
+      placement: 'bottom',
+      title: 'Gérer l\'équipe et la trésorerie',
+      content: <p>Ouvre le panneau de gestion: inviter des membres, consulter les transactions et piloter la trésorerie du business.</p>,
+      actionText: 'Clique sur « Gérer » pour explorer le panneau, puis ferme-le et continue.',
+      requireManualAdvance: true,
+    },
+    {
+      id: 'source-selection',
+      targetId: 'actions-ingredients',
+      placement: 'right',
+      title: 'Choisir tes sources',
+      content: (
+        <div className="space-y-2">
+          <p>Les cartes d'ingrédients sont des sélecteurs. Clique dessus pour choisir d'où vient chaque ressource: ton propre stock (gratuit) ou une offre de marché (payante).</p>
+          <p className="text-muted-foreground">Priorité au stock interne pour maximiser la marge. Le marché sert de secours quand ton stock est vide.</p>
+        </div>
+      ),
     },
     {
       id: 'final-loop',
       placement: 'center',
-      title: 'La boucle complète',
+      title: 'La boucle est bouclée',
       content: (
         <div className="space-y-2">
-          <p>Ta routine propriétaire est prête: produire, couvrir les intrants, fixer les prix, accepter les bons contrats, financer la croissance et surveiller le risque.</p>
-          <p className="text-muted-foreground">Quand un chiffre devient rouge, il dit quoi faire: cash court, intrants faibles, prix trop haut, dette lourde ou fournisseur peu fiable.</p>
+          <p>Tu maîtrises le cycle complet: créer un business, configurer les sources, lancer la production, surveiller le stock et vendre.</p>
+          <p className="text-muted-foreground">Quand une carte vire au rouge, elle te dit exactement quoi corriger: trésorerie, stock vide ou source manquante. Suis les signaux.</p>
         </div>
       ),
-      route: '/you?tab=carte',
+      route: '/you?tab=actions',
     },
   ],
 };

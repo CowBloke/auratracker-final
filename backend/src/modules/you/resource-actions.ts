@@ -304,7 +304,15 @@ function buildResourceActions(business: {
 
   for (const profile of getBusinessSupplyProfiles(business.typeKey, business.customData)) {
     if (profile.rate <= 0) continue;
-    const outputQuantity = Math.max(4, Math.min(60, profile.rate * 4));
+    
+    let outputQuantity = Math.max(4, Math.min(60, profile.rate * 4));
+    let rewardMoney = 0;
+    
+    if (profile.resourceType === 'HORSES') {
+      outputQuantity = 2;
+      rewardMoney = 10000;
+    }
+    
     const unitCostMultiplier = RAW_RESOURCES.has(profile.resourceType) ? 0.42 : 0.34;
     const setupFee = Math.max(15, Math.round(getActionMoneyBase(business) * 0.35));
     const moneyCost = Math.max(1000, Math.round((profile.price * outputQuantity * unitCostMultiplier) + setupFee));
@@ -318,11 +326,13 @@ function buildResourceActions(business: {
       key: `produce:${profile.resourceType}`,
       kind: 'PRODUCE',
       label,
-      description: `Ajoute ${outputQuantity} unites au stock.`,
+      description: profile.resourceType === 'HORSES'
+        ? `Ajoute ${outputQuantity} chevaux au stock et offre ${rewardMoney.toLocaleString('fr-FR')}€.`
+        : `Ajoute ${outputQuantity} unites au stock.`,
       moneyCost,
       resourceCosts: getProductionInputs(profile.resourceType, outputQuantity),
       outputs: [{ resourceType: profile.resourceType, quantity: outputQuantity }],
-      rewardMoney: 0,
+      rewardMoney,
       satisfactionDelta: 0,
       durationMs: finalDurationMs,
     });
@@ -418,6 +428,8 @@ function serializeSourceOptions(businesses: any[], offers: any[]) {
 
   for (const offer of offers) {
     const inventory = offer.business?.resourceInventories.find((entry: any) => entry.resourceType === offer.resourceType);
+    const qty = inventory?.quantity ?? 0;
+    if (qty <= 0) continue;
     options.push({
       id: offer.id,
       kind: 'offer' as const,
@@ -426,7 +438,7 @@ function serializeSourceOptions(businesses: any[], offers: any[]) {
       businessTypeKey: offer.business?.typeKey ?? '',
       businessName: offer.business?.name ?? 'Business',
       ownerName: offer.business?.owner?.username ?? 'joueur',
-      quantity: inventory?.quantity ?? 0,
+      quantity: qty,
       unitPrice: offer.unitPrice,
       autoAccept: offer.autoAccept,
     });

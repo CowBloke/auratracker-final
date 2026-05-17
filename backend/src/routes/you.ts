@@ -1570,4 +1570,138 @@ router.put('/businesses/:businessId/inventories/:resourceType/auto-sell', authMi
   }
 });
 
+// Social Contracts
+router.get('/contracts', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const contracts = await prisma.socialContract.findMany({
+      where: {
+        participants: { some: { userId } },
+      },
+      include: {
+        creator: { select: { id: true, username: true, firstName: true, profilePicture: true } },
+        participants: {
+          include: {
+            user: { select: { id: true, username: true, firstName: true, profilePicture: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ contracts });
+  } catch (error) {
+    handleRouteError(error, res, 'Get contracts error');
+  }
+});
+
+router.post('/contracts', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const title = String(req.body?.title ?? '').trim();
+    const content = String(req.body?.content ?? '').trim();
+    const participantIds: string[] = Array.isArray(req.body?.participantIds) ? req.body.participantIds.map(String) : [];
+
+    if (!title || title.length > 200) {
+      res.status(400).json({ error: 'Titre invalide (max 200 caractères).' });
+      return;
+    }
+    if (!content || content.length > 5000) {
+      res.status(400).json({ error: 'Contenu invalide (max 5000 caractères).' });
+      return;
+    }
+    if (participantIds.length === 0 || participantIds.length > 10) {
+      res.status(400).json({ error: 'Il faut entre 1 et 10 participants.' });
+      return;
+    }
+
+    // Verify all participant users exist
+    const users = await prisma.user.findMany({ where: { id: { in: participantIds } }, select: { id: true } });
+    if (users.length !== participantIds.length) {
+      res.status(400).json({ error: 'Un ou plusieurs participants introuvables.' });
+      return;
+    }
+
+    const allParticipants = Array.from(new Set([userId, ...participantIds]));
+
+    const contract = await prisma.socialContract.create({
+      data: {
+        title,
+        content,
+        creatorId: userId,
+        participants: {
+          create: allParticipants.map((pid) => ({
+            userId: pid,
+            signedAt: pid === userId ? new Date() : null,
+          })),
+        },
+      },
+      include: {
+        creator: { select: { id: true, username: true, firstName: true, profilePicture: true } },
+        participants: {
+          include: {
+            user: { select: { id: true, username: true, firstName: true, profilePicture: true } },
+          },
+        },
+      },
+    });
+    res.status(201).json({ contract });
+  } catch (error) {
+    handleRouteError(error, res, 'Create contract error');
+  }
+});
+
+router.post('/contracts/:contractId/sign', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const participation = await prisma.socialContractParticipant.findUnique({
+      where: { contractId_userId: { contractId: req.params.contractId, userId } },
+    });
+    if (!participation) {
+      res.status(403).json({ error: 'Tu n\'es pas participant de ce contrat.' });
+      return;
+    }
+    if (participation.signedAt) {
+      res.status(400).json({ error: 'Tu as deja signe ce contrat.' });
+      return;
+    }
+    await prisma.socialContractParticipant.update({
+      where: { contractId_userId: { contractId: req.params.contractId, userId } },
+      data: { signedAt: new Date() },
+    });
+    const contract = await prisma.socialContract.findUnique({
+      where: { id: req.params.contractId },
+      include: {
+        creator: { select: { id: true, username: true, firstName: true, profilePicture: true } },
+        participants: {
+          include: {
+            user: { select: { id: true, username: true, firstName: true, profilePicture: true } },
+          },
+        },
+      },
+    });
+    res.json({ contract });
+  } catch (error) {
+    handleRouteError(error, res, 'Sign contract error');
+  }
+});
+
+router.delete('/contracts/:contractId', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const contract = await prisma.socialContract.findUnique({ where: { id: req.params.contractId } });
+    if (!contract) {
+      res.status(404).json({ error: 'Contrat introuvable.' });
+      return;
+    }
+    if (contract.creatorId !== userId) {
+      res.status(403).json({ error: 'Seul le createur peut supprimer ce contrat.' });
+      return;
+    }
+    await prisma.socialContract.delete({ where: { id: req.params.contractId } });
+    res.json({ ok: true });
+  } catch (error) {
+    handleRouteError(error, res, 'Delete contract error');
+  }
+});
+
 export default router;
