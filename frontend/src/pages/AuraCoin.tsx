@@ -36,6 +36,14 @@ const fmtMoney = (n: number) => {
   return `$${fmt(n, 0)}`;
 };
 
+const fmtMoneyExpanded = (n: number) => {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n) + ' $';
+};
+
 const txTypeLabel = (type: string) => {
   switch (type) {
     case 'BUY': return { label: 'Achat', color: 'text-green-400' };
@@ -300,9 +308,8 @@ export default function AuraCoin() {
                     domain={['auto', 'auto']}
                   />
                   <Tooltip
-                    formatter={(v: number) => [fmtMoney(v), 'Prix']}
+                    formatter={(v: number) => [fmtMoneyExpanded(v), 'Prix']}
                     labelFormatter={(l) => format(new Date(l), 'dd/MM HH:mm')}
-                    contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, fontSize: 12 }}
                   />
                   <Line type="monotone" dataKey="price" stroke={chartColor} strokeWidth={1.5} dot={false} />
                 </LineChart>
