@@ -310,6 +310,13 @@ export default function AuraCoin() {
                   <Tooltip
                     formatter={(v: number) => [fmtMoneyExpanded(v), 'Prix']}
                     labelFormatter={(l) => format(new Date(l), 'dd/MM HH:mm')}
+                    contentStyle={{
+                      background: '#1a1a1a',
+                      border: '1px solid #333',
+                      borderRadius: 6,
+                      fontSize: 12,
+                      color: '#ffffff'   // 👈 AJOUT ICI
+                    }}
                   />
                   <Line type="monotone" dataKey="price" stroke={chartColor} strokeWidth={1.5} dot={false} />
                 </LineChart>
