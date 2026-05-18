@@ -259,7 +259,7 @@ export default function AuraCoin() {
         </div>
         <div className="text-right">
           <p className={cn('text-3xl font-bold tabular-nums', priceChange >= 0 ? 'text-green-400' : 'text-red-400')}>
-            {fmtMoney(currentPrice)}
+            {fmtMoneyExpanded(currentPrice)}
           </p>
           <p className={cn('text-sm font-medium', priceChange >= 0 ? 'text-green-400' : 'text-red-400')}>
             {priceChange >= 0 ? <TrendingUp className="inline h-3 w-3 mr-0.5" /> : <TrendingDown className="inline h-3 w-3 mr-0.5" />}
