@@ -11,6 +11,7 @@ import {
   type YouEconomyResourceType,
 } from './economy.js';
 import { autoListOutput } from './resource-market.js';
+import { generateHorseBusinessUnit } from './horse-business.js';
 import { isBusinessManager } from './service.js';
 
 type ResourceType = YouEconomyResourceType;
@@ -470,30 +471,41 @@ export async function settleActiveResourceActions() {
         if (!biz) return;
 
         for (const output of active.outputs) {
-          const profile = getBusinessSupplyProfiles(biz.typeKey, biz.customData).find((entry) => entry.resourceType === output.resourceType);
-          const existingInv = await tx.businessResourceInventory.findUnique({
-            where: { businessId_resourceType: { businessId: biz.id, resourceType: output.resourceType } },
-          });
-          const autoSell = existingInv?.autoSellEnabled && (existingInv.autoSellPrice ?? 0) > 0;
-          if (autoSell) {
-            await autoListOutput(tx, active.ownerId, biz.id, output.resourceType, output.quantity, existingInv!.autoSellPrice);
+          if (output.resourceType === 'HORSES') {
+            // Horse production creates individual HorseBusinessHorse records so they
+            // appear in the stable buy modal (foals tab) instead of bulk inventory.
+            for (let i = 0; i < output.quantity; i++) {
+              const unit = generateHorseBusinessUnit();
+              await tx.horseBusinessHorse.create({
+                data: { businessId: biz.id, ...unit },
+              });
+            }
           } else {
-            const baseCapacity = profile?.capacity ?? Math.max(80, output.quantity * 5);
-            const upgrades = getBusinessUpgrades(biz.customData);
-            const stockConfig = UPGRADE_CONFIGS.stockSize[upgrades.stockSizeLvl] ?? UPGRADE_CONFIGS.stockSize[0];
-            const upgradedCapacity = Math.round(baseCapacity * stockConfig.multiplier);
-
-            await tx.businessResourceInventory.upsert({
+            const profile = getBusinessSupplyProfiles(biz.typeKey, biz.customData).find((entry) => entry.resourceType === output.resourceType);
+            const existingInv = await tx.businessResourceInventory.findUnique({
               where: { businessId_resourceType: { businessId: biz.id, resourceType: output.resourceType } },
-              update: { quantity: { increment: output.quantity } },
-              create: {
-                businessId: biz.id,
-                resourceType: output.resourceType,
-                quantity: output.quantity,
-                capacity: upgradedCapacity,
-                productionRatePerHour: profile?.rate ?? 0,
-              },
             });
+            const autoSell = existingInv?.autoSellEnabled && (existingInv.autoSellPrice ?? 0) > 0;
+            if (autoSell) {
+              await autoListOutput(tx, active.ownerId, biz.id, output.resourceType, output.quantity, existingInv!.autoSellPrice);
+            } else {
+              const baseCapacity = profile?.capacity ?? Math.max(80, output.quantity * 5);
+              const upgrades = getBusinessUpgrades(biz.customData);
+              const stockConfig = UPGRADE_CONFIGS.stockSize[upgrades.stockSizeLvl] ?? UPGRADE_CONFIGS.stockSize[0];
+              const upgradedCapacity = Math.round(baseCapacity * stockConfig.multiplier);
+
+              await tx.businessResourceInventory.upsert({
+                where: { businessId_resourceType: { businessId: biz.id, resourceType: output.resourceType } },
+                update: { quantity: { increment: output.quantity } },
+                create: {
+                  businessId: biz.id,
+                  resourceType: output.resourceType,
+                  quantity: output.quantity,
+                  capacity: upgradedCapacity,
+                  productionRatePerHour: profile?.rate ?? 0,
+                },
+              });
+            }
           }
         }
 
