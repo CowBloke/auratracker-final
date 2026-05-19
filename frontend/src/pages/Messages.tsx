@@ -365,6 +365,7 @@ export default function MessagesPage() {
   const [convLoading, setConvLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [isMessagesAtBottom, setIsMessagesAtBottom] = useState(true);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [typingByConversation, setTypingByConversation] = useState<Record<string, { userId: string; username: string }>>({});
 
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -430,6 +431,8 @@ export default function MessagesPage() {
   const handledSearchRef = useRef<string | null>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messageElementRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const groupImageInputRef = useRef<HTMLInputElement | null>(null);
   const previousSelectedConversationRef = useRef<string | null>(null);
@@ -491,6 +494,26 @@ export default function MessagesPage() {
     viewport.scrollTop = viewport.scrollHeight;
   };
 
+  const scrollToMessage = (messageId: string) => {
+    const viewport = messagesScrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;
+    const target = messageElementRefs.current[messageId];
+    if (!viewport || !target) return;
+
+    viewport.scrollTo({
+      top: Math.max(target.offsetTop - viewport.clientHeight * 0.28, 0),
+      behavior: 'smooth',
+    });
+
+    setHighlightedMessageId(messageId);
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedMessageId(null);
+      highlightTimeoutRef.current = null;
+    }, 1600);
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mediaQuery = window.matchMedia('(max-width: 1023px)');
@@ -501,6 +524,14 @@ export default function MessagesPage() {
     setIsMobileViewport(mediaQuery.matches);
     mediaQuery.addEventListener('change', updateViewport);
     return () => mediaQuery.removeEventListener('change', updateViewport);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
   }, []);
 
 
@@ -2523,14 +2554,19 @@ export default function MessagesPage() {
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-0.5">
                       {pinnedMessages.slice(0, 4).map((message) => (
-                        <div key={message.id} className="min-w-44 max-w-64 rounded-lg border border-amber-500/20 bg-background/80 px-2.5 py-1.5 text-left text-xs shadow-sm">
+                        <button
+                          key={message.id}
+                          type="button"
+                          onClick={() => scrollToMessage(message.id)}
+                          className="min-w-44 max-w-64 rounded-lg border border-amber-500/20 bg-background/80 px-2.5 py-1.5 text-left text-xs shadow-sm transition-colors hover:bg-amber-500/10"
+                        >
                           <p className="truncate font-medium text-foreground">
                             {message.sender?.username ?? 'Message'}
                           </p>
                           <p className="mt-0.5 truncate text-muted-foreground">
                             {getSnippet(message.body || (message.imageUrl ? '[image]' : 'Message épinglé'), 90)}
                           </p>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -2623,7 +2659,16 @@ export default function MessagesPage() {
                           senderFallbackLabel,
                         );
                         return (
-                          <div key={msg.id} className="flex flex-col gap-2">
+                          <div
+                            key={msg.id}
+                            ref={(element) => {
+                              messageElementRefs.current[msg.id] = element;
+                            }}
+                            className={cn(
+                              'flex flex-col gap-2 rounded-xl transition-colors duration-300',
+                              highlightedMessageId === msg.id && 'bg-amber-500/10 ring-1 ring-amber-500/30',
+                            )}
+                          >
                             {showDaySeparator && (
                               <div className="flex justify-center py-2">
                                 <span className="rounded-full border border-border/50 bg-background/95 px-3 py-1 text-[11px] font-medium capitalize text-muted-foreground shadow-sm">
@@ -2711,7 +2756,7 @@ export default function MessagesPage() {
                                             })}
                                           </div>
                                         )}
-                                        <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                                        <p className="max-w-full overflow-x-auto whitespace-pre-wrap break-words hyphens-auto [overflow-wrap:anywhere] [word-break:break-word]">{msg.body}</p>
                                         <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
                                           {isPinnedMessage && <Pin className="h-2.5 w-2.5 fill-current" />}
                                           <span>{formatTime(msg.createdAt)}</span>
@@ -2807,7 +2852,7 @@ export default function MessagesPage() {
                                         })}
                                       </div>
                                     )}
-                                    <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                                    <p className="max-w-full overflow-x-auto whitespace-pre-wrap break-words hyphens-auto [overflow-wrap:anywhere] [word-break:break-word]">{msg.body}</p>
                                     <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
                                       {isPinnedMessage && <Pin className="h-2.5 w-2.5 fill-current" />}
                                       <span>{formatTime(msg.createdAt)}</span>
