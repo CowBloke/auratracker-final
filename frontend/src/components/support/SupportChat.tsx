@@ -7,6 +7,7 @@ import { useSocketBase } from '@/contexts/SocketContext';
 import { cn } from '@/lib/utils';
 import { useSmartScroll } from '@/hooks/use-smart-scroll';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
+import { FormattedMessageText } from '@/lib/message-formatting';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -327,7 +328,9 @@ function MessageBubble({ msg }: { msg: SupportMessage }) {
             ))}
           </div>
         )}
-        <p className="break-words whitespace-pre-wrap">{msg.body}</p>
+        <p className="break-words whitespace-pre-wrap">
+          <FormattedMessageText text={msg.body} />
+        </p>
         <p className={cn('text-[10px] mt-1', isAdmin ? 'text-muted-foreground' : 'text-primary-foreground/70')}>
           {format(new Date(msg.createdAt), 'HH:mm', { locale: fr })}
         </p>

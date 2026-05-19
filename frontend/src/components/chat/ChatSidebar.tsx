@@ -31,6 +31,7 @@ import { toClanTagData } from '@/components/clans/ClanTag';
 import { supportApi, uploadUserImage } from '@/services/api';
 import { IMAGE_UPLOAD_INPUT_ACCEPT, prepareImageUploadPayload } from '@/lib/image-upload';
 import { t } from '@/lib/i18n';
+import { FormattedMessageText } from '@/lib/message-formatting';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -342,7 +343,7 @@ export default function ChatSidebar() {
       const [fullMatch, username] = match;
       const matchIndex = match.index;
       if (matchIndex > lastIndex) {
-        parts.push(text.slice(lastIndex, matchIndex));
+        parts.push(<FormattedMessageText key={`text-${matchIndex}`} text={text.slice(lastIndex, matchIndex)} />);
       }
       const resolved = mentionMap.get(username.toLowerCase());
       if (resolved) {
@@ -364,7 +365,7 @@ export default function ChatSidebar() {
       lastIndex = matchIndex + fullMatch.length;
     }
     if (lastIndex < text.length) {
-      parts.push(text.slice(lastIndex));
+      parts.push(<FormattedMessageText key={`text-${lastIndex}`} text={text.slice(lastIndex)} />);
     }
     return parts;
   };

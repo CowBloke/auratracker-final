@@ -8,6 +8,7 @@ import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
 import { useSmartScroll } from '@/hooks/use-smart-scroll';
+import { FormattedMessageText } from '@/lib/message-formatting';
 
 interface PartyChatPanelProps {
   title?: string;
@@ -75,7 +76,7 @@ export default function PartyChatPanel({
                     </span>
                   </div>
                   <p className={cn(TYPOGRAPHY.SMALL, 'whitespace-pre-wrap break-words')}>
-                    {partyMessage.message}
+                    <FormattedMessageText text={partyMessage.message} />
                   </p>
                 </div>
               ))}

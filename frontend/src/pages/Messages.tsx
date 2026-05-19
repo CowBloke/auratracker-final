@@ -67,6 +67,7 @@ import { useAppDialog } from '@/contexts/AppDialogContext';
 import { toast } from '@/hooks/use-toast';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
+import { FormattedMessageText } from '@/lib/message-formatting';
 import { cn } from '@/lib/utils';
 import {
   CourtArgument,
@@ -2756,7 +2757,9 @@ export default function MessagesPage() {
                                             })}
                                           </div>
                                         )}
-                                        <p className="max-w-full overflow-x-auto whitespace-pre-wrap break-words hyphens-auto [overflow-wrap:anywhere] [word-break:break-word]">{msg.body}</p>
+                                        <p className="max-w-full overflow-x-auto whitespace-pre-wrap break-words hyphens-auto [overflow-wrap:anywhere] [word-break:break-word]">
+                                          <FormattedMessageText text={msg.body} />
+                                        </p>
                                         <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
                                           {isPinnedMessage && <Pin className="h-2.5 w-2.5 fill-current" />}
                                           <span>{formatTime(msg.createdAt)}</span>
@@ -2852,7 +2855,9 @@ export default function MessagesPage() {
                                         })}
                                       </div>
                                     )}
-                                    <p className="max-w-full overflow-x-auto whitespace-pre-wrap break-words hyphens-auto [overflow-wrap:anywhere] [word-break:break-word]">{msg.body}</p>
+                                    <p className="max-w-full overflow-x-auto whitespace-pre-wrap break-words hyphens-auto [overflow-wrap:anywhere] [word-break:break-word]">
+                                      <FormattedMessageText text={msg.body} />
+                                    </p>
                                     <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
                                       {isPinnedMessage && <Pin className="h-2.5 w-2.5 fill-current" />}
                                       <span>{formatTime(msg.createdAt)}</span>

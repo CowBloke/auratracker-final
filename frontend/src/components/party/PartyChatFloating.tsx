@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { useSmartScroll } from '@/hooks/use-smart-scroll';
+import { FormattedMessageText } from '@/lib/message-formatting';
 
 interface PartyChatFloatingProps {
   rightOffset: string;
@@ -163,7 +164,7 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
                         </span>
                       </div>
                       <p className="whitespace-pre-wrap break-words text-sm text-foreground/95">
-                        {partyMessage.message}
+                        <FormattedMessageText text={partyMessage.message} />
                       </p>
                     </div>
                   ))}

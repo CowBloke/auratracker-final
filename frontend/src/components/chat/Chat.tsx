@@ -18,6 +18,7 @@ import { UserBadges } from '@/components/badges/UserBadges';
 import { toClanTagData } from '@/components/clans/ClanTag';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { t } from '@/lib/i18n';
+import { FormattedMessageText } from '@/lib/message-formatting';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 
@@ -282,7 +283,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                         <span>{formatTime(msg.timestamp)}</span>
                       </div>
                       <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                        {msg.message}
+                        <FormattedMessageText text={msg.message} />
                       </p>
                     </div>
                   ))}
@@ -410,7 +411,9 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                               )}
                             </div>
                           </div>
-                          <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.message}</p>
+                          <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                            <FormattedMessageText text={msg.message} />
+                          </p>
                           {msg.reactions.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {msg.reactions.map((reaction) => (
