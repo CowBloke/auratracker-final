@@ -154,6 +154,8 @@ function serializeConversationMessage(message: {
   courtRole?: string | null;
   deletedAt?: Date | null;
   deletedByUserId?: string | null;
+  pinnedAt?: Date | null;
+  pinnedByUserId?: string | null;
   replyTo?: {
     id: string;
     body: string;
@@ -173,6 +175,8 @@ function serializeConversationMessage(message: {
     courtRole: message.courtRole ?? null,
     deletedAt: message.deletedAt?.toISOString() ?? null,
     deletedByUserId: message.deletedByUserId ?? null,
+    pinnedAt: message.pinnedAt?.toISOString() ?? null,
+    pinnedByUserId: message.pinnedByUserId ?? null,
     replyTo: message.replyTo
       ? {
           id: message.replyTo.id,
@@ -623,6 +627,8 @@ router.get('/conversations/:conversationId', authMiddleware, async (req: AuthReq
           courtRole: (message as any).courtRole ?? null,
           deletedAt: (message as any).deletedAt ?? null,
           deletedByUserId: (message as any).deletedByUserId ?? null,
+          pinnedAt: (message as any).pinnedAt ?? null,
+          pinnedByUserId: (message as any).pinnedByUserId ?? null,
           replyTo: (message as any).replyTo ?? null,
           createdAt: message.createdAt,
           sender: message.sender,
@@ -1411,6 +1417,51 @@ router.post('/conversations/:conversationId/messages/:messageId/react', authMidd
   } catch (error) {
     console.error('React to message error:', error);
     res.status(500).json({ error: 'Failed to react' });
+  }
+});
+
+// Pin or unpin a message in a conversation. Any participant can manage pins.
+router.patch('/conversations/:conversationId/messages/:messageId/pin', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const user = requireUser(req, res);
+    if (!user) return;
+    const { conversationId, messageId } = req.params;
+    const pinned = Boolean(req.body?.pinned);
+
+    const membership = await prisma.messageConversationParticipant.findFirst({
+      where: { conversationId, userId: user.id },
+    });
+    if (!membership) return res.status(404).json({ error: 'Conversation not found' });
+
+    const message = await prisma.messageConversationMessage.findFirst({
+      where: { id: messageId, conversationId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+
+    const updated = await prisma.messageConversationMessage.update({
+      where: { id: message.id },
+      data: {
+        pinnedAt: pinned ? new Date() : null,
+        pinnedByUserId: pinned ? user.id : null,
+      },
+      select: {
+        id: true,
+        pinnedAt: true,
+        pinnedByUserId: true,
+      },
+    });
+
+    await emitConversationToParticipants(conversationId, 'messaging:message', { conversationId, messageId });
+    res.json({
+      messageId: updated.id,
+      pinned: Boolean(updated.pinnedAt),
+      pinnedAt: updated.pinnedAt?.toISOString() ?? null,
+      pinnedByUserId: updated.pinnedByUserId,
+    });
+  } catch (error) {
+    console.error('Pin conversation message error:', error);
+    res.status(500).json({ error: 'Failed to pin message' });
   }
 });
 

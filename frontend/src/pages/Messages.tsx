@@ -472,8 +472,15 @@ export default function MessagesPage() {
   const selectedIdSafe = selectedConversation?.id ?? null;
   const selectedAdminSupportUserId = selectedIdSafe ? getAdminSupportUserId(selectedIdSafe) : null;
   const conversationReactionsEnabled = selectedConversation?.type === 'DM' || selectedConversation?.type === 'GROUP' || selectedConversation?.type === 'SUPPORT';
+  const conversationPinsEnabled = Boolean(selectedConversation && selectedConversation.type !== 'SUPPORT' && !selectedAdminSupportUserId);
   const currentMessages = detail?.messages ?? [];
   const visibleMessages = currentMessages.filter((message) => !message.deletedAt);
+  const pinnedMessages = useMemo(
+    () => visibleMessages
+      .filter((message) => Boolean(message.pinnedAt))
+      .sort((a, b) => new Date(b.pinnedAt ?? '').getTime() - new Date(a.pinnedAt ?? '').getTime()),
+    [visibleMessages],
+  );
   const dmTypingUser = selectedConversation?.type === 'DM' && selectedIdSafe
     ? (typingByConversation[selectedIdSafe] ?? null)
     : null;
@@ -1257,6 +1264,19 @@ export default function MessagesPage() {
       await loadConversation(selectedIdSafe, false, false);
     } catch {
       toast({ title: 'Erreur', variant: 'destructive' });
+    }
+  };
+
+  const handleToggleMessagePin = async (messageId: string, pinned: boolean) => {
+    if (!selectedIdSafe || !conversationPinsEnabled) return;
+    try {
+      await supportApi.toggleMessagePin(selectedIdSafe, messageId, pinned);
+      await loadConversation(selectedIdSafe, false, false);
+    } catch (error: any) {
+      toast({
+        title: error?.response?.data?.error || 'Pin impossible',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -2495,6 +2515,26 @@ export default function MessagesPage() {
                     {courtCase.sentencing && <p className="text-[11px] text-muted-foreground mt-0.5">Sanction : {courtCase.sentencing}</p>}
                   </div>
                 )}
+                {conversationPinsEnabled && pinnedMessages.length > 0 && (
+                  <div className="border-b border-amber-500/20 bg-amber-500/5 px-3 py-2">
+                    <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                      <Pin className="h-3 w-3 fill-amber-500/20" />
+                      Messages épinglés
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-0.5">
+                      {pinnedMessages.slice(0, 4).map((message) => (
+                        <div key={message.id} className="min-w-44 max-w-64 rounded-lg border border-amber-500/20 bg-background/80 px-2.5 py-1.5 text-left text-xs shadow-sm">
+                          <p className="truncate font-medium text-foreground">
+                            {message.sender?.username ?? 'Message'}
+                          </p>
+                          <p className="mt-0.5 truncate text-muted-foreground">
+                            {getSnippet(message.body || (message.imageUrl ? '[image]' : 'Message épinglé'), 90)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Messages */}
                 <div className="relative min-h-0 flex-1 overflow-hidden bg-muted/15">
@@ -2568,6 +2608,8 @@ export default function MessagesPage() {
                         const showSender = !isOwn && isFirst && selectedConversation.type === 'GROUP';
                         const reactions = msg.reactions ?? [];
                         const canDeleteMessage = isAdminViewer && msg.type !== 'COURT_SYSTEM';
+                        const isPinnedMessage = Boolean(msg.pinnedAt);
+                        const canPinMessage = conversationPinsEnabled && msg.type !== 'COURT_SYSTEM';
                         const supportImages = msg.images ? JSON.parse(msg.images) as string[] : [];
                         if (msg.imageUrl) supportImages.push(msg.imageUrl);
                         const isBlocked = dmOtherUser && blockedIds.has(dmOtherUser.id);
@@ -2670,8 +2712,9 @@ export default function MessagesPage() {
                                           </div>
                                         )}
                                         <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                                        <p className={cn('mt-0.5 text-right text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
-                                          {formatTime(msg.createdAt)}
+                                        <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                          {isPinnedMessage && <Pin className="h-2.5 w-2.5 fill-current" />}
+                                          <span>{formatTime(msg.createdAt)}</span>
                                         </p>
                                       </div>
                                     </PopoverTrigger>
@@ -2693,6 +2736,16 @@ export default function MessagesPage() {
                                         >
                                           <Reply className="h-4 w-4 text-muted-foreground" />
                                         </button>
+                                        {canPinMessage && (
+                                          <button
+                                            type="button"
+                                            onClick={() => void handleToggleMessagePin(msg.id, !isPinnedMessage)}
+                                            className={cn('flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted/60', isPinnedMessage && 'bg-amber-500/10')}
+                                            title={isPinnedMessage ? 'Désépingler' : 'Épingler'}
+                                          >
+                                            <Pin className={cn('h-4 w-4', isPinnedMessage ? 'fill-amber-500/20 text-amber-600' : 'text-muted-foreground')} />
+                                          </button>
+                                        )}
                                       </div>
                                     </PopoverContent>
                                   </Popover>
@@ -2755,8 +2808,9 @@ export default function MessagesPage() {
                                       </div>
                                     )}
                                     <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                                    <p className={cn('mt-0.5 text-right text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
-                                      {formatTime(msg.createdAt)}
+                                    <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                      {isPinnedMessage && <Pin className="h-2.5 w-2.5 fill-current" />}
+                                      <span>{formatTime(msg.createdAt)}</span>
                                     </p>
                                   </div>
                                 )}

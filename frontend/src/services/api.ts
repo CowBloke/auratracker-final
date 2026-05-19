@@ -4025,6 +4025,8 @@ export interface MessagingConversationMessage {
   type: string;
   imageUrl?: string | null;
   courtRole: string | null;
+  pinnedAt?: string | null;
+  pinnedByUserId?: string | null;
   deletedAt?: string | null;
   deletedByUserId?: string | null;
   replyTo?: {
@@ -4128,6 +4130,11 @@ export const supportApi = {
     api.delete<{ success: boolean }>(`/support/conversations/${conversationId}/members/${memberId}`),
   reactToMessage: (conversationId: string, messageId: string, emoji: string) =>
     api.post<{ added: boolean }>(`/support/conversations/${conversationId}/messages/${messageId}/react`, { emoji }),
+  toggleMessagePin: (conversationId: string, messageId: string, pinned: boolean) =>
+    api.patch<{ messageId: string; pinned: boolean; pinnedAt: string | null; pinnedByUserId: string | null }>(
+      `/support/conversations/${conversationId}/messages/${messageId}/pin`,
+      { pinned },
+    ),
   deleteConversationMessage: (conversationId: string, messageId: string) =>
     api.delete<{ success: boolean }>(`/support/conversations/${conversationId}/messages/${messageId}`),
   blockUser: (userId: string) =>

@@ -2668,6 +2668,8 @@ model MessageConversationMessage {
   type           String   @default("TEXT") // TEXT | SYSTEM | REPORT_NOTICE | COURT_SYSTEM
   courtRole      String?  // when admin sends as a court role (JUDGE | PUBLIC_DEFENDER_PLAINTIFF | PUBLIC_DEFENDER_DEFENDANT)
   replyToId      String?
+  pinnedAt       DateTime?
+  pinnedByUserId String?
   deletedAt      DateTime?
   deletedByUserId String?
   createdAt      DateTime @default(now())
@@ -2680,6 +2682,7 @@ model MessageConversationMessage {
 
   @@index([conversationId, createdAt])
   @@index([conversationId, deletedAt, createdAt])
+  @@index([conversationId, pinnedAt])
   @@index([senderId, createdAt])
   @@index([replyToId])
 }
