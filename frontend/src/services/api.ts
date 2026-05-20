@@ -3036,6 +3036,18 @@ export interface PlaytimeLeaderboardEntry {
   averageGameDuration: number;
 }
 
+export interface ScreenTimeLeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  profilePicture: string | null;
+  usernameColor: string | null;
+  schoolLevel: string | null;
+  totalSeconds: number;
+  gamesPlayed: number;
+  lastSeen: string | null;
+}
+
 // Suggestions API
 export interface SuggestionComment {
   id: string;
@@ -3585,6 +3597,19 @@ export const adminApi = {
     totalEntries: number;
     limit: number;
   }>('/admin/playtime-leaderboard', { params }),
+  getScreenTimeLeaderboard: (params?: {
+    period?: 'day' | 'week' | 'month' | 'custom';
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }) => api.get<{
+    period: string;
+    start: string;
+    end: string;
+    leaderboard: ScreenTimeLeaderboardEntry[];
+    totalEntries: number;
+    limit: number;
+  }>('/admin/screentime-leaderboard', { params }),
   getWealthStats: () => api.get<AdminWealthStats>('/admin/wealth-stats'),
   exportWealthStats: () => api.get<Blob>('/admin/wealth-stats/export', { responseType: 'blob' }),
   purgeAllBusinesses: () =>

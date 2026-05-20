@@ -833,6 +833,38 @@ const collectGameTimeFromSnapshots = (
   };
 };
 
+// Total time each user was present (on ANY page), derived from online snapshots.
+// Unlike collectGameTimeFromSnapshots, this counts every connected user regardless
+// of the page they are on — i.e. real "screen time" on the platform.
+const collectScreenTimeFromSnapshots = (
+  snapshots: SnapshotRecord[],
+  start: Date,
+  end: Date,
+) => {
+  const totalSecondsByUser = new Map<string, number>();
+  const lastSeenMsByUser = new Map<string, number>();
+
+  for (let index = 0; index < snapshots.length - 1; index += 1) {
+    const currentSnapshot = snapshots[index];
+    const nextSnapshot = snapshots[index + 1];
+    const intervalStartMs = Math.max(currentSnapshot.createdAt.getTime(), start.getTime());
+    const intervalEndMs = Math.min(nextSnapshot.createdAt.getTime(), end.getTime());
+    const durationSeconds = (intervalEndMs - intervalStartMs) / 1000;
+
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+      continue;
+    }
+
+    for (const user of parseSnapshotUsers(currentSnapshot.usernames)) {
+      if (typeof user.userId !== 'string' || user.userId === '') continue;
+      addSecondsToMap(totalSecondsByUser, user.userId, durationSeconds);
+      lastSeenMsByUser.set(user.userId, Math.max(lastSeenMsByUser.get(user.userId) ?? 0, intervalEndMs));
+    }
+  }
+
+  return { totalSecondsByUser, lastSeenMsByUser };
+};
+
 // Middleware to check if user is admin
 const requireAdmin = (req: AuthRequest, res: Response, next: Function) => {
   if (!req.user?.isAdmin) {
@@ -6128,6 +6160,128 @@ router.get('/playtime-leaderboard', authMiddleware, requireAdmin, async (req: Au
   } catch (error) {
     console.error('Admin playtime leaderboard error:', error);
     res.status(500).json({ error: 'Failed to fetch playtime leaderboard' });
+  }
+});
+
+// GET /api/admin/screentime-leaderboard
+// Returns every user ranked by total time spent connected (on any page) over a period,
+// derived from online snapshots. This is the platform "screen time", broader than
+// the game-only playtime leaderboard above.
+// Query params:
+//   period: 'day' | 'week' | 'month' | 'custom' (default: 'day')
+//   startDate, endDate: ISO strings (for 'custom')
+//   limit: max results (default: 200, max: 1000)
+router.get('/screentime-leaderboard', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { period = 'day', startDate, endDate, limit = '200' } = req.query as Record<string, string>;
+
+    let start: Date;
+    let end: Date = new Date();
+
+    switch (period) {
+      case 'week':
+        start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'custom':
+        if (!startDate || !endDate) {
+          return res.status(400).json({ error: 'startDate and endDate required for custom period' });
+        }
+        start = parseLogDateBoundary(startDate, 'start') ?? new Date('invalid');
+        end = parseLogDateBoundary(endDate, 'end') ?? new Date('invalid');
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          return res.status(400).json({ error: 'Invalid date format' });
+        }
+        break;
+      default: { // 'day'
+        const d = new Date();
+        start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      }
+    }
+
+    const maxLimit = Math.min(parseInt(limit) || 200, 1000);
+
+    const [gameLogs, snapshotBeforeStart, snapshotsInRange, snapshotAfterEnd] = await Promise.all([
+      prisma.log.findMany({
+        where: {
+          type: 'GAME',
+          action: 'game_complete',
+          createdAt: { gte: start, lte: end },
+          userId: { not: null },
+        },
+        select: { userId: true },
+      }),
+      prisma.onlineSnapshot.findFirst({
+        where: { createdAt: { lt: start } },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true, usernames: true },
+      }),
+      prisma.onlineSnapshot.findMany({
+        where: { createdAt: { gte: start, lte: end } },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true, usernames: true },
+      }),
+      prisma.onlineSnapshot.findFirst({
+        where: { createdAt: { gt: end } },
+        orderBy: { createdAt: 'asc' },
+        select: { createdAt: true, usernames: true },
+      }),
+    ]);
+
+    const snapshots = buildSnapshotWindow(snapshotBeforeStart, snapshotsInRange, snapshotAfterEnd);
+    const { totalSecondsByUser, lastSeenMsByUser } = collectScreenTimeFromSnapshots(snapshots, start, end);
+
+    const gamesPlayedByUser = new Map<string, number>();
+    for (const log of gameLogs) {
+      if (typeof log.userId !== 'string' || log.userId === '') continue;
+      gamesPlayedByUser.set(log.userId, (gamesPlayedByUser.get(log.userId) ?? 0) + 1);
+    }
+
+    const userIds = Array.from(totalSecondsByUser.keys()).filter((id) => (totalSecondsByUser.get(id) ?? 0) > 0);
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true,
+        username: true,
+        profilePicture: true,
+        usernameColor: true,
+        schoolLevel: true,
+      },
+    });
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const leaderboard = userIds
+      .map((userId) => {
+        const user = userMap.get(userId);
+        const lastSeenMs = lastSeenMsByUser.get(userId);
+        return {
+          userId,
+          username: user?.username ?? 'Unknown',
+          profilePicture: user?.profilePicture ?? null,
+          usernameColor: user?.usernameColor ?? null,
+          schoolLevel: user?.schoolLevel ?? null,
+          totalSeconds: Math.round(totalSecondsByUser.get(userId) ?? 0),
+          gamesPlayed: gamesPlayedByUser.get(userId) ?? 0,
+          lastSeen: lastSeenMs ? new Date(lastSeenMs).toISOString() : null,
+        };
+      })
+      .sort((a, b) => b.totalSeconds - a.totalSeconds)
+      .slice(0, maxLimit)
+      .map((entry, index) => ({ rank: index + 1, ...entry }));
+
+    res.json({
+      period,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      leaderboard,
+      totalEntries: userIds.length,
+      limit: maxLimit,
+    });
+  } catch (error) {
+    console.error('Admin screen time leaderboard error:', error);
+    res.status(500).json({ error: 'Failed to fetch screen time leaderboard' });
   }
 });
 

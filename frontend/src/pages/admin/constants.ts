@@ -32,6 +32,7 @@ export type AdminTab =
   | 'settings'
   | 'referrals'
   | 'activity'
+  | 'screen-time'
   | 'demographics'
   | 'wealth'
   | 'badges'
@@ -53,6 +54,7 @@ export const ADMIN_TABS: AdminTab[] = [
   'settings',
   'referrals',
   'activity',
+  'screen-time',
   'demographics',
   'wealth',
   'badges',

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, BugReportMessage, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, SharedIpUser, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage, type AdminWealthStats } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, BugReportMessage, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, SharedIpUser, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage, type AdminWealthStats, type ScreenTimeLeaderboardEntry } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/ui/tabs';
 import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { Loader2, Package, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Gamepad2, Coins, Users, Shield, Gavel, TrendingUp, Eye, Activity, CalendarRange, Award, Terminal, Landmark, Inbox, Settings, BarChart2 } from 'lucide-react';
+import { Loader2, Package, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Gamepad2, Coins, Users, Shield, Gavel, TrendingUp, Eye, Activity, CalendarRange, Award, Terminal, Landmark, Inbox, Settings, BarChart2, Clock } from 'lucide-react';
 
 import { cn, humanizeUiLabel } from '@/lib/utils';
 import { PageShell } from '@/components/layout/PageShell';
@@ -35,6 +35,7 @@ import { BraquageLegalTab } from './tabs/BraquageLegalTab';
 import { ClubsTab } from './tabs/ClubsTab';
 import { LogsTab } from './tabs/LogsTab';
 import { ActivityTab } from './tabs/ActivityTab';
+import { ScreenTimeTab } from './tabs/ScreenTimeTab';
 import { ReferralsTab } from './tabs/ReferralsTab';
 import { TaxesTab } from './tabs/TaxesTab';
 import { UsersTab } from './tabs/UsersTab';
@@ -1245,6 +1246,12 @@ export default function Admin() {
   const [playtimePeriod, setPlaytimePeriod] = useState<'day' | 'week' | 'month' | 'custom'>('day');
   const [playtimeCustomStart, setPlaytimeCustomStart] = useState('');
   const [playtimeCustomEnd, setPlaytimeCustomEnd] = useState('');
+  const [screenTimeLeaderboard, setScreenTimeLeaderboard] = useState<{ leaderboard: ScreenTimeLeaderboardEntry[]; period: string; start: string; end: string; totalEntries: number; limit: number } | null>(null);
+  const [loadingScreenTimeLeaderboard, setLoadingScreenTimeLeaderboard] = useState(false);
+  const [screenTimePeriod, setScreenTimePeriod] = useState<'day' | 'week' | 'month' | 'custom'>('day');
+  const [screenTimeCustomStart, setScreenTimeCustomStart] = useState('');
+  const [screenTimeCustomEnd, setScreenTimeCustomEnd] = useState('');
+  const [screenTimeSearch, setScreenTimeSearch] = useState('');
   const [platformStats, setPlatformStats] = useState<null | { overview: { totalUsers: number; approvedUsers: number; totalAura: string; totalMoney: number; totalGamesPlayed: number; totalWins: number; totalTransfers: number; totalAuraTransferred: number; totalMoneyTransferred: number; totalWordsTyped: number }; topGames: Array<{ gameType: string; totalPlayed: number; wins: number }>; activityChart: Array<{ date: string; count: number }> }>(null);
   const [loadingPlatformStats, setLoadingPlatformStats] = useState(false);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
@@ -1702,6 +1709,24 @@ export default function Admin() {
       console.error('Failed to fetch playtime leaderboard:', error);
     } finally {
       setLoadingPlaytimeLeaderboard(false);
+    }
+  };
+
+  const fetchScreenTimeLeaderboard = async (period?: 'day' | 'week' | 'month' | 'custom', customStart?: string, customEnd?: string) => {
+    try {
+      setLoadingScreenTimeLeaderboard(true);
+      const p = period ?? screenTimePeriod;
+      const params: Record<string, any> = { period: p, limit: 1000 };
+      if (p === 'custom') {
+        params.startDate = customStart ?? screenTimeCustomStart;
+        params.endDate = customEnd ?? screenTimeCustomEnd;
+      }
+      const res = await adminApi.getScreenTimeLeaderboard(params);
+      setScreenTimeLeaderboard(res.data);
+    } catch (error) {
+      console.error('Failed to fetch screen time leaderboard:', error);
+    } finally {
+      setLoadingScreenTimeLeaderboard(false);
     }
   };
 
@@ -4780,7 +4805,7 @@ export default function Admin() {
                 {!isFiscalOnly && <div className="relative group">
                   <button className={cn(
                     'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['activity', 'demographics', 'wealth', 'badges'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                    ['activity', 'screen-time', 'demographics', 'wealth', 'badges'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
                   )}>
                     <TrendingUp className="w-4 h-4 shrink-0" />
                     Statistiques
@@ -4790,6 +4815,7 @@ export default function Admin() {
                   <div className={dropdownOuter}>
                     <div className={dropdownInner}>
                       {dropdownItemBtn('activity', 'Activité', <Activity className="w-3.5 h-3.5" />, () => { setActiveTab('activity'); fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); fetchPlatformStats(); fetchGamesLeaderboard(); })}
+                      {dropdownItemBtn('screen-time', "Temps d'écran", <Clock className="w-3.5 h-3.5" />, () => { setActiveTab('screen-time'); fetchScreenTimeLeaderboard(screenTimePeriod); })}
                       {dropdownItemBtn('demographics', 'Répartition', <BarChart2 className="w-3.5 h-3.5" />, () => setActiveTab('demographics'),
                         <span className="text-xs text-muted-foreground">{totalDemographicUsers.toLocaleString('fr-FR')} users</span>
                       )}
@@ -5429,6 +5455,19 @@ export default function Admin() {
           setPlaytimeCustomEnd={setPlaytimeCustomEnd}
           loadingPlaytimeLeaderboard={loadingPlaytimeLeaderboard}
           playtimeLeaderboard={playtimeLeaderboard}
+        />
+        <ScreenTimeTab
+          screenTimePeriod={screenTimePeriod}
+          setScreenTimePeriod={setScreenTimePeriod}
+          fetchScreenTimeLeaderboard={fetchScreenTimeLeaderboard}
+          screenTimeCustomStart={screenTimeCustomStart}
+          setScreenTimeCustomStart={setScreenTimeCustomStart}
+          screenTimeCustomEnd={screenTimeCustomEnd}
+          setScreenTimeCustomEnd={setScreenTimeCustomEnd}
+          loadingScreenTimeLeaderboard={loadingScreenTimeLeaderboard}
+          screenTimeLeaderboard={screenTimeLeaderboard}
+          screenTimeSearch={screenTimeSearch}
+          setScreenTimeSearch={setScreenTimeSearch}
         />
         <DemographicsTab
           totalDemographicUsers={totalDemographicUsers}
