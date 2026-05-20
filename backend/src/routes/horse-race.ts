@@ -1446,19 +1446,19 @@ router.post('/horses/buy', authMiddleware, async (req: AuthRequest, res: Respons
         if (!listing || !listing.isActive || listing.resourceType !== 'HORSES') {
           throw Object.assign(new Error('Cette offre n\'est plus disponible.'), { status: 400 });
         }
-        if (listing.sellerId === req.user!.id) {
-          throw Object.assign(new Error('Vous ne pouvez pas acheter votre propre offre.'), { status: 400 });
-        }
-        const price = listing.unitPrice;
-        if (Number(user.money) < price) {
+        const isOwnOffer = listing.sellerId === req.user!.id;
+        const price = isOwnOffer ? 0 : listing.unitPrice;
+        if (!isOwnOffer && Number(user.money) < price) {
           throw Object.assign(new Error(`Fonds insuffisants (${price.toLocaleString()}€ requis).`), { status: 400 });
         }
 
-        await tx.user.update({ where: { id: req.user!.id }, data: { money: { decrement: BigInt(price) } } });
-        await tx.business.update({
-          where: { id: listing.businessId },
-          data: { treasuryMoney: { increment: price } },
-        });
+        if (price > 0) {
+          await tx.user.update({ where: { id: req.user!.id }, data: { money: { decrement: BigInt(price) } } });
+          await tx.business.update({
+            where: { id: listing.businessId },
+            data: { treasuryMoney: { increment: price } },
+          });
+        }
 
         const remaining = listing.quantity - 1;
         await tx.resourceMarketListing.update({
@@ -1481,7 +1481,7 @@ router.post('/horses/buy', authMiddleware, async (req: AuthRequest, res: Respons
             businessId: listing.businessId,
             type: 'HORSE_SALE',
             amount: BigInt(price),
-            label: `Vente stock cheval: ${createdHorse.name}`,
+            label: price > 0 ? `Vente stock cheval: ${createdHorse.name}` : `Retrait propre stock cheval: ${createdHorse.name}`,
             actorId: req.user!.id,
           },
         });

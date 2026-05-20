@@ -1808,6 +1808,7 @@ function StableModal({
   onUpdated: () => Promise<void>;
   onOpenAtelier: (horse: StableHorseDto) => void;
 }) {
+  const { user } = useAuth();
   const [selectedHorseId, setSelectedHorseId] = useState<string | null>(null);
   const [foalName, setFoalName] = useState('');
   const [breedH1, setBreedH1] = useState<string>('');
@@ -2311,10 +2312,14 @@ function StableModal({
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-[12px] font-bold text-white truncate">{listing.businessName}</p>
-                                <p className="text-[9.5px] text-cyan-300 truncate">Vendeur: {listing.sellerName}</p>
+                                <p className="text-[9.5px] text-cyan-300 truncate">
+                                  Vendeur: {listing.sellerName} {listing.sellerId === user?.id && <span className="text-amber-300 font-semibold">(Votre offre)</span>}
+                                </p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   <span className="text-[9.5px] text-amber-200 font-semibold">{listing.quantity} dispo</span>
-                                  <span className="text-[8.5px] text-emerald-300 font-bold">· {formatMoney(listing.unitPrice)}/cheval</span>
+                                  <span className="text-[8.5px] text-emerald-300 font-bold">
+                                    · {listing.sellerId === user?.id ? 'Gratuit' : `${formatMoney(listing.unitPrice)}/cheval`}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -2400,7 +2405,10 @@ function StableModal({
                               </div>
                               <div>
                                 <h3 className="text-[14px] font-bold text-white">{listing.businessName}</h3>
-                                <p className="text-[11px] text-muted-foreground">Vendeur: <span className="text-cyan-300 font-semibold">{listing.sellerName}</span></p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Vendeur: <span className="text-cyan-300 font-semibold">{listing.sellerName}</span>
+                                  {listing.sellerId === user?.id && <span className="text-amber-300 font-semibold text-[10px] ml-1.5">(Votre offre)</span>}
+                                </p>
                                 <p className="text-[10px] text-muted-foreground mt-0.5">{listing.quantity} cheval(aux) disponible(s) · Gènes aléatoires à l&apos;achat</p>
                               </div>
                             </div>
@@ -2410,7 +2418,9 @@ function StableModal({
                               <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-bold">Détails de l&apos;offre</p>
                               <div className="flex justify-between text-[12px]">
                                 <span className="text-muted-foreground">Prix unitaire</span>
-                                <span className="font-bold text-emerald-300">{formatMoney(listing.unitPrice)}</span>
+                                <span className="font-bold text-emerald-300">
+                                  {listing.sellerId === user?.id ? 'Gratuit' : formatMoney(listing.unitPrice)}
+                                </span>
                               </div>
                               <div className="flex justify-between text-[12px]">
                                 <span className="text-muted-foreground">Stock disponible</span>
@@ -2432,7 +2442,7 @@ function StableModal({
                                 variant="solid"
                                 full
                                 size="md"
-                                disabled={busy || userMoney < listing.unitPrice || newHorseName.trim().length < 2}
+                                disabled={busy || (listing.sellerId !== user?.id && userMoney < listing.unitPrice) || newHorseName.trim().length < 2}
                                 onClick={async () => {
                                   if (newHorseName.trim().length < 2) {
                                     toast.error('Nom trop court.');
@@ -2458,7 +2468,7 @@ function StableModal({
                                   }
                                 }}
                               >
-                                {busy ? 'Achat en cours…' : `Acheter pour ${formatMoney(listing.unitPrice)}`}
+                                {busy ? 'Achat en cours…' : listing.sellerId === user?.id ? 'Acheter (Gratuit)' : `Acheter pour ${formatMoney(listing.unitPrice)}`}
                               </AppModal.Button>
                             </div>
                           </div>

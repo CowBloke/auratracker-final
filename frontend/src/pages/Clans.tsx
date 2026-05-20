@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Axe, AlertTriangle, Check, ChevronDown, ChevronUp, Crown, History, Info, Landmark, Loader2, LogOut, Lock, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
+import { Axe, AlertTriangle, Check, ChevronDown, ChevronUp, Crown, History, Landmark, Loader2, LogOut, Lock, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Target, Trash2, UserX, X } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -260,7 +260,7 @@ export default function Clans() {
   const [tagStyle, setTagStyle] = useState<ClanTagStyle>(DEFAULT_CLAN_TAG_STYLE);
   const [savingTag, setSavingTag] = useState(false);
   // Tab state
-  const [activeTab, setActiveTab] = useState<'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'messages'>('info');
+  const [activeTab, setActiveTab] = useState<'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'messages'>('chat');
   const [bankHistoryOpen, setBankHistoryOpen] = useState(false);
   const [warListDialogOpen, setWarListDialogOpen] = useState(false);
   const [warGamesDialogOpen, setWarGamesDialogOpen] = useState(false);
@@ -367,6 +367,7 @@ export default function Clans() {
     setEditDescription(selectedClan?.description ?? '');
   }, [selectedClan?.id, selectedClan?.description]);
 
+
   useEffect(() => {
     if (!selectedClanId || !selectedClan?.viewer.isMember) {
       setChatMessages([]);
@@ -419,10 +420,10 @@ export default function Clans() {
   }, [selectedClanId, selectedClan?.viewer.isMember, fetchPumpUpMessages]);
 
   useEffect(() => {
-    if (selectedClan && !selectedClan.viewer.isMember) {
-      setActiveTab('info');
+    if (selectedClanId) {
+      setActiveTab('chat');
     }
-  }, [selectedClanId, selectedClan?.viewer.isMember]);
+  }, [selectedClanId]);
 
   const selectedClanSummary = useMemo(
     () => clans.find((clan) => clan.id === selectedClanId) ?? null,
@@ -1488,7 +1489,7 @@ export default function Clans() {
                             Quitter
                           </Button>
                         ) : null}
-                        {selectedClan.viewer.isLeader ? (
+                        {(selectedClan.viewer.isLeader || selectedClan.viewer.permissions?.canManageRoles) ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -1514,14 +1515,22 @@ export default function Clans() {
                           </p>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-4 text-sm">
-                          {selectedClan.viewer.isMember ? (
-                            <div className="flex items-center gap-2 rounded-full border border-border/50 bg-muted/10 px-3 py-1.5 font-medium">
-                              <Landmark className="h-4 w-4 text-emerald-500" />
-                              <span>{formatMoney(selectedClan.warTrophies)} trophées</span>
+                        {selectedClan.viewer.isMember ? (
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="rounded-xl border border-border/40 bg-muted/10 px-2 py-2">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Aura</div>
+                              <div className="text-sm font-semibold mt-0.5">{formatAura(selectedClan.totalAura)}</div>
                             </div>
-                          ) : null}
-                        </div>
+                            <div className="rounded-xl border border-border/40 bg-muted/10 px-2 py-2">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Trophées</div>
+                              <div className="text-sm font-semibold mt-0.5">{formatMoney(selectedClan.warTrophies)}</div>
+                            </div>
+                            <div className="rounded-xl border border-border/40 bg-muted/10 px-2 py-2">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Guerre</div>
+                              <div className="text-sm font-semibold mt-0.5">{selectedClan.warWins}V {selectedClan.warLosses}D {selectedClan.warDraws}N</div>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
 
                       {/* Active Effects */}
@@ -1675,167 +1684,65 @@ export default function Clans() {
 
                   </div>
 
-                  {/* Tabs: side-tab layout */}
+                  {/* Tabs: horizontal layout */}
                   {selectedClan.viewer.isMember ? (
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'info' | 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'messages')} orientation="vertical">
-                      <div className="grid gap-0 overflow-hidden rounded-2xl border border-border/50" style={{ gridTemplateColumns: selectedClan.viewer.isMember ? '170px minmax(0,1fr)' : '1fr' }}>
-                      {/* ── Vertical side tabs ── */}
-                      {selectedClan.viewer.isMember ? (
-                        <TabsList className="flex flex-col items-stretch gap-1 rounded-none rounded-l-xl border-r border-border/40 bg-muted/10 p-2" style={{ minHeight: 0 }}>
-                        <TabsTrigger value="info" className="flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-muted-foreground data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground" title="Infos">
-                          <Info className="h-4 w-4 shrink-0 text-blue-400" />
-                          <span className="text-sm font-medium">Infos</span>
-                        </TabsTrigger>
-                        {featuredEvent ? (
-                          <TabsTrigger value="event" className="flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-muted-foreground data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground" title="Événement">
-                            <Sparkles className="h-4 w-4 shrink-0 text-amber-400" />
-                            <span className="text-sm font-medium">Événement</span>
-                          </TabsTrigger>
-                        ) : null}
-                        {selectedClan.viewer.isMember ? (
-                          <TabsTrigger value="bank" className="flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-muted-foreground data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground" title="Banque">
-                            <Landmark className="h-4 w-4 shrink-0 text-emerald-400" />
-                            <span className="text-sm font-medium">Banque</span>
-                          </TabsTrigger>
-                        ) : null}
-                        {selectedClan.viewer.isMember ? (
-                          <TabsTrigger value="inventory" className="flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-muted-foreground data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground" title="Inventaire">
-                            <Package className="h-4 w-4 shrink-0 text-orange-400" />
-                            <span className="text-sm font-medium">Inventaire</span>
-                          </TabsTrigger>
-                        ) : null}
-                        {selectedClan.viewer.isMember ? (
-                          <TabsTrigger value="chat" className="flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-muted-foreground data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground" title="Chat">
-                            <MessageSquare className="h-4 w-4 shrink-0 text-sky-400" />
-                            <span className="text-sm font-medium">Chat</span>
-                          </TabsTrigger>
-                        ) : null}
-                        {selectedClan.viewer.isMember ? (
-                          <TabsTrigger value="messages" className="relative flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-muted-foreground data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground" title="Messages">
-                            <Megaphone className="h-4 w-4 shrink-0 text-indigo-400" />
-                            <span className="text-sm font-medium">Annonces</span>
-                          </TabsTrigger>
-                        ) : null}
-                        <TabsTrigger value="guerre" className="relative flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-muted-foreground data-[state=active]:bg-foreground/10 data-[state=active]:text-foreground" title="Guerre">
-                          <Swords className="h-4 w-4 shrink-0 text-red-400" />
-                          <span className="flex-1 text-left text-sm font-medium">Guerre</span>
-                          {selectedWar && selectedWar.status !== 'COMPLETED' ? (
-                            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'event' | 'bank' | 'inventory' | 'chat' | 'guerre' | 'messages')}>
+                      <div className="overflow-hidden rounded-2xl border border-border/50">
+                      {/* ── Horizontal tab strip ── */}
+                        <TabsList className="flex w-full h-auto rounded-none border-b border-border/40 bg-muted/5 p-0 gap-0">
+                          {featuredEvent ? (
+                            <TabsTrigger
+                              value="event"
+                              className="flex-1 flex flex-col items-center gap-1 py-3 px-2 h-auto rounded-none border-r border-border/20 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                            >
+                              <Sparkles className="h-4 w-4 text-amber-400" />
+                              <span className="text-xs font-medium">Événement</span>
+                            </TabsTrigger>
                           ) : null}
-                        </TabsTrigger>
-                      </TabsList>
-                      ) : null}
+                          <TabsTrigger
+                            value="chat"
+                            className="flex-1 flex flex-col items-center gap-1 py-3 px-2 h-auto rounded-none border-r border-border/20 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                          >
+                            <MessageSquare className="h-4 w-4 text-sky-400" />
+                            <span className="text-xs font-medium">Chat</span>
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="bank"
+                            className="flex-1 flex flex-col items-center gap-1 py-3 px-2 h-auto rounded-none border-r border-border/20 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                          >
+                            <Landmark className="h-4 w-4 text-emerald-400" />
+                            <span className="text-xs font-medium">Banque</span>
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="inventory"
+                            className="flex-1 flex flex-col items-center gap-1 py-3 px-2 h-auto rounded-none border-r border-border/20 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                          >
+                            <Package className="h-4 w-4 text-orange-400" />
+                            <span className="text-xs font-medium">Inventaire</span>
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="messages"
+                            className="flex-1 flex flex-col items-center gap-1 py-3 px-2 h-auto rounded-none border-r border-border/20 text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                          >
+                            <Megaphone className="h-4 w-4 text-indigo-400" />
+                            <span className="text-xs font-medium">Annonces</span>
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="guerre"
+                            className="relative flex-1 flex flex-col items-center gap-1 py-3 px-2 h-auto rounded-none text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                          >
+                            <span className="relative">
+                              <Swords className="h-4 w-4 text-red-400" />
+                              {selectedWar && selectedWar.status !== 'COMPLETED' ? (
+                                <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-red-500" />
+                              ) : null}
+                            </span>
+                            <span className="text-xs font-medium">Guerre</span>
+                          </TabsTrigger>
+                        </TabsList>
 
                       {/* ── Tab content area ── */}
                       <div className="min-w-0">
-
-                    {/* ── Info tab ── */}
-                    <TabsContent value="info" className="mt-0 space-y-4 p-4">
-                      {/* Vue d'ensemble */}
-                      <Card className={panelClassName}>
-                        <CardContent className="space-y-4 p-4">
-                          <SectionTitle title="Vue d'ensemble" description="Statistiques et performance globale du clan" />
-                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 space-y-1">
-                              <span className="text-xs text-muted-foreground uppercase tracking-wide">Aura Totale</span>
-                              <div className="text-lg font-semibold">{formatAura(selectedClan.totalAura)} aura</div>
-                            </div>
-                            <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 space-y-1">
-                              <span className="text-xs text-muted-foreground uppercase tracking-wide">Trophées de Guerre</span>
-                              <div className="text-lg font-semibold">{formatMoney(selectedClan.warTrophies)} trophées</div>
-                            </div>
-                            <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 space-y-1">
-                              <span className="text-xs text-muted-foreground uppercase tracking-wide">Bilan de Guerre</span>
-                              <div className="text-lg font-semibold">
-                                {selectedClan.warWins}V • {selectedClan.warLosses}D • {selectedClan.warDraws}N
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Candidatures (leader only) */}
-                      {(selectedClan.viewer.permissions?.canInviteMembers || selectedClan.viewer.isLeader) && selectedClan.joinRequests.length > 0 ? (
-                        <Card className={panelClassName}>
-                          <CardContent className="space-y-2 p-4">
-                            <SectionTitle title="Candidatures" description={`${selectedClan.joinRequests.length} en attente`} />
-                            {selectedClan.joinRequests.map((request) => (
-                              <div key={request.id} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-2">
-                                <Avatar className="h-7 w-7">
-                                  <AvatarImage src={resolveImageUrl(request.profilePicture)} alt={request.username} />
-                                  <AvatarFallback>{getAvatarFallback(request.username)}</AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 flex-1">
-                                  <UsernameDisplay username={request.username} usernameColor={request.usernameColor} />
-                                  <div className="text-xs text-muted-foreground">{formatAura(request.aura)} aura</div>
-                                </div>
-                                <div className="flex gap-1.5">
-                                  <Button size="sm" onClick={() => handleRequestAction(request.id, 'accept')} disabled={actionLoading}>
-                                    <Check className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => handleRequestAction(request.id, 'reject')} disabled={actionLoading}>
-                                    <X className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </CardContent>
-                        </Card>
-                      ) : null}
-
-                      {/* Rôles du clan */}
-                      {selectedClan.viewer.isMember && (selectedClan.roles?.length ?? 0) > 0 ? (
-                        <Card className={panelClassName}>
-                          <CardContent className="space-y-2 p-4">
-                            <SectionTitle
-                              title="Rôles"
-                              action={
-                                selectedClan.viewer.permissions?.canManageRoles ? (
-                                  <Button size="sm" variant="outline" onClick={openRoleCreate}>
-                                    <Plus className="mr-1 h-3.5 w-3.5" /> Nouveau rôle
-                                  </Button>
-                                ) : undefined
-                              }
-                            />
-                            {(selectedClan.roles ?? []).map((role) => (
-                              <div key={role.id} className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-2">
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <span className="inline-block h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: role.color }} />
-                                  <span className="text-sm font-medium">{role.name}</span>
-                                  <div className="flex flex-wrap gap-1">
-                                    {role.canManageHorses && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600">Chevaux</span>}
-                                    {role.canInviteMembers && <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-600">Inviter</span>}
-                                    {role.canKickMembers && <span className="rounded bg-rose-500/15 px-1.5 py-0.5 text-[10px] text-rose-600">Exclure</span>}
-                                    {role.canManageRoles && <span className="rounded bg-purple-500/15 px-1.5 py-0.5 text-[10px] text-purple-600">Rôles</span>}
-                                  </div>
-                                </div>
-                                {selectedClan.viewer.permissions?.canManageRoles ? (
-                                  <div className="flex gap-1 shrink-0">
-                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openRoleEdit(role)}>
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    {!role.isSystem ? (
-                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:text-destructive" onClick={() => void handleDeleteRole(role.id)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    ) : null}
-                                  </div>
-                                ) : null}
-                              </div>
-                            ))}
-                          </CardContent>
-                        </Card>
-                      ) : selectedClan.viewer.isMember && selectedClan.viewer.permissions?.canManageRoles ? (
-                        <Card className={panelClassName}>
-                          <CardContent className="p-4">
-                            <Button size="sm" variant="outline" onClick={openRoleCreate}>
-                              <Plus className="mr-1 h-3.5 w-3.5" /> Créer des rôles pour ce clan
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ) : null}
-
-                    </TabsContent>
 
                     <TabsContent value="event" className="mt-0 space-y-4 p-4">
                       {featuredEventLoading ? (
@@ -3292,6 +3199,98 @@ export default function Clans() {
                 </div>
               </>
             ) : null}
+
+            {/* Candidatures */}
+            {selectedClan && (selectedClan.viewer.permissions?.canInviteMembers || selectedClan.viewer.isLeader) && selectedClan.joinRequests.length > 0 ? (
+              <>
+                <div className="border-t border-border/50" />
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold">Candidatures <span className="ml-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-normal text-primary">{selectedClan.joinRequests.length}</span></p>
+                  <div className="space-y-2">
+                    {selectedClan.joinRequests.map((request) => (
+                      <div key={request.id} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-2">
+                        <Avatar className="h-7 w-7">
+                          <AvatarImage src={resolveImageUrl(request.profilePicture)} alt={request.username} />
+                          <AvatarFallback>{getAvatarFallback(request.username)}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <UsernameDisplay username={request.username} usernameColor={request.usernameColor} />
+                          <div className="text-xs text-muted-foreground">{formatAura(request.aura)} aura</div>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button size="sm" onClick={() => handleRequestAction(request.id, 'accept')} disabled={actionLoading}>
+                            <Check className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleRequestAction(request.id, 'reject')} disabled={actionLoading}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : null}
+
+            {/* Rôles */}
+            {selectedClan && (selectedClan.viewer.permissions?.canManageRoles || selectedClan.viewer.isLeader) ? (
+              <>
+                <div className="border-t border-border/50" />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">Rôles</p>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={openRoleCreate}>
+                      <Plus className="mr-1 h-3 w-3" /> Nouveau
+                    </Button>
+                  </div>
+                  {(selectedClan.roles ?? []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Aucun rôle créé pour ce clan.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {(selectedClan.roles ?? []).map((role) => (
+                        <div key={role.id} className="flex items-center justify-between gap-2 rounded-xl border border-border/50 bg-muted/10 px-3 py-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="h-3.5 w-3.5 rounded-full flex-shrink-0 border border-border/30" style={{ backgroundColor: role.color }} />
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium">{role.name}</div>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {role.canManageHorses && <span className="rounded bg-amber-500/15 px-1 py-px text-[9px] text-amber-600">Chevaux</span>}
+                                {role.canInviteMembers && <span className="rounded bg-emerald-500/15 px-1 py-px text-[9px] text-emerald-600">Inviter</span>}
+                                {role.canKickMembers && <span className="rounded bg-rose-500/15 px-1 py-px text-[9px] text-rose-600">Exclure</span>}
+                                {role.canManageRoles && <span className="rounded bg-purple-500/15 px-1 py-px text-[9px] text-purple-600">Rôles</span>}
+                                {!role.canManageHorses && !role.canInviteMembers && !role.canKickMembers && !role.canManageRoles && (
+                                  <span className="text-[9px] text-muted-foreground/50 italic">Aucune permission</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs gap-1"
+                              onClick={() => openRoleEdit(role)}
+                            >
+                              <Pencil className="h-3 w-3" /> Modifier
+                            </Button>
+                            {!role.isSystem ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => void handleDeleteRole(role.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
@@ -3566,26 +3565,38 @@ export default function Clans() {
       <Dialog open={roleEditOpen} onOpenChange={setRoleEditOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
+            <DialogTitle className="flex items-center gap-2.5">
+              <span className="h-4 w-4 rounded-full border border-border/40 transition-colors" style={{ backgroundColor: roleEditColor }} />
               {roleEditId ? 'Modifier le rôle' : 'Nouveau rôle'}
             </DialogTitle>
             <DialogDescription>
-              {roleEditId ? 'Modifiez les permissions et la couleur de ce rôle.' : 'Créez un rôle personnalisé pour les membres de votre clan.'}
+              {roleEditId ? 'Modifiez le nom, la couleur et les permissions de ce rôle.' : 'Créez un rôle personnalisé pour les membres de votre clan.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Name + color preview */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Nom du rôle</label>
-              <Input
-                value={roleEditName}
-                onChange={(e) => setRoleEditName(e.target.value.slice(0, 32))}
-                placeholder="Ex: Stratège, Éleveur..."
-                disabled={roleEditIsSystem}
-                maxLength={32}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  value={roleEditName}
+                  onChange={(e) => setRoleEditName(e.target.value.slice(0, 32))}
+                  placeholder="Ex: Stratège, Éleveur..."
+                  disabled={roleEditIsSystem}
+                  maxLength={32}
+                  className="flex-1"
+                />
+                {roleEditName.trim() ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold border" style={{ color: roleEditColor, borderColor: roleEditColor + '55', backgroundColor: roleEditColor + '18' }}>
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: roleEditColor }} />
+                    {roleEditName.trim()}
+                  </span>
+                ) : null}
+              </div>
               {roleEditIsSystem && <p className="text-xs text-muted-foreground">Le nom des rôles système ne peut pas être modifié.</p>}
             </div>
+
+            {/* Color */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Couleur</label>
               <div className="flex flex-wrap gap-1.5">
@@ -3593,13 +3604,21 @@ export default function Clans() {
                   <button
                     key={c}
                     type="button"
-                    className={cn('h-6 w-6 rounded-full border-2 transition-transform hover:scale-110', roleEditColor === c ? 'border-foreground' : 'border-transparent')}
+                    className={cn('h-6 w-6 rounded-full border-2 transition-transform hover:scale-110', roleEditColor === c ? 'border-foreground scale-110' : 'border-transparent')}
                     style={{ backgroundColor: c }}
                     onClick={() => setRoleEditColor(c)}
                   />
                 ))}
+                <input
+                  type="color"
+                  value={roleEditColor}
+                  onChange={(e) => setRoleEditColor(e.target.value)}
+                  className="h-6 w-6 cursor-pointer rounded-full border p-0"
+                />
               </div>
             </div>
+
+            {/* Permissions */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Permissions</label>
               {([
@@ -3608,12 +3627,12 @@ export default function Clans() {
                 { key: 'canKickMembers', label: 'Exclure des membres', desc: 'Retirer des membres réguliers du clan', icon: '🚫' },
                 { key: 'canManageRoles', label: 'Gérer les rôles', desc: 'Créer, modifier et assigner des rôles', icon: '🛡️' },
               ] as { key: keyof typeof roleEditPerms; label: string; desc: string; icon: string }[]).map(({ key, label, desc, icon }) => (
-                <label key={key} className="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/10 px-3 py-2.5 cursor-pointer hover:bg-muted/20">
+                <label key={key} className={cn('flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors', roleEditPerms[key] ? 'border-primary/30 bg-primary/5' : 'border-border/50 bg-muted/10 hover:bg-muted/20')}>
                   <input
                     type="checkbox"
                     checked={roleEditPerms[key]}
                     onChange={(e) => setRoleEditPerms((prev) => ({ ...prev, [key]: e.target.checked }))}
-                    className="mt-0.5"
+                    className="mt-0.5 accent-primary"
                   />
                   <div>
                     <div className="text-sm font-medium">{icon} {label}</div>
@@ -3622,10 +3641,11 @@ export default function Clans() {
                 </label>
               ))}
             </div>
+
             <div className="flex gap-2">
               <Button className="flex-1" onClick={handleSaveRole} disabled={roleSaving || (!roleEditIsSystem && !roleEditName.trim())}>
-                {roleSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Settings2 className="mr-1 h-4 w-4" />}
-                {roleEditId ? 'Enregistrer' : 'Créer'}
+                {roleSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
+                {roleEditId ? 'Enregistrer les modifications' : 'Créer le rôle'}
               </Button>
               <Button variant="outline" onClick={() => setRoleEditOpen(false)}>Annuler</Button>
             </div>
