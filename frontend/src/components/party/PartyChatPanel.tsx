@@ -1,5 +1,6 @@
 ﻿import { FormEvent, useState } from 'react';
 import { usePartySocket } from '@/contexts/PartySocketContext';
+import { MessageFormatToolbar } from '@/components/chat/MessageFormatToolbar';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { TYPOGRAPHY } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
 import { useSmartScroll } from '@/hooks/use-smart-scroll';
-import { FormattedMessageText } from '@/lib/message-formatting';
+import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
 
 interface PartyChatPanelProps {
   title?: string;
@@ -25,6 +26,7 @@ export default function PartyChatPanel({
 }: PartyChatPanelProps) {
   const { currentParty, partyMessages, sendPartyMessage } = usePartySocket();
   const [message, setMessage] = useState('');
+  const [inputElement, setInputElement] = useState<HTMLInputElement | null>(null);
   const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
     dependency: [partyMessages],
   });
@@ -98,12 +100,21 @@ export default function PartyChatPanel({
         </div>
 
         <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder={placeholder}
-            maxLength={500}
-          />
+          <div className="flex-1">
+            <Input
+              ref={setInputElement}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder={placeholder}
+              maxLength={500}
+            />
+            <MessageFormatToolbar inputRef={{ current: inputElement }} value={message} onChange={setMessage} />
+            {hasMessageFormatting(message) && (
+              <div className="mt-2 rounded-lg border border-border/50 bg-background/70 px-2.5 py-1.5 text-sm text-foreground">
+                <FormattedMessageText text={message} />
+              </div>
+            )}
+          </div>
           <Button type="submit" variant="outline" disabled={!message.trim()}>
             Envoyer
           </Button>

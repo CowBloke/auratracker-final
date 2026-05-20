@@ -18,7 +18,8 @@ import { UserBadges } from '@/components/badges/UserBadges';
 import { toClanTagData } from '@/components/clans/ClanTag';
 import { PlayerHoverCard } from '@/components/ui/player-hover-card';
 import { t } from '@/lib/i18n';
-import { FormattedMessageText } from '@/lib/message-formatting';
+import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
+import { MessageFormatToolbar } from './MessageFormatToolbar';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 
@@ -60,6 +61,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
   const [selectedReaction, setSelectedReaction] = useState<ReactionDetails | null>(null);
   const typingTimeoutRef = useRef<TimeoutRef>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const lastMessageIdRef = useRef<string | null>(null);
   const unreadMessageRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -485,6 +487,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
             <form onSubmit={handleSubmit} className="px-6 py-3 border-t border-border/40">
               <div className="flex gap-2">
                 <Input
+                  ref={inputRef}
                   type="text"
                   value={input}
                   onChange={handleInputChange}
@@ -502,6 +505,12 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
+              <MessageFormatToolbar inputRef={inputRef} value={input} onChange={setInput} />
+              {hasMessageFormatting(input) && (
+                <div className="mt-2 rounded-lg border border-border/50 bg-background/70 px-2.5 py-1.5 text-sm text-foreground">
+                  <FormattedMessageText text={input} />
+                </div>
+              )}
             </form>
           </div>
 

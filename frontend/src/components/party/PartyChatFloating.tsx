@@ -4,11 +4,12 @@ import { MessageCircle, Minimize2, Send, Users, ChevronDown } from 'lucide-react
 import { usePartySocket } from '@/contexts/PartySocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { MessageFormatToolbar } from '@/components/chat/MessageFormatToolbar';
 import { Input } from '@/components/ui/input';
 import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { useSmartScroll } from '@/hooks/use-smart-scroll';
-import { FormattedMessageText } from '@/lib/message-formatting';
+import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
 
 interface PartyChatFloatingProps {
   rightOffset: string;
@@ -19,6 +20,7 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
   const { currentParty, partyMembers, partyMessages, sendPartyMessage } = usePartySocket();
   const [minimized, setMinimized] = useState(false);
   const [message, setMessage] = useState('');
+  const [inputElement, setInputElement] = useState<HTMLInputElement | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
     dependency: [partyMessages, minimized],
@@ -187,12 +189,21 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
 
             <form onSubmit={handleSubmit} className="border-t border-border/40 p-3">
               <div className="flex gap-2">
-                <Input
-                  value={message}
-                  onChange={(event) => setMessage(event.target.value)}
-                  placeholder={isDuel ? 'Écris à ton adversaire' : 'Écris à ta party'}
-                  maxLength={500}
-                />
+                <div className="flex-1">
+                  <Input
+                    ref={setInputElement}
+                    value={message}
+                    onChange={(event) => setMessage(event.target.value)}
+                    placeholder={isDuel ? 'Écris à ton adversaire' : 'Écris à ta party'}
+                    maxLength={500}
+                  />
+                  <MessageFormatToolbar inputRef={{ current: inputElement }} value={message} onChange={setMessage} />
+                  {hasMessageFormatting(message) && (
+                    <div className="mt-2 rounded-lg border border-border/50 bg-background/70 px-2.5 py-1.5 text-sm text-foreground">
+                      <FormattedMessageText text={message} />
+                    </div>
+                  )}
+                </div>
                 <Button type="submit" size="icon" disabled={!message.trim()}>
                   <Send className="h-4 w-4" />
                 </Button>

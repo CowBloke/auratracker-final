@@ -39,6 +39,7 @@ import {
 import { PageShell } from '@/components/layout/PageShell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { MessageFormatToolbar } from '@/components/chat/MessageFormatToolbar';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -67,7 +68,7 @@ import { useAppDialog } from '@/contexts/AppDialogContext';
 import { toast } from '@/hooks/use-toast';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
-import { FormattedMessageText } from '@/lib/message-formatting';
+import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
 import { cn } from '@/lib/utils';
 import {
   CourtArgument,
@@ -2564,8 +2565,8 @@ export default function MessagesPage() {
                           <p className="truncate font-medium text-foreground">
                             {message.sender?.username ?? 'Message'}
                           </p>
-                          <p className="mt-0.5 truncate text-muted-foreground">
-                            {getSnippet(message.body || (message.imageUrl ? '[image]' : 'Message épinglé'), 90)}
+                          <p className="mt-0.5 max-h-10 overflow-hidden text-muted-foreground">
+                            <FormattedMessageText text={message.body || (message.imageUrl ? '[image]' : 'Message épinglé')} />
                           </p>
                         </button>
                       ))}
@@ -3017,6 +3018,12 @@ export default function MessagesPage() {
                         placeholder={isCourtChatLocked ? 'Le chat est disponible uniquement quand l affaire est en cours' : `Message ${selectedConversation.displayName}`}
                         className="w-full resize-none bg-transparent text-sm leading-5 outline-none placeholder:text-muted-foreground/50"
                         maxLength={1000} style={{ minHeight: '20px' }} disabled={isCourtChatLocked} />
+                      <MessageFormatToolbar inputRef={textareaRef} value={draft} onChange={setDraft} />
+                      {hasMessageFormatting(draft) && (
+                        <div className="mt-2 rounded-lg border border-border/50 bg-background/70 px-2.5 py-1.5 text-sm text-foreground">
+                          <FormattedMessageText text={draft} />
+                        </div>
+                      )}
                     </div>
                     <Button type="button" size="icon" className="h-9 w-9 shrink-0 rounded-xl"
                         disabled={sending || (!draft.trim() && !imageUrlToSend) || isCourtChatLocked} onClick={() => void handleSend()}>
