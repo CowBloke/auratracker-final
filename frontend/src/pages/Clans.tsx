@@ -1515,22 +1515,6 @@ export default function Clans() {
                           </p>
                         </div>
 
-                        {selectedClan.viewer.isMember ? (
-                          <div className="grid grid-cols-3 gap-2 text-center">
-                            <div className="rounded-xl border border-border/40 bg-muted/10 px-2 py-2">
-                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Aura</div>
-                              <div className="text-sm font-semibold mt-0.5">{formatAura(selectedClan.totalAura)}</div>
-                            </div>
-                            <div className="rounded-xl border border-border/40 bg-muted/10 px-2 py-2">
-                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Trophées</div>
-                              <div className="text-sm font-semibold mt-0.5">{formatMoney(selectedClan.warTrophies)}</div>
-                            </div>
-                            <div className="rounded-xl border border-border/40 bg-muted/10 px-2 py-2">
-                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Guerre</div>
-                              <div className="text-sm font-semibold mt-0.5">{selectedClan.warWins}V {selectedClan.warLosses}D {selectedClan.warDraws}N</div>
-                            </div>
-                          </div>
-                        ) : null}
                       </div>
 
                       {/* Active Effects */}
@@ -3020,6 +3004,26 @@ export default function Clans() {
           </DialogHeader>
 
           <div className="space-y-6 py-1">
+            {/* Stats */}
+            {selectedClan?.viewer.isMember ? (
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-xl border border-border/40 bg-muted/10 px-2 py-2.5">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Aura</div>
+                  <div className="text-sm font-semibold mt-0.5">{formatAura(selectedClan.totalAura)}</div>
+                </div>
+                <div className="rounded-xl border border-border/40 bg-muted/10 px-2 py-2.5">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Trophées</div>
+                  <div className="text-sm font-semibold mt-0.5">{formatMoney(selectedClan.warTrophies)}</div>
+                </div>
+                <div className="rounded-xl border border-border/40 bg-muted/10 px-2 py-2.5">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Guerre</div>
+                  <div className="text-sm font-semibold mt-0.5">{selectedClan.warWins}V {selectedClan.warLosses}D {selectedClan.warDraws}N</div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="border-t border-border/50" />
+
             {/* Emblème */}
             <div className="space-y-3">
               <p className="text-sm font-semibold">Emblème</p>
