@@ -496,7 +496,7 @@ const games: Game[] = [
     description: 'Course de chevaux toutes les 5 minutes : paris, cotes en direct et commentaires en français.',
     type: 'Chance',
     emoji: '🏇',
-    image: '',
+    image: '/images/games/cheval.png',
     statsKeys: [],
     releaseRank: 40,
     hasRewards: false,

@@ -19,6 +19,66 @@ export type NotificationType =
   | 'SYSTEM'
   | 'ADMIN';
 
+export type NotificationCategoryId =
+  | 'aura'
+  | 'clans'
+  | 'social'
+  | 'quetes'
+  | 'polymarket'
+  | 'systeme';
+
+// Maps inbox categories to the notification types they group. Mirrors the
+// categories shown on the frontend Inbox. Types not listed here have no
+// category and are always delivered (cannot be disabled).
+export const NOTIFICATION_CATEGORY_TYPES: Record<NotificationCategoryId, string[]> = {
+  aura: ['AURA_RECEIVED'],
+  clans: [
+    'CLAN_MESSAGE',
+    'CLAN_JOIN_REQUEST',
+    'CLAN_JOIN_ACCEPTED',
+    'CLAN_JOIN_REJECTED',
+    'CLAN_WAR_DECLARED',
+    'CLAN_WAR_COMPLETED',
+    'CLAN_WAR_WON',
+    'CLAN_WAR_LOST',
+  ],
+  social: ['SOCIAL_FOLLOW', 'SOCIAL_CONNECTION', 'DIRECT_MESSAGE'],
+  quetes: ['QUEST_COMPLETED'],
+  polymarket: ['POLYMARKET_WIN', 'POLYMARKET_LOSS'],
+  systeme: ['SYSTEM', 'ADMIN'],
+};
+
+export const NOTIFICATION_CATEGORY_IDS = Object.keys(NOTIFICATION_CATEGORY_TYPES) as NotificationCategoryId[];
+
+const TYPE_TO_CATEGORY: Record<string, NotificationCategoryId> = Object.fromEntries(
+  NOTIFICATION_CATEGORY_IDS.flatMap((category) =>
+    NOTIFICATION_CATEGORY_TYPES[category].map((type) => [type, category])
+  )
+);
+
+export function getCategoryForType(type: string): NotificationCategoryId | null {
+  return TYPE_TO_CATEGORY[type] ?? null;
+}
+
+/** Parse a stored preferences JSON string into a category→enabled map. */
+export function parseNotificationPreferences(raw: string | null | undefined): Record<NotificationCategoryId, boolean> {
+  const prefs = {} as Record<NotificationCategoryId, boolean>;
+  let stored: Record<string, unknown> = {};
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') stored = parsed as Record<string, unknown>;
+    } catch {
+      // Treat unparseable preferences as "all enabled".
+    }
+  }
+  for (const category of NOTIFICATION_CATEGORY_IDS) {
+    // Missing key defaults to enabled.
+    prefs[category] = stored[category] !== false;
+  }
+  return prefs;
+}
+
 export interface CreateNotificationOptions {
   userId: string;
   type: NotificationType | string;
@@ -99,6 +159,19 @@ export function emitNotificationDeleted(userId: string, id: string) {
  */
 export async function createNotification(opts: CreateNotificationOptions) {
   const { userId, type, title, body, data, link, icon } = opts;
+
+  // Respect the recipient's per-category inbox preferences. Types without a
+  // category, or categories left enabled, are always delivered.
+  const category = getCategoryForType(type);
+  if (category) {
+    const recipient = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { notificationPreferences: true },
+    });
+    const prefs = parseNotificationPreferences(recipient?.notificationPreferences);
+    if (!prefs[category]) return null;
+  }
+
   const normalizedLink = normalizeNotificationLink(link);
 
   const notification = await prisma.notification.create({

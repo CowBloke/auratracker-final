@@ -3949,10 +3949,24 @@ export const notificationsApi = {
     api.post<{ success: boolean }>('/notifications/push/subscribe', { subscription }),
   unsubscribePush: (endpoint: string) =>
     api.post<{ success: boolean }>('/notifications/push/unsubscribe', { endpoint }),
+  getPreferences: () =>
+    api.get<{ preferences: NotificationPreferences }>('/notifications/preferences'),
+  updatePreferences: (preferences: NotificationPreferences) =>
+    api.put<{ preferences: NotificationPreferences }>('/notifications/preferences', { preferences }),
   /** Admin only */
   broadcast: (data: { title: string; body: string; link?: string; icon?: string }) =>
     api.post<{ success: boolean; sent: number }>('/notifications/broadcast', data),
 };
+
+export type NotificationCategoryId =
+  | 'aura'
+  | 'clans'
+  | 'social'
+  | 'quetes'
+  | 'polymarket'
+  | 'systeme';
+
+export type NotificationPreferences = Record<NotificationCategoryId, boolean>;
 
 // Upload an image as any authenticated user (suggestions, clans, profile pictures, polymarket, etc.)
 export const uploadUserImage = (data: { base64Data: string; mimeType: string }) =>

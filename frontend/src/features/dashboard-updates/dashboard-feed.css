@@ -411,6 +411,7 @@
 }
 
 .db-reaction {
+  --aura: 271 91% 65%;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -431,9 +432,9 @@
 }
 
 .db-reaction.is-active {
-  border-color: hsl(var(--aura) / 0.45);
-  background: hsl(var(--aura) / 0.14);
-  color: hsl(var(--foreground));
+  border-color: hsl(var(--aura) / 0.65);
+  background: linear-gradient(hsl(var(--aura) / 0.22), hsl(var(--aura) / 0.22)), hsl(var(--background));
+  color: hsl(var(--aura));
 }
 
 .db-reaction:disabled {

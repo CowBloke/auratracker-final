@@ -479,6 +479,22 @@ const fr = {
   site_header_join_current_party_prefix: 'Rejoins',
   site_header_join_my_group: 'Rejoins mon groupe',
   site_header_game_reward_bonus: 'd\'argent sur les récompenses de jeux',
+  settings_notifications_group: 'Notifications',
+  settings_notifications_section_label: 'Notifications reçues',
+  settings_notifications_section_description: 'Choisis les catégories de notifications à recevoir dans ton inbox. Les catégories décochées ne seront plus reçues.',
+  settings_notif_cat_aura: 'Aura',
+  settings_notif_cat_aura_desc: 'Aura reçue d\'autres joueurs.',
+  settings_notif_cat_clans: 'Clans',
+  settings_notif_cat_clans_desc: 'Messages, demandes et guerres de clan.',
+  settings_notif_cat_social: 'Social',
+  settings_notif_cat_social_desc: 'Abonnements, connexions et messages privés.',
+  settings_notif_cat_quetes: 'Quêtes',
+  settings_notif_cat_quetes_desc: 'Quêtes terminées.',
+  settings_notif_cat_polymarket: 'Polymarket',
+  settings_notif_cat_polymarket_desc: 'Résultats de tes paris Polymarket.',
+  settings_notif_cat_systeme: 'Système',
+  settings_notif_cat_systeme_desc: 'Annonces et messages système.',
+  settings_notifications_save_error: 'Impossible de mettre à jour les préférences.',
 } as const;
 
 type Keys = keyof typeof fr;

@@ -17,6 +17,7 @@ import {
   Eye,
   EyeOff,
   Volume2,
+  Bell,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,7 +43,14 @@ import {
   sanitizeCustomTheme,
 } from '@/lib/custom-theme';
 import { PageShell } from '@/components/layout/PageShell';
-import { ReferralSummary, authApi, usersApi } from '@/services/api';
+import {
+  ReferralSummary,
+  authApi,
+  usersApi,
+  notificationsApi,
+  type NotificationCategoryId,
+  type NotificationPreferences,
+} from '@/services/api';
 import ReferralClaimAnimation from '@/components/referrals/ReferralClaimAnimation';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -92,11 +100,12 @@ function parseRootVars(css: string): Record<string, string> {
   return vars;
 }
 
-type SectionId = 'personnalisation' | 'sons' | 'compte' | 'parrainage' | 'raccourcis';
+type SectionId = 'personnalisation' | 'sons' | 'notifications' | 'compte' | 'parrainage' | 'raccourcis';
 
 const SECTIONS: { id: SectionId; label: string; iconBg: string; icon: React.ElementType }[] = [
   { id: 'personnalisation', label: t('settings_appearance_group'), iconBg: 'bg-blue-500', icon: Paintbrush },
   { id: 'sons', label: t('settings_sound_group'), iconBg: 'bg-emerald-500', icon: Volume2 },
+  { id: 'notifications', label: t('settings_notifications_group'), iconBg: 'bg-amber-500', icon: Bell },
   { id: 'compte', label: t('settings_account_group'), iconBg: 'bg-zinc-500', icon: User },
   { id: 'parrainage', label: t('settings_referral_group'), iconBg: 'bg-purple-500', icon: Ticket },
   { id: 'raccourcis', label: t('settings_shortcuts_group'), iconBg: 'bg-indigo-500', icon: Keyboard },
@@ -1040,6 +1049,85 @@ function SonsSection() {
   );
 }
 
+/* ─── Notifications ─────────────────────────────────────────────────────────── */
+
+const NOTIF_CATEGORIES: { id: NotificationCategoryId; label: string; description: string }[] = [
+  { id: 'aura', label: t('settings_notif_cat_aura'), description: t('settings_notif_cat_aura_desc') },
+  { id: 'clans', label: t('settings_notif_cat_clans'), description: t('settings_notif_cat_clans_desc') },
+  { id: 'social', label: t('settings_notif_cat_social'), description: t('settings_notif_cat_social_desc') },
+  { id: 'quetes', label: t('settings_notif_cat_quetes'), description: t('settings_notif_cat_quetes_desc') },
+  { id: 'polymarket', label: t('settings_notif_cat_polymarket'), description: t('settings_notif_cat_polymarket_desc') },
+  { id: 'systeme', label: t('settings_notif_cat_systeme'), description: t('settings_notif_cat_systeme_desc') },
+];
+
+function NotificationsSection() {
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    notificationsApi
+      .getPreferences()
+      .then((res) => {
+        if (!cancelled) setPrefs(res.data.preferences);
+      })
+      .catch(() => {
+        if (!cancelled) setPrefs(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggle = async (id: NotificationCategoryId, value: boolean) => {
+    if (!prefs) return;
+    const previous = prefs;
+    const next = { ...prefs, [id]: value };
+    setPrefs(next);
+    try {
+      await notificationsApi.updatePreferences(next);
+    } catch {
+      setPrefs(previous);
+      toast.error(t('settings_notifications_save_error'));
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <SettingsGroupLabel>{t('settings_notifications_section_label')}</SettingsGroupLabel>
+        <p className="mb-2 px-1 text-xs text-muted-foreground">
+          {t('settings_notifications_section_description')}
+        </p>
+        <SettingsCard>
+          {loading || !prefs ? (
+            <div className="px-4 py-4">
+              <CenteredSkeletonCard />
+            </div>
+          ) : (
+            NOTIF_CATEGORIES.map((cat, i) => (
+              <SettingsRow
+                key={cat.id}
+                label={cat.label}
+                description={cat.description}
+                last={i === NOTIF_CATEGORIES.length - 1}
+              >
+                <Switch
+                  checked={prefs[cat.id]}
+                  onCheckedChange={(v) => toggle(cat.id, v)}
+                />
+              </SettingsRow>
+            ))
+          )}
+        </SettingsCard>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main ────────────────────────────────────────────────────────────────── */
 
 export default function Settings() {
@@ -1264,6 +1352,8 @@ export default function Settings() {
           )}
 
           {activeSection === 'sons' && <SonsSection />}
+
+          {activeSection === 'notifications' && <NotificationsSection />}
 
           {activeSection === 'compte' && (
             <CompteSection

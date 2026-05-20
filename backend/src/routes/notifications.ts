@@ -5,6 +5,8 @@ import {
   emitNotificationDeleted,
   emitNotificationUpdated,
   serializeNotification,
+  parseNotificationPreferences,
+  NOTIFICATION_CATEGORY_IDS,
 } from '../utils/notifications.js';
 import { getWebPushPublicKey, isWebPushConfigured } from '../utils/web-push.js';
 
@@ -111,6 +113,49 @@ router.post('/push/unsubscribe', authMiddleware, async (req: AuthRequest, res: R
   } catch (error) {
     console.error('Unsubscribe web push error:', error);
     return res.status(500).json({ error: 'Failed to delete subscription' });
+  }
+});
+
+// ─── GET /notifications/preferences ──────────────────────────────────────────
+// Per-category inbox notification toggles. Missing categories default to enabled.
+router.get('/preferences', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { notificationPreferences: true },
+    });
+    res.json({ preferences: parseNotificationPreferences(user?.notificationPreferences) });
+  } catch (error) {
+    console.error('Get notification preferences error:', error);
+    res.status(500).json({ error: 'Failed to get notification preferences' });
+  }
+});
+
+// ─── PUT /notifications/preferences ───────────────────────────────────────────
+router.put('/preferences', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+
+    const incoming = (req.body as { preferences?: Record<string, unknown> })?.preferences;
+    if (!incoming || typeof incoming !== 'object') {
+      return res.status(400).json({ error: 'preferences object required' });
+    }
+
+    const sanitized: Record<string, boolean> = {};
+    for (const category of NOTIFICATION_CATEGORY_IDS) {
+      sanitized[category] = incoming[category] !== false;
+    }
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { notificationPreferences: JSON.stringify(sanitized) },
+    });
+
+    res.json({ preferences: parseNotificationPreferences(JSON.stringify(sanitized)) });
+  } catch (error) {
+    console.error('Update notification preferences error:', error);
+    res.status(500).json({ error: 'Failed to update notification preferences' });
   }
 });
 

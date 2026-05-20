@@ -53,6 +53,7 @@ model User {
   referralRewardGrantedAt DateTime?
   welcomeInboxSentAt      DateTime?
   hasSeenIntroVideo       Boolean   @default(false)
+  notificationPreferences String? // JSON: per-category inbox notification toggles. null/missing = all enabled
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
