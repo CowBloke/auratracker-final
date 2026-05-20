@@ -39,6 +39,7 @@ const GAME_CHAT_LABELS: Record<string, string> = {
   fruit_ninja: 'Fruit Ninja',
   hexgl: 'HexGL',
   hextris: 'Hextris',
+  paper_io: 'Paper.io',
 };
 
 const CASINO_HOUSE_EDGE_RATE = 0;
@@ -299,6 +300,19 @@ const GAME_REWARDS = {
       { minScore: 3200, moneyMultiplier: 0.25, auraBonus: 35 },   // 3200+: 0.25x score + 35 aura
     ],
   },
+  // Paper.io: score = round(territory% * 10000) + kills * 500 (so 100 points = 1% territory)
+  paper_io: {
+    minScoreForReward: 300,
+    scoreTiers: [
+      { minScore: 0, moneyReward: 0, auraBonus: 0 },
+      { minScore: 300, moneyReward: 12, auraBonus: 1 },     // ~3% territoire
+      { minScore: 800, moneyReward: 28, auraBonus: 3 },     // ~8%
+      { minScore: 1500, moneyReward: 55, auraBonus: 6 },    // ~15%
+      { minScore: 2500, moneyReward: 95, auraBonus: 10 },   // ~25%
+      { minScore: 4000, moneyReward: 150, auraBonus: 16 },  // ~40%
+      { minScore: 6000, moneyReward: 240, auraBonus: 26 },  // ~60%
+    ],
+  },
 };
 
 // Calculate progressive rewards for Doodle Jump based on score
@@ -497,6 +511,32 @@ function calculateBlockBlastRewards(score: number, isNewHighScore: boolean): { m
   if (isNewHighScore) {
     moneyReward += Math.min(Math.floor(score / 70) * 4, 96);
     auraReward += Math.min(Math.floor(score / 120), 12);
+  }
+
+  return { money: moneyReward, aura: auraReward };
+}
+
+function calculatePaperIoRewards(score: number, isNewHighScore: boolean): { money: number; aura: number } {
+  const config = GAME_REWARDS.paper_io;
+
+  if (score < config.minScoreForReward) {
+    return { money: 0, aura: 0 };
+  }
+
+  let selectedTier = config.scoreTiers[0];
+  for (let i = config.scoreTiers.length - 1; i >= 0; i--) {
+    if (score >= config.scoreTiers[i].minScore) {
+      selectedTier = config.scoreTiers[i];
+      break;
+    }
+  }
+
+  let moneyReward = selectedTier.moneyReward;
+  let auraReward = selectedTier.auraBonus;
+
+  if (isNewHighScore) {
+    moneyReward += Math.min(Math.floor(score / 1000) * 5, 80);
+    auraReward += Math.min(Math.floor(score / 1500), 12);
   }
 
   return { money: moneyReward, aura: auraReward };
@@ -1364,6 +1404,10 @@ router.post('/:gameType/complete', authMiddleware, validate(gameCompleteSchema),
       auraReward = rewards.aura;
     } else if (gameType === 'hextris') {
       const rewards = calculateHextrisRewards(score, isNewHighScore);
+      moneyReward = rewards.money;
+      auraReward = rewards.aura;
+    } else if (gameType === 'paper_io') {
+      const rewards = calculatePaperIoRewards(score, isNewHighScore);
       moneyReward = rewards.money;
       auraReward = rewards.aura;
     } else if (gameType === 'stack_tower') {

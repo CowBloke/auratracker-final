@@ -29,6 +29,7 @@ const GAME_IMAGE_BY_ID: Record<string, string> = {
   loto: '/braquage-legal-logo.png',
   morpion: '/images/games/morpion.png',
   minesweeper: '/images/games/demineur.png',
+  'paper-io': '/images/games/paperio.svg',
   'petit-bac': '/images/games/bac.png',
   poker: '/images/games/poker.png',
   polytrack: '/images/games/polytrack.png',
