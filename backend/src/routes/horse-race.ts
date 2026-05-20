@@ -10,6 +10,7 @@ import {
   HORSE_PRODUCTION_COST,
   HORSE_PRODUCTION_MS,
   HORSE_TRAIN_BASELINE_COST,
+  generateHorseBusinessUnit,
   listHorseServiceBusinesses,
   settleHorseBusinessProductions,
 } from '../modules/you/horse-business.js';
@@ -1233,6 +1234,34 @@ router.get('/businesses', authMiddleware, async (_req: AuthRequest, res: Respons
   return res.json({ businesses });
 });
 
+// List active HORSES resource-market listings (used by the buy tab in horse racing).
+router.get('/horse-market-listings', authMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    const listings = await prisma.resourceMarketListing.findMany({
+      where: { isActive: true, resourceType: 'HORSES' },
+      include: {
+        seller: { select: { id: true, username: true } },
+        business: { select: { id: true, name: true } },
+      },
+      orderBy: [{ unitPrice: 'asc' }, { createdAt: 'asc' }],
+    });
+    return res.json({
+      listings: listings.map((l) => ({
+        id: l.id,
+        sellerId: l.sellerId,
+        sellerName: l.seller?.username ?? 'Vendeur',
+        businessId: l.businessId,
+        businessName: l.business?.name ?? 'Haras',
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        createdAt: l.createdAt.toISOString(),
+      })),
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Erreur serveur.' });
+  }
+});
+
 // List existing horses put up for sale by players' stables.
 router.get('/market/horses', authMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
@@ -1379,13 +1408,13 @@ router.post('/horses/:id/cancel-sell', authMiddleware, async (req: AuthRequest, 
 // Buy a foal or an existing horse.
 router.post('/horses/buy', authMiddleware, async (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
-  const { name, businessId, horseBusinessHorseId, horseId } = req.body ?? {};
+  const { name, businessId, horseBusinessHorseId, horseId, listingId } = req.body ?? {};
 
   const info = await getUserStable(req.user.id);
   if (!info?.stable) return res.status(400).json({ error: 'Créez une écurie d\'abord.' });
   if (!info.canManage) return res.status(403).json({ error: 'Seul le chef et les officiers peuvent gérer l\'écurie.' });
 
-  if (!horseId) {
+  if (!horseId && !listingId) {
     if (typeof name !== 'string' || name.trim().length < 2 || name.length > 30) {
       return res.status(400).json({ error: 'Nom invalide (2-30 caractères).' });
     }
@@ -1395,12 +1424,69 @@ router.post('/horses/buy', authMiddleware, async (req: AuthRequest, res: Respons
     await settleHorseBusinessProductions(prisma, [businessId]);
   }
 
+  if (listingId) {
+    if (typeof name !== 'string' || name.trim().length < 2 || name.length > 30) {
+      return res.status(400).json({ error: 'Nom invalide (2-30 caractères).' });
+    }
+  }
+
   const cycleIndex = currentCycleIndex();
 
   try {
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({ where: { id: req.user!.id }, select: { money: true } });
       if (!user) throw Object.assign(new Error('User not found'), { status: 404 });
+
+      if (listingId) {
+        // Buy a horse from a resource-market HORSES listing
+        const listing = await tx.resourceMarketListing.findUnique({
+          where: { id: listingId },
+          include: { business: { select: { id: true, ownerId: true } } },
+        });
+        if (!listing || !listing.isActive || listing.resourceType !== 'HORSES') {
+          throw Object.assign(new Error('Cette offre n\'est plus disponible.'), { status: 400 });
+        }
+        if (listing.sellerId === req.user!.id) {
+          throw Object.assign(new Error('Vous ne pouvez pas acheter votre propre offre.'), { status: 400 });
+        }
+        const price = listing.unitPrice;
+        if (Number(user.money) < price) {
+          throw Object.assign(new Error(`Fonds insuffisants (${price.toLocaleString()}€ requis).`), { status: 400 });
+        }
+
+        await tx.user.update({ where: { id: req.user!.id }, data: { money: { decrement: BigInt(price) } } });
+        await tx.business.update({
+          where: { id: listing.businessId },
+          data: { treasuryMoney: { increment: price } },
+        });
+
+        const remaining = listing.quantity - 1;
+        await tx.resourceMarketListing.update({
+          where: { id: listingId },
+          data: { quantity: remaining, isActive: remaining > 0 },
+        });
+
+        const unit = generateHorseBusinessUnit();
+        const createdHorse = await tx.horse.create({
+          data: {
+            stableId: info.stable!.id,
+            name: name.trim(),
+            ...unit,
+            birthCycle: cycleIndex,
+          },
+        });
+
+        await tx.businessTransaction.create({
+          data: {
+            businessId: listing.businessId,
+            type: 'HORSE_SALE',
+            amount: BigInt(price),
+            label: `Vente stock cheval: ${createdHorse.name}`,
+            actorId: req.user!.id,
+          },
+        });
+        return { horse: createdHorse, sellerOwnerId: listing.business.ownerId };
+      }
 
       if (horseId) {
         // P2P purchase of an existing horse

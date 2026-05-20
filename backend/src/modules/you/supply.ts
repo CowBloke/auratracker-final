@@ -268,6 +268,8 @@ export async function accrueBusinessSupply(db: PrismaClient = prisma) {
   }
 
   for (const inventory of inventories) {
+    // HORSES are produced manually via the action tab only; never auto-produce passively.
+    if (inventory.resourceType === 'HORSES') continue;
     const elapsedMs = now.getTime() - inventory.lastProducedAt.getTime();
     if (elapsedMs < HOUR_MS / Math.max(1, inventory.productionRatePerHour)) continue;
 

@@ -4833,6 +4833,17 @@ export type HorseServiceBusinessDto = {
   availableHorses?: HorseBusinessHorseDto[];
 };
 
+export type HorseMarketListingDto = {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  businessId: string;
+  businessName: string;
+  quantity: number;
+  unitPrice: number;
+  createdAt: string;
+};
+
 export type MarketHorseDto = {
   id: string;
   stableId: string;
@@ -4877,10 +4888,11 @@ export const horseRaceApi = {
 
   listStables: () => api.get<{ stables: PublicStableDto[] }>('/horse-race/stables'),
   listHorseBusinesses: () => api.get<{ businesses: HorseServiceBusinessDto[] }>('/horse-race/businesses'),
+  listHorseMarketListings: () => api.get<{ listings: HorseMarketListingDto[] }>('/horse-race/horse-market-listings'),
   listMarketHorses: () => api.get<{ horses: MarketHorseDto[] }>('/horse-race/market/horses'),
   getStandings: () => api.get<HorseRaceStandingsResponse>('/horse-race/standings'),
 
-  buyHorse: (data: { name?: string; businessId?: string; horseBusinessHorseId?: string; horseId?: string }) =>
+  buyHorse: (data: { name?: string; businessId?: string; horseBusinessHorseId?: string; horseId?: string; listingId?: string }) =>
     api.post<{ success: true; horse: unknown }>('/horse-race/horses/buy', data),
   sellHorse: (id: string, data: { price: number }) =>
     api.post<{ success: true }>(`/horse-race/horses/${id}/sell`, data),

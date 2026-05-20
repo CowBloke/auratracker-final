@@ -45,7 +45,7 @@ import {
   type TopHorseDto,
   type HorseServiceBusinessDto,
   type HorseCosmetics,
-  type HorseBusinessHorseDto,
+  type HorseMarketListingDto,
 } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -1819,9 +1819,11 @@ function StableModal({
 
   const [salePriceInput, setSalePriceInput] = useState('');
   const [marketHorses, setMarketHorses] = useState<any[]>([]);
+  const [horseStockListings, setHorseStockListings] = useState<HorseMarketListingDto[]>([]);
   const [buySubTab, setBuySubTab] = useState<'foals' | 'p2p'>('foals');
   const [selectedFoalId, setSelectedFoalId] = useState<string | null>(null);
   const [selectedFoalBusinessId, setSelectedFoalBusinessId] = useState<string | null>(null);
+  const [selectedStockListingId, setSelectedStockListingId] = useState<string | null>(null);
   const [selectedMarketHorseId, setSelectedMarketHorseId] = useState<string | null>(null);
 
   const canManage = stable?.canManage ?? false;
@@ -1831,8 +1833,12 @@ function StableModal({
 
   const loadMarketHorses = async () => {
     try {
-      const res = await horseRaceApi.listMarketHorses();
-      setMarketHorses(res.data.horses);
+      const [marketRes, stockRes] = await Promise.all([
+        horseRaceApi.listMarketHorses(),
+        horseRaceApi.listHorseMarketListings(),
+      ]);
+      setMarketHorses(marketRes.data.horses);
+      setHorseStockListings(stockRes.data.listings);
     } catch (err) {
       console.error(err);
     }
@@ -2244,7 +2250,7 @@ function StableModal({
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => { setBuySubTab('foals'); setSelectedFoalId(null); setSelectedMarketHorseId(null); }}
+                      onClick={() => { setBuySubTab('foals'); setSelectedFoalId(null); setSelectedMarketHorseId(null); setSelectedStockListingId(null); }}
                       className={cn(
                         'px-3 py-1.5 rounded-lg text-[12px] font-bold transition flex items-center gap-1.5',
                         buySubTab === 'foals'
@@ -2252,11 +2258,11 @@ function StableModal({
                           : 'text-muted-foreground hover:text-white hover:bg-white/5'
                       )}
                     >
-                      🍼 Poulains de l&apos;élevage
+                      🐎 Stock de l&apos;haras
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setBuySubTab('p2p'); setSelectedFoalId(null); setSelectedMarketHorseId(null); }}
+                      onClick={() => { setBuySubTab('p2p'); setSelectedFoalId(null); setSelectedMarketHorseId(null); setSelectedStockListingId(null); }}
                       className={cn(
                         'px-3 py-1.5 rounded-lg text-[12px] font-bold transition flex items-center gap-1.5',
                         buySubTab === 'p2p'
@@ -2278,37 +2284,21 @@ function StableModal({
                   <div className="w-[320px] border-r border-white/10 overflow-y-auto p-3 space-y-2 bg-black/10">
                     {buySubTab === 'foals' ? (
                       (() => {
-                        // Gather all produced foals from stud farms
-                        const foalsList: { foal: HorseBusinessHorseDto; business: HorseServiceBusinessDto }[] = [];
-                        horseBusinesses.forEach((biz) => {
-                          if (biz.availableHorses) {
-                            biz.availableHorses.forEach((f) => {
-                              foalsList.push({ foal: f, business: biz });
-                            });
-                          }
-                        });
-
-                        if (foalsList.length === 0) {
+                        if (horseStockListings.length === 0) {
                           return (
                             <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground gap-2">
                               <Sparkles className="h-6 w-6 opacity-20" />
-                              <p className="text-[11.5px]">Aucun poulain n&apos;est disponible dans les haras pour le moment.</p>
+                              <p className="text-[11.5px]">Aucune offre de chevaux disponible sur le marché pour le moment.</p>
                             </div>
                           );
                         }
 
-                        // Sort by created descending
-                        foalsList.sort((a, b) => new Date(b.foal.createdAt).getTime() - new Date(a.foal.createdAt).getTime());
-
-                        return foalsList.map(({ foal, business }) => {
-                          const isSel = selectedFoalId === foal.id;
+                        return horseStockListings.map((listing) => {
+                          const isSel = selectedStockListingId === listing.id;
                           return (
                             <div
-                              key={foal.id}
-                              onClick={() => {
-                                setSelectedFoalId(foal.id);
-                                setSelectedFoalBusinessId(business.id);
-                              }}
+                              key={listing.id}
+                              onClick={() => setSelectedStockListingId(listing.id)}
                               className={cn(
                                 'flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition border',
                                 isSel
@@ -2316,25 +2306,15 @@ function StableModal({
                                   : 'bg-white/3 border-white/5 hover:bg-white/6 hover:border-white/10'
                               )}
                             >
-                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-black/40 border border-white/10">
-                                <HorseAvatar
-                                  bodyColor={foal.bodyColor}
-                                  pattern={foal.pattern}
-                                  patternColor={foal.patternColor}
-                                  mane="#1a1410"
-                                  silks1="#ccc"
-                                  silks2="#666"
-                                  silksDesign="solid"
-                                  helmet="#000"
-                                  accessory="none"
-                                />
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-black/40 border border-white/10 text-[22px]">
+                                🐎
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-[12px] font-bold text-white truncate">Poulain d&apos;Élite</p>
-                                <p className="text-[9.5px] text-cyan-300 truncate">Haras: {business.name}</p>
+                                <p className="text-[12px] font-bold text-white truncate">{listing.businessName}</p>
+                                <p className="text-[9.5px] text-cyan-300 truncate">Vendeur: {listing.sellerName}</p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[9.5px] text-amber-200 font-semibold">{foal.stars} ⭐</span>
-                                  <span className="text-[8.5px] text-muted-foreground/60">· {formatMoney(config.HORSE_BUY_COST)}</span>
+                                  <span className="text-[9.5px] text-amber-200 font-semibold">{listing.quantity} dispo</span>
+                                  <span className="text-[8.5px] text-emerald-300 font-bold">· {formatMoney(listing.unitPrice)}/cheval</span>
                                 </div>
                               </div>
                             </div>
@@ -2400,89 +2380,48 @@ function StableModal({
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {buySubTab === 'foals' ? (
                       (() => {
-                        const foalsList: { foal: HorseBusinessHorseDto; business: HorseServiceBusinessDto }[] = [];
-                        horseBusinesses.forEach((biz) => {
-                          if (biz.availableHorses) {
-                            biz.availableHorses.forEach((f) => {
-                              foalsList.push({ foal: f, business: biz });
-                            });
-                          }
-                        });
-                        const match = foalsList.find((f) => f.foal.id === selectedFoalId);
+                        const listing = horseStockListings.find((l) => l.id === selectedStockListingId);
 
-                        if (!match) {
+                        if (!listing) {
                           return (
                             <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground gap-2 py-12">
                               <Sparkles className="h-8 w-8 opacity-15" />
-                              <p className="text-[12px]">Sélectionnez un poulain sur la gauche<br />pour afficher ses détails génétiques.</p>
+                              <p className="text-[12px]">Sélectionnez une offre sur la gauche<br />pour acheter un cheval.</p>
                             </div>
                           );
                         }
 
-                        const { foal, business } = match;
-
                         return (
                           <div className="space-y-4">
-                            {/* Horse Preview */}
+                            {/* Listing Preview */}
                             <div className="flex items-center gap-4 p-3 rounded-lg border border-white/5 bg-white/2">
-                              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-black/50 border border-white/10 shadow-inner">
-                                <HorseAvatar
-                                  bodyColor={foal.bodyColor}
-                                  pattern={foal.pattern}
-                                  patternColor={foal.patternColor}
-                                  mane="#1a1410"
-                                  silks1="#ccc"
-                                  silks2="#666"
-                                  silksDesign="solid"
-                                  helmet="#000"
-                                  accessory="none"
-                                />
+                              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-black/50 border border-white/10 shadow-inner text-[32px]">
+                                🐎
                               </div>
                               <div>
-                                <h3 className="text-[14px] font-bold text-white">Nouveau Poulain</h3>
-                                <p className="text-[11px] text-muted-foreground">Fournisseur: <span className="text-cyan-300 font-semibold">{business.name}</span></p>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">Né de l&apos;élevage industriel • Statut: Disponible</p>
+                                <h3 className="text-[14px] font-bold text-white">{listing.businessName}</h3>
+                                <p className="text-[11px] text-muted-foreground">Vendeur: <span className="text-cyan-300 font-semibold">{listing.sellerName}</span></p>
+                                <p className="text-[10px] text-muted-foreground mt-0.5">{listing.quantity} cheval(aux) disponible(s) · Gènes aléatoires à l&apos;achat</p>
                               </div>
                             </div>
 
-                            {/* Gene Stats */}
-                            <div className="space-y-2 rounded-lg p-3 bg-white/2 border border-white/5">
-                              <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-bold">Potentiel Génétique de base (non entraîné)</p>
-                              <div className="space-y-1.5">
-                                <div>
-                                  <div className="flex justify-between text-[11px] mb-0.5">
-                                    <span className="text-muted-foreground">Vitesse</span>
-                                    <span className="font-semibold text-cyan-200">{foal.geneSpeed.toFixed(2)}</span>
-                                  </div>
-                                  <div className="h-1.5 w-full rounded bg-white/5 overflow-hidden">
-                                    <div className="h-full bg-cyan-400" style={{ width: `${(foal.geneSpeed / 10) * 100}%` }} />
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="flex justify-between text-[11px] mb-0.5">
-                                    <span className="text-muted-foreground">Endurance</span>
-                                    <span className="font-semibold text-cyan-200">{foal.geneStamina.toFixed(2)}</span>
-                                  </div>
-                                  <div className="h-1.5 w-full rounded bg-white/5 overflow-hidden">
-                                    <div className="h-full bg-cyan-400" style={{ width: `${(foal.geneStamina / 10) * 100}%` }} />
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="flex justify-between text-[11px] mb-0.5">
-                                    <span className="text-muted-foreground">Constance</span>
-                                    <span className="font-semibold text-cyan-200">{foal.geneConsistency.toFixed(2)}</span>
-                                  </div>
-                                  <div className="h-1.5 w-full rounded bg-white/5 overflow-hidden">
-                                    <div className="h-full bg-cyan-400" style={{ width: `${(foal.geneConsistency / 10) * 100}%` }} />
-                                  </div>
-                                </div>
+                            {/* Price Info */}
+                            <div className="space-y-1.5 rounded-lg p-3 bg-white/2 border border-white/5">
+                              <p className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-bold">Détails de l&apos;offre</p>
+                              <div className="flex justify-between text-[12px]">
+                                <span className="text-muted-foreground">Prix unitaire</span>
+                                <span className="font-bold text-emerald-300">{formatMoney(listing.unitPrice)}</span>
+                              </div>
+                              <div className="flex justify-between text-[12px]">
+                                <span className="text-muted-foreground">Stock disponible</span>
+                                <span className="font-bold text-white">{listing.quantity}</span>
                               </div>
                             </div>
 
                             {/* Purchase Name Input & Action */}
                             <div className="space-y-3 p-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5">
                               <AppModal.Field
-                                label="Donner un nom à votre poulain"
+                                label="Donner un nom à votre cheval"
                                 value={newHorseName}
                                 onChange={setNewHorseName}
                                 placeholder="Ex: Éclair du Nord"
@@ -2493,7 +2432,7 @@ function StableModal({
                                 variant="solid"
                                 full
                                 size="md"
-                                disabled={busy || userMoney < config.HORSE_BUY_COST || newHorseName.trim().length < 2}
+                                disabled={busy || userMoney < listing.unitPrice || newHorseName.trim().length < 2}
                                 onClick={async () => {
                                   if (newHorseName.trim().length < 2) {
                                     toast.error('Nom trop court.');
@@ -2503,12 +2442,12 @@ function StableModal({
                                     setBusy(true);
                                     await horseRaceApi.buyHorse({
                                       name: newHorseName.trim(),
-                                      businessId: selectedFoalBusinessId!,
-                                      horseBusinessHorseId: foal.id,
+                                      listingId: listing.id,
                                     });
-                                    toast.success('Poulain acheté avec succès !');
+                                    toast.success('Cheval acheté avec succès !');
                                     setNewHorseName('');
-                                    setSelectedFoalId(null);
+                                    setSelectedStockListingId(null);
+                                    await loadMarketHorses();
                                     await onUpdated();
                                     setTab('horses');
                                   } catch (err) {
@@ -2519,7 +2458,7 @@ function StableModal({
                                   }
                                 }}
                               >
-                                {busy ? 'Achat en cours…' : `Acheter le poulain pour ${formatMoney(config.HORSE_BUY_COST)}`}
+                                {busy ? 'Achat en cours…' : `Acheter pour ${formatMoney(listing.unitPrice)}`}
                               </AppModal.Button>
                             </div>
                           </div>

@@ -11,7 +11,6 @@ import {
   type YouEconomyResourceType,
 } from './economy.js';
 import { autoListOutput } from './resource-market.js';
-import { generateHorseBusinessUnit } from './horse-business.js';
 import { isBusinessManager } from './service.js';
 
 type ResourceType = YouEconomyResourceType;
@@ -471,16 +470,7 @@ export async function settleActiveResourceActions() {
         if (!biz) return;
 
         for (const output of active.outputs) {
-          if (output.resourceType === 'HORSES') {
-            // Horse production creates individual HorseBusinessHorse records so they
-            // appear in the stable buy modal (foals tab) instead of bulk inventory.
-            for (let i = 0; i < output.quantity; i++) {
-              const unit = generateHorseBusinessUnit();
-              await tx.horseBusinessHorse.create({
-                data: { businessId: biz.id, ...unit },
-              });
-            }
-          } else {
+          {
             const profile = getBusinessSupplyProfiles(biz.typeKey, biz.customData).find((entry) => entry.resourceType === output.resourceType);
             const existingInv = await tx.businessResourceInventory.findUnique({
               where: { businessId_resourceType: { businessId: biz.id, resourceType: output.resourceType } },
