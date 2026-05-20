@@ -31,7 +31,8 @@ import { toClanTagData } from '@/components/clans/ClanTag';
 import { supportApi, uploadUserImage } from '@/services/api';
 import { IMAGE_UPLOAD_INPUT_ACCEPT, prepareImageUploadPayload } from '@/lib/image-upload';
 import { t } from '@/lib/i18n';
-import { FormattedMessageText } from '@/lib/message-formatting';
+import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
+import { MessageFormatToolbar } from './MessageFormatToolbar';
 
 type TimeoutRef = ReturnType<typeof setTimeout> | null;
 type ReplyTarget = {
@@ -1106,6 +1107,12 @@ export default function ChatSidebar() {
                   disabled={isChatMuted}
                   className="min-h-9 max-h-40 resize-none overflow-y-hidden text-sm bg-transparent border-border/50 py-2"
                 />
+                <MessageFormatToolbar inputRef={inputRef} value={input} onChange={setInput} />
+                {hasMessageFormatting(input) && (
+                  <div className="mt-2 rounded-lg border border-border/50 bg-background/70 px-2.5 py-1.5 text-sm text-foreground">
+                    <FormattedMessageText text={input} />
+                  </div>
+                )}
                 {showMentionList && (
                   <div className="absolute bottom-full z-50 mb-2 w-full rounded-md border border-border/60 bg-background/95 shadow-lg">
                     <div className="max-h-40 overflow-auto py-1">

@@ -1,13 +1,14 @@
 ﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageCircle, X, Send, Shield, ChevronDown, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MessageFormatToolbar } from '@/components/chat/MessageFormatToolbar';
 import { Textarea } from '@/components/ui/textarea';
 import { supportApi, SupportMessage, uploadUserImage } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { cn } from '@/lib/utils';
 import { useSmartScroll } from '@/hooks/use-smart-scroll';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { FormattedMessageText } from '@/lib/message-formatting';
+import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -24,6 +25,7 @@ export default function SupportChat({ rightOffset = '1.5rem' }: SupportChatProps
   const [uploadingImage, setUploadingImage] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [textareaElement, setTextareaElement] = useState<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { messagesEndRef, hasNewMessage, scrollToBottom, setScrollAreaRef } = useSmartScroll({
     dependency: [messages],
@@ -255,15 +257,24 @@ export default function SupportChat({ rightOffset = '1.5rem' }: SupportChatProps
                   className="hidden"
                 />
               </div>
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Votre message…"
-                className="resize-none text-sm min-h-[36px] max-h-24 py-2"
-                rows={1}
-                maxLength={1000}
-              />
+              <div className="flex-1">
+                <Textarea
+                  ref={setTextareaElement}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Votre message…"
+                  className="resize-none text-sm min-h-[36px] max-h-24 py-2"
+                  rows={1}
+                  maxLength={1000}
+                />
+                <MessageFormatToolbar inputRef={{ current: textareaElement }} value={input} onChange={setInput} />
+                {hasMessageFormatting(input) && (
+                  <div className="mt-2 rounded-lg border border-border/50 bg-background/70 px-2.5 py-1.5 text-sm text-foreground">
+                    <FormattedMessageText text={input} />
+                  </div>
+                )}
+              </div>
               <Button
                 size="icon"
                 className="h-9 w-9 shrink-0"

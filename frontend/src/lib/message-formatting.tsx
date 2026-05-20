@@ -20,8 +20,8 @@ const FORMAT_STYLES: Record<string, string> = {
   b: 'font-bold',
   u: 'underline underline-offset-2',
   underline: 'underline underline-offset-2',
-  rainbow: 'bg-gradient-to-r from-red-500 via-yellow-500 via-emerald-500 via-sky-500 to-purple-500 bg-clip-text text-transparent font-semibold',
-  multi: 'bg-gradient-to-r from-pink-500 via-amber-500 to-cyan-500 bg-clip-text text-transparent font-semibold',
+  rainbow: 'animated-message-rainbow font-semibold',
+  multi: 'animated-message-rainbow font-semibold',
 };
 
 function findMatchingClose(text: string, code: string, contentStart: number) {
@@ -98,3 +98,6 @@ export function FormattedMessageText({ text }: { text: string }) {
   return <>{parseFormattedMessage(text)}</>;
 }
 
+export function hasMessageFormatting(text: string) {
+  return /#([a-z]+)\[/i.test(text);
+}
