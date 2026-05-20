@@ -2184,12 +2184,13 @@ export interface ClanChatMessage {
   id: string;
   message: string;
   createdAt: string;
+  type?: string;
   user: {
     id: string;
     username: string;
     usernameColor: string | null;
     profilePicture: string | null;
-  };
+  } | null;
 }
 
 export interface ClanPumpUpMessage {
@@ -2952,6 +2953,17 @@ export interface Ban {
   };
 }
 
+export interface SharedIpUser {
+  id: string;
+  username: string;
+  email: string;
+  isAdmin: boolean;
+  activeBan: {
+    type: 'TEMPORARY' | 'PERMANENT';
+    expiresAt: string | null;
+  } | null;
+}
+
 export interface AdminWarning {
   id: string;
   userId: string;
@@ -3398,6 +3410,8 @@ export const adminApi = {
   getBans: () => api.get<{ bans: Ban[] }>('/admin/bans'),
   createBan: (data: { userId: string; reason: string; type: 'TEMPORARY' | 'PERMANENT'; durationHours?: number }) =>
     api.post<{ ban: Ban; message: string }>('/admin/bans', data),
+  getSharedIpUsers: (userId: string) =>
+    api.get<{ ip: string | null; users: SharedIpUser[] }>(`/admin/users/${userId}/shared-ip`),
   unbanUser: (userId: string) => api.delete<{ success: boolean; message: string }>(`/admin/bans/${userId}`),
   // Activity logs
   getLogs: (params?: {
@@ -3470,7 +3484,7 @@ export const adminApi = {
     startDate?: string;
     endDate?: string;
   }) => api.get<{
-    data: { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] }[];
+    data: { timestamp: string; count: number; max: number; usernames: { userId: string; username: string; schoolLevel?: string | null }[] }[];
     peak: number;
     peakAt: string | null;
     insights: OnlineHistoryInsights;

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, BugReportMessage, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage, type AdminWealthStats } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, BugReportMessage, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, SharedIpUser, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage, type AdminWealthStats } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
@@ -49,6 +49,7 @@ import { SettingsTab } from './tabs/SettingsTab';
 import { BadgesTab } from './tabs/BadgesTab';
 import { CommunicationTab } from './tabs/CommunicationTab';
 import { BanDialog } from './dialogs/BanDialog';
+import { SharedIpBanDialog } from './dialogs/SharedIpBanDialog';
 import { EditUserModal } from './dialogs/EditUserModal';
 import { BadgeAssignModal } from './dialogs/BadgeAssignModal';
 import { MassDeleteConfirmation } from './dialogs/MassDeleteConfirmation';
@@ -1198,7 +1199,7 @@ export default function Admin() {
   };
 
   // Activity tab state
-  type OnlineHistoryPoint = { timestamp: string; count: number; max: number; usernames: { userId: string; username: string }[] };
+  type OnlineHistoryPoint = { timestamp: string; count: number; max: number; usernames: { userId: string; username: string; schoolLevel?: string | null }[] };
   type ActivityChartPoint = OnlineHistoryPoint & { ts: number };
   type ActivityHoverState = { cursorTs: number; point: ActivityChartPoint };
   type OnlineStats = { current: number; allTimeRecord: number; allTimeRecordAt: string | null; avg1d: number; avg7d: number; avg30d: number; peak1d: number; peak7d: number; peak30d: number };
@@ -1365,6 +1366,21 @@ export default function Admin() {
   const [banDuration, setBanDuration] = useState(24);
   const [creatingBan, setCreatingBan] = useState(false);
   const [unbanning, setUnbanning] = useState<string | null>(null);
+
+  // Shared-IP ban state (popup shown after a single ban)
+  const [sharedIpDialogOpen, setSharedIpDialogOpen] = useState(false);
+  const [sharedIp, setSharedIp] = useState<string | null>(null);
+  const [sharedIpUsers, setSharedIpUsers] = useState<SharedIpUser[]>([]);
+  const [loadingSharedIp, setLoadingSharedIp] = useState(false);
+  const [sharedIpBanningId, setSharedIpBanningId] = useState<string | null>(null);
+  const [sharedIpBannedIds, setSharedIpBannedIds] = useState<string[]>([]);
+  const [sharedIpBannedUsername, setSharedIpBannedUsername] = useState('');
+  // Ban parameters captured at the moment of the base ban (reused for quick bans)
+  const [sharedIpBanParams, setSharedIpBanParams] = useState<{
+    reason: string;
+    type: 'TEMPORARY' | 'PERMANENT';
+    durationHours: number;
+  }>({ reason: '', type: 'TEMPORARY', durationHours: 24 });
 
   // Admin warnings state
   const [warnings, setWarnings] = useState<AdminWarning[]>([]);
@@ -3410,8 +3426,9 @@ export default function Admin() {
     }
 
     setCreatingBan(true);
+    const isMassBan = massBanTargetIds.length > 0;
     try {
-      const targetIds = massBanTargetIds.length > 0 ? massBanTargetIds : [banUserId];
+      const targetIds = isMassBan ? massBanTargetIds : [banUserId];
       for (const uid of targetIds) {
         await adminApi.createBan({
           userId: uid,
@@ -3420,16 +3437,101 @@ export default function Admin() {
           durationHours: banType === 'TEMPORARY' ? banDuration : undefined,
         });
       }
-      showMessage('success', massBanTargetIds.length > 0 ? `${massBanTargetIds.length} utilisateur(s) bannis` : 'Utilisateur banni avec succès');
+      showMessage('success', isMassBan ? `${massBanTargetIds.length} utilisateur(s) bannis` : 'Utilisateur banni avec succès');
       setBanDialogOpen(false);
       setMassBanTargetIds([]);
-      if (massBanTargetIds.length > 0) setSelectedUserIds([]);
+      if (isMassBan) setSelectedUserIds([]);
+      fetchBans();
+      fetchUsers();
+
+      // After a single ban, surface other accounts sharing the same IP for quick banning
+      if (!isMassBan) {
+        const bannedUser = users.find((u) => u.id === banUserId);
+        openSharedIpDialog(banUserId, bannedUser?.username || 'Utilisateur', {
+          reason: banReason,
+          type: banType,
+          durationHours: banDuration,
+        });
+      }
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.error || 'Erreur lors du bannissement');
+    } finally {
+      setCreatingBan(false);
+    }
+  };
+
+  const openSharedIpDialog = async (
+    userId: string,
+    username: string,
+    params: { reason: string; type: 'TEMPORARY' | 'PERMANENT'; durationHours: number }
+  ) => {
+    setSharedIpBannedUsername(username);
+    setSharedIpBanParams(params);
+    setSharedIpUsers([]);
+    setSharedIp(null);
+    setSharedIpBannedIds([]);
+    setSharedIpBanningId(null);
+    setLoadingSharedIp(true);
+    setSharedIpDialogOpen(true);
+    try {
+      const { data } = await adminApi.getSharedIpUsers(userId);
+      // Don't auto-close: admin may want to confirm there are no shared accounts
+      setSharedIp(data.ip);
+      setSharedIpUsers(data.users);
+    } catch {
+      showMessage('error', 'Impossible de récupérer les comptes liés à cette IP');
+      setSharedIpDialogOpen(false);
+    } finally {
+      setLoadingSharedIp(false);
+    }
+  };
+
+  const quickBanSharedIpUser = async (userId: string) => {
+    setSharedIpBanningId(userId);
+    try {
+      await adminApi.createBan({
+        userId,
+        reason: sharedIpBanParams.reason,
+        type: sharedIpBanParams.type,
+        durationHours: sharedIpBanParams.type === 'TEMPORARY' ? sharedIpBanParams.durationHours : undefined,
+      });
+      setSharedIpBannedIds((prev) => [...prev, userId]);
       fetchBans();
       fetchUsers();
     } catch (error: any) {
       showMessage('error', error.response?.data?.error || 'Erreur lors du bannissement');
     } finally {
-      setCreatingBan(false);
+      setSharedIpBanningId(null);
+    }
+  };
+
+  const quickBanAllSharedIp = async () => {
+    const targets = sharedIpUsers.filter(
+      (u) => !u.isAdmin && !u.activeBan && !sharedIpBannedIds.includes(u.id)
+    );
+    if (targets.length === 0) return;
+    setSharedIpBanningId('__all__');
+    const newlyBanned: string[] = [];
+    try {
+      for (const u of targets) {
+        try {
+          await adminApi.createBan({
+            userId: u.id,
+            reason: sharedIpBanParams.reason,
+            type: sharedIpBanParams.type,
+            durationHours: sharedIpBanParams.type === 'TEMPORARY' ? sharedIpBanParams.durationHours : undefined,
+          });
+          newlyBanned.push(u.id);
+        } catch {
+          // Skip failures (e.g. already banned) and continue
+        }
+      }
+      setSharedIpBannedIds((prev) => [...prev, ...newlyBanned]);
+      showMessage('success', `${newlyBanned.length} utilisateur(s) bannis`);
+      fetchBans();
+      fetchUsers();
+    } finally {
+      setSharedIpBanningId(null);
     }
   };
 
@@ -5122,6 +5224,22 @@ export default function Admin() {
         setBanDuration={setBanDuration}
         creatingBan={creatingBan}
         onCreateBan={createBan}
+      />
+
+      {/* Shared-IP Ban Dialog */}
+      <SharedIpBanDialog
+        isOpen={sharedIpDialogOpen}
+        onOpenChange={setSharedIpDialogOpen}
+        ip={sharedIp}
+        bannedUsername={sharedIpBannedUsername}
+        banType={sharedIpBanParams.type}
+        banDuration={sharedIpBanParams.durationHours}
+        users={sharedIpUsers}
+        loading={loadingSharedIp}
+        banningId={sharedIpBanningId}
+        bannedIds={sharedIpBannedIds}
+        onBanUser={quickBanSharedIpUser}
+        onBanAll={quickBanAllSharedIp}
       />
 
       {/* Edit User Modal */}

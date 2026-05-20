@@ -57,6 +57,17 @@ const clanLeaderSelect = {
   profilePicture: true,
 } satisfies Prisma.UserSelect;
 
+// Post an "announce" message in a clan chat (e.g. role promotions/demotions).
+const createClanSystemMessage = async (clanId: string, message: string) => {
+  try {
+    await prisma.clanMessage.create({
+      data: { clanId, type: 'system', message },
+    });
+  } catch (error) {
+    console.error('Create clan system message error:', error);
+  }
+};
+
 const clanSummaryInclude = Prisma.validator<Prisma.ClanInclude>()({
   members: {
     include: {
@@ -1779,6 +1790,7 @@ router.get('/:id/chat', authMiddleware, async (req: AuthRequest, res: Response) 
         id: message.id,
         message: message.message,
         createdAt: message.createdAt,
+        type: message.type,
         user: message.user,
       })),
     });
@@ -1962,6 +1974,7 @@ router.post('/:id/chat', authMiddleware, async (req: AuthRequest, res: Response)
         id: createdMessage.id,
         message: createdMessage.message,
         createdAt: createdMessage.createdAt,
+        type: createdMessage.type,
         user: createdMessage.user,
       },
     });
@@ -2718,7 +2731,7 @@ router.post('/:id/members/:targetUserId/promote', authMiddleware, async (req: Au
             userId: targetUserId,
           },
         },
-        select: { id: true, isLeader: true },
+        select: { id: true, isLeader: true, user: { select: { username: true } } },
       }),
       prisma.clan.findUnique({ where: { id }, select: { name: true } }),
     ]);
@@ -2740,6 +2753,8 @@ router.post('/:id/members/:targetUserId/promote', authMiddleware, async (req: Au
       where: { id: member.id },
       data: { isLeader: true, ...(officierRole ? { roleId: officierRole.id } : {}) },
     });
+
+    void createClanSystemMessage(id, `${member.user.username} a été promu Officier.`);
 
     createNotification({
       userId: targetUserId,
@@ -2800,7 +2815,7 @@ router.post('/:id/members/:targetUserId/demote', authMiddleware, async (req: Aut
             userId: targetUserId,
           },
         },
-        select: { id: true, isLeader: true },
+        select: { id: true, isLeader: true, user: { select: { username: true } } },
       }),
       prisma.clan.findUnique({ where: { id }, select: { ownerId: true, name: true } }),
     ]);
@@ -2826,6 +2841,8 @@ router.post('/:id/members/:targetUserId/demote', authMiddleware, async (req: Aut
       where: { id: member.id },
       data: { isLeader: false, ...(membreRole ? { roleId: membreRole.id } : {}) },
     });
+
+    void createClanSystemMessage(id, `${member.user.username} est repassé simple membre.`);
 
     createNotification({
       userId: targetUserId,
@@ -2883,7 +2900,7 @@ router.post('/:id/members/:targetUserId/transfer-leadership', authMiddleware, as
             userId: targetUserId,
           },
         },
-        select: { id: true },
+        select: { id: true, user: { select: { username: true } } },
       }),
     ]);
 
@@ -2915,6 +2932,8 @@ router.post('/:id/members/:targetUserId/transfer-leadership', authMiddleware, as
         data: { isLeader: true },
       });
     });
+
+    void createClanSystemMessage(id, `${targetMember.user.username} est désormais le Chef du clan.`);
 
     createNotification({
       userId: targetUserId,
@@ -3794,6 +3813,7 @@ router.post('/:id/members/:targetUserId/role', authMiddleware, async (req: AuthR
 
   const { roleId } = req.body ?? {};
 
+  let roleName: string | null = null;
   if (roleId) {
     const role = await prisma.clanRole.findUnique({ where: { id: roleId } });
     if (!role || role.clanId !== id) return res.status(404).json({ error: 'Rôle introuvable.' });
@@ -3803,15 +3823,26 @@ router.post('/:id/members/:targetUserId/role', authMiddleware, async (req: AuthR
         return res.status(400).json({ error: 'Seul le chef du clan peut avoir le rôle Chef.' });
       }
     }
+    roleName = role.name;
   }
 
-  const member = await prisma.clanMember.findFirst({ where: { clanId: id, userId: targetUserId } });
+  const member = await prisma.clanMember.findFirst({
+    where: { clanId: id, userId: targetUserId },
+    include: { user: { select: { username: true } } },
+  });
   if (!member) return res.status(404).json({ error: 'Membre introuvable.' });
 
   await prisma.clanMember.update({
     where: { id: member.id },
     data: { roleId: roleId || null },
   });
+
+  void createClanSystemMessage(
+    id,
+    roleName
+      ? `${member.user.username} a reçu le rôle ${roleName}.`
+      : `${member.user.username} n'a plus de rôle.`
+  );
 
   return res.json({ success: true });
 });

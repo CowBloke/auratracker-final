@@ -2163,12 +2163,22 @@ export default function Clans() {
                               <div className="py-8 text-center text-sm text-muted-foreground">Lance la conversation.</div>
                             ) : (
                               chatMessages.map((entry) => {
-                                const isOwnMessage = entry.user.id === user?.id;
+                                if (entry.type === 'system') {
+                                  return (
+                                    <div key={entry.id} className="flex justify-center">
+                                      <div className="flex max-w-[90%] items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5">
+                                        <Megaphone className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                                        <p className="whitespace-pre-wrap break-words text-center text-xs text-amber-600 dark:text-amber-300">{entry.message}</p>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                const isOwnMessage = entry.user?.id === user?.id;
                                 return (
                                   <div key={entry.id} className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}>
                                     <div className={cn('max-w-[85%] rounded-xl border border-border/50 px-3 py-2', isOwnMessage ? 'border-primary/20 bg-primary/10' : 'bg-background')}>
                                       <div className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                        <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
+                                        <UsernameDisplay username={entry.user?.username ?? 'Inconnu'} usernameColor={entry.user?.usernameColor ?? null} />
                                         <span>•</span>
                                         <span>{formatDate(entry.createdAt)}</span>
                                       </div>

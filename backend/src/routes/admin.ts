@@ -3987,6 +3987,82 @@ router.get('/logs/stats', authMiddleware, requireAdminOrFiscal, async (req: Auth
 
 // ========== BAN SYSTEM ==========
 
+// Get users sharing the same (last used) IP address as a given user (admin only)
+router.get('/users/:id/shared-ip', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Find the last IP the target user logged in / registered from
+    const lastIpLog = await prisma.log.findFirst({
+      where: {
+        userId: id,
+        ipAddress: { not: null },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { ipAddress: true },
+    });
+
+    const ip = lastIpLog?.ipAddress ?? null;
+
+    if (!ip) {
+      return res.json({ ip: null, users: [] });
+    }
+
+    // Find all distinct userIds that have used the same IP (excluding the target user)
+    const sameIpLogs = await prisma.log.findMany({
+      where: {
+        ipAddress: ip,
+        userId: { not: null, notIn: [id] },
+      },
+      distinct: ['userId'],
+      orderBy: { createdAt: 'desc' },
+      select: { userId: true },
+    });
+
+    const userIds = sameIpLogs
+      .map((l) => l.userId)
+      .filter((uid): uid is string => Boolean(uid));
+
+    if (userIds.length === 0) {
+      return res.json({ ip, users: [] });
+    }
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        isAdmin: true,
+        bansReceived: {
+          where: { isActive: true },
+          select: { id: true, type: true, expiresAt: true },
+          take: 1,
+        },
+      },
+      orderBy: { username: 'asc' },
+    });
+
+    const result = users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      email: u.email,
+      isAdmin: u.isAdmin,
+      activeBan: u.bansReceived[0]
+        ? {
+            type: u.bansReceived[0].type,
+            expiresAt: u.bansReceived[0].expiresAt ? u.bansReceived[0].expiresAt.toISOString() : null,
+          }
+        : null,
+    }));
+
+    res.json({ ip, users: result });
+  } catch (error) {
+    console.error('Admin get shared-ip users error:', error);
+    res.status(500).json({ error: 'Failed to get shared-ip users' });
+  }
+});
+
 // Get all bans (admin only)
 router.get('/bans', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
@@ -5046,7 +5122,7 @@ router.get('/online-history', authMiddleware, requireAdmin, async (req: AuthRequ
       }),
     ]);
 
-    type SnapUser = { userId: string; username: string };
+    type SnapUser = { userId: string; username: string; schoolLevel?: string | null };
     const MAX_POINTS = 300;
     const parseUsernames = (raw: string): SnapUser[] =>
       parseSnapshotUsers(raw).flatMap((entry) => (
@@ -5084,6 +5160,26 @@ router.get('/online-history', authMiddleware, requireAdmin, async (req: AuthRequ
           max: snap.count,
           usernames: parseUsernames(snap.usernames),
         }));
+    }
+
+    // Enrich each online user with their school level (snapshots don't store it).
+    // One lookup against the User table keeps this retroactive for old snapshots.
+    const userIdsInData = new Set<string>();
+    for (const point of data) {
+      for (const user of point.usernames) userIdsInData.add(user.userId);
+    }
+    if (userIdsInData.size > 0) {
+      const levelUsers = await prisma.user.findMany({
+        where: { id: { in: Array.from(userIdsInData) } },
+        select: { id: true, schoolLevel: true },
+      });
+      const levelById = new Map(levelUsers.map((u) => [u.id, u.schoolLevel]));
+      for (const point of data) {
+        point.usernames = point.usernames.map((user) => ({
+          ...user,
+          schoolLevel: levelById.get(user.userId) ?? null,
+        }));
+      }
     }
 
     // Peak for the queried period

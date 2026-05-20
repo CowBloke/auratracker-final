@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,7 +44,17 @@ import {
 
 export type ActivityTabProps = Record<string, unknown>;
 
+// School-level breakdown for the "online by level" chart. Keys match the
+// uppercase values stored in User.schoolLevel; AUTRE catches everything else.
+const LEVEL_CONFIG = [
+  { key: 'TERMINALE', label: 'Terminale', color: '#ef4444' },
+  { key: 'PREMIERE', label: 'Première', color: '#f59e0b' },
+  { key: 'SECONDE', label: 'Seconde', color: '#3b82f6' },
+  { key: 'AUTRE', label: 'Autre', color: '#a1a1aa' },
+] as const;
+
 export function ActivityTab(props: ActivityTabProps) {
+  const [levelHoverIndex, setLevelHoverIndex] = useState<number | null>(null);
   const {
     loadingPlatformStats,
     downloadStatsCSV,
@@ -1150,6 +1161,171 @@ export function ActivityTab(props: ActivityTabProps) {
                     <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60 mt-0.5')}>Les snapshots sont enregistrés automatiquement</p>
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── ONLINE PLAYERS BY SCHOOL LEVEL ── */}
+          <Card className="border-border/40">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span className="font-semibold text-sm">Joueurs en ligne par niveau</span>
+                {loadingActivity && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              </div>
+              <CardDescription>
+                Répartition des joueurs connectés par niveau scolaire sur la période sélectionnée ci-dessus.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingActivity && !activityHistory ? (
+                <div className="flex justify-center py-20">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : activityHistory && activityHistory.data.length > 0 ? (
+                (() => {
+                  const MS_DAY = 86400000;
+
+                  const points = activityHistory.data.map((pt: any) => {
+                    const groups: Record<string, { userId: string; username: string }[]> = {
+                      TERMINALE: [], PREMIERE: [], SECONDE: [], AUTRE: [],
+                    };
+                    for (const u of pt.usernames) {
+                      const key = String(u.schoolLevel ?? '').toUpperCase();
+                      (groups[key] ?? groups.AUTRE).push(u);
+                    }
+                    return {
+                      ts: new Date(pt.timestamp).getTime(),
+                      TERMINALE: groups.TERMINALE.length,
+                      PREMIERE: groups.PREMIERE.length,
+                      SECONDE: groups.SECONDE.length,
+                      AUTRE: groups.AUTRE.length,
+                      _groups: groups,
+                    };
+                  });
+
+                  const hasAutre = points.some((p: any) => p.AUTRE > 0);
+                  const visibleLevels = LEVEL_CONFIG.filter(l => l.key !== 'AUTRE' || hasAutre);
+
+                  const times = points.map((p: any) => p.ts);
+                  const minTs = Math.min(...times);
+                  const maxTs = Math.max(...times);
+                  const range = maxTs - minTs;
+                  const tickFormatter = (ts: number) => {
+                    const d = new Date(ts);
+                    if (range <= MS_DAY * 1.5) {
+                      const h = d.getHours(), m = d.getMinutes();
+                      return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
+                    }
+                    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+                  };
+                  const labelKey: Record<string, string> = Object.fromEntries(
+                    LEVEL_CONFIG.map(l => [l.key, l.label])
+                  );
+
+                  const activeIndex = levelHoverIndex != null && points[levelHoverIndex]
+                    ? levelHoverIndex
+                    : points.length - 1;
+                  const activePoint = points[activeIndex];
+
+                  return (
+                    <div className="flex gap-4 items-start">
+                      <div className="flex-1 min-w-0">
+                        <ResponsiveContainer width="100%" height={300}>
+                          <LineChart
+                            data={points}
+                            margin={{ top: 6, right: 4, left: -8, bottom: 0 }}
+                            onMouseMove={(state: any) => {
+                              if (state && typeof state.activeTooltipIndex === 'number') {
+                                setLevelHoverIndex(state.activeTooltipIndex);
+                              }
+                            }}
+                            onMouseLeave={() => setLevelHoverIndex(null)}
+                          >
+                            <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis
+                              dataKey="ts"
+                              type="number"
+                              domain={['dataMin', 'dataMax']}
+                              scale="time"
+                              tickFormatter={tickFormatter}
+                              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              allowDecimals={false}
+                              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                              axisLine={false}
+                              tickLine={false}
+                              width={24}
+                            />
+                            <RechartsTooltip
+                              contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: '0.75rem' }}
+                              formatter={(value: number, name: string) => [
+                                `${value} joueur${value !== 1 ? 's' : ''}`,
+                                labelKey[name] ?? name,
+                              ]}
+                              labelFormatter={(label: number) => new Date(label).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            />
+                            <Legend formatter={(value: string) => labelKey[value] ?? value} wrapperStyle={{ fontSize: '12px' }} />
+                            {visibleLevels.map(level => (
+                              <Line
+                                key={level.key}
+                                type="monotone"
+                                dataKey={level.key}
+                                name={level.key}
+                                stroke={level.color}
+                                strokeWidth={2}
+                                dot={false}
+                                isAnimationActive={false}
+                              />
+                            ))}
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Per-level user list for the hovered (or latest) point */}
+                      <div className="w-48 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
+                        <div className="px-3 py-2 border-b border-border/40 shrink-0">
+                          <p className="text-xs font-medium tabular-nums">
+                            {(activePoint.TERMINALE + activePoint.PREMIERE + activePoint.SECONDE + activePoint.AUTRE)} joueur{(activePoint.TERMINALE + activePoint.PREMIERE + activePoint.SECONDE + activePoint.AUTRE) !== 1 ? 's' : ''}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(activePoint.ts).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                          </p>
+                        </div>
+                        <div className="overflow-y-auto flex-1 p-2 space-y-3">
+                          {visibleLevels.map(level => {
+                            const users = activePoint._groups[level.key] ?? [];
+                            return (
+                              <div key={level.key}>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: level.color }} />
+                                  <span className="text-xs font-medium">{level.label}</span>
+                                  <span className="text-xs text-muted-foreground tabular-nums ml-auto">{users.length}</span>
+                                </div>
+                                {users.length > 0 ? (
+                                  <ul className="space-y-0.5 pl-4">
+                                    {users.map((u: { userId: string; username: string }) => (
+                                      <li key={u.userId} className="text-xs text-muted-foreground truncate" title={u.username}>
+                                        {u.username}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="text-[10px] text-muted-foreground/50 pl-4">—</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <p className="py-12 text-center text-sm text-muted-foreground">Aucune donnée pour cette période</p>
               )}
             </CardContent>
           </Card>

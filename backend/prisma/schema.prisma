@@ -1359,12 +1359,13 @@ model ClanJoinRequest {
 model ClanMessage {
   id        String   @id @default(uuid())
   clanId    String
-  userId    String
+  userId    String?
+  type      String   @default("user")
   message   String
   createdAt DateTime @default(now())
 
-  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clan Clan  @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([clanId, createdAt])
   @@index([userId, createdAt])

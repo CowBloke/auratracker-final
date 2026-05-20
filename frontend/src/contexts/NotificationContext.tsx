@@ -121,6 +121,34 @@ async function handleToastNotificationClick(notification: Notification) {
   window.location.assign(notification.link);
 }
 
+function showDesktopNotification(notification: Notification) {
+  if (!canUseBrowserNotifications() || Notification.permission !== 'granted') return;
+
+  // The in-app toast already covers a focused tab; only fire the OS-level
+  // notification when the user isn't actively looking at the page.
+  if (typeof document !== 'undefined' && document.visibilityState === 'visible' && document.hasFocus()) {
+    return;
+  }
+
+  try {
+    const native = new Notification(notification.title, {
+      body: notification.body,
+      icon: notification.icon ?? '/aura-icon.svg',
+      badge: '/aura-icon-white.svg',
+      tag: notification.id,
+      data: { link: notification.link },
+    });
+
+    native.onclick = () => {
+      window.focus();
+      native.close();
+      void handleToastNotificationClick(notification);
+    };
+  } catch {
+    // Some browsers reject the direct Notification constructor; the toast remains.
+  }
+}
+
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -172,6 +200,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         : {}),
     });
     playNotification();
+    showDesktopNotification(notification);
   }, []);
 
   const syncWebPushSubscription = useCallback(async () => {
@@ -406,10 +435,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
 
     const hasDecision = Boolean(localStorage.getItem(INSTALL_PROMPT_DECISION_KEY));
-    const pendingInstallPrompt = localStorage.getItem(INSTALL_PROMPT_PENDING_KEY) === '1';
     const launchedAsInstalledApp = isRunningStandalone();
+    // iOS only supports web notifications once added to the home screen, so we
+    // skip the prompt there to avoid asking for something that can't be granted.
+    const iosBrowserBlocked = isIosDevice() && !launchedAsInstalledApp;
 
-    if (!hasDecision && (pendingInstallPrompt || launchedAsInstalledApp)) {
+    if (!hasDecision && !iosBrowserBlocked) {
       setShowInstallPromptModal(true);
     }
   }, [browserNotificationPermission, user?.id]);
@@ -749,7 +780,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           <DialogHeader>
             <DialogTitle>Activer les notifications ?</DialogTitle>
             <DialogDescription>
-              Tu viens d'installer l'app. Veux-tu recevoir les notifications importantes (publicites approuvees, messages systeme, etc.) ?
+              Veux-tu recevoir les notifications du site directement sur ton bureau (publicites approuvees, messages systeme, etc.) ? Ton navigateur te demandera ensuite de confirmer l'autorisation.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
