@@ -68,7 +68,7 @@ import { useAppDialog } from '@/contexts/AppDialogContext';
 import { toast } from '@/hooks/use-toast';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
-import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
+import { FormattedMessageText, hasMessageFormatting, stripMessageFormatting } from '@/lib/message-formatting';
 import { cn } from '@/lib/utils';
 import {
   CourtArgument,
@@ -206,7 +206,15 @@ const getPreview = (c: MessagingConversationSummary) => {
   const lastMessage = c.lastMessage;
   if (!lastMessage) return 'Commence la discussion.';
   if ('deletedAt' in lastMessage && lastMessage.deletedAt) return '';
-  return lastMessage.body || 'Commence la discussion.';
+  const body = stripMessageFormatting(lastMessage.body ?? '').trim();
+  if (body) return body;
+  if ('imageUrl' in lastMessage && lastMessage.imageUrl) {
+    const senderName = lastMessage.sender?.username
+      ?? c.participants.find((entry) => entry.user.id === lastMessage.senderId)?.user.username
+      ?? 'quelqu’un';
+    return `Contenu photo de ${senderName}`;
+  }
+  return 'Commence la discussion.';
 };
 const getLastOutgoingMessageReadState = (
   conversation: MessagingConversationSummary,

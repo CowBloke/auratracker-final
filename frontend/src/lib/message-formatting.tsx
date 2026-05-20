@@ -101,3 +101,21 @@ export function FormattedMessageText({ text }: { text: string }) {
 export function hasMessageFormatting(text: string) {
   return /#([a-z]+)\[/i.test(text);
 }
+
+export function stripMessageFormatting(text: string): string {
+  let output = text;
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    output = output.replace(/#([a-z]+)\[([^\[\]]*)\]#\1/gi, (_match, code: string, content: string) => {
+      if (!FORMAT_STYLES[code.toLowerCase()]) {
+        return _match;
+      }
+      changed = true;
+      return content;
+    });
+  }
+
+  return output;
+}

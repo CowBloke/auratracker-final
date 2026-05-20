@@ -294,7 +294,7 @@ async function buildSupportConversationSummary(userId: string) {
     unreadCount,
     lastMessage: lastMessage
       ? {
-          body: lastMessage.body || (lastMessage.images ? 'Images' : ''),
+          body: lastMessage.body || (lastMessage.images ? `Contenu photo de ${lastMessage.fromAdmin ? 'Support' : 'vous'}` : ''),
           createdAt: lastMessage.createdAt.toISOString(),
           senderId: lastMessage.fromAdmin ? 'support' : userId,
         }
