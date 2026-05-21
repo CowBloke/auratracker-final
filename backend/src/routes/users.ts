@@ -467,6 +467,7 @@ router.post('/mute-appeal', authMiddleware, async (req: AuthRequest, res: Respon
         isChatMuted: true,
         chatMuteExpiresAt: true,
         chatMuteReason: true,
+        chatMutedAt: true,
       },
     });
 
@@ -476,6 +477,20 @@ router.post('/mute-appeal', authMiddleware, async (req: AuthRequest, res: Respon
 
     if (!user.isChatMuted) {
       return res.status(400).json({ error: 'Tu n es pas mute du chat actuellement.' });
+    }
+
+    const existingAppeal = await prisma.log.findFirst({
+      where: {
+        type: 'ADMIN',
+        action: 'chat_mute_appeal',
+        targetId: userId,
+        ...(user.chatMutedAt ? { createdAt: { gte: user.chatMutedAt } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (existingAppeal) {
+      return res.status(409).json({ error: 'Tu as deja conteste ce mute.', alreadyAppealed: true });
     }
 
     await logAdmin('chat_mute_appeal', userId, user.username, userId, user.username, {

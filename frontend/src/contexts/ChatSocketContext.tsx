@@ -144,6 +144,21 @@ interface ChatSocketContextValue {
 
 const ChatSocketContext = createContext<ChatSocketContextValue | null>(null);
 
+const formatChatMuteMessage = (mutedUntil?: string | null) => {
+  if (!mutedUntil) return 'Tu es mute du chat pour le moment.';
+  const remainingMs = new Date(mutedUntil).getTime() - Date.now();
+  if (remainingMs <= 0) return 'Tu es mute du chat pour le moment.';
+  const totalMinutes = Math.ceil(remainingMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const durationLabel = hours <= 0
+    ? `${minutes} min`
+    : minutes === 0
+      ? `${hours} h`
+      : `${hours} h ${minutes} min`;
+  return `Tu es mute du chat pendant ${durationLabel}.`;
+};
+
 export function ChatSocketProvider({ children }: { children: React.ReactNode }) {
   const { user, updateBalance } = useAuth();
 
@@ -170,6 +185,28 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const pendingPresenceRef = useRef<PresenceOp[]>([]);
   // Pending count updates — also batched
   const pendingCountRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setIsChatMuted(false);
+      setChatMutedMessage(null);
+      setChatMutedUntil(null);
+      setChatMuteReason(null);
+      return;
+    }
+
+    if (user.isChatMuted) {
+      setIsChatMuted(true);
+      setChatMutedUntil(user.chatMuteExpiresAt ?? null);
+      setChatMuteReason(user.chatMuteReason ?? 'Mute chat actif');
+      setChatMutedMessage(formatChatMuteMessage(user.chatMuteExpiresAt));
+    } else {
+      setIsChatMuted(false);
+      setChatMutedMessage(null);
+      setChatMutedUntil(null);
+      setChatMuteReason(null);
+    }
+  }, [user?.id, user?.isChatMuted, user?.chatMuteExpiresAt, user?.chatMuteReason]);
 
   // Flush presence queue every 500 ms
   useEffect(() => {

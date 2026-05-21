@@ -63,6 +63,24 @@ const createWelcomeInboxNotification = async (userId: string) => {
   }
 };
 
+const hasPendingChatMuteAppeal = async (user: {
+  id: string;
+  isChatMuted: boolean;
+  chatMutedAt: Date | null;
+}) => {
+  if (!user.isChatMuted) return false;
+  const appeal = await prisma.log.findFirst({
+    where: {
+      type: 'ADMIN',
+      action: 'chat_mute_appeal',
+      targetId: user.id,
+      ...(user.chatMutedAt ? { createdAt: { gte: user.chatMutedAt } } : {}),
+    },
+    select: { id: true },
+  });
+  return Boolean(appeal);
+};
+
 const getUserClanEffects = async (userId: string) => {
   const membership = await prisma.clanMember.findUnique({
     where: { userId },
@@ -240,9 +258,10 @@ router.post('/login', validate(loginSchema), async (req, res) => {
 
     logAuth('login', user.id, user.username, { isAdmin: user.isAdmin, isSuperAdmin: user.isSuperAdmin }, getIpAddress(req));
 
-    const [clanEffects, sharedBalance] = await Promise.all([
+    const [clanEffects, sharedBalance, chatMuteAppealPending] = await Promise.all([
       getUserClanEffects(user.id),
       getSharedBalance(prisma, user.id),
+      hasPendingChatMuteAppeal(user),
     ]);
 
     res.json({
@@ -261,6 +280,11 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         isBetaTester: user.isBetaTester,
         isFiscalInspector: user.isFiscalInspector,
         isJudge: user.isJudge,
+        isChatMuted: user.isChatMuted,
+        chatMuteExpiresAt: user.chatMuteExpiresAt ? user.chatMuteExpiresAt.toISOString() : null,
+        chatMuteReason: user.chatMuteReason,
+        chatMutedAt: user.chatMutedAt ? user.chatMutedAt.toISOString() : null,
+        chatMuteAppealPending,
         usernameColor: user.usernameColor,
         profilePicture: user.profilePicture,
         profileBanner: user.profileBanner,
@@ -315,6 +339,10 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
         isBetaTester: true,
         isFiscalInspector: true,
         isJudge: true,
+        isChatMuted: true,
+        chatMuteExpiresAt: true,
+        chatMuteReason: true,
+        chatMutedAt: true,
         usernameColor: true,
         profilePicture: true,
         profileBanner: true,
@@ -330,15 +358,24 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
       user.referralCode = await ensureUserReferralCode(user.id, user.referralCode);
     }
 
-    const [clanEffects, sharedBalance] = user
-      ? await Promise.all([getUserClanEffects(user.id), getSharedBalance(prisma, user.id)])
-      : [[], null];
+    const [clanEffects, sharedBalance, chatMuteAppealPending] = user
+      ? await Promise.all([
+          getUserClanEffects(user.id),
+          getSharedBalance(prisma, user.id),
+          hasPendingChatMuteAppeal(user),
+        ])
+      : [[], null, false];
     res.json({
       user: user
         ? {
             ...user,
             aura: sharedBalance ? Number(sharedBalance.aura) : user.aura,
             money: sharedBalance?.money ?? user.money,
+            isChatMuted: user.isChatMuted,
+            chatMuteExpiresAt: user.chatMuteExpiresAt ? user.chatMuteExpiresAt.toISOString() : null,
+            chatMuteReason: user.chatMuteReason,
+            chatMutedAt: user.chatMutedAt ? user.chatMutedAt.toISOString() : null,
+            chatMuteAppealPending,
             clanEffects,
             hasAdblock: user.youAdblockExpiresAt != null && user.youAdblockExpiresAt > new Date(),
           }

@@ -19,6 +19,11 @@ interface User {
   isBetaTester: boolean;
   isFiscalInspector: boolean;
   isJudge: boolean;
+  isChatMuted?: boolean;
+  chatMuteExpiresAt?: string | null;
+  chatMuteReason?: string | null;
+  chatMutedAt?: string | null;
+  chatMuteAppealPending?: boolean;
   usernameColor?: string | null;
   profilePicture?: string | null;
   profileBanner?: string | null;

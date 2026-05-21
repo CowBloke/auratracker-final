@@ -227,8 +227,12 @@ export default function ChatSidebar() {
       setMuteAppealMessage('');
       setMuteAppealSent(false);
       setMuteAppealError(null);
+    } else if (user?.chatMuteAppealPending) {
+      setMuteAppealMessage('');
+      setMuteAppealSent(true);
+      setMuteAppealError(null);
     }
-  }, [isChatMuted]);
+  }, [isChatMuted, user?.chatMuteAppealPending]);
 
   useEffect(() => {
     setMentionIndex(0);
@@ -409,6 +413,11 @@ export default function ChatSidebar() {
       setMuteAppealMessage('');
       setMuteAppealSent(true);
     } catch (error: any) {
+      if (error?.response?.data?.alreadyAppealed) {
+        setMuteAppealMessage('');
+        setMuteAppealSent(true);
+        return;
+      }
       setMuteAppealError(error?.response?.data?.error || 'Impossible d envoyer la contestation.');
     } finally {
       setIsSubmittingMuteAppeal(false);

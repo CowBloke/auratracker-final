@@ -2755,6 +2755,22 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       },
     });
 
+    if (isChatMuted === true && !oldUser?.isChatMuted) {
+      void createNotification({
+        userId: id,
+        type: 'ADMIN',
+        title: 'Mute chat',
+        body: 'Tu as ete mute du chat par un admin.',
+        link: '/',
+        icon: 'message-circle-warning',
+        data: {
+          reason: user.chatMuteReason ?? 'Mute manuel admin',
+          mutedUntil: user.chatMuteExpiresAt ? user.chatMuteExpiresAt.toISOString() : null,
+          sanctionType: 'chat_mute',
+        },
+      });
+    }
+
     res.json({ user: { ...user, sharedMoney } });
   } catch (error) {
     console.error('Admin update user error:', error);

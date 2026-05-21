@@ -1,6 +1,7 @@
 ﻿import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
 import { logAdmin, logChat } from '../utils/logger.js';
+import { createNotification } from '../utils/notifications.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { getChatBlockState } from '../utils/chat-settings.js';
 import {
@@ -945,6 +946,21 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
             message: message.message,
             createdAt: message.createdAt.toISOString(),
           })),
+        });
+        void createNotification({
+          userId,
+          type: 'ADMIN',
+          title: 'Mute chat',
+          body: moderationNotice.durationLabel
+            ? `Tu es mute du chat pendant ${moderationNotice.durationLabel}.`
+            : 'Tu es mute du chat pour le moment.',
+          link: '/',
+          icon: 'message-circle-warning',
+          data: {
+            reason: moderationNotice.reason,
+            mutedUntil: moderationNotice.mutedUntil,
+            sanctionType: 'chat_mute',
+          },
         });
       }
       socket.emit('chat:moderation-warning', moderationNotice);
