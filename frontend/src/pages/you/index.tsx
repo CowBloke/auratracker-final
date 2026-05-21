@@ -9,7 +9,6 @@ import { type YouState, youApi } from '@/services/api';
 import { ActionsTab } from './tabs/ActionsTab';
 import { MarketplaceTab } from './tabs/MarketplaceTab';
 import { SocialTab } from './tabs/SocialTab';
-import YoutubeTab from './tabs/YoutubeTab';
 import { YouDashboard } from './YouDashboard';
 
 export default function You() {
@@ -41,9 +40,10 @@ export default function You() {
     travail: 'carte', overview: 'carte',
     finance: 'actions', banques: 'actions', 'marche-actions': 'actions',
     publicites: 'actions', supply: 'actions', explore: 'salle-de-marche',
+    youtube: 'carte',
   };
   const rawTab = tab ?? 'carte';
-  const currentTab = (rawTab === 'carte' || rawTab === 'social' || rawTab === 'actions' || rawTab === 'youtube' || rawTab === 'salle-de-marche')
+  const currentTab = (rawTab === 'carte' || rawTab === 'social' || rawTab === 'actions' || rawTab === 'salle-de-marche')
     ? rawTab
     : (REMOVED_TAB_REDIRECTS[rawTab] ?? 'carte');
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
@@ -86,7 +86,6 @@ export default function You() {
     <div className="animate-in space-y-6 fade-in pb-8 duration-300">
       {currentTab === 'actions' ? <ActionsTab data={data} userId={user.id} onReload={() => loadState()} /> : null}
       {currentTab === 'salle-de-marche' ? <MarketplaceTab ownedBusinesses={data.ownedBusinesses} /> : null}
-      {currentTab === 'youtube' ? <YoutubeTab ownedBusinesses={data.ownedBusinesses} onReload={loadState} /> : null}
     </div>
   );
 }

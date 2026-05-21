@@ -19,7 +19,6 @@ import {
   Target,
   Info,
   MessagesSquare,
-  Video,
   Workflow,
   ShoppingBasket,
 } from 'lucide-react';
@@ -65,7 +64,6 @@ const youNavItems = [
   { tab: 'actions',         label: 'Actions',              icon: Workflow      },
   { tab: 'social',         label: 'Social',              icon: Users      },
   { tab: 'salle-de-marche', label: 'Marché ressources',    icon: ShoppingBasket},
-  { tab: 'youtube',         label: 'YouTube',              icon: Video         },
 ];
 
 export default function AppSidebar({ onMouseEnter, onMouseLeave, className, ...props }: ComponentProps<typeof Sidebar>) {
