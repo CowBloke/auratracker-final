@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { BadgeIcon } from '@/components/badges/BadgeIcon';
 import { useEffect, useRef } from 'react';
-import type { BanAppeal, BugReport, BugReportMessage, CustomBadgeRequest, NameChangeRequest, PendingFormationReviewItem, PendingSanction, PendingUser } from '../../../services/api';
+import type { AdminChatModerationEvent, BanAppeal, BugReport, BugReportMessage, CustomBadgeRequest, NameChangeRequest, PendingFormationReviewItem, PendingSanction, PendingUser } from '../../../services/api';
 
 type ArchivedRegistration = PendingUser & {
   registrationStatus: 'APPROVED' | 'REJECTED';
@@ -52,6 +52,7 @@ type InboxTabProps = {
   customBadgeRequests: CustomBadgeRequest[];
   pendingFormationReviews: PendingFormationReviewItem[];
   pendingSanctions: PendingSanction[];
+  chatModerationEvents: AdminChatModerationEvent[];
   archivedRegistrations: ArchivedRegistration[];
   inboxFilter: InboxFilter;
   selectedInboxItem: string | null;
@@ -64,6 +65,7 @@ type InboxTabProps = {
   loadingCustomBadgeRequests: boolean;
   loadingPendingFormationReviews: boolean;
   loadingPendingSanctions: boolean;
+  loadingChatModerationEvents: boolean;
   approvingUser: string | null;
   rejectingUser: string | null;
   updatingBug: string | null;
@@ -104,6 +106,7 @@ export function InboxTab(props: InboxTabProps) {
     customBadgeRequests,
     pendingFormationReviews,
     pendingSanctions,
+    chatModerationEvents,
     archivedRegistrations,
     inboxFilter,
     selectedInboxItem,
@@ -116,6 +119,7 @@ export function InboxTab(props: InboxTabProps) {
     loadingCustomBadgeRequests,
     loadingPendingFormationReviews,
     loadingPendingSanctions,
+    loadingChatModerationEvents,
     approvingUser,
     rejectingUser,
     updatingBug,
@@ -184,6 +188,9 @@ export function InboxTab(props: InboxTabProps) {
         const allSanctionItems = pendingSanctions.map(s => ({
           id: `sanction-${s.id}`, type: 'sanction' as const, date: new Date(s.createdAt), data: s,
         }));
+        const moderationItems = chatModerationEvents.map(event => ({
+          id: `moderation-${event.id}`, type: 'moderation' as const, date: new Date(event.createdAt), data: event,
+        }));
         const sanctionItems = allSanctionItems.filter(i => (i.data as PendingSanction).status === 'PENDING');
 
         const pendingBugItems = allBugItems.filter(i => (i.data as BugReport).status === 'PENDING');
@@ -202,7 +209,7 @@ export function InboxTab(props: InboxTabProps) {
           ...allSanctionItems.filter(i => (i.data as PendingSanction).status !== 'PENDING'),
         ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
-        const allPending = pendingUsers.length + pendingBugItems.length + pendingAppealItems.length + pendingNameChangeItems.length + pendingBadgeItems.length + formationItems.length + sanctionItems.length;
+        const allPending = pendingUsers.length + pendingBugItems.length + pendingAppealItems.length + pendingNameChangeItems.length + pendingBadgeItems.length + formationItems.length + sanctionItems.length + moderationItems.length;
 
         const activeItems = inboxFilter === 'registrations' ? registrationItems
           : inboxFilter === 'bugs' ? pendingBugItems
@@ -210,12 +217,12 @@ export function InboxTab(props: InboxTabProps) {
           : inboxFilter === 'namechanges' ? pendingNameChangeItems
           : inboxFilter === 'badges' ? pendingBadgeItems
           : inboxFilter === 'formations' ? formationItems
-          : inboxFilter === 'sanctions' ? sanctionItems
+          : inboxFilter === 'sanctions' ? [...sanctionItems, ...moderationItems].sort((a, b) => b.date.getTime() - a.date.getTime())
           : inboxFilter === 'archived' ? archivedItems
-          : [...registrationItems, ...pendingBugItems, ...pendingAppealItems, ...pendingNameChangeItems, ...pendingBadgeItems, ...formationItems, ...sanctionItems]
+          : [...registrationItems, ...pendingBugItems, ...pendingAppealItems, ...pendingNameChangeItems, ...pendingBadgeItems, ...formationItems, ...sanctionItems, ...moderationItems]
               .sort((a, b) => b.date.getTime() - a.date.getTime());
 
-        const allItemsPool = [...registrationItems, ...archivedRegistrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems, ...pendingBadgeItems, ...formationItems, ...allSanctionItems];
+        const allItemsPool = [...registrationItems, ...archivedRegistrationItems, ...allBugItems, ...allAppealItems, ...allNameChangeItems, ...pendingBadgeItems, ...formationItems, ...allSanctionItems, ...moderationItems];
         const selectedItem = selectedInboxItem ? allItemsPool.find(i => i.id === selectedInboxItem) ?? null : null;
 
         const ADMIN_CATS = [
@@ -226,7 +233,7 @@ export function InboxTab(props: InboxTabProps) {
           { key: 'namechanges' as const, label: 'Pseudos', Icon: UserCog, count: pendingNameChangeItems.length },
           { key: 'badges' as const, label: 'Badges', Icon: Award, count: pendingBadgeItems.length },
           { key: 'formations' as const, label: 'Formations', Icon: FileText, count: formationItems.length },
-          { key: 'sanctions' as const, label: 'Sanctions', Icon: Gavel, count: sanctionItems.length },
+          { key: 'sanctions' as const, label: 'Sanctions', Icon: Gavel, count: sanctionItems.length + moderationItems.length },
           { key: 'archived' as const, label: 'Archivé', Icon: Archive, count: archivedItems.length },
         ];
 
@@ -280,7 +287,7 @@ export function InboxTab(props: InboxTabProps) {
               </div>
 
               <div className="w-72 shrink-0 border-r border-border/40 overflow-y-auto custom-scroll">
-                {(loadingPending || loadingBugs || loadingAppeals || loadingNameChanges || loadingCustomBadgeRequests || loadingPendingFormationReviews || loadingPendingSanctions) ? (
+                {(loadingPending || loadingBugs || loadingAppeals || loadingNameChanges || loadingCustomBadgeRequests || loadingPendingFormationReviews || loadingPendingSanctions || loadingChatModerationEvents) ? (
                   <div className="flex justify-center py-12">
                     <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
                   </div>
@@ -347,6 +354,13 @@ export function InboxTab(props: InboxTabProps) {
                         badgeLabel = s.status === 'PENDING' ? 'Sanction' : s.status === 'APPROVED' ? 'Approuvée' : 'Refusée';
                         badgeColor = s.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' : s.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' : 'bg-zinc-500/20 text-zinc-400';
                         borderAccent = s.status === 'PENDING' ? 'border-l-amber-500' : s.status === 'APPROVED' ? 'border-l-green-500' : 'border-l-zinc-500';
+                      } else if (item.type === 'moderation') {
+                        const event = item.data as AdminChatModerationEvent;
+                        title = event.type === 'appeal' ? `Appel mute : ${event.username}` : `Mute auto : ${event.username}`;
+                        subtitle = event.type === 'appeal' ? (event.details.message || 'Contestation utilisateur') : (event.details.discussion || 'Chat general');
+                        badgeLabel = event.type === 'appeal' ? 'Appel mute' : 'Mute';
+                        badgeColor = 'bg-red-500/20 text-red-400';
+                        borderAccent = 'border-l-red-500';
                       } else {
                         const req = item.data as CustomBadgeRequest;
                         title = req.name;
@@ -391,6 +405,83 @@ export function InboxTab(props: InboxTabProps) {
                     <Inbox className="h-10 w-10 text-muted-foreground/20" />
                     <p className="text-sm text-muted-foreground/50">Sélectionne un élément</p>
                   </div>
+                ) : selectedItem.type === 'moderation' ? (
+                  (() => {
+                    const event = selectedItem.data as AdminChatModerationEvent;
+                    const terms = event.details.detectedTerms ?? [];
+                    const contextMessages = event.details.contextMessages ?? [];
+                    const isAppeal = event.type === 'appeal';
+                    return (
+                      <div className="p-6 space-y-5">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <span className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400">{isAppeal ? 'Appel de mute' : 'Mute automatique'}</span>
+                            <span className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">{event.details.discussion || 'Chat general'}</span>
+                            <span className="text-xs text-muted-foreground/60">
+                              {selectedItem.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <h3 className="text-lg font-semibold">{event.username}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {event.details.durationLabel ? `Mute ${event.details.durationLabel}` : 'Mute actif'}
+                            {event.mutedUntil ? ` · expire le ${new Date(event.mutedUntil).toLocaleString('fr-FR')}` : ''}
+                          </p>
+                        </div>
+
+                        {isAppeal ? (
+                          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 space-y-3">
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground/70 mb-1">Message d'appel</p>
+                              <p className="text-sm whitespace-pre-wrap break-words">{event.details.message || 'Message indisponible'}</p>
+                            </div>
+                            {event.details.reason && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground/70 mb-1">Raison du mute</p>
+                                <p className="text-sm">{event.details.reason}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                        <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 space-y-3">
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground/70 mb-2">Termes detectes</p>
+                            <div className="flex flex-wrap gap-2">
+                              {terms.length > 0 ? terms.map((term, index) => (
+                                <span key={`${term}-${index}`} className="rounded bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-300">
+                                  {term}
+                                </span>
+                              )) : <span className="text-sm text-muted-foreground">Aucun terme enregistre</span>}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground/70 mb-1">Message sanctionne</p>
+                            <p className="text-sm whitespace-pre-wrap break-words">{event.details.offendingMessage || event.details.censoredMessage || 'Message indisponible'}</p>
+                          </div>
+                        </div>
+                        )}
+
+                        {!isAppeal && (
+                        <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+                          <p className="text-xs font-medium text-muted-foreground/70 mb-3">10 derniers messages avant sanction</p>
+                          {contextMessages.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">Aucun contexte enregistre.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {contextMessages.map((message) => (
+                                <div key={message.id} className="rounded-md border border-border/30 bg-background/60 px-3 py-2 text-sm">
+                                  <p className="text-[10px] text-muted-foreground/60 mb-1">
+                                    {message.username} · {new Date(message.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                  </p>
+                                  <p className="whitespace-pre-wrap break-words">{message.message}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        )}
+                      </div>
+                    );
+                  })()
                 ) : selectedItem.type === 'formation' ? (
                   (() => {
                     const product = selectedItem.data as PendingFormationReviewItem;

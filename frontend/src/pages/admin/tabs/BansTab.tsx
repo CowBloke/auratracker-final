@@ -38,6 +38,8 @@ type BansTabProps = {
   loadingBans: boolean;
   unbanning: string | null;
   unbanUser: (userId: string) => void;
+  mutingUser: string | null;
+  unmuteChatUser: (user: AdminUser) => void;
   warnings: AdminWarning[];
   loadingWarnings: boolean;
   warningDialogOpen: boolean;
@@ -65,6 +67,8 @@ export function BansTab(props: BansTabProps) {
     loadingBans,
     unbanning,
     unbanUser,
+    mutingUser,
+    unmuteChatUser,
     warnings,
     loadingWarnings,
     warningDialogOpen,
@@ -85,6 +89,11 @@ export function BansTab(props: BansTabProps) {
     createWarning,
     creatingWarning,
   } = props;
+  const chatMutes = users.filter((user) => user.isChatMuted);
+  const getMuteIssuerLabel = (mutedById: string | null) => {
+    if (!mutedById) return 'Auto-modération';
+    return users.find((user) => user.id === mutedById)?.username ?? 'Admin';
+  };
 
   return (
     <TabsContent value="bans" className={SPACING.SECTION_SPACING}>
@@ -206,6 +215,125 @@ export function BansTab(props: BansTabProps) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardDescription>Gestion des mutes chat</CardDescription>
+            <div className={cn('flex items-center gap-2', TYPOGRAPHY.SMALL)}>
+              <ShieldOff className="h-4 w-4" />
+              <span>{chatMutes.length} actif{chatMutes.length > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {chatMutes.length === 0 ? (
+            <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>
+              Aucun mute chat actif
+            </p>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {chatMutes.map((mutedUser) => {
+                const expiresAt = mutedUser.chatMuteExpiresAt ? new Date(mutedUser.chatMuteExpiresAt) : null;
+                const expired = expiresAt ? expiresAt <= new Date() : false;
+
+                return (
+                  <div key={mutedUser.id} className={cn('py-4', expired && 'opacity-60')}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">{mutedUser.username}</span>
+                          <span
+                            className={cn(
+                              'text-xs px-2 py-0.5 rounded',
+                              expired
+                                ? 'bg-muted text-muted-foreground'
+                                : mutedUser.chatMuteExpiresAt
+                                  ? 'bg-amber-500/20 text-amber-400'
+                                  : 'bg-red-500/20 text-red-400'
+                            )}
+                          >
+                            {expired ? 'Expire' : mutedUser.chatMuteExpiresAt ? 'Temporaire' : 'Sans limite'}
+                          </span>
+                        </div>
+
+                        <p className="text-sm text-muted-foreground">
+                          <span className="text-foreground">Raison:</span> {mutedUser.chatMuteReason || 'Mute chat'}
+                        </p>
+
+                        <p className="text-xs text-muted-foreground">
+                          Par <span className="text-foreground">{getMuteIssuerLabel(mutedUser.chatMutedById)}</span>
+                          {mutedUser.chatMutedAt && (
+                            <span>
+                              {' '}â€¢{' '}
+                              {new Date(mutedUser.chatMutedAt).toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          )}
+                          {expiresAt && (
+                            <span>
+                              {' '}â€¢ Expire le{' '}
+                              {expiresAt.toLocaleDateString('fr-FR', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                            disabled={mutingUser === mutedUser.id}
+                          >
+                            {mutingUser === mutedUser.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <ShieldOff className="h-4 w-4 mr-1" />
+                                Demuter
+                              </>
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Demuter {mutedUser.username} ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              L'utilisateur pourra de nouveau envoyer des messages dans le chat.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => unmuteChatUser(mutedUser)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Demuter
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

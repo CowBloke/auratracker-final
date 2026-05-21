@@ -1,8 +1,14 @@
 ﻿import { Socket, Server } from 'socket.io';
 import { prisma } from '../server.js';
-import { logChat } from '../utils/logger.js';
+import { logAdmin, logChat } from '../utils/logger.js';
 import { isAllowedImageUrl } from '../utils/uploads.js';
 import { getChatBlockState } from '../utils/chat-settings.js';
+import {
+  applyChatModerationStrike,
+  buildMuteNotice,
+  clearExpiredChatMute,
+  moderateChatMessage,
+} from '../utils/chat-moderation.js';
 
 interface OnlineUser {
   userId: string;
@@ -695,12 +701,20 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         usernameColor: true,
         profilePicture: true,
         isChatMuted: true,
+        chatMuteExpiresAt: true,
+        chatMuteReason: true,
       },
     });
     if (!dbUser) return;
 
-    if (dbUser?.isChatMuted) {
-      socket.emit('chat:muted', { message: 'Vous avez été mute du chat par un admin.' });
+    if (dbUser.isChatMuted && dbUser.chatMuteExpiresAt && dbUser.chatMuteExpiresAt <= new Date()) {
+      await clearExpiredChatMute(prisma, userId);
+    } else if (dbUser.isChatMuted) {
+      socket.emit('chat:muted', {
+        message: 'Vous avez ete mute du chat.',
+        mutedUntil: dbUser.chatMuteExpiresAt ? dbUser.chatMuteExpiresAt.toISOString() : null,
+        reason: dbUser.chatMuteReason ?? 'Mute chat actif',
+      });
     }
 
     // Store user info
@@ -776,17 +790,34 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         usernameColor: true,
         profilePicture: true,
         isChatMuted: true,
+        chatMuteExpiresAt: true,
+        chatMuteReason: true,
+        chatModerationStrikes: true,
+        chatModerationLevel: true,
         isAdmin: true,
         isSuperAdmin: true,
       },
     });
 
-    if (dbUser?.isChatMuted) {
-      socket.emit('chat:muted', { message: 'Vous êtes mute du chat pour le moment.' });
+    if (!dbUser) {
       return;
     }
 
-    if (!dbUser) {
+    if (dbUser.isChatMuted && dbUser.chatMuteExpiresAt && dbUser.chatMuteExpiresAt <= new Date()) {
+      await clearExpiredChatMute(prisma, userId);
+      dbUser.isChatMuted = false;
+      dbUser.chatMuteExpiresAt = null;
+      dbUser.chatMuteReason = null;
+    }
+
+    if (dbUser.isChatMuted) {
+      const notice = buildMuteNotice(dbUser.chatMuteExpiresAt, dbUser.chatMuteReason ?? 'Mute chat actif');
+      socket.emit('chat:muted', {
+        message: notice.message,
+        mutedUntil: notice.mutedUntil,
+        reason: notice.reason,
+        notice,
+      });
       return;
     }
 
@@ -822,12 +853,33 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
         })
       : null;
 
+    const moderationResult = moderateChatMessage(rawMessage);
+    const messageToSave = moderationResult.censoredMessage;
+    const recentContext = moderationResult.matched
+      ? await prisma.chatMessage.findMany({
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: {
+            user: {
+              select: {
+                username: true,
+              },
+            },
+          },
+        })
+      : [];
+    const moderationNotice = moderationResult.matched
+      ? await applyChatModerationStrike(prisma, { id: userId, ...dbUser })
+      : null;
+
     // Save message to database
     const savedMessage = await prisma.chatMessage.create({
       data: {
         userId,
         type: 'user',
-        message: rawMessage,
+        message: messageToSave,
+        originalMessage: moderationResult.matched ? rawMessage : null,
         imageUrl,
         replyToId: replyTo?.id ?? null,
       },
@@ -868,14 +920,43 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
     // Log message sent
     logChat('message_sent', userId, user.username, {
       messageId: savedMessage.id,
-      messageLength: rawMessage.length,
+      messageLength: messageToSave.length,
       hasImage: Boolean(imageUrl),
       hasReply: !!replyTo,
+      moderated: moderationResult.matched,
     });
 
     // Broadcast to all in chat with cosmetics
     const leaderboardState = await getTopLeaderboardIds();
     io.to('global-chat').emit('chat:message', await buildChatMessagePayload(savedMessage, leaderboardState));
+    if (moderationNotice) {
+      if (moderationNotice.type === 'mute') {
+        void logAdmin('chat_auto_mute', null, 'Auto-modération', userId, user.username, {
+          reason: moderationNotice.reason,
+          durationLabel: moderationNotice.durationLabel,
+          mutedUntil: moderationNotice.mutedUntil,
+          detectedTerms: moderationResult.matchedTerms,
+          discussion: 'Chat général',
+          offendingMessage: rawMessage,
+          censoredMessage: messageToSave,
+          contextMessages: recentContext.reverse().map((message) => ({
+            id: message.id,
+            username: message.user?.username ?? CHAT_SYSTEM_USERNAME,
+            message: message.message,
+            createdAt: message.createdAt.toISOString(),
+          })),
+        });
+      }
+      socket.emit('chat:moderation-warning', moderationNotice);
+      if (moderationNotice.type === 'mute') {
+        socket.emit('chat:muted', {
+          message: moderationNotice.message,
+          mutedUntil: moderationNotice.mutedUntil,
+          reason: moderationNotice.reason,
+          notice: moderationNotice,
+        });
+      }
+    }
   });
   
   // Typing indicator

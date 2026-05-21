@@ -2413,6 +2413,10 @@ router.get('/users', authMiddleware, requireAdminOrFiscal, async (req: AuthReque
         isSuperAdmin: true,
         isBetaTester: true,
         isChatMuted: true,
+        chatMuteExpiresAt: true,
+        chatMuteReason: true,
+        chatMutedAt: true,
+        chatMutedById: true,
         isBraquageLegalOwner: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
@@ -2545,6 +2549,10 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
       firstName?: string | null;
       passwordHash?: string;
       isChatMuted?: boolean;
+      chatMuteExpiresAt?: Date | null;
+      chatMuteReason?: string | null;
+      chatMutedAt?: Date | null;
+      chatMutedById?: string | null;
       isAdmin?: boolean;
       isSuperAdmin?: boolean;
       isBetaTester?: boolean;
@@ -2605,6 +2613,10 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         return res.status(400).json({ error: 'Invalid chat mute status' });
       }
       updateData.isChatMuted = isChatMuted;
+      updateData.chatMuteExpiresAt = null;
+      updateData.chatMuteReason = isChatMuted ? 'Mute manuel admin' : null;
+      updateData.chatMutedAt = isChatMuted ? new Date() : null;
+      updateData.chatMutedById = isChatMuted ? req.user!.id : null;
     }
     if (password !== undefined) {
       if (typeof password !== 'string') {
@@ -2637,6 +2649,10 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         auraCoinBalance: true,
         dailyAuraLimit: true,
         isChatMuted: true,
+        chatMuteExpiresAt: true,
+        chatMuteReason: true,
+        chatMutedAt: true,
+        chatMutedById: true,
         isAdmin: true,
         isSuperAdmin: true,
         isBetaTester: true,
@@ -2658,6 +2674,10 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req: AuthRequest, 
         isSuperAdmin: true,
         isBetaTester: true,
         isChatMuted: true,
+        chatMuteExpiresAt: true,
+        chatMuteReason: true,
+        chatMutedAt: true,
+        chatMutedById: true,
         dailyAuraGiven: true,
         dailyAuraLimit: true,
         lastDailyReset: true,
@@ -3064,6 +3084,7 @@ const serializeAdminChatMessage = (message: any) => ({
   userId: message.userId,
   type: message.type,
   message: message.message,
+  originalMessage: message.originalMessage ?? null,
   imageUrl: message.imageUrl,
   replyToId: message.replyToId,
   pinned: message.pinned,
@@ -3078,6 +3099,7 @@ const serializeAdminChatMessage = (message: any) => ({
         userId: message.replyTo.userId,
         type: message.replyTo.type,
         message: message.replyTo.message,
+        originalMessage: message.replyTo.originalMessage ?? null,
         imageUrl: message.replyTo.imageUrl,
         pinned: message.replyTo.pinned,
         pinnedAt: message.replyTo.pinnedAt?.toISOString() ?? null,
@@ -3857,6 +3879,51 @@ router.get('/logs', authMiddleware, requireAdminOrFiscal, async (req: AuthReques
   } catch (error) {
     console.error('Admin get logs error:', error);
     res.status(500).json({ error: 'Failed to get logs' });
+  }
+});
+
+router.get('/chat-moderation-events', authMiddleware, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const logs = await prisma.log.findMany({
+      where: {
+        type: 'ADMIN',
+        action: { in: ['chat_auto_mute', 'chat_mute_appeal'] },
+        targetId: { not: null },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const targetIds = [...new Set(logs.map((log) => log.targetId).filter((id): id is string => Boolean(id)))];
+    const users = targetIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: targetIds } },
+          select: { id: true, isChatMuted: true, chatMuteExpiresAt: true },
+        })
+      : [];
+    const userStateById = new Map(users.map((user) => [user.id, user]));
+
+    const events = logs
+      .map((log) => {
+        const userState = log.targetId ? userStateById.get(log.targetId) : null;
+        const details = log.details ? JSON.parse(log.details) : {};
+        return {
+          id: log.id,
+          type: log.action === 'chat_mute_appeal' ? 'appeal' : 'mute',
+          userId: log.targetId,
+          username: log.targetName,
+          createdAt: log.createdAt.toISOString(),
+          isActive: Boolean(userState?.isChatMuted),
+          mutedUntil: userState?.chatMuteExpiresAt ? userState.chatMuteExpiresAt.toISOString() : details.mutedUntil ?? null,
+          details,
+        };
+      })
+      .filter((event) => event.isActive);
+
+    res.json({ events });
+  } catch (error) {
+    console.error('Admin get chat moderation events error:', error);
+    res.status(500).json({ error: 'Failed to get chat moderation events' });
   }
 });
 

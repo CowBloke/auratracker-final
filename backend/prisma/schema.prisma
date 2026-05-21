@@ -44,6 +44,12 @@ model User {
   usernameColor           String? // Custom username color for chat (hex)
   profilePicture          String? // Custom profile picture URL for chat
   profileBanner           String? // Custom profile banner URL for player profile
+  chatMuteExpiresAt       DateTime?
+  chatMuteReason          String?
+  chatMutedAt             DateTime?
+  chatMutedById           String?
+  chatModerationStrikes   Int       @default(0)
+  chatModerationLevel     Int       @default(0)
   youAdblockExpiresAt     DateTime? // If set and in the future, hides ad interfaces on You pages
   bio                     String? // User bio/description
   motivationMessage       String? // Registration motivation shown to admins before approval
@@ -253,6 +259,7 @@ model User {
   @@index([referredById])
   @@index([totalScore])
   @@index([overallRank])
+  @@index([chatMuteExpiresAt])
 }
 
 model RegistrationReview {
@@ -1730,6 +1737,7 @@ model ChatMessage {
   userId    String?
   type      String    @default("user")
   message   String
+  originalMessage String?
   imageUrl  String?
   replyToId String?
   pinned    Boolean   @default(false)

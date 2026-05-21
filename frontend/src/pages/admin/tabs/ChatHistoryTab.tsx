@@ -159,7 +159,14 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                               <span className="uppercase">{msg.type}</span>
                               {msg.deletedAt && <span className="text-destructive font-medium">SUPPRIME VISUELLEMENT</span>}
                             </div>
-                            <p className="mt-1 text-sm whitespace-pre-wrap break-words">{msg.message || '(message vide)'}</p>
+                            <p className="mt-1 text-sm whitespace-pre-wrap break-words">
+                              {(msg.originalMessage || msg.message) || '(message vide)'}
+                            </p>
+                            {msg.originalMessage && msg.originalMessage !== msg.message && (
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                Version publique : <span className="font-mono">{msg.message}</span>
+                              </p>
+                            )}
                             {msg.imageUrl && (
                               <a
                                 href={resolveImageUrl(msg.imageUrl)}

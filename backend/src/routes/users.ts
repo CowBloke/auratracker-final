@@ -445,6 +445,52 @@ router.get('/announcement', authMiddleware, async (req: AuthRequest, res: Respon
   }
 });
 
+router.post('/mute-appeal', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Non authentifie.' });
+    }
+
+    const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+    if (message.length < 10) {
+      return res.status(400).json({ error: 'Explique un peu plus ta contestation.' });
+    }
+    if (message.length > 1000) {
+      return res.status(400).json({ error: 'La contestation est trop longue.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        username: true,
+        isChatMuted: true,
+        chatMuteExpiresAt: true,
+        chatMuteReason: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+
+    if (!user.isChatMuted) {
+      return res.status(400).json({ error: 'Tu n es pas mute du chat actuellement.' });
+    }
+
+    await logAdmin('chat_mute_appeal', userId, user.username, userId, user.username, {
+      message,
+      reason: user.chatMuteReason ?? 'Mute chat actif',
+      mutedUntil: user.chatMuteExpiresAt ? user.chatMuteExpiresAt.toISOString() : null,
+    });
+
+    res.json({ success: true, message: 'Contestation envoyee aux admins.' });
+  } catch (error) {
+    console.error('Submit mute appeal error:', error);
+    res.status(500).json({ error: 'Impossible d envoyer la contestation.' });
+  }
+});
+
 router.get('/me/money-history', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id;

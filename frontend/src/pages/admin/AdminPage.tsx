@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, type ChangeEvent, type PointerEvent as Rea
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
-import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, BugReportMessage, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, SharedIpUser, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage, type AdminWealthStats, type ScreenTimeLeaderboardEntry } from '../../services/api';
+import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport, BugReportMessage, PendingUser, AdminInventoryItem, Ban, ActivityLog, LogStats, BanAppeal, NameChangeRequest, AdminClan, AdminClanEvent, AdminWarning, SharedIpUser, AdminSurvey, badgesApi, Badge, AdminActivityBreakdown, OnlineHistoryInsights, supportApi, SupportThread, SupportMessage, MessagingReport, customBadgesApi, CustomBadgeRequest, TaxBracket, ShopItemExchangeFile, uploadUserImage, youApi, sanctionsApi, type FiscalUser, type FiscalInspectorSettings, type PendingSanction, type PendingFormationReviewItem, type PendingAdReview, type AdminChatHistoryDayBucket, type AdminChatHistoryMessage, type AdminWealthStats, type ScreenTimeLeaderboardEntry, type AdminChatModerationEvent } from '../../services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
@@ -626,6 +626,16 @@ const renderLogSummary = (log: ActivityLog): ReactNode => {
     if (log.action === 'ban_remove') {
       return <>Ban levé : {log.targetName || 'inconnu'} par {actor}</>;
     }
+  }
+
+  if (log.action === 'chat_auto_mute') {
+    const terms = Array.isArray(metadata.detectedTerms) ? metadata.detectedTerms.join(', ') : null;
+    const duration = typeof metadata.durationLabel === 'string' ? metadata.durationLabel : null;
+    return <>Mute automatique de {log.targetName || 'inconnu'}{duration && <> ({duration})</>}{terms && <> — termes: <span className="text-red-400">{terms}</span></>}</>;
+  }
+
+  if (log.action === 'chat_mute_appeal') {
+    return <>Appel de mute de {log.targetName || 'inconnu'} par {actor}</>;
   }
 
   const actionLabel = ACTION_LABELS[log.action] || humanizeUiLabel(log.action);
@@ -1406,6 +1416,8 @@ export default function Admin() {
   const [loadingFiscalUsers, setLoadingFiscalUsers] = useState(false);
   const [pendingSanctions, setPendingSanctions] = useState<PendingSanction[]>([]);
   const [loadingPendingSanctions, setLoadingPendingSanctions] = useState(false);
+  const [chatModerationEvents, setChatModerationEvents] = useState<AdminChatModerationEvent[]>([]);
+  const [loadingChatModerationEvents, setLoadingChatModerationEvents] = useState(false);
   const [showFiscalSanctionModal, setShowFiscalSanctionModal] = useState(false);
   const [approvingSanction, setApprovingSanction] = useState<string | null>(null);
   const [rejectingSanction, setRejectingSanction] = useState<string | null>(null);
@@ -1581,6 +1593,7 @@ export default function Admin() {
     fetchBans();
     fetchWarnings();
     fetchPendingSanctions('ALL');
+    fetchChatModerationEvents();
     fetchBanAppeals();
     fetchNameChangeRequests();
     fetchBadges();
@@ -2260,6 +2273,18 @@ export default function Admin() {
       console.error('Failed to fetch fiscal users:', error);
     } finally {
       setLoadingFiscalUsers(false);
+    }
+  };
+
+  const fetchChatModerationEvents = async () => {
+    try {
+      setLoadingChatModerationEvents(true);
+      const res = await adminApi.getChatModerationEvents();
+      setChatModerationEvents(res.data.events);
+    } catch (error) {
+      console.error('Failed to fetch chat moderation events:', error);
+    } finally {
+      setLoadingChatModerationEvents(false);
     }
   };
 
@@ -4698,7 +4723,7 @@ export default function Admin() {
         >
           {/* ── Custom admin navigation with grouped dropdowns ── */}
           {(() => {
-            const inboxCount = pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length + pendingSanctions.filter(s => s.status === 'PENDING').length;
+            const inboxCount = pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length + pendingSanctions.filter(s => s.status === 'PENDING').length + chatModerationEvents.length;
             const navBtn = (tabs: AdminTab | AdminTab[], label: string, icon: ReactNode, onClick: () => void, badge?: ReactNode) => {
               const active = Array.isArray(tabs) ? (tabs as AdminTab[]).includes(activeTab) : activeTab === tabs;
               return (
@@ -4736,7 +4761,7 @@ export default function Admin() {
             return (
               <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-lg border border-border/30 mb-6">
                 {/* Réception — admin only */}
-                {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchPendingSanctions(); },
+                {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchPendingSanctions(); fetchChatModerationEvents(); },
                   inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-red-600 text-white text-[11px] font-semibold leading-none">{inboxCount}</span> : undefined
                 )}
 
@@ -4753,7 +4778,7 @@ export default function Admin() {
 
                 {/* Sanctions — admin only */}
                 {!isFiscalOnly && navBtn('bans', 'Sanctions', <Gavel className="w-4 h-4 shrink-0" />, () => setActiveTab('bans'),
-                  bans.filter(b => b.isActive).length > 0 ? <span className={TYPOGRAPHY.XS}>{bans.filter(b => b.isActive).length}</span> : undefined
+                  (bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length) > 0 ? <span className={TYPOGRAPHY.XS}>{bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length}</span> : undefined
                 )}
 
                 {/* Contenu dropdown — admin only */}
@@ -4870,6 +4895,7 @@ export default function Admin() {
           customBadgeRequests={customBadgeRequests}
           pendingFormationReviews={pendingFormationReviews}
           pendingSanctions={pendingSanctions}
+          chatModerationEvents={chatModerationEvents}
           archivedRegistrations={archivedRegistrations}
           inboxFilter={inboxFilter}
           selectedInboxItem={selectedInboxItem}
@@ -4882,6 +4908,7 @@ export default function Admin() {
           loadingCustomBadgeRequests={customBadgeRequestsLoading}
           loadingPendingFormationReviews={pendingFormationReviewsLoading}
           loadingPendingSanctions={loadingPendingSanctions}
+          loadingChatModerationEvents={loadingChatModerationEvents}
           approvingUser={approvingUser}
           rejectingUser={rejectingUser}
           updatingBug={updatingBug}
@@ -5179,6 +5206,8 @@ export default function Admin() {
           loadingBans={loadingBans}
           unbanning={unbanning}
           unbanUser={unbanUser}
+          mutingUser={mutingUser}
+          unmuteChatUser={toggleChatMute}
           warnings={warnings}
           loadingWarnings={loadingWarnings}
           warningDialogOpen={warningDialogOpen}

@@ -75,6 +75,18 @@ export interface ChatPoll {
   options: ChatPollOption[];
 }
 
+export interface ChatModerationNotice {
+  type: 'warning' | 'mute' | 'ban';
+  title: string;
+  message: string;
+  reason: string;
+  strikeCount: number;
+  strikesBeforeAction: number;
+  durationLabel: string | null;
+  mutedUntil: string | null;
+  bannedUntil: string | null;
+}
+
 export interface DoodleSpectateSession {
   hostUserId: string;
   hostUsername: string;
@@ -106,6 +118,10 @@ interface ChatSocketContextValue {
   isLoadingOlderMessages: boolean;
   isChatMuted: boolean;
   chatMutedMessage: string | null;
+  chatMutedUntil: string | null;
+  chatMuteReason: string | null;
+  moderationNotice: ChatModerationNotice | null;
+  clearModerationNotice: () => void;
   activePoll: ChatPoll | null;
   onlineUsers: OnlineUser[];
   onlineCount: number;
@@ -136,6 +152,9 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [isChatMuted, setIsChatMuted] = useState(false);
   const [chatMutedMessage, setChatMutedMessage] = useState<string | null>(null);
+  const [chatMutedUntil, setChatMutedUntil] = useState<string | null>(null);
+  const [chatMuteReason, setChatMuteReason] = useState<string | null>(null);
+  const [moderationNotice, setModerationNotice] = useState<ChatModerationNotice | null>(null);
   const [activePoll, setActivePoll] = useState<ChatPoll | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
@@ -247,6 +266,8 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       if (message.userId === user.id) {
         setIsChatMuted(false);
         setChatMutedMessage(null);
+        setChatMutedUntil(null);
+        setChatMuteReason(null);
       }
       setMessages((prev) => [
         ...prev,
@@ -259,11 +280,35 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       ]);
     });
 
-    s.on('chat:muted', (data: { message?: string }) => {
+    s.on('chat:muted', (data: { message?: string; mutedUntil?: string | null; reason?: string | null; notice?: ChatModerationNotice }) => {
       setIsChatMuted(true);
       setChatMutedMessage(data.message || t('chat_muted_default'));
+      setChatMutedUntil(data.mutedUntil ?? data.notice?.mutedUntil ?? null);
+      setChatMuteReason(data.reason ?? data.notice?.reason ?? null);
+      if (data.notice) {
+        setModerationNotice(data.notice);
+      }
       if (typeof window !== 'undefined') {
         toast(data.message || t('chat_muted_default'));
+      }
+    });
+
+    s.on('chat:moderation-warning', (notice: ChatModerationNotice) => {
+      setModerationNotice(notice);
+      if (typeof window !== 'undefined') {
+        toast({
+          title: notice.title,
+          description: notice.durationLabel
+            ? `${notice.message} Raison : ${notice.reason}`
+            : notice.message,
+          variant: notice.type === 'warning' ? undefined : 'destructive',
+        });
+      }
+      if (notice.type === 'mute') {
+        setIsChatMuted(true);
+        setChatMutedMessage(notice.message);
+        setChatMutedUntil(notice.mutedUntil);
+        setChatMuteReason(notice.reason);
       }
     });
 
@@ -361,6 +406,7 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       s.off('chat:history-older');
       s.off('chat:message');
       s.off('chat:muted');
+      s.off('chat:moderation-warning');
       s.off('chat:blocked');
       s.off('chat:message-deleted');
       s.off('chat:clear-visual');
@@ -451,6 +497,10 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
     getSocket()?.emit('chess:spectate-list-request');
   }, []);
 
+  const clearModerationNotice = useCallback(() => {
+    setModerationNotice(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       messages,
@@ -458,6 +508,10 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       isLoadingOlderMessages,
       isChatMuted,
       chatMutedMessage,
+      chatMutedUntil,
+      chatMuteReason,
+      moderationNotice,
+      clearModerationNotice,
       activePoll,
       onlineUsers,
       onlineCount,
@@ -483,6 +537,10 @@ export function ChatSocketProvider({ children }: { children: React.ReactNode }) 
       isLoadingOlderMessages,
       isChatMuted,
       chatMutedMessage,
+      chatMutedUntil,
+      chatMuteReason,
+      moderationNotice,
+      clearModerationNotice,
       activePoll,
       onlineUsers,
       onlineCount,

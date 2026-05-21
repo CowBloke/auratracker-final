@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useChatSocket } from '../../contexts/ChatSocketContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFeatures } from '../../contexts/FeaturesContext';
-import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff, Monitor, Download } from 'lucide-react';
+import { Send, ChevronDown, ChevronUp, Trash2, MoreHorizontal, Pin, PinOff, Monitor, Download, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -54,8 +54,26 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { maintenanceStatus } = useFeatures();
-  const { messages, onlineUsers, onlineCount, requestOnlineUsers, typingUsers, sendMessage, setTyping, deleteMessage, reactToMessage, pinMessage } = useChatSocket();
+  const {
+    messages,
+    onlineUsers,
+    onlineCount,
+    requestOnlineUsers,
+    typingUsers,
+    sendMessage,
+    setTyping,
+    deleteMessage,
+    reactToMessage,
+    pinMessage,
+    isChatMuted,
+    chatMutedMessage,
+    chatMutedUntil,
+    chatMuteReason,
+    moderationNotice,
+    clearModerationNotice,
+  } = useChatSocket();
   const [input, setInput] = useState('');
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [showUsers, setShowUsers] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastReadMessageId, setLastReadMessageId] = useState<string | null>(null);
@@ -79,6 +97,17 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     maintenanceStatus.chatAutoBlockEnd
     ? `${t('chat_auto_block_prefix')} ${maintenanceStatus.chatAutoBlockStart} -> ${maintenanceStatus.chatAutoBlockEnd} (${maintenanceStatus.chatBlockTimezone})`
     : null;
+  const chatMuteRemainingLabel = useMemo(() => {
+    if (!chatMutedUntil) return null;
+    const remainingMs = new Date(chatMutedUntil).getTime() - nowTick;
+    if (remainingMs <= 0) return 'moins d une minute';
+    const totalMinutes = Math.ceil(remainingMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours <= 0) return `${minutes} min`;
+    if (minutes === 0) return `${hours} h`;
+    return `${hours} h ${minutes} min`;
+  }, [chatMutedUntil, nowTick]);
   const pinnedMessages = useMemo(() => {
     return messages
       .filter((message) => message.pinned)
@@ -134,6 +163,12 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     }
   }, [messages, isOpen, user?.id]);
 
+  useEffect(() => {
+    if (!isChatMuted || !chatMutedUntil) return;
+    const id = setInterval(() => setNowTick(Date.now()), 30000);
+    return () => clearInterval(id);
+  }, [isChatMuted, chatMutedUntil]);
+
   const handleScrollMessages = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -152,8 +187,10 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
     }
     if (input.trim()) {
       sendMessage(input.trim());
-      setInput('');
-      setTyping(false);
+      if (!isChatMuted) {
+        setInput('');
+        setTyping(false);
+      }
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
@@ -165,6 +202,9 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
       return;
     }
     setInput(e.target.value);
+    if (isChatMuted) {
+      return;
+    }
     setTyping(true);
     
     if (typingTimeoutRef.current) {
@@ -484,6 +524,22 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
               </div>
             )}
 
+            {isChatMuted && (
+              <div className="border-t border-red-500/30 bg-red-500/10 px-6 py-3">
+                <div className="flex items-start gap-2">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-200" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-red-100">
+                      {chatMutedMessage || 'Tu es mute du chat pour le moment.'}
+                    </p>
+                    <p className="mt-1 text-[11px] text-red-100/80">
+                      Raison : {chatMuteReason || 'sanction chat'}{chatMuteRemainingLabel ? ` · Temps restant : ${chatMuteRemainingLabel}` : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="px-6 py-3 border-t border-border/40">
               <div className="flex gap-2">
                 <Input
@@ -491,7 +547,7 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                   type="text"
                   value={input}
                   onChange={handleInputChange}
-                  placeholder={chatBlockedForUser ? t('chat_blocked_placeholder') : t('chat_message_placeholder')}
+                  placeholder={chatBlockedForUser ? t('chat_blocked_placeholder') : isChatMuted ? 'Message bloque pendant le mute' : t('chat_message_placeholder')}
                   className="flex-1 h-9 bg-transparent border-border/50"
                   disabled={chatBlockedForUser}
                 />
@@ -551,6 +607,46 @@ export default function Chat({ isOpen, onToggle }: ChatProps) {
                       ))}
                     </div>
                   </ScrollArea>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+
+          <Dialog
+            open={Boolean(moderationNotice)}
+            onOpenChange={(open) => {
+              if (!open) clearModerationNotice();
+            }}
+          >
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-red-500" />
+                  {moderationNotice?.title ?? 'Message modere'}
+                </DialogTitle>
+                <DialogDescription>
+                  {moderationNotice?.message}
+                </DialogDescription>
+              </DialogHeader>
+              {moderationNotice && (
+                <div className="space-y-3 text-sm">
+                  <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-red-100">
+                    <p className="font-medium">Raison : {moderationNotice.reason}</p>
+                    <p className="mt-1 text-xs text-red-100/80">
+                      Avertissements : {moderationNotice.strikeCount}/{moderationNotice.strikesBeforeAction}
+                      {moderationNotice.durationLabel ? ` · Duree : ${moderationNotice.durationLabel}` : ''}
+                    </p>
+                  </div>
+                  {moderationNotice.mutedUntil && (
+                    <p className="text-xs text-muted-foreground">
+                      Mute actif jusqu au {new Date(moderationNotice.mutedUntil).toLocaleString('fr-FR')}.
+                    </p>
+                  )}
+                  {moderationNotice.bannedUntil && (
+                    <p className="text-xs text-muted-foreground">
+                      Ban actif jusqu au {new Date(moderationNotice.bannedUntil).toLocaleString('fr-FR')}.
+                    </p>
+                  )}
                 </div>
               )}
             </DialogContent>

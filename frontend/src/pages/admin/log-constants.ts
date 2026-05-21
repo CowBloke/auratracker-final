@@ -64,6 +64,8 @@ export const ACTION_LABELS: Record<string, string> = {
   inventory_remove: 'Inventaire retiré',
   chat_clear: 'Chat vidé',
   chat_export: 'Chat exporté',
+  chat_auto_mute: 'Mute automatique',
+  chat_mute_appeal: 'Appel de mute',
   stats_delete: 'Stats supprimées',
   business_create: 'Entreprise créée',
   business_delete: 'Entreprise supprimée',

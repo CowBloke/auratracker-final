@@ -94,6 +94,8 @@ export const usersApi = {
   update: (id: string, data: { username?: string; bio?: string }) => api.put(`/users/${id}`, data),
   requestNameChange: (data: { requestedUsername: string; reason?: string }) =>
     api.post<{ request: NameChangeRequest }>('/users/name-change-request', data),
+  appealChatMute: (message: string) =>
+    api.post<{ success: boolean; message: string }>('/users/mute-appeal', { message }),
   getPendingSurvey: () => api.get<{ survey: UserPendingSurvey | null }>('/users/surveys/pending'),
   respondSurvey: (surveyId: string, optionId: string) =>
     api.post<{ success: boolean; alreadyAnswered?: boolean }>(`/users/surveys/${surveyId}/respond`, { optionId }),
@@ -2621,6 +2623,10 @@ export interface AdminUser {
   isFiscalInspector: boolean;
   isJudge: boolean;
   isChatMuted: boolean;
+  chatMuteExpiresAt: string | null;
+  chatMuteReason: string | null;
+  chatMutedAt: string | null;
+  chatMutedById: string | null;
   isBraquageLegalOwner: boolean;
   dailyAuraGiven: number;
   dailyAuraLimit: number;
@@ -3130,6 +3136,32 @@ export interface ActivityLog {
   createdAt: string;
 }
 
+export interface AdminChatModerationEvent {
+  id: string;
+  type: 'mute' | 'appeal';
+  userId: string;
+  username: string;
+  createdAt: string;
+  isActive: boolean;
+  mutedUntil: string | null;
+  details: {
+    reason?: string;
+    durationLabel?: string | null;
+    mutedUntil?: string | null;
+    message?: string;
+    detectedTerms?: string[];
+    discussion?: string;
+    offendingMessage?: string;
+    censoredMessage?: string;
+    contextMessages?: Array<{
+      id: string;
+      username: string;
+      message: string;
+      createdAt: string;
+    }>;
+  };
+}
+
 export interface LogStats {
   total: number;
   byType: Record<string, number>;
@@ -3247,6 +3279,7 @@ export interface AdminChatHistoryMessage {
   userId: string | null;
   type: string;
   message: string;
+  originalMessage: string | null;
   imageUrl: string | null;
   replyToId: string | null;
   pinned: boolean;
@@ -3260,6 +3293,7 @@ export interface AdminChatHistoryMessage {
     userId: string | null;
     type: string;
     message: string;
+    originalMessage: string | null;
     imageUrl: string | null;
     pinned: boolean;
     pinnedAt: string | null;
@@ -3445,6 +3479,7 @@ export const adminApi = {
     gameType?: string;
   }) => api.get<Blob>('/admin/logs/download', { params, responseType: 'blob' }),
   getLogStats: () => api.get<LogStats>('/admin/logs/stats'),
+  getChatModerationEvents: () => api.get<{ events: AdminChatModerationEvent[] }>('/admin/chat-moderation-events'),
   getActivityBreakdown: (date: string) =>
     api.get<AdminActivityBreakdown>('/admin/activity-breakdown', { params: { date } }),
   // Game settings management

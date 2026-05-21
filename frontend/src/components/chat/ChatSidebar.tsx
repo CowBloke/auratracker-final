@@ -28,7 +28,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { UserBadges } from '@/components/badges/UserBadges';
 import { toClanTagData } from '@/components/clans/ClanTag';
-import { supportApi, uploadUserImage } from '@/services/api';
+import { uploadUserImage, usersApi } from '@/services/api';
 import { IMAGE_UPLOAD_INPUT_ACCEPT, prepareImageUploadPayload } from '@/lib/image-upload';
 import { t } from '@/lib/i18n';
 import { FormattedMessageText, hasMessageFormatting } from '@/lib/message-formatting';
@@ -120,11 +120,11 @@ export default function ChatSidebar() {
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [imageUrl, setImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [pollModalOpen, setPollModalOpen] = useState(false);
   const [muteAppealMessage, setMuteAppealMessage] = useState('');
   const [isSubmittingMuteAppeal, setIsSubmittingMuteAppeal] = useState(false);
   const [muteAppealSent, setMuteAppealSent] = useState(false);
   const [muteAppealError, setMuteAppealError] = useState<string | null>(null);
+  const [pollModalOpen, setPollModalOpen] = useState(false);
   const [selectedReaction, setSelectedReaction] = useState<ReactionDetails | null>(null);
   const mentionMap = new Map<string, MentionableUser>();
   const pinnedMessages = useMemo(() => {
@@ -221,6 +221,14 @@ export default function ChatSidebar() {
       }, 50);
     }
   }, [open, unreadCount, scrollToBottom]);
+
+  useEffect(() => {
+    if (!isChatMuted) {
+      setMuteAppealMessage('');
+      setMuteAppealSent(false);
+      setMuteAppealError(null);
+    }
+  }, [isChatMuted]);
 
   useEffect(() => {
     setMentionIndex(0);
@@ -390,6 +398,23 @@ export default function ChatSidebar() {
     sendCurrentMessage();
   };
 
+  const handleMuteAppealSubmit = async () => {
+    const trimmed = muteAppealMessage.trim();
+    if (trimmed.length < 10 || isSubmittingMuteAppeal) return;
+
+    try {
+      setIsSubmittingMuteAppeal(true);
+      setMuteAppealError(null);
+      await usersApi.appealChatMute(trimmed);
+      setMuteAppealMessage('');
+      setMuteAppealSent(true);
+    } catch (error: any) {
+      setMuteAppealError(error?.response?.data?.error || 'Impossible d envoyer la contestation.');
+    } finally {
+      setIsSubmittingMuteAppeal(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     setTyping(true);
@@ -457,25 +482,6 @@ export default function ChatSidebar() {
     setPollQuestion('');
     setPollOptionsText('');
     setPollModalOpen(false);
-  };
-
-  const handleSubmitMuteAppeal = async () => {
-    const trimmed = muteAppealMessage.trim();
-    if (trimmed.length < 10) {
-      setMuteAppealError('Décris un peu plus ta contestation (10 caractères minimum).');
-      return;
-    }
-
-    try {
-      setMuteAppealError(null);
-      setIsSubmittingMuteAppeal(true);
-      await supportApi.sendMessage(`Contestation mute:\n\n${trimmed}`);
-      setMuteAppealSent(true);
-    } catch (error: any) {
-      setMuteAppealError(error?.response?.data?.error || 'Impossible d\'envoyer la contestation pour le moment.');
-    } finally {
-      setIsSubmittingMuteAppeal(false);
-    }
   };
 
   const getPollOptionPercent = (votes: number) => {
@@ -1005,40 +1011,39 @@ export default function ChatSidebar() {
 
           <form onSubmit={handleSubmit} className="p-3 border-t border-border/40">
             {isChatMuted && (
-              <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+              <div className="mb-3 space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
                 <p className="text-xs font-medium text-amber-600 dark:text-amber-300">
                   {chatMutedMessage || 'Tu es actuellement mute du chat.'}
                 </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Tu peux envoyer une contestation à l'équipe de modération.
-                </p>
-
                 {muteAppealSent ? (
-                  <p className="mt-2 text-xs text-green-600 dark:text-green-400">Contestation envoyée avec succès.</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-200">
+                    Contestation envoyee aux admins.
+                  </p>
                 ) : (
-                  <div className="mt-2 space-y-2">
+                  <div className="space-y-2">
                     <Textarea
                       value={muteAppealMessage}
-                      onChange={(e) => setMuteAppealMessage(e.target.value)}
-                      rows={3}
+                      onChange={(e) => {
+                        setMuteAppealMessage(e.target.value);
+                        setMuteAppealError(null);
+                      }}
+                      placeholder="Contester ce mute..."
+                      rows={2}
                       maxLength={1000}
-                      placeholder="Explique pourquoi ce mute devrait être retiré."
-                      className="resize-none bg-transparent border-border/50 text-xs"
+                      className="min-h-16 resize-none border-amber-500/30 bg-background/70 text-xs"
                     />
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-muted-foreground">{muteAppealMessage.length}/1000</span>
-                      {muteAppealError && (
-                        <span className="text-[11px] text-destructive">{muteAppealError}</span>
-                      )}
-                    </div>
+                    {muteAppealError && (
+                      <p className="text-xs text-destructive">{muteAppealError}</p>
+                    )}
                     <Button
                       type="button"
                       size="sm"
-                      onClick={handleSubmitMuteAppeal}
-                      disabled={isSubmittingMuteAppeal || muteAppealMessage.trim().length < 10}
-                      className="h-8"
+                      variant="outline"
+                      onClick={handleMuteAppealSubmit}
+                      disabled={muteAppealMessage.trim().length < 10 || isSubmittingMuteAppeal}
+                      className="h-7 border-amber-500/50 px-2 text-xs text-amber-700 hover:bg-amber-500/10 dark:text-amber-200"
                     >
-                      {isSubmittingMuteAppeal ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Envoyer la contestation'}
+                      {isSubmittingMuteAppeal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Envoyer l appel'}
                     </Button>
                   </div>
                 )}
