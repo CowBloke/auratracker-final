@@ -86,6 +86,3 @@ For a complete mechanics and content reference (systems, progression, economy, s
 ## License
 
 Private project. All rights reserved.
-
-
-aalkjldskjlsfkdjmqlkjmlqfdkqslkdfjmqdsfkjmdslk
