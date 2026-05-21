@@ -20,7 +20,6 @@ import { resolveImageUrl } from '@/lib/images';
 import { BUSINESS_COLOR_HEX, BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
 import { PRODUCER_TYPES, BUSINESS_PRODUCES, RECIPES, RESOURCE_META, type ResourceType } from '@/lib/resources';
 import { ProductionModal } from './ProductionModal';
-import { YoutubeOwnerDashboard } from './YoutubeOwnerDashboard';
 import { formatDurationMinutes, formatMoney, withRouteError } from '../utils';
 import { openFormationAccess } from '../formation-access';
 import {
@@ -1015,7 +1014,6 @@ export function ManageBusinessModal({
   const [manageTeamOpen, setManageTeamOpen] = useState(false);
   const [productionOpen, setProductionOpen] = useState(false);
   const [manageFormationsOpen, setManageFormationsOpen] = useState(false);
-  const [manageYoutubeOpen, setManageYoutubeOpen] = useState(false);
   const [manageMenuOpen, setManageMenuOpen] = useState(false);
   const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
@@ -1084,7 +1082,6 @@ export function ManageBusinessModal({
   const isTransfer = business?.typeKey === 'transfer';
   const isFormation = business?.typeKey === 'formation';
   const isIllegalMarket = business?.typeKey === 'illegal_market';
-  const isYoutube = business?.typeKey === 'youtube';
   const isNpcCommerce = business?.typeKey === 'lemonade' || business?.typeKey === 'epicerie';
   const npcCooldownHours = isNpcCommerce ? (business?.typeKey === 'lemonade' ? 6 : 6) : 0;
   const npcOnCooldown = Boolean(business?.npcLastCollectedAt && (Date.now() - new Date(business.npcLastCollectedAt).getTime()) < npcCooldownHours * 3600 * 1000);
@@ -1545,17 +1542,6 @@ export function ManageBusinessModal({
                     />
                   ) : null}
 
-                  {/* Youtube: manage videos */}
-                  {isYoutube ? (
-                    <ActionRow
-                      icon={Sparkles}
-                      label="Gérer les vidéos YouTube"
-                      sub={`${business.youtubeVideos?.length ?? 0} vidéo(s) en ligne`}
-                      iconBg="bg-red-400/15"
-                      iconColor="text-red-400"
-                      onClick={() => setManageYoutubeOpen(true)}
-                    />
-                  ) : null}
                 </>
               ) : null}
 
@@ -1930,14 +1916,6 @@ export function ManageBusinessModal({
       <ManageFormationsModal
         open={manageFormationsOpen}
         onClose={() => setManageFormationsOpen(false)}
-        business={business}
-        onSubmitted={onSubmitted}
-      />
-    ) : null}
-    {business ? (
-      <YoutubeOwnerDashboard
-        open={manageYoutubeOpen}
-        onClose={() => setManageYoutubeOpen(false)}
         business={business}
         onSubmitted={onSubmitted}
       />

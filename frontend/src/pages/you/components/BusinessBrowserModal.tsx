@@ -17,7 +17,6 @@ import {
   BankAccountModal, BuyoutOfferModal, FormationCatalogModal,
   InvestModal, LoanModal, ShareholderProposalModal, TeamRosterModal, TransferBusinessModal,
 } from './modals';
-import { YoutubeChannelModal } from './YoutubeChannelModal';
 import { FieldRow } from './YouPrimitives';
 import { AppModal } from '@/components/ui/app-modal';
 import { getBusinessPinColor, TYPE_LABELS_FR } from '../mapConstants';
@@ -88,7 +87,7 @@ function displayedMemberCount(b: YouBusiness) {
 
 type SortMode = 'default' | 'treasury_desc' | 'date_desc' | 'date_asc' | 'rating_desc' | 'name_asc';
 
-type ActionType = 'bank' | 'loan' | 'invest' | 'formation' | 'buyout' | 'shareholder' | 'transfer' | 'apply' | 'purchase' | 'plainte' | 'youtube';
+type ActionType = 'bank' | 'loan' | 'invest' | 'formation' | 'buyout' | 'shareholder' | 'transfer' | 'apply' | 'purchase' | 'plainte';
 
 const SORT_OPTIONS: Array<{ key: SortMode; label: string; Icon: React.ComponentType<{ className?: string }> }> = [
   { key: 'default',       label: 'Par type',  Icon: LayoutGrid   },
@@ -772,17 +771,6 @@ function DetailPanel({
                   <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
                 </button>
               );
-              if (business.typeKey === 'youtube') return (
-                <button type="button" onClick={() => onAction(business.id, 'youtube')}
-                  className="flex w-full items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-4 text-left text-red-400 transition-all hover:opacity-90 active:scale-[0.99]">
-                  <Sparkles className="h-5 w-5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold">Regarder des vidéos</p>
-                    <p className="text-[11px] opacity-70">Visionner le contenu et laisser un avis</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
-                </button>
-              );
               if (PURCHASE_TYPES.includes(business.typeKey)) return (
                 <button type="button"
                   disabled={isOwned}
@@ -909,7 +897,6 @@ export function BusinessBrowserModal({
   const [applyBusinessId, setApplyBusinessId] = useState<string | null>(null);
   const [purchaseBusinessId, setPurchaseBusinessId] = useState<string | null>(null);
   const [plainteBusinessId, setPlainteBusinessId] = useState<string | null>(null);
-  const [youtubeBusinessId, setYoutubeBusinessId] = useState<string | null>(null);
 
   function handleClose() {
     onClose();
@@ -928,7 +915,6 @@ export function BusinessBrowserModal({
     else if (action === 'apply')        setApplyBusinessId(businessId);
     else if (action === 'purchase')     setPurchaseBusinessId(businessId);
     else if (action === 'plainte')      setPlainteBusinessId(businessId);
-    else if (action === 'youtube')      setYoutubeBusinessId(businessId);
   }
 
   const plainteBusiness = plainteBusinessId ? businesses.find((b) => b.id === plainteBusinessId) ?? null : null;
@@ -945,7 +931,6 @@ export function BusinessBrowserModal({
   const transferBusiness = transferBusinessId ? businesses.find((b) => b.id === transferBusinessId) ?? null : null;
   const applyBusiness = applyBusinessId ? businesses.find((b) => b.id === applyBusinessId) ?? null : null;
   const purchaseBusiness = purchaseBusinessId ? businesses.find((b) => b.id === purchaseBusinessId) ?? null : null;
-  const youtubeBusiness = youtubeBusinessId ? businesses.find((b) => b.id === youtubeBusinessId) ?? null : null;
 
   // Sidebar: "all" + one entry per type
   const sidebarCategories = useMemo(() => {
@@ -1141,7 +1126,6 @@ export function BusinessBrowserModal({
       <TeamRosterModal open={Boolean(teamRosterBusiness)} onClose={() => setTeamRosterBusinessId(null)} business={teamRosterBusiness} />
       <ShareholdersModal open={Boolean(shareholdersViewBusiness)} onClose={() => setShareholdersViewBusinessId(null)} business={shareholdersViewBusiness} userId={userId} />
       <FilePlainteModal open={Boolean(plainteBusiness)} onClose={() => setPlainteBusinessId(null)} business={plainteBusiness} userId={userId} players={players} onSubmitted={() => void onReload()} />
-      <YoutubeChannelModal open={Boolean(youtubeBusiness)} onClose={() => setYoutubeBusinessId(null)} business={youtubeBusiness} onSubmitted={onReload} />
     </>
   );
 }

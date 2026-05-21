@@ -445,42 +445,6 @@ export interface YouBusinessRating {
   user: Omit<YouPlayer, 'alreadyInRelationship'>;
 }
 
-export interface YoutubeVideo {
-  id: string;
-  title: string;
-  description: string | null;
-  videoPath: string;
-  thumbnailPath: string | null;
-  duration: number | null;
-  views: number;
-  createdAt: string;
-  business?: {
-    id: string;
-    name: string;
-    logoUrl: string | null;
-    verified?: boolean;
-    owner?: Omit<YouPlayer, 'alreadyInRelationship'>;
-  };
-  _count?: {
-    comments: number;
-    likes: number;
-  };
-  likesCount?: number;
-  dislikesCount?: number;
-  userLike?: boolean | null;
-  comments?: YoutubeVideoComment[];
-}
-
-export interface YoutubeVideoComment {
-  id: string;
-  videoId: string;
-  userId: string;
-  rating: number | null;
-  content: string;
-  createdAt: string;
-  user: Omit<YouPlayer, 'alreadyInRelationship'>;
-}
-
 export interface YouIllegalBusinessUpgrade {
   key: string;
   label: string;
@@ -553,7 +517,6 @@ export interface YouBusiness {
   reviewPromptedAt?: string | null;
   supportAgent?: BusinessSupportAgentSummary | null;
   supportEnabled?: boolean;
-  youtubeVideos?: YoutubeVideo[];
 }
 
 export interface YouBusinessFinancials {
@@ -993,7 +956,6 @@ export interface YouSupplyBusiness {
   transferHistory: YouBusinessTransferHistoryEntry[];
   members: YouBusinessMember[];
   workRatio: number;
-  youtubeVideos: YoutubeVideo[];
   horseBusiness: YouHorseBusinessState | null;
 }
 
@@ -1300,22 +1262,6 @@ export const youApi = {
     api.post<{ ok: boolean }>(`/you/businesses/${businessId}/rate`, { rating, comment }),
   rateLawyerForCase: (caseId: string, lawyerUserId: string, rating: number, comment?: string) =>
     api.post<{ ok: boolean }>(`/you/court-cases/${caseId}/lawyers/${lawyerUserId}/rate`, { rating, comment }),
-  uploadYoutubeVideo: (businessId: string, data: { title: string; description?: string; videoBase64: string; mimeType: string; thumbnailBase64?: string; thumbnailMimeType?: string; duration?: number }) =>
-    api.post<{ video: YoutubeVideo }>(`/you/businesses/${businessId}/youtube-videos`, data),
-  getYoutubeVideos: (businessId: string) =>
-    api.get<{ videos: YoutubeVideo[] }>(`/you/businesses/${businessId}/youtube-videos`),
-  getGlobalYoutubeVideos: () =>
-    api.get<{ videos: YoutubeVideo[] }>('/you/youtube-videos'),
-  getYoutubeVideoDetails: (videoId: string) =>
-    api.get<{ video: YoutubeVideo }>(`/you/youtube-videos/${videoId}`),
-  addYoutubeVideoComment: (videoId: string, data: { content: string; rating?: number }) =>
-    api.post<{ comment: YoutubeVideoComment }>(`/you/youtube-videos/${videoId}/comments`, data),
-  toggleYoutubeVideoLike: (videoId: string, isLike: boolean) =>
-    api.post<{ action: string; isLike?: boolean }>(`/you/youtube-videos/${videoId}/like`, { isLike }),
-  incrementVideoViews: (videoId: string) =>
-    api.post<{ video: { id: string; views: number } }>(`/you/youtube-videos/${videoId}/view`),
-  checkYoutubeExitReview: (businessId: string) =>
-    api.post<{ eligible: boolean }>(`/you/businesses/${businessId}/youtube-exit`),
   // ── Resource Marketplace ──────────────────────────────────────────────
   getMarketListings: () =>
     api.get<YouResourceMarketState>('/you/resource-market/listings'),
