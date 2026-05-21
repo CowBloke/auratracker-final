@@ -81,6 +81,7 @@ import {
   toggleYoutubeVideoLike,
   incrementVideoViews,
   checkReviewEligibilityOnExit,
+  supplyConstructionMaterials,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
 import {
@@ -686,6 +687,17 @@ router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthReq
     res.status(201).json({ business });
   } catch (error) {
     handleRouteError(error, res, 'Create business error');
+  }
+});
+
+router.post('/businesses/:businessId/construction/supply', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const sources = req.body?.sources;
+    if (!sources || typeof sources !== 'object') return res.status(400).json({ error: 'INVALID_SOURCES' });
+    const result = await supplyConstructionMaterials(req.params.businessId, req.user!.id, sources as Record<string, string>);
+    res.json(result);
+  } catch (error) {
+    handleRouteError(error, res, 'Supply construction materials error');
   }
 });
 

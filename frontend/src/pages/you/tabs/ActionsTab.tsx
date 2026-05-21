@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertCircle, AlertTriangle, ArrowRight, ArrowUpCircle, Building2, Clock, Coins,
-  Layers, Loader2, Package, Play, Plus, RefreshCw, Settings2, ShoppingCart, User, Zap,
+  AlertCircle, AlertTriangle, ArrowRight, ArrowUpCircle, Building2, CheckCircle2, Clock, Coins,
+  Hammer, Layers, Loader2, Package, Play, Plus, RefreshCw, Settings2, ShoppingCart, User, Zap,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { BUSINESS_COLOR_HEX, BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../co
 import { CreateBusinessModal, ManageBusinessModal } from '../components/modals';
 import {
   type YouBusiness,
+  type YouConstructionProject,
   type YouResourceAction,
   type YouResourceActionBusiness,
   type YouResourceActionCost,
@@ -702,6 +703,184 @@ function ActionPipeline({
   );
 }
 
+// ── Construction panel ────────────────────────────────────────────────────────
+
+function useCountdown(completesAt: string | null): string {
+  const [label, setLabel] = useState('');
+  const raf = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!completesAt) { setLabel(''); return; }
+    const tick = () => {
+      const diff = new Date(completesAt).getTime() - Date.now();
+      if (diff <= 0) { setLabel('Terminé'); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setLabel(h > 0 ? `${h}h ${m}min` : m > 0 ? `${m}min ${s}s` : `${s}s`);
+      raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => { if (raf.current) cancelAnimationFrame(raf.current); };
+  }, [completesAt]);
+
+  return label;
+}
+
+function ConstructionPanel({
+  biz,
+  project,
+  sourceOptions,
+  onDone,
+}: {
+  biz: YouResourceActionBusiness;
+  project: YouConstructionProject;
+  sourceOptions: YouResourceActionSourceOption[];
+  onDone: () => void;
+}) {
+  const countdown = useCountdown(project.completesAt ?? null);
+  const [sources, setSources] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const timerStarted = Boolean(project.completesAt);
+  const isDone = timerStarted && countdown === 'Terminé';
+
+  const inventoryOptions = (resourceType: string) =>
+    sourceOptions.filter((o) => o.kind === 'inventory' && o.resourceType === resourceType);
+
+  const allSourcesSelected = project.materials.every((m) => sources[m.resourceType]);
+
+  const handleLaunch = async () => {
+    setSubmitting(true);
+    try {
+      await youApi.supplyConstructionMaterials(biz.id, sources);
+      toast.success('Chantier lancé !');
+      onDone();
+    } catch (err: any) {
+      const code = err?.response?.data?.error ?? '';
+      if (code.startsWith('INSUFFICIENT_INVENTORY_')) {
+        const rt = code.replace('INSUFFICIENT_INVENTORY_', '');
+        toast.error(`Stock insuffisant pour ${RESOURCE_META[rt as ResourceType]?.label ?? rt}.`);
+      } else if (code.startsWith('MISSING_SOURCE_')) {
+        toast.error('Sélectionnez une source pour chaque matériau.');
+      } else {
+        toast.error(code || 'Impossible de lancer le chantier.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (isDone) {
+    return (
+      <div className="border-t border-border/40 bg-emerald-500/5 px-4 py-4 flex items-center gap-3">
+        <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Chantier terminé !</p>
+          <p className="text-xs text-muted-foreground">Actualisez pour débloquer la production.</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={onDone} className="shrink-0">
+          <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Actualiser
+        </Button>
+      </div>
+    );
+  }
+
+  if (timerStarted) {
+    return (
+      <div className="border-t border-border/40 bg-amber-500/5 px-4 py-4 space-y-3">
+        <div className="flex items-center gap-2.5">
+          <Hammer className="h-4 w-4 text-amber-500 shrink-0 animate-pulse" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Chantier en cours</p>
+            <p className="text-xs text-muted-foreground">Terminé dans <span className="font-mono font-bold text-foreground">{countdown}</span></p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {project.materials.map((m) => (
+            <div key={m.resourceType} className="flex items-center gap-1.5 rounded-md bg-background/60 border border-border/30 px-2 py-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">
+                {RESOURCE_META[m.resourceType as ResourceType]?.label ?? m.resourceType} ×{m.requiredQuantity}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-border/40 bg-amber-500/5 px-4 py-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <Hammer className="h-4 w-4 text-amber-500 shrink-0" />
+        <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">Plan de construction</p>
+        <span className="ml-auto text-[10px] text-muted-foreground">Choisissez les sources</span>
+      </div>
+
+      <div className="space-y-2">
+        {project.materials.map((m) => {
+          const opts = inventoryOptions(m.resourceType);
+          const meta = RESOURCE_META[m.resourceType as ResourceType];
+          const selected = sources[m.resourceType];
+          const selectedOpt = opts.find((o) => o.businessId === selected);
+          const hasEnough = selectedOpt ? selectedOpt.quantity >= m.requiredQuantity : false;
+
+          return (
+            <div key={m.resourceType} className="grid grid-cols-[1fr_auto] items-center gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-base leading-none">{meta?.emoji ?? '📦'}</span>
+                <span className="text-xs font-medium truncate">{meta?.label ?? m.resourceType}</span>
+                <span className="text-xs text-muted-foreground">×{m.requiredQuantity}</span>
+              </div>
+              <div className="min-w-0 w-44">
+                {opts.length === 0 ? (
+                  <span className="text-xs text-destructive">Aucun stock disponible</span>
+                ) : (
+                  <Select
+                    value={selected ?? ''}
+                    onValueChange={(v) => setSources((s) => ({ ...s, [m.resourceType]: v }))}
+                  >
+                    <SelectTrigger className={cn('h-8 text-xs', selected && !hasEnough && 'border-destructive/60')}>
+                      {selected ? (
+                        <span className="truncate">
+                          {selectedOpt?.businessName ?? selected}
+                          {!hasEnough && <span className="ml-1 text-destructive"> (manque)</span>}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Choisir…</span>
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {opts.map((o) => (
+                        <SelectItem key={o.businessId} value={o.businessId}>
+                          {o.businessName} ({o.quantity} dispo)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Button
+        size="sm"
+        disabled={!allSourcesSelected || submitting}
+        onClick={handleLaunch}
+        className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+      >
+        {submitting
+          ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Lancement…</>
+          : <><Hammer className="mr-1.5 h-3.5 w-3.5" /> Lancer le chantier</>
+        }
+      </Button>
+    </div>
+  );
+}
+
 // Business card
 function BusinessCard({
   biz, sourceOptions, selections, mutatingKey,
@@ -783,11 +962,14 @@ function BusinessCard({
         </div>
       </div>
 
-      {/* Actions */}
-      {biz.underConstruction ? (
-        <div className="border-t border-border/40 bg-amber-500/5 px-4 py-3 text-xs text-amber-500">
-          Chantier en cours — actions bloquées.
-        </div>
+      {/* Actions / Construction */}
+      {biz.underConstruction && biz.constructionProject ? (
+        <ConstructionPanel
+          biz={biz}
+          project={biz.constructionProject}
+          sourceOptions={sourceOptions}
+          onDone={onReload ?? (() => {})}
+        />
       ) : (
         <div className="flex flex-col gap-4 border-t border-border/40 px-4 py-3">
           {biz.actions.length === 0 ? (

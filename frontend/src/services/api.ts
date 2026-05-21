@@ -875,6 +875,7 @@ export interface YouConstructionProject {
   recipeKey: string;
   status: 'UNDER_CONSTRUCTION' | 'COMPLETED' | string;
   startedAt: string | null;
+  completesAt: string | null;
   completedAt: string | null;
   materials: YouConstructionMaterial[];
   progress: {
@@ -1040,6 +1041,7 @@ export interface YouResourceActionBusiness {
   description?: string | null;
   avgRating: number | null;
   underConstruction: boolean;
+  constructionProject?: YouConstructionProject | null;
   inventories: YouSupplyInventory[];
   actions: YouResourceAction[];
   activeActions?: Array<{ id: string; actionKey: string; startedAt: string; endsAt: string; label: string }>;
@@ -1124,6 +1126,8 @@ export const youApi = {
   getResourceActionState: () => api.get<YouResourceActionState>('/you/resource-actions/state'),
   runResourceAction: (businessId: string, data: { actionKey: string; sources: Record<string, YouResourceActionSourceInput>; payFromPersonal?: boolean }) =>
     api.post<{ result: YouResourceActionResult }>(`/you/businesses/${businessId}/resource-actions/run`, data),
+  supplyConstructionMaterials: (businessId: string, sources: Record<string, string>) =>
+    api.post<{ completesAt: string }>(`/you/businesses/${businessId}/construction/supply`, { sources }),
   upsertSupplyOffer: (businessId: string, data: { resourceType: YouSupplyResourceType; unitPrice: number; autoAccept: boolean; isActive?: boolean }) =>
     api.put<{ offer: YouSupplyOffer }>(`/you/businesses/${businessId}/supply-offers`, data),
   createSupplyLink: (businessId: string, data: { sourceResourceType: YouSupplyResourceType; targetBusinessId?: string | null; targetResourceType?: YouSupplyResourceType | null; targetKind?: 'BUSINESS' | 'GLOBAL_MARKET'; maxUnitsPerHour?: number | null }) =>

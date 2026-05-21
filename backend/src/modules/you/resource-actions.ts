@@ -3,6 +3,11 @@ import { io, prisma } from '../../server.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../../utils/shared-balance.js';
 import { BUSINESS_TYPE_MAP } from './config.js';
 import {
+  CONSTRUCTION_STATUS_UNDER_CONSTRUCTION,
+  isConstructionActive,
+  serializeConstructionProject,
+} from './construction.js';
+import {
   getBusinessInputRequirements,
   getBusinessSupplyProfiles,
   getGlobalMarketUnitPrice,
@@ -384,6 +389,14 @@ function serializeActionBusiness(business: any) {
     ? Math.round((business.ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / business.ratings.length) * 10) / 10
     : null;
 
+  const cp = business.constructionProject;
+  if (cp?.status === CONSTRUCTION_STATUS_UNDER_CONSTRUCTION && cp.completesAt && cp.completesAt <= new Date()) {
+    prisma.businessConstructionProject.update({
+      where: { id: cp.id },
+      data: { status: 'COMPLETED', completedAt: new Date() },
+    }).catch(() => {});
+  }
+
   return {
     id: business.id,
     name: business.name,
@@ -397,7 +410,8 @@ function serializeActionBusiness(business: any) {
     satisfaction: business.satisfaction,
     avgRating,
     description: business.description,
-    underConstruction: Boolean(business.constructionProject && business.constructionProject.status === 'UNDER_CONSTRUCTION'),
+    underConstruction: isConstructionActive(business.constructionProject),
+    constructionProject: serializeConstructionProject(business.constructionProject),
     inventories: business.resourceInventories.map((inv: any) => serializeInventory(inv, business)),
     actions: buildResourceActions(business),
     activeActions,
@@ -606,7 +620,7 @@ export async function getResourceActionState(userId: string) {
     include: {
       owner: { select: USER_PREVIEW_SELECT },
       resourceInventories: { orderBy: { resourceType: 'asc' } },
-      constructionProject: true,
+      constructionProject: { include: { materials: true } },
       ratings: true,
     },
     orderBy: { createdAt: 'desc' },

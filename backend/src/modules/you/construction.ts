@@ -12,6 +12,28 @@ export interface ConstructionRecipe {
 export const CONSTRUCTION_STATUS_UNDER_CONSTRUCTION = 'UNDER_CONSTRUCTION';
 export const CONSTRUCTION_STATUS_COMPLETED = 'COMPLETED';
 
+export const CONSTRUCTION_DURATIONS_MINUTES: Record<string, number> = {
+  lemonade: 5,
+  epicerie: 15,
+  juterie: 10,
+  restaurant: 30,
+  coffee_shop: 20,
+  startup: 45,
+  agency: 40,
+  formation: 25,
+  transfer: 30,
+  youtube: 20,
+  medecins: 35,
+  horse_business: 45,
+  bank: 90,
+  illegal_market: 15,
+  law_firm: 50,
+};
+
+export function getConstructionDurationMs(typeKey: string): number {
+  return (CONSTRUCTION_DURATIONS_MINUTES[typeKey] ?? 30) * 60 * 1000;
+}
+
 const BASE_COMMERCE = [
   { resourceType: 'WOOD', quantity: 12 },
   { resourceType: 'STONE', quantity: 8 },
@@ -153,8 +175,11 @@ export function getConstructionRecipe(typeKey: string): ConstructionRecipe | nul
   return BUSINESS_CONSTRUCTION_RECIPES[typeKey] ?? null;
 }
 
-export function isConstructionActive(project: { status?: string | null } | null | undefined) {
-  return project?.status === CONSTRUCTION_STATUS_UNDER_CONSTRUCTION;
+export function isConstructionActive(project: { status?: string | null; completesAt?: Date | null } | null | undefined) {
+  if (!project) return false;
+  if (project.status !== CONSTRUCTION_STATUS_UNDER_CONSTRUCTION) return false;
+  if (project.completesAt && project.completesAt <= new Date()) return false;
+  return true;
 }
 
 export function getConstructionProgress(project: { materials?: Array<{ requiredQuantity: number; deliveredQuantity: number }> } | null | undefined) {
@@ -186,6 +211,7 @@ export function serializeConstructionProject(project: any) {
     recipeKey: project.recipeKey,
     status: project.status,
     startedAt: project.startedAt ? project.startedAt.toISOString() : null,
+    completesAt: project.completesAt ? project.completesAt.toISOString() : null,
     completedAt: project.completedAt ? project.completedAt.toISOString() : null,
     materials,
     progress,

@@ -2955,6 +2955,7 @@ model BusinessConstructionProject {
   recipeKey   String
   status      String    @default("UNDER_CONSTRUCTION") // UNDER_CONSTRUCTION | COMPLETED
   startedAt   DateTime  @default(now())
+  completesAt DateTime?
   completedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

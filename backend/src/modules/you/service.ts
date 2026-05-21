@@ -41,6 +41,7 @@ import {
 } from './helpers.js';
 import {
   CONSTRUCTION_STATUS_UNDER_CONSTRUCTION,
+  getConstructionDurationMs,
   getConstructionRecipe,
   isConstructionActive,
   serializeConstructionProject,
@@ -1800,6 +1801,58 @@ export async function createBusiness(userId: string, input: { name: string; type
   }
 
   return serializeBusiness(business, userId);
+}
+
+export async function supplyConstructionMaterials(
+  businessId: string,
+  userId: string,
+  sources: Record<string, string>, // { WOOD: sourceBusinessId, FOOD: sourceBusinessId2, ... }
+) {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    include: {
+      constructionProject: { include: { materials: true } },
+    },
+  });
+  if (!business) throw new Error('BUSINESS_NOT_FOUND');
+  if (!(await isBusinessManager(businessId, userId, business.ownerId))) throw new Error('BUSINESS_EDIT_FORBIDDEN');
+
+  const project = business.constructionProject;
+  if (!project) throw new Error('NO_CONSTRUCTION_PROJECT');
+  if (project.status !== CONSTRUCTION_STATUS_UNDER_CONSTRUCTION) throw new Error('CONSTRUCTION_NOT_ACTIVE');
+  if (project.completesAt) throw new Error('CONSTRUCTION_ALREADY_STARTED');
+
+  const completesAt = new Date(Date.now() + getConstructionDurationMs(business.typeKey));
+
+  await prisma.$transaction(async (tx) => {
+    for (const material of project.materials) {
+      const sourceBusinessId = sources[material.resourceType];
+      if (!sourceBusinessId) throw new Error(`MISSING_SOURCE_${material.resourceType}`);
+
+      const inventory = await tx.businessResourceInventory.findUnique({
+        where: { businessId_resourceType: { businessId: sourceBusinessId, resourceType: material.resourceType } },
+      });
+      if (!inventory || inventory.quantity < material.requiredQuantity) {
+        throw new Error(`INSUFFICIENT_INVENTORY_${material.resourceType}`);
+      }
+
+      await tx.businessResourceInventory.update({
+        where: { id: inventory.id },
+        data: { quantity: { decrement: material.requiredQuantity } },
+      });
+      await tx.businessConstructionMaterial.update({
+        where: { id: material.id },
+        data: { deliveredQuantity: material.requiredQuantity },
+      });
+    }
+
+    await tx.businessConstructionProject.update({
+      where: { id: project.id },
+      data: { completesAt },
+    });
+  });
+
+  return { completesAt: completesAt.toISOString() };
 }
 
 async function handleInviteAction(userId: string, business: any, input: { inviteeIds: string[]; role: string; salary?: number; message?: string }) {
