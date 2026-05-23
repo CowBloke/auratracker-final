@@ -21,6 +21,7 @@ import {
   MessagesSquare,
   Workflow,
   ShoppingBasket,
+  Hammer,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -61,6 +62,7 @@ const economyItems: SidebarRouteItem[] = [
 
 const youNavItems = [
   { tab: 'carte',           label: t('sidebar_you_map'),   icon: Map           },
+  { tab: 'construction',    label: 'Construction',         icon: Hammer        },
   { tab: 'actions',         label: 'Actions',              icon: Workflow      },
   { tab: 'social',         label: 'Social',              icon: Users      },
   { tab: 'salle-de-marche', label: 'Marché ressources',    icon: ShoppingBasket},

@@ -1,9 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
 import { io, prisma } from '../../server.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../../utils/shared-balance.js';
-import { BUSINESS_TYPE_MAP } from './config.js';
+import { BUSINESS_TYPES, BUSINESS_TYPE_MAP } from './config.js';
 import {
   CONSTRUCTION_STATUS_UNDER_CONSTRUCTION,
+  getConstructionRecipe,
   isConstructionActive,
   serializeConstructionProject,
 } from './construction.js';
@@ -465,6 +466,28 @@ function serializeSourceOptions(businesses: any[], offers: any[]) {
   );
 }
 
+function serializeConstructionCatalog() {
+  return BUSINESS_TYPES
+    .map((type) => {
+      const recipe = getConstructionRecipe(type.key);
+      if (!recipe) return null;
+      return {
+        typeKey: type.key,
+        label: type.label,
+        category: type.category,
+        description: type.description,
+        minCapital: type.minCapital,
+        creationFee: type.creationFee,
+        totalMoneyCost: type.creationFee + (type.key === 'bank' ? 0 : type.minCapital),
+        materials: recipe.materials.map((material) => ({
+          resourceType: material.resourceType,
+          quantity: material.quantity,
+        })),
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+}
+
 export async function settleActiveResourceActions() {
   const now = Date.now();
   const completedList: ActiveResourceAction[] = [];
@@ -642,6 +665,7 @@ export async function getResourceActionState(userId: string) {
   return {
     businesses: businesses.map(serializeActionBusiness),
     sourceOptions: serializeSourceOptions(businesses, offers),
+    constructionCatalog: serializeConstructionCatalog(),
   };
 }
 

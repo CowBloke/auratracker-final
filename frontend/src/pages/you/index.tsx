@@ -7,6 +7,7 @@ import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
 import { Card, CardContent } from '@/components/ui/card';
 import { type YouState, youApi } from '@/services/api';
 import { ActionsTab } from './tabs/ActionsTab';
+import { ConstructionTab } from './tabs/ConstructionTab';
 import { MarketplaceTab } from './tabs/MarketplaceTab';
 import { SocialTab } from './tabs/SocialTab';
 import { YouDashboard } from './YouDashboard';
@@ -43,7 +44,7 @@ export default function You() {
     youtube: 'carte',
   };
   const rawTab = tab ?? 'carte';
-  const currentTab = (rawTab === 'carte' || rawTab === 'social' || rawTab === 'actions' || rawTab === 'salle-de-marche')
+  const currentTab = (rawTab === 'carte' || rawTab === 'construction' || rawTab === 'social' || rawTab === 'actions' || rawTab === 'salle-de-marche')
     ? rawTab
     : (REMOVED_TAB_REDIRECTS[rawTab] ?? 'carte');
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
@@ -78,6 +79,14 @@ export default function You() {
     return (
       <div className="space-y-6 pb-8">
         <SocialTab data={data} onReload={loadState} />
+      </div>
+    );
+  }
+
+  if (currentTab === 'construction') {
+    return (
+      <div className="animate-in space-y-6 fade-in pb-8 duration-300">
+        <ConstructionTab onReload={() => loadState()} />
       </div>
     );
   }

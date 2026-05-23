@@ -849,6 +849,20 @@ export interface YouConstructionProject {
   };
 }
 
+export interface YouConstructionCatalogItem {
+  typeKey: string;
+  label: string;
+  category: string;
+  description: string;
+  minCapital: number;
+  creationFee: number;
+  totalMoneyCost: number;
+  materials: Array<{
+    resourceType: YouSupplyResourceType;
+    quantity: number;
+  }>;
+}
+
 export interface YouSupplyLoanNode {
   id: string;
   businessId: string;
@@ -1032,6 +1046,7 @@ export interface YouResourceActionSourceOption {
 export interface YouResourceActionState {
   businesses: YouResourceActionBusiness[];
   sourceOptions: YouResourceActionSourceOption[];
+  constructionCatalog: YouConstructionCatalogItem[];
 }
 
 export type YouResourceActionSourceInput =
@@ -1116,6 +1131,8 @@ export const youApi = {
     api.post<{ skill: YouSkill }>(`/you/skills/${skillKey}/train`),
   createBusiness: (data: { name: string; typeKey: string; capital: number; description: string; location?: string; juiceSpecialization?: string }) =>
     api.post<{ business: YouBusiness }>('/you/businesses', data),
+  createConstructionBusiness: (data: { name: string; typeKey: string; capital: number; description: string; location?: string; juiceSpecialization?: string }) =>
+    api.post<{ business: YouBusiness }>('/you/construction/businesses', data),
   runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item', data?: Record<string, unknown>) =>
     api.post<{ result: Record<string, unknown> }>(`/you/businesses/${businessId}/actions/${actionKey}`, data ?? {}),
   applyToBusiness: (businessId: string, data: { role?: string; salary: number; message?: string }) =>

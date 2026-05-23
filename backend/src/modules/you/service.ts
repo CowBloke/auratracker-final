@@ -62,6 +62,7 @@ const _youStateCache = new Map<string, { data: any; expiresAt: number }>();
 const _startupProductCache = new Map<string, { data: any; expiresAt: number }>();
 const _formationProductCache = new Map<string, { data: any; expiresAt: number }>();
 const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+const JUICE_TYPES = new Set(['JUICE_ABRICOT', 'JUICE_GINGEMBRE', 'JUICE_PAPAYE', 'JUICE_MALAKOUKOU', 'JUICE_GOYAVE']);
 
 const USER_PREVIEW_SELECT = {
   id: true,
@@ -1632,6 +1633,32 @@ export async function trainUserSkill(userId: string, skillKey: string) {
 }
 
 export async function createBusiness(userId: string, input: { name: string; typeKey: string; capital: number; description: string; location?: string; juiceSpecialization?: string }, callerIsAdmin = false) {
+  const context = await prepareBusinessCreationContext(userId, input, callerIsAdmin);
+  if (context.totalCost > 0) {
+    const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, context.totalCost);
+    if (!hasSharedMoney) {
+      throw new Error('INSUFFICIENT_MONEY');
+    }
+  }
+
+  const business = await prisma.$transaction(async (tx) => {
+    if (context.totalCost > 0) {
+      await debitSharedMoney(tx, userId, context.totalCost);
+    }
+    return createBusinessRecordTx(tx, userId, input, context);
+  });
+
+  await finalizeBusinessCreation(userId, business, context);
+
+  // Affaires XP: créer une entreprise (proportionnel aux frais de création, min 2)
+  return serializeBusiness(business, userId);
+}
+
+async function prepareBusinessCreationContext(
+  userId: string,
+  input: { name: string; typeKey: string; capital: number; description: string; location?: string; juiceSpecialization?: string },
+  callerIsAdmin: boolean,
+) {
   await ensureUserSkills(userId);
 
   const type = BUSINESS_TYPE_MAP.get(input.typeKey);
@@ -1639,13 +1666,10 @@ export async function createBusiness(userId: string, input: { name: string; type
     throw new Error('INVALID_BUSINESS_TYPE');
   }
 
-  // Admin-only business types
   if (type.isAdminOnly && !callerIsAdmin) {
     throw new Error('BUSINESS_TYPE_ADMIN_ONLY');
   }
 
-  // Juterie requires a juice specialization
-  const JUICE_TYPES = new Set(['JUICE_ABRICOT', 'JUICE_GINGEMBRE', 'JUICE_PAPAYE', 'JUICE_MALAKOUKOU', 'JUICE_GOYAVE']);
   if (type.key === 'juterie' && (!input.juiceSpecialization || !JUICE_TYPES.has(input.juiceSpecialization))) {
     throw new Error('JUTERIE_SPECIALIZATION_REQUIRED');
   }
@@ -1654,6 +1678,7 @@ export async function createBusiness(userId: string, input: { name: string; type
   if (name.length < 3) {
     throw new Error('INVALID_BUSINESS_NAME');
   }
+
   const description = input.description.trim();
   if (!description) {
     throw new Error('BUSINESS_DESCRIPTION_REQUIRED');
@@ -1693,78 +1718,257 @@ export async function createBusiness(userId: string, input: { name: string; type
     if (type.key === 'youtube' && socialSkillLevel < 3) {
       throw new Error('YOUTUBE_SOCIAL_LEVEL_REQUIRED');
     }
-    const requiredUnlock = type.level - 1; // to create level N, must have unlocked N-1
+    const requiredUnlock = type.level - 1;
     if (type.level > 1 && unlockedBusinessLevel < requiredUnlock) {
       throw new Error('BUSINESS_LEVEL_LOCKED');
     }
   }
 
-  const totalCost = creationCost + startingCapital;
-  if (totalCost > 0) {
-    const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, totalCost);
+  return {
+    type,
+    name,
+    description,
+    creationCost,
+    startingCapital,
+    constructionRecipe,
+    unlockedBusinessLevel,
+    totalCost: creationCost + startingCapital,
+  };
+}
+
+async function createBusinessRecordTx(
+  tx: any,
+  userId: string,
+  input: { location?: string; juiceSpecialization?: string },
+  context: Awaited<ReturnType<typeof prepareBusinessCreationContext>>,
+) {
+  const createdBusiness = await tx.business.create({
+    data: {
+      ownerId: userId,
+      name: context.name,
+      typeKey: context.type.key,
+      description: context.description,
+      location: input.location?.trim() || 'Institution de l\'Etat',
+      startingCapital: context.startingCapital,
+      treasuryMoney: context.startingCapital,
+      monthlyRevenue: context.type.monthlyRevenue,
+      monthlyExpenses: context.type.monthlyExpenses,
+      satisfaction: context.type.satisfaction,
+      verified: context.type.isStateOwned ? true : false,
+      hiring: context.type.isAdminOnly ? false : true,
+      isStateOwned: context.type.isStateOwned ?? false,
+      customData: context.type.key === 'youtube'
+        ? JSON.stringify({ videos: [], totalViews: 0, sponsors: [] })
+        : context.type.key === 'illegal_market'
+          ? JSON.stringify(getDefaultIllegalBusinessCustomData())
+          : context.type.key === 'juterie' && input.juiceSpecialization
+            ? JSON.stringify({ juiceSpecialization: input.juiceSpecialization })
+            : null,
+    },
+  });
+
+  if (context.constructionRecipe) {
+    await tx.businessConstructionProject.create({
+      data: {
+        businessId: createdBusiness.id,
+        typeKey: context.type.key,
+        recipeKey: context.constructionRecipe.key,
+        materials: {
+          create: context.constructionRecipe.materials.map((material) => ({
+            resourceType: material.resourceType,
+            requiredQuantity: material.quantity,
+            deliveredQuantity: 0,
+          })),
+        },
+      },
+    });
+  }
+
+  if (context.type.key === 'startup') {
+    await Promise.all(
+      STARTUP_PRODUCTS.map((product) =>
+        tx.businessStartupProduct.create({
+          data: {
+            businessId: createdBusiness.id,
+            slotIndex: product.slotIndex,
+            name: product.name,
+          },
+        }),
+      ),
+    );
+  }
+
+  return tx.business.findUniqueOrThrow({
+    where: { id: createdBusiness.id },
+    include: BUSINESS_BASE_INCLUDE,
+  });
+}
+
+async function finalizeBusinessCreation(
+  userId: string,
+  business: any,
+  context: Awaited<ReturnType<typeof prepareBusinessCreationContext>>,
+) {
+  await emitSharedBalanceUpdates(prisma, userId);
+
+  if (context.type.level > context.unlockedBusinessLevel) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { unlockedBusinessLevel: context.type.level },
+    });
+  }
+
+  logYouAdmin('business_create', userId, undefined, business.id, business.name, {
+    businessType: business.typeKey,
+    creationCost: context.creationCost,
+    startingCapital: context.startingCapital,
+  });
+
+  void grantSkillXp(userId, 'affaires', Math.max(2, Math.floor(context.creationCost / 500)));
+  if (context.type.key === 'illegal_market') {
+    void grantSkillXp(userId, 'illegalite', 20);
+  }
+}
+
+async function startConstructionProjectTx(
+  tx: any,
+  projectId: string,
+  typeKey: string,
+  sourcesByResource: Record<string, Array<{ businessId: string; quantity: number }>>,
+) {
+  const project = await tx.businessConstructionProject.findUnique({
+    where: { id: projectId },
+    include: { materials: true },
+  });
+  if (!project) throw new Error('NO_CONSTRUCTION_PROJECT');
+  if (project.status !== CONSTRUCTION_STATUS_UNDER_CONSTRUCTION) throw new Error('CONSTRUCTION_NOT_ACTIVE');
+  if (project.completesAt) throw new Error('CONSTRUCTION_ALREADY_STARTED');
+
+  const completesAt = new Date(Date.now() + getConstructionDurationMs(typeKey));
+
+  for (const material of project.materials) {
+    const allocations = sourcesByResource[material.resourceType] ?? [];
+    const allocated = allocations.reduce((sum, entry) => sum + Math.max(0, entry.quantity), 0);
+    if (allocated < material.requiredQuantity) {
+      throw new Error(`INSUFFICIENT_INVENTORY_${material.resourceType}`);
+    }
+
+    let remaining = material.requiredQuantity;
+    for (const entry of allocations) {
+      if (remaining <= 0) break;
+      const take = Math.min(remaining, Math.max(0, entry.quantity));
+      if (take <= 0) continue;
+
+      const inventory = await tx.businessResourceInventory.findUnique({
+        where: { businessId_resourceType: { businessId: entry.businessId, resourceType: material.resourceType } },
+      });
+      if (!inventory || inventory.quantity < take) {
+        throw new Error(`INSUFFICIENT_INVENTORY_${material.resourceType}`);
+      }
+
+      await tx.businessResourceInventory.update({
+        where: { id: inventory.id },
+        data: { quantity: { decrement: take } },
+      });
+      remaining -= take;
+    }
+
+    if (remaining > 0) {
+      throw new Error(`INSUFFICIENT_INVENTORY_${material.resourceType}`);
+    }
+
+    await tx.businessConstructionMaterial.update({
+      where: { id: material.id },
+      data: { deliveredQuantity: material.requiredQuantity },
+    });
+  }
+
+  await tx.businessConstructionProject.update({
+    where: { id: project.id },
+    data: { completesAt },
+  });
+
+  return { completesAt };
+}
+
+async function buildConstructionSourcePlansTx(
+  tx: any,
+  userId: string,
+  materials: Array<{ resourceType: string; quantity: number }>,
+) {
+  const inventories = await tx.businessResourceInventory.findMany({
+    where: {
+      quantity: { gt: 0 },
+      resourceType: { in: materials.map((material) => material.resourceType) },
+      business: { ownerId: userId },
+    },
+    select: {
+      businessId: true,
+      resourceType: true,
+      quantity: true,
+    },
+    orderBy: [
+      { quantity: 'desc' },
+      { businessId: 'asc' },
+    ],
+  });
+
+  const inventoriesByResource = new Map<string, Array<{ businessId: string; quantity: number }>>();
+  for (const inventory of inventories) {
+    const list = inventoriesByResource.get(inventory.resourceType) ?? [];
+    list.push({ businessId: inventory.businessId, quantity: inventory.quantity });
+    inventoriesByResource.set(inventory.resourceType, list);
+  }
+
+  const plans: Record<string, Array<{ businessId: string; quantity: number }>> = {};
+  for (const material of materials) {
+    let remaining = material.quantity;
+    const candidates = inventoriesByResource.get(material.resourceType) ?? [];
+    const allocations: Array<{ businessId: string; quantity: number }> = [];
+
+    for (const candidate of candidates) {
+      if (remaining <= 0) break;
+      const take = Math.min(candidate.quantity, remaining);
+      if (take <= 0) continue;
+      allocations.push({ businessId: candidate.businessId, quantity: take });
+      remaining -= take;
+    }
+
+    if (remaining > 0) {
+      throw new Error(`INSUFFICIENT_INVENTORY_${material.resourceType}`);
+    }
+
+    plans[material.resourceType] = allocations;
+  }
+
+  return plans;
+}
+
+export async function createBusinessFromConstructionStock(
+  userId: string,
+  input: { name: string; typeKey: string; capital: number; description: string; location?: string; juiceSpecialization?: string },
+  callerIsAdmin = false,
+) {
+  const context = await prepareBusinessCreationContext(userId, input, callerIsAdmin);
+  if (context.totalCost > 0) {
+    const hasSharedMoney = await ensureSharedMoneyAvailable(prisma, userId, context.totalCost);
     if (!hasSharedMoney) {
       throw new Error('INSUFFICIENT_MONEY');
     }
   }
 
   const business = await prisma.$transaction(async (tx) => {
-    if (totalCost > 0) {
-      await debitSharedMoney(tx, userId, totalCost);
-    }
-    const createdBusiness = await tx.business.create({
-      data: {
-        ownerId: userId,
-        name,
-        typeKey: type.key,
-        description,
-        location: input.location?.trim() || 'Institution de l\'Etat',
-        startingCapital,
-        treasuryMoney: startingCapital,
-        monthlyRevenue: type.monthlyRevenue,
-        monthlyExpenses: type.monthlyExpenses,
-        satisfaction: type.satisfaction,
-        verified: type.isStateOwned ? true : false,
-        hiring: type.isAdminOnly ? false : true,
-        isStateOwned: type.isStateOwned ?? false,
-        customData: type.key === 'youtube'
-          ? JSON.stringify({ videos: [], totalViews: 0, sponsors: [] })
-          : type.key === 'illegal_market'
-            ? JSON.stringify(getDefaultIllegalBusinessCustomData())
-          : type.key === 'juterie' && input.juiceSpecialization
-            ? JSON.stringify({ juiceSpecialization: input.juiceSpecialization })
-          : null,
-      },
-    });
+    const sourcePlans = context.constructionRecipe
+      ? await buildConstructionSourcePlansTx(tx, userId, context.constructionRecipe.materials)
+      : null;
 
-    if (constructionRecipe) {
-      await tx.businessConstructionProject.create({
-        data: {
-          businessId: createdBusiness.id,
-          typeKey: type.key,
-          recipeKey: constructionRecipe.key,
-          materials: {
-            create: constructionRecipe.materials.map((material) => ({
-              resourceType: material.resourceType,
-              requiredQuantity: material.quantity,
-              deliveredQuantity: 0,
-            })),
-          },
-        },
-      });
+    if (context.totalCost > 0) {
+      await debitSharedMoney(tx, userId, context.totalCost);
     }
 
-    if (type.key === 'startup') {
-      await Promise.all(
-        STARTUP_PRODUCTS.map((product) =>
-          tx.businessStartupProduct.create({
-            data: {
-              businessId: createdBusiness.id,
-              slotIndex: product.slotIndex,
-              name: product.name,
-            },
-          })
-        )
-      );
+    const createdBusiness = await createBusinessRecordTx(tx, userId, input, context);
+    if (context.constructionRecipe && createdBusiness.constructionProject) {
+      await startConstructionProjectTx(tx, createdBusiness.constructionProject.id, createdBusiness.typeKey, sourcePlans ?? {});
     }
 
     return tx.business.findUniqueOrThrow({
@@ -1773,27 +1977,7 @@ export async function createBusiness(userId: string, input: { name: string; type
     });
   });
 
-  await emitSharedBalanceUpdates(prisma, userId);
-
-  // Update unlocked level (only goes up, never down)
-  if (type.level > unlockedBusinessLevel) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { unlockedBusinessLevel: type.level },
-    });
-  }
-
-  logYouAdmin('business_create', userId, undefined, business.id, business.name, {
-    businessType: business.typeKey,
-    creationCost,
-    startingCapital,
-  });
-
-  // Affaires XP: créer une entreprise (proportionnel aux frais de création, min 2)
-  void grantSkillXp(userId, 'affaires', Math.max(2, Math.floor(creationCost / 500)));
-  if (type.key === 'illegal_market') {
-    void grantSkillXp(userId, 'illegalite', 20);
-  }
+  await finalizeBusinessCreation(userId, business, context);
 
   return serializeBusiness(business, userId);
 }
@@ -1817,37 +2001,18 @@ export async function supplyConstructionMaterials(
   if (project.status !== CONSTRUCTION_STATUS_UNDER_CONSTRUCTION) throw new Error('CONSTRUCTION_NOT_ACTIVE');
   if (project.completesAt) throw new Error('CONSTRUCTION_ALREADY_STARTED');
 
-  const completesAt = new Date(Date.now() + getConstructionDurationMs(business.typeKey));
-
-  await prisma.$transaction(async (tx) => {
-    for (const material of project.materials) {
-      const sourceBusinessId = sources[material.resourceType];
-      if (!sourceBusinessId) throw new Error(`MISSING_SOURCE_${material.resourceType}`);
-
-      const inventory = await tx.businessResourceInventory.findUnique({
-        where: { businessId_resourceType: { businessId: sourceBusinessId, resourceType: material.resourceType } },
-      });
-      if (!inventory || inventory.quantity < material.requiredQuantity) {
-        throw new Error(`INSUFFICIENT_INVENTORY_${material.resourceType}`);
-      }
-
-      await tx.businessResourceInventory.update({
-        where: { id: inventory.id },
-        data: { quantity: { decrement: material.requiredQuantity } },
-      });
-      await tx.businessConstructionMaterial.update({
-        where: { id: material.id },
-        data: { deliveredQuantity: material.requiredQuantity },
-      });
-    }
-
-    await tx.businessConstructionProject.update({
-      where: { id: project.id },
-      data: { completesAt },
-    });
+  const result = await prisma.$transaction(async (tx) => {
+    const sourcePlans = Object.fromEntries(
+      project.materials.map((material) => {
+        const sourceBusinessId = sources[material.resourceType];
+        if (!sourceBusinessId) throw new Error(`MISSING_SOURCE_${material.resourceType}`);
+        return [material.resourceType, [{ businessId: sourceBusinessId, quantity: material.requiredQuantity }]];
+      }),
+    );
+    return startConstructionProjectTx(tx, project.id, business.typeKey, sourcePlans);
   });
 
-  return { completesAt: completesAt.toISOString() };
+  return { completesAt: result.completesAt.toISOString() };
 }
 
 async function handleInviteAction(userId: string, business: any, input: { inviteeIds: string[]; role: string; salary?: number; message?: string }) {
