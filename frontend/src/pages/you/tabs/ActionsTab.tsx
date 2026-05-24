@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle, AlertTriangle, ArrowRight, ArrowUpCircle, Building2, CheckCircle2, Clock, Coins,
-  Hammer, Layers, Loader2, Package, Play, Plus, RefreshCw, Settings2, ShoppingCart, User, Zap,
+  Hammer, Layers, Loader2, Package, Play, RefreshCw, Settings2, ShoppingCart, User, Zap,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { RESOURCE_META, type ResourceType } from '@/lib/resources';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { BUSINESS_COLOR_HEX, BUSINESS_ICON_MAP, BUSINESS_STYLE_MAP } from '../constants';
-import { CreateBusinessModal, ManageBusinessModal } from '../components/modals';
+import { ManageBusinessModal } from '../components/modals';
 import {
   type YouBusiness,
   type YouConstructionProject,
@@ -1182,12 +1182,10 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
   const [loading, setLoading] = useState(true);
   const [mutatingKey, setMutatingKey] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, string>>({});
-  const [createOpen, setCreateOpen] = useState(false);
   const [managedBizId, setManagedBizId] = useState<string | null>(null);
   const [upgradingBiz, setUpgradingBiz] = useState<YouResourceActionBusiness | null>(null);
 
   const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
-  const canCreate = isAdmin || data.ownedBusinesses.length < (data.businessSlots ?? 0);
   const allAccessibleBiz = [...data.ownedBusinesses, ...data.memberBusinesses];
   const managedBiz: YouBusiness | null = managedBizId
     ? (allAccessibleBiz.find((b) => b.id === managedBizId) ?? null)
@@ -1296,17 +1294,6 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            data-tutorial-id="actions-create-button"
-            onClick={() => {
-              if (canCreate) setCreateOpen(true);
-              else toast.error('Monte Affaires pour débloquer un slot business.');
-            }}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> Créer
-          </Button>
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading || mutatingKey !== null}>
             {loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-2 h-3.5 w-3.5" />}
             Actualiser
@@ -1369,15 +1356,6 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
       )}
 
       {/* Modals */}
-      {createOpen && (
-        <CreateBusinessModal
-          open={createOpen}
-          onClose={() => setCreateOpen(false)}
-          businessTypes={data.businessTypes}
-          unlockedBusinessLevel={data.unlockedBusinessLevel ?? 0}
-          onCreated={async () => { setCreateOpen(false); onReload?.(); await load(); }}
-        />
-      )}
       <ManageBusinessModal
         open={managedBiz !== null}
         onClose={() => setManagedBizId(null)}

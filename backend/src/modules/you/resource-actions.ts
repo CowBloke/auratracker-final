@@ -466,8 +466,9 @@ function serializeSourceOptions(businesses: any[], offers: any[]) {
   );
 }
 
-function serializeConstructionCatalog() {
+function serializeConstructionCatalog(unlockedBusinessLevel = 0) {
   return BUSINESS_TYPES
+    .filter((type) => type.level === 1 || type.level <= unlockedBusinessLevel + 1)
     .map((type) => {
       const recipe = getConstructionRecipe(type.key);
       if (!recipe) return null;
@@ -662,10 +663,16 @@ export async function getResourceActionState(userId: string) {
     orderBy: [{ resourceType: 'asc' }, { unitPrice: 'asc' }],
   });
 
+  const viewer = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { unlockedBusinessLevel: true },
+  });
+  const unlockedBusinessLevel = viewer?.unlockedBusinessLevel ?? 0;
+
   return {
     businesses: businesses.map(serializeActionBusiness),
     sourceOptions: serializeSourceOptions(businesses, offers),
-    constructionCatalog: serializeConstructionCatalog(),
+    constructionCatalog: serializeConstructionCatalog(unlockedBusinessLevel),
   };
 }
 
