@@ -466,12 +466,14 @@ function serializeSourceOptions(businesses: any[], offers: any[]) {
   );
 }
 
-function serializeConstructionCatalog(unlockedBusinessLevel = 0) {
+function serializeConstructionCatalog(unlockedBusinessLevel = 0, viewerIsAdmin = false) {
   return BUSINESS_TYPES
-    .filter((type) => type.level === 1 || type.level <= unlockedBusinessLevel + 1)
+    .filter((type) =>
+      (type.level === 1 || type.level <= unlockedBusinessLevel + 1)
+      && (!type.isAdminOnly || viewerIsAdmin)
+    )
     .map((type) => {
       const recipe = getConstructionRecipe(type.key);
-      if (!recipe) return null;
       return {
         typeKey: type.key,
         label: type.label,
@@ -480,13 +482,12 @@ function serializeConstructionCatalog(unlockedBusinessLevel = 0) {
         minCapital: type.minCapital,
         creationFee: type.creationFee,
         totalMoneyCost: type.creationFee + (type.key === 'bank' ? 0 : type.minCapital),
-        materials: recipe.materials.map((material) => ({
+        materials: recipe?.materials.map((material) => ({
           resourceType: material.resourceType,
           quantity: material.quantity,
-        })),
+        })) ?? [],
       };
-    })
-    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+    });
 }
 
 export async function settleActiveResourceActions() {
@@ -665,14 +666,15 @@ export async function getResourceActionState(userId: string) {
 
   const viewer = await prisma.user.findUnique({
     where: { id: userId },
-    select: { unlockedBusinessLevel: true },
+    select: { unlockedBusinessLevel: true, isAdmin: true, isSuperAdmin: true },
   });
   const unlockedBusinessLevel = viewer?.unlockedBusinessLevel ?? 0;
+  const viewerIsAdmin = Boolean(viewer?.isAdmin || viewer?.isSuperAdmin);
 
   return {
     businesses: businesses.map(serializeActionBusiness),
     sourceOptions: serializeSourceOptions(businesses, offers),
-    constructionCatalog: serializeConstructionCatalog(unlockedBusinessLevel),
+    constructionCatalog: serializeConstructionCatalog(unlockedBusinessLevel, viewerIsAdmin),
   };
 }
 

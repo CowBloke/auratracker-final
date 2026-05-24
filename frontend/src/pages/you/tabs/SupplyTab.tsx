@@ -45,7 +45,7 @@ import {
   type YouSupplyState,
 } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
-import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '../components/modals';
+import { InvitePlayersModal, ManageBusinessModal } from '../components/modals';
 import { BUSINESS_ICON_MAP } from '../constants';
 
 type Selection = { kind: 'business'; id: string } | null;
@@ -431,7 +431,7 @@ function Sidebar({
   businesses: YouSupplyBusiness[];
   selection: Selection;
   onSelect: (selection: Selection) => void;
-  onCreateClick: () => void;
+  onCreateClick?: () => void;
 }) {
   return (
     <nav className="flex w-56 shrink-0 flex-col overflow-hidden border-r border-border bg-card" data-tutorial-id="supply-businesses-sidebar">
@@ -440,13 +440,15 @@ function Sidebar({
           <p className="mb-0.5 text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50">Registre</p>
           <p className="text-sm font-semibold text-foreground">{businesses.length} entreprise{businesses.length !== 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={onCreateClick}
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
-          title="Creer une entreprise"
-        >
-          <Plus size={13} />
-        </button>
+        {onCreateClick ? (
+          <button
+            onClick={onCreateClick}
+            className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Creer une entreprise"
+          >
+            <Plus size={13} />
+          </button>
+        ) : null}
       </div>
       <div className="flex-1 overflow-y-auto py-1">
         {businesses.length === 0 ? (
@@ -2220,7 +2222,6 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
   const [error, setError] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
   const [sourceTarget, setSourceTarget] = useState<{ business: YouSupplyBusiness; material: YouConstructionMaterial } | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
   const [manageBusinessId, setManageBusinessId] = useState<string | null>(null);
   const [inviteTarget, setInviteTarget] = useState<YouBusiness | null>(null);
   const [completedBusiness, setCompletedBusiness] = useState<YouSupplyBusiness | null>(null);
@@ -2377,13 +2378,6 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
 
   return (
     <div className="flex min-h-0 flex-1 bg-background text-foreground">
-      <CreateBusinessModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        businessTypes={businessTypes}
-        unlockedBusinessLevel={unlockedBusinessLevel}
-        onCreated={async () => { await load(); onReload?.(); }}
-      />
       <ManageBusinessModal
         open={Boolean(manageBusinessId)}
         onClose={() => setManageBusinessId(null)}
@@ -2400,7 +2394,7 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
         players={players}
         onSubmitted={async () => { await load(); onReload?.(); }}
       />
-      <Sidebar businesses={state?.businesses ?? []} selection={selection} onSelect={(next) => { setSelection(next); setNodeSelection(null); }} onCreateClick={() => setCreateOpen(true)} />
+      <Sidebar businesses={state?.businesses ?? []} selection={selection} onSelect={(next) => { setSelection(next); setNodeSelection(null); }} />
 
       <main className="flex min-w-0 flex-1 flex-col overflow-y-auto" data-tutorial-id="supply-nodes-pane">
         <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-border px-4">
@@ -2503,12 +2497,6 @@ export function SupplyTab({ businessTypes, unlockedBusinessLevel, ownedBusinesse
               <Building2 size={22} className="text-muted-foreground/40" />
             </div>
             <p className="text-sm font-medium text-muted-foreground">Aucune entreprise a afficher.</p>
-            <button
-              onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-[12px] font-medium text-foreground hover:bg-accent"
-            >
-              <Plus size={13} /> Creer une entreprise
-            </button>
           </div>
         )}
       </main>

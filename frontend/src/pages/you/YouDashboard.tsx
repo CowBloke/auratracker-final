@@ -9,7 +9,7 @@ import { UsernameDisplay } from '@/components/ui/username-display';
 import { cn } from '@/lib/utils';
 import { type YouState, type YouJobOffer, type YouBusiness, youApi } from '@/services/api';
 import { PRODUCER_TYPES } from '@/lib/resources';
-import { CreateBusinessModal, ManageBusinessModal } from './components/modals';
+import { ManageBusinessModal } from './components/modals';
 import { ProductionModal } from './components/ProductionModal';
 import { BUSINESS_ICON_MAP } from './constants';
 import { getBusinessPinColor } from './mapConstants';
@@ -207,14 +207,13 @@ function MemberBizTile({ b, currentUserId, onOpen, onWork }: {
 
 // ---- Left Rail ----
 
-function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlacing, onOpenBrowser, onCreateBusiness }: {
+function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlacing, onOpenBrowser }: {
   data: YouState;
   currentUserId: string;
   onManageBiz: (id: string) => void;
   onWorkBiz: (id: string) => void;
   onStartPlacing: (id: string) => void;
   onOpenBrowser: () => void;
-  onCreateBusiness: () => void;
 }) {
   const owned = data.ownedBusinesses;
   const memberOnly = data.memberBusinesses;
@@ -235,15 +234,6 @@ function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlac
         {/* Empire header */}
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Ton empire</span>
-          <button
-            type="button"
-            onClick={onCreateBusiness}
-            className="inline-flex h-6 items-center gap-1 rounded-md border border-border/50 px-2 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            data-tutorial-id="you-dashboard-create-business"
-          >
-            <Plus className="h-3 w-3" />
-            Créer
-          </button>
           <span className="rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{owned.length}/{data.businessSlots}</span>
         </div>
 
@@ -510,7 +500,6 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
   const carteRef = useRef<CarteTabHandle>(null);
   const [managedBizId, setManagedBizId] = useState<string | null>(null);
   const [productionBizId, setProductionBizId] = useState<string | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
   const [showBrowserModal, setShowBrowserModal] = useState(false);
 
   const allBusinesses = useMemo(() => {
@@ -544,7 +533,6 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
           onWorkBiz={setProductionBizId}
           onStartPlacing={handleStartPlacing}
           onOpenBrowser={() => setShowBrowserModal(true)}
-          onCreateBusiness={() => setCreateOpen(true)}
         />
         <div className="you-dash-map" data-tutorial-id="you-dashboard-map">
           <CarteTab
@@ -588,13 +576,6 @@ export function YouDashboard({ data, userId, isAdmin, onReload }: {
           onReload={onReload}
         />
       )}
-      <CreateBusinessModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        businessTypes={data.businessTypes}
-        unlockedBusinessLevel={data.unlockedBusinessLevel ?? 0}
-        onCreated={onReload}
-      />
 
     </>
   );

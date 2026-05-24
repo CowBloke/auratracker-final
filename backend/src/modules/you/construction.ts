@@ -3,6 +3,8 @@ export type ConstructionResourceType =
   | 'CONCRETE' | 'STEEL' | 'FUEL' | 'PAPER'
   | 'LUXURY_GOODS' | 'MEDICINE' | 'DATA' | 'CONTRABAND';
 
+import { BUSINESS_TYPE_MAP } from './config.js';
+
 export interface ConstructionRecipe {
   key: string;
   typeKey: string;
@@ -12,26 +14,10 @@ export interface ConstructionRecipe {
 export const CONSTRUCTION_STATUS_UNDER_CONSTRUCTION = 'UNDER_CONSTRUCTION';
 export const CONSTRUCTION_STATUS_COMPLETED = 'COMPLETED';
 
-export const CONSTRUCTION_DURATIONS_MINUTES: Record<string, number> = {
-  lemonade: 5,
-  epicerie: 15,
-  juterie: 10,
-  restaurant: 30,
-  coffee_shop: 20,
-  startup: 45,
-  agency: 40,
-  formation: 25,
-  transfer: 30,
-  youtube: 20,
-  medecins: 35,
-  horse_business: 45,
-  bank: 90,
-  illegal_market: 15,
-  law_firm: 50,
-};
-
 export function getConstructionDurationMs(typeKey: string): number {
-  return (CONSTRUCTION_DURATIONS_MINUTES[typeKey] ?? 30) * 60 * 1000;
+  const type = BUSINESS_TYPE_MAP.get(typeKey);
+  const minutes = type?.level === 2 ? 60 : type?.level === 3 ? 120 : 30;
+  return minutes * 60 * 1000;
 }
 
 const BASE_COMMERCE = [
