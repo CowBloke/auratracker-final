@@ -1388,6 +1388,7 @@ export default function Admin() {
   const [sharedIpDialogOpen, setSharedIpDialogOpen] = useState(false);
   const [sharedIp, setSharedIp] = useState<string | null>(null);
   const [sharedIpUsers, setSharedIpUsers] = useState<SharedIpUser[]>([]);
+  const [sharedIpTrusted, setSharedIpTrusted] = useState(false);
   const [loadingSharedIp, setLoadingSharedIp] = useState(false);
   const [sharedIpBanningId, setSharedIpBanningId] = useState<string | null>(null);
   const [sharedIpBannedIds, setSharedIpBannedIds] = useState<string[]>([]);
@@ -1483,6 +1484,8 @@ export default function Admin() {
   const [chatAutoBlockEnd, setChatAutoBlockEnd] = useState('07:00');
   const [chatBlockMessage, setChatBlockMessage] = useState('Le chat est temporairement bloque par l administration.');
   const [savingChatBlockSettings, setSavingChatBlockSettings] = useState(false);
+  const [trustedSharedIpAddresses, setTrustedSharedIpAddresses] = useState('');
+  const [savingTrustedSharedIps, setSavingTrustedSharedIps] = useState(false);
   const [duelMatchmakingEnabled, setDuelMatchmakingEnabled] = useState(true);
   const [savingDuelMatchmakingEnabled, setSavingDuelMatchmakingEnabled] = useState(false);
   const [referralEnabled, setReferralEnabled] = useState(true);
@@ -2708,6 +2711,7 @@ export default function Admin() {
       setChatAutoBlockStart(res.data.settings.chat_auto_block_start || '22:00');
       setChatAutoBlockEnd(res.data.settings.chat_auto_block_end || '07:00');
       setChatBlockMessage(res.data.settings.chat_block_message || 'Le chat est temporairement bloque par l administration.');
+      setTrustedSharedIpAddresses(res.data.settings.trusted_shared_ip_addresses || '');
       setDuelMatchmakingEnabled(res.data.settings.duel_matchmaking_enabled !== 'false');
       setReferralEnabled(res.data.settings.referral_enabled !== 'false');
       setReferralDashboardCardEnabled(res.data.settings.referral_dashboard_card_enabled !== 'false');
@@ -3089,6 +3093,26 @@ export default function Admin() {
       showMessage('error', 'Erreur lors de la sauvegarde du blocage du chat');
     } finally {
       setSavingChatBlockSettings(false);
+    }
+  };
+
+  const saveTrustedSharedIps = async () => {
+    try {
+      const normalized = trustedSharedIpAddresses
+        .split(/[\s,;]+/)
+        .map((ip) => ip.trim())
+        .filter(Boolean)
+        .join('\n');
+
+      setSavingTrustedSharedIps(true);
+      await adminApi.updateSetting('trusted_shared_ip_addresses', normalized);
+      setTrustedSharedIpAddresses(normalized);
+      showMessage('success', 'IP STDO sauvegardees');
+    } catch (error) {
+      console.error('Failed to save trusted shared IPs:', error);
+      showMessage('error', 'Erreur lors de la sauvegarde des IP STDO');
+    } finally {
+      setSavingTrustedSharedIps(false);
     }
   };
 
@@ -3519,6 +3543,7 @@ export default function Admin() {
     setSharedIpBanParams(params);
     setSharedIpUsers([]);
     setSharedIp(null);
+    setSharedIpTrusted(false);
     setSharedIpBannedIds([]);
     setSharedIpBanningId(null);
     setLoadingSharedIp(true);
@@ -3528,6 +3553,7 @@ export default function Admin() {
       // Don't auto-close: admin may want to confirm there are no shared accounts
       setSharedIp(data.ip);
       setSharedIpUsers(data.users);
+      setSharedIpTrusted(data.isTrustedIp);
     } catch {
       showMessage('error', 'Impossible de récupérer les comptes liés à cette IP');
       setSharedIpDialogOpen(false);
@@ -3582,6 +3608,33 @@ export default function Admin() {
       fetchUsers();
     } finally {
       setSharedIpBanningId(null);
+    }
+  };
+
+  const simulateAltIp = async (targetUser: AdminUser) => {
+    try {
+      const { data } = await adminApi.simulateAltIp(targetUser.id);
+      showMessage('success', `Simulation alt creee avec l'IP ${data.ipAddress}`);
+      setSharedIpBannedUsername(`${targetUser.username} (simulation)`);
+      setSharedIpBanParams({ reason: 'Simulation anti-alt', type: 'TEMPORARY', durationHours: 24 });
+      setSharedIpUsers([]);
+      setSharedIp(null);
+      setSharedIpTrusted(false);
+      setSharedIpBannedIds([]);
+      setSharedIpBanningId(null);
+      setLoadingSharedIp(true);
+      setSharedIpDialogOpen(true);
+
+      const shared = await adminApi.getSharedIpUsers(targetUser.id);
+      setSharedIp(shared.data.ip);
+      setSharedIpUsers(shared.data.users);
+      setSharedIpTrusted(shared.data.isTrustedIp);
+    } catch (error) {
+      console.error('Failed to simulate alt IP:', error);
+      showMessage('error', 'Impossible de simuler une IP alt');
+      setSharedIpDialogOpen(false);
+    } finally {
+      setLoadingSharedIp(false);
     }
   };
 
@@ -4974,6 +5027,7 @@ export default function Admin() {
           mutingUser={mutingUser}
           openWarningDialog={openWarningDialog}
           openBanDialog={openBanDialog}
+          simulateAltIp={simulateAltIp}
           deleting={deleting}
           forcingDivorceUserId={forcingDivorceUserId}
           forceDivorceUser={forceDivorceUser}
@@ -5123,6 +5177,10 @@ export default function Admin() {
           chatAutoBlockEnd={chatAutoBlockEnd}
           setChatAutoBlockEnd={setChatAutoBlockEnd}
           saveChatBlockSettings={saveChatBlockSettings}
+          trustedSharedIpAddresses={trustedSharedIpAddresses}
+          setTrustedSharedIpAddresses={setTrustedSharedIpAddresses}
+          saveTrustedSharedIps={saveTrustedSharedIps}
+          savingTrustedSharedIps={savingTrustedSharedIps}
           announcementMessage={announcementMessage}
           setAnnouncementMessage={setAnnouncementMessage}
           setAnnouncementOpen={setAnnouncementOpen}
@@ -5286,6 +5344,7 @@ export default function Admin() {
         isOpen={sharedIpDialogOpen}
         onOpenChange={setSharedIpDialogOpen}
         ip={sharedIp}
+        isTrustedIp={sharedIpTrusted}
         bannedUsername={sharedIpBannedUsername}
         banType={sharedIpBanParams.type}
         banDuration={sharedIpBanParams.durationHours}

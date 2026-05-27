@@ -54,6 +54,7 @@ import braquageLegalRoutes, { drawBraquageLegalSession } from './routes/braquage
 import horseRaceRoutes from './routes/horse-race.js';
 import infoRoutes from './routes/info.js';
 import forumRoutes from './routes/forum.js';
+import pixelBoardRoutes from './routes/pixel-board.js';
 
 // Socket handlers
 import { setupChatHandlers, startOnlineCountBroadcast, startOnlineSnapshotRecording } from './socket/chat.js';
@@ -72,6 +73,7 @@ import { setupBallArenaHandlers } from './socket/ballarena.js';
 import { setupUnoHandlers } from './socket/uno.js';
 import { setupMorpionHandlers } from './socket/morpion.js';
 import { setupDotsAndBoxesHandlers } from './socket/dotsandboxes.js';
+import { setupPixelBoardHandlers } from './socket/pixel-board.js';
 
 // Logger
 import { initLogger } from './utils/logger.js';
@@ -189,6 +191,7 @@ app.use('/api/ads', adsRoutes);
 app.use('/api/justice', justiceRoutes);
 app.use('/api/info', infoRoutes);
 app.use('/api/forum', forumRoutes);
+app.use('/api/pixel-board', pixelBoardRoutes);
 
 // Health check
 const SERVER_STARTED_AT = new Date().toISOString();
@@ -399,6 +402,7 @@ io.on('connection', (socket) => {
   setupUnoHandlers(socket, io);
   setupMorpionHandlers(socket, io);
   setupDotsAndBoxesHandlers(socket, io);
+  setupPixelBoardHandlers(socket, io);
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
   });

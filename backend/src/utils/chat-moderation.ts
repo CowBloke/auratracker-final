@@ -26,18 +26,75 @@ type ModerationUser = {
 const STRIKES_BEFORE_ACTION = 3;
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * ONE_HOUR_MS;
-const AUTO_MOD_REASON = 'Insulte haineuse grave dans le chat';
+const AUTO_MOD_REASON = 'Insulte ou propos haineux dans le chat';
 
-// Add/edit mutable words here. Keep labels display-safe; patterns can handle spacing and leetspeak.
+const SEPARATOR_PATTERN = String.raw`[\W_]*`;
+const LETTER_VARIANTS: Record<string, string> = {
+  a: 'a4@àáâäãå',
+  b: 'b8',
+  c: 'cç',
+  e: 'e3€èéêë',
+  g: 'g9',
+  i: 'i1!|ìíîï',
+  l: 'l1!|',
+  o: 'o0òóôöõ',
+  s: 's5$',
+  t: 't7+',
+  u: 'uùúûü',
+  y: 'yÿ',
+};
+
+const escapeForCharClass = (value: string) => value.replace(/[\\\]\-\^]/g, '\\$&');
+
+const buildMutableWordPattern = (word: string) => {
+  const body = Array.from(word).map((char) => {
+    const variants = LETTER_VARIANTS[char] ?? char;
+    return `[${escapeForCharClass(variants)}]`;
+  }).join(SEPARATOR_PATTERN);
+  return new RegExp(`(?<![a-z0-9])${body}(?![a-z0-9])`, 'giu');
+};
+
+const mutableWordTerms: Array<{ label: string; word: string }> = [
+  { label: 'n-word anglais', word: 'nigger' },
+  { label: 'n-word anglais variante', word: 'nigga' },
+  { label: 'n-word court', word: 'niger' },
+  { label: 'n-word francais', word: 'negre' },
+  { label: 'n-word francais pluriel', word: 'negres' },
+  { label: 'n-word francais variante', word: 'negro' },
+  { label: 'pute', word: 'pute' },
+  { label: 'putain', word: 'putain' },
+  { label: 'salope', word: 'salope' },
+  { label: 'petasse', word: 'petasse' },
+  { label: 'encule', word: 'encule' },
+  { label: 'enculer', word: 'enculer' },
+  { label: 'enfoire', word: 'enfoire' },
+  { label: 'batard', word: 'batard' },
+  { label: 'fdp', word: 'fdp' },
+  { label: 'ntm', word: 'ntm' },
+  { label: 'fils de pute', word: 'filsdepute' },
+  { label: 'nique ta mere', word: 'niquetamere' },
+  { label: 'pede', word: 'pede' },
+  { label: 'pd', word: 'pd' },
+  { label: 'tapette', word: 'tapette' },
+  { label: 'gouine', word: 'gouine' },
+  { label: 'travelo', word: 'travelo' },
+  { label: 'mongol', word: 'mongol' },
+  { label: 'attarde', word: 'attarde' },
+  { label: 'debile', word: 'debile' },
+  { label: 'abruti', word: 'abruti' },
+  { label: 'cretin', word: 'cretin' },
+  { label: 'sp*c', word: 'spic' },
+  { label: 'ch*nk', word: 'chink' },
+  { label: 'k*ke', word: 'kike' },
+  { label: 'bougnoule', word: 'bougnoule' },
+  { label: 'youpin', word: 'youpin' },
+  { label: 'youpins', word: 'youpins' },
+];
+
+// Add/edit mutable words here. Labels stay display-safe; generated patterns handle accents, spacing and leetspeak.
 export const MUTABLE_WORD_RULES: MutableWordRule[] = [
-  { label: 'n-word anglais', pattern: /(?<![a-z0-9])n[\W_]*[i1!|][\W_]*g[\W_]*g[\W_]*(?:e[\W_]*r|a)(?![a-z0-9])/giu },
-  { label: 'n-word francais', pattern: /(?<![a-z0-9])n[\W_]*[e3][\W_]*g[\W_]*r[\W_]*(?:e|o)(?![a-z0-9])/giu },
-  { label: 'n-word francais pluriel', pattern: /(?<![a-z0-9])n[\W_]*[e3][\W_]*g[\W_]*r[\W_]*[e3]s(?![a-z0-9])/giu },
-  { label: 'sp*c', pattern: /(?<![a-z0-9])s[\W_]*p[\W_]*[i1!|][\W_]*c(?![a-z0-9])/giu },
-  { label: 'ch*nk', pattern: /(?<![a-z0-9])c[\W_]*h[\W_]*[i1!|][\W_]*n[\W_]*k(?![a-z0-9])/giu },
-  { label: 'k*ke', pattern: /(?<![a-z0-9])k[\W_]*[i1!|][\W_]*k[\W_]*[e3](?![a-z0-9])/giu },
-  { label: 'bougnoule', pattern: /(?<![a-z0-9])b[\W_]*[o0][\W_]*u[\W_]*g[\W_]*n[\W_]*[o0][\W_]*u[\W_]*l[\W_]*(?:e|s)?(?![a-z0-9])/giu },
-  { label: 'youpin', pattern: /(?<![a-z0-9])y[\W_]*[o0][\W_]*u[\W_]*p[\W_]*(?:[i1!|]|[i1!|]n|[i1!|]ns)?(?![a-z0-9])/giu },
+  ...mutableWordTerms.map(({ label, word }) => ({ label, pattern: buildMutableWordPattern(word) })),
+  { label: 'n-word masque', pattern: /(?<![a-z0-9])n[\W_]+g[\W_]*[e3€èéêë][\W_]*r(?![a-z0-9])/giu },
 ];
 
 export const MUTABLE_INSULT_LABELS = MUTABLE_WORD_RULES.map((rule) => rule.label);

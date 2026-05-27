@@ -84,6 +84,10 @@ export function SettingsTab(props: SettingsTabProps) {
     chatAutoBlockEnd,
     setChatAutoBlockEnd,
     saveChatBlockSettings,
+    trustedSharedIpAddresses,
+    setTrustedSharedIpAddresses,
+    saveTrustedSharedIps,
+    savingTrustedSharedIps,
     announcementMessage,
     setAnnouncementMessage,
     setAnnouncementOpen,
@@ -174,7 +178,7 @@ export function SettingsTab(props: SettingsTabProps) {
   const showReferral = matchesSearch(['parrainage', 'matchmaking duel', 'code de parrainage', 'recompense', 'aura distribuable par jour', 'limits']);
   const showMarket = matchesSearch(['frais', 'aura coin', 'stable coin', 'chaos coin', 'salle de marche', 'crypto']);
   const showClash = matchesSearch(['clash', 'village', 'temps de recharge', 'raid', 'cooldown']);
-  const showComm = matchesSearch(['chat block', 'communication', 'blocage du chat', 'message', 'annonce topbar', 'page de connexion', 'landing page', 'logo sidebar', 'updates', 'maintenance']);
+  const showComm = matchesSearch(['chat block', 'communication', 'blocage du chat', 'message', 'annonce topbar', 'page de connexion', 'landing page', 'logo sidebar', 'updates', 'maintenance', 'anti alt', 'ip stdo', 'lycee']);
   const showFeatures = matchesSearch(['fonctionnalites', 'pages du site', 'bloquer']);
   const showDeploy = matchesSearch(['deploiement', 'deploy', 'version', 'git']);
   const showDanger = matchesSearch(['danger', 'zone de danger', 'vider le chat', 'purger toutes les entreprises', 'reinitialiser les niveaux', 'purger la marketplace', 'purger le marche de ressources', 'cancel listings', 'delete offers', 'delete listings']);
@@ -608,6 +612,26 @@ export function SettingsTab(props: SettingsTabProps) {
                 <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
                 Configurer
               </Button>
+            </div>
+
+            <div className="gap-4 px-4 py-3.5">
+              <div className="mb-2">
+                <div className="text-sm font-medium text-violet-200/90">IP STDO ignorees pour le ban rapide</div>
+                <div className="text-xs text-muted-foreground">
+                  Une IP par ligne. Si une IP est ici, la popup "meme IP" n'affichera pas les autres comptes lies.
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Textarea
+                  value={trustedSharedIpAddresses}
+                  onChange={(e) => setTrustedSharedIpAddresses(e.target.value)}
+                  placeholder="Ex: 203.0.113.42"
+                  className="min-h-[78px] text-xs font-mono"
+                />
+                <Button size="sm" onClick={saveTrustedSharedIps} disabled={savingTrustedSharedIps} className="shrink-0 sm:self-start">
+                  {savingTrustedSharedIps ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
