@@ -74,14 +74,6 @@ import {
   respondToBusinessShareProposal,
   getUserBusinessPurchases,
   getGlobalTemporaryEffects,
-  uploadYoutubeVideo,
-  getYoutubeVideos,
-  getGlobalYoutubeVideos,
-  getYoutubeVideoDetails,
-  addYoutubeVideoComment,
-  toggleYoutubeVideoLike,
-  incrementVideoViews,
-  checkReviewEligibilityOnExit,
   supplyConstructionMaterials,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';

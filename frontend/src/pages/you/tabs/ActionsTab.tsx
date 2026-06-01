@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle, AlertTriangle, ArrowRight, ArrowUpCircle, Building2, CheckCircle2, Clock, Coins,
-  Hammer, Layers, Loader2, Package, Play, RefreshCw, Settings2, ShoppingCart, User, Zap,
+  Hammer, Layers, Loader2, Package, Plus, Play, RefreshCw, Settings2, ShoppingCart, User, Zap,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
