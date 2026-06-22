@@ -936,6 +936,7 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
           reason: moderationNotice.reason,
           durationLabel: moderationNotice.durationLabel,
           mutedUntil: moderationNotice.mutedUntil,
+          messageId: savedMessage.id,
           detectedTerms: moderationResult.matchedTerms,
           discussion: 'Chat général',
           offendingMessage: rawMessage,
@@ -943,7 +944,8 @@ export const setupChatHandlers = (socket: Socket, io: Server) => {
           contextMessages: recentContext.reverse().map((message) => ({
             id: message.id,
             username: message.user?.username ?? CHAT_SYSTEM_USERNAME,
-            message: message.message,
+            message: message.originalMessage ?? message.message,
+            censoredMessage: message.message,
             createdAt: message.createdAt.toISOString(),
           })),
         });

@@ -145,6 +145,7 @@ model User {
 
   // Notifications
   notifications       Notification[]
+  pixelBoardEvents    PixelBoardEvent[]
   pushSubscriptions   PushSubscription[]
   createdSurveys      Survey[]          @relation("SurveyCreator")
   surveyResponses     SurveyResponse[]
@@ -1854,6 +1855,48 @@ model GpuMiner {
 
   @@index([gpuCount])
   @@index([totalMined])
+}
+
+model PixelBoardSettings {
+  id              String   @id @default("default")
+  cooldownSeconds Int      @default(30)
+  durationSeconds Int      @default(604800)
+  startsAt        DateTime @default(now())
+  endsAt          DateTime?
+  isPaused        Boolean  @default(false)
+  isEnded         Boolean  @default(false)
+  isLocked        Boolean  @default(true)
+  lockedMessage   String   @default("Le Pixel Board n'est pas encore ouvert.")
+  updatedAt       DateTime @updatedAt
+}
+
+model PixelBoardPixel {
+  x         Int
+  y         Int
+  color     String
+  userId    String
+  clanId    String?
+  updatedAt DateTime @default(now())
+
+  @@id([x, y])
+  @@index([clanId])
+  @@index([userId])
+}
+
+model PixelBoardEvent {
+  id        String   @id @default(uuid())
+  x         Int
+  y         Int
+  color     String
+  userId    String
+  clanId    String?
+  timestamp DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([timestamp])
+  @@index([userId, timestamp])
+  @@index([clanId])
 }
 
 // Mined block history

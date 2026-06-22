@@ -11,6 +11,7 @@ import {
   setTransferFeeRate,
   updateBusinessMenu,
   createBusiness,
+  createBusinessFromConstructionStock,
   createBusinessBuyoutOffer,
   createRelationship,
   deleteBusiness,
@@ -73,14 +74,6 @@ import {
   respondToBusinessShareProposal,
   getUserBusinessPurchases,
   getGlobalTemporaryEffects,
-  uploadYoutubeVideo,
-  getYoutubeVideos,
-  getGlobalYoutubeVideos,
-  getYoutubeVideoDetails,
-  addYoutubeVideoComment,
-  toggleYoutubeVideoLike,
-  incrementVideoViews,
-  checkReviewEligibilityOnExit,
   supplyConstructionMaterials,
 } from '../modules/you/service.js';
 import type { BusinessActionKey } from '../modules/you/config.js';
@@ -687,6 +680,27 @@ router.post('/businesses', authMiddleware, requireYouAccess, async (req: AuthReq
     res.status(201).json({ business });
   } catch (error) {
     handleRouteError(error, res, 'Create business error');
+  }
+});
+
+router.post('/construction/businesses', authMiddleware, requireYouAccess, async (req: AuthRequest, res: Response) => {
+  try {
+    const creationSetting = await prisma.gameSettings.findUnique({ where: { key: 'business_creation_enabled' } });
+    if (creationSetting?.value === 'false' && !req.user?.isAdmin) {
+      return res.status(403).json({ error: 'La creation d entreprise est temporairement desactivee.', code: 'BUSINESS_CREATION_DISABLED' });
+    }
+    const isAdmin = Boolean(req.user?.isAdmin || req.user?.isSuperAdmin);
+    const business = await createBusinessFromConstructionStock(req.user!.id, {
+      name: String(req.body?.name ?? ''),
+      typeKey: String(req.body?.typeKey ?? ''),
+      capital: Number(req.body?.capital ?? 0),
+      description: String(req.body?.description ?? ''),
+      location: typeof req.body?.location === 'string' ? req.body.location : undefined,
+      juiceSpecialization: typeof req.body?.juiceSpecialization === 'string' ? req.body.juiceSpecialization : undefined,
+    }, isAdmin);
+    res.status(201).json({ business });
+  } catch (error) {
+    handleRouteError(error, res, 'Create construction business error');
   }
 });
 

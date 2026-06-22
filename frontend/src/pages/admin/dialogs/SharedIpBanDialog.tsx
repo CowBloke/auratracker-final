@@ -15,6 +15,7 @@ interface SharedIpBanDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   ip: string | null;
+  isTrustedIp: boolean;
   bannedUsername: string;
   banType: 'TEMPORARY' | 'PERMANENT';
   banDuration: number;
@@ -30,6 +31,7 @@ export function SharedIpBanDialog({
   isOpen,
   onOpenChange,
   ip,
+  isTrustedIp,
   bannedUsername,
   banType,
   banDuration,
@@ -65,6 +67,11 @@ export function SharedIpBanDialog({
             connectés depuis la même adresse IP
             {ip && <span className="font-mono text-foreground"> ({ip})</span>}. Le ban rapide
             applique exactement les mêmes paramètres.
+            {isTrustedIp && (
+              <span className="mt-2 block text-amber-500">
+                Cette IP est marquee comme IP STDO/lycee fiable : les comptes lies ne sont pas proposes au ban rapide.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -75,7 +82,7 @@ export function SharedIpBanDialog({
             </div>
           ) : users.length === 0 ? (
             <p className="text-center text-sm text-muted-foreground py-12">
-              Aucun autre compte connu sur cette adresse IP.
+              {isTrustedIp ? 'IP STDO/lycee ignoree pour le ban rapide.' : 'Aucun autre compte connu sur cette adresse IP.'}
             </p>
           ) : (
             <div className="max-h-[50vh] overflow-y-auto divide-y divide-border/30 rounded border border-border/40">

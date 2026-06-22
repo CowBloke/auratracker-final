@@ -27,6 +27,7 @@ import Poker from './pages/Poker';
 import PetitBac from './pages/PetitBac';
 import BatailleNavale from './pages/BatailleNavale';
 import Polymarket from './pages/Polymarket';
+import PixelBoard from './pages/PixelBoard';
 import Admin from './pages/Admin';
 import Rules from './pages/Rules';
 import Tutoriels from './pages/Tutoriels';
@@ -286,6 +287,7 @@ function App() {
         <Route path="games/dotsandboxes" element={<DotsAndBoxes />} />
         <Route path="games/horse-race" element={<HorseRace />} />
         <Route path="polymarket" element={<Polymarket />} />
+        <Route path="pixel-board" element={<PixelBoard />} />
         <Route path="leaderboards" element={<Leaderboards />} />
         <Route path="leaderboards/nombres" element={<Numbers />} />
         <Route path="party" element={<Party />} />

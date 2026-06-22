@@ -84,8 +84,38 @@ const CHAT_AUTO_BLOCK_ENABLED_KEY = 'chat_auto_block_enabled';
 const CHAT_AUTO_BLOCK_START_KEY = 'chat_auto_block_start';
 const CHAT_AUTO_BLOCK_END_KEY = 'chat_auto_block_end';
 const DEFAULT_CHAT_BLOCK_MESSAGE = 'Le chat est temporairement bloque par l administration.';
+const TRUSTED_SHARED_IP_ADDRESSES_KEY = 'trusted_shared_ip_addresses';
 const isValidChatBlockTimeValue = (value: string) => /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
 const getDefaultChatBlockMessage = () => DEFAULT_CHAT_BLOCK_MESSAGE;
+
+const parseIpList = (value: string | null | undefined) =>
+  (value ?? '')
+    .split(/[\s,;]+/)
+    .map((ip) => ip.trim())
+    .filter(Boolean);
+
+const normalizeIpAddress = (ip: string | null | undefined) => {
+  const value = (ip ?? '').trim();
+  if (!value) return null;
+  if (value.startsWith('::ffff:')) return value.slice(7);
+  return value;
+};
+
+const getIpAddressVariants = (ip: string) => {
+  const values = new Set([ip]);
+  if (!ip.startsWith('::ffff:') && /^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip)) {
+    values.add(`::ffff:${ip}`);
+  }
+  return Array.from(values);
+};
+
+const getTrustedSharedIpAddresses = async () => {
+  const [setting, envIps] = await Promise.all([
+    prisma.gameSettings.findUnique({ where: { key: TRUSTED_SHARED_IP_ADDRESSES_KEY } }),
+    Promise.resolve(process.env.TRUSTED_SHARED_IP_ADDRESSES ?? process.env.TRUSTED_SHARED_IPS ?? ''),
+  ]);
+  return new Set([...parseIpList(setting?.value), ...parseIpList(envIps)].map(normalizeIpAddress).filter((ip): ip is string => Boolean(ip)));
+};
 
 const toOptionalTrimmedString = (value: unknown) => {
   if (typeof value !== 'string') return null;
@@ -3918,11 +3948,30 @@ router.get('/chat-moderation-events', authMiddleware, requireAdmin, async (_req:
         })
       : [];
     const userStateById = new Map(users.map((user) => [user.id, user]));
+    const mutedMessageIds = logs
+      .map((log) => {
+        const details = log.details ? JSON.parse(log.details) : {};
+        return typeof details.messageId === 'string' ? details.messageId : null;
+      })
+      .filter((id): id is string => Boolean(id));
+    const mutedMessages = mutedMessageIds.length > 0
+      ? await prisma.chatMessage.findMany({
+          where: { id: { in: mutedMessageIds } },
+          select: { id: true, message: true, originalMessage: true },
+        })
+      : [];
+    const mutedMessageById = new Map(mutedMessages.map((message) => [message.id, message]));
 
     const events = logs
       .map((log) => {
         const userState = log.targetId ? userStateById.get(log.targetId) : null;
         const details = log.details ? JSON.parse(log.details) : {};
+        const mutedMessage = typeof details.messageId === 'string' ? mutedMessageById.get(details.messageId) : null;
+        const enrichedDetails = {
+          ...details,
+          offendingMessage: details.offendingMessage ?? mutedMessage?.originalMessage ?? mutedMessage?.message,
+          censoredMessage: details.censoredMessage ?? mutedMessage?.message,
+        };
         return {
           id: log.id,
           type: log.action === 'chat_mute_appeal' ? 'appeal' : 'mute',
@@ -3930,8 +3979,8 @@ router.get('/chat-moderation-events', authMiddleware, requireAdmin, async (_req:
           username: log.targetName,
           createdAt: log.createdAt.toISOString(),
           isActive: Boolean(userState?.isChatMuted),
-          mutedUntil: userState?.chatMuteExpiresAt ? userState.chatMuteExpiresAt.toISOString() : details.mutedUntil ?? null,
-          details,
+          mutedUntil: userState?.chatMuteExpiresAt ? userState.chatMuteExpiresAt.toISOString() : enrichedDetails.mutedUntil ?? null,
+          details: enrichedDetails,
         };
       })
       .filter((event) => event.isActive);
@@ -4117,16 +4166,21 @@ router.get('/users/:id/shared-ip', authMiddleware, requireAdmin, async (req: Aut
       select: { ipAddress: true },
     });
 
-    const ip = lastIpLog?.ipAddress ?? null;
+    const ip = normalizeIpAddress(lastIpLog?.ipAddress);
 
     if (!ip) {
-      return res.json({ ip: null, users: [] });
+      return res.json({ ip: null, users: [], isTrustedIp: false });
+    }
+
+    const trustedSharedIps = await getTrustedSharedIpAddresses();
+    if (trustedSharedIps.has(ip)) {
+      return res.json({ ip, users: [], isTrustedIp: true });
     }
 
     // Find all distinct userIds that have used the same IP (excluding the target user)
     const sameIpLogs = await prisma.log.findMany({
       where: {
-        ipAddress: ip,
+        ipAddress: { in: getIpAddressVariants(ip) },
         userId: { not: null, notIn: [id] },
       },
       distinct: ['userId'],
@@ -4139,7 +4193,7 @@ router.get('/users/:id/shared-ip', authMiddleware, requireAdmin, async (req: Aut
       .filter((uid): uid is string => Boolean(uid));
 
     if (userIds.length === 0) {
-      return res.json({ ip, users: [] });
+      return res.json({ ip, users: [], isTrustedIp: false });
     }
 
     const users = await prisma.user.findMany({
@@ -4171,10 +4225,64 @@ router.get('/users/:id/shared-ip', authMiddleware, requireAdmin, async (req: Aut
         : null,
     }));
 
-    res.json({ ip, users: result });
+    res.json({ ip, users: result, isTrustedIp: false });
   } catch (error) {
     console.error('Admin get shared-ip users error:', error);
     res.status(500).json({ error: 'Failed to get shared-ip users' });
+  }
+});
+
+router.post('/users/:id/simulate-alt-ip', authMiddleware, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const rawIp = typeof req.body?.ipAddress === 'string' && req.body.ipAddress.trim()
+      ? req.body.ipAddress.trim()
+      : '198.51.100.42';
+    const ipAddress = normalizeIpAddress(rawIp);
+
+    if (!ipAddress || ipAddress.length > 64) {
+      return res.status(400).json({ error: 'IP de simulation invalide.' });
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, username: true },
+    });
+
+    if (!target) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await prisma.log.createMany({
+      data: [
+        {
+          type: 'AUTH',
+          action: 'login',
+          userId: target.id,
+          username: target.username,
+          details: JSON.stringify({ simulatedAlt: true, simulatedBy: req.user!.id }),
+          ipAddress,
+        },
+        {
+          type: 'AUTH',
+          action: 'login',
+          userId: req.user!.id,
+          username: req.user!.username,
+          details: JSON.stringify({ simulatedAlt: true, simulatedWith: target.id }),
+          ipAddress,
+        },
+      ],
+    });
+
+    logAdmin('setting_update', req.user!.id, req.user!.username, target.id, target.username, {
+      setting: 'simulate_alt_ip',
+      ipAddress,
+    });
+
+    res.json({ success: true, ipAddress });
+  } catch (error) {
+    console.error('Admin simulate alt IP error:', error);
+    res.status(500).json({ error: 'Failed to simulate alt IP' });
   }
 });
 
@@ -4515,6 +4623,10 @@ router.put('/settings/:key', authMiddleware, requireAdmin, async (req: AuthReque
       return res.status(400).json({ error: 'Chat block message must be 240 characters or less' });
     }
 
+    if (key === TRUSTED_SHARED_IP_ADDRESSES_KEY && normalizedValue.length > 2000) {
+      return res.status(400).json({ error: 'Trusted IP list must be 2000 characters or less' });
+    }
+
     const setting = await prisma.gameSettings.upsert({
       where: { key },
       create: {
@@ -4762,6 +4874,11 @@ router.put('/settings', authMiddleware, requireAdmin, async (req: AuthRequest, r
 
       if (key === CHAT_BLOCK_MESSAGE_KEY && normalizedValue.length > 240) {
         errors.push(`${key}: Chat block message must be 240 characters or less`);
+        continue;
+      }
+
+      if (key === TRUSTED_SHARED_IP_ADDRESSES_KEY && normalizedValue.length > 2000) {
+        errors.push(`${key}: Trusted IP list must be 2000 characters or less`);
         continue;
       }
 

@@ -21,6 +21,8 @@ import {
   MessagesSquare,
   Workflow,
   ShoppingBasket,
+  Hammer,
+  Grid3X3,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -47,6 +49,7 @@ type SidebarRouteItem = {
 const economyItems: SidebarRouteItem[] = [
   { to: '/leaderboards', label: t('sidebar_nav_leaderboard'), icon: Trophy },
   { to: '/clans', label: t('sidebar_nav_clans'), icon: Flag },
+  { to: '/pixel-board', label: 'Pixel Board', icon: Grid3X3 },
   { to: '/polymarket', label: t('sidebar_polymarket'), icon: BarChart3 },
   { to: '/market', label: t('sidebar_nav_shop'), icon: Store },
   { to: '/inventory', label: t('sidebar_nav_inventory'), icon: Backpack },
@@ -61,6 +64,7 @@ const economyItems: SidebarRouteItem[] = [
 
 const youNavItems = [
   { tab: 'carte',           label: t('sidebar_you_map'),   icon: Map           },
+  { tab: 'construction',    label: 'Construction',         icon: Hammer        },
   { tab: 'actions',         label: 'Actions',              icon: Workflow      },
   { tab: 'social',         label: 'Social',              icon: Users      },
   { tab: 'salle-de-marche', label: 'Marché ressources',    icon: ShoppingBasket},

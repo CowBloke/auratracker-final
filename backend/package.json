@@ -5,7 +5,7 @@
   "description": "Aura Tracker Backend API",
   "main": "dist/server.js",
   "scripts": {
-    "prebuild": "prisma generate --no-engine",
+    "prebuild": "prisma generate",
     "predev": "prisma generate && prisma db push --skip-generate --accept-data-loss",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
@@ -17,6 +17,9 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "rankings:recompute": "tsx src/scripts/recomputeOverallClassement.ts",
+    "pixel-board:scoring": "tsx src/scripts/pixelBoardScoring.ts",
+    "pixel-board:heatmap": "tsx src/scripts/pixelBoardHeatmap.ts",
+    "pixel-board:timelapse": "tsx src/scripts/pixelBoardTimelapse.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-bombparty": "tsx prisma/seed-bombparty.ts",
     "db:seed-basic": "tsx prisma/seed-basic.ts",
@@ -26,7 +29,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.9.0",
+    "@prisma/client": "^7.8.0",
     "@types/nodemailer": "^7.0.11",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
@@ -39,7 +42,7 @@
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^8.0.1",
     "socket.io": "^4.7.4",
-    "uuid": "^9.0.1",
+    "uuid": "^14.0.0",
     "web-push": "^3.6.7",
     "zod": "^3.22.4"
   },
@@ -52,7 +55,7 @@
     "@types/node": "^20.11.10",
     "@types/uuid": "^9.0.8",
     "@types/web-push": "^3.6.4",
-    "prisma": "^5.9.0",
+    "prisma": "^7.8.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }

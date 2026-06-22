@@ -1,9 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
 import { io, prisma } from '../../server.js';
 import { emitSharedBalanceUpdatesForUserIds } from '../../utils/shared-balance.js';
-import { BUSINESS_TYPE_MAP } from './config.js';
+import { BUSINESS_TYPES, BUSINESS_TYPE_MAP } from './config.js';
 import {
   CONSTRUCTION_STATUS_UNDER_CONSTRUCTION,
+  getConstructionRecipe,
   isConstructionActive,
   serializeConstructionProject,
 } from './construction.js';
@@ -465,6 +466,30 @@ function serializeSourceOptions(businesses: any[], offers: any[]) {
   );
 }
 
+function serializeConstructionCatalog(unlockedBusinessLevel = 0, viewerIsAdmin = false) {
+  return BUSINESS_TYPES
+    .filter((type) =>
+      (type.level === 1 || type.level <= unlockedBusinessLevel + 1)
+      && (!type.isAdminOnly || viewerIsAdmin)
+    )
+    .map((type) => {
+      const recipe = getConstructionRecipe(type.key);
+      return {
+        typeKey: type.key,
+        label: type.label,
+        category: type.category,
+        description: type.description,
+        minCapital: type.minCapital,
+        creationFee: type.creationFee,
+        totalMoneyCost: type.creationFee + (type.key === 'bank' ? 0 : type.minCapital),
+        materials: recipe?.materials.map((material) => ({
+          resourceType: material.resourceType,
+          quantity: material.quantity,
+        })) ?? [],
+      };
+    });
+}
+
 export async function settleActiveResourceActions() {
   const now = Date.now();
   const completedList: ActiveResourceAction[] = [];
@@ -639,9 +664,17 @@ export async function getResourceActionState(userId: string) {
     orderBy: [{ resourceType: 'asc' }, { unitPrice: 'asc' }],
   });
 
+  const viewer = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { unlockedBusinessLevel: true, isAdmin: true, isSuperAdmin: true },
+  });
+  const unlockedBusinessLevel = viewer?.unlockedBusinessLevel ?? 0;
+  const viewerIsAdmin = Boolean(viewer?.isAdmin || viewer?.isSuperAdmin);
+
   return {
     businesses: businesses.map(serializeActionBusiness),
     sourceOptions: serializeSourceOptions(businesses, offers),
+    constructionCatalog: serializeConstructionCatalog(unlockedBusinessLevel, viewerIsAdmin),
   };
 }
 

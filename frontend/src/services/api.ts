@@ -849,6 +849,20 @@ export interface YouConstructionProject {
   };
 }
 
+export interface YouConstructionCatalogItem {
+  typeKey: string;
+  label: string;
+  category: string;
+  description: string;
+  minCapital: number;
+  creationFee: number;
+  totalMoneyCost: number;
+  materials: Array<{
+    resourceType: YouSupplyResourceType;
+    quantity: number;
+  }>;
+}
+
 export interface YouSupplyLoanNode {
   id: string;
   businessId: string;
@@ -1032,6 +1046,7 @@ export interface YouResourceActionSourceOption {
 export interface YouResourceActionState {
   businesses: YouResourceActionBusiness[];
   sourceOptions: YouResourceActionSourceOption[];
+  constructionCatalog: YouConstructionCatalogItem[];
 }
 
 export type YouResourceActionSourceInput =
@@ -1116,6 +1131,8 @@ export const youApi = {
     api.post<{ skill: YouSkill }>(`/you/skills/${skillKey}/train`),
   createBusiness: (data: { name: string; typeKey: string; capital: number; description: string; location?: string; juiceSpecialization?: string }) =>
     api.post<{ business: YouBusiness }>('/you/businesses', data),
+  createConstructionBusiness: (data: { name: string; typeKey: string; capital: number; description: string; location?: string; juiceSpecialization?: string }) =>
+    api.post<{ business: YouBusiness }>('/you/construction/businesses', data),
   runBusinessAction: (businessId: string, actionKey: 'invite' | 'loan' | 'invest' | 'deposit' | 'withdraw' | 'start_research' | 'deploy_product' | 'collect_npc' | 'purchase_item', data?: Record<string, unknown>) =>
     api.post<{ result: Record<string, unknown> }>(`/you/businesses/${businessId}/actions/${actionKey}`, data ?? {}),
   applyToBusiness: (businessId: string, data: { role?: string; salary: number; message?: string }) =>
@@ -3107,6 +3124,7 @@ export interface AdminChatModerationEvent {
       id: string;
       username: string;
       message: string;
+      censoredMessage?: string;
       createdAt: string;
     }>;
   };
@@ -3407,7 +3425,9 @@ export const adminApi = {
   createBan: (data: { userId: string; reason: string; type: 'TEMPORARY' | 'PERMANENT'; durationHours?: number }) =>
     api.post<{ ban: Ban; message: string }>('/admin/bans', data),
   getSharedIpUsers: (userId: string) =>
-    api.get<{ ip: string | null; users: SharedIpUser[] }>(`/admin/users/${userId}/shared-ip`),
+    api.get<{ ip: string | null; users: SharedIpUser[]; isTrustedIp: boolean }>(`/admin/users/${userId}/shared-ip`),
+  simulateAltIp: (userId: string, ipAddress?: string) =>
+    api.post<{ success: boolean; ipAddress: string }>(`/admin/users/${userId}/simulate-alt-ip`, { ipAddress }),
   unbanUser: (userId: string) => api.delete<{ success: boolean; message: string }>(`/admin/bans/${userId}`),
   // Activity logs
   getLogs: (params?: {
@@ -3865,6 +3885,53 @@ export const polymarketApi = {
     api.get<{ bets: PolymarketBet[] }>('/polymarket/bets/all', { params: { limit } }),
   placeBet: (data: { eventId: string; prediction: 'YES' | 'NO'; amount: number }) =>
     api.post<{ bet: PolymarketBet }>('/polymarket/bets', data),
+};
+
+export interface PixelBoardSettings {
+  cooldownSeconds: number;
+  durationSeconds: number;
+  startsAt: string;
+  endsAt: string | null;
+  isPaused: boolean;
+  isEnded: boolean;
+  isLocked: boolean;
+  lockedMessage: string;
+}
+
+export interface PixelBoardPixel {
+  x: number;
+  y: number;
+  color: string;
+  userId: string;
+  clanId: string | null;
+  updatedAt: string;
+}
+
+export interface PixelBoardState {
+  size: number;
+  colors: string[];
+  settings: PixelBoardSettings;
+  pixels: PixelBoardPixel[];
+  leaderboard: Array<{ userId: string; username: string; usernameColor: string | null; actions: number }>;
+  me: { nextPlaceAt: string | null; cooldownRemainingMs: number };
+}
+
+export interface PixelBoardAnalysis {
+  generatedAt: string;
+  size: number;
+  eventCount: number;
+  clanScores: Array<{ clanId: string; pixelsOwned: number; actions: number; ownershipShare: number; activityShare: number; score: number }>;
+  soloLeaderboard: Array<{ userId: string; username: string; actions: number; effectivePixels: number }>;
+  heatmap: number[][];
+  timelapse: Array<{ x: number; y: number; color: string; userId: string; clanId: string | null; timestamp: string }>;
+}
+
+export const pixelBoardApi = {
+  getState: () => api.get<PixelBoardState>('/pixel-board/state'),
+  getAnalysis: () => api.get<PixelBoardAnalysis>('/pixel-board/analysis'),
+  updateSettings: (data: { cooldownSeconds?: number; durationSeconds?: number; isPaused?: boolean; isLocked?: boolean; lockedMessage?: string; forceEnd?: boolean }) =>
+    api.patch<{ settings: PixelBoardSettings }>('/pixel-board/admin/settings', data),
+  reset: () => api.post<{ success: boolean }>('/pixel-board/admin/reset'),
 };
 
 // Daily Quests API

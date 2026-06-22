@@ -173,7 +173,8 @@
       "Bash(awk '/^model Ban /,/^}/' backend/prisma/schema.prisma)",
       "Bash(awk '/^model User /,/^}/' backend/prisma/schema.prisma)",
       "Bash(awk 'NR>=2125 && NR<=2160' backend/prisma/schema.prisma)",
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Bash(echo \"EXIT: $?\")"
     ]
   },
   "outputStyle": "default"

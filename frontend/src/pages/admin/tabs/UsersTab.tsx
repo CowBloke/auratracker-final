@@ -30,6 +30,7 @@ import {
   Search,
   Shield,
   ShieldOff,
+  TestTube2,
   Trash2,
   Wallet,
   X,
@@ -61,6 +62,7 @@ type UsersTabProps = {
   mutingUser: string | null;
   openWarningDialog: (userId: string) => void;
   openBanDialog: (userId: string) => void;
+  simulateAltIp: (user: AdminUser) => void;
   deleting: string | null;
   forcingDivorceUserId: string | null;
   forceDivorceUser: (userId: string) => void;
@@ -92,6 +94,7 @@ export function UsersTab(props: UsersTabProps) {
     mutingUser,
     openWarningDialog,
     openBanDialog,
+    simulateAltIp,
     deleting,
     forcingDivorceUserId,
     forceDivorceUser,
@@ -337,15 +340,26 @@ export function UsersTab(props: UsersTabProps) {
                       )}
 
                       {getAdminRole(u) === 'USER' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openBanDialog(u.id)}
-                          className="h-8 w-8 p-0 border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
-                          title="Bannir"
-                        >
-                          <BanIcon className="h-3.5 w-3.5" />
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => simulateAltIp(u)}
+                            className="h-8 w-8 p-0 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+                            title="Simuler une IP alt"
+                          >
+                            <TestTube2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openBanDialog(u.id)}
+                            className="h-8 w-8 p-0 border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                            title="Bannir"
+                          >
+                            <BanIcon className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
                       )}
 
                       {getAdminRole(u) === 'USER' && (

@@ -8,7 +8,7 @@ import { useAppDialog } from '@/contexts/AppDialogContext';
 import { type Ad, adsApi, type YouBusiness, type YouBusinessShareProposal, type YouPlayer, type YouState, youApi } from '@/services/api';
 import { AdBanner } from '@/components/ads/AdBanner';
 import { BUSINESS_ICON_MAP } from '../constants';
-import { CreateBusinessModal, InvitePlayersModal, ManageBusinessModal } from '../components/modals';
+import { InvitePlayersModal, ManageBusinessModal } from '../components/modals';
 import { ActionCard, ActionRow, Pill, SectionTitle } from '../components/YouPrimitives';
 import { formatMoney, withRouteError } from '../utils';
 
@@ -40,7 +40,6 @@ function BusinessCard({ business, onOpen }: { business: YouBusiness; onOpen: (b:
 export function TravailTab({ data, players, currentUserId, adblockActive, onReload }: { data: YouState; players: YouPlayer[]; currentUserId: string; adblockActive: boolean; onReload: (refreshBalance?: boolean) => Promise<void> }) {
   const { user } = useAuth();
   const { confirm } = useAppDialog();
-  const [createOpen, setCreateOpen] = useState(false);
   const [inviteBusinessId, setInviteBusinessId] = useState<string | null>(null);
   const [managedBusinessId, setManagedBusinessId] = useState<string | null>(null);
   const [cancellingOfferId, setCancellingOfferId] = useState<string | null>(null);
@@ -48,7 +47,6 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
   const [leavingBusinessId, setLeavingBusinessId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const isAdmin = Boolean(user?.isAdmin || user?.isSuperAdmin);
-  const canCreateBusiness = isAdmin || data.ownedBusinesses.length < data.businessSlots;
   const unlockedLevel = data.unlockedBusinessLevel ?? 0;
   const slotLabel = isAdmin ? 'Illimite' : `${data.ownedBusinesses.length}/${data.businessSlots} slot(s)`;
   const allBusinesses = [...data.ownedBusinesses, ...data.memberBusinesses, ...data.shareholderBusinesses];
@@ -145,15 +143,6 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
         <div className="space-y-4">
           <SectionTitle>Actions</SectionTitle>
           <ActionCard>
-            <ActionRow
-              icon={Building2}
-              label="Creer une entreprise"
-              sub={`${slotLabel} · Niveau debloque : ${unlockedLevel}`}
-              iconBg="bg-emerald-400/15"
-              iconColor="text-emerald-400"
-              dataTutorialId="travail-create-business-action"
-              onClick={() => { if (canCreateBusiness) setCreateOpen(true); else toast.error('Monte Affaires pour debloquer un nouveau slot business.'); }}
-            />
             <ActionRow
               icon={Megaphone}
               label="Gerer mes publicites"
@@ -336,7 +325,6 @@ export function TravailTab({ data, players, currentUserId, adblockActive, onRelo
           )}
         </div>
       </div>
-      <CreateBusinessModal open={createOpen} onClose={() => setCreateOpen(false)} businessTypes={data.businessTypes} unlockedBusinessLevel={data.unlockedBusinessLevel ?? 0} onCreated={() => onReload(true)} />
       <InvitePlayersModal open={Boolean(inviteBusiness)} onClose={() => setInviteBusinessId(null)} business={inviteBusiness} players={players} onSubmitted={() => onReload()} />
       <ManageBusinessModal open={Boolean(managedBusiness)} onClose={() => setManagedBusinessId(null)} business={managedBusiness} players={players} currentUserId={currentUserId} onInviteRequested={(business) => setInviteBusinessId(business.id)} onSubmitted={onReload} />
     </>
