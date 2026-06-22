@@ -76,9 +76,9 @@
     },
     {
       "name": "+1 membre clan",
-      "description": "Ajoute un slot membre supplémentaire au clan. Un clan ne peut l'acheter qu'une fois. S'applique automatiquement à l'achat.",
+      "description": "Ajoute un slot membre supplémentaire au clan. Peut être acheté plusieurs fois pour augmenter la taille jusqu'à 10 membres. S'applique automatiquement à l'achat.",
       "type": "CLAN_UPGRADES",
-      "price": 20000,
+      "price": 100000,
       "imageUrl": "/api/uploads/items/1774093075126-2a84b078-a73b-405c-8f72-d1454809aa65.png",
       "effect": {
         "type": "CLAN_SLOT_UPGRADE"
