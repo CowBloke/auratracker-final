@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import Layout from './components/layout/Layout';
@@ -77,6 +77,7 @@ import ForumPost from './pages/ForumPost';
 import { BLOCKABLE_PAGES } from './config/blockedPages';
 import { useFeatures } from './contexts/FeaturesContext';
 import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
+import { getPageMetaForPath } from '@/lib/page-meta';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -119,6 +120,11 @@ function App() {
   const { maintenanceStatus, maintenanceLoading } = useFeatures();
   const { user, loading } = useAuth();
   const canBypassMaintenance = Boolean(user?.isAdmin || user?.isSuperAdmin || user?.isBetaTester);
+
+  useEffect(() => {
+    const pageTitle = getPageMetaForPath(location.pathname).title;
+    document.title = location.pathname === '/' ? 'Aura Tracker' : `${pageTitle} | Aura Tracker`;
+  }, [location.pathname]);
 
   // Vérifier si la page actuelle est en maintenance
   const isCurrentPageInMaintenance = () => {
