@@ -105,13 +105,13 @@ export function PlayerHoverCard({
         <div className="px-4 py-3">
           {badges === null ? (
             <div className="flex justify-center py-2">
-              <div className="w-1 h-4 bg-foreground/20 animate-pulse" />
+              <div className="w-1 h-4 bg-foreground/20" />
             </div>
           ) : badges.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-1">Aucun badge</p>
           ) : (
             <>
-              <p className="text-[10px] text-muted-foreground/60 mb-2 font-medium uppercase tracking-wide">
+              <p className="text-xs text-muted-foreground/60 mb-2 font-medium ">
                 Top badges
               </p>
               <div className="flex flex-wrap gap-1.5">

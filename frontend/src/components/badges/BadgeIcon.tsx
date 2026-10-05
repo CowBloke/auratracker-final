@@ -66,7 +66,7 @@ function PctBadge({ pct }: { pct: number }) {
   else if (pct < 10) { color = '#f97316'; label = t('badge_drop_very_rare'); }
   else if (pct < 20) { color = '#60a5fa'; label = t('badge_rarity_rare'); }
   return (
-    <p className="text-[10px] pt-0.5 border-t border-border/30" style={{ color }}>
+    <p className="text-xs pt-0.5 border-t border-border/30" style={{ color }}>
       {pct}% {t('badge_drop_ownership_suffix')}{label ? ` · ${label}` : ''}
     </p>
   );
@@ -144,7 +144,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
             </div>
             <div className="min-w-0">
               <p className="font-bold text-sm leading-tight text-muted-foreground drop-shadow">???</p>
-              <p className="text-[11px] font-medium mt-0.5 text-muted-foreground/50">{t('badge_hidden_achievement_label')}</p>
+              <p className="text-xs font-medium mt-0.5 text-muted-foreground/50">{t('badge_hidden_achievement_label')}</p>
             </div>
           </div>
           <div className="px-3 py-2 bg-popover">
@@ -193,7 +193,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
             </div>
             <div className="min-w-0">
               <p className="font-bold text-sm leading-tight text-white drop-shadow">{badge.name}</p>
-              <p className="text-[11px] font-medium mt-0.5" style={{ color: rarityColor }}>
+              <p className="text-xs font-medium mt-0.5" style={{ color: rarityColor }}>
                 {RARITY_LABELS[badge.rarity] ?? badge.rarity} · <span className="text-muted-foreground/70">{t('badge_not_obtained')}</span>
               </p>
             </div>
@@ -201,7 +201,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
           <div className="px-3 py-2 space-y-1.5 bg-popover">
             <p className="text-xs text-muted-foreground leading-snug">{badge.description}</p>
             {badge.howToObtain && (
-              <p className="text-[11px] text-muted-foreground/70 italic leading-snug">
+              <p className="text-xs text-muted-foreground/70 italic leading-snug">
                 🔒 {badge.howToObtain}
               </p>
             )}
@@ -262,7 +262,7 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
           </div>
           <div className="min-w-0">
             <p className="font-bold text-sm leading-tight text-white drop-shadow">{badge.name}</p>
-            <p className="text-[11px] font-medium mt-0.5" style={{ color: rarityColor }}>
+            <p className="text-xs font-medium mt-0.5" style={{ color: rarityColor }}>
               {RARITY_LABELS[badge.rarity] ?? badge.rarity}
             </p>
           </div>
@@ -272,10 +272,10 @@ export function BadgeIcon({ badge, size = 'sm', className, tooltipSide = 'top', 
         <div className="px-3 py-2 space-y-1.5 bg-popover">
           <p className="text-xs text-muted-foreground leading-snug">{badge.description}</p>
           {badge.howToObtain && (
-            <p className="text-[11px] text-muted-foreground/70 italic leading-snug">{badge.howToObtain}</p>
+            <p className="text-xs text-muted-foreground/70 italic leading-snug">{badge.howToObtain}</p>
           )}
           {badge.obtainedAt && (
-            <p className="text-[10px] text-muted-foreground/50 pt-0.5 border-t border-border/30">
+            <p className="text-xs text-muted-foreground/50 pt-0.5 border-t border-border/30">
               Obtenu le {new Date(badge.obtainedAt).toLocaleDateString('fr-FR')}
             </p>
           )}

@@ -170,30 +170,30 @@ export default function BraquageLegal() {
         onClick={() => setParticipatingTier(tier)}
         disabled={!canSelect}
         className={cn(
-          'rounded-2xl border p-4 text-left transition-all',
+          'rounded-xl border p-4 text-left transition-all',
           config.color,
-          isSelected ? 'ring-2 ring-primary shadow-lg shadow-primary/10' : 'hover:-translate-y-0.5 hover:shadow-md',
+          isSelected ? 'ring-2 ring-primary shadow-primary/10' : 'hover:-translate-y-0.5',
           !canSelect && 'cursor-not-allowed opacity-50 hover:translate-y-0 hover:shadow-none'
         )}
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em]">{config.label}</p>
+            <p className="text-sm font-semibold ">{config.label}</p>
             <p className="mt-2 text-sm text-muted-foreground">{config.description}</p>
           </div>
           <Badge variant="secondary" className="shrink-0">{slotsLeft}/{config.maxParticipations}</Badge>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
           <div className="rounded-xl bg-background/60 p-3">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Coût</p>
+            <p className="text-xs text-muted-foreground">Coût</p>
             <p className="mt-1 font-semibold tabular-nums">{config.cost.toLocaleString('fr-FR')} €</p>
           </div>
           <div className="rounded-xl bg-background/60 p-3">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tickets</p>
+            <p className="text-xs text-muted-foreground">Tickets</p>
             <p className="mt-1 font-semibold tabular-nums">{config.tickets}</p>
           </div>
           <div className="rounded-xl bg-background/60 p-3">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Restant</p>
+            <p className="text-xs text-muted-foreground">Restant</p>
             <p className="mt-1 font-semibold tabular-nums">{slotsLeft}</p>
           </div>
         </div>
@@ -238,12 +238,12 @@ export default function BraquageLegal() {
             description="Achetez des tickets par tier, alimentez le pool, puis laissez le tirage décider du gagnant et du propriétaire de la session."
           />
 
-          <Card className="overflow-hidden border-border/60 bg-gradient-to-br from-background via-background to-warning/5">
+          <Card className="overflow-hidden border-border/60 ">
             <CardContent className="space-y-6 p-6 md:p-8">
               <div className="flex flex-col items-center gap-4 text-center">
                 <img src="/braquage-legal-logo.png" alt="Loto" className="h-24 w-auto object-contain" />
                 <div>
-                  <p className="text-sm uppercase tracking-[0.22em] text-muted-foreground">Propriétaire actuel</p>
+                  <p className="text-sm text-muted-foreground">Propriétaire actuel</p>
                   <div className="mt-2 flex items-center justify-center gap-3">
                     <Avatar className="h-10 w-10 border border-border/50">
                       <AvatarImage src={session?.owner?.profilePicture ? resolveImageUrl(session.owner.profilePicture) : undefined} alt={session?.owner?.username ?? 'Propriétaire'} />
@@ -255,21 +255,21 @@ export default function BraquageLegal() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-border/50 bg-background/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Jackpot</p>
+                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                  <p className="text-xs text-muted-foreground">Jackpot</p>
                   <p className="mt-2 text-3xl font-bold tabular-nums text-warning">{session?.totalPool.toLocaleString('fr-FR') ?? '0'} €</p>
                   <p className="mt-1 text-sm text-muted-foreground">70% au gagnant, 30% au propriétaire.</p>
                 </div>
-                <div className="rounded-2xl border border-border/50 bg-background/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Fin de session</p>
+                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                  <p className="text-xs text-muted-foreground">Fin de session</p>
                   <p className="mt-2 flex items-center gap-2 text-3xl font-bold tabular-nums">
                     <Clock3 className="h-5 w-5 text-muted-foreground" />
                     {countdown}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">{session?.isExpired ? 'Session expirée, en attente du tirage.' : 'Session en cours.'}</p>
                 </div>
-                <div className="rounded-2xl border border-border/50 bg-background/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Tickets en jeu</p>
+                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                  <p className="text-xs text-muted-foreground">Tickets en jeu</p>
                   <p className="mt-2 flex items-center gap-2 text-3xl font-bold tabular-nums">
                     <Ticket className="h-5 w-5 text-muted-foreground" />
                     {session?.ticketPool.toLocaleString('fr-FR') ?? '0'}
@@ -379,7 +379,7 @@ export default function BraquageLegal() {
       </PageShell>
 
       <Dialog open={Boolean(winnerResult)} onOpenChange={(open) => !open && setWinnerResult(null)}>
-        <DialogContent className="max-w-lg border-border/60 bg-gradient-to-br from-background via-background to-warning/10">
+        <DialogContent className="max-w-lg border-border/60 ">
           <DialogHeader className="text-center">
             <DialogTitle className="text-2xl">{winnerResult?.cancelled ? 'Session clôturée' : 'Tirage effectué'}</DialogTitle>
             <DialogDescription>
@@ -389,7 +389,7 @@ export default function BraquageLegal() {
             </DialogDescription>
           </DialogHeader>
           {winnerResult?.cancelled ? (
-            <div className="rounded-2xl border border-border/50 bg-background/70 p-4 text-sm text-muted-foreground">
+            <div className="rounded-xl border border-border/50 bg-background/70 p-4 text-sm text-muted-foreground">
               La session a été fermée sans payout.
             </div>
           ) : (
@@ -399,21 +399,21 @@ export default function BraquageLegal() {
                 <AvatarFallback className="text-xl">{winnerResult?.winner?.username?.slice(0, 1)?.toUpperCase() ?? '?'}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">Gagnant</p>
+                <p className="text-sm text-muted-foreground">Gagnant</p>
                 <p className="mt-2 text-2xl font-bold">{winnerResult?.winner?.username ?? 'Inconnu'}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-border/50 bg-background/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Gain</p>
+                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                  <p className="text-xs text-muted-foreground">Gain</p>
                   <p className="mt-2 text-xl font-bold tabular-nums text-success">{winnerResult?.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
                 </div>
-                <div className="rounded-2xl border border-border/50 bg-background/70 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Propriétaire</p>
+                <div className="rounded-xl border border-border/50 bg-background/70 p-4">
+                  <p className="text-xs text-muted-foreground">Propriétaire</p>
                   <p className="mt-2 text-xl font-bold tabular-nums text-warning">{winnerResult?.ownerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
                 </div>
               </div>
               {winnerResult?.winner?.id === user?.id && (
-                <div className="rounded-2xl border border-success/20 bg-success/10 p-4 text-sm text-success">
+                <div className="rounded-xl border border-success/20 bg-success/10 p-4 text-sm text-success">
                   Tu as remporté la session. C&apos;est toi le braqueur du jour.
                 </div>
               )}

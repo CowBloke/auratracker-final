@@ -278,7 +278,7 @@ export function InboxTab(props: InboxTabProps) {
                     <cat.Icon className="h-3.5 w-3.5 shrink-0" />
                     <span className="flex-1 truncate">{cat.label}</span>
                     {cat.count > 0 && (
-                      <span className="text-[10px] font-semibold bg-primary/15 text-primary rounded px-1 shrink-0">
+                      <span className="text-xs font-semibold bg-primary/15 text-primary rounded px-1 shrink-0">
                         {cat.count}
                       </span>
                     )}
@@ -289,7 +289,7 @@ export function InboxTab(props: InboxTabProps) {
               <div className="w-72 shrink-0 border-r border-border/40 overflow-y-auto custom-scroll">
                 {(loadingPending || loadingBugs || loadingAppeals || loadingNameChanges || loadingCustomBadgeRequests || loadingPendingFormationReviews || loadingPendingSanctions || loadingChatModerationEvents) ? (
                   <div className="flex justify-center py-12">
-                    <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                    <div className="w-1 h-8 bg-foreground/20" />
                   </div>
                 ) : activeItems.length === 0 ? (
                   <div className="text-center py-12 space-y-2">
@@ -382,10 +382,10 @@ export function InboxTab(props: InboxTabProps) {
                         >
                           <div className="px-3 py-3">
                             <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0', badgeColor)}>
+                              <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium shrink-0', badgeColor)}>
                                 {badgeLabel}
                               </span>
-                              <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                              <span className="text-xs text-muted-foreground/60 shrink-0">
                                 {item.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                               </span>
                             </div>
@@ -469,7 +469,7 @@ export function InboxTab(props: InboxTabProps) {
                             <div className="space-y-2">
                               {contextMessages.map((message) => (
                                 <div key={message.id} className="rounded-md border border-border/30 bg-background/60 px-3 py-2 text-sm">
-                                  <p className="text-[10px] text-muted-foreground/60 mb-1">
+                                  <p className="text-xs text-muted-foreground/60 mb-1">
                                     {message.username} · {new Date(message.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                   </p>
                                   <p className="whitespace-pre-wrap break-words">{message.message}</p>
@@ -650,7 +650,7 @@ export function InboxTab(props: InboxTabProps) {
                                   ? 'bg-muted/10 border border-border/20'
                                   : 'bg-muted/40 border border-border/40'
                               )}>
-                                <p className="text-[10px] text-muted-foreground/60 mb-1">
+                                <p className="text-xs text-muted-foreground/60 mb-1">
                                   {msg.isAdmin ? 'Support' : bug.user.username}
                                   {' · '}
                                   {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
@@ -784,7 +784,7 @@ export function InboxTab(props: InboxTabProps) {
                             <div className="flex-1 min-w-0 space-y-1">
                               <p className="text-sm font-medium">{req.name}</p>
                               <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{req.description}</p>
-                              <span className="inline-flex text-[10px] px-1.5 py-0.5 rounded-full border border-warning/30 text-warning">
+                              <span className="inline-flex text-xs px-1.5 py-0.5 rounded-full border border-warning/30 text-warning">
                                 {req.rarity}
                               </span>
                             </div>
@@ -893,12 +893,12 @@ export function InboxTab(props: InboxTabProps) {
                           <p className="text-xs font-medium text-muted-foreground/70 mb-3">Changement demandé</p>
                           <div className="flex items-center gap-4">
                             <div>
-                              <p className="text-[11px] text-muted-foreground/60 mb-0.5">Actuel</p>
+                              <p className="text-xs text-muted-foreground/60 mb-0.5">Actuel</p>
                               <p className="text-sm font-medium">{req.currentUsername}</p>
                             </div>
                             <span className="text-muted-foreground/50 text-lg">→</span>
                             <div>
-                              <p className="text-[11px] text-muted-foreground/60 mb-0.5">Demandé</p>
+                              <p className="text-xs text-muted-foreground/60 mb-0.5">Demandé</p>
                               <p className="text-sm font-semibold text-primary">{req.requestedUsername}</p>
                             </div>
                           </div>

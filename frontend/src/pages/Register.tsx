@@ -445,7 +445,7 @@ export default function Register() {
                           <FormControl>
                             <Input
                               type="text"
-                              className="font-mono uppercase tracking-widest"
+                              className="font-mono "
                               {...field}
                               value={field.value || ''}
                               onChange={(event) => field.onChange(event.target.value.toUpperCase())}

@@ -199,7 +199,7 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
                   <div>
                     <p className="text-sm font-medium">{item.label}</p>
                     <p className="text-xs text-muted-foreground">{item.price.toLocaleString('fr-FR')} €</p>
-                    {item.xpHint && <p className="text-[10px] text-primary/80">{item.xpHint}</p>}
+                    {item.xpHint && <p className="text-xs text-primary/80">{item.xpHint}</p>}
                   </div>
                 </div>
                 <Button size="sm" onClick={() => void buy(item.key)} disabled={buying !== null}>Acheter</Button>
@@ -224,7 +224,7 @@ function GridCard({ business, onClick }: { business: YouBusiness; onClick: () =>
     <button
       type="button"
       onClick={onClick}
-      className="group flex flex-col gap-0 overflow-hidden rounded-lg border border-border/60 bg-card text-left shadow-sm transition-all hover:border-border hover:shadow-md active:scale-[0.99]"
+      className="group flex flex-col gap-0 overflow-hidden rounded-lg border border-border/60 bg-card text-left shadow-sm transition-all hover:border-border active:scale-[0.99]"
       style={{ borderTopColor: pinColor + '60' }}
     >
       {underConstruction && <div className="h-1.5 w-full shrink-0" style={{ background: CONSTRUCTION_STRIPES }} />}
@@ -238,12 +238,12 @@ function GridCard({ business, onClick }: { business: YouBusiness; onClick: () =>
             <BizIcon className="h-5 w-5" style={{ color: pinColor }} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-semibold leading-tight text-foreground">{business.name}</p>
-            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{getBizLabel(business)}</p>
+            <p className="truncate text-sm font-semibold leading-tight text-foreground">{business.name}</p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{getBizLabel(business)}</p>
             {business.isStateOwned && (
-              <span className="mt-1 inline-flex items-center rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">État</span>
+              <span className="mt-1 inline-flex items-center rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">État</span>
             )}
-            <p className="truncate text-[10px] text-muted-foreground/70">@{business.owner.username}</p>
+            <p className="truncate text-xs text-muted-foreground/70">@{business.owner.username}</p>
           </div>
           <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/20 transition-colors group-hover:text-muted-foreground" />
         </div>
@@ -251,21 +251,21 @@ function GridCard({ business, onClick }: { business: YouBusiness; onClick: () =>
         {/* Color-coded pastilles */}
         <div className="flex flex-wrap gap-1.5">
           <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums"
+            className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums"
             style={{ backgroundColor: pinColor + '25', color: pinColor }}
           >
             {fmt(business.treasuryMoney)}
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
             <Users className="h-2.5 w-2.5" />{displayedMemberCount(business)}
           </span>
           {business.avgRating != null && business.ratingCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-bold text-warning">
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-bold text-warning">
               <Star className="h-2.5 w-2.5 fill-warning/40" />{business.avgRating.toFixed(1)}
             </span>
           )}
           <span className={cn(
-            'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums',
+            'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums',
             business.satisfaction >= 70 ? 'bg-success/15 text-success'
             : business.satisfaction >= 40 ? 'bg-warning/15 text-warning'
             : 'bg-destructive/15 text-destructive',
@@ -273,7 +273,7 @@ function GridCard({ business, onClick }: { business: YouBusiness; onClick: () =>
             {business.satisfaction}%
           </span>
           {underConstruction && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning">
+            <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-1.5 py-0.5 text-xs font-medium text-warning">
               🏗 {business.constructionProject?.progress.percent ?? 0}%
             </span>
           )}
@@ -294,17 +294,17 @@ function FinanceModal({ open, onClose, business }: { open: boolean; onClose: () 
       <AppModal.Body scrollable>
       <div className="space-y-3">
         <div className="rounded-xl border border-success/20 bg-success/8 px-4 py-4">
-          <p className="text-[10px] uppercase tracking-widest font-semibold text-success">Trésorerie</p>
+          <p className="text-xs font-semibold text-success">Trésorerie</p>
           <p className="mt-1 text-[22px] font-bold tabular-nums leading-tight text-success">{fmt(business.treasuryMoney)}</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-success/20 bg-success/8 px-3 py-3">
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Rev. mensuel</p>
-            <p className="mt-1 text-[13px] font-bold tabular-nums text-success">{fmt(business.monthlyRevenue)}</p>
+            <p className="text-xs text-muted-foreground/70">Rev. mensuel</p>
+            <p className="mt-1 text-sm font-bold tabular-nums text-success">{fmt(business.monthlyRevenue)}</p>
           </div>
           <div className={cn('rounded-xl border px-3 py-3', net >= 0 ? 'bg-success/8 border-success/20' : 'bg-destructive/8 border-destructive/20')}>
-            <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">Net / mois</p>
-            <p className={cn('mt-1 text-[13px] font-bold tabular-nums', net >= 0 ? 'text-success' : 'text-destructive')}>
+            <p className="text-xs text-muted-foreground/70">Net / mois</p>
+            <p className={cn('mt-1 text-sm font-bold tabular-nums', net >= 0 ? 'text-success' : 'text-destructive')}>
               {net >= 0 ? '+' : ''}{fmt(net)}
             </p>
           </div>
@@ -337,7 +337,7 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
                   )} />
                 ))}
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">{business.ratingCount} avis · sur 5</p>
+              <p className="mt-1 text-xs text-muted-foreground">{business.ratingCount} avis · sur 5</p>
             </div>
           </div>
           {reviews.length > 0 && (
@@ -345,7 +345,7 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
               {reviews.map((r) => (
                 <div key={r.id} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[12px] font-semibold text-foreground">{r.user.username}</span>
+                    <span className="text-xs font-semibold text-foreground">{r.user.username}</span>
                     <div className="flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map((i) => (
                         <Star key={i} className={cn('h-3 w-3', i <= r.rating ? 'fill-warning text-warning' : 'text-warning/20')} />
@@ -353,7 +353,7 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
                     </div>
                   </div>
                   {r.comment && (
-                    <p className="mt-1.5 text-[12px] text-muted-foreground">{r.comment}</p>
+                    <p className="mt-1.5 text-xs text-muted-foreground">{r.comment}</p>
                   )}
                 </div>
               ))}
@@ -508,7 +508,7 @@ function FilePlainteModal({
               maxLength={100}
               placeholder="Ex: Arnaque lors d'un échange de monnaie"
             />
-            <p className="mt-1 text-[10px] text-muted-foreground/50">{title.length}/100</p>
+            <p className="mt-1 text-xs text-muted-foreground/50">{title.length}/100</p>
           </FieldRow>
 
           <FieldRow label="Description des faits *">
@@ -519,7 +519,7 @@ function FilePlainteModal({
               rows={4}
               placeholder="Décrivez les faits en détail : que s'est-il passé, quand, et pourquoi c'est une violation des règles..."
             />
-            <p className="mt-1 text-[10px] text-muted-foreground/50">{description.length}/2000</p>
+            <p className="mt-1 text-xs text-muted-foreground/50">{description.length}/2000</p>
           </FieldRow>
 
           <FieldRow label="Coupable (optionnel)">
@@ -622,7 +622,7 @@ function DetailPanel({
       >
         {/* Icon */}
         <div
-          className="mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl shadow-md"
+          className="mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"
           style={{ backgroundColor: pinColor + '22', border: `2px solid ${pinColor}50` }}
         >
           <BizIcon className="h-7 w-7" style={{ color: pinColor }} />
@@ -630,42 +630,42 @@ function DetailPanel({
 
         {/* Info */}
         <div className="min-w-0 flex-1">
-          <p className="text-[17px] font-bold leading-tight text-foreground">{business.name}</p>
-          <p className="text-[12px] text-muted-foreground">@{business.owner.username}</p>
+          <p className="text-lg font-bold leading-tight text-foreground">{business.name}</p>
+          <p className="text-xs text-muted-foreground">@{business.owner.username}</p>
           {business.description && (
-            <p className="mt-1.5 line-clamp-2 text-[11px] italic text-muted-foreground/70">{business.description}</p>
+            <p className="mt-1.5 line-clamp-2 text-xs italic text-muted-foreground/70">{business.description}</p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <button type="button" onClick={() => setShowFinance(true)}
-              className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-bold text-success transition-colors hover:bg-success/25">
+              className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-xs font-bold text-success transition-colors hover:bg-success/25">
               <TrendingUp className="h-2.5 w-2.5" />{fmtCompact(business.treasuryMoney)}
             </button>
             {business.avgRating != null && business.ratingCount > 0 && (
               <button type="button" onClick={() => setShowReviews(true)}
-                className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-bold text-warning transition-colors hover:bg-warning/25">
+                className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-bold text-warning transition-colors hover:bg-warning/25">
                 <Star className="h-2.5 w-2.5 fill-warning/40" />{business.avgRating.toFixed(1)}
               </button>
             )}
             {onShowTeam && (
               <button type="button" onClick={onShowTeam}
-                className="inline-flex items-center gap-1 rounded-full bg-muted/15 px-2 py-0.5 text-[10px] font-medium text-primary transition-colors hover:bg-muted/25">
+                className="inline-flex items-center gap-1 rounded-full bg-muted/15 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-muted/25">
                 <Users className="h-2.5 w-2.5" />{displayedMemberCount(business)}
               </button>
             )}
             {business.isShared && onShowShareholders && (
               <button type="button" onClick={onShowShareholders}
-                className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning transition-colors hover:bg-warning/25">
+                className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning transition-colors hover:bg-warning/25">
                 <Crown className="h-2.5 w-2.5" />{business.shareholders.length + 1}
               </button>
             )}
             {business.recentInvestments.length > 0 && (
               <button type="button" onClick={() => setShowInvestments(true)}
-                className="inline-flex items-center gap-1 rounded-full bg-muted/15 px-2 py-0.5 text-[10px] font-medium text-primary transition-colors hover:bg-muted/25">
+                className="inline-flex items-center gap-1 rounded-full bg-muted/15 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-muted/25">
                 <TrendingUp className="h-2.5 w-2.5" />{business.recentInvestments.length}
               </button>
             )}
             {underConstruction && (
-              <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
+              <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
                 🏗 {business.constructionProject?.progress.percent ?? 0}%
               </span>
             )}
@@ -676,19 +676,19 @@ function DetailPanel({
         <div className="flex shrink-0 flex-col items-end gap-1.5 pt-0.5">
           {!isOwned && business.supportEnabled && onOpenSupport && (
             <button type="button" onClick={onOpenSupport}
-              className="flex items-center gap-1.5 rounded-lg border border-success/25 bg-success/10 px-2.5 py-1.5 text-[11px] font-medium text-success transition-colors hover:bg-success/20">
+              className="flex items-center gap-1.5 rounded-lg border border-success/25 bg-success/10 px-2.5 py-1.5 text-xs font-medium text-success transition-colors hover:bg-success/20">
               <MessageSquare className="h-3.5 w-3.5 shrink-0" />
               <span>Support</span>
             </button>
           )}
           {canApply ? (
             <button type="button" onClick={() => onAction(business.id, 'apply')}
-              className="flex items-center gap-1.5 rounded-lg border border-border/30 bg-muted/15 px-2.5 py-1.5 text-[11px] font-semibold text-primary transition-colors hover:bg-muted/25">
+              className="flex items-center gap-1.5 rounded-lg border border-border/30 bg-muted/15 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-muted/25">
               <UserCheck className="h-3.5 w-3.5 shrink-0" />
               <span>Postuler</span>
             </button>
           ) : !isOwned && hasPendingApplication ? (
-            <span className="rounded-lg border border-border/20 bg-muted/5 px-2.5 py-1.5 text-[10px] text-muted-foreground">
+            <span className="rounded-lg border border-border/20 bg-muted/5 px-2.5 py-1.5 text-xs text-muted-foreground">
               Candidature en attente
             </span>
           ) : null}
@@ -711,15 +711,15 @@ function DetailPanel({
           {/* Startup products */}
           {business.typeKey === 'startup' && business.startupProducts.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Produits</p>
+              <p className="text-xs font-bold text-muted-foreground">Produits</p>
               {business.startupProducts.map((product) => (
                 <div key={product.id} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-[12px] font-medium">{product.name}</p>
-                      <p className="text-[10px] text-muted-foreground">Niv. {product.deployedLevel}/10</p>
+                      <p className="text-xs font-medium">{product.name}</p>
+                      <p className="text-xs text-muted-foreground">Niv. {product.deployedLevel}/10</p>
                     </div>
-                    <p className="text-[11px] font-semibold text-primary">+{product.currentRevenue.toLocaleString('fr-FR')} €</p>
+                    <p className="text-xs font-semibold text-primary">+{product.currentRevenue.toLocaleString('fr-FR')} €</p>
                   </div>
                   {(product.isResearchActive || product.canDeploy) && (
                     <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted/40">
@@ -733,7 +733,7 @@ function DetailPanel({
 
           {/* Primary actions */}
           <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Services disponibles</p>
+            <p className="text-xs font-bold text-muted-foreground">Services disponibles</p>
 
             {(() => {
               if (business.typeKey === 'bank') return (
@@ -741,8 +741,8 @@ function DetailPanel({
                   className="flex w-full items-center gap-3 rounded-lg border border-success/20 bg-success/10 px-4 py-4 text-left text-success transition-all hover:opacity-90 active:scale-[0.99]">
                   <Landmark className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold">Gérer mes comptes</p>
-                    <p className="text-[11px] opacity-70">Taux d'emprunt : {business.loanInterestRate ?? 4}%</p>
+                    <p className="text-sm font-semibold">Gérer mes comptes</p>
+                    <p className="text-xs opacity-70">Taux d'emprunt : {business.loanInterestRate ?? 4}%</p>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
                 </button>
@@ -752,8 +752,8 @@ function DetailPanel({
                   className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
                   <ArrowLeftRight className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold">Envoyer de l'argent</p>
-                    <p className="text-[11px] opacity-70">Frais de service : {business.transferFeeRate ?? 2}%</p>
+                    <p className="text-sm font-semibold">Envoyer de l'argent</p>
+                    <p className="text-xs opacity-70">Frais de service : {business.transferFeeRate ?? 2}%</p>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
                 </button>
@@ -765,8 +765,8 @@ function DetailPanel({
                   className="flex w-full items-center gap-3 rounded-lg border border-warning/20 bg-warning/10 px-4 py-4 text-left text-warning transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
                   <GraduationCap className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold">Accéder aux formations</p>
-                    <p className="text-[11px] opacity-70">{business.formationProducts?.length ?? 0} formation(s) disponible(s)</p>
+                    <p className="text-sm font-semibold">Accéder aux formations</p>
+                    <p className="text-xs opacity-70">{business.formationProducts?.length ?? 0} formation(s) disponible(s)</p>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
                 </button>
@@ -778,8 +778,8 @@ function DetailPanel({
                   className="flex w-full items-center gap-3 rounded-lg border border-warning/20 bg-warning/10 px-4 py-4 text-left text-warning transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-40">
                   <ShoppingCart className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold">{isOwned ? 'Achat indisponible' : 'Acheter'}</p>
-                    <p className="text-[11px] opacity-70">{isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Parcourir les articles disponibles'}</p>
+                    <p className="text-sm font-semibold">{isOwned ? 'Achat indisponible' : 'Acheter'}</p>
+                    <p className="text-xs opacity-70">{isOwned ? 'Tu ne peux pas acheter tes propres articles.' : 'Parcourir les articles disponibles'}</p>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
                 </button>
@@ -789,8 +789,8 @@ function DetailPanel({
                   className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
                   <Scale className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold">Déposer une plainte</p>
-                    <p className="text-[11px] opacity-70">Soumettre une plainte formelle aux juges</p>
+                    <p className="text-sm font-semibold">Déposer une plainte</p>
+                    <p className="text-xs opacity-70">Soumettre une plainte formelle aux juges</p>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
                 </button>
@@ -800,8 +800,8 @@ function DetailPanel({
                   className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
                   <TrendingUp className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold">Investir</p>
-                    <p className="text-[11px] opacity-70">Le rendement dépend du niveau de risque choisi.</p>
+                    <p className="text-sm font-semibold">Investir</p>
+                    <p className="text-xs opacity-70">Le rendement dépend du niveau de risque choisi.</p>
                   </div>
                   <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
                 </button>
@@ -814,8 +814,8 @@ function DetailPanel({
                 className="flex w-full items-center gap-3 rounded-lg border border-border/20 bg-muted/10 px-4 py-4 text-left text-primary transition-all hover:opacity-90 active:scale-[0.99]">
                 <HandCoins className="h-5 w-5 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold">Prendre un prêt</p>
-                  <p className="text-[11px] opacity-70">Emprunt avec remboursement mensuel</p>
+                  <p className="text-sm font-semibold">Prendre un prêt</p>
+                  <p className="text-xs opacity-70">Emprunt avec remboursement mensuel</p>
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
               </button>
@@ -825,16 +825,16 @@ function DetailPanel({
           {/* Always-available actions — subdued, at the bottom */}
           {!business.isStateOwned && !isOwned && (
             <div className="space-y-1.5 border-t border-border/20 pt-3">
-              <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">Autres options</p>
+              <p className="text-xs font-medium text-muted-foreground/50">Autres options</p>
               <button type="button" onClick={() => onAction(business.id, 'shareholder')}
                 className="flex w-full items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-3 py-2 text-left text-muted-foreground transition-all hover:bg-muted/15 hover:text-foreground">
                 <TrendingUp className="h-3.5 w-3.5 shrink-0" />
-                <span className="text-[12px]">{business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}</span>
+                <span className="text-xs">{business.viewerSharePercent > 0 ? 'Augmenter ma participation' : 'Devenir actionnaire'}</span>
               </button>
               <button type="button" onClick={() => onAction(business.id, 'buyout')}
                 className="flex w-full items-center gap-2 rounded-lg border border-border/30 bg-muted/5 px-3 py-2 text-left text-muted-foreground transition-all hover:bg-muted/15 hover:text-destructive">
                 <HandCoins className="h-3.5 w-3.5 shrink-0" />
-                <span className="text-[12px]">Faire une offre de rachat</span>
+                <span className="text-xs">Faire une offre de rachat</span>
               </button>
             </div>
           )}
@@ -981,7 +981,7 @@ export function BusinessBrowserModal({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Rechercher…"
-                  className="w-full bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/40 outline-none"
+                  className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground/40 outline-none"
                 />
                 {search && (
                   <button type="button" onClick={() => setSearch('')} className="text-muted-foreground hover:text-foreground">
@@ -998,7 +998,7 @@ export function BusinessBrowserModal({
                 type="button"
                 onClick={() => setSidebarType(null)}
                 className={cn(
-                  'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-medium transition-colors',
+                  'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors',
                   sidebarType === null
                     ? 'text-white'
                     : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
@@ -1007,7 +1007,7 @@ export function BusinessBrowserModal({
               >
                 <Building2 className="h-3.5 w-3.5 shrink-0" />
                 <span className="flex-1 truncate">Toutes</span>
-                <span className="text-[10px] tabular-nums opacity-60">{businesses.length}</span>
+                <span className="text-xs tabular-nums opacity-60">{businesses.length}</span>
               </button>
 
               {sidebarCategories.map((cat) => (
@@ -1016,7 +1016,7 @@ export function BusinessBrowserModal({
                   type="button"
                   onClick={() => setSidebarType(sidebarType === cat.key ? null : cat.key)}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[12px] font-medium transition-colors',
+                    'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors',
                     sidebarType === cat.key
                       ? 'text-white'
                       : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
@@ -1025,14 +1025,14 @@ export function BusinessBrowserModal({
                 >
                   <cat.Icon className="h-3.5 w-3.5 shrink-0" />
                   <span className="flex-1 truncate">{cat.label}</span>
-                  <span className="text-[10px] tabular-nums opacity-60">{cat.count}</span>
+                  <span className="text-xs tabular-nums opacity-60">{cat.count}</span>
                 </button>
               ))}
             </div>
 
             {/* Sort pills */}
             <div className="shrink-0 space-y-1.5 p-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50">Tri</p>
+              <p className="text-xs font-semibold text-muted-foreground/50">Tri</p>
               <div className="flex flex-wrap gap-1">
                 {SORT_OPTIONS.map(({ key, label, Icon }) => (
                   <button
@@ -1040,7 +1040,7 @@ export function BusinessBrowserModal({
                     type="button"
                     onClick={() => setSortMode(key)}
                     className={cn(
-                      'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-all',
+                      'flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-all',
                       sortMode === key
                         ? 'bg-muted/15 text-primary'
                         : 'text-muted-foreground/60 hover:text-muted-foreground',
@@ -1065,7 +1065,7 @@ export function BusinessBrowserModal({
                     className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                     <ChevronLeft className="h-3.5 w-3.5" />
                   </button>
-                  <p className="truncate text-[11px] text-muted-foreground">{getBizLabel(detailBusiness)}</p>
+                  <p className="truncate text-xs text-muted-foreground">{getBizLabel(detailBusiness)}</p>
                 </div>
                 <ScrollArea className="min-h-0 flex-1">
                   <DetailPanel
@@ -1097,7 +1097,7 @@ export function BusinessBrowserModal({
                   {visibleBusinesses.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
                       <Search className="mb-3 h-8 w-8 text-muted-foreground/20" />
-                      <p className="text-[12px] text-muted-foreground">Aucune entreprise ne correspond.</p>
+                      <p className="text-xs text-muted-foreground">Aucune entreprise ne correspond.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">

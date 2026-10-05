@@ -602,7 +602,7 @@ export default function Profile() {
                     onEquip={handleEquipBadge}
                   />
                 ) : null}
-                <h1 className="text-2xl font-semibold tracking-tight" style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}>
+                <h1 className="text-2xl font-semibold" style={profileUser.usernameColor ? { color: profileUser.usernameColor } : undefined}>
                   {profileUser.username}
                 </h1>
                 {profileUser.firstName ? <span className="text-sm text-muted-foreground">{profileUser.firstName}</span> : null}
@@ -674,7 +674,7 @@ export default function Profile() {
             </Card>
 
             <section className="flex flex-col gap-4">
-              <h2 className="text-lg font-semibold tracking-tight">Aperçu du joueur</h2>
+              <h2 className="text-lg font-semibold">Aperçu du joueur</h2>
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <Metric label="Aura" value={profileUser.aura.toLocaleString()} detail={formatRank(rankings?.aura?.rank)} />
                 <Metric label="Argent" value={formatCurrency(profileUser.money, 0)} detail={formatRank(rankings?.money?.rank)} />

@@ -66,7 +66,7 @@ export function ContentTab(props: ContentTabProps) {
             <CardContent className="space-y-3">
               {loadingCategories ? (
                 <div className="flex justify-center py-4">
-                  <div className="w-1 h-6 bg-foreground/20 animate-pulse" />
+                  <div className="w-1 h-6 bg-foreground/20" />
                 </div>
               ) : (
                 <>
@@ -130,7 +130,7 @@ export function ContentTab(props: ContentTabProps) {
               }
             });
             return (
-              <Card className="border-border/20 bg-gradient-to-b from-muted to-transparent">
+              <Card className="border-border/20 ">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <Gamepad2 className="h-3.5 w-3.5 text-primary" />
@@ -169,7 +169,7 @@ export function ContentTab(props: ContentTabProps) {
                         size="sm"
                         onClick={saveDjForcedSkin}
                         disabled={djForcedSkinSaving}
-                        className="w-full bg-gradient-to-r from-muted to-muted hover:from-muted hover:to-muted text-white border-0 h-8 text-xs"
+                        className="w-full text-white border-0 h-8 text-xs"
                       >
                         {djForcedSkinSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : null}
                         Appliquer
@@ -214,7 +214,7 @@ export function ContentTab(props: ContentTabProps) {
             </p>
             {loadingItems ? (
               <div className="flex justify-center py-12">
-                <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                <div className="w-1 h-8 bg-foreground/20" />
               </div>
             ) : items.length === 0 ? (
               <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>Aucun objet cree</p>

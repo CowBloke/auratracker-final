@@ -159,7 +159,7 @@ export function ClubsTab(props: ClubsTabProps) {
         <CardContent>
           {loadingClans ? (
             <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+              <div className="w-1 h-8 bg-foreground/20" />
             </div>
           ) : filteredClans.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-12">

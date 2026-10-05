@@ -1041,7 +1041,7 @@ export default function Games() {
       node: (
         <section key={title} className="flex flex-col gap-4">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+            <h2 className="text-lg font-semibold">{title}</h2>
             <Separator className="flex-1" />
           </div>
           {list.length > 0 ? <div className={gridClassName}>{grid.elements}</div> : renderEmptyState()}
@@ -1060,7 +1060,7 @@ export default function Games() {
       {showcaseGames.length > 0 ? (
         <section className="flex flex-col gap-4">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold tracking-tight">Nouveaux jeux</h2>
+            <h2 className="text-lg font-semibold">Nouveaux jeux</h2>
             <Badge variant="secondary">À découvrir</Badge>
             <Separator className="flex-1" />
           </div>

@@ -157,7 +157,7 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
         <CardContent className="space-y-4">
           {/* Summary cards */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
+            <Card className="border-border/20 ">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5 text-primary" />
@@ -167,7 +167,7 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
                 <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>vus en ligne sur la période</p>
               </CardContent>
             </Card>
-            <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
+            <Card className="border-border/20 ">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 text-primary" />
@@ -177,7 +177,7 @@ export function ScreenTimeTab(props: ScreenTimeTabProps) {
                 <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous utilisateurs confondus</p>
               </CardContent>
             </Card>
-            <Card className="border-success/20 bg-gradient-to-br from-success/10 to-success/5">
+            <Card className="border-success/20 ">
               <CardContent className="p-4 space-y-1">
                 <div className="flex items-center gap-1.5">
                   <Gauge className="h-3.5 w-3.5 text-success" />

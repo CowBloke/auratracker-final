@@ -169,7 +169,7 @@ export function BraquageLegalTab({ users }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 xl:grid-cols-3">
-          <div className="rounded-2xl border border-border/50 bg-background/60 p-4">
+          <div className="rounded-xl border border-border/50 bg-background/60 p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Clock3 className="h-4 w-4" />
               Session active
@@ -177,7 +177,7 @@ export function BraquageLegalTab({ users }: Props) {
             <p className="mt-2 text-2xl font-bold tabular-nums">{session ? countdown : 'Aucune'}</p>
             <p className="mt-1 text-sm text-muted-foreground">{session ? (session.isExpired ? 'Session expirée' : 'Session en cours') : 'Aucune session ouverte'}</p>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-background/60 p-4">
+          <div className="rounded-xl border border-border/50 bg-background/60 p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Ticket className="h-4 w-4" />
               Jackpot
@@ -185,7 +185,7 @@ export function BraquageLegalTab({ users }: Props) {
             <p className="mt-2 text-2xl font-bold tabular-nums">{session?.totalPool.toLocaleString('fr-FR') ?? '0'} €</p>
             <p className="mt-1 text-sm text-muted-foreground">{session?.participationsCount ?? 0} participations, {session?.ticketPool ?? 0} tickets</p>
           </div>
-          <div className="rounded-2xl border border-border/50 bg-background/60 p-4">
+          <div className="rounded-xl border border-border/50 bg-background/60 p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Trophy className="h-4 w-4" />
               Propriétaire
@@ -266,7 +266,7 @@ export function BraquageLegalTab({ users }: Props) {
             onChange={(event) => setOwnerSearch(event.target.value)}
             placeholder="Rechercher un utilisateur..."
           />
-          <ScrollArea className="h-64 rounded-2xl border border-border/50 bg-background/60 p-2">
+          <ScrollArea className="h-64 rounded-xl border border-border/50 bg-background/60 p-2">
             <div className="space-y-2 pr-2">
               {filteredUsers.map((user) => {
                 const isSelected = user.id === selectedOwnerId;

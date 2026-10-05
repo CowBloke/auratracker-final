@@ -384,10 +384,10 @@ function ParticipantAvatar({ user, signed }: { user: YouContract['participants']
 function WaxSeal({ allSigned }: { allSigned: boolean }) {
   return (
     <div className={cn(
-      'relative flex h-16 w-16 items-center justify-center rounded-full shadow-lg transition-all',
+      'relative flex h-16 w-16 items-center justify-center rounded-full transition-all',
       allSigned
-        ? 'bg-gradient-to-br from-destructive to-destructive'
-        : 'bg-gradient-to-br from-muted to-muted',
+        ? ''
+        : '',
     )}>
       <div className={cn(
         'absolute inset-1 rounded-full border-2',
@@ -415,9 +415,9 @@ function ContractDocument({ contract, currentUserId, onSign, onDelete, signing }
   const isCreator = contract.creatorId === currentUserId;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-warning/30 bg-gradient-to-b from-[#fdfaf4] to-[#f5f0e8] dark:from-[#1e1a12] dark:to-[#161208] shadow-xl">
+    <div className="relative overflow-hidden rounded-xl border border-warning/30 from-[#fdfaf4] to-[#f5f0e8] dark:from-[#1e1a12] dark:to-[#161208]">
       {/* Top decorative border */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-warning via-warning to-warning" />
+      <div className="h-1.5 w-full " />
 
       {/* Corner ornaments */}
       <div className="pointer-events-none absolute left-3 top-3 h-6 w-6 rounded-tl border-l-2 border-t-2 border-warning/40" />
@@ -429,11 +429,11 @@ function ContractDocument({ contract, currentUserId, onSign, onDelete, signing }
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 text-center space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-warning/60">
+            <p className="text-xs font-semibold text-warning/60">
               Contrat Officiel
             </p>
             <h2 className="text-lg font-bold text-warning">{contract.title}</h2>
-            <p className="text-[10px] text-warning/50">
+            <p className="text-xs text-warning/50">
               Établi le {new Date(contract.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
           </div>
@@ -459,7 +459,7 @@ function ContractDocument({ contract, currentUserId, onSign, onDelete, signing }
 
         {/* Signatures section */}
         <div>
-          <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.15em] text-warning/60">
+          <p className="mb-3 text-center text-xs font-semibold text-warning/60">
             Signatures des parties
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -477,11 +477,11 @@ function ContractDocument({ contract, currentUserId, onSign, onDelete, signing }
                 <div>
                   <p className="text-xs font-semibold text-warning">{p.user.username}</p>
                   {p.signedAt ? (
-                    <p className="mt-0.5 text-[10px] italic text-success">
+                    <p className="mt-0.5 text-xs italic text-success">
                       Signé le {new Date(p.signedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                     </p>
                   ) : (
-                    <p className="mt-0.5 text-[10px] italic text-warning/60">En attente</p>
+                    <p className="mt-0.5 text-xs italic text-warning/60">En attente</p>
                   )}
                 </div>
                 {p.signedAt && (
@@ -527,7 +527,7 @@ function ContractDocument({ contract, currentUserId, onSign, onDelete, signing }
       </div>
 
       {/* Bottom decorative border */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-warning via-warning to-warning" />
+      <div className="h-1.5 w-full " />
     </div>
   );
 }
@@ -636,7 +636,7 @@ function CreateContractModal({ open, onClose, players, currentUserId, onCreated 
               rows={6}
               className="resize-none text-sm"
             />
-            <p className="text-right text-[10px] text-muted-foreground">{content.length}/5000</p>
+            <p className="text-right text-xs text-muted-foreground">{content.length}/5000</p>
           </div>
 
           <div className="space-y-1.5">
@@ -659,7 +659,7 @@ function CreateContractModal({ open, onClose, players, currentUserId, onCreated 
                     >
                       <Avatar className="h-6 w-6 shrink-0">
                         <AvatarImage src={p.profilePicture ? resolveImageUrl(p.profilePicture) : undefined} />
-                        <AvatarFallback className="text-[10px]">{(p.firstName?.[0] ?? p.username[0]).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className="text-xs">{(p.firstName?.[0] ?? p.username[0]).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <span className="flex-1 text-xs font-medium">{p.username}</span>
                       {checked && <CheckCircle2 className="h-3.5 w-3.5 text-warning" />}
@@ -669,7 +669,7 @@ function CreateContractModal({ open, onClose, players, currentUserId, onCreated 
               </div>
             )}
             {selectedIds.length > 0 && (
-              <p className="text-[10px] text-warning">{selectedIds.length} signataire{selectedIds.length > 1 ? 's' : ''} sélectionné{selectedIds.length > 1 ? 's' : ''} (+ toi)</p>
+              <p className="text-xs text-warning">{selectedIds.length} signataire{selectedIds.length > 1 ? 's' : ''} sélectionné{selectedIds.length > 1 ? 's' : ''} (+ toi)</p>
             )}
           </div>
 
@@ -829,7 +829,7 @@ export function SocialTab({ data, userId, onReload }: { data: YouState; userId?:
           <Users className="h-3.5 w-3.5" />
           Relations
           {data.relationships.length > 0 && (
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] leading-none">{data.relationships.length}</span>
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs leading-none">{data.relationships.length}</span>
           )}
         </button>
         <button

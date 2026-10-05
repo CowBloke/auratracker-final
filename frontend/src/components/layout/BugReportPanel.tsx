@@ -316,7 +316,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                       onClick={() => openReport(report)}
                     >
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={cn('text-[10px] px-1.5 py-0.5 rounded', report.status === 'DONE' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning')}>
+                        <span className={cn('text-xs px-1.5 py-0.5 rounded', report.status === 'DONE' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning')}>
                           {report.status === 'DONE' ? 'Résolu' : 'En cours'}
                         </span>
                         <span className="text-xs text-muted-foreground/50">
@@ -351,7 +351,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                 <div className="min-w-0">
                   <SheetTitle className="text-base truncate">{selectedReport.title}</SheetTitle>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded', selectedReport.status === 'DONE' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning')}>
+                    <span className={cn('text-xs px-1.5 py-0.5 rounded', selectedReport.status === 'DONE' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning')}>
                       {selectedReport.status === 'DONE' ? 'Résolu' : 'En cours'}
                     </span>
                   </div>
@@ -373,7 +373,7 @@ export default function BugReportPanel({ open, onOpenChange, trigger }: BugRepor
                       'max-w-[80%] rounded-lg px-3 py-2 text-sm',
                       isMe ? 'bg-muted/40 border border-border/40' : 'bg-muted/10 border border-border/20'
                     )}>
-                      <p className="text-[10px] text-muted-foreground/60 mb-1">
+                      <p className="text-xs text-muted-foreground/60 mb-1">
                         {isMe ? 'Vous' : 'Support'}
                         {' · '}
                         {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}

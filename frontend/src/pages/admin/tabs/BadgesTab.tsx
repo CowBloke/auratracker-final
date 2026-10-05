@@ -85,21 +85,21 @@ export function BadgesTab(props: BadgesTabProps) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{badge.name}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full border ${
                           badge.rarity === 'legendary' ? 'border-warning/40 text-warning' :
                           badge.rarity === 'epic' ? 'border-border/40 text-primary' :
                           badge.rarity === 'rare' ? 'border-border/40 text-primary' :
                           badge.rarity === 'uncommon' ? 'border-success/40 text-success' :
                           'border-border/40 text-muted-foreground'
                         }`}>{badge.rarity}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">{badge.category}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">{badge.category}</span>
                         {badge.isAutomatic && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">
+                          <span className="text-xs px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">
                             auto: {badge.autoConditionKey}
                           </span>
                         )}
                         {!badge.isActive && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/30">inactif</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/30">inactif</span>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{badge.description}</p>
@@ -211,7 +211,7 @@ export function BadgesTab(props: BadgesTabProps) {
                     category: badgeForm.category || 'special',
                     rarity: badgeForm.rarity || 'common',
                   }} size="lg" />
-                  <p className="text-[11px] text-muted-foreground text-center w-20 truncate">{badgeForm.name || 'Apercu'}</p>
+                  <p className="text-xs text-muted-foreground text-center w-20 truncate">{badgeForm.name || 'Apercu'}</p>
                 </div>
                 <div className="flex-1 space-y-2.5 min-w-0">
                   <div className="flex gap-2 items-end">
@@ -236,7 +236,7 @@ export function BadgesTab(props: BadgesTabProps) {
               </div>
 
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Apparence</p>
+                <p className="text-xs font-semibold text-muted-foreground">Apparence</p>
 
                 <div className="space-y-2.5">
                   <div className="flex gap-2">
@@ -350,7 +350,7 @@ export function BadgesTab(props: BadgesTabProps) {
               </div>
 
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Parametres</p>
+                <p className="text-xs font-semibold text-muted-foreground">Parametres</p>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">

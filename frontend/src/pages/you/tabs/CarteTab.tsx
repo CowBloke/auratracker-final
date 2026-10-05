@@ -161,9 +161,9 @@ function BusinessPin({
             : `0 2px 6px rgba(0,0,0,.35)`,
       }}
     >
-      <BizIcon className={cn('text-white drop-shadow-sm', iconSize)} />
+      <BizIcon className={cn('text-white', iconSize)} />
       {underConstruction && (
-        <span className="absolute -top-1 -right-1 flex size-3 items-center justify-center rounded-full bg-warning text-[7px] font-bold text-black shadow">
+        <span className="absolute -top-1 -right-1 flex size-3 items-center justify-center rounded-full bg-warning text-xs font-bold text-black shadow">
           ⚒
         </span>
       )}
@@ -176,15 +176,15 @@ function BusinessPin({
 function PinTooltip({ business, pinColor }: { business: YouBusiness; pinColor: string }) {
   return (
     <div className="min-w-[160px] max-w-[220px] space-y-1">
-      <p className="truncate text-[12px] font-semibold text-popover-foreground">{business.name}</p>
-      <p className="truncate text-[11px] text-muted-foreground">
+      <p className="truncate text-xs font-semibold text-popover-foreground">{business.name}</p>
+      <p className="truncate text-xs text-muted-foreground">
         @{business.owner.username} · {business.type?.label ?? business.typeKey}
       </p>
       {business.description?.trim() && (
-        <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{business.description}</p>
+        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{business.description}</p>
       )}
       {business.avgRating != null && business.ratingCount > 0 && (
-        <div className="mt-1.5 text-[10px]">
+        <div className="mt-1.5 text-xs">
           <span style={{ color: pinColor }} className="font-semibold">
             ★ {business.avgRating.toFixed(1)}
           </span>
@@ -230,7 +230,7 @@ function BusinessInfoPanel({
         : deployedProducts.slice(0, 5).map((p) => ({ key: p.id, label: p.name, price: p.currentRevenue, emoji: null }));
 
   return (
-    <div className="w-full overflow-hidden rounded-xl border border-border bg-background shadow-xl">
+    <div className="w-full overflow-hidden rounded-xl border border-border bg-background">
       {/* Header: icon + name + owner + rating */}
       <div className="flex items-center gap-3 p-4">
         <div
@@ -253,7 +253,7 @@ function BusinessInfoPanel({
               {showReviews ? <ChevronUp className="size-3 text-muted-foreground" /> : <ChevronDown className="size-3 text-muted-foreground" />}
             </button>
           ) : (
-            <p className="text-[11px] text-muted-foreground/60">Pas encore noté</p>
+            <p className="text-xs text-muted-foreground/60">Pas encore noté</p>
           )}
         </div>
         <button
@@ -266,7 +266,7 @@ function BusinessInfoPanel({
 
       {business.description?.trim() && (
         <div className="border-t border-border px-4 py-2.5">
-          <p className="break-words whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">{business.description}</p>
+          <p className="break-words whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{business.description}</p>
         </div>
       )}
 
@@ -276,14 +276,14 @@ function BusinessInfoPanel({
           {(business.ratings ?? []).map((r) => (
             <div key={r.id} className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold text-foreground">{r.user.username}</span>
+                <span className="text-xs font-semibold text-foreground">{r.user.username}</span>
                 <div className="flex items-center gap-0.5">
                   {[1, 2, 3, 4, 5].map((i) => (
                     <Star key={i} className={cn('size-3', i <= r.rating ? 'fill-warning text-warning' : 'text-warning/20')} />
                   ))}
                 </div>
               </div>
-              {r.comment && <p className="mt-1 text-[11px] text-muted-foreground">{r.comment}</p>}
+              {r.comment && <p className="mt-1 text-xs text-muted-foreground">{r.comment}</p>}
             </div>
           ))}
         </div>
@@ -468,7 +468,7 @@ export const CarteTab = forwardRef<
   );
 
   return (
-    <div className={cn('relative flex h-full min-h-0 w-full flex-1 overflow-hidden', !embedded && 'rounded-2xl border border-border/60 shadow-xl')}>
+    <div className={cn('relative flex h-full min-h-0 w-full flex-1 overflow-hidden', !embedded && 'rounded-xl border border-border/60')}>
       {/* Map */}
       <div className="absolute inset-0">
         <MapView
@@ -520,12 +520,12 @@ export const CarteTab = forwardRef<
                     pinColor={p.pinColor}
                   />
                 </MarkerContent>
-                <MarkerTooltip className="bg-popover text-popover-foreground border border-border/60 shadow-lg backdrop-blur-sm">
+                <MarkerTooltip className="bg-popover text-popover-foreground border border-border/60 ">
                   <PinTooltip business={p.business} pinColor={p.pinColor} />
                 </MarkerTooltip>
                 {(isSelected || isHovered) && (
                   <MarkerLabel position="bottom">
-                    <span className="rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 backdrop-blur-sm">
+                    <span className="rounded bg-black/60 px-1.5 py-0.5 text-xs font-semibold text-white/90">
                       {p.business.name}
                     </span>
                   </MarkerLabel>
@@ -546,7 +546,7 @@ export const CarteTab = forwardRef<
       </div>
 
       {/* Gradient overlay */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/10 via-transparent to-background/10" />
+      <div className="pointer-events-none absolute inset-0 " />
 
       {/* Owner filter pills & Map type toggle */}
       <div className={cn('pointer-events-auto absolute top-3 z-10 flex gap-3', embedded ? 'left-3' : 'left-[236px]')}>
@@ -561,7 +561,7 @@ export const CarteTab = forwardRef<
                   ? { background: 'var(--foreground)', color: 'var(--background)', borderColor: 'var(--foreground)' }
                   : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'color-mix(in oklab, var(--border) 30%, transparent)' }
               }
-              className="rounded-full border px-3 py-1 text-[11px] font-medium transition-all"
+              className="rounded-full border px-3 py-1 text-xs font-medium transition-all"
             >
               {f === 'all' ? 'Tout' : 'À toi'}
             </button>
@@ -579,7 +579,7 @@ export const CarteTab = forwardRef<
                   ? { background: 'var(--foreground)', color: 'var(--background)', borderColor: 'var(--foreground)' }
                   : { background: 'hsl(0 0% 0% / 0.45)', backdropFilter: 'blur(6px)', color: 'hsl(0 0% 85%)', borderColor: 'color-mix(in oklab, var(--border) 30%, transparent)' }
               }
-              className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-all"
+              className="flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all"
             >
               {t === 'map' ? <MapIcon className="size-3" /> : <Globe className="size-3" />}
               {t === 'map' ? 'Carte' : 'Globe'}
@@ -594,14 +594,14 @@ export const CarteTab = forwardRef<
           <button
             type="button"
             onClick={() => setShowBrowserModal(true)}
-            className="pointer-events-auto flex items-center gap-3 rounded-xl border border-border/70 bg-background/95 px-4 py-3.5 shadow-lg backdrop-blur-sm transition-all hover:border-border hover:bg-background hover:shadow-xl active:scale-[0.98]"
+            className="pointer-events-auto flex items-center gap-3 rounded-xl border border-border/70 bg-background/95 px-4 py-3.5 transition-all hover:border-border hover:bg-background active:scale-[0.98]"
           >
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Building2 className="size-4.5" />
             </div>
             <div className="min-w-0 text-left">
-              <p className="text-[13px] font-semibold text-foreground">Entreprises</p>
-              <p className="text-[11px] text-muted-foreground">{allBusinesses.length} sur la carte</p>
+              <p className="text-sm font-semibold text-foreground">Entreprises</p>
+              <p className="text-xs text-muted-foreground">{allBusinesses.length} sur la carte</p>
             </div>
             <ChevronDown className="ml-auto size-3.5 shrink-0 -rotate-90 text-muted-foreground" />
           </button>
@@ -635,13 +635,13 @@ export const CarteTab = forwardRef<
       {/* Notifications panel */}
       {!embedded && (
         <div
-          className="pointer-events-auto absolute bottom-14 right-3 top-3 z-10 w-[300px] overflow-hidden rounded-xl border border-border/60 bg-background/95 shadow-xl backdrop-blur-sm"
+          className="pointer-events-auto absolute bottom-14 right-3 top-3 z-10 w-[300px] overflow-hidden rounded-xl border border-border/60 bg-background/95 "
           data-tutorial-id="carte-notifications-pane"
         >
           <div className="flex h-full min-h-0 flex-col">
             <div className="flex items-center justify-between p-3 pb-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Notifications</p>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <p className="text-xs font-semibold text-muted-foreground">Notifications</p>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 <BellRing className="size-3" />
                 <span>{unreadCount} non lues</span>
               </div>
@@ -649,7 +649,7 @@ export const CarteTab = forwardRef<
             <ScrollArea className="min-h-0 flex-1 px-3 pb-3">
               <div className="space-y-2">
                 {youNotifications.length === 0 && (
-                  <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground">
+                  <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
                     Aucune notification YOU pour le moment.
                   </div>
                 )}
@@ -664,10 +664,10 @@ export const CarteTab = forwardRef<
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
-                            <p className="truncate text-[12px] font-semibold text-foreground">{notification.title}</p>
-                            <span className="shrink-0 text-[10px] text-muted-foreground/70">{relativeTime(notification.createdAt)}</span>
+                            <p className="truncate text-xs font-semibold text-foreground">{notification.title}</p>
+                            <span className="shrink-0 text-xs text-muted-foreground/70">{relativeTime(notification.createdAt)}</span>
                           </div>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{notification.body}</p>
+                          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{notification.body}</p>
                         </div>
                       </div>
                     </div>
@@ -682,14 +682,14 @@ export const CarteTab = forwardRef<
       {/* Placement banner */}
       {placingBusinessId && (
         <div className="absolute left-1/2 top-3 z-20 -translate-x-1/2">
-          <div className="flex items-center gap-3 rounded-xl border border-border/30 bg-background/95 px-4 py-2.5 shadow-lg backdrop-blur-sm">
+          <div className="flex items-center gap-3 rounded-xl border border-border/30 bg-background/95 px-4 py-2.5 ">
             <MapPin className="size-4 shrink-0 text-primary" />
             <div>
               <p className="text-xs font-semibold text-foreground">
                 {savingPlacementId ? 'Enregistrement…' : 'Cliquez sur la carte pour placer'}
               </p>
               {placingBusiness && !savingPlacementId && (
-                <p className="text-[10px] text-muted-foreground">{placingBusiness.name}</p>
+                <p className="text-xs text-muted-foreground">{placingBusiness.name}</p>
               )}
             </div>
             <button
@@ -704,9 +704,9 @@ export const CarteTab = forwardRef<
 
       {/* Bottom metrics ticker */}
       {!embedded && (
-        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/92 backdrop-blur-sm">
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-20 border-t border-border/60 bg-background/92">
           <div className="flex h-10 items-center overflow-hidden px-4">
-            <div className="mr-3 inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="mr-3 inline-flex items-center gap-1 rounded-md bg-muted/50 px-2 py-1 text-xs font-semibold text-muted-foreground">
               <Wallet className="size-3" />
               Flux
             </div>
@@ -718,9 +718,9 @@ export const CarteTab = forwardRef<
                 {[...tickerItems, ...tickerItems, ...tickerItems].map((item, i) => {
                   const ItemIcon = item.icon;
                   return (
-                    <div key={`${item.label}-${i}`} className="inline-flex items-center gap-1.5 text-[11px]">
+                    <div key={`${item.label}-${i}`} className="inline-flex items-center gap-1.5 text-xs">
                       <ItemIcon className={cn('size-3 shrink-0', item.valueClass)} />
-                      <span className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      <span className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                         {item.label}
                       </span>
                       <span className={cn('font-medium', item.valueClass)}>{item.value}</span>
@@ -730,7 +730,7 @@ export const CarteTab = forwardRef<
                 })}
               </div>
             </div>
-            <div className="ml-3 inline-flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
+            <div className="ml-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground/80">
               <BellRing className="size-3" />
               Live
             </div>

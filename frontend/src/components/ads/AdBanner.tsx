@@ -26,7 +26,7 @@ export function AdBanner({ ad, onDismiss }: { ad: Ad; onDismiss: () => void }) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Publicite · {ad.business.name}</p>
+        <p className="text-xs text-muted-foreground">Publicite · {ad.business.name}</p>
         <p className="truncate text-sm font-semibold">{ad.title}</p>
         <p className="line-clamp-2 text-xs text-muted-foreground">{ad.tagline}</p>
       </div>

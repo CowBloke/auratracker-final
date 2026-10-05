@@ -18,9 +18,9 @@ export function TutorialWelcomeModal() {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" style={{ zIndex: 1000000 }} />
+      <div className="fixed inset-0 bg-black/50" style={{ zIndex: 1000000 }} />
       <div
-        className="fixed left-1/2 top-1/2 z-[1000001] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border/60 bg-popover p-6 shadow-2xl"
+        className="fixed left-1/2 top-1/2 z-[1000001] w-[min(420px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border/60 bg-popover p-6"
       >
         <button
           onClick={handleDecline}

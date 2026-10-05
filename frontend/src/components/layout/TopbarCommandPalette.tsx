@@ -368,14 +368,14 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          'top-[14vh] max-h-[70vh] max-w-[min(42rem,calc(100vw-1.5rem))] translate-y-0 overflow-hidden rounded-[1.35rem] border border-border/70 bg-background/95 p-0 shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl [&>button]:hidden'
+          'top-[14vh] max-h-[70vh] max-w-[min(42rem,calc(100vw-1.5rem))] translate-y-0 overflow-hidden rounded-xl border border-border/70 bg-background/95 p-0 [&>button]:hidden'
         )}
       >
         <DialogHeader className="sr-only">
           <DialogTitle>Recherche globale</DialogTitle>
         </DialogHeader>
         <Command loop filter={strictCommandFilter} className="bg-transparent">
-          <div className="border-b border-border/60 bg-gradient-to-b from-muted/30 to-transparent">
+          <div className="border-b border-border/60 ">
             <CommandInput
               placeholder="Rechercher un profil, une page, un jeu, un clan..."
               className="h-14 text-sm"
@@ -426,17 +426,17 @@ export function TopbarCommandPalette({ open, onOpenChange, currentUserId }: Topb
           </CommandList>
         </Command>
 
-        <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-2">
-            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono text-[10px]">↑↓</kbd>
+            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono text-xs">↑↓</kbd>
             naviguer
           </span>
           <span className="inline-flex items-center gap-2">
-            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono text-[10px]">Entrée</kbd>
+            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono text-xs">Entrée</kbd>
             ouvrir
           </span>
           <span className="inline-flex items-center gap-2">
-            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono text-[10px]">Esc</kbd>
+            <kbd className="rounded border border-border/70 bg-background px-1.5 py-0.5 font-mono text-xs">Esc</kbd>
             fermer
           </span>
         </div>
@@ -477,7 +477,7 @@ function CommandPaletteItem({
         <div className="truncate text-sm font-medium text-foreground">{entry.title}</div>
         <div className="truncate text-xs text-muted-foreground">{entry.subtitle}</div>
       </div>
-      <CommandShortcut className="rounded-full border border-border/60 bg-background px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]">
+      <CommandShortcut className="rounded-full border border-border/60 bg-background px-2 py-0.5 text-xs ">
         {entry.badge}
       </CommandShortcut>
     </CommandItem>

@@ -112,7 +112,7 @@ export function UsernameDisplay({
       </span>
       {shouldShowClanTag && clanTag ? <ClanTag tag={clanTag} className={clanTagClassName} /> : null}
       {shouldShowLabel && label ? (
-        <span className={cn('shrink-0 text-[10px] text-muted-foreground', labelClassName)}>
+        <span className={cn('shrink-0 text-xs text-muted-foreground', labelClassName)}>
           {' '}{label}
         </span>
       ) : null}

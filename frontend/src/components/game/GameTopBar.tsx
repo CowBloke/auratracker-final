@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Toggle } from '@/components/ui/toggle';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { gamesApi, type DailyGameRewardState } from '@/services/api';
+import { cn } from '@/lib/utils';
 
 interface GameTopBarProps {
   title: string;
@@ -24,6 +25,7 @@ interface GameTopBarProps {
   showLeaderboard?: boolean;
   onToggleLeaderboard?: () => void;
   children?: ReactNode;
+  className?: string;
 }
 
 export function GameTopBar({
@@ -40,6 +42,7 @@ export function GameTopBar({
   showLeaderboard = false,
   onToggleLeaderboard,
   children,
+  className,
 }: GameTopBarProps) {
   const [dailyState, setDailyState] = useState<DailyGameRewardState | null>(null);
 
@@ -75,7 +78,7 @@ export function GameTopBar({
   const hasRewards = Boolean(rewards && (rewards.money > 0 || rewards.aura > 0));
 
   return (
-    <Card className="py-3">
+    <Card className={cn('py-3', className)}>
       <CardContent className="flex flex-wrap items-center justify-between gap-4 px-4">
         <div className="flex min-w-0 items-center gap-2">
           <h1 className="truncate text-base font-semibold">{title}</h1>

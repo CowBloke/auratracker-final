@@ -66,7 +66,7 @@ export default function ReferralClaimAnimation({
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 px-4">
       {phase === 'charging' && (
         <div className="flex flex-col items-center gap-6">
           <p className="text-sm text-white/70">
@@ -76,14 +76,14 @@ export default function ReferralClaimAnimation({
           <button
             type="button"
             onClick={handleCharge}
-            className="referral-claim-token group relative flex h-36 w-36 items-center justify-center rounded-[2rem] border border-white/15 bg-[radial-gradient(circle_at_top,#facc15,transparent_55%),linear-gradient(140deg,#1f2937,#0f172a_55%,#111827)] shadow-[0_25px_80px_rgba(250,204,21,0.18)] transition-transform active:scale-95"
+            className="referral-claim-token group relative flex h-36 w-36 items-center justify-center rounded-xl border border-white/15 bg-[radial-gradient(circle_at_top,#facc15,transparent_55%),linear-gradient(140deg,#1f2937,#0f172a_55%,#111827)] transition-transform active:scale-95"
             style={{ ['--claim-progress' as string]: `${clicks / CLICKS_NEEDED}` }}
           >
-            <div className="referral-claim-ring absolute inset-0 rounded-[2rem]" />
+            <div className="referral-claim-ring absolute inset-0 rounded-xl" />
             <Ticket className="h-14 w-14 text-warning transition-transform group-hover:scale-110" />
             <div className="absolute inset-x-5 bottom-5 h-2 overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-warning via-warning to-warning transition-all duration-300"
+                className="h-full rounded-full transition-all duration-300"
                 style={{ width: `${(clicks / CLICKS_NEEDED) * 100}%` }}
               />
             </div>
@@ -94,7 +94,7 @@ export default function ReferralClaimAnimation({
               <span
                 key={index}
                 className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
-                  index < clicks ? 'bg-warning shadow-[0_0_16px_rgba(252,211,77,0.9)]' : 'bg-white/20'
+                  index < clicks ? 'bg-warning' : 'bg-white/20'
                 }`}
               />
             ))}
@@ -109,7 +109,7 @@ export default function ReferralClaimAnimation({
       )}
 
       {phase === 'reveal' && (
-        <div className="referral-reveal-panel relative w-full max-w-md rounded-[2rem] border border-white/10 bg-[linear-gradient(160deg,rgba(17,24,39,0.98),rgba(15,23,42,0.96))] p-6 text-white shadow-[0_30px_120px_rgba(15,23,42,0.6)]">
+        <div className="referral-reveal-panel relative w-full max-w-md rounded-xl border border-white/10 bg-[linear-gradient(160deg,rgba(17,24,39,0.98),rgba(15,23,42,0.96))] p-6 text-white">
           <Button
             type="button"
             variant="ghost"
@@ -126,20 +126,20 @@ export default function ReferralClaimAnimation({
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.35em] text-white/50">Parrainage</p>
-              <p className="text-3xl font-semibold tracking-[0.34em] text-warning">{code}</p>
+              <p className="text-xs text-white/50">Parrainage</p>
+              <p className="text-3xl font-semibold text-warning">{code}</p>
               <p className="text-sm text-white/65">
                 Copie automatique terminee. Chaque validation rapporte {rewardAmount} money aux deux comptes.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-left">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">Valides</p>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs text-white/45">Valides</p>
                 <p className="mt-2 text-2xl font-semibold">{successfulReferrals}</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/45">Copie</p>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs text-white/45">Copie</p>
                 <p className="mt-2 flex items-center gap-2 text-lg font-medium text-success">
                   <Copy className="h-4 w-4" />
                   {copied ? 'Confirmee' : 'En cours'}

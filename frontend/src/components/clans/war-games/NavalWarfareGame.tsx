@@ -122,7 +122,7 @@ export function NavalWarfareGame({
                         : canFire
                           ? 'border-border/40 bg-card/50 hover:bg-card/60 hover:border-border/50 cursor-crosshair hover:scale-105'
                           : 'border-border/20 bg-card/30 cursor-not-allowed opacity-40',
-                      isPend && 'animate-pulse border-primary/60 bg-primary/10'
+                      isPend && 'border-primary/60 bg-primary/10'
                     )}
                   >
                     {shot

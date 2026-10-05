@@ -95,9 +95,9 @@ export default function MarketRoom() {
           ? Array.from({ length: 3 }).map((_, index) => (
               <Card key={index} className="border-border/60 bg-card/70">
                 <CardContent className="space-y-4 p-6">
-                  <div className="h-4 w-28 animate-pulse rounded bg-muted/60" />
-                  <div className="h-10 w-40 animate-pulse rounded bg-muted/60" />
-                  <div className="h-20 animate-pulse rounded bg-muted/50" />
+                  <div className="h-4 w-28 rounded bg-muted/60" />
+                  <div className="h-10 w-40 rounded bg-muted/60" />
+                  <div className="h-20 rounded bg-muted/50" />
                 </CardContent>
               </Card>
             ))
@@ -109,10 +109,10 @@ export default function MarketRoom() {
                   <CardContent className="space-y-5 p-6">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs font-medium uppercase tracking-[0.24em] text-muted-foreground">{coin.symbol}</p>
-                        <h2 className="mt-2 text-2xl font-semibold tracking-tight">{coin.name}</h2>
+                        <p className="text-xs font-medium text-muted-foreground">{coin.symbol}</p>
+                        <h2 className="mt-2 text-2xl font-semibold">{coin.name}</h2>
                       </div>
-                      <div className={cn('inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]', personality.chipClass)}>
+                      <div className={cn('inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ', personality.chipClass)}>
                         <Icon className="h-3.5 w-3.5" />
                         {personality.label}
                       </div>
@@ -120,10 +120,10 @@ export default function MarketRoom() {
 
                     <p className="text-sm leading-6 text-muted-foreground">{coin.description}</p>
 
-                    <div className="grid gap-3 rounded-[22px] border border-border/60 bg-muted/20 p-4">
+                    <div className="grid gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
                       <div className="flex items-end justify-between gap-3">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Prix</p>
+                          <p className="text-xs text-muted-foreground">Prix</p>
                           <p className="mt-1 text-3xl font-semibold tabular-nums">${coin.price.toFixed(2)}</p>
                         </div>
                         <div className={cn('rounded-full px-3 py-1 text-sm font-semibold', coin.change >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive')}>

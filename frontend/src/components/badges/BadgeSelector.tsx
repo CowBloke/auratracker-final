@@ -74,7 +74,7 @@ export function BadgeCatalog({
     <div className={cn('space-y-4', className)}>
       {(earned.length > 0 || earnedLeaderboard.length > 0) && (
         <div>
-          <p className="text-xs text-muted-foreground/60 uppercase tracking-wider mb-2">Obtenus</p>
+          <p className="text-xs text-muted-foreground/60 mb-2">Obtenus</p>
           <div className="flex flex-wrap gap-1">
             {earned.map((badge) => (
               <BadgeIcon key={badge.id} badge={badge as BadgeData} size="lg" tooltipSide="bottom" totalUsers={totalUsers} />
@@ -87,7 +87,7 @@ export function BadgeCatalog({
       )}
       {hasLocked && (
         <div>
-          <p className="text-xs text-muted-foreground/60 uppercase tracking-wider mb-2">À débloquer</p>
+          <p className="text-xs text-muted-foreground/60 mb-2">À débloquer</p>
           <div className="flex flex-wrap gap-1">
             {locked.map((badge) => (
               <BadgeIcon

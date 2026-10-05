@@ -56,7 +56,7 @@ export function ClanTag({ tag, className }: ClanTagProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold leading-none flex-shrink-0 select-none',
+        'inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold leading-none flex-shrink-0 select-none',
         className,
       )}
       style={{

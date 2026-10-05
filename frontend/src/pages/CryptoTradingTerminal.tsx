@@ -245,7 +245,7 @@ export function CryptoTradingTerminal({
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border/30 p-3 shadow-lg">
+        <div className="bg-background border border-border/30 p-3">
           <p className="text-sm font-medium">${data.price.toFixed(2)}</p>
           <p className="text-xs text-muted-foreground">
             {new Date(data.timestamp).toLocaleString('fr-FR')}
@@ -344,7 +344,7 @@ export function CryptoTradingTerminal({
                       <label className={TYPOGRAPHY.XS}>Montant ($)</label>
                       <div className="flex items-center gap-2 mt-1">
                         <Input type="number" value={buyAmount} onChange={(e) => setBuyAmount(e.target.value)} placeholder="0" className="flex-1 tabular-nums" />
-                        <Button type="button" onClick={() => setBuyAmount(moneyBalance.toString())} disabled={loading || moneyBalance <= 0} variant="outline" size="sm" className="text-[10px] whitespace-nowrap border-success/60 text-success hover:bg-success hover:text-background">Max</Button>
+                        <Button type="button" onClick={() => setBuyAmount(moneyBalance.toString())} disabled={loading || moneyBalance <= 0} variant="outline" size="sm" className="text-xs whitespace-nowrap border-success/60 text-success hover:bg-success hover:text-background">Max</Button>
                         <Button onClick={handleBuy} disabled={loading || !buyAmount || buyMoneyAmount <= 0 || buyMoneyAmount > moneyBalance} variant="outline" size="sm" className={cn("text-xs whitespace-nowrap", !loading && buyMoneyAmount > 0 && buyMoneyAmount <= moneyBalance ? "border-success text-success hover:bg-success hover:text-background" : "")}>Acheter</Button>
                       </div>
                     </div>
@@ -367,7 +367,7 @@ export function CryptoTradingTerminal({
                       <label className={TYPOGRAPHY.XS}>Quantité ({coinUnit})</label>
                       <div className="flex items-center gap-2 mt-1">
                         <Input type="number" value={sellAmount} onChange={(e) => setSellAmount(e.target.value)} placeholder="0" step="0.0001" className="flex-1 tabular-nums" />
-                        <Button type="button" onClick={() => setSellAmount(coinBalance.toFixed(4))} disabled={loading || coinBalance <= 0} variant="outline" size="sm" className="text-[10px] whitespace-nowrap border-destructive/60 text-destructive hover:bg-destructive hover:text-background">Max</Button>
+                        <Button type="button" onClick={() => setSellAmount(coinBalance.toFixed(4))} disabled={loading || coinBalance <= 0} variant="outline" size="sm" className="text-xs whitespace-nowrap border-destructive/60 text-destructive hover:bg-destructive hover:text-background">Max</Button>
                         <Button onClick={handleSell} disabled={loading || !sellAmount || sellCoinAmount <= 0 || sellCoinAmount > coinBalance} variant="outline" size="sm" className={cn("text-xs whitespace-nowrap", !loading && sellCoinAmount > 0 && sellCoinAmount <= coinBalance ? "border-destructive text-destructive hover:bg-destructive hover:text-background" : "")}>Vendre</Button>
                       </div>
                     </div>
@@ -408,7 +408,7 @@ export function CryptoTradingTerminal({
                         <label className={TYPOGRAPHY.XS}>Marge ($)</label>
                         <div className="flex items-center gap-2 mt-1">
                           <Input type="number" value={marginAmount} onChange={(e) => setMarginAmount(e.target.value)} placeholder="0" className="flex-1 tabular-nums" />
-                          <Button type="button" onClick={() => setMarginAmount(moneyBalance.toString())} disabled={loading || moneyBalance <= 0} variant="outline" size="sm" className="text-[10px] whitespace-nowrap">Max</Button>
+                          <Button type="button" onClick={() => setMarginAmount(moneyBalance.toString())} disabled={loading || moneyBalance <= 0} variant="outline" size="sm" className="text-xs whitespace-nowrap">Max</Button>
                         </div>
                       </div>
                       {marginAmountNum > 0 && (
@@ -494,16 +494,16 @@ export function CryptoTradingTerminal({
                             {activeTab === 'all' && (
                               <UsernameDisplay username={tx.user.username} usernameColor={tx.user.usernameColor} className={TYPOGRAPHY.XS} />
                             )}
-                            <span className={cn("text-[10px]", tx.type === 'BUY' ? "text-success" : "text-destructive")}>
+                            <span className={cn("text-xs", tx.type === 'BUY' ? "text-success" : "text-destructive")}>
                               {tx.type === 'BUY' ? 'Achat' : 'Vente'}
                             </span>
                           </div>
-                          <p className="text-[10px] text-muted-foreground">{new Date(tx.createdAt).toLocaleString('fr-FR')}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(tx.createdAt).toLocaleString('fr-FR')}</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className={cn(TYPOGRAPHY.XS, "tabular-nums")}>{tx.type === 'BUY' ? '+' : '-'}{tx.coinAmount.toFixed(4)} {coinUnit}</p>
-                        <p className="text-[10px] text-muted-foreground tabular-nums">@ ${tx.price.toFixed(2)} • Frais: ${tx.fee}</p>
+                        <p className="text-xs text-muted-foreground tabular-nums">@ ${tx.price.toFixed(2)} • Frais: ${tx.fee}</p>
                       </div>
                     </div>
                   ))

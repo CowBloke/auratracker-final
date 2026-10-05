@@ -110,10 +110,10 @@ export default function MoneyIncomeOverlay() {
       {bursts.map((burst) => (
         <div key={burst.id} className="absolute inset-0">
           <div
-            className={`absolute flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold backdrop-blur-sm ${
+            className={`absolute flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold ${
               burst.amount > 0
-                ? 'border-success/35 bg-success/18 text-success shadow-[0_10px_30px_rgba(16,185,129,0.25)]'
-                : 'border-destructive/35 bg-destructive/18 text-destructive shadow-[0_10px_30px_rgba(244,63,94,0.25)]'
+                ? 'border-success/35 bg-success/18 text-success'
+                : 'border-destructive/35 bg-destructive/18 text-destructive'
             }`}
             style={{
               left: burst.labelStartX,
@@ -128,7 +128,7 @@ export default function MoneyIncomeOverlay() {
           {burst.particles.map((particle) => (
             <div
               key={particle.id}
-              className="absolute flex items-center justify-center rounded-full border border-warning/50 bg-gradient-to-br from-warning via-warning to-warning text-[10px] font-black text-warning shadow-[0_8px_20px_rgba(251,191,36,0.35)]"
+              className="absolute flex items-center justify-center rounded-full border border-warning/50 text-xs font-semibold text-warning"
               style={{
                 left: particle.startX,
                 top: particle.startY,

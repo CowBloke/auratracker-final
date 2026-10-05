@@ -60,7 +60,7 @@ function TimingGame({ onResult }: { onResult: (success: boolean) => void }) {
       <p className="text-center text-sm text-muted-foreground">Cliquez quand l'indicateur est dans la zone verte</p>
       <div className="relative h-10 overflow-hidden rounded-xl border border-border/60 bg-muted/30">
         <div className="absolute inset-y-0 border-x border-success/40 bg-success/25" style={{ left: '35%', width: '30%' }} />
-        <div className="absolute top-1 h-8 w-2 rounded-full bg-white shadow-md transition-none" style={{ left: `calc(${pos}% - 4px)` }} />
+        <div className="absolute top-1 h-8 w-2 rounded-full bg-white transition-none" style={{ left: `calc(${pos}% - 4px)` }} />
       </div>
       <Button className="w-full" onClick={hit} disabled={done} size="lg">Frapper !</Button>
     </div>
@@ -182,7 +182,7 @@ function TypingGame({ onResult }: { onResult: (success: boolean) => void }) {
     <div className="space-y-4">
       <p className="text-center text-sm text-muted-foreground">Tapez le mot avant la fin du chrono</p>
       <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
-        <span className="text-2xl font-bold tracking-wider text-foreground">{word}</span>
+        <span className="text-2xl font-bold text-foreground">{word}</span>
         <span className={cn('text-lg font-mono font-bold', timeLeft <= 2 ? 'text-destructive' : 'text-muted-foreground')}>{timeLeft}s</span>
       </div>
       <input
@@ -221,7 +221,7 @@ function MathGame({ onResult }: { onResult: (success: boolean) => void }) {
   return (
     <div className="space-y-4">
       <p className="text-center text-sm text-muted-foreground">Résolvez le calcul mental</p>
-      <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-5 text-center text-3xl font-bold tracking-wide text-foreground">
+      <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-5 text-center text-3xl font-bold text-foreground">
         {problem.q} = ?
       </div>
       <input
@@ -278,7 +278,7 @@ function SortGame({ onResult }: { onResult: (success: boolean) => void }) {
             >
               <div className="flex items-center justify-between">
                 <span>{item.label}</span>
-                {pos >= 0 && <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">#{pos + 1}</span>}
+                {pos >= 0 && <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-bold text-primary">#{pos + 1}</span>}
               </div>
             </button>
           );
@@ -330,7 +330,7 @@ function MiniGameModal({
         </div>
         <div className="p-5">
           {result ? (
-            <div className={cn('flex flex-col items-center gap-3 rounded-2xl border py-8',
+            <div className={cn('flex flex-col items-center gap-3 rounded-xl border py-8',
               result.success ? 'border-success/30 bg-success/5' : 'border-warning/30 bg-warning/5'
             )}>
               <span className="text-4xl">{result.success ? '✅' : '⚡'}</span>
@@ -437,7 +437,7 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
 
       <div className="space-y-3">
         {business.members.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-border/60 py-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl border border-dashed border-border/60 py-8 text-center text-sm text-muted-foreground">
             Aucun employé. Invitez des joueurs via le panneau de gestion.
           </div>
         )}
@@ -455,8 +455,8 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <p className="text-sm font-medium">{member.user.username}</p>
-                  {isMe && <Badge variant="outline" className="text-[10px]">Vous</Badge>}
-                  <Badge variant="outline" className="text-[10px]">{member.role}</Badge>
+                  {isMe && <Badge variant="outline" className="text-xs">Vous</Badge>}
+                  <Badge variant="outline" className="text-xs">{member.role}</Badge>
                 </div>
               </div>
               <div className="shrink-0 flex items-center gap-2">
@@ -524,7 +524,7 @@ function StockTab({ stock, storage }: { stock: StockEntry[]; storage: StorageSta
       </div>
 
       {stock.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/60 py-10 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/60 py-10 text-center">
           <Package className="h-8 w-8 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">Aucun stock pour l'instant.</p>
         </div>
@@ -538,7 +538,7 @@ function StockTab({ stock, storage }: { stock: StockEntry[]; storage: StorageSta
                 <ResIcon type={resource} size="md" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{meta.label}</p>
-                  <Badge className={cn('mt-0.5 border px-1.5 py-0 text-[10px] leading-4', tier.cls)}>{tier.label}</Badge>
+                  <Badge className={cn('mt-0.5 border px-1.5 py-0 text-xs leading-4', tier.cls)}>{tier.label}</Badge>
                   <p className="mt-1 text-base font-bold tabular-nums">{qty} u.</p>
                 </div>
               </div>
@@ -575,7 +575,7 @@ function CraftingTab({ business, stock }: { business: YouBusiness; stock: StockE
 
   if (available.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border/60 py-10 text-center">
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border/60 py-10 text-center">
         <Package className="h-8 w-8 text-muted-foreground/30" />
         <p className="text-sm text-muted-foreground">Aucune recette disponible pour ce type d'entreprise.</p>
       </div>
@@ -593,7 +593,7 @@ function CraftingTab({ business, stock }: { business: YouBusiness; stock: StockE
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-semibold">{recipe.name}</p>
-                  <Badge variant="outline" className="text-[10px]">{recipe.output.type === 'structure' ? 'Structure' : recipe.output.type === 'item' ? 'Objet' : 'Entreprise'}</Badge>
+                  <Badge variant="outline" className="text-xs">{recipe.output.type === 'structure' ? 'Structure' : recipe.output.type === 'item' ? 'Objet' : 'Entreprise'}</Badge>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">{recipe.description}</p>
                 <div className="mt-3 flex flex-wrap gap-2">

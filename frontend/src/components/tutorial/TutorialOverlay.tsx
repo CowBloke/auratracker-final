@@ -278,7 +278,7 @@ export function TutorialOverlay() {
       {/* Tooltip */}
       <div
         ref={tooltipRef}
-        className="rounded-xl border border-border/60 bg-popover text-popover-foreground shadow-2xl"
+        className="rounded-xl border border-border/60 bg-popover text-popover-foreground"
         style={{ ...tStyle, zIndex: 999999 }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -288,7 +288,7 @@ export function TutorialOverlay() {
         <div className="flex items-start justify-between gap-3 border-b border-border/30 px-4 py-3">
           <div className="flex items-center gap-2 min-w-0">
             {currentSection && (
-              <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+              <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
                 {currentSection.title}
               </span>
             )}

@@ -83,13 +83,13 @@ export function BusinessSelectionModal<TBusiness extends SelectableBusiness>({
                   <div className="flex items-center gap-2">
                     <p className="truncate text-sm font-semibold text-foreground">{business.name}</p>
                     {business.avgRating != null && business.ratingCount ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-semibold text-warning">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
                         <Star className="h-3 w-3 fill-current" />
                         {business.avgRating.toFixed(1)}
                       </span>
                     ) : null}
                   </div>
-                  <p className="truncate text-[11px] text-muted-foreground">
+                  <p className="truncate text-xs text-muted-foreground">
                     {business.owner?.username ? `Par ${business.owner.username}` : business.typeKey ?? 'Entreprise'}
                   </p>
                   {renderMeta ? <div className="mt-1">{renderMeta(business)}</div> : null}

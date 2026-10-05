@@ -159,7 +159,7 @@ export function UsersTab(props: UsersTabProps) {
         <CardContent>
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+              <div className="w-1 h-8 bg-foreground/20" />
             </div>
           ) : filteredUsers.length === 0 ? (
             <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>
@@ -237,7 +237,7 @@ export function UsersTab(props: UsersTabProps) {
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 text-[11px] text-muted-foreground/65">
+                      <div className="mt-1 text-xs text-muted-foreground/65">
                         Dernière IP: <span className="font-mono">{u.lastLoginIpAddress || 'N/A'}</span>
                       </div>
                     </div>

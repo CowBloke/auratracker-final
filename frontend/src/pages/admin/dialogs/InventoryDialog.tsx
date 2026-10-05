@@ -145,7 +145,7 @@ export function InventoryDialog({
 
             {loadingInventory ? (
               <div className="flex justify-center py-8">
-                <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+                <div className="w-1 h-8 bg-foreground/20" />
               </div>
             ) : inventoryItems.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Aucun objet dans l'inventaire</p>

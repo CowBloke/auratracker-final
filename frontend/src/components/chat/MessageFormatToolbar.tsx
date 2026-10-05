@@ -95,7 +95,7 @@ export function MessageFormatToolbar({
     <div className="mt-2 flex items-center justify-start">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 rounded-full px-2.5 text-[11px]">
+          <Button type="button" variant="outline" size="sm" className="h-7 gap-1.5 rounded-full px-2.5 text-xs">
             <Palette className="h-3.5 w-3.5" />
             Format
           </Button>

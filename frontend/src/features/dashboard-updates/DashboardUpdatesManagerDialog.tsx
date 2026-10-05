@@ -201,7 +201,7 @@ AutoTextarea.displayName = 'AutoTextarea';
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+    <span className="text-xs font-semibold text-muted-foreground">
       {children}
     </span>
   );
@@ -399,7 +399,7 @@ export function DashboardUpdatesManagerDialog({
                   <History className="h-4 w-4" />
                   Historique
                   {entries.length > 0 ? (
-                    <Badge variant="outline" className="ml-1 h-5 border-border/60 bg-muted/40 px-1.5 text-[10px]">
+                    <Badge variant="outline" className="ml-1 h-5 border-border/60 bg-muted/40 px-1.5 text-xs">
                       {entries.length}
                     </Badge>
                   ) : null}
@@ -514,7 +514,7 @@ export function DashboardUpdatesManagerDialog({
               <div className="overflow-y-auto px-6 py-4">
                 <TabsContent value="apercu" className="mt-0 space-y-0">
                   <div
-                    className="relative overflow-hidden rounded-[24px] border border-border/60 bg-card p-5"
+                    className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-5"
                     style={{ boxShadow: `0 18px 70px -42px ${accentColor}` }}
                   >
                     <div
@@ -541,7 +541,7 @@ export function DashboardUpdatesManagerDialog({
                         <PopoverTrigger asChild>
                           <button
                             type="button"
-                            className="group relative block w-full overflow-hidden rounded-[22px] border border-border/50 bg-background/70 text-left transition-colors hover:border-primary/60"
+                            className="group relative block w-full overflow-hidden rounded-xl border border-border/50 bg-background/70 text-left transition-colors hover:border-primary/60"
                           >
                             {form.imageUrl ? (
                               <>
@@ -559,11 +559,11 @@ export function DashboardUpdatesManagerDialog({
                               </>
                             ) : (
                               <div className={cn(
-                                'flex h-44 flex-col items-center justify-center gap-2 bg-gradient-to-br text-sm text-muted-foreground',
-                                form.feedCategory === 'GAME' && 'from-muted via-muted to-transparent',
-                                form.feedCategory === 'PATCH' && 'from-success/20 via-success/5 to-transparent',
-                                form.feedCategory === 'COMMUNITY' && 'from-muted via-muted to-transparent',
-                                form.feedCategory === 'DEV' && 'from-warning/20 via-warning/5 to-transparent',
+                                'flex h-44 flex-col items-center justify-center gap-2 text-sm text-muted-foreground',
+                                form.feedCategory === 'GAME' && '',
+                                form.feedCategory === 'PATCH' && '',
+                                form.feedCategory === 'COMMUNITY' && '',
+                                form.feedCategory === 'DEV' && '',
                               )}>
                                 <ImagePlus className="h-6 w-6" />
                                 Cliquer pour ajouter une image
@@ -585,7 +585,7 @@ export function DashboardUpdatesManagerDialog({
                         value={form.title}
                         onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
                         placeholder="Titre de la mise à jour"
-                        className="text-2xl font-semibold tracking-tight"
+                        className="text-2xl font-semibold"
                       />
 
                       <AutoTextarea
@@ -641,7 +641,7 @@ export function DashboardUpdatesManagerDialog({
                 </TabsContent>
 
                 <TabsContent value="fiche" className="mt-0">
-                  <div className="space-y-5 rounded-[22px] border border-border/60 bg-card p-5">
+                  <div className="space-y-5 rounded-xl border border-border/60 bg-card p-5">
                     <div className="space-y-2">
                       <FieldLabel>Contenu détaillé</FieldLabel>
                       <AutoTextarea
@@ -666,7 +666,7 @@ export function DashboardUpdatesManagerDialog({
                             {items.map((item, index) => (
                               <div
                                 key={`${category}-${index}`}
-                                className="group relative rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm leading-6 transition-colors focus-within:border-border"
+                                className="group relative rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm leading-6 transition-colors focus-within:border-border"
                               >
                                 <AutoTextarea
                                   value={item}
@@ -689,7 +689,7 @@ export function DashboardUpdatesManagerDialog({
                             <button
                               type="button"
                               onClick={() => addSectionItem(category)}
-                              className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-border/60 px-4 py-2 text-xs text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
+                              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/60 px-4 py-2 text-xs text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
                             >
                               <Plus className="h-3.5 w-3.5" />
                               Ajouter une ligne
@@ -750,7 +750,7 @@ export function DashboardUpdatesManagerDialog({
                 <Loader2 className="h-5 w-5 animate-spin" />
               </div>
             ) : entries.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border/70 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-xl border border-dashed border-border/70 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
                 Aucune mise à jour enregistrée.
               </div>
             ) : (
@@ -761,7 +761,7 @@ export function DashboardUpdatesManagerDialog({
                   <div
                     key={entry.id}
                     className={cn(
-                      'rounded-2xl border bg-muted/20 p-4 transition',
+                      'rounded-xl border bg-muted/20 p-4 transition',
                       isEditing ? 'border-primary/60 bg-primary/5' : 'border-border/60',
                     )}
                   >

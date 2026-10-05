@@ -16,7 +16,7 @@ const getTier = (rank: number): BadgeTier => {
       label: 'LEGEND',
       colorClassName: 'text-warning',
       description: 'Top 3 mondial',
-      ringClassName: 'shadow-[0_0_34px_rgba(251,191,36,0.55)]',
+      ringClassName: '',
       coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(255,247,229,0.96),rgba(251,191,36,0.84)_46%,rgba(180,83,9,0.96)_100%)]',
       glowClassName: 'bg-warning/35',
       orbitClassName: 'bg-warning/30',
@@ -27,7 +27,7 @@ const getTier = (rank: number): BadgeTier => {
       label: 'MASTER',
       colorClassName: 'text-primary',
       description: 'Top 10 mondial',
-      ringClassName: 'shadow-[0_0_26px_rgba(56,189,248,0.44)]',
+      ringClassName: '',
       coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(236,254,255,0.94),rgba(56,189,248,0.78)_50%,rgba(30,64,175,0.94)_100%)]',
       glowClassName: 'bg-muted/25',
       orbitClassName: 'bg-muted/24',
@@ -38,7 +38,7 @@ const getTier = (rank: number): BadgeTier => {
       label: 'ELITE',
       colorClassName: 'text-success',
       description: 'Top 25 mondial',
-      ringClassName: 'shadow-[0_0_22px_rgba(16,185,129,0.38)]',
+      ringClassName: '',
       coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(236,253,245,0.92),rgba(16,185,129,0.78)_52%,rgba(6,95,70,0.94)_100%)]',
       glowClassName: 'bg-success/20',
       orbitClassName: 'bg-success/18',
@@ -49,7 +49,7 @@ const getTier = (rank: number): BadgeTier => {
       label: 'PRO',
       colorClassName: 'text-primary',
       description: 'Top 50 mondial',
-      ringClassName: 'shadow-[0_0_18px_rgba(192,132,252,0.35)]',
+      ringClassName: '',
       coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(250,245,255,0.9),rgba(192,132,252,0.72)_52%,rgba(88,28,135,0.94)_100%)]',
       glowClassName: 'bg-muted/15',
       orbitClassName: 'bg-muted/16',
@@ -60,7 +60,7 @@ const getTier = (rank: number): BadgeTier => {
     label: 'TOP',
     colorClassName: 'text-muted-foreground',
     description: 'Classement global',
-    ringClassName: 'shadow-[0_0_12px_rgba(148,163,184,0.22)]',
+    ringClassName: '',
     coreClassName: 'bg-[radial-gradient(circle_at_22%_18%,rgba(248,250,252,0.9),rgba(148,163,184,0.62)_56%,rgba(71,85,105,0.95)_100%)]',
     glowClassName: 'bg-muted/12',
     orbitClassName: 'bg-muted/14',
@@ -89,7 +89,7 @@ export function OverallClassementBadge({
 
   return (
     <div className="group relative flex items-center justify-end">
-      <div className={cn('absolute right-1 top-1 h-20 w-20 rounded-full blur-xl', tier.glowClassName)} />
+      <div className={cn('absolute right-1 top-1 h-20 w-20 rounded-full', tier.glowClassName)} />
 
       {rank <= 25 ? (
         <div
@@ -105,28 +105,28 @@ export function OverallClassementBadge({
           tier.coreClassName,
         )}
       >
-        <span className="text-[8px] font-medium tracking-[0.12em] text-white/78">{tier.label}</span>
-        <span className="mt-0.5 text-[28px] font-semibold leading-none tracking-tight">#{rank}</span>
+        <span className="text-xs font-medium text-white/78">{tier.label}</span>
+        <span className="mt-0.5 text-[28px] font-semibold leading-none">#{rank}</span>
       </div>
 
       {/* Hover tooltip — appears to the left of the badge */}
-      <div className="pointer-events-none absolute right-[92px] top-1 w-48 rounded-xl border border-border/60 bg-card shadow-lg opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+      <div className="pointer-events-none absolute right-[92px] top-1 w-48 rounded-xl border border-border/60 bg-card opacity-0 transition-opacity duration-200 group-hover:opacity-100">
         <div className="px-3.5 py-2.5 space-y-1">
           <div className="flex items-center gap-1.5">
-            <span className={cn('text-[11px] font-semibold', tier.colorClassName)}>{tier.label}</span>
-            <span className="text-muted-foreground/40 text-[11px]">·</span>
-            <span className="text-[11px] font-semibold text-foreground">#{rank}</span>
+            <span className={cn('text-xs font-semibold', tier.colorClassName)}>{tier.label}</span>
+            <span className="text-muted-foreground/40 text-xs">·</span>
+            <span className="text-xs font-semibold text-foreground">#{rank}</span>
           </div>
-          <p className="text-[11px] text-muted-foreground">{tier.description}</p>
+          <p className="text-xs text-muted-foreground">{tier.description}</p>
           {topPercent !== null && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Top {topPercent < 1 ? topPercent.toFixed(1) : Math.round(topPercent)}%
               {totalPlayers ? ` · ${totalPlayers} joueurs` : ''}
             </p>
           )}
           {typeof totalScore === 'number' && (
             <div className="border-t border-border/40 pt-1.5 mt-1">
-              <p className="text-[10px] text-muted-foreground/60">
+              <p className="text-xs text-muted-foreground/60">
                 Score combiné : <span className="font-medium text-muted-foreground">{Math.round(totalScore).toLocaleString('fr-FR')}</span>
                 <span className="ml-1">(plus bas = meilleur)</span>
               </p>

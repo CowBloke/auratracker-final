@@ -324,7 +324,7 @@ const buildAdminSupportConversationSummary = (thread: SupportThread): MessagingC
 
 function ConversationAvatar({ conversation, size = 'md' }: { conversation: MessagingConversationSummary; size?: 'sm' | 'md' | 'lg' }) {
   const cls = size === 'sm' ? 'h-8 w-8' : size === 'lg' ? 'h-10 w-10' : 'h-9 w-9';
-  const fallbackCls = size === 'sm' ? 'text-[10px]' : 'text-xs';
+  const fallbackCls = size === 'sm' ? 'text-xs' : 'text-xs';
   const avatarUser = conversation.participants.find((e) => e.user.id !== 'support')?.user ?? null;
   const hasImage = conversation.type === 'GROUP' && conversation.imageUrl;
   const hasIcon = conversation.type === 'GROUP' && conversation.icon;
@@ -1697,7 +1697,7 @@ export default function MessagesPage() {
                       className="shrink-0" />
                     <Avatar className="h-7 w-7 shrink-0">
                       {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} alt={player.username} /> : null}
-                      <AvatarFallback className="text-[10px]">{getInitials(player.username)}</AvatarFallback>
+                      <AvatarFallback className="text-xs">{getInitials(player.username)}</AvatarFallback>
                     </Avatar>
                     <span className="truncate text-sm font-medium" style={player.usernameColor ? { color: player.usernameColor } : undefined}>{player.username}</span>
                     {blockedIds.has(player.id) && <Ban className="ml-auto h-3 w-3 shrink-0 text-destructive" />}
@@ -1733,7 +1733,7 @@ export default function MessagesPage() {
             <DialogTitle className="text-sm font-semibold">Infos du groupe</DialogTitle>
             <DialogDescription className="text-xs">Gérez le nom, la description, l’icône et les membres du groupe depuis un seul endroit.</DialogDescription>
             {!canManageCourtGroup && (
-              <p className="mt-1 text-[11px] text-muted-foreground">Sur un dossier judiciaire, seuls les admins ou le juge du dossier peuvent renommer le groupe et ajouter des membres.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Sur un dossier judiciaire, seuls les admins ou le juge du dossier peuvent renommer le groupe et ajouter des membres.</p>
             )}
           </DialogHeader>
           <ScrollArea className="max-h-[75vh]">
@@ -1844,12 +1844,12 @@ export default function MessagesPage() {
                         <div key={entry.user.id} className="flex items-center gap-2.5 px-3 py-2">
                           <Avatar className="h-7 w-7 shrink-0">
                             {!shouldMaskCourtMember && entry.user.profilePicture ? <AvatarImage src={resolveImageUrl(entry.user.profilePicture)} /> : null}
-                            <AvatarFallback className="text-[10px]">{getInitials(isCourtJudge ? entry.user.username : memberDisplayName)}</AvatarFallback>
+                            <AvatarFallback className="text-xs">{getInitials(isCourtJudge ? entry.user.username : memberDisplayName)}</AvatarFallback>
                           </Avatar>
                           <span className="flex-1 truncate text-sm font-medium" style={!shouldMaskCourtMember && entry.user.usernameColor ? { color: entry.user.usernameColor } : undefined}>
                             {memberDisplayName}
                           </span>
-                          {!isCourtMemberEntry && entry.role === 'OWNER' && <span className="text-[10px] font-medium text-warning">Owner</span>}
+                          {!isCourtMemberEntry && entry.role === 'OWNER' && <span className="text-xs font-medium text-warning">Owner</span>}
                           {!isMe && amOwner && (
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/70 hover:text-destructive" onClick={() => handleKickMember(entry.user.id)}>
                               <UserMinus className="h-3.5 w-3.5" />
@@ -1906,7 +1906,7 @@ export default function MessagesPage() {
                     >
                       <Avatar className="h-6 w-6 shrink-0">
                         {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} /> : null}
-                        <AvatarFallback className="text-[9px]">{getInitials(player.username)}</AvatarFallback>
+                        <AvatarFallback className="text-xs">{getInitials(player.username)}</AvatarFallback>
                       </Avatar>
                       <span className="truncate text-xs" style={player.usernameColor ? { color: player.usernameColor } : undefined}>{player.username}</span>
                     </button>
@@ -1946,7 +1946,7 @@ export default function MessagesPage() {
                   <div key={player.id} className="flex items-center gap-2 px-3 py-2">
                     <Avatar className="h-6 w-6 shrink-0">
                       {player.profilePicture ? <AvatarImage src={resolveImageUrl(player.profilePicture)} /> : null}
-                      <AvatarFallback className="text-[9px]">{getInitials(player.username)}</AvatarFallback>
+                      <AvatarFallback className="text-xs">{getInitials(player.username)}</AvatarFallback>
                     </Avatar>
                     <span className="flex-1 truncate text-xs">{player.username}</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddMember(player.id)}>
@@ -1975,7 +1975,7 @@ export default function MessagesPage() {
               className="min-h-[120px] resize-none text-sm"
               maxLength={280}
             />
-            <p className="text-[11px] text-muted-foreground/70">{groupReportReason.trim().length}/280</p>
+            <p className="text-xs text-muted-foreground/70">{groupReportReason.trim().length}/280</p>
           </div>
           <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setGroupReportOpen(false)} disabled={groupReportSubmitting}>
@@ -2006,10 +2006,10 @@ export default function MessagesPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-3 rounded-xl border border-border/25 bg-muted/5 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">Plaignant</p>
+                  <p className="text-xs font-semibold text-primary">Plaignant</p>
                   {courtArguments.filter((argument) => argument.side === 'PLAINTIFF').map((argument) => (
                     <div key={argument.id} className="rounded-lg border border-border/25 bg-background/70 p-3">
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {argument.author?.username ?? 'Anonyme'} · {format(new Date(argument.createdAt), 'dd MMM HH:mm', { locale: fr })}
                       </p>
                       <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{argument.content}</p>
@@ -2020,10 +2020,10 @@ export default function MessagesPage() {
                   )}
                 </div>
                 <div className="space-y-3 rounded-xl border border-destructive/25 bg-destructive/5 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-destructive">Coupable</p>
+                  <p className="text-xs font-semibold text-destructive">Coupable</p>
                   {courtArguments.filter((argument) => argument.side === 'DEFENDANT').map((argument) => (
                     <div key={argument.id} className="rounded-lg border border-destructive/25 bg-background/70 p-3">
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {argument.author?.username ?? 'Anonyme'} · {format(new Date(argument.createdAt), 'dd MMM HH:mm', { locale: fr })}
                       </p>
                       <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{argument.content}</p>
@@ -2154,7 +2154,7 @@ export default function MessagesPage() {
                               {firm.logoUrl ? (
                                 <Avatar className="h-9 w-9">
                                   <AvatarImage src={resolveImageUrl(firm.logoUrl)} alt={firm.name} />
-                                  <AvatarFallback className="text-[10px]">{firm.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                  <AvatarFallback className="text-xs">{firm.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                                 </Avatar>
                               ) : (
                                 <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -2165,7 +2165,7 @@ export default function MessagesPage() {
                               <p className="mt-1 text-xs text-muted-foreground">
                                 {primaryLawyer?.user.username ?? firm.owner?.username ?? 'Cabinet'} · {primaryLawyer?.specialty ?? 'Avocat generaliste'}
                               </p>
-                              <p className="mt-1 text-[11px] text-muted-foreground">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 {firm.avgRating ? `${firm.avgRating.toFixed(1)}/5` : 'Sans note'} · {firm.ratingCount ?? 0} avis
                               </p>
                             </div>
@@ -2201,7 +2201,7 @@ export default function MessagesPage() {
                                   <p className="text-sm font-medium">{lawyer.user.username}</p>
                                   <p className="text-xs text-muted-foreground">{lawyer.specialty || 'Avocat generaliste'} · {lawyer.lawFirmName}</p>
                                 </div>
-                                {lawyer.isPrimaryLawyer ? <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-warning">Principal</span> : null}
+                                {lawyer.isPrimaryLawyer ? <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning">Principal</span> : null}
                               </div>
                             </button>
                           ))}
@@ -2262,7 +2262,7 @@ export default function MessagesPage() {
               maxLength={500}
               placeholder="Decris ton experience avec cet avocat..."
             />
-            <p className="text-[11px] text-muted-foreground/60">{lawyerRatingComment.trim().length}/500</p>
+            <p className="text-xs text-muted-foreground/60">{lawyerRatingComment.trim().length}/500</p>
           </div>
           <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setShowLawyerRatingDialog(false)} disabled={lawyerRatingSubmitting}>
@@ -2289,10 +2289,10 @@ export default function MessagesPage() {
             <div className="border-b border-border/60 px-3 py-2">
               <Tabs value={activeMessagesTab} onValueChange={(value) => setActiveMessagesTab(value as MessagingTab)}>
                 <TabsList className="grid h-8 w-full grid-cols-2 bg-muted/20 p-0.5">
-                  <TabsTrigger value={MESSAGING_TABS.OTHER} className="h-7 text-[10px] data-[state=active]:bg-background data-[state=active]:text-foreground">
+                  <TabsTrigger value={MESSAGING_TABS.OTHER} className="h-7 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground">
                     Autres messages
                   </TabsTrigger>
-                  <TabsTrigger value={MESSAGING_TABS.BUSINESS} className="h-7 text-[10px] data-[state=active]:bg-background data-[state=active]:text-foreground">
+                  <TabsTrigger value={MESSAGING_TABS.BUSINESS} className="h-7 text-xs data-[state=active]:bg-background data-[state=active]:text-foreground">
                     Affaires
                   </TabsTrigger>
                 </TabsList>
@@ -2311,7 +2311,7 @@ export default function MessagesPage() {
                       type="button"
                       size="sm"
                       variant={activeMessagesTab === MESSAGING_TABS.BUSINESS ? (businessSortMode === mode ? 'secondary' : 'ghost') : (dmSortMode === mode ? 'secondary' : 'ghost')}
-                      className="h-6 rounded-full px-2 text-[10px]"
+                      className="h-6 rounded-full px-2 text-xs"
                       onClick={() => {
                         if (activeMessagesTab === MESSAGING_TABS.BUSINESS) {
                           setBusinessSortMode(mode as BusinessSortMode);
@@ -2331,9 +2331,9 @@ export default function MessagesPage() {
               <div className="w-full min-w-0 overflow-hidden py-1">
                 {pinnedDms.length > 0 && (
                   <>
-                    <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">DM épinglés</p>
+                    <p className="px-3 pb-1 pt-2 text-xs font-semibold text-muted-foreground/60">DM épinglés</p>
                     {pinnedDms.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} isClosedAffaire={Boolean(c.courtCaseId && courtCaseStatusById[c.courtCaseId] === 'CLOSED')} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
-                    {(dms.length > 0 || others.length > 0) && <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Conversations</p>}
+                    {(dms.length > 0 || others.length > 0) && <p className="px-3 pb-1 pt-2 text-xs font-semibold text-muted-foreground/60">Conversations</p>}
                   </>
                 )}
                 {dms.map((c) => <ConvRow key={c.id} conversation={c} currentUserId={user?.id} isActive={c.id === selectedIdSafe} isPinnedDm={pinnedDmIds.has(c.id)} isClosedAffaire={Boolean(c.courtCaseId && courtCaseStatusById[c.courtCaseId] === 'CLOSED')} onSelect={() => { setSelectedId(c.id); navigate('/messages', { replace: true }); }} onToggleFavorite={(e) => handleToggleFavorite(c.id, e)} onToggleDmPin={(e) => handleToggleDmPin(c.id, e)} />)}
@@ -2359,7 +2359,7 @@ export default function MessagesPage() {
                     <ConversationAvatar conversation={selectedConversation} size="sm" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold leading-tight">{conversationDisplayTitle}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">
+                      <p className="truncate text-xs text-muted-foreground">
                         {selectedConversation.type === 'SUPPORT' ? 'Support'
                           : selectedConversation.type === 'GROUP' ? `${selectedConversation.participants.length} membres`
                           : 'Discussion privée'}
@@ -2433,29 +2433,29 @@ export default function MessagesPage() {
                   <div className="border-b border-border/40 bg-secondary/5 px-3 py-2 flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       <Scale className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-[11px] font-mono font-semibold text-foreground">#{courtCase.caseNumber}</span>
+                      <span className="text-xs font-mono font-semibold text-foreground">#{courtCase.caseNumber}</span>
                     </div>
-                    <span className={cn('text-[10px] font-semibold uppercase tracking-wide', COURT_STATUS_LABELS[courtCase.status]?.color ?? 'text-muted-foreground')}>
+                    <span className={cn('text-xs font-semibold ', COURT_STATUS_LABELS[courtCase.status]?.color ?? 'text-muted-foreground')}>
                       {COURT_STATUS_LABELS[courtCase.status]?.label ?? courtCase.status}
                     </span>
                     {courtCase.plainte && (
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button type="button" size="sm" variant="outline" className="h-6 gap-1.5 rounded-full px-2 text-[10px]">
+                          <Button type="button" size="sm" variant="outline" className="h-6 gap-1.5 rounded-full px-2 text-xs">
                             <FileText className="h-3 w-3" />
                             Voir plainte
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent align="start" className="w-80 max-w-[92vw] p-3" sideOffset={6}>
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Titre initial</p>
+                          <p className="text-xs font-semibold text-muted-foreground">Titre initial</p>
                           <p className="mt-1 text-sm font-medium text-foreground">{courtCase.plainte.title}</p>
-                          <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Description initiale</p>
+                          <p className="mt-3 text-xs font-semibold text-muted-foreground">Description initiale</p>
                           <p className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap text-xs text-foreground/90">
                             {courtCase.plainte.description}
                           </p>
                           {courtCase.plainte.evidence && (
                             <>
-                              <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Preuves</p>
+                              <p className="mt-3 text-xs font-semibold text-muted-foreground">Preuves</p>
                               <p className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap text-xs text-foreground/90">
                                 {courtCase.plainte.evidence}
                               </p>
@@ -2465,16 +2465,16 @@ export default function MessagesPage() {
                       </Popover>
                     )}
                     {courtCase.plaintif && (
-                      <span className="text-[10px] text-primary font-medium">Plaignant</span>
+                      <span className="text-xs text-primary font-medium">Plaignant</span>
                     )}
                     {courtCase.defendant && (
-                      <span className="text-[10px] text-destructive font-medium">Coupable</span>
+                      <span className="text-xs text-destructive font-medium">Coupable</span>
                     )}
                     {assignedLawyer ? (
                       <div className="flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1">
                         <Briefcase className="h-3 w-3 shrink-0 text-success" />
-                        <span className="text-[10px] font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Avocat du plaignant' : 'Avocat du coupable'}</span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Avocat du plaignant' : 'Avocat du coupable'}</span>
+                        <span className="text-xs text-muted-foreground">
                           {(assignedLawyerProfile?.specialty ?? 'Avocat generaliste')} · {(assignedLawyerProfile?.lawFirmName ?? assignedLawFirm?.name ?? 'Cabinet prive')}
                         </span>
                       </div>
@@ -2482,7 +2482,7 @@ export default function MessagesPage() {
                     {hasAssignedPublicDefender && !assignedLawyer ? (
                       <div className="flex items-center gap-2 rounded-full border border-success/20 bg-success/10 px-2.5 py-1">
                         <Shield className="h-3 w-3 shrink-0 text-success" />
-                        <span className="text-[10px] font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Defenseur public du plaignant' : 'Defenseur public du coupable'}</span>
+                        <span className="text-xs font-medium text-foreground">{myCourtSide === 'PLAINTIFF' ? 'Defenseur public du plaignant' : 'Defenseur public du coupable'}</span>
                       </div>
                     ) : null}
                     <div className="ml-auto flex items-center gap-1.5 flex-wrap">
@@ -2490,32 +2490,32 @@ export default function MessagesPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-6 rounded-full px-2.5 text-[10px] gap-1"
+                        className="h-6 rounded-full px-2.5 text-xs gap-1"
                         onClick={() => void handleOpenArgumentsDialog()}
                       >
                         <FileText className="h-3 w-3" />
                         Voir arguments
                       </Button>
                       {canChooseRepresentation ? (
-                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" onClick={() => void openRepresentationDialog()}>
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-xs gap-1" onClick={() => void openRepresentationDialog()}>
                           <Briefcase className="h-3 w-3" />
                           {hasCourtRepresentation ? 'Changer avocat' : 'Choisir avocat'}
                         </Button>
                       ) : null}
                       {canRequestWitness ? (
-                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" onClick={openWitnessRequestDialog}>
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-xs gap-1" onClick={openWitnessRequestDialog}>
                           <Users className="h-3 w-3" />
                           Demander témoin
                         </Button>
                       ) : null}
                       {canRateAssignedLawyer ? (
-                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-success/40 text-success hover:bg-success/10" onClick={() => setShowLawyerRatingDialog(true)}>
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-xs gap-1 border-success/40 text-success hover:bg-success/10" onClick={() => setShowLawyerRatingDialog(true)}>
                           <Star className="h-3 w-3" />
                           Noter l'avocat
                         </Button>
                       ) : null}
                       {isNonAdminJudge && courtCase && courtCase.status !== 'CLOSED' && (
-                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-warning/40 text-warning hover:bg-warning/10" onClick={() => setShowSanctionModal(true)}>
+                        <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-xs gap-1 border-warning/40 text-warning hover:bg-warning/10" onClick={() => setShowSanctionModal(true)}>
                           <Gavel className="h-3 w-3" />
                           Sanction
                         </Button>
@@ -2524,7 +2524,7 @@ export default function MessagesPage() {
                         <>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1" disabled={statusChanging}>
+                              <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-xs gap-1" disabled={statusChanging}>
                                 Statut <ChevronDown className="h-2.5 w-2.5" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -2537,7 +2537,7 @@ export default function MessagesPage() {
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-[10px] gap-1 border-border/40 text-foreground hover:bg-muted/60"
+                          <Button type="button" variant="outline" size="sm" className="h-6 rounded-full px-2.5 text-xs gap-1 border-border/40 text-foreground hover:bg-muted/60"
                             onClick={() => { setVerdictDraft(courtCase?.verdict ?? ''); setSentencingDraft(courtCase?.sentencing ?? ''); setShowVerdictPanel(true); }}>
                             <Gavel className="h-3 w-3" />
                             Verdict
@@ -2549,14 +2549,14 @@ export default function MessagesPage() {
                 )}
                 {isCourtConversation && courtCase?.verdict && (
                   <div className="border-b border-success/20 bg-success/5 px-3 py-2">
-                    <p className="text-[10px] font-semibold text-success uppercase tracking-wide mb-0.5">Verdict</p>
+                    <p className="text-xs font-semibold text-success mb-0.5">Verdict</p>
                     <p className="text-xs text-foreground">{courtCase.verdict}</p>
-                    {courtCase.sentencing && <p className="text-[11px] text-muted-foreground mt-0.5">Sanction : {courtCase.sentencing}</p>}
+                    {courtCase.sentencing && <p className="text-xs text-muted-foreground mt-0.5">Sanction : {courtCase.sentencing}</p>}
                   </div>
                 )}
                 {conversationPinsEnabled && pinnedMessages.length > 0 && (
                   <div className="border-b border-warning/20 bg-warning/5 px-3 py-2">
-                    <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-warning">
+                    <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-warning">
                       <Pin className="h-3 w-3 fill-warning/20" />
                       Messages épinglés
                     </div>
@@ -2592,7 +2592,7 @@ export default function MessagesPage() {
                         </div>
                       ) : visibleMessages.length === 0 ? (
                         <div className="flex flex-col items-center py-12 text-center">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-card">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-card">
                             <MessagesSquare className="h-5 w-5 text-muted-foreground" />
                           </div>
                           <p className="mt-3 text-sm font-medium">Lance la conversation</p>
@@ -2606,7 +2606,7 @@ export default function MessagesPage() {
                           return (
                             <div key={msg.id} className="flex justify-center py-2">
                               <div className={cn(
-                                'flex max-w-[92vw] flex-wrap items-center justify-center gap-1.5 rounded-full border bg-background px-3 py-1 text-[11px] font-medium text-foreground shadow-sm',
+                                'flex max-w-[92vw] flex-wrap items-center justify-center gap-1.5 rounded-full border bg-background px-3 py-1 text-xs font-medium text-foreground shadow-sm',
                                 msg.type === 'COURT_SYSTEM' ? 'border-border/40' : 'border-border/60',
                               )}>
                                 {msg.type === 'COURT_SYSTEM' ? <Scale className="h-3 w-3 shrink-0" /> : <Users className="h-3 w-3 shrink-0" />}
@@ -2616,7 +2616,7 @@ export default function MessagesPage() {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    className="ml-1 h-6 rounded-full px-2 text-[10px]"
+                                    className="ml-1 h-6 rounded-full px-2 text-xs"
                                     onClick={() => void handleAddMember(witnessUserId)}
                                   >
                                     Ajouter le témoin
@@ -2681,7 +2681,7 @@ export default function MessagesPage() {
                           >
                             {showDaySeparator && (
                               <div className="flex justify-center py-2">
-                                <span className="rounded-full border border-border/50 bg-background/95 px-3 py-1 text-[11px] font-medium capitalize text-muted-foreground shadow-sm">
+                                <span className="rounded-full border border-border/50 bg-background/95 px-3 py-1 text-xs font-medium capitalize text-muted-foreground shadow-sm">
                                   {formatDayLabel(msg.createdAt)}
                                 </span>
                               </div>
@@ -2689,7 +2689,7 @@ export default function MessagesPage() {
                             {showUnreadSeparator && (
                               <div className="flex items-center gap-3 py-1">
                                 <div className="h-px flex-1 bg-success/30" />
-                                <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-success">
+                                <span className="text-xs font-semibold text-success">
                                   Messages non lus
                                 </span>
                                 <div className="h-px flex-1 bg-success/30" />
@@ -2704,7 +2704,7 @@ export default function MessagesPage() {
                                 {showAvatar && (
                                   <Avatar className="h-6 w-6">
                                     {!isAnonymousCourtMessage && msg.sender?.profilePicture ? <AvatarImage src={resolveImageUrl(msg.sender.profilePicture)} /> : null}
-                                    <AvatarFallback className="text-[9px]">{isCourtJudge && msg.sender?.username ? getInitials(msg.sender.username) : isAnonymousCourtMessage ? getCourtRoleInitials(msgCourtRole) : getInitials(msg.sender?.username)}</AvatarFallback>
+                                    <AvatarFallback className="text-xs">{isCourtJudge && msg.sender?.username ? getInitials(msg.sender.username) : isAnonymousCourtMessage ? getCourtRoleInitials(msgCourtRole) : getInitials(msg.sender?.username)}</AvatarFallback>
                                   </Avatar>
                                 )}
                               </div>
@@ -2712,11 +2712,11 @@ export default function MessagesPage() {
                             <div className={cn('flex max-w-[72%] flex-col', isOwn ? 'items-end' : 'items-start')}>
                               {showSender && (
                                 <div className="mb-0.5 px-1 flex items-center gap-1.5">
-                                  <p className={cn('text-[11px] font-semibold', courtColors ? courtColors.sender : undefined)} style={!courtColors && msg.sender?.usernameColor ? { color: msg.sender.usernameColor } : undefined}>
+                                  <p className={cn('text-xs font-semibold', courtColors ? courtColors.sender : undefined)} style={!courtColors && msg.sender?.usernameColor ? { color: msg.sender.usernameColor } : undefined}>
                                     {senderDisplayLabel}
                                   </p>
                                   {msgCourtRole && courtColors && !isAnonymousCourtMessage && (
-                                    <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide', courtColors.badge)}>
+                                    <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-semibold ', courtColors.badge)}>
                                       {COURT_ROLE_LABELS[msgCourtRole] ?? msgCourtRole}
                                     </span>
                                   )}
@@ -2729,14 +2729,14 @@ export default function MessagesPage() {
                                       <div className={cn(
                                         'group cursor-pointer select-text px-3 py-1.5 text-sm leading-5',
                                         courtColors
-                                          ? cn(courtColors.bubble, 'rounded-2xl')
+                                          ? cn(courtColors.bubble, 'rounded-xl')
                                           : isOwn
-                                            ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
-                                            : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
+                                            ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-xl rounded-tr-xl rounded-br-sm rounded-bl-xl' : isLast ? 'rounded-tl-xl rounded-tr-sm rounded-br-xl rounded-bl-xl' : 'rounded-xl rounded-tr-sm rounded-br-sm')
+                                            : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-xl rounded-br-xl rounded-bl-xl' : isLast ? 'rounded-tl-xl rounded-tr-xl rounded-br-xl rounded-bl-sm' : 'rounded-xl rounded-tl-sm rounded-bl-sm'),
                                         isBlocked && !isOwn && 'opacity-50'
                                       )}>
                                         {(msg as any).replyTo && (
-                                          <div className={cn('mb-1.5 rounded-lg border-l-2 pl-2 pr-1 py-1 text-[11px]', isOwn ? 'border-primary-foreground/40 bg-primary-foreground/10' : 'border-border/60 bg-muted/40')}>
+                                          <div className={cn('mb-1.5 rounded-lg border-l-2 pl-2 pr-1 py-1 text-xs', isOwn ? 'border-primary-foreground/40 bg-primary-foreground/10' : 'border-border/60 bg-muted/40')}>
                                             <p className={cn('font-semibold truncate', isOwn ? 'text-primary-foreground/70' : 'text-foreground/70')}>
                                               {(msg as any).replyTo.sender?.username ?? 'Inconnu'}
                                             </p>
@@ -2769,7 +2769,7 @@ export default function MessagesPage() {
                                         <p className="max-w-full overflow-x-auto whitespace-pre-wrap break-words hyphens-auto [overflow-wrap:anywhere] [word-break:break-word]">
                                           <FormattedMessageText text={msg.body} />
                                         </p>
-                                        <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                        <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-xs', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
                                           {isPinnedMessage && <Pin className="h-2.5 w-2.5 fill-current" />}
                                           <span>{formatTime(msg.createdAt)}</span>
                                         </p>
@@ -2810,14 +2810,14 @@ export default function MessagesPage() {
                                   <div className={cn(
                                     'group select-text px-3 py-1.5 text-sm leading-5',
                                     courtColors
-                                      ? cn(courtColors.bubble, 'rounded-2xl')
+                                      ? cn(courtColors.bubble, 'rounded-xl')
                                       : isOwn
-                                        ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-sm rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-sm rounded-br-2xl rounded-bl-2xl' : 'rounded-2xl rounded-tr-sm rounded-br-sm')
-                                        : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-2xl rounded-br-2xl rounded-bl-2xl' : isLast ? 'rounded-tl-2xl rounded-tr-2xl rounded-br-2xl rounded-bl-sm' : 'rounded-2xl rounded-tl-sm rounded-bl-sm'),
+                                        ? cn('bg-primary text-primary-foreground', isFirst ? 'rounded-tl-xl rounded-tr-xl rounded-br-sm rounded-bl-xl' : isLast ? 'rounded-tl-xl rounded-tr-sm rounded-br-xl rounded-bl-xl' : 'rounded-xl rounded-tr-sm rounded-br-sm')
+                                        : cn('bg-card border border-border/60 text-foreground', isFirst ? 'rounded-tl-sm rounded-tr-xl rounded-br-xl rounded-bl-xl' : isLast ? 'rounded-tl-xl rounded-tr-xl rounded-br-xl rounded-bl-sm' : 'rounded-xl rounded-tl-sm rounded-bl-sm'),
                                     isBlocked && !isOwn && 'opacity-50'
                                   )}>
                                     {msg.replyTo && (
-                                      <div className={cn('mb-1.5 rounded-lg border-l-2 pl-2 pr-1 py-1 text-[11px]', isOwn ? 'border-primary-foreground/40 bg-primary-foreground/10' : 'border-border/60 bg-muted/40')}>
+                                      <div className={cn('mb-1.5 rounded-lg border-l-2 pl-2 pr-1 py-1 text-xs', isOwn ? 'border-primary-foreground/40 bg-primary-foreground/10' : 'border-border/60 bg-muted/40')}>
                                         <p className={cn('font-semibold truncate', isOwn ? 'text-primary-foreground/70' : 'text-foreground/70')}>
                                           {msg.replyTo.sender?.username ?? 'Inconnu'}
                                         </p>
@@ -2867,7 +2867,7 @@ export default function MessagesPage() {
                                     <p className="max-w-full overflow-x-auto whitespace-pre-wrap break-words hyphens-auto [overflow-wrap:anywhere] [word-break:break-word]">
                                       <FormattedMessageText text={msg.body} />
                                     </p>
-                                    <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-[10px]', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
+                                    <p className={cn('mt-0.5 flex items-center justify-end gap-1 text-xs', isOwn ? 'text-primary-foreground/55' : 'text-muted-foreground')}>
                                       {isPinnedMessage && <Pin className="h-2.5 w-2.5 fill-current" />}
                                       <span>{formatTime(msg.createdAt)}</span>
                                     </p>
@@ -2896,7 +2896,7 @@ export default function MessagesPage() {
                                     <button key={r.emoji} type="button"
                                       onClick={() => handleReact(msg.id, r.emoji)}
                                       title={r.users.join(', ')}
-                                      className={cn('inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[11px] transition-colors hover:bg-muted/60', r.myReaction ? 'border-primary/40 bg-primary/10' : 'border-border/60 bg-card')}>
+                                      className={cn('inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs transition-colors hover:bg-muted/60', r.myReaction ? 'border-primary/40 bg-primary/10' : 'border-border/60 bg-card')}>
                                       <span>{r.emoji}</span>
                                       <span className="font-medium">{r.count}</span>
                                     </button>
@@ -2926,16 +2926,16 @@ export default function MessagesPage() {
                     </div>
                   )}
                   {dmTypingUser && (
-                    <p className="mb-2 text-[11px] text-muted-foreground">{dmTypingUser.username} est en train d'écrire...</p>
+                    <p className="mb-2 text-xs text-muted-foreground">{dmTypingUser.username} est en train d'écrire...</p>
                   )}
                   {/* Admin court role selector */}
                   {isCourtConversation && isAdminViewer && (
                     <div className="mb-2 flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] text-muted-foreground font-medium">Envoyer en tant que :</span>
+                      <span className="text-xs text-muted-foreground font-medium">Envoyer en tant que :</span>
                       {Object.entries(COURT_ROLE_LABELS).map(([role, label]) => (
                         <button key={role} type="button"
                           onClick={() => setSelectedCourtRole(role)}
-                          className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors border', selectedCourtRole === role
+                          className={cn('rounded-full px-2 py-0.5 text-xs font-semibold transition-colors border', selectedCourtRole === role
                             ? cn(COURT_ROLE_COLORS[role]?.badge ?? 'bg-primary/15 text-primary', 'border-transparent')
                             : 'border-border/50 text-muted-foreground hover:border-border hover:text-foreground')}>
                           {label}
@@ -2946,14 +2946,14 @@ export default function MessagesPage() {
                   {/* My court role badge (non-admin in court chat) */}
                   {isCourtConversation && !isAdminViewer && myCourtRole && (
                     <div className="mb-2 flex items-center gap-1.5">
-                      <span className="text-[10px] text-muted-foreground">Vous parlez en tant que</span>
-                      <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold', COURT_ROLE_COLORS[myCourtRole]?.badge ?? 'bg-muted text-muted-foreground')}>
+                      <span className="text-xs text-muted-foreground">Vous parlez en tant que</span>
+                      <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', COURT_ROLE_COLORS[myCourtRole]?.badge ?? 'bg-muted text-muted-foreground')}>
                         {COURT_ROLE_LABELS[myCourtRole] ?? myCourtRole}
                       </span>
                     </div>
                   )}
                   {isCourtChatLocked && (
-                    <div className="mb-2 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2 text-[11px] text-warning">
+                    <div className="mb-2 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2 text-xs text-warning">
                       Cette affaire n est pas en cours. Le chat est verrouille.
                     </div>
                   )}
@@ -2964,7 +2964,7 @@ export default function MessagesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border shadow-md"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border"
                             onClick={() => setImageUrlToSend('')}
                           >
                             <X className="h-3 w-3" />
@@ -3044,7 +3044,7 @@ export default function MessagesPage() {
             ) : (
               <div className="flex flex-1 items-center justify-center p-6">
                 <div className="text-center">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border/60 bg-muted/30">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl border border-border/60 bg-muted/30">
                     <MessageCircleMore className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <p className="mt-3 text-sm font-medium">Aucune conversation</p>
@@ -3060,7 +3060,7 @@ export default function MessagesPage() {
       </Card>
 
       <Dialog open={Boolean(courtImagePreviewUrl)} onOpenChange={(open) => { if (!open) setCourtImagePreviewUrl(null); }}>
-        <DialogContent className="h-[95vh] w-[95vw] max-w-none overflow-hidden border-0 bg-black/95 p-0 text-white sm:rounded-2xl">
+        <DialogContent className="h-[95vh] w-[95vw] max-w-none overflow-hidden border-0 bg-black/95 p-0 text-white sm:rounded-xl">
           {courtImagePreviewUrl && (
             <div className="flex h-full w-full items-center justify-center p-4">
               <img src={courtImagePreviewUrl} alt="Aperçu du message" className="max-h-full max-w-full object-contain" />

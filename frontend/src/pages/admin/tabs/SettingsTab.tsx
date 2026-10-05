@@ -211,7 +211,7 @@ export function SettingsTab(props: SettingsTabProps) {
         <div className="space-y-2 border-l-4 border-l-border/80 bg-muted/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-muted/10">
           <div className="flex items-center gap-2 px-1">
             <Sparkle className="h-4 w-4 text-primary" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Système de présence</p>
+            <p className="text-xs font-bold text-primary">Système de présence</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
@@ -230,7 +230,7 @@ export function SettingsTab(props: SettingsTabProps) {
         <div className="space-y-2 border-l-4 border-l-border/80 bg-muted/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-muted/10">
           <div className="flex items-center gap-2 px-1">
             <Trophy className="h-4 w-4 text-primary" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Parrainage & Quotas</p>
+            <p className="text-xs font-bold text-primary">Parrainage & Quotas</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
@@ -309,7 +309,7 @@ export function SettingsTab(props: SettingsTabProps) {
         <div className="space-y-2 border-l-4 border-l-success/80 bg-success/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-success/10">
           <div className="flex items-center gap-2 px-1">
             <Sparkles className="h-4 w-4 text-success" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-success">Salle de marché (Frais & Cryptos)</p>
+            <p className="text-xs font-bold text-success">Salle de marché (Frais & Cryptos)</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
@@ -384,7 +384,7 @@ export function SettingsTab(props: SettingsTabProps) {
         <div className="space-y-2 border-l-4 border-l-warning/80 bg-warning/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-warning/10">
           <div className="flex items-center gap-2 px-1">
             <Gamepad2 className="h-4 w-4 text-warning" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-warning">Clash Village</p>
+            <p className="text-xs font-bold text-warning">Clash Village</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
@@ -418,7 +418,7 @@ export function SettingsTab(props: SettingsTabProps) {
         <div className="space-y-2 border-l-4 border-l-border/80 bg-muted/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-muted/10">
           <div className="flex items-center gap-2 px-1">
             <MessageCircle className="h-4 w-4 text-primary" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Communication & Contenu</p>
+            <p className="text-xs font-bold text-primary">Communication & Contenu</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="px-4 py-3.5 space-y-4">
@@ -434,7 +434,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
               <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">
+                  <label className="text-xs font-semibold text-muted-foreground/60">
                     Message affiché aux joueurs
                   </label>
                   <Textarea
@@ -444,7 +444,7 @@ export function SettingsTab(props: SettingsTabProps) {
                     className="min-h-[88px]"
                     maxLength={CHAT_BLOCK_MESSAGE_MAX_LENGTH}
                   />
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>Visible dans le chat et au moment d'une tentative d'envoi.</span>
                     <span>{chatBlockMessage.length}/{CHAT_BLOCK_MESSAGE_MAX_LENGTH}</span>
                   </div>
@@ -476,7 +476,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">
+                    <label className="text-xs font-semibold text-muted-foreground/60">
                       Début
                     </label>
                     <Input
@@ -488,7 +488,7 @@ export function SettingsTab(props: SettingsTabProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">
+                    <label className="text-xs font-semibold text-muted-foreground/60">
                       Fin
                     </label>
                     <Input
@@ -501,7 +501,7 @@ export function SettingsTab(props: SettingsTabProps) {
                   </div>
                 </div>
 
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Exemple: `22:00` → `07:00` bloque le chat toute la nuit.
                 </p>
               </div>
@@ -565,7 +565,7 @@ export function SettingsTab(props: SettingsTabProps) {
                   </SelectContent>
                 </Select>
                 <Button size="sm" onClick={saveDefaultLandingPage} disabled={savingDefaultLandingPage} className="bg-primary hover:bg-primary">
-                  {savingDefaultLandingPage ? <Loader2 className="h-3.5 w-3.5 animate-pulse" /> : <Save className="h-3.5 w-3.5" />}
+                  {savingDefaultLandingPage ? <Loader2 className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
                 </Button>
               </div>
             </div>
@@ -715,7 +715,7 @@ export function SettingsTab(props: SettingsTabProps) {
             <DialogDescription>Quand activee, toutes les pages affichent la maintenance sauf /admin, /login et /register.</DialogDescription>
           </DialogHeader>
           {loadingSettings ? (
-            <div className="flex justify-center py-8"><div className="w-1 h-8 bg-foreground/20 animate-pulse" /></div>
+            <div className="flex justify-center py-8"><div className="w-1 h-8 bg-foreground/20" /></div>
           ) : (
             <div className="space-y-4 py-2">
               <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
@@ -770,7 +770,7 @@ export function SettingsTab(props: SettingsTabProps) {
         <div className="space-y-2 border-l-4 border-l-success/80 bg-success/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-success/10">
           <div className="flex items-center gap-2 px-1">
             <Gamepad2 className="h-4 w-4 text-success" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-success">Fonctionnalités</p>
+            <p className="text-xs font-bold text-success">Fonctionnalités</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
@@ -796,7 +796,7 @@ export function SettingsTab(props: SettingsTabProps) {
         <div className="space-y-2 border-l-4 border-l-border/80 bg-card/5 pl-4 py-2.5 rounded-r-xl border border-border/40 transition-all hover:bg-card/10">
           <div className="flex items-center gap-2 px-1">
             <Terminal className="h-4 w-4 text-muted-foreground" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Déploiement</p>
+            <p className="text-xs font-bold text-muted-foreground">Déploiement</p>
           </div>
           <div className="rounded-xl border border-border/20 overflow-hidden bg-card divide-y divide-border/20">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
@@ -853,15 +853,15 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Danger Zone Section */}
       {showDanger && (
-        <div className="space-y-3 border-2 border-destructive/30 bg-destructive/5 p-4 rounded-2xl transition-all shadow-lg">
+        <div className="space-y-3 border-2 border-destructive/30 bg-destructive/5 p-4 rounded-xl transition-all">
           <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-destructive animate-pulse shrink-0" />
+            <ShieldAlert className="h-5 w-5 text-destructive shrink-0" />
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-destructive">Zone de Danger (Actions Destructives)</p>
-              <p className="text-[10px] text-destructive/70">Ces actions ont un impact irréversible sur la base de données et l'expérience de jeu.</p>
+              <p className="text-xs font-bold text-destructive">Zone de Danger (Actions Destructives)</p>
+              <p className="text-xs text-destructive/70">Ces actions ont un impact irréversible sur la base de données et l'expérience de jeu.</p>
             </div>
           </div>
-          <div className="rounded-xl border border-destructive/20 overflow-hidden bg-card/60 backdrop-blur-sm divide-y divide-destructive/10">
+          <div className="rounded-xl border border-destructive/20 overflow-hidden bg-card/60 divide-y divide-destructive/10">
             {/* Vider le chat */}
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
@@ -976,7 +976,7 @@ export function SettingsTab(props: SettingsTabProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto p-4">
-            <pre className="text-[11px] font-mono bg-black/80 text-success rounded-lg p-4 whitespace-pre-wrap break-all leading-relaxed min-h-[200px]">
+            <pre className="text-xs font-mono bg-black/80 text-success rounded-lg p-4 whitespace-pre-wrap break-all leading-relaxed min-h-[200px]">
               {deployOutput
                 ? [deployOutput.stdout, deployOutput.stderr].filter(Boolean).join('\n') || deployOutput.message
                 : ''}
@@ -990,7 +990,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {user?.isSuperAdmin && (
         <div className="space-y-1.5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 px-1">Classements par periode</p>
+          <p className="text-xs font-semibold text-muted-foreground/60 px-1">Classements par periode</p>
           <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               <div>
@@ -1051,7 +1051,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
           <div className="flex-1 overflow-y-auto">
             <div className="px-6 py-4 border-b border-border/40 space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <label className="text-xs font-medium text-muted-foreground ">
                 Message d&apos;erreur
               </label>
               <Textarea
@@ -1072,8 +1072,8 @@ export function SettingsTab(props: SettingsTabProps) {
             ).map(([category, pages]) => (
               <div key={category}>
                 <div className="px-6 pt-5 pb-1.5 flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">{category}</span>
-                  <span className="text-[11px] text-muted-foreground/50">
+                  <span className="text-xs font-semibold text-muted-foreground/70">{category}</span>
+                  <span className="text-xs text-muted-foreground/50">
                     {pages.filter((p) => !blockedPages.includes(p.key)).length}/{pages.length}
                   </span>
                 </div>
@@ -1091,7 +1091,7 @@ export function SettingsTab(props: SettingsTabProps) {
                         </div>
                         {isBlocked && (
                           <div className="space-y-1.5">
-                            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                            <label className="text-xs font-medium text-muted-foreground ">
                               Raison specifique
                             </label>
                             <Textarea

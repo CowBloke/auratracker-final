@@ -539,7 +539,7 @@ function ReferralSection({ referralEnabled, referralLoading, referralSummary, on
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="font-mono text-2xl font-semibold tracking-widest">{referralSummary.referralCode}</p>
+          <p className="font-mono text-2xl font-semibold">{referralSummary.referralCode}</p>
         </CardContent>
         <CardFooter>
           <Button variant="outline" size="sm" onClick={onCopy}>

@@ -90,7 +90,7 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
 
       {wealthLoading ? (
         <div className="flex justify-center py-12">
-          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+          <div className="w-1 h-8 bg-foreground/20" />
         </div>
       ) : !wealthStats ? (
         <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>Impossible de charger les statistiques.</p>
@@ -150,7 +150,7 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
                     />
                     <RechartsTooltip
                       contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
-                      formatter={(value: number) => [`${value} joueurs`, 'Richesse']}
+                      formatter={(value: any) => [`${value} joueurs`, 'Richesse']}
                     />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]} isAnimationActive={false}>
                       {wealthStats.wealthBrackets.map((_, i) => (
@@ -191,7 +191,7 @@ export function WealthTab({ wealthStats, wealthLoading, onExport, exporting }: W
                     />
                     <RechartsTooltip
                       contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
-                      formatter={(value: number) => [`${value} joueurs`, 'Aura']}
+                      formatter={(value: any) => [`${value} joueurs`, 'Aura']}
                     />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#f59e0b" isAnimationActive={false} />
                   </BarChart>

@@ -67,7 +67,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
           <CardContent>
             <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
               <div className="rounded-lg border border-border/60 overflow-hidden">
-                <div className="px-3 py-2 border-b border-border/60 bg-muted/20 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <div className="px-3 py-2 border-b border-border/60 bg-muted/20 text-xs font-medium text-muted-foreground ">
                   Jours
                 </div>
                 <div className="max-h-[620px] overflow-y-auto">
@@ -91,7 +91,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                             <div className="text-sm font-medium">
                               {new Date(`${dayEntry.day}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                             </div>
-                            <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                            <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
                               <span>{dayEntry.totalMessages.toLocaleString('fr-FR')} total</span>
                               <span>{dayEntry.visibleMessages.toLocaleString('fr-FR')} visibles</span>
                               <span>{dayEntry.deletedMessages.toLocaleString('fr-FR')} supprimes</span>
@@ -156,14 +156,14 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                               <span className="font-medium text-foreground">{msg.user?.username || 'Systeme'}</span>
                               <span>{new Date(msg.createdAt).toLocaleString('fr-FR')}</span>
-                              <span className="uppercase">{msg.type}</span>
+                              <span className="">{msg.type}</span>
                               {msg.deletedAt && <span className="text-destructive font-medium">SUPPRIME VISUELLEMENT</span>}
                             </div>
                             <p className="mt-1 text-sm whitespace-pre-wrap break-words">
                               {(msg.originalMessage || msg.message) || '(message vide)'}
                             </p>
                             {msg.originalMessage && msg.originalMessage !== msg.message && (
-                              <p className="mt-1 text-[11px] text-muted-foreground">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 Version publique : <span className="font-mono">{msg.message}</span>
                               </p>
                             )}

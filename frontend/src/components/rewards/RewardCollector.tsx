@@ -69,14 +69,14 @@ export default function RewardCollector({ items, currentIndex, phase, onAdvance,
     );
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
         <div
-          className={`w-80 space-y-4 rounded-2xl border border-border bg-card p-6 shadow-2xl shadow-black/60 transition-all duration-200 ${
+          className={`w-80 space-y-4 rounded-xl border border-border bg-card p-6 shadow-black/60 transition-all duration-200 ${
             visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-4 scale-95 opacity-0'
           }`}
         >
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-sm font-semibold text-muted-foreground">
               Récompenses collectées
             </p>
             <button
@@ -134,11 +134,11 @@ export default function RewardCollector({ items, currentIndex, phase, onAdvance,
 
   return (
     <div
-      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/70"
       onClick={handleCardClick}
     >
       <div
-        className={`relative flex w-72 select-none flex-col items-center gap-6 rounded-3xl border ${rarityBorder[rarity]} ${rarityBg[rarity]} px-10 py-12 shadow-2xl shadow-black/60 transition-all duration-200 ${
+        className={`relative flex w-72 select-none flex-col items-center gap-6 rounded-xl border ${rarityBorder[rarity]} ${rarityBg[rarity]} px-10 py-12 shadow-black/60 transition-all duration-200 ${
           visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-6 scale-90 opacity-0'
         }`}
         onClick={(e) => e.stopPropagation()}

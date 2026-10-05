@@ -4809,13 +4809,13 @@ export default function Admin() {
             );
             // Outer: transparent padding bridges the gap so hover state persists when moving into the dropdown
             const dropdownOuter = 'absolute left-0 top-full pt-1 z-50 hidden group-hover:block';
-            const dropdownInner = 'min-w-40 rounded-md border border-border/50 bg-popover shadow-lg p-1 flex flex-col gap-0.5';
+            const dropdownInner = 'min-w-40 rounded-md border border-border/50 bg-popover p-1 flex flex-col gap-0.5';
             const isFiscalOnly = isReadOnlyInspectionUser;
             return (
               <div className="flex flex-wrap gap-1 p-1 bg-muted/40 rounded-lg border border-border/30 mb-6">
                 {/* Réception — admin only */}
                 {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchPendingSanctions(); fetchChatModerationEvents(); },
-                  inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-[11px] font-semibold leading-none">{inboxCount}</span> : undefined
+                  inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-xs font-semibold leading-none">{inboxCount}</span> : undefined
                 )}
 
                 {/* Utilisateurs — admin only */}
@@ -4848,7 +4848,7 @@ export default function Admin() {
                     <div className={dropdownInner}>
                       {dropdownItemBtn('content', 'Objets', <Package className="w-3.5 h-3.5" />, () => setActiveTab('content'))}
                       {dropdownItemBtn('ads', 'Publicités', <Eye className="w-3.5 h-3.5" />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
-                        pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-warning text-white text-[11px] font-semibold leading-none">{pendingAds.length}</span> : undefined
+                        pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-warning text-white text-xs font-semibold leading-none">{pendingAds.length}</span> : undefined
                       )}
                     </div>
                   </div>
@@ -4919,7 +4919,7 @@ export default function Admin() {
                     {dropdownItemBtn('game-limits', 'Limites jeux', <Gamepad2 className="w-3.5 h-3.5" />, () => setActiveTab('game-limits'))}
                     {dropdownItemBtn('chat-history', 'Historique chat', <CalendarRange className="w-3.5 h-3.5" />, () => { setActiveTab('chat-history'); void fetchChatHistoryDays(); })}
                     {dropdownItemBtn('communication', 'Communication', <MessageCircle className="w-3.5 h-3.5" />, () => { setActiveTab('communication'); fetchSupportThreads(); },
-                      supportUnread > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-[11px] font-semibold leading-none">{supportUnread}</span> : undefined
+                      supportUnread > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-xs font-semibold leading-none">{supportUnread}</span> : undefined
                     )}
                     {isAdminOrSuperAdmin && (
                       <div className="border-t border-border/40 mt-1 pt-1">

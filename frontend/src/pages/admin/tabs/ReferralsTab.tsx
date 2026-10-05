@@ -149,7 +149,7 @@ export function ReferralsTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground border-b border-border/40">
+                  <tr className="text-left text-xs text-muted-foreground border-b border-border/40">
                     <th className="py-2 pr-2">Parrain</th>
                     <th className="py-2 pr-2">Code</th>
                     <th className="py-2 pr-2 text-right">Total</th>

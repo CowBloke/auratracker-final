@@ -1,49 +1,42 @@
-import { type ElementType, type ReactNode, useState } from 'react';
+import { Children, isValidElement, type ElementType, type ReactElement, type ReactNode, useState } from 'react';
 import { ChevronRight, Heart, Landmark, UserPlus, X } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { TYPOGRAPHY } from '@/lib/design-system';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from '@/components/ui/item';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { resolveImageUrl } from '@/lib/images';
-import { cn } from '@/lib/utils';
 import { type YouJobOffer, type YouPlayer } from '@/services/api';
 import { type FeedItem } from '../types';
 import { formatMoney, getRelationshipPill, getYouNotificationMeta, relativeTime } from '../utils';
 
+/** Pastille de statut : la teinte demandée est ramenée à une variante sémantique de Badge. */
 export function Pill({ label, color }: { label: string; color: string }) {
-  return <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', color)}>{label}</span>;
+  const variant = color.includes('destructive') ? 'destructive' : color.includes('warning') ? 'warning' : color.includes('success') ? 'success' : 'secondary';
+  return <Badge variant={variant}>{label}</Badge>;
 }
 
-export function ProgressBar({ value, max = 100, color = 'bg-primary' }: { value: number; max?: number; color?: string }) {
-  return (
-    <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted/40">
-      <div className={cn('h-full rounded-full transition-all duration-300', color)} style={{ width: `${Math.max(0, Math.min(100, Math.round((value / max) * 100)))}%` }} />
-    </div>
-  );
+export function ProgressBar({ value, max = 100 }: { value: number; max?: number; color?: string }) {
+  return <Progress value={Math.max(0, Math.min(100, Math.round((value / max) * 100)))} />;
 }
 
 export function SectionTitle({ children }: { children: ReactNode }) {
-  return <p className={cn(TYPOGRAPHY.XS, 'mb-2 font-medium uppercase tracking-wider text-muted-foreground/60')}>{children}</p>;
+  return <h4 className="mb-2 text-sm font-medium text-muted-foreground">{children}</h4>;
 }
 
-export function DashboardCard({
-  title,
-  tone,
-  children,
-}: {
-  title: string;
-  tone: string;
-  children: ReactNode;
-}) {
+export function DashboardCard({ title, children }: { title: string; tone?: string; children: ReactNode }) {
   return (
-    <Card className={cn('overflow-hidden border', tone)}>
-      <CardContent className="space-y-4 px-5 py-4">
-        <SectionTitle>{title}</SectionTitle>
-        {children}
-      </CardContent>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">{children}</CardContent>
     </Card>
   );
 }
@@ -69,16 +62,12 @@ export function ModalWrap({
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent
-        className={wide ? 'max-w-5xl' : 'max-w-md'}
-        aria-describedby={desc ? undefined : undefined}
-        data-tutorial-id={contentDataTutorialId}
-      >
+      <DialogContent className={wide ? 'sm:max-w-5xl' : 'sm:max-w-md'} data-tutorial-id={contentDataTutorialId}>
         <DialogHeader className={centerTitle ? 'text-center' : undefined}>
-          <DialogTitle className={centerTitle ? 'text-xl sm:text-2xl' : undefined}>{title}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           {desc ? <DialogDescription>{desc}</DialogDescription> : null}
         </DialogHeader>
-        <div className="space-y-4 py-1">{children}</div>
+        <div className="flex flex-col gap-4">{children}</div>
       </DialogContent>
     </Dialog>
   );
@@ -86,18 +75,37 @@ export function ModalWrap({
 
 export function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>
+    <Field>
+      <FieldLabel>{label}</FieldLabel>
       {children}
-    </div>
+    </Field>
   );
 }
 
+const EMPTY_OPTION = '__empty__';
+
+/** Liste déroulante shadcn alimentée par des enfants <option>, pour conserver l'API historique. */
 export function SelectBox({ value, onChange, children }: { value: string; onChange: (value: string) => void; children: ReactNode }) {
+  const options = Children.toArray(children).filter(
+    (child): child is ReactElement<{ value?: string; disabled?: boolean; children?: ReactNode }> => isValidElement(child) && child.type === 'option',
+  );
+  const placeholder = options.find((option) => (option.props.value ?? '') === '')?.props.children;
+
   return (
-    <select value={value} onChange={(event) => onChange(event.target.value)} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
-      {children}
-    </select>
+    <Select value={value === '' ? EMPTY_OPTION : value} onValueChange={(next) => onChange(next === EMPTY_OPTION ? '' : next)}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options
+          .filter((option) => (option.props.value ?? '') !== '')
+          .map((option, index) => (
+            <SelectItem key={`${option.props.value}-${index}`} value={String(option.props.value)} disabled={option.props.disabled}>
+              {option.props.children}
+            </SelectItem>
+          ))}
+      </SelectContent>
+    </Select>
   );
 }
 
@@ -105,44 +113,47 @@ export function ActionRow({
   icon: Icon,
   label,
   sub,
-  iconBg,
-  iconColor,
   onClick,
   dataTutorialId,
 }: {
   icon: ElementType;
   label: string;
   sub: string;
-  iconBg: string;
-  iconColor: string;
+  iconBg?: string;
+  iconColor?: string;
   onClick: () => void;
   dataTutorialId?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/20"
-      data-tutorial-id={dataTutorialId}
-    >
-      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', iconBg)}>
-        <Icon className={cn('h-4 w-4', iconColor)} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{sub}</p>
-      </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/30 transition-transform group-hover:translate-x-0.5" />
-    </button>
+    <Item asChild>
+      <button type="button" onClick={onClick} className="w-full text-left" data-tutorial-id={dataTutorialId}>
+        <ItemMedia variant="icon">
+          <Icon />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{label}</ItemTitle>
+          <ItemDescription>{sub}</ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </ItemActions>
+      </button>
+    </Item>
   );
 }
 
 export function ActionCard({ children }: { children: ReactNode }) {
+  const rows = Children.toArray(children);
   return (
-    <Card>
-      <CardContent className="p-0">
-        <div className="divide-y divide-border/30">{children}</div>
-      </CardContent>
+    <Card className="py-2">
+      <ItemGroup>
+        {rows.map((row, index) => (
+          <div key={index}>
+            {index > 0 ? <ItemSeparator /> : null}
+            {row}
+          </div>
+        ))}
+      </ItemGroup>
     </Card>
   );
 }
@@ -176,115 +187,133 @@ export function FeedCard({
     const meta = getYouNotificationMeta(item.notification);
     const Icon = meta.icon;
     return (
-      <div className="flex items-start gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3">
-        <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border', meta.tone)}>
-          <Icon className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold">{item.notification.title}</p>
-            <span className="shrink-0 text-[10px] text-muted-foreground/60">{timeAgo}</span>
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{item.notification.body}</p>
-        </div>
-      </div>
+      <Item variant="outline" size="sm">
+        <ItemMedia variant="icon">
+          <Icon />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{item.notification.title}</ItemTitle>
+          <ItemDescription>{item.notification.body}</ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <span className="text-xs text-muted-foreground">{timeAgo}</span>
+        </ItemActions>
+      </Item>
     );
   }
 
   if (item.kind === 'job_offer') {
     const directionLabel = item.offer.initiatedByRole === 'EMPLOYER' ? 'Offre de contrat' : 'Candidature';
     const subtitle = item.offer.initiatedByRole === 'EMPLOYER'
-      ? `${item.offer.inviter.username} te propose le role ${item.offer.role}`
+      ? `${item.offer.inviter.username} te propose le rôle ${item.offer.role}`
       : `${item.offer.employee.username} candidate pour ${item.offer.role}`;
     return (
-      <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/15">
-            <UserPlus className="h-4 w-4 text-primary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold">{item.offer.business.name}</p>
-              <Pill label={directionLabel} color="bg-muted/15 text-primary" />
+      <Item variant="outline">
+        <ItemMedia variant="icon">
+          <UserPlus />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>
+            {item.offer.business.name}
+            <Badge variant="secondary">{directionLabel}</Badge>
+          </ItemTitle>
+          <ItemDescription>
+            {subtitle} · {item.offer.salary.toLocaleString('fr-FR')} money/jour
+          </ItemDescription>
+          <span className="text-xs text-muted-foreground">{timeAgo}</span>
+          {item.offer.needsViewerAcceptance ? (
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={() => void onRespondJobOffer(item.offer, 'accept')}>
+                Accepter
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void onRespondJobOffer(item.offer, 'reject')}>
+                Refuser
+              </Button>
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle} · {item.offer.salary.toLocaleString('fr-FR')} money/jour</p>
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
-            {item.offer.needsViewerAcceptance ? (
-              <div className="mt-2 flex gap-2">
-                <Button size="sm" className="h-7 text-xs" onClick={() => void onRespondJobOffer(item.offer, 'accept')}>Accepter</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRespondJobOffer(item.offer, 'reject')}>Refuser</Button>
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">En attente de validation par {item.offer.waitingOn === 'EMPLOYER' ? "l'employeur" : item.offer.waitingOn === 'EMPLOYEE' ? "l'employe" : "l'autre partie"}.</p>
-            )}
-          </div>
-        </div>
-      </div>
+          ) : (
+            <span className="pt-1 text-xs text-muted-foreground">
+              En attente de validation par {item.offer.waitingOn === 'EMPLOYER' ? "l'employeur" : item.offer.waitingOn === 'EMPLOYEE' ? "l'employé" : "l'autre partie"}.
+            </span>
+          )}
+        </ItemContent>
+      </Item>
     );
   }
 
   if (item.kind === 'marriage_proposal') {
     const proposal = item.relationship.pendingProposal!;
     return (
-      <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted/15">
-            <Heart className="h-4 w-4 text-primary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold">{item.relationship.otherUser.username} te demande en mariage</p>
-              <Pill label="Mariage" color="bg-muted/15 text-primary" />
+      <Item variant="outline">
+        <ItemMedia variant="icon">
+          <Heart />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>
+            {item.relationship.otherUser.username} te demande en mariage
+            <Badge variant="secondary">Mariage</Badge>
+          </ItemTitle>
+          {proposal.message ? <ItemDescription>{proposal.message}</ItemDescription> : null}
+          <span className="text-xs text-muted-foreground">{timeAgo}</span>
+          {confirmMarriage ? (
+            <div className="flex flex-col gap-2 pt-1">
+              <Alert variant="warning">
+                <AlertTitle>Conséquences du mariage</AlertTitle>
+                <AlertDescription>
+                  <ul className="list-disc pl-4">
+                    <li>Compte bancaire commun partagé avec ton conjoint</li>
+                    <li>En cas de divorce, le compte commun est divisé en deux</li>
+                    <li>Si ton conjoint triche, il peut perdre tout son argent au tribunal</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => void onRespondMarriage(proposal.id, 'accept')}>
+                  Confirmer
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setConfirmMarriage(false)}>
+                  Annuler
+                </Button>
+              </div>
             </div>
-            {proposal.message ? <p className="mt-0.5 text-xs text-muted-foreground">{proposal.message}</p> : null}
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
-            {confirmMarriage ? (
-              <div className="mt-2 space-y-2">
-                <div className="rounded-lg border border-warning/25 bg-warning/10 px-3 py-2 text-xs text-warning space-y-1">
-                  <p className="font-semibold">Consequences du mariage :</p>
-                  <p>· Compte bancaire commun partage avec ton conjoint</p>
-                  <p>· En cas de divorce, le compte commun est divise en deux</p>
-                  <p>· Si ton conjoint triche, il peut perdre tout son argent au tribunal</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" className="h-7 text-xs" onClick={() => void onRespondMarriage(proposal.id, 'accept')}>Confirmer</Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setConfirmMarriage(false)}>Annuler</Button>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-2 flex gap-2">
-                <Button size="sm" className="h-7 text-xs" onClick={() => setConfirmMarriage(true)}>Accepter</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRespondMarriage(proposal.id, 'reject')}>Refuser</Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+          ) : (
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" onClick={() => setConfirmMarriage(true)}>
+                Accepter
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void onRespondMarriage(proposal.id, 'reject')}>
+                Refuser
+              </Button>
+            </div>
+          )}
+        </ItemContent>
+      </Item>
     );
   }
 
   if (item.kind === 'divorce_proposal') {
     const proposal = item.relationship.pendingDivorceProposal!;
     return (
-      <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-destructive/15">
-            <X className="h-4 w-4 text-destructive" />
+      <Item variant="outline">
+        <ItemMedia variant="icon">
+          <X />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>
+            {item.relationship.otherUser.username} demande le divorce
+            <Badge variant="destructive">Divorce</Badge>
+          </ItemTitle>
+          {proposal.message ? <ItemDescription>{proposal.message}</ItemDescription> : null}
+          <span className="text-xs text-muted-foreground">{timeAgo}</span>
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" onClick={() => void onRespondDivorce(proposal.id, 'accept')}>
+              Valider
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => void onRespondDivorce(proposal.id, 'reject')}>
+              Refuser
+            </Button>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold">{item.relationship.otherUser.username} demande le divorce</p>
-              <Pill label="Divorce" color="bg-destructive/15 text-destructive" />
-            </div>
-            {proposal.message ? <p className="mt-0.5 text-xs text-muted-foreground">{proposal.message}</p> : null}
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" className="h-7 text-xs" onClick={() => void onRespondDivorce(proposal.id, 'accept')}>Valider</Button>
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRespondDivorce(proposal.id, 'reject')}>Refuser</Button>
-            </div>
-          </div>
-        </div>
-      </div>
+        </ItemContent>
+      </Item>
     );
   }
 
@@ -292,54 +321,57 @@ export function FeedCard({
     const totalOwed = Math.round(item.loan.amount * (1 + item.loan.interestRate / 100));
     const remaining = Math.max(0, totalOwed - (item.loan.repaidAmount ?? 0));
     return (
-      <div className="rounded-2xl border border-border/40 bg-card px-4 py-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/15">
-            <Landmark className="h-4 w-4 text-warning" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold">{item.businessName}</p>
-              <Pill label="Pret actif" color="bg-warning/15 text-warning" />
+      <Item variant="outline">
+        <ItemMedia variant="icon">
+          <Landmark />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>
+            {item.businessName}
+            <Badge variant="warning">Prêt actif</Badge>
+          </ItemTitle>
+          <ItemDescription>
+            {formatMoney(item.loan.amount)} principal · {item.loan.interestRate} % · {item.loan.termDays} jours
+          </ItemDescription>
+          <span className="text-xs text-muted-foreground">
+            Reste à rembourser : <span className="font-semibold text-foreground">{formatMoney(remaining)}</span> · {timeAgo}
+          </span>
+          {onRepayLoan ? (
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" variant="outline" onClick={() => void onRepayLoan(item.loan.id, 50)}>
+                50 %
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void onRepayLoan(item.loan.id, 100)}>
+                Rembourser 100 % (si possible)
+              </Button>
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">{formatMoney(item.loan.amount)} principal · {item.loan.interestRate} % · {item.loan.termDays} jours</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">Reste a rembourser : <span className="font-semibold text-warning">{formatMoney(remaining)}</span></p>
-            <p className="mt-1.5 text-[11px] text-muted-foreground/60">{timeAgo}</p>
-            {onRepayLoan ? (
-              <div className="mt-2 flex gap-2">
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRepayLoan(item.loan.id, 50)}>
-                  50 %
-                </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void onRepayLoan(item.loan.id, 100)}>
-                  Rembourser 100% (si possible)
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
+          ) : null}
+        </ItemContent>
+      </Item>
     );
   }
 
   if (item.kind === 'relationship') {
     const pill = getRelationshipPill(item.relationship.status);
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-border/40 bg-card px-4 py-3">
-        <UserAvatar player={item.relationship.otherUser} className="h-9 w-9 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold">{item.relationship.otherUser.username}</p>
+      <Item variant="outline" size="sm">
+        <ItemMedia>
+          <UserAvatar player={item.relationship.otherUser} className="size-9" />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>
+            {item.relationship.otherUser.username}
             <Pill label={pill.label} color={pill.color} />
-            {item.relationship.pendingProposal?.direction === 'sent' ? <Pill label="Demande envoyee" color="bg-warning/15 text-warning" /> : null}
-            {item.relationship.pendingDivorceProposal?.direction === 'sent' ? <Pill label="Divorce en attente" color="bg-destructive/15 text-destructive" /> : null}
-          </div>
-          <div className="mt-1.5">
-            <ProgressBar value={item.relationship.connectionLevel} color="bg-muted" />
-          </div>
-          <p className="mt-1 text-[11px] text-muted-foreground/60">{timeAgo}</p>
-        </div>
-        <span className="shrink-0 text-sm font-bold tabular-nums text-primary">{item.relationship.connectionLevel}%</span>
-      </div>
+            {item.relationship.pendingProposal?.direction === 'sent' ? <Badge variant="warning">Demande envoyée</Badge> : null}
+            {item.relationship.pendingDivorceProposal?.direction === 'sent' ? <Badge variant="destructive">Divorce en attente</Badge> : null}
+          </ItemTitle>
+          <ProgressBar value={item.relationship.connectionLevel} />
+          <span className="text-xs text-muted-foreground">{timeAgo}</span>
+        </ItemContent>
+        <ItemActions>
+          <span className="text-sm font-semibold tabular-nums">{item.relationship.connectionLevel}%</span>
+        </ItemActions>
+      </Item>
     );
   }
 
@@ -351,15 +383,19 @@ export function FilterButton({
   label,
   icon: Icon,
   onClick,
-  colorClass,
 }: {
   active: boolean;
   label: string;
   icon: ElementType;
   onClick: () => void;
-  colorClass: string;
+  colorClass?: string;
 }) {
-  return <button type="button" onClick={onClick} className={cn('flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-medium transition-colors', active ? `${colorClass} border-transparent text-white` : 'border-border/40 bg-muted/10 text-muted-foreground hover:bg-muted/20 hover:text-foreground')}><Icon className="h-3.5 w-3.5" /><span>{label}</span></button>;
+  return (
+    <Button type="button" variant={active ? 'secondary' : 'outline'} size="sm" className="w-full justify-start" onClick={onClick} aria-pressed={active}>
+      <Icon />
+      {label}
+    </Button>
+  );
 }
 
 export { Input };

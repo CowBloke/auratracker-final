@@ -308,8 +308,8 @@ export default function AuraCoin() {
                     domain={['auto', 'auto']}
                   />
                   <Tooltip
-                    formatter={(v: number) => [fmtMoneyExpanded(v), 'Prix']}
-                    labelFormatter={(l) => format(new Date(l), 'dd/MM HH:mm')}
+                    formatter={(v: any) => [fmtMoneyExpanded(v), 'Prix']}
+                    labelFormatter={(l: any) => format(new Date(l), 'dd/MM HH:mm')}
                     contentStyle={{
                       background: '#1a1a1a',
                       border: '1px solid #333',
@@ -355,7 +355,7 @@ export default function AuraCoin() {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Acheter</p>
+                  <p className="text-xs text-muted-foreground font-medium ">Acheter</p>
                   <div className="flex gap-2">
                     <Input
                       type="number"
@@ -389,7 +389,7 @@ export default function AuraCoin() {
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Vendre</p>
+                  <p className="text-xs text-muted-foreground font-medium ">Vendre</p>
                   <div className="flex gap-2">
                     <Input
                       type="number"

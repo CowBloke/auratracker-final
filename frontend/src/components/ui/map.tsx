@@ -146,11 +146,11 @@ type MapProps = {
 
 function DefaultLoader() {
   return (
-    <div className="bg-background/50 absolute inset-0 z-10 flex items-center justify-center backdrop-blur-xs">
+    <div className="bg-background/50 absolute inset-0 z-10 flex items-center justify-center">
       <div className="flex gap-1">
-        <span className="bg-muted-foreground/60 size-1.5 animate-pulse rounded-full" />
-        <span className="bg-muted-foreground/60 size-1.5 animate-pulse rounded-full [animation-delay:150ms]" />
-        <span className="bg-muted-foreground/60 size-1.5 animate-pulse rounded-full [animation-delay:300ms]" />
+        <span className="bg-muted-foreground/60 size-1.5 rounded-full" />
+        <span className="bg-muted-foreground/60 size-1.5 rounded-full [animation-delay:150ms]" />
+        <span className="bg-muted-foreground/60 size-1.5 rounded-full [animation-delay:300ms]" />
       </div>
     </div>
   );
@@ -514,7 +514,7 @@ function MarkerContent({ children, className }: MarkerContentProps) {
 
 function DefaultMarkerIcon() {
   return (
-    <div className="relative h-4 w-4 rounded-full border-2 border-white bg-primary shadow-lg" />
+    <div className="relative h-4 w-4 rounded-full border-2 border-white bg-primary" />
   );
 }
 
@@ -593,7 +593,7 @@ function MarkerPopup({
   return createPortal(
     <div
       className={cn(
-        "bg-popover text-popover-foreground relative max-w-62 rounded-md border p-3 shadow-md",
+        "bg-popover text-popover-foreground relative max-w-62 rounded-md border p-3",
         "animate-in fade-in-0 zoom-in-95 duration-200 ease-out",
         className,
       )}
@@ -671,7 +671,7 @@ function MarkerTooltip({
   return createPortal(
     <div
       className={cn(
-        "bg-popover text-popover-foreground pointer-events-none rounded-md px-2 py-1 text-xs text-balance shadow-md border border-border/60",
+        "bg-popover text-popover-foreground pointer-events-none rounded-md px-2 py-1 text-xs text-balance border border-border/60",
         "animate-in fade-in-0 zoom-in-95 duration-200 ease-out",
         className,
       )}
@@ -705,7 +705,7 @@ function MarkerLabel({
     <div
       className={cn(
         "absolute left-1/2 -translate-x-1/2 whitespace-nowrap",
-        "text-foreground text-[10px] font-medium",
+        "text-foreground text-xs font-medium",
         positionClasses[position],
         className,
       )}
@@ -1015,7 +1015,7 @@ function MapPopup({
   return createPortal(
     <div
       className={cn(
-        "bg-popover text-popover-foreground relative max-w-62 rounded-md border p-3 shadow-md",
+        "bg-popover text-popover-foreground relative max-w-62 rounded-md border p-3",
         "animate-in fade-in-0 zoom-in-95 duration-200 ease-out",
         className,
       )}

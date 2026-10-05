@@ -6,11 +6,12 @@ interface GamePauseButtonProps {
   onToggle: () => void;
   disabled?: boolean;
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  className?: string;
 }
 
-export function GamePauseButton({ isPaused, onToggle, disabled = false, size = 'sm' }: GamePauseButtonProps) {
+export function GamePauseButton({ isPaused, onToggle, disabled = false, size = 'sm', className }: GamePauseButtonProps) {
   return (
-    <Button type="button" size={size} variant="outline" onClick={onToggle} disabled={disabled}>
+    <Button type="button" size={size} variant="outline" onClick={onToggle} disabled={disabled} className={className}>
       {isPaused ? <Play /> : <Pause />}
       {isPaused ? 'Reprendre' : 'Pause'}
     </Button>

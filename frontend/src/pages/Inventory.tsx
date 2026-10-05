@@ -748,7 +748,7 @@ export default function Inventory() {
                 const sectionEl = (
                   <section key={section.type} className="flex flex-col gap-4">
                     <div className="flex items-center gap-4">
-                      <h2 className="text-lg font-semibold tracking-tight">{section.label}</h2>
+                      <h2 className="text-lg font-semibold">{section.label}</h2>
                       <Separator className="flex-1" />
                       <Badge variant="secondary">{section.items.length}</Badge>
                     </div>

@@ -29,7 +29,7 @@ export function AdCard({ ad }: { ad: Ad }) {
     >
       <div
         className={cn(
-          'relative isolate aspect-square overflow-hidden rounded-xl border border-white/10 transition hover:border-foreground/40 hover:shadow-md',
+          'relative isolate aspect-square overflow-hidden rounded-xl border border-white/10 transition hover:border-foreground/40',
           ad.business.verified ? 'ring-1 ring-warning/40' : ''
         )}
       >
@@ -41,14 +41,14 @@ export function AdCard({ ad }: { ad: Ad }) {
             loading="lazy"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-warning/40 via-warning/30 to-destructive/40" />
+          <div className="absolute inset-0 " />
         )}
 
-        <div className="absolute left-3 top-3 z-20 rounded-full border border-white/30 bg-black/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-white/95">
+        <div className="absolute left-3 top-3 z-20 rounded-full border border-white/30 bg-black/50 px-2 py-0.5 text-xs font-semibold text-white/95">
           Sponsorise
         </div>
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/10" />
+        <div className="absolute inset-0 " />
 
         <div className="absolute inset-x-0 bottom-0 z-10 space-y-2 p-3 text-white">
           <div className="flex items-center gap-2">
@@ -64,7 +64,7 @@ export function AdCard({ ad }: { ad: Ad }) {
             <p className="line-clamp-2 text-xs text-white/80">{ad.tagline}</p>
           </div>
 
-          <span className="inline-flex items-center gap-1 rounded-md border border-white/25 bg-white/10 px-2 py-1 text-[11px] font-semibold">
+          <span className="inline-flex items-center gap-1 rounded-md border border-white/25 bg-white/10 px-2 py-1 text-xs font-semibold">
             {ad.ctaText}
             <ExternalLink className="h-3 w-3" />
           </span>

@@ -84,7 +84,7 @@ export function SpectateEffectBar({ messages, onSend, onConfetti, showInput = tr
         <div className="absolute bottom-2 left-2 right-2 z-20">
           <form
             onSubmit={handleSubmit}
-            className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/75 backdrop-blur-sm px-3 py-1.5"
+            className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/75 px-3 py-1.5"
           >
             <input
               type="text"

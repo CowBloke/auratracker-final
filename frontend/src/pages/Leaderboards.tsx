@@ -495,7 +495,7 @@ export default function Leaderboards() {
               <div className="flex flex-col gap-8">
                 {nombresSections.map((section) => (
                   <section key={section.title} className="flex flex-col gap-3">
-                    <h2 className="text-lg font-semibold tracking-tight">{section.title}</h2>
+                    <h2 className="text-lg font-semibold">{section.title}</h2>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       {section.items.map((item) => (
                         <Card key={item.label}>

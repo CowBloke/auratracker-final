@@ -196,7 +196,7 @@ function SlotButton({
         isInline ? 'h-10 w-10 rounded-xl border' : 'h-16 w-16 rounded-md border-2',
         editable
           ? isActive
-            ? 'border-foreground shadow-[0_0_0_3px_color-mix(in oklab, var(--foreground) 10%, transparent)] cursor-pointer'
+            ? 'border-foreground cursor-pointer'
             : 'border-border/50 hover:border-foreground/60 cursor-pointer'
           : 'border-transparent',
       )}
@@ -207,7 +207,7 @@ function SlotButton({
         <>
           <BadgeIcon badge={badge} size={isInline ? 'lg' : '2xl'} tooltipSide="bottom" />
           {editable && (
-            <div className="absolute inset-0 rounded-[calc(theme(borderRadius.md)-2px)] bg-background/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+            <div className="absolute inset-0 rounded-xl bg-background/70 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
               <Edit2 className="w-4 h-4" />
             </div>
           )}

@@ -199,7 +199,7 @@ export function EditUserModal({
                   />
                 </div>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Actuel: {baseEditAura.toLocaleString()} • Base: {toSafeNumber(editValues.aura).toLocaleString()} • Resultat:{' '}
                 <span className={cn(nextEditAura < 0 ? 'text-destructive' : 'text-primary')}>
                   {nextEditAura.toLocaleString()}
@@ -246,7 +246,7 @@ export function EditUserModal({
                   />
                 </div>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Actuel: {baseEditMoney.toLocaleString()} • Base: {toSafeNumber(editValues.money).toLocaleString()} • Resultat:{' '}
                 <span className={cn(nextEditMoney < 0 ? 'text-destructive' : 'text-success')}>
                   {nextEditMoney.toLocaleString()}

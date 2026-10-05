@@ -524,7 +524,7 @@ export default function Quests() {
 
       {hasSelectedQuests ? (
         <section className="flex flex-col gap-4">
-          <h2 className="text-lg font-semibold tracking-tight">{t('quests_my_quests')}</h2>
+          <h2 className="text-lg font-semibold">{t('quests_my_quests')}</h2>
           {displayedMyQuests.length === 0 ? noMatch : renderMyQuests()}
         </section>
       ) : null}

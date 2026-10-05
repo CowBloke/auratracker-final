@@ -110,7 +110,7 @@ export function BansTab(props: BansTabProps) {
         <CardContent>
           {loadingBans ? (
             <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+              <div className="w-1 h-8 bg-foreground/20" />
             </div>
           ) : bans.length === 0 ? (
             <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>
@@ -362,7 +362,7 @@ export function BansTab(props: BansTabProps) {
         <CardContent>
           {loadingWarnings ? (
             <div className="flex justify-center py-12">
-              <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+              <div className="w-1 h-8 bg-foreground/20" />
             </div>
           ) : warnings.length === 0 ? (
             <p className={cn(TYPOGRAPHY.MUTED, 'text-center py-12')}>

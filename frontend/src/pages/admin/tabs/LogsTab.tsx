@@ -306,7 +306,7 @@ export function LogsTab(props: LogsTabProps) {
                   className="py-3"
                 />
 
-                <div className="mt-3 grid grid-cols-6 gap-2 text-[11px] text-muted-foreground sm:grid-cols-8 lg:grid-cols-12">
+                <div className="mt-3 grid grid-cols-6 gap-2 text-xs text-muted-foreground sm:grid-cols-8 lg:grid-cols-12">
                   {Array.from({ length: 12 }, (_, index) => {
                     const hour = index * 2;
                     return (
@@ -420,7 +420,7 @@ export function LogsTab(props: LogsTabProps) {
 
       {loadingLogs ? (
         <div className="flex justify-center py-12">
-          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+          <div className="w-1 h-8 bg-foreground/20" />
         </div>
       ) : logs.length === 0 ? (
         <div className="text-center py-12 space-y-2">
@@ -466,7 +466,7 @@ export function LogsTab(props: LogsTabProps) {
                 >
                   <span
                     className={cn(
-                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0',
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium shrink-0',
                       typePillClass,
                       'text-white'
                     )}

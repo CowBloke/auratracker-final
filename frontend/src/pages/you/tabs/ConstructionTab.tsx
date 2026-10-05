@@ -145,8 +145,8 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
                       <p className="text-xs text-muted-foreground">{meta?.description ?? 'Ressource de construction.'}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Disponible</p>
-                      <p className="text-lg font-black tabular-nums text-foreground">{entry.quantity}</p>
+                      <p className="text-xs text-muted-foreground">Disponible</p>
+                      <p className="text-lg font-semibold tabular-nums text-foreground">{entry.quantity}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -191,7 +191,7 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
 
                 <CardContent className="space-y-4 px-5 py-5">
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ressources requises</p>
+                    <p className="text-xs font-semibold text-muted-foreground">Ressources requises</p>
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {company.materials.map((material) => {
                         const meta = RESOURCE_META[material.resourceType as ResourceType];

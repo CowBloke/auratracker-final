@@ -154,7 +154,7 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
               card.isMatched
                 ? cn('scale-95 opacity-70', CARD_COLORS[card.type])
                 : card.isFlipped
-                  ? cn('scale-105 shadow-lg', CARD_COLORS[card.type])
+                  ? cn('scale-105', CARD_COLORS[card.type])
                   : 'cursor-pointer border-border/40 bg-muted/25 hover:bg-muted/50 hover:scale-105 active:scale-95'
             )}
           >

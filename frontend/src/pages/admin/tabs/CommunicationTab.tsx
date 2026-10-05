@@ -455,14 +455,14 @@ export function CommunicationTab(props: CommunicationTabProps) {
                           <div className="flex flex-wrap items-center gap-2">
                             <h4 className="text-sm font-semibold">{survey.title}</h4>
                             <span className={cn(
-                              'rounded-full px-2 py-1 text-[10px] font-semibold',
+                              'rounded-full px-2 py-1 text-xs font-semibold',
                               survey.status === 'ACTIVE'
                                 ? 'bg-success/15 text-success'
                                 : 'bg-muted text-muted-foreground'
                             )}>
                               {survey.status === 'ACTIVE' ? 'Actif' : 'Archivé'}
                             </span>
-                            <span className="rounded-full border border-border px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                            <span className="rounded-full border border-border px-2 py-1 text-xs font-medium text-muted-foreground">
                               {audienceLabelMap[survey.audienceType] || survey.audienceType}
                             </span>
                           </div>
@@ -480,12 +480,12 @@ export function CommunicationTab(props: CommunicationTabProps) {
                           {survey.selectedUsers?.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                               {survey.selectedUsers.slice(0, 8).map((selectedUser: any) => (
-                                <span key={selectedUser.id} className="rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground">
+                                <span key={selectedUser.id} className="rounded-full border border-border px-2 py-1 text-xs text-muted-foreground">
                                   {selectedUser.username}
                                 </span>
                               ))}
                               {survey.selectedUsers.length > 8 && (
-                                <span className="rounded-full border border-border px-2 py-1 text-[10px] text-muted-foreground">
+                                <span className="rounded-full border border-border px-2 py-1 text-xs text-muted-foreground">
                                   +{survey.selectedUsers.length - 8}
                                 </span>
                               )}
@@ -579,7 +579,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                       <p className="text-sm font-semibold">{report.conversationTitle || report.conversationType || 'Conversation'}</p>
                       <p className="text-xs text-muted-foreground">Signale par {report.reporter.username} • {new Date(report.createdAt).toLocaleString('fr-FR')}</p>
                     </div>
-                    <span className={cn('rounded-full px-2 py-1 text-[10px] font-semibold', report.status === 'PENDING' ? 'bg-warning/15 text-warning' : report.status === 'ACTION_TAKEN' ? 'bg-destructive/15 text-destructive' : 'bg-success/15 text-success')}>
+                    <span className={cn('rounded-full px-2 py-1 text-xs font-semibold', report.status === 'PENDING' ? 'bg-warning/15 text-warning' : report.status === 'ACTION_TAKEN' ? 'bg-destructive/15 text-destructive' : 'bg-success/15 text-success')}>
                       {report.status}
                     </span>
                   </div>
@@ -643,7 +643,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                         {thread.user?.username ?? thread.userId}
                       </span>
                       {thread.unreadCount > 0 && (
-                        <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-[10px] font-semibold shrink-0">
+                        <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-xs font-semibold shrink-0">
                           {thread.unreadCount}
                         </span>
                       )}
@@ -673,13 +673,13 @@ export function CommunicationTab(props: CommunicationTabProps) {
                     return (
                       <div key={msg.id} className={cn('flex', msg.fromAdmin ? 'justify-end' : 'justify-start')}>
                         <div className={cn(
-                          'max-w-[75%] rounded-2xl px-3 py-2 text-sm',
+                          'max-w-[75%] rounded-xl px-3 py-2 text-sm',
                           msg.fromAdmin
                             ? 'bg-primary text-primary-foreground rounded-tr-sm'
                             : 'bg-muted text-foreground rounded-tl-sm'
                         )}>
                           {!msg.fromAdmin && (
-                            <p className="text-[10px] font-semibold text-primary mb-0.5">{activeThreadUser?.username}</p>
+                            <p className="text-xs font-semibold text-primary mb-0.5">{activeThreadUser?.username}</p>
                           )}
                           {messageImages.length > 0 && (
                             <div className="flex gap-1 mb-2 flex-wrap">
@@ -694,7 +694,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                             </div>
                           )}
                           <p className="break-words whitespace-pre-wrap">{msg.body}</p>
-                          <p className={cn('text-[10px] mt-1', msg.fromAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                          <p className={cn('text-xs mt-1', msg.fromAdmin ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
                             {new Date(msg.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>

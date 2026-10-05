@@ -135,14 +135,14 @@ function StockCard({ inventory }: { inventory: YouSupplyInventory }) {
       <div className="flex items-center justify-between gap-1 leading-none">
         <div className="flex items-center gap-1 min-w-0">
           <Icon className={cn('h-3 w-3 shrink-0', meta?.iconColor ?? 'text-muted-foreground')} />
-          <span className={cn('text-[10px] font-bold truncate', meta?.iconColor ?? 'text-muted-foreground')}>{resourceLabel(inventory.resourceType)}</span>
+          <span className={cn('text-xs font-bold truncate', meta?.iconColor ?? 'text-muted-foreground')}>{resourceLabel(inventory.resourceType)}</span>
         </div>
-        <span className="text-[10px] text-muted-foreground tabular-nums shrink-0 leading-none">~{inventory.globalMarketUnitPrice}€</span>
+        <span className="text-xs text-muted-foreground tabular-nums shrink-0 leading-none">~{inventory.globalMarketUnitPrice}€</span>
       </div>
       <div className="h-1 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10 my-0.5">
         <div className={cn('h-full rounded-full transition-all opacity-70', barCls)} style={{ width: `${pct}%` }} />
       </div>
-      <div className="flex justify-between text-[10px] leading-none">
+      <div className="flex justify-between text-xs leading-none">
         <span className={cn('font-bold tabular-nums', meta?.iconColor ?? 'text-foreground')}>{inventory.quantity}</span>
         <span className="text-muted-foreground">/ {inventory.capacity}</span>
       </div>
@@ -188,33 +188,33 @@ function TotalPaymentCard({
         {/* Right: Info block */}
         <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 pr-6 relative text-left gap-1">
           <div className="flex items-baseline justify-between w-full leading-none">
-            <span className="text-[13px] font-bold text-muted-foreground truncate">
+            <span className="text-sm font-bold text-muted-foreground truncate">
               Total à payer
             </span>
             <span className={cn(
-              "text-[15px] font-black tabular-nums",
+              "text-base font-semibold tabular-nums",
               treasuryShort ? "text-destructive" : "text-foreground"
             )}>
               {totalCost > 0 ? `${fmt(totalCost)}€` : '0€'}
             </span>
           </div>
-          <div className="flex items-center justify-between gap-1 w-full text-[10.5px] leading-none">
+          <div className="flex items-center justify-between gap-1 w-full text-xs leading-none">
             <span className="text-muted-foreground/75 truncate font-semibold flex items-center gap-1">
               Source: {isPersonalPay ? 'Poche perso' : 'Trésorerie pro'}
             </span>
             {treasuryShort && (
-              <span className="shrink-0 text-[10px] font-bold text-destructive animate-pulse">Insuffisant</span>
+              <span className="shrink-0 text-xs font-bold text-destructive">Insuffisant</span>
             )}
           </div>
         </div>
       </SelectTrigger>
       
-      <SelectContent align="start" className="w-[260px] p-1 border-black/10 dark:border-white/10 shadow-lg rounded-xl">
-        <div className="px-2.5 py-2 text-[11.5px] font-black text-foreground uppercase tracking-wide bg-muted/65 border-b border-border/35 rounded-lg mb-1 text-left pl-3">
+      <SelectContent align="start" className="w-[260px] p-1 border-black/10 dark:border-white/10 rounded-xl">
+        <div className="px-2.5 py-2 text-xs font-semibold text-foreground bg-muted/65 border-b border-border/35 rounded-lg mb-1 text-left pl-3">
           Sélectionner source pour paiement ({fmt(totalCost)}€)
         </div>
         {/* Option 1: Business Treasury */}
-        <SelectItem value="business" indicatorSide="right" className="rounded-lg py-1.5 px-2 focus:bg-accent cursor-pointer transition-colors duration-150">
+        <SelectItem value="business" className="rounded-lg py-1.5 px-2 focus:bg-accent cursor-pointer transition-colors duration-150">
           <div className="flex items-center gap-2.5 min-w-0 py-0.5">
             <span className={cn(
               'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm',
@@ -226,7 +226,7 @@ function TotalPaymentCard({
               <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                 <span className="truncate">Trésorerie du business</span>
               </div>
-              <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <span className="font-semibold text-foreground/80">{fmt(biz.treasuryMoney)}€ dispo</span>
                 {biz.treasuryMoney < totalCost && (
                   <>
@@ -240,7 +240,7 @@ function TotalPaymentCard({
         </SelectItem>
 
         {/* Option 2: Personal Money */}
-        <SelectItem value="personal" indicatorSide="right" className="rounded-lg py-1.5 px-2 focus:bg-accent cursor-pointer transition-colors duration-150">
+        <SelectItem value="personal" className="rounded-lg py-1.5 px-2 focus:bg-accent cursor-pointer transition-colors duration-150">
           <div className="flex items-center gap-2.5 min-w-0 py-0.5">
             <span className={cn(
               'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm',
@@ -252,7 +252,7 @@ function TotalPaymentCard({
               <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                 <span className="truncate">Payer de ma poche</span>
               </div>
-              <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+              <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <span className="font-semibold text-foreground/80">{fmt(userMoney)}€ dispo</span>
                 {userMoney < totalCost && (
                   <>
@@ -319,10 +319,10 @@ function IngredientCard({
         {/* Right: Info block */}
         <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 text-left gap-1">
           <div className="flex items-baseline gap-1.5 w-full leading-none">
-            <span className="text-[15px] font-black text-destructive tabular-nums mr-1">{cost.quantity}×</span>
-            <span className="text-[13px] font-bold text-muted-foreground truncate">{resourceLabel(cost.resourceType)}</span>
+            <span className="text-base font-semibold text-destructive tabular-nums mr-1">{cost.quantity}×</span>
+            <span className="text-sm font-bold text-muted-foreground truncate">{resourceLabel(cost.resourceType)}</span>
           </div>
-          <div className="flex items-center justify-between gap-1 w-full text-[10.5px] text-destructive leading-none">
+          <div className="flex items-center justify-between gap-1 w-full text-xs text-destructive leading-none">
             <span className="font-semibold flex items-center gap-1">
               <AlertCircle className="h-3 w-3 shrink-0" />
               Stock insuffisant
@@ -360,17 +360,17 @@ function IngredientCard({
         <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 pr-6 relative text-left gap-1">
           <div className="flex items-baseline justify-between w-full leading-none">
             <div className="flex items-baseline gap-1.5 min-w-0">
-              <span className="text-[15px] font-black text-foreground tabular-nums mr-1">{cost.quantity}×</span>
-              <span className="text-[13px] font-bold text-muted-foreground truncate">{resourceLabel(cost.resourceType)}</span>
+              <span className="text-base font-semibold text-foreground tabular-nums mr-1">{cost.quantity}×</span>
+              <span className="text-sm font-bold text-muted-foreground truncate">{resourceLabel(cost.resourceType)}</span>
             </div>
             <span className={cn(
-              "text-[13px] font-bold shrink-0 tabular-nums",
+              "text-sm font-bold shrink-0 tabular-nums",
               extra > 0 ? "text-warning" : "text-success"
             )}>
               {extra > 0 ? `${fmt(extra)}€` : 'Gratuit'}
             </span>
           </div>
-          <div className="flex items-center justify-between gap-1 w-full text-[10.5px] leading-none">
+          <div className="flex items-center justify-between gap-1 w-full text-xs leading-none">
             <span className="text-muted-foreground/75 truncate font-semibold flex items-center gap-1">
               {selBizStyle && (
                 <span className={cn('flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded', selBizStyle.iconWrap)}>
@@ -383,8 +383,8 @@ function IngredientCard({
         </div>
       </SelectTrigger>
       
-      <SelectContent align="start" className="w-[260px] p-1 border-black/10 dark:border-white/10 shadow-lg rounded-xl">
-        <div className="px-2.5 py-2 text-[11.5px] font-black text-foreground uppercase tracking-wide bg-muted/65 border-b border-border/35 rounded-lg mb-1 text-left pl-3">
+      <SelectContent align="start" className="w-[260px] p-1 border-black/10 dark:border-white/10 rounded-xl">
+        <div className="px-2.5 py-2 text-xs font-semibold text-foreground bg-muted/65 border-b border-border/35 rounded-lg mb-1 text-left pl-3">
           Sélectionner source pour {resourceLabel(cost.resourceType)}
         </div>
         {opts.map((opt) => {
@@ -393,7 +393,7 @@ function IngredientCard({
           const bizStyle = getBusinessStyle(opt.businessTypeKey);
           const BizIcon = BUSINESS_ICON_MAP[opt.businessTypeKey as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
           return (
-            <SelectItem key={sourceValue(opt)} value={sourceValue(opt)} indicatorSide="right" className="rounded-lg py-1 px-2 focus:bg-accent cursor-pointer transition-colors duration-150">
+            <SelectItem key={sourceValue(opt)} value={sourceValue(opt)} className="rounded-lg py-1 px-2 focus:bg-accent cursor-pointer transition-colors duration-150">
               <div className="flex items-center gap-2.5 min-w-0 py-0.5">
                 <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg shadow-sm', bizStyle.iconWrap)}>
                   <BizIcon className={cn('h-3.5 w-3.5', bizStyle.icon)} />
@@ -401,10 +401,10 @@ function IngredientCard({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <span className="truncate">{opt.businessName}</span>
-                    {own && <span className="shrink-0 rounded px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider bg-success/15 text-success">interne</span>}
-                    {opt.kind === 'offer' && !opt.autoAccept && <span className="shrink-0 rounded px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider bg-warning/15 text-warning">offre</span>}
+                    {own && <span className="shrink-0 rounded px-1.5 py-0.2 text-xs font-bold bg-success/15 text-success">interne</span>}
+                    {opt.kind === 'offer' && !opt.autoAccept && <span className="shrink-0 rounded px-1.5 py-0.2 text-xs font-bold bg-warning/15 text-warning">offre</span>}
                   </div>
-                  <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                     <span className="font-semibold text-foreground/80">{opt.quantity} dispo</span>
                     <span>·</span>
                     <span className={cn(own ? 'text-success font-bold' : 'font-semibold text-warning')}>
@@ -529,7 +529,7 @@ function ActionPipeline({
     : null;
 
   return (
-    <div className="border border-border bg-card/45 dark:bg-card/25 rounded-2xl p-4 shadow-sm flex flex-col gap-3 transition hover:shadow-md hover:border-border/80">
+    <div className="border border-border bg-card/45 dark:bg-card/25 rounded-xl p-4 shadow-sm flex flex-col gap-3 transition hover:border-border/80">
       {/* Header with big title and running job details */}
       <div className="flex items-center justify-between pl-0.5">
         <div className="flex items-center gap-2">
@@ -537,7 +537,7 @@ function ActionPipeline({
             {action.label}
           </span>
           {action.rewardMoney > 0 && (
-            <span className="text-[10.5px] font-extrabold text-success bg-success/10 px-2.5 py-0.5 rounded-full border border-success/15">
+            <span className="text-xs font-semibold text-success bg-success/10 px-2.5 py-0.5 rounded-full border border-success/15">
               +{fmt(action.rewardMoney)}€ à la fin
             </span>
           )}
@@ -548,9 +548,9 @@ function ActionPipeline({
               size="sm"
               variant={isConstantProdEnabled ? "default" : "outline"}
               className={cn(
-                "h-6 px-2.5 text-[9px] font-bold rounded-full transition-all duration-200 shrink-0",
+                "h-6 px-2.5 text-xs font-bold rounded-full transition-all duration-200 shrink-0",
                 isConstantProdEnabled 
-                  ? "bg-success hover:bg-success text-white shadow-[0_0_8px_rgba(16,185,129,0.3)] border-transparent" 
+                  ? "bg-success hover:bg-success text-white border-transparent" 
                   : "text-muted-foreground hover:text-foreground"
               )}
               onClick={() => onToggleConstantProd(biz.id, action.key, !isConstantProdEnabled)}
@@ -560,12 +560,12 @@ function ActionPipeline({
             </Button>
           )}
           {isCooldownActive && (
-            <span className="text-[10px] font-semibold text-warning bg-warning/10 px-2.5 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+            <span className="text-xs font-semibold text-warning bg-warning/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
               <Clock className="h-3 w-3 animate-spin" /> Action active — {timeLeft}s rest.
             </span>
           )}
           {queuedCount > 0 && (
-            <span className="text-[10px] font-semibold text-primary bg-muted/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+            <span className="text-xs font-semibold text-primary bg-muted/10 px-2.5 py-0.5 rounded-full flex items-center gap-1">
               <RefreshCw className="h-3 w-3" /> {queuedCount} en file
             </span>
           )}
@@ -575,7 +575,7 @@ function ActionPipeline({
       <div className="flex items-stretch gap-2.5">
         {/* Left: Ingrédients */}
         <div className="flex flex-1 flex-col gap-2 min-w-0" data-tutorial-id="actions-ingredients">
-          <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50 pl-0.5">Ingrédients</div>
+          <div className="text-xs font-bold text-muted-foreground/50 pl-0.5">Ingrédients</div>
 
           {/* Action Money Cost (if any) */}
           {action.moneyCost > 0 && (
@@ -586,13 +586,13 @@ function ActionPipeline({
               <div className="flex flex-col justify-center h-full flex-1 min-w-0 px-3 py-1 relative text-left gap-1">
                 <div className="flex items-baseline justify-between w-full leading-none pr-3">
                   <div className="flex items-baseline gap-1.5 min-w-0">
-                    <span className="text-[13px] font-bold text-muted-foreground truncate">Frais de production</span>
+                    <span className="text-sm font-bold text-muted-foreground truncate">Frais de production</span>
                   </div>
-                  <span className="text-[13px] font-bold shrink-0 tabular-nums text-warning">
+                  <span className="text-sm font-bold shrink-0 tabular-nums text-warning">
                     {fmt(action.moneyCost)}€
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-1 w-full text-[10.5px] leading-none">
+                <div className="flex items-center justify-between gap-1 w-full text-xs leading-none">
                   <span className="text-muted-foreground/75 truncate font-semibold flex items-center gap-1">
                     Coût fixe
                   </span>
@@ -630,7 +630,7 @@ function ActionPipeline({
         {/* Middle: Produire button */}
         <div className="flex shrink-0 flex-col items-center justify-center gap-2 px-1" data-tutorial-id="actions-produce-button">
           {blockedReason && !running && (!isCooldownActive || isPlayDisabled) && (
-            <div className="flex items-center gap-1 rounded-lg border border-destructive/25 bg-destructive/8 px-2 py-1 text-[9px] font-semibold text-destructive text-center max-w-[72px]">
+            <div className="flex items-center gap-1 rounded-lg border border-destructive/25 bg-destructive/8 px-2 py-1 text-xs font-semibold text-destructive text-center max-w-[72px]">
               <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
               <span className="leading-tight">{blockedReason}</span>
             </div>
@@ -649,14 +649,14 @@ function ActionPipeline({
             {running ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : isCooldownActive && maxQueueSize > 0 && queuedCount < maxQueueSize ? (
-              <Plus className="h-5 w-5 font-black" />
+              <Plus className="h-5 w-5 font-semibold" />
             ) : isCooldownActive && queuedCount >= maxQueueSize ? (
-              <span className="text-[10px] font-black">{timeLeft}s</span>
+              <span className="text-xs font-semibold">{timeLeft}s</span>
             ) : (
               <Play className="h-4 w-4 fill-current" />
             )}
           </button>
-          <span className="text-[9px] text-muted-foreground text-center leading-tight max-w-[72px]">
+          <span className="text-xs text-muted-foreground text-center leading-tight max-w-[72px]">
             {isCooldownActive && maxQueueSize > 0 && queuedCount < maxQueueSize 
               ? "Ajouter à file" 
               : isCooldownActive 
@@ -670,14 +670,14 @@ function ActionPipeline({
           <>
             <PipelineArrow />
             <div className="flex flex-1 flex-col gap-2 min-w-0" data-tutorial-id="actions-stock">
-              <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/50 pl-0.5">Stock</div>
+              <div className="text-xs font-bold text-muted-foreground/50 pl-0.5">Stock</div>
               {action.outputs.map((o) => {
                 const inv = biz.inventories.find((i) => i.resourceType === o.resourceType);
                 if (!inv) return null;
                 return (
                   <div key={o.resourceType} className="flex items-center gap-1.5 w-full">
                     <div className="flex-1 min-w-0 relative">
-                      <div className="absolute -top-1.5 -right-1.5 z-10 rounded-full bg-success px-1.5 py-0.5 text-[9px] font-black tabular-nums text-white shadow-sm border border-success/50 leading-none">
+                      <div className="absolute -top-1.5 -right-1.5 z-10 rounded-full bg-success px-1.5 py-0.5 text-xs font-semibold tabular-nums text-white shadow-sm border border-success/50 leading-none">
                         +{o.quantity}
                       </div>
                       <StockCard inventory={inv} />
@@ -689,7 +689,7 @@ function ActionPipeline({
                       title="Mettre en vente"
                     >
                       <ShoppingCart className="h-4 w-4 mb-0.5" />
-                      <span className="text-[9px] font-bold uppercase tracking-wider">Vendre</span>
+                      <span className="text-xs font-bold ">Vendre</span>
                     </button>
                   </div>
                 );
@@ -790,7 +790,7 @@ function ConstructionPanel({
     return (
       <div className="border-t border-border/40 bg-warning/5 px-4 py-4 space-y-3">
         <div className="flex items-center gap-2.5">
-          <Hammer className="h-4 w-4 text-warning shrink-0 animate-pulse" />
+          <Hammer className="h-4 w-4 text-warning shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-warning">Chantier en cours</p>
             <p className="text-xs text-muted-foreground">Terminé dans <span className="font-mono font-bold text-foreground">{countdown}</span></p>
@@ -815,7 +815,7 @@ function ConstructionPanel({
       <div className="flex items-center gap-2">
         <Hammer className="h-4 w-4 text-warning shrink-0" />
         <p className="text-sm font-semibold text-warning">Plan de construction</p>
-        <span className="ml-auto text-[10px] text-muted-foreground">Choisissez les sources</span>
+        <span className="ml-auto text-xs text-muted-foreground">Choisissez les sources</span>
       </div>
 
       <div className="space-y-2">
@@ -918,7 +918,7 @@ function BusinessCard({
             <h3 className="truncate text-sm font-semibold leading-tight" style={{ color: hex }}>
               {biz.name}
             </h3>
-            <p className="text-[10px] text-muted-foreground leading-tight truncate">
+            <p className="text-xs text-muted-foreground leading-tight truncate">
               {biz.typeLabel}
               {biz.typeKey === 'juterie' && biz.customData && (() => {
                 try {
@@ -1071,7 +1071,7 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
         subtitle={
           <div className="flex items-center gap-2 mt-1">
             <span>Booste l'efficacité et l'automatisation de tes lignes.</span>
-            <span className="inline-flex h-5 items-center rounded-full bg-primary/10 px-2 text-[10px] font-bold text-primary">
+            <span className="inline-flex h-5 items-center rounded-full bg-primary/10 px-2 text-xs font-bold text-primary">
               {totalLevels} / 8 Niveaux
             </span>
           </div>
@@ -1122,13 +1122,13 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-4 min-h-[34px]">
+                  <p className="text-xs text-muted-foreground leading-relaxed mb-4 min-h-[34px]">
                     {currentData?.desc}
                   </p>
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between text-[11px] font-semibold bg-muted/20 border border-border/20 rounded-lg px-3 py-2 mb-3">
+                  <div className="flex items-center justify-between text-xs font-semibold bg-muted/20 border border-border/20 rounded-lg px-3 py-2 mb-3">
                     <span className="text-muted-foreground">Effet actuel</span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-foreground">{currentStat}</span>
@@ -1148,7 +1148,7 @@ function BusinessUpgradesModal({ open, onClose, biz, onBuyUpgrade }: BusinessUpg
                   ) : (
                     <Button
                       size="sm"
-                      className={cn("w-full h-9 text-[11.5px] font-bold text-white transition hover:brightness-110", details.btnBg)}
+                      className={cn("w-full h-9 text-xs font-bold text-white transition hover:brightness-110", details.btnBg)}
                       onClick={() => onBuyUpgrade(biz.id, type, currentLevel + 1)}
                     >
                       Améliorer · {fmt(nextData?.cost ?? 0)}€
@@ -1288,7 +1288,7 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Actions</h2>
+          <h2 className="text-xl font-semibold text-foreground">Actions</h2>
           <p className="text-xs text-muted-foreground">
             {businesses.length} business{businesses.length > 1 ? 'es' : ''} · chaîne de production
           </p>
@@ -1305,7 +1305,7 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
       {data.jobOffers.length > 0 && (
         <Card>
           <CardContent className="px-4 py-3">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 text-xs font-bold text-muted-foreground">
               Contrats en attente ({data.jobOffers.length})
             </p>
             <div className="space-y-2">
@@ -1313,7 +1313,7 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
                 <div key={offer.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/30 bg-muted/20 px-3 py-2">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{offer.business.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {offer.initiatedByRole === 'EMPLOYER' ? offer.employer.username : offer.employee.username} · {offer.salary.toLocaleString('fr-FR')}€/j
                     </p>
                   </div>

@@ -45,7 +45,7 @@ import {
 export type ActivityTabProps = Record<string, unknown>;
 
 // School-level breakdown for the "online by level" chart. Keys match the
-// uppercase values stored in User.schoolLevel; AUTRE catches everything else.
+// values stored in User.schoolLevel; AUTRE catches everything else.
 const LEVEL_CONFIG = [
   { key: 'TERMINALE', label: 'Terminale', color: '#ef4444' },
   { key: 'PREMIERE', label: 'Première', color: '#f59e0b' },
@@ -143,7 +143,7 @@ export function ActivityTab(props: ActivityTabProps) {
               </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-              <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
+              <Card className="border-border/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5 text-primary" />
@@ -153,7 +153,7 @@ export function ActivityTab(props: ActivityTabProps) {
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>{platformStats?.overview.totalUsers ?? '—'} inscrits</p>
                 </CardContent>
               </Card>
-              <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
+              <Card className="border-border/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <Gamepad2 className="h-3.5 w-3.5 text-primary" />
@@ -165,7 +165,7 @@ export function ActivityTab(props: ActivityTabProps) {
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>tous les temps</p>
                 </CardContent>
               </Card>
-              <Card className="border-success/20 bg-gradient-to-br from-success/10 to-success/5">
+              <Card className="border-success/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <Trophy className="h-3.5 w-3.5 text-success" />
@@ -181,7 +181,7 @@ export function ActivityTab(props: ActivityTabProps) {
                   </p>
                 </CardContent>
               </Card>
-              <Card className="border-warning/20 bg-gradient-to-br from-warning/10 to-warning/5">
+              <Card className="border-warning/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <CurrencyIcon type="aura" className="h-3.5 w-3.5" />
@@ -193,7 +193,7 @@ export function ActivityTab(props: ActivityTabProps) {
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
                 </CardContent>
               </Card>
-              <Card className="border-warning/20 bg-gradient-to-br from-warning/10 to-warning/5">
+              <Card className="border-warning/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <CurrencyIcon type="money" className="h-3.5 w-3.5" />
@@ -205,7 +205,7 @@ export function ActivityTab(props: ActivityTabProps) {
                   <p className={cn(TYPOGRAPHY.XS, 'text-muted-foreground/60')}>en circulation</p>
                 </CardContent>
               </Card>
-              <Card className="border-border/20 bg-gradient-to-br from-muted to-muted">
+              <Card className="border-border/20 ">
                 <CardContent className="p-4 space-y-1">
                   <div className="flex items-center gap-1.5">
                     <TrendingUp className="h-3.5 w-3.5 text-primary" />
@@ -335,10 +335,10 @@ export function ActivityTab(props: ActivityTabProps) {
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={moneyDistribution.deciles} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                             <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
+                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: any) => formatBigNumber(value)} width={36} />
                             <RechartsTooltip
                               contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
-                              formatter={(value: number, _name: string, props: any) => [
+                              formatter={(value: any, _name: any, props: any) => [
                                 `${value.toLocaleString('fr-FR')} total · moyenne ${Math.round(props.payload.average).toLocaleString('fr-FR')}`,
                                 'Argent',
                               ]}
@@ -365,10 +365,10 @@ export function ActivityTab(props: ActivityTabProps) {
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={auraDistribution.deciles} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                             <XAxis dataKey="label" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatBigNumber(value)} width={36} />
+                            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(value: any) => formatBigNumber(value)} width={36} />
                             <RechartsTooltip
                               contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
-                              formatter={(value: number, _name: string, props: any) => [
+                              formatter={(value: any, _name: any, props: any) => [
                                 `${value.toLocaleString('fr-FR')} total · moyenne ${Math.round(props.payload.average).toLocaleString('fr-FR')}`,
                                 'Aura',
                               ]}
@@ -482,7 +482,7 @@ export function ActivityTab(props: ActivityTabProps) {
                       tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
-                      tickFormatter={(v: string) => {
+                      tickFormatter={(v: any) => {
                         const d = new Date(v + 'T12:00:00');
                         return `${d.getDate()}/${d.getMonth() + 1}`;
                       }}
@@ -497,8 +497,8 @@ export function ActivityTab(props: ActivityTabProps) {
                     />
                     <RechartsTooltip
                       contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
-                      formatter={(value: number) => [`${value} partie${value !== 1 ? 's' : ''}`, 'Jeux']}
-                      labelFormatter={(label: string) => new Date(label + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+                      formatter={(value: any) => [`${value} partie${value !== 1 ? 's' : ''}`, 'Jeux']}
+                      labelFormatter={(label: any) => new Date(label + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
                     />
                     <Bar dataKey="count" fill="#8b5cf6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
                   </BarChart>
@@ -536,7 +536,7 @@ export function ActivityTab(props: ActivityTabProps) {
                         tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                         axisLine={false}
                         tickLine={false}
-                        tickFormatter={(v: number) => formatBigNumber(v)}
+                        tickFormatter={(v: any) => formatBigNumber(v)}
                       />
                       <YAxis
                         type="category"
@@ -548,7 +548,7 @@ export function ActivityTab(props: ActivityTabProps) {
                       />
                       <RechartsTooltip
                         contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
-                        formatter={(value: number, _name: string, props: any) => [
+                        formatter={(value: any, _name: any, props: any) => [
                           `${value.toLocaleString('fr-FR')} parties · ${(props.payload.wins ?? 0).toLocaleString('fr-FR')} victoires`,
                           'Stats',
                         ]}
@@ -774,7 +774,7 @@ export function ActivityTab(props: ActivityTabProps) {
               ) : activityHistory && activityHistory.data.length > 0 ? (
                 <>
                   {/* Big period title */}
-                  <p className="text-2xl font-bold tracking-tight mb-4 capitalize">
+                  <p className="text-2xl font-bold mb-4 capitalize">
                     {activityPeriod === 'day'
                       ? new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
                       : activityPeriod === 'week'
@@ -1122,7 +1122,7 @@ export function ActivityTab(props: ActivityTabProps) {
                                   {new Date(activeActivity!.cursorTs).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
                                 </p>
                                 {selectedActivity && (
-                                  <p className="text-[10px] text-muted-foreground/70 mt-1">Cliquer à nouveau pour libérer</p>
+                                  <p className="text-xs text-muted-foreground/70 mt-1">Cliquer à nouveau pour libérer</p>
                                 )}
                               </>
                             ) : (
@@ -1262,13 +1262,13 @@ export function ActivityTab(props: ActivityTabProps) {
                             />
                             <RechartsTooltip
                               contentStyle={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)', borderRadius: '0.75rem' }}
-                              formatter={(value: number, name: string) => [
+                              formatter={(value: any, name: any) => [
                                 `${value} joueur${value !== 1 ? 's' : ''}`,
                                 labelKey[name] ?? name,
                               ]}
-                              labelFormatter={(label: number) => new Date(label).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              labelFormatter={(label: any) => new Date(label).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             />
-                            <Legend formatter={(value: string) => labelKey[value] ?? value} wrapperStyle={{ fontSize: '12px' }} />
+                            <Legend formatter={(value: any) => labelKey[value] ?? value} wrapperStyle={{ fontSize: '12px' }} />
                             {visibleLevels.map(level => (
                               <Line
                                 key={level.key}
@@ -1314,7 +1314,7 @@ export function ActivityTab(props: ActivityTabProps) {
                                     ))}
                                   </ul>
                                 ) : (
-                                  <p className="text-[10px] text-muted-foreground/50 pl-4">—</p>
+                                  <p className="text-xs text-muted-foreground/50 pl-4">—</p>
                                 )}
                               </div>
                             );
@@ -1392,7 +1392,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             border: '1px solid var(--border)',
                             borderRadius: '0.75rem',
                           }}
-                          formatter={(value: number, name: string) => [
+                          formatter={(value: any, name: any) => [
                             `${value} joueur${value > 1 ? 's' : ''}`,
                             getPageMetaForPath(name).title,
                           ]}
@@ -1480,7 +1480,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             border: '1px solid var(--border)',
                             borderRadius: '0.75rem',
                           }}
-                          formatter={(value: number, name: string) => [
+                          formatter={(value: any, name: any) => [
                             `${value} action${value > 1 ? 's' : ''}`,
                             gameTypeLabels[name] ?? humanizeUiLabel(name),
                           ]}
@@ -1558,7 +1558,7 @@ export function ActivityTab(props: ActivityTabProps) {
                           axisLine={false}
                           tickLine={false}
                           width={44}
-                          tickFormatter={(value: number) => `${Math.round(value / 60)}m`}
+                          tickFormatter={(value: any) => `${Math.round(value / 60)}m`}
                         />
                         <RechartsTooltip
                           contentStyle={{
@@ -1566,7 +1566,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             border: '1px solid var(--border)',
                             borderRadius: '0.75rem',
                           }}
-                          formatter={(value: number, name: string) => [
+                          formatter={(value: any, name: any) => [
                             formatDurationShort(value),
                             gameTypeLabels[name] ?? humanizeUiLabel(name),
                           ]}

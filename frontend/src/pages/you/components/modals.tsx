@@ -38,8 +38,8 @@ const PICKER_DEFAULT_STYLE = { card: 'border-border/40 bg-muted/10', badge: 'bg-
 function StatRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 py-2">
-      <span className="text-[11px] text-muted-foreground">{label}</span>
-      <span className={cn('text-[11px] font-semibold tabular-nums', accent ?? 'text-foreground')}>{value}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={cn('text-xs font-semibold tabular-nums', accent ?? 'text-foreground')}>{value}</span>
     </div>
   );
 }
@@ -62,11 +62,11 @@ function BusinessTypeDetailPanel({ type }: { type: YouBusinessType }) {
           <Icon className={cn('h-[22px] w-[22px]', style.icon)} />
         </div>
         <p className="font-bold text-foreground">{type.label}</p>
-        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{type.description}</p>
+        <p className="mt-1 text-xs leading-snug text-muted-foreground">{type.description}</p>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
-          <span className={cn('rounded-full px-2 py-0.5 text-[9px] font-semibold', style.badge)}>{type.category}</span>
+          <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', style.badge)}>{type.category}</span>
           {type.level > 1 && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[9px] text-muted-foreground">Niveau {type.level} requis</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Niveau {type.level} requis</span>
           )}
         </div>
       </div>
@@ -79,13 +79,13 @@ function BusinessTypeDetailPanel({ type }: { type: YouBusinessType }) {
         {type.monthlyExpenses > 0 && <StatRow label="Dépenses estimées" value={`${type.monthlyExpenses.toLocaleString('fr-FR')} /mois`} accent="text-destructive" />}
         {produces.length > 0 && (
           <div className="flex items-center justify-between gap-3 py-2">
-            <span className="text-[11px] text-muted-foreground">Production</span>
+            <span className="text-xs text-muted-foreground">Production</span>
             <div className="flex flex-wrap justify-end gap-1">
               {produces.map((r) => {
                 const meta = RESOURCE_META[r];
                 const { Icon: RIcon } = meta;
                 return (
-                  <span key={r} className={cn('flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium', meta.bg, meta.iconColor)}>
+                  <span key={r} className={cn('flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs font-medium', meta.bg, meta.iconColor)}>
                     <RIcon className="h-2.5 w-2.5" />{meta.label}
                   </span>
                 );
@@ -137,7 +137,7 @@ function BusinessTypePickerModal({
             }, {});
             return Object.entries(groups).map(([cat, types]) => (
               <div key={cat} className="mb-4">
-                <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 px-0.5">{cat}</p>
+                <p className="mb-1.5 text-xs font-bold text-muted-foreground/60 px-0.5">{cat}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {types.map((type) => {
                     const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
@@ -170,8 +170,8 @@ function BusinessTypePickerModal({
                             <Icon className={cn('h-[18px] w-[18px] transition-colors', isPreviewing ? style.icon : 'text-foreground/55')} />
                           </div>
                           <div>
-                            <p className="text-[11px] font-semibold leading-tight text-foreground">{type.label}</p>
-                            <p className="mt-0.5 font-mono text-[9px] text-muted-foreground/45">
+                            <p className="text-xs font-semibold leading-tight text-foreground">{type.label}</p>
+                            <p className="mt-0.5 font-mono text-xs text-muted-foreground/45">
                               {type.creationFee > 0 ? type.creationFee.toLocaleString('fr-FR') : 'Gratuit'}
                             </p>
                           </div>
@@ -199,7 +199,7 @@ function BusinessTypePickerModal({
                 type="button"
                 onClick={() => { onSelect(previewType); onClose(); }}
                 data-tutorial-id="business-type-picker-confirm"
-                className="mt-auto w-full rounded-xl py-3 text-[13px] font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                className="mt-auto w-full rounded-xl py-3 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
                 style={{ background: BUSINESS_COLOR_HEX[previewType.key] ?? '#6366f1' }}
               >
                 Choisir · {previewType.label}
@@ -303,7 +303,7 @@ export function CreateBusinessModal({
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="w-full rounded-2xl border border-border/40 bg-muted/10 px-4 py-4 text-left transition-all hover:bg-muted/20"
+            className="w-full rounded-xl border border-border/40 bg-muted/10 px-4 py-4 text-left transition-all hover:bg-muted/20"
             data-tutorial-id="create-business-type"
           >
             {selectedType ? (
@@ -325,7 +325,7 @@ export function CreateBusinessModal({
             )}
           </button>
         </FieldRow>
-        {selectedType ? <div className="rounded-xl border border-border/40 bg-muted/10 p-4"><p className="text-[11px] text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></div> : null}
+        {selectedType ? <div className="rounded-xl border border-border/40 bg-muted/10 p-4"><p className="text-xs text-muted-foreground">Frais de creation: {formatMoney(selectedType.creationFee)} money{selectedType.key === 'bank' ? ' · tresorerie initiale: 0' : ` · capital mini: ${formatMoney(selectedType.minCapital)} money`}</p></div> : null}
         <FieldRow label="Nom">
           <Input
             value={name}
@@ -357,7 +357,7 @@ export function CreateBusinessModal({
         {isJuterie && (
           <FieldRow label="Spécialisation">
             <div className="space-y-2">
-              <p className="text-[11px] text-muted-foreground">Chaque juicerie ne produit qu'un seul type de jus. Choisissez votre spécialité :</p>
+              <p className="text-xs text-muted-foreground">Chaque juicerie ne produit qu'un seul type de jus. Choisissez votre spécialité :</p>
               <div className="grid grid-cols-1 gap-1.5">
                 {JUICE_OPTIONS.map((opt) => (
                   <button
@@ -373,8 +373,8 @@ export function CreateBusinessModal({
                   >
                     <Droplets className={cn('h-4 w-4 shrink-0', juiceSpecialization === opt.value ? 'text-primary' : 'text-muted-foreground')} />
                     <div className="min-w-0 flex-1">
-                      <p className={cn('text-[13px] font-semibold leading-tight', juiceSpecialization === opt.value ? 'text-primary' : 'text-foreground')}>{opt.label}</p>
-                      <p className="text-[10.5px] text-muted-foreground">{opt.desc}</p>
+                      <p className={cn('text-sm font-semibold leading-tight', juiceSpecialization === opt.value ? 'text-primary' : 'text-foreground')}>{opt.label}</p>
+                      <p className="text-xs text-muted-foreground">{opt.desc}</p>
                     </div>
                     {juiceSpecialization === opt.value && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
                   </button>
@@ -545,9 +545,9 @@ export function LoanModal({ open, onClose, business, onSubmitted }: { open: bool
           />
         </FieldRow>
         <div className="grid grid-cols-3 gap-3 rounded-xl border border-border/40 bg-muted/10 p-4">
-          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Taux</p><p className="text-lg font-bold tabular-nums text-warning">{rate}%</p></div>
-          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Remb. / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div>
-          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-destructive">{formatMoney(total)}</p></div>
+          <div><p className="text-xs text-muted-foreground/60">Taux</p><p className="text-lg font-bold tabular-nums text-warning">{rate}%</p></div>
+          <div><p className="text-xs text-muted-foreground/60">Remb. / jour</p><p className="text-lg font-bold tabular-nums">{formatMoney(dailyRepayment)}</p></div>
+          <div><p className="text-xs text-muted-foreground/60">Total estime</p><p className="text-lg font-bold tabular-nums text-destructive">{formatMoney(total)}</p></div>
         </div>
         <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
           {Number(collateralAura || 0) > 0
@@ -589,7 +589,7 @@ export function InvestModal({ open, onClose, business, onSubmitted }: { open: bo
       <AppModal.Body>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={100} /></FieldRow>
       <FieldRow label="Risque"><SelectBox value={riskLevel} onChange={(value) => setRiskLevel(value as 'low' | 'medium' | 'high')}><option value="low">Faible risque</option><option value="medium">Risque modere</option><option value="high">Risque eleve</option></SelectBox></FieldRow>
-      <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/10 p-3 text-center"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Risque</p><p className={cn('text-sm font-bold', selected.color)}>{selected.label}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Min</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.min}%</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Max</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.max}%</p></div></div>
+      <div className="grid grid-cols-3 gap-2 rounded-xl border border-border/40 bg-muted/10 p-3 text-center"><div><p className="text-xs text-muted-foreground/60">Risque</p><p className={cn('text-sm font-bold', selected.color)}>{selected.label}</p></div><div><p className="text-xs text-muted-foreground/60">Min</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.min}%</p></div><div><p className="text-xs text-muted-foreground/60">Max</p><p className={cn('text-sm font-bold', selected.color)}>+{selected.max}%</p></div></div>
       </AppModal.Body>
       <AppModal.Footer>
         <AppModal.Button variant="ghost" onClick={onClose} disabled={submitting}>Annuler</AppModal.Button>
@@ -767,9 +767,9 @@ export function ShareholderProposalModal({ open, onClose, business, onSubmitted 
           </button>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Ta part</p><p className="text-sm font-bold text-warning">{numericSharePercent.toLocaleString('fr-FR')}%</p></div>
-          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Owner restant</p><p className="text-sm font-bold">{Math.max(0, 100 - numericSharePercent).toLocaleString('fr-FR')}%</p></div>
-          <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Base actuelle</p><p className="text-sm font-bold">{formatMoney(business?.treasuryMoney ?? 0)}</p></div>
+          <div><p className="text-xs text-muted-foreground/60">Ta part</p><p className="text-sm font-bold text-warning">{numericSharePercent.toLocaleString('fr-FR')}%</p></div>
+          <div><p className="text-xs text-muted-foreground/60">Owner restant</p><p className="text-sm font-bold">{Math.max(0, 100 - numericSharePercent).toLocaleString('fr-FR')}%</p></div>
+          <div><p className="text-xs text-muted-foreground/60">Base actuelle</p><p className="text-sm font-bold">{formatMoney(business?.treasuryMoney ?? 0)}</p></div>
         </div>
       </div>
       <FieldRow label="Message (optionnel)">
@@ -960,7 +960,7 @@ function TxRow({ tx }: { tx: YouBusinessTransaction }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium">{tx.label}</p>
-        <p className="text-[10px] text-muted-foreground">{new Date(tx.createdAt).toLocaleString('fr-FR')}</p>
+        <p className="text-xs text-muted-foreground">{new Date(tx.createdAt).toLocaleString('fr-FR')}</p>
       </div>
       <p className={cn('shrink-0 text-sm font-bold tabular-nums', isPositive ? 'text-success' : 'text-destructive')}>
         {isPositive ? '+' : ''}{tx.amount.toLocaleString('fr-FR')} €
@@ -1428,7 +1428,7 @@ export function ManageBusinessModal({
                             <div>
                               <p className="text-sm font-semibold">{upgrade.label}</p>
                               <p className="text-xs text-muted-foreground">{upgrade.description}</p>
-                              <p className="mt-1 text-[11px] text-muted-foreground">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 +{upgrade.revenueBonus.toLocaleString('fr-FR')} EUR/mois · +{upgrade.satisfactionBonus} satisfaction
                               </p>
                             </div>
@@ -1619,8 +1619,8 @@ export function ManageBusinessModal({
             {/* Trésorerie */}
             <Card>
               <CardContent className="space-y-4 px-5 py-4">
-                <div className="rounded-2xl border border-success/25 bg-success/10 px-5 py-6 text-center">
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-success/70">Trésorerie</p>
+                <div className="rounded-xl border border-success/25 bg-success/10 px-5 py-6 text-center">
+                  <p className="text-xs text-success/70">Trésorerie</p>
                   <p className="mt-2 text-5xl font-semibold tabular-nums text-success">{business.treasuryMoney.toLocaleString('fr-FR')} €</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -1629,7 +1629,7 @@ export function ManageBusinessModal({
                     { label: 'Revenu mensuel', value: `+${business.monthlyRevenue.toLocaleString('fr-FR')} €` },
                   ].map((entry) => (
                     <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">{entry.label}</p>
+                      <p className="text-xs text-muted-foreground/60">{entry.label}</p>
                       <p className="mt-1 text-sm font-semibold tabular-nums">{entry.value}</p>
                     </div>
                   ))}
@@ -1637,7 +1637,7 @@ export function ManageBusinessModal({
                 <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Capital partage</p>
+                      <p className="text-xs text-muted-foreground/60">Capital partage</p>
                       <p className="mt-1 text-sm font-semibold">{business.isShared ? 'Entreprise partagee' : 'Fondateur seul'}</p>
                     </div>
                     <Pill label={`${business.ownerSharePercent.toFixed(0)}% fondateur`} color="bg-warning/15 text-warning" />
@@ -1726,24 +1726,24 @@ export function ManageBusinessModal({
                                 <p className="text-xs text-muted-foreground">{loan.amount.toLocaleString('fr-FR')} € principal · {loan.interestRate} % · {loan.termDays} jours</p>
                                 <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
-                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Reste du</p>
+                                    <p className="text-xs text-muted-foreground/60">Reste du</p>
                                     <p className="mt-1 text-sm font-semibold text-foreground">{remaining.toLocaleString('fr-FR')} €</p>
                                   </div>
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
-                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Finance client</p>
+                                    <p className="text-xs text-muted-foreground/60">Finance client</p>
                                     <p className="mt-1 text-sm font-semibold text-foreground">{borrowerMoney.toLocaleString('fr-FR')} €</p>
-                                    <p className="text-[11px] text-warning/90">Aura: {borrowerAura.toLocaleString('fr-FR')}</p>
+                                    <p className="text-xs text-warning/90">Aura: {borrowerAura.toLocaleString('fr-FR')}</p>
                                   </div>
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
-                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Echeance</p>
+                                    <p className="text-xs text-muted-foreground/60">Echeance</p>
                                     <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-destructive' : 'text-foreground'}`}>{formatLoanDate(dueDate)}</p>
                                   </div>
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
-                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Temps restant</p>
+                                    <p className="text-xs text-muted-foreground/60">Temps restant</p>
                                     <p className={`mt-1 text-sm font-semibold ${isPastDue ? 'text-destructive' : 'text-foreground'}`}>{isActive ? getLoanTimeLeftLabel(loan) : '-'}</p>
                                   </div>
                                   <div className="rounded-lg bg-background/50 px-3 py-2">
-                                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">Accorde le</p>
+                                    <p className="text-xs text-muted-foreground/60">Accorde le</p>
                                     <p className="mt-1 text-sm font-semibold text-foreground">{formatLoanDate(loan.decidedAt ?? loan.createdAt)}</p>
                                   </div>
                                 </div>
@@ -2094,7 +2094,7 @@ export function ManageTeamModal({
                         <Pill label={{ OWNER: 'Propriétaire', MANAGER: 'Manager', EMPLOYEE: 'Employé' }[member.role] ?? member.role} color="bg-muted/15 text-primary" />
                         {isLawFirm && member.isPrimaryLawyer ? <Pill label="Principal" color="bg-warning/15 text-warning" /> : null}
                       </div>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         {(member.salary ?? 0).toLocaleString('fr-FR')} €/jour
                         {member.specialty ? ` · ${member.specialty}` : ''}
                       </p>
@@ -2224,7 +2224,7 @@ export function MemberEditModal({
 
       {/* Salary */}
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Salaire quotidien</p>
+        <p className="text-xs font-semibold text-muted-foreground/60">Salaire quotidien</p>
         <div className="flex items-center gap-3">
           <Input
             type="number"
@@ -2236,13 +2236,13 @@ export function MemberEditModal({
           />
           <span className="text-sm text-muted-foreground">€ / jour</span>
         </div>
-        <p className="text-[11px] text-muted-foreground/60">Débité quotidiennement depuis la trésorerie.</p>
+        <p className="text-xs text-muted-foreground/60">Débité quotidiennement depuis la trésorerie.</p>
       </div>
 
       {/* Title (non-law-firm) */}
       {!isLawFirm ? (
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Titre / Poste</p>
+          <p className="text-xs font-semibold text-muted-foreground/60">Titre / Poste</p>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -2250,7 +2250,7 @@ export function MemberEditModal({
             placeholder="ex: Caissier principal, Responsable logistique…"
             maxLength={60}
           />
-          <p className="text-[11px] text-muted-foreground/60">Affiché sur la fiche publique de l'entreprise.</p>
+          <p className="text-xs text-muted-foreground/60">Affiché sur la fiche publique de l'entreprise.</p>
         </div>
       ) : null}
 
@@ -2259,21 +2259,21 @@ export function MemberEditModal({
         <div className="space-y-4 rounded-xl border border-border/20 bg-muted/5 px-4 py-4">
           <div className="flex items-center gap-2">
             <Scale className="h-4 w-4 text-primary" />
-            <p className="text-xs font-semibold uppercase tracking-wide text-primary">Profil avocat</p>
+            <p className="text-xs font-semibold text-primary">Profil avocat</p>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Titre</p>
+            <p className="text-xs font-semibold text-muted-foreground/60">Titre</p>
             <SelectBox value={lawRole} onChange={setLawRole}>
               {LAW_ROLES.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}{r.isManager ? ' ★' : ''}</option>
               ))}
             </SelectBox>
-            <p className="text-[11px] text-muted-foreground/60">
+            <p className="text-xs text-muted-foreground/60">
               Les <span className="text-primary">Associé(e)s ★</span> ont accès à la gestion du cabinet (invitations, trésorerie…).
             </p>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Expertise</p>
+            <p className="text-xs font-semibold text-muted-foreground/60">Expertise</p>
             <Input
               value={specialty}
               onChange={(e) => setSpecialty(e.target.value)}
@@ -2281,10 +2281,10 @@ export function MemberEditModal({
               placeholder="ex: Droit pénal, Droit des affaires…"
               maxLength={60}
             />
-            <p className="text-[11px] text-muted-foreground/60">Purement indicatif — affiché sur la fiche publique du cabinet.</p>
+            <p className="text-xs text-muted-foreground/60">Purement indicatif — affiché sur la fiche publique du cabinet.</p>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Ordre d'affichage</p>
+            <p className="text-xs font-semibold text-muted-foreground/60">Ordre d'affichage</p>
             <Input
               type="number"
               min={0}
@@ -2293,7 +2293,7 @@ export function MemberEditModal({
               className="h-10 w-28 text-sm"
               placeholder="0"
             />
-            <p className="text-[11px] text-muted-foreground/60">Les avocats sont triés par ordre croissant, puis alphabétiquement.</p>
+            <p className="text-xs text-muted-foreground/60">Les avocats sont triés par ordre croissant, puis alphabétiquement.</p>
           </div>
           <label className="flex cursor-pointer select-none items-center gap-3 rounded-xl border border-border/40 bg-background/40 px-4 py-3">
             <input
@@ -2304,7 +2304,7 @@ export function MemberEditModal({
             />
             <div>
               <p className="text-sm font-medium text-warning">Avocat principal</p>
-              <p className="text-[11px] text-muted-foreground/70">Mis en avant sur la fiche publique du cabinet.</p>
+              <p className="text-xs text-muted-foreground/70">Mis en avant sur la fiche publique du cabinet.</p>
             </div>
           </label>
         </div>
@@ -2499,7 +2499,7 @@ export function BankAccountModal({
                       <p className={cn('mt-1 text-xl font-bold tabular-nums', isEpargne ? 'text-warning' : 'text-success')}>
                         {account.balance.toLocaleString('fr-FR')} €
                       </p>
-                      {isEpargne ? <p className="mt-0.5 text-[10px] text-warning/70">+0,5 % / jour</p> : <p className="mt-0.5 text-[10px] text-success/70">+0,2 % / jour</p>}
+                      {isEpargne ? <p className="mt-0.5 text-xs text-warning/70">+0,5 % / jour</p> : <p className="mt-0.5 text-xs text-success/70">+0,2 % / jour</p>}
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" variant="outline" className="text-xs" onClick={() => { setActiveAccountId(account.id); setAction('deposit'); setAmount('500'); }}>
@@ -2780,7 +2780,7 @@ export function ManageFormationsModal({
 
       {formOpen ? (
         <div className="space-y-3 rounded-xl border border-border/40 bg-muted/5 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-semibold text-muted-foreground">
             {editingId ? 'Modifier la formation' : 'Nouvelle formation'}
           </p>
           <FieldRow label="Titre">
@@ -3064,7 +3064,7 @@ export function FormationCatalogModal({
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                  <div className="space-y-1.5 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <CalendarDays className="h-3.5 w-3.5" />
                       <span>Publie le {new Date(product.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
@@ -3095,7 +3095,7 @@ export function FormationCatalogModal({
                       type="button"
                       onClick={() => onShowProductReviews?.(product.id)}
                       disabled={!onShowProductReviews}
-                      className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-2 py-0.5 text-[11px] font-medium text-warning transition-colors hover:bg-muted/20 disabled:pointer-events-none disabled:opacity-50"
+                      className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-2 py-0.5 text-xs font-medium text-warning transition-colors hover:bg-muted/20 disabled:pointer-events-none disabled:opacity-50"
                     >
                       <Star className="h-3 w-3 fill-warning" />
                       <span>{product.avgRating?.toFixed(1) ?? '--'}</span>
@@ -3107,12 +3107,12 @@ export function FormationCatalogModal({
                           type="button"
                           onClick={() => onRateProduct?.(product.id)}
                           disabled={!onRateProduct}
-                          className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/20 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                          className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-muted/10 px-1.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/20 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
                       ) : hasPurchased ? (
-                        <span className="text-[10px] text-muted-foreground/60">Note dispo après consultation</span>
+                        <span className="text-xs text-muted-foreground/60">Note dispo après consultation</span>
                       ) : null
                     ) : null}
                   </div>
@@ -3183,7 +3183,7 @@ function MenuItemImagePicker({ value, onChange }: { value: string; onChange: (ur
           <button
             type="button"
             onClick={() => onChange('')}
-            className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center text-[10px]"
+            className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center text-xs"
           >
             <X className="h-3 w-3" />
           </button>

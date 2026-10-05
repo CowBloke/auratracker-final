@@ -287,7 +287,7 @@ function DjSkinCard({
 function SectionHeading({ title, aside }: { title: string; aside?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-4">
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      <h2 className="text-lg font-semibold">{title}</h2>
       <Separator className="flex-1" />
       {aside}
     </div>

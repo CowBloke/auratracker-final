@@ -75,8 +75,8 @@ function TaxBracketsSection() {
             <div className="divide-y divide-border/30">
               {[...Array(2)].map((_, i) => (
                 <div key={i} className="flex items-center justify-between py-4 gap-4">
-                  <div className="h-4 w-32 rounded bg-muted animate-pulse" />
-                  <div className="h-5 w-16 rounded bg-muted animate-pulse" />
+                  <div className="h-4 w-32 rounded bg-muted" />
+                  <div className="h-5 w-16 rounded bg-muted" />
                 </div>
               ))}
             </div>
@@ -732,7 +732,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-xs font-semibold">{src}</p>
-                    {cap && <span className="text-[10px] text-warning border border-warning/30 rounded px-1">Plafonné</span>}
+                    {cap && <span className="text-xs text-warning border border-warning/30 rounded px-1">Plafonné</span>}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{detail}</p>
                 </div>
@@ -1157,11 +1157,11 @@ const clanGuideSubsections: TutorialSubsection[] = [
             ].map(({ icon: Icon, color, title, desc, limit }) => (
               <div key={title} className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <span className={cn('flex h-6 w-6 items-center justify-center rounded-md text-[11px]', color)}>
+                  <span className={cn('flex h-6 w-6 items-center justify-center rounded-md text-xs', color)}>
                     <Icon className="h-3 w-3" />
                   </span>
                   <p className="text-xs font-semibold">{title}</p>
-                  <span className="ml-auto text-[10px] text-muted-foreground/60 border border-border/40 rounded px-1.5">{limit}</span>
+                  <span className="ml-auto text-xs text-muted-foreground/60 border border-border/40 rounded px-1.5">{limit}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">{desc}</p>
               </div>
@@ -1437,7 +1437,7 @@ function TutorialsTab() {
                   {i + 1}
                 </div>
                 {i === 0 && (
-                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">Recommandé</span>
+                  <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">Recommandé</span>
                 )}
               </div>
               <div className="space-y-1">
@@ -1481,7 +1481,7 @@ function TutorialsTab() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium leading-5">{guide.title}</p>
-                        {guide.tag && <span className="text-[10px] text-muted-foreground/60">{guide.tag} · Bientôt</span>}
+                        {guide.tag && <span className="text-xs text-muted-foreground/60">{guide.tag} · Bientôt</span>}
                       </div>
                     </div>
                   </div>

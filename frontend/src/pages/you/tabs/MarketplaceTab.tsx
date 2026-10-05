@@ -39,7 +39,7 @@ function ResourcePill({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold transition',
+        'inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition',
         active
           ? cn('border-border bg-foreground text-background')
           : 'border-border/40 bg-background/60 text-muted-foreground hover:text-foreground hover:border-border',
@@ -155,7 +155,7 @@ function CreateListingModal({
       <button
         type="button"
         onClick={handleOpen}
-        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-success/40 bg-success/5 px-4 py-3 text-[13px] font-semibold text-success transition hover:border-success/60 hover:bg-success/10"
+        className="flex w-full items-center gap-3 rounded-xl border border-dashed border-success/40 bg-success/5 px-4 py-3 text-sm font-semibold text-success transition hover:border-success/60 hover:bg-success/10"
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-success/20 bg-success/15">
           <Tag className="h-4 w-4" />
@@ -175,7 +175,7 @@ function CreateListingModal({
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">1. Business source</label>
+              <label className="text-xs font-bold text-muted-foreground ml-0.5">1. Business source</label>
               <Select value={businessId} onValueChange={handleBusinessChange}>
                 <SelectTrigger className="h-10 text-sm font-semibold">
                   <SelectValue placeholder="Choisir…" />
@@ -189,7 +189,7 @@ function CreateListingModal({
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5 flex items-center justify-between">
+              <label className="text-xs font-bold text-muted-foreground ml-0.5 flex items-center justify-between">
                 <span>2. Produit à vendre</span>
                 {inventoryLoading && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
               </label>
@@ -229,20 +229,20 @@ function CreateListingModal({
           </div>
 
           {resourceType && (
-            <div className={cn("rounded-2xl border p-4 shadow-sm", meta?.bg ? meta.bg.replace('bg-', 'border-').replace('/15', '/30') : 'border-border/40', meta?.bg ?? 'bg-muted/10')}>
+            <div className={cn("rounded-xl border p-4 shadow-sm", meta?.bg ? meta.bg.replace('bg-', 'border-').replace('/15', '/30') : 'border-border/40', meta?.bg ?? 'bg-muted/10')}>
               <div className="flex items-center gap-2 mb-3">
                 <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg shadow-sm', meta?.bg ? meta.bg.replace('/15', '/30') : 'bg-muted/40')}>
                   <ResourceIcon className={cn("h-4 w-4", meta?.iconColor)} />
                 </span>
                 <span className="font-bold text-foreground">{resourceLabel(resourceType)}</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground ml-auto">Stats du marché</span>
+                <span className="text-xs font-bold text-muted-foreground ml-auto">Stats du marché</span>
               </div>
               
               {stats ? (
                 <div className="grid grid-cols-1 gap-2">
                   <div className="bg-background/80 rounded-xl p-3 border border-border/50 flex items-center justify-between px-4 shadow-sm">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Prix moyen global actuel</div>
-                    <div className="font-black text-foreground text-[14px]">{fmtDec(stats.avg)}€/u</div>
+                    <div className="text-xs font-bold text-muted-foreground">Prix moyen global actuel</div>
+                    <div className="font-semibold text-foreground text-sm">{fmtDec(stats.avg)}€/u</div>
                   </div>
                 </div>
               ) : (
@@ -256,8 +256,8 @@ function CreateListingModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 relative">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">3. Quantité</label>
-                <span className="text-[10px] font-bold text-muted-foreground">Max: {maxQty} unités</span>
+                <label className="text-xs font-bold text-muted-foreground ml-0.5">3. Quantité</label>
+                <span className="text-xs font-bold text-muted-foreground">Max: {maxQty} unités</span>
               </div>
               <Input
                 type="number" min={1} max={maxQty} value={quantity}
@@ -267,7 +267,7 @@ function CreateListingModal({
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">4. Prix unitaire</label>
+              <label className="text-xs font-bold text-muted-foreground ml-0.5">4. Prix unitaire</label>
               <Input
                 type="number" min={1} value={unitPrice}
                 onChange={(e) => setUnitPrice(Math.max(1, Number(e.target.value)))}
@@ -280,7 +280,7 @@ function CreateListingModal({
         <AppModal.Footer left={
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground">Total estimé :</span>
-            <span className="text-sm font-black text-success">{fmt(quantity * unitPrice)}€</span>
+            <span className="text-sm font-semibold text-success">{fmt(quantity * unitPrice)}€</span>
           </div>
         }>
           <AppModal.Button variant="ghost" onClick={() => setOpen(false)}>Annuler</AppModal.Button>
@@ -326,7 +326,7 @@ function BuyFlow({
     <div className="flex items-center gap-2">
       {ownedBusinesses.length > 1 && (
         <Select value={targetId} onValueChange={setTargetId}>
-          <SelectTrigger className="h-8 w-[130px] text-[11px]">
+          <SelectTrigger className="h-8 w-[130px] text-xs">
             <SelectValue placeholder="Business…" />
           </SelectTrigger>
           <SelectContent>
@@ -344,7 +344,7 @@ function BuyFlow({
         >
           <Minus className="h-3 w-3" />
         </button>
-        <span className="min-w-[1.5rem] text-center text-[13px] font-bold tabular-nums text-foreground">{qty}</span>
+        <span className="min-w-[1.5rem] text-center text-sm font-bold tabular-nums text-foreground">{qty}</span>
         <button
           type="button"
           onClick={() => setQty((q) => Math.min(listing.quantity, q + 1))}
@@ -357,7 +357,7 @@ function BuyFlow({
         type="button"
         onClick={() => void buy()}
         disabled={loading}
-        className="flex items-center gap-1.5 rounded-lg border-none bg-success px-3 py-1.5 text-[12.5px] font-bold text-[#06281c] shadow-[0_2px_8px_-2px_rgba(52,211,153,0.5)] transition hover:bg-success disabled:opacity-60"
+        className="flex items-center gap-1.5 rounded-lg border-none bg-success px-3 py-1.5 text-xs font-bold text-[#06281c] transition hover:bg-success disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShoppingCart className="h-3.5 w-3.5" />}
         Acheter · {fmt(total)}€
@@ -405,7 +405,7 @@ function ItemBuyFlow({ listing, onBought }: { listing: YouResourceMarketListing;
   return (
     <div className="flex items-center gap-2">
       {effectLabel && (
-        <span className="rounded-full bg-muted/10 px-2 py-0.5 text-[10px] font-bold text-primary border border-border/20">
+        <span className="rounded-full bg-muted/10 px-2 py-0.5 text-xs font-bold text-primary border border-border/20">
           {effectLabel}
         </span>
       )}
@@ -413,7 +413,7 @@ function ItemBuyFlow({ listing, onBought }: { listing: YouResourceMarketListing;
         type="button"
         onClick={() => void buy()}
         disabled={loading}
-        className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[12.5px] font-bold text-white shadow-[0_2px_8px_-2px_rgba(236,72,153,0.5)] transition hover:bg-muted disabled:opacity-60"
+        className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-muted disabled:opacity-60"
       >
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
         Acheter · {fmt(listing.unitPrice)}€
@@ -454,12 +454,12 @@ function ItemListingRow({ listing, onCancelled, onBought }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground leading-tight">
           {def?.name ?? resourceLabel(listing.resourceType)}
-          {listing.mine && <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-warning">toi</span>}
+          {listing.mine && <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-xs font-bold text-warning">toi</span>}
         </div>
-        <div className="text-[10.5px] text-muted-foreground">{listing.businessName} · {listing.sellerName}</div>
+        <div className="text-xs text-muted-foreground">{listing.businessName} · {listing.sellerName}</div>
       </div>
       <div className="text-right">
-        <div className="text-[13px] font-bold tabular-nums">{listing.quantity} u. dispo</div>
+        <div className="text-sm font-bold tabular-nums">{listing.quantity} u. dispo</div>
       </div>
       <div className="flex items-center gap-2">
         {listing.mine ? (
@@ -467,7 +467,7 @@ function ItemListingRow({ listing, onCancelled, onBought }: {
             type="button"
             onClick={() => void cancel()}
             disabled={cancelling}
-            className="flex items-center gap-1.5 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-1.5 text-[12px] font-semibold text-destructive transition hover:bg-destructive/15 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-1.5 text-xs font-semibold text-destructive transition hover:bg-destructive/15 disabled:opacity-50"
           >
             {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             Retirer
@@ -531,10 +531,10 @@ function ListingRow({
           <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground leading-tight">
             {resourceLabel(listing.resourceType)}
             {listing.mine && (
-              <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-warning">toi</span>
+              <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-xs font-bold text-warning">toi</span>
             )}
           </div>
-          <div className="text-[10.5px] text-muted-foreground truncate">
+          <div className="text-xs text-muted-foreground truncate">
             {listing.businessName} · {listing.sellerName}
           </div>
         </div>
@@ -542,29 +542,29 @@ function ListingRow({
 
       {/* Qty */}
       <div className="text-right">
-        <div className="text-[15px] font-bold tabular-nums text-foreground leading-tight">{fmt(listing.quantity)}</div>
-        <div className="text-[10px] text-muted-foreground">unités</div>
+        <div className="text-base font-bold tabular-nums text-foreground leading-tight">{fmt(listing.quantity)}</div>
+        <div className="text-xs text-muted-foreground">unités</div>
       </div>
 
       {/* Unit price + flag */}
       <div className="text-right">
         <div className="flex items-baseline gap-1.5 justify-end">
-          <span className="text-[15px] font-bold tabular-nums text-foreground leading-tight">{fmtDec(listing.unitPrice)}€/u</span>
+          <span className="text-base font-bold tabular-nums text-foreground leading-tight">{fmtDec(listing.unitPrice)}€/u</span>
           {priceFlag && (
-            <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide', priceFlag.cls)}>
+            <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold ', priceFlag.cls)}>
               {priceFlag.label}
             </span>
           )}
         </div>
-        <div className="text-[10px] text-muted-foreground tabular-nums">total {fmt(listing.quantity * listing.unitPrice)}€</div>
+        <div className="text-xs text-muted-foreground tabular-nums">total {fmt(listing.quantity * listing.unitPrice)}€</div>
       </div>
 
       {/* Avg Price */}
       <div className="flex items-center gap-2">
         {stats && (
           <div className="bg-muted/30 px-2.5 py-1.5 rounded-lg border border-border/40 shadow-sm">
-            <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground leading-tight mb-0.5">Prix moyen</div>
-            <div className="text-[12px] font-black text-foreground">{fmtDec(stats.avg)}€/u</div>
+            <div className="text-xs font-bold text-muted-foreground leading-tight mb-0.5">Prix moyen</div>
+            <div className="text-xs font-semibold text-foreground">{fmtDec(stats.avg)}€/u</div>
           </div>
         )}
       </div>
@@ -576,7 +576,7 @@ function ListingRow({
             type="button"
             onClick={() => void cancel()}
             disabled={cancelling}
-            className="flex items-center gap-1.5 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-1.5 text-[12px] font-semibold text-destructive transition hover:bg-destructive/15 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-1.5 text-xs font-semibold text-destructive transition hover:bg-destructive/15 disabled:opacity-50"
           >
             {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
             Retirer
@@ -593,7 +593,7 @@ function ListingRow({
 function ColumnHeaders() {
   return (
     <div
-      className="grid border-b border-border/30 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground"
+      className="grid border-b border-border/30 px-4 py-2 text-xs font-bold text-muted-foreground"
       style={{ gridTemplateColumns: '1fr auto auto auto auto' }}
     >
       <span>Ressource · vendeur</span>
@@ -687,7 +687,7 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
       {/* Page header */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Salle de marché</h2>
+          <h2 className="text-xl font-semibold text-foreground">Salle de marché</h2>
           <p className="text-xs text-muted-foreground">
             {listings.length} annonce{listings.length > 1 ? 's' : ''} actives
           </p>
@@ -719,7 +719,7 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
               type="button"
               onClick={() => setTab(t)}
               className={cn(
-                'rounded-md px-3 py-1.5 text-[12px] font-semibold transition',
+                'rounded-md px-3 py-1.5 text-xs font-semibold transition',
                 tab === t ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -745,7 +745,7 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
             <button
               type="button"
               onClick={() => setFilterResource('')}
-              className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border/40 bg-background/60 px-2.5 text-[11px] font-semibold text-muted-foreground transition hover:text-foreground"
+              className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border/40 bg-background/60 px-2.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
             >
               <X className="h-2.5 w-2.5" /> Tout
             </button>
@@ -779,9 +779,9 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Marché des Items</span>
+                <span className="text-xs font-bold text-primary">Marché des Items</span>
                 <div className="flex-1 border-t border-border/20" />
-                <span className="text-[10px] text-muted-foreground">{filteredItems.length} annonce{filteredItems.length > 1 ? 's' : ''}</span>
+                <span className="text-xs text-muted-foreground">{filteredItems.length} annonce{filteredItems.length > 1 ? 's' : ''}</span>
               </div>
               <Card className="overflow-hidden">
                 <div>
@@ -804,9 +804,9 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
               {filteredItems.length > 0 && (
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-3.5 w-3.5 text-success" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-success">Marché des Ressources</span>
+                  <span className="text-xs font-bold text-success">Marché des Ressources</span>
                   <div className="flex-1 border-t border-success/20" />
-                  <span className="text-[10px] text-muted-foreground">{filteredResources.length} annonce{filteredResources.length > 1 ? 's' : ''}</span>
+                  <span className="text-xs text-muted-foreground">{filteredResources.length} annonce{filteredResources.length > 1 ? 's' : ''}</span>
                 </div>
               )}
               <Card className="overflow-hidden">

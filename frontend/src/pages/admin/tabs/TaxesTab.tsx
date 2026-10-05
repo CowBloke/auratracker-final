@@ -63,7 +63,7 @@ export function TaxesTab(props: TaxesTabProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-xl border border-border/40 overflow-hidden bg-card divide-y divide-border/30">
-              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-4 py-3 text-xs font-semibold text-muted-foreground">
                 <div>Seuil minimum</div>
                 <div>Taux (%)</div>
                 <div className="w-10" />

@@ -91,7 +91,7 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
     >
       <div
         className={cn(
-          'overflow-hidden rounded-2xl border border-border/60 bg-background/95 shadow-2xl backdrop-blur',
+          'overflow-hidden rounded-xl border border-border/60 bg-background/95 ',
           minimized ? 'w-56' : 'w-[22rem]'
         )}
       >
@@ -104,7 +104,7 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
             <div className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted">
               <MessageCircle className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 flex items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-white">
+                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 flex items-center justify-center rounded-full bg-destructive text-xs font-medium text-white">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
@@ -158,7 +158,7 @@ export default function PartyChatFloating({ rightOffset }: PartyChatFloatingProp
                             usernameColor={partyMessage.usernameColor}
                           />
                         </span>
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-xs text-muted-foreground">
                           {new Date(partyMessage.timestamp).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit',

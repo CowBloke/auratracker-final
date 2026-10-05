@@ -562,7 +562,7 @@ export default function ChatSidebar() {
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">{t('chat_title')}</span>
             {unreadCount > 0 && (
-              <span className="px-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+              <span className="px-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-white">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -667,7 +667,7 @@ export default function ChatSidebar() {
                           aria-hidden="true"
                         />
                         <span className="relative z-10 truncate text-xs">{option.text}</span>
-                        <span className="relative z-10 ml-3 shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                        <span className="relative z-10 ml-3 shrink-0 text-xs text-muted-foreground tabular-nums">
                           {option.votes} ({percent}%)
                         </span>
                       </Button>
@@ -698,7 +698,7 @@ export default function ChatSidebar() {
                     size="sm"
                     onClick={handleLoadOlderMessages}
                     disabled={isLoadingOlderMessages}
-                    className="h-8 rounded-full border-border/60 bg-background/95 px-3 text-xs shadow-sm backdrop-blur"
+                    className="h-8 rounded-full border-border/60 bg-background/95 px-3 text-xs shadow-sm"
                   >
                     {isLoadingOlderMessages ? (
                       <>
@@ -733,7 +733,7 @@ export default function ChatSidebar() {
                     {msg.id === firstUnreadMessageId && !isAtBottom && (
                       <div className="my-2 flex items-center gap-2 px-1">
                         <div className="h-px flex-1 bg-border/70" />
-                        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <span className="text-xs font-medium text-muted-foreground">
                           {t('chat_unread_label')}
                         </span>
                         <div className="h-px flex-1 bg-border/70" />
@@ -798,7 +798,7 @@ export default function ChatSidebar() {
                               onClick={() => pinMessage(msg.id, !msg.pinned)}
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 text-[10px] text-muted-foreground/60 hover:text-foreground"
+                              className="h-6 w-6 text-xs text-muted-foreground/60 hover:text-foreground"
                               title={msg.pinned ? t('chat_unpin') : t('chat_pin')}
                             >
                               {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
@@ -883,7 +883,7 @@ export default function ChatSidebar() {
                               <TooltipProvider delayDuration={200}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
+                                    <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-xs font-semibold text-muted-foreground cursor-help">
                                       {t('chat_top_money_badge')}
                                     </span>
                                   </TooltipTrigger>
@@ -902,7 +902,7 @@ export default function ChatSidebar() {
                               <TooltipProvider delayDuration={200}>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-[9px] font-semibold text-muted-foreground cursor-help">
+                                    <span className="inline-flex min-w-6 items-center justify-center rounded-full border border-border/60 px-1.5 text-xs font-semibold text-muted-foreground cursor-help">
                                       {t('chat_top_aura_badge')}
                                     </span>
                                   </TooltipTrigger>
@@ -919,7 +919,7 @@ export default function ChatSidebar() {
                             )}
                           </div>
                         )}
-                        <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                        <span className="text-xs text-muted-foreground/60 tabular-nums">
                           {formatTime(msg.timestamp)}
                         </span>
                         {msg.pinned && (
@@ -968,7 +968,7 @@ export default function ChatSidebar() {
                             <button
                               key={`${msg.id}-${reaction.emoji}`}
                               type="button"
-                              className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground"
+                              className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-xs text-muted-foreground"
                               title={getReactionUsersLabel(reaction.users)}
                               aria-label={getReactionUsersLabel(reaction.users)}
                               onClick={() => openReactionUsers(msg, reaction)}
@@ -1128,7 +1128,7 @@ export default function ChatSidebar() {
                   </div>
                 )}
                 {showMentionList && (
-                  <div className="absolute bottom-full z-50 mb-2 w-full rounded-md border border-border/60 bg-background/95 shadow-lg">
+                  <div className="absolute bottom-full z-50 mb-2 w-full rounded-md border border-border/60 bg-background/95">
                     <div className="max-h-40 overflow-auto py-1">
                       {mentionCandidates.map((candidate, index) => (
                         <Button
@@ -1232,7 +1232,7 @@ export default function ChatSidebar() {
               rows={4}
               className="min-h-[96px] resize-none text-xs bg-transparent border-border/50 py-2"
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {pollOptionsPreview.length} {t('chat_poll_option')}{pollOptionsPreview.length > 1 ? 's' : ''} {t('chat_poll_detected')}{pollOptionsPreview.length > 1 ? 's' : ''}
             </p>
           </div>
