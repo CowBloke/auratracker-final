@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Axe, AlertTriangle, Check, ChevronDown, ChevronUp, Crown, History, Landmark, Loader2, LogOut, Lock, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Target, Trash2, UserX, X, LayoutGrid, Layout } from 'lucide-react';
+import { Axe, AlertTriangle, Check, ChevronDown, ChevronUp, Crown, History, Landmark, Loader2, LogOut, Lock, Megaphone, MessageSquare, Package, Pencil, Plus, Send, Settings2, Shield, Sparkles, Swords, Target, Trash2, UserX, UserPlus, X, LayoutGrid, Layout } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,16 +26,26 @@ import {
 import { MemoryGame } from '@/components/clans/war-games/MemoryGame';
 import { BombDropGame } from '@/components/clans/war-games/BombDropGame';
 import { NavalWarfareGame } from '@/components/clans/war-games/NavalWarfareGame';
-import { PageShell } from '@/components/layout/PageShell';
-import { CenteredSkeletonCard, ListSkeleton } from '@/components/ui/loading-skeletons';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from '@/components/ui/item';
+import { Progress } from '@/components/ui/progress';
+import { ColorSwatchPicker } from '@/components/shared/ColorSwatchPicker';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
@@ -44,7 +54,6 @@ import { ClanTag, ClanTagStyle, DEFAULT_CLAN_TAG_STYLE, getClanTagBackground, pa
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
 import { toast } from 'sonner';
-import { SPACING, TYPOGRAPHY } from '@/lib/design-system';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { resolveImageUrl } from '@/lib/images';
 import { cn } from '@/lib/utils';
@@ -71,28 +80,25 @@ import {
   getWarResultBadge,
 } from './clans/war-utils';
 
-const panelClassName = 'rounded-2xl border border-border/50 bg-background shadow-none';
-const mutedPanelClassName = 'rounded-2xl border border-border/50 bg-muted/15 shadow-none';
-
 const BankContributionRow = ({ entry }: { entry: ClanBankContribution }) => (
-  <div className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
-    <div className="flex min-w-0 items-center gap-3">
-      <Avatar className="h-9 w-9">
+  <Item size="sm" variant="outline">
+    <ItemMedia>
+      <Avatar className="size-9">
         <AvatarImage src={resolveImageUrl(entry.user.profilePicture)} alt={entry.user.username} />
         <AvatarFallback>{getAvatarFallback(entry.user.username)}</AvatarFallback>
       </Avatar>
-      <div className="min-w-0">
-        <div className="text-sm font-medium">
-          <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
-        </div>
-        <div className="text-xs text-muted-foreground">{formatDate(entry.createdAt)}</div>
-      </div>
-    </div>
-    <div className="text-right">
-      <div className="text-sm font-semibold text-success">{formatSignedValue(entry.amount)}</div>
-      <div className="text-xs text-muted-foreground">ajoutés à la banque</div>
-    </div>
-  </div>
+    </ItemMedia>
+    <ItemContent>
+      <ItemTitle>
+        <UsernameDisplay username={entry.user.username} usernameColor={entry.user.usernameColor} />
+      </ItemTitle>
+      <ItemDescription>{formatDate(entry.createdAt)}</ItemDescription>
+    </ItemContent>
+    <ItemActions className="flex-col items-end gap-0">
+      <span className="text-sm font-semibold text-success">{formatSignedValue(entry.amount)}</span>
+      <span className="text-xs text-muted-foreground">ajoutés à la banque</span>
+    </ItemActions>
+  </Item>
 );
 
 const SectionTitle = ({
@@ -105,21 +111,34 @@ const SectionTitle = ({
   action?: React.ReactNode;
 }) => (
   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-    <div className="space-y-1">
-      <h2 className="text-base font-medium tracking-tight">{title}</h2>
+    <div className="flex flex-col gap-1">
+      <h2 className="text-base font-semibold tracking-tight">{title}</h2>
       {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
     </div>
     {action ? <div className="flex items-center gap-2">{action}</div> : null}
   </div>
 );
 
+const ClanStat = ({ label, value }: { label: string; value: string }) => (
+  <Card className="gap-1 py-4">
+    <CardHeader className="px-4">
+      <CardDescription>{label}</CardDescription>
+      <CardTitle className="text-base tabular-nums">{value}</CardTitle>
+    </CardHeader>
+  </Card>
+);
+
 const ClanEffectBadge = ({ effect }: { effect: ClanActiveEffect }) => (
-  <div
-    className="flex h-10 w-10 items-center justify-center rounded-full border border-success/25 bg-success/10 text-success shadow-sm"
-    title={`${effect.name} • +${effect.value}%${effect.activeUntil ? ` • ${formatEffectCooldown(effect)}` : ""}`}
-  >
-    {effect.type === 'CLAN_GAME_MONEY_BOOST' ? <CurrencyIcon type="money" className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-  </div>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Badge variant="success" className="size-9 justify-center rounded-full p-0">
+        {effect.type === 'CLAN_GAME_MONEY_BOOST' ? <CurrencyIcon type="money" className="size-4" /> : <Sparkles className="size-4" />}
+      </Badge>
+    </TooltipTrigger>
+    <TooltipContent>
+      {`${effect.name} • +${effect.value}%${effect.activeUntil ? ` • ${formatEffectCooldown(effect)}` : ''}`}
+    </TooltipContent>
+  </Tooltip>
 );
 
 const UPGRADE_ICONS: Record<string, string> = { FORTRESS: '🏰', ARMORY: '⚔️', BANNER: '🚩' };
@@ -130,26 +149,19 @@ const UPGRADE_EFFECTS: Record<string, (level: number) => string> = {
 };
 
 const UpgradeRow = ({ defense }: { defense: ClanWarDefenseState }) => (
-  <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/15 px-3 py-2.5">
-    <span className="text-lg">{UPGRADE_ICONS[defense.type] ?? '🏛️'}</span>
-    <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">{defense.label}</span>
-        <div className="flex gap-0.5">
-          {[1, 2, 3].map((lvl) => (
-            <div
-              key={lvl}
-              className={cn('h-1.5 w-4 rounded-full transition-colors', defense.level >= lvl ? 'bg-primary' : 'bg-muted')}
-            />
-          ))}
-        </div>
-      </div>
-      <p className="text-xs text-muted-foreground">{UPGRADE_EFFECTS[defense.type]?.(defense.level) ?? ''}</p>
-    </div>
-    <span className={cn('text-xs font-mono tabular-nums shrink-0', defense.level === 0 ? 'text-muted-foreground/50' : 'text-foreground')}>
-      {defense.level}/3
-    </span>
-  </div>
+  <Item size="sm" variant="outline">
+    <ItemMedia variant="icon">{UPGRADE_ICONS[defense.type] ?? '🏛️'}</ItemMedia>
+    <ItemContent>
+      <ItemTitle>{defense.label}</ItemTitle>
+      <ItemDescription>{UPGRADE_EFFECTS[defense.type]?.(defense.level) ?? ''}</ItemDescription>
+      <Progress value={(defense.level / 3) * 100} className="mt-1 max-w-32" />
+    </ItemContent>
+    <ItemActions>
+      <Badge variant={defense.level === 0 ? 'outline' : 'secondary'} className="tabular-nums">
+        {defense.level}/3
+      </Badge>
+    </ItemActions>
+  </Item>
 );
 
 const WarMemberRow = ({
@@ -163,44 +175,46 @@ const WarMemberRow = ({
   const didSupport = member.hasCompletedSupport;
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-muted/15 p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={resolveImageUrl(member.user.profilePicture)} alt={member.user.username} />
-            <AvatarFallback>{getAvatarFallback(member.user.username)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-medium">
-              <UsernameDisplay username={member.user.username} usernameColor={member.user.usernameColor} />
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              {showClanName ? <span>{member.clanName}</span> : null}
-              <span>{member.totalCombatPoints} pts combat</span>
-              <span>{member.fortificationLevelsAdded} niv. défense</span>
+    <Card className="gap-3 py-4">
+      <CardHeader className="px-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar className="size-10">
+              <AvatarImage src={resolveImageUrl(member.user.profilePicture)} alt={member.user.username} />
+              <AvatarFallback>{getAvatarFallback(member.user.username)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <CardTitle className="truncate text-sm">
+                <UsernameDisplay username={member.user.username} usernameColor={member.user.usernameColor} />
+              </CardTitle>
+              <CardDescription className="flex flex-wrap items-center gap-2 text-xs">
+                {showClanName ? <span>{member.clanName}</span> : null}
+                <span>{member.totalCombatPoints} pts combat</span>
+                <span>{member.fortificationLevelsAdded} niv. défense</span>
+              </CardDescription>
             </div>
           </div>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <Badge variant={didCombat ? 'secondary' : 'outline'}>{didCombat ? 'Combat fait' : 'Combat manquant'}</Badge>
+            <Badge variant={didSupport ? 'secondary' : 'outline'}>{didSupport ? 'Support fait' : 'Support manquant'}</Badge>
+          </div>
         </div>
-        <div className="flex flex-wrap justify-end gap-1.5">
-          <Badge variant={didCombat ? 'secondary' : 'outline'}>{didCombat ? 'Combat fait' : 'Combat manquant'}</Badge>
-          <Badge variant={didSupport ? 'secondary' : 'outline'}>{didSupport ? 'Support fait' : 'Support manquant'}</Badge>
+      </CardHeader>
+      <CardContent className="grid gap-2 px-4 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-md border px-2.5 py-2">
+          Bombes : <span className="font-medium text-foreground">{member.bombRuns}</span> • {member.bombPoints} pts
         </div>
-      </div>
-      <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border/40 bg-background/60 px-2.5 py-2">
-          Bombes: <span className="font-medium text-foreground">{member.bombRuns}</span> • {member.bombPoints} pts
+        <div className="rounded-md border px-2.5 py-2">
+          Naval : <span className="font-medium text-foreground">{member.navalShotsUsed}</span> tirs • {member.navalHits} touches
         </div>
-        <div className="rounded-xl border border-border/40 bg-background/60 px-2.5 py-2">
-          Naval: <span className="font-medium text-foreground">{member.navalShotsUsed}</span> tirs • {member.navalHits} touches
+        <div className="rounded-md border px-2.5 py-2">
+          Mémoire : <span className="font-medium text-foreground">{member.memoryRuns}</span> • {member.fortificationsUsed} renforts
         </div>
-        <div className="rounded-xl border border-border/40 bg-background/60 px-2.5 py-2">
-          Mémoire: <span className="font-medium text-foreground">{member.memoryRuns}</span> • {member.fortificationsUsed} renforts
+        <div className="rounded-md border px-2.5 py-2">
+          Total attaques : <span className="font-medium text-foreground">{member.attackCount}</span> • {member.attackPoints} pts
         </div>
-        <div className="rounded-xl border border-border/40 bg-background/60 px-2.5 py-2">
-          Total attaques: <span className="font-medium text-foreground">{member.attackCount}</span> • {member.attackPoints} pts
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -1176,430 +1190,341 @@ export default function Clans() {
   };
 
   return (
-    <div className="relative flex-1 h-full w-full">
-      {/* Global Clan Banner Background */}
-      <div
-        className="fixed inset-0 z-0 opacity-30 blur-[100px] transition-all duration-1000 pointer-events-none"
-        style={{
-          backgroundImage: selectedClan?.banner ? `url(${resolveImageUrl(selectedClan.banner)})` : 'none',
-          backgroundColor: selectedClan?.banner ? 'transparent' : 'rgba(0,0,0,0.2)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-      <PageShell size="wide" className="relative z-10 h-[calc(100vh-7rem)] overflow-hidden transition-all duration-500">
+    <>
+      <PageShell size="wide">
+        <PageHeader
+          title="Clans"
+          description="Rejoignez un clan, partagez une banque commune et affrontez d'autres clans."
+          actions={
+            canCreateClan ? (
+              <Button onClick={() => setDialogOpen(true)}>
+                <Plus />
+                Créer un clan
+              </Button>
+            ) : null
+          }
+        />
 
-      <div className={cn(SPACING.PAGE_CONTENT, 'relative h-full min-h-0 overflow-hidden bg-transparent')}>
-        <div className="grid h-full min-h-0 gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="flex min-h-0 flex-col bg-transparent p-0">
-            <div className="flex min-h-0 flex-1 flex-col gap-3">
-              <div className="min-w-0 space-y-3">
-                <Tabs value={directoryViewMode} onValueChange={(value) => setDirectoryViewMode(value as 'regular' | 'war')} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 border-border/60 bg-muted/20">
-                        <TabsTrigger value="regular" className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
-                          <Shield className="mr-2 h-4 w-4" />
-                          Normal
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="war"
-                          className="text-destructive data-[state=active]:border-destructive/40 data-[state=active]:bg-destructive/15 data-[state=active]:text-destructive"
-                        >
-                          <Swords className="mr-2 h-4 w-4" />
-                          Guerre
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                    {directoryViewMode === 'war' ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setActiveWarsDialogOpen(true)}
-                        disabled={otherActiveWars.length === 0}
-                        className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 disabled:opacity-50"
-                      >
-                        <Swords className="mr-2 h-4 w-4" />
-                        Guerres actives ({otherActiveWars.length})
-                      </Button>
-                    ) : null}
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="inline-flex items-baseline gap-2">
-                        <span className="rounded-xl border border-border/60 bg-muted/20 px-3 py-1 text-lg font-semibold tabular-nums">
-                          {clans.length}
-                        </span>
-                        <span className="text-sm font-medium text-muted-foreground">Clans</span>
-                      </div>
-                      {canCreateClan ? (
-                        <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Créer
-                        </Button>
-                      ) : null}
-                    </div>
+        <div className="grid items-start gap-6 xl:grid-cols-[20rem_minmax(0,1fr)]">
+          <Card className="gap-4">
+            <CardHeader>
+              <CardTitle>Annuaire</CardTitle>
+              <CardDescription>
+                {clans.length} clan{clans.length > 1 ? 's' : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <Tabs value={directoryViewMode} onValueChange={(value) => setDirectoryViewMode(value as 'regular' | 'war')}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="regular">
+                    <Shield />
+                    Normal
+                  </TabsTrigger>
+                  <TabsTrigger value="war">
+                    <Swords />
+                    Guerre
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              {directoryViewMode === 'war' ? (
+                <Button type="button" variant="outline" onClick={() => setActiveWarsDialogOpen(true)} disabled={otherActiveWars.length === 0}>
+                  <Swords />
+                  Guerres actives ({otherActiveWars.length})
+                </Button>
+              ) : null}
+
+              <ScrollArea className="h-[28rem]">
+                {loading ? (
+                  <div className="flex flex-col gap-2">
+                    {Array.from({ length: 4 }, (_, index) => (
+                      <Skeleton key={index} className="h-16 w-full" />
+                    ))}
                   </div>
-                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                  {loading ? (
-                    <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
-                      <ListSkeleton rows={4} />
-                    </div>
-                  ) : clans.length === 0 ? (
-                    <div className={cn(TYPOGRAPHY.MUTED, 'py-6')}>Aucun clan pour le moment.</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {directoryClans.map((clan) => {
-                        const hasTag = clan.tagUnlocked && clan.tagText;
-                        const clanTagStyle = hasTag && clan.tagStyle ? parseClanTagStyle(clan.tagStyle) : null;
-                        const isClanAtWar = clansAtWarIds.has(clan.id);
-                        return (
-                          <button
-                            key={clan.id}
-                            type="button"
-                            onClick={() => setSelectedClanId(clan.id)}
-                            className={cn(
-                              'relative w-full overflow-visible rounded-2xl border px-3.5 py-3.5 text-left transition-all duration-200 backdrop-blur-sm',
-                              clan.id === selectedClanId ? 'shadow-[0_8px_35px_rgba(0,0,0,0.05)] scale-[1.01]' : 'hover:scale-[1.005] hover:shadow-[0_4px_20px_rgba(0,0,0,0.02)]',
-                              !hasTag && 'border-border/30 bg-background/15 hover:bg-background/25 hover:border-border/50',
-                              !hasTag && clan.id === selectedClanId && 'border-primary/30 bg-background/35 shadow-md',
-                            )}
-                            style={clanTagStyle ? {
-                              ...getClanTagBackground(clanTagStyle),
-                              borderColor: clanTagStyle.borderColor,
-                            } : undefined}
-                          >
-                            {directoryViewMode === 'war' && isClanAtWar ? (
-                              <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-destructive/40 bg-background p-1 text-destructive shadow-sm">
-                                <Swords className="h-3 w-3" />
-                              </span>
-                            ) : null}
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-11 w-11">
+                ) : clans.length === 0 ? (
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyTitle>Aucun clan</EmptyTitle>
+                      <EmptyDescription>Aucun clan pour le moment.</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <ItemGroup className="gap-1 pr-3">
+                    {directoryClans.map((clan) => {
+                      const hasTag = clan.tagUnlocked && clan.tagText;
+                      const clanTagStyle = hasTag && clan.tagStyle ? parseClanTagStyle(clan.tagStyle) : null;
+                      const isClanAtWar = clansAtWarIds.has(clan.id);
+                      return (
+                        <Item key={clan.id} asChild size="sm" variant={clan.id === selectedClanId ? 'muted' : 'default'}>
+                          <button type="button" onClick={() => setSelectedClanId(clan.id)} className="text-left">
+                            <ItemMedia>
+                              <Avatar className="size-10">
                                 <AvatarImage src={resolveImageUrl(clan.imageUrl)} alt={clan.name} />
                                 <AvatarFallback>{getAvatarFallback(clan.name)}</AvatarFallback>
                               </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <div
-                                  className="truncate font-medium"
-                                  style={clanTagStyle ? { color: clanTagStyle.textColor } : undefined}
-                                >
-                                  {clan.name}
-                                </div>
-                                <div
-                                  className={cn('text-xs', !clanTagStyle && 'text-muted-foreground')}
-                                  style={clanTagStyle ? { color: clanTagStyle.textColor, opacity: 0.75 } : undefined}
-                                >
-                                  {clan.memberCount}/{clan.maxMembers} membres • {directoryViewMode === 'war' ? `🏆 ${formatMoney(clan.warTrophies)}` : `${formatAura(clan.totalAura)} aura`}
-                                </div>
-                              </div>
+                            </ItemMedia>
+                            <ItemContent>
+                              <ItemTitle>
+                                <span className="truncate">{clan.name}</span>
+                                {clanTagStyle && clan.tagText ? <ClanTag tag={{ text: clan.tagText, style: clanTagStyle }} /> : null}
+                              </ItemTitle>
+                              <ItemDescription>
+                                {clan.memberCount}/{clan.maxMembers} membres •{' '}
+                                {directoryViewMode === 'war' ? `🏆 ${formatMoney(clan.warTrophies)}` : `${formatAura(clan.totalAura)} aura`}
+                              </ItemDescription>
+                            </ItemContent>
+                            <ItemActions>
+                              {directoryViewMode === 'war' && isClanAtWar ? (
+                                <Badge variant="destructive">
+                                  <Swords />
+                                </Badge>
+                              ) : null}
                               {viewerClanId === clan.id ? <Badge>Mon clan</Badge> : null}
-                            </div>
+                            </ItemActions>
                           </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+                        </Item>
+                      );
+                    })}
+                  </ItemGroup>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-border/50 bg-background/60 shadow-sm backdrop-blur-md">
-              {!selectedClanId || !selectedClanSummary ? (
-                <div className="flex h-full items-center justify-center p-10 text-center text-muted-foreground">
-                  Sélectionne un clan pour afficher son quartier général.
-                </div>
-              ) : detailLoading || !selectedClan ? (
-                <div className="p-6">
-                  <CenteredSkeletonCard className="min-h-[240px]" />
-                </div>
-              ) : (
-                <div className="flex flex-col">
-                  {/* Compact horizontal premium header bar */}
-                  <div className="relative shrink-0 border-b border-border/40 bg-background/50 backdrop-blur-md px-6 py-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="relative shrink-0">
-                        <Avatar className="h-14 w-14 rounded-2xl border-2 border-primary/20 bg-muted/20 shadow-md">
-                          <AvatarImage src={resolveImageUrl(selectedClan.imageUrl)} alt={selectedClan.name} />
-                          <AvatarFallback className="rounded-2xl text-lg font-bold">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
-                        </Avatar>
-                        {selectedClan.viewer.isLeader && (
-                          <button
-                            type="button"
-                            className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 opacity-0 transition-opacity hover:opacity-100"
-                            onClick={() => { setEditImageUrl(selectedClan.imageUrl ?? ""); setClanSettingsOpen(true); }}
-                          >
-                            <Pencil className="h-4 w-4 text-white" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-1.5">
-                            {selectedClan.name}
-                            {selectedClan.tagUnlocked && selectedClan.tagText && (
-                              <ClanTag tag={{ text: selectedClan.tagText, style: parseClanTagStyle(selectedClan.tagStyle) }} />
-                            )}
-                          </h1>
-                          {selectedClan.viewer.isLeader ? <Crown className="h-4.5 w-4.5 text-warning fill-warning/25" /> : null}
-                          {!selectedClan.isPublic ? (
-                            <TooltipProvider>
-                              <Tooltip delayDuration={200}>
-                                <TooltipTrigger asChild>
-                                  <span className="cursor-help inline-flex items-center gap-0.5 text-warning bg-warning/10 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border border-warning/15">
-                                    <Lock className="h-2.5 w-2.5" />
-                                    <span>Privé</span>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs bg-card border-border text-foreground p-3 shadow-xl z-50">
-                                  <p className="font-semibold text-warning mb-1">Clan Privé</p>
-                                  <p className="text-xs leading-relaxed text-muted-foreground">
-                                    Ce clan est privé. Les joueurs doivent soumettre une candidature pour le rejoindre, et les informations internes ne sont visibles que par ses membres.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          ) : null}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <span>Chef :</span>
-                            <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
-                          </div>
-                          <span>•</span>
-                          <div>
-                            <span>Membres :</span>
-                            <span className="text-foreground ml-0.5">{selectedClan.memberCount}/{selectedClan.maxMembers}</span>
-                          </div>
-                          <span>•</span>
-                          <div className="flex items-center gap-1">
-                            <Sparkles className="h-3.5 w-3.5 text-warning" />
-                            <span className="text-foreground">{formatAura(selectedClan.totalAura)} aura</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Visitor Button */}
-                      {canJoinSelectedClan && (
-                        <Button size="sm" className="h-9 px-4 font-semibold shadow-md bg-success hover:bg-success text-white" onClick={handleJoin} disabled={actionLoading || selectedClan.viewer.hasPendingRequest}>
-                          {actionLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-                          {selectedClan.viewer.hasPendingRequest ? "En attente" : "Rejoindre le clan"}
-                        </Button>
-                      )}
-
-                      {/* Clan Hub Button (Dashboard & Chat) */}
-                      {selectedClan.viewer.isMember && (
+          {!selectedClanId || !selectedClanSummary ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Shield />
+                </EmptyMedia>
+                <EmptyTitle>Aucun clan sélectionné</EmptyTitle>
+                <EmptyDescription>Sélectionnez un clan pour afficher son quartier général.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : detailLoading || !selectedClan ? (
+            <Skeleton className="h-96 w-full" />
+          ) : (
+            <div className="flex min-w-0 flex-col gap-6">
+              <Card className="overflow-hidden py-0">
+                {selectedClan.banner ? (
+                  <AspectRatio ratio={5 / 1} className="bg-muted">
+                    <img src={resolveImageUrl(selectedClan.banner)} alt={`Bannière de ${selectedClan.name}`} className="size-full object-cover" />
+                  </AspectRatio>
+                ) : null}
+                <CardContent className="flex flex-col gap-4 py-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="relative shrink-0">
+                      <Avatar className="size-16 rounded-xl">
+                        <AvatarImage src={resolveImageUrl(selectedClan.imageUrl)} alt={selectedClan.name} />
+                        <AvatarFallback className="rounded-xl text-lg font-semibold">{getAvatarFallback(selectedClan.name)}</AvatarFallback>
+                      </Avatar>
+                      {selectedClan.viewer.isLeader ? (
                         <Button
-                          size="sm"
-                          className="h-9 px-4 font-semibold shadow-md gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
-                          onClick={() => { setActiveTab('chat'); setClanHubOpen(true); }}
-                        >
-                          <LayoutGrid className="h-4 w-4" />
-                          Tableau de Bord
-                        </Button>
-                      )}
-
-                      {/* Settings Button */}
-                      {selectedClan.viewer.isMember && (selectedClan.viewer.isLeader || selectedClan.viewer.permissions?.canManageRoles) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-9 px-3 font-semibold border-border hover:bg-muted"
+                          type="button"
+                          variant="secondary"
+                          size="icon-xs"
+                          className="absolute -bottom-1 -right-1 rounded-full"
+                          aria-label="Modifier l'emblème"
                           onClick={() => {
-                            setEditImageUrl(selectedClan.imageUrl ?? "");
-                            setEditDescription(selectedClan.description ?? "");
-                            setSettingsTab('general');
+                            setEditImageUrl(selectedClan.imageUrl ?? '');
                             setClanSettingsOpen(true);
                           }}
                         >
-                          <Settings2 className="h-4 w-4 mr-1.5" />
-                          Paramètres
+                          <Pencil />
                         </Button>
-                      )}
-
-                      {/* Leave Button */}
-                      {selectedClan.viewer.isMember && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-9 px-3 font-semibold border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={handleLeave}
-                          disabled={actionLoading}
-                        >
-                          <LogOut className="h-4 w-4 mr-1.5" />
-                          Quitter
-                        </Button>
-                      )}
+                      ) : null}
+                    </div>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-xl font-semibold tracking-tight">{selectedClan.name}</h2>
+                        {selectedClan.tagUnlocked && selectedClan.tagText ? (
+                          <ClanTag tag={{ text: selectedClan.tagText, style: parseClanTagStyle(selectedClan.tagStyle) }} />
+                        ) : null}
+                        {selectedClan.viewer.isLeader ? <Crown className="size-4 text-warning" /> : null}
+                        {!selectedClan.isPublic ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="warning">
+                                <Lock />
+                                Privé
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Ce clan est privé. Les joueurs doivent soumettre une candidature pour le rejoindre, et les informations
+                              internes ne sont visibles que par ses membres.
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          Chef : <UsernameDisplay username={selectedClan.leader.username} usernameColor={selectedClan.leader.usernameColor} />
+                        </span>
+                        <span>
+                          Membres : <span className="text-foreground">{selectedClan.memberCount}/{selectedClan.maxMembers}</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Sparkles className="size-3.5" />
+                          <span className="text-foreground">{formatAura(selectedClan.totalAura)} aura</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Body Content */}
-                  <div className="p-6 sm:p-8 space-y-6">
-                    {/* Visitor Welcome Card (if non-member) */}
-                    {!selectedClan.viewer.isMember && (
-                      <div className="rounded-2xl border border-border/40 bg-muted/5 p-5 space-y-4">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="max-w-2xl flex-1 space-y-1.5">
-                            <h3 className="text-sm font-bold flex items-center gap-1.5 text-foreground">
-                              <Layout className="h-4 w-4 text-primary" />
-                              Présentation du clan
-                            </h3>
-                            <p className="text-sm leading-relaxed text-muted-foreground">
-                              {selectedClan.description || 'Aucune description pour le moment.'}
-                            </p>
-                          </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canJoinSelectedClan ? (
+                      <Button onClick={handleJoin} disabled={actionLoading || selectedClan.viewer.hasPendingRequest}>
+                        {actionLoading ? <Spinner /> : null}
+                        {selectedClan.viewer.hasPendingRequest ? 'En attente' : 'Rejoindre le clan'}
+                      </Button>
+                    ) : null}
+                    {selectedClan.viewer.isMember ? (
+                      <Button
+                        onClick={() => {
+                          setActiveTab('chat');
+                          setClanHubOpen(true);
+                        }}
+                      >
+                        <LayoutGrid />
+                        Tableau de bord
+                      </Button>
+                    ) : null}
+                    {selectedClan.viewer.isMember && (selectedClan.viewer.isLeader || selectedClan.viewer.permissions?.canManageRoles) ? (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setEditImageUrl(selectedClan.imageUrl ?? '');
+                          setEditDescription(selectedClan.description ?? '');
+                          setSettingsTab('general');
+                          setClanSettingsOpen(true);
+                        }}
+                      >
+                        <Settings2 />
+                        Paramètres
+                      </Button>
+                    ) : null}
+                    {selectedClan.viewer.isMember ? (
+                      <Button variant="outline" className="text-destructive hover:text-destructive" onClick={handleLeave} disabled={actionLoading}>
+                        <LogOut />
+                        Quitter
+                      </Button>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
 
-                          {/* Active Effects */}
-                          {selectedClan.activeEffects.length > 0 && (
-                            <div className="flex shrink-0 flex-wrap gap-2 pt-1 lg:justify-end">
-                              {selectedClan.activeEffects.map((effect) => (
-                                <ClanEffectBadge key={effect.id} effect={effect} />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Member List Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-border/10 pb-2">
-                        <h2 className="text-sm font-bold tracking-tight text-foreground uppercase tracking-wider">
-                          Membres du clan ({selectedClan.members.length}/{selectedClan.maxMembers})
-                        </h2>
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                        {/* Member Cards */}
-                        {selectedClan.members.map((member) => {
-                          const isSelf = member.userId === user?.id;
-                          const isClanLeader = selectedClan.leader.id === member.userId;
-                          const displayRole = isClanLeader ? 'Chef' : member.roleName ? member.roleName : member.isLeader ? 'Officier' : 'Membre';
-
-                          return (
-                            <div
-                              key={member.id}
-                              className="group relative flex items-center justify-between gap-3 rounded-2xl border border-border/40 bg-muted/5 p-4 shadow-sm hover:border-border transition-all"
-                            >
-                              <div className="flex min-w-0 items-center gap-3">
-                                <div className="relative shrink-0">
-                                  <Avatar className="h-10 w-10 border border-border/30 shadow-sm transition-transform duration-300 group-hover:scale-105">
-                                    <AvatarImage src={resolveImageUrl(member.profilePicture)} alt={member.username} />
-                                    <AvatarFallback className="bg-muted/20 text-sm font-semibold">{getAvatarFallback(member.username)}</AvatarFallback>
-                                  </Avatar>
-                                  {isClanLeader ? (
-                                    <span className="absolute -right-1 -top-1 rounded-full bg-background p-0.5 shadow-sm border border-border/30">
-                                      <Crown className="h-2.5 w-2.5 text-warning fill-warning" />
-                                    </span>
-                                  ) : member.isLeader ? (
-                                    <span className="absolute -right-1 -top-1 rounded-full bg-background p-0.5 shadow-sm border border-border/30">
-                                      <Shield className="h-2.5 w-2.5 text-primary" />
-                                    </span>
-                                  ) : null}
-                                </div>
-
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5 text-sm font-bold">
-                                    <UsernameDisplay
-                                      username={member.username}
-                                      usernameColor={member.usernameColor}
-                                    />
-                                    {isSelf ? (
-                                      <Badge variant="outline" className="h-4 border-primary/20 bg-primary/5 px-1 text-[9px] text-primary font-semibold">
-                                        Toi
-                                      </Badge>
-                                    ) : null}
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 font-semibold">
-                                    <span className="text-foreground/75">{formatAura(member.aura)} aura</span>
-                                    <span>•</span>
-                                    <span className="flex items-center gap-1">
-                                      {member.roleColor ? (
-                                        <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: member.roleColor }} />
-                                      ) : null}
-                                      <span>{displayRole}</span>
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Admin actions */}
-                              {!isSelf && selectedClan.viewer.isMember && (
-                                <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100 shrink-0">
-                                  {(selectedClan.viewer.isLeader || selectedClan.viewer.permissions?.canManageRoles) && !isClanLeader ? (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-xl bg-muted/20 hover:bg-muted text-muted-foreground hover:text-foreground"
-                                      onClick={() => setRoleAssignMemberId(member.userId)}
-                                      disabled={actionLoading}
-                                      title="Gérer le rôle"
-                                    >
-                                      <Shield className="h-3.5 w-3.5" style={{ color: member.roleColor ?? undefined }} />
-                                    </Button>
-                                  ) : null}
-                                  {selectedClan.viewer.isLeader && selectedClan.leader.id === user?.id && !isClanLeader ? (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-xl bg-muted/20 hover:bg-muted text-muted-foreground hover:text-warning"
-                                      onClick={() => handleTransferLeadership(member.userId, member.username)}
-                                      disabled={actionLoading}
-                                      title="Transférer le rôle de chef"
-                                    >
-                                      <Crown className="h-3.5 w-3.5" />
-                                    </Button>
-                                  ) : null}
-                                  {selectedClan.viewer.permissions?.canKickMembers && !isClanLeader && !member.isLeader ? (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 rounded-xl bg-muted/20 hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
-                                      onClick={() => handleRemoveMember(member.userId)}
-                                      disabled={actionLoading}
-                                      title="Exclure du clan"
-                                    >
-                                      <UserX className="h-4 w-4" />
-                                    </Button>
-                                  ) : null}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                        {/* Unfilled slots */}
-                        {Array.from({ length: Math.max(0, selectedClan.maxMembers - selectedClan.members.length) }).map((_, index) => (
-                          <div
-                            key={`empty-slot-${index}`}
-                            className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border/40 bg-muted/5 p-4"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              <div className="relative shrink-0 flex items-center justify-center h-10 w-10 rounded-2xl border border-dashed border-border/50 bg-muted/10 text-muted-foreground/35">
-                                <Plus className="h-4 w-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-sm font-semibold text-muted-foreground/40 italic">
-                                  Slot libre
-                                </div>
-                                <div className="text-xs text-muted-foreground/30 font-semibold mt-0.5">
-                                  En attente d'un membre
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+              {!selectedClan.viewer.isMember ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Layout className="size-4" />
+                      Présentation du clan
+                    </CardTitle>
+                    {selectedClan.activeEffects.length > 0 ? (
+                      <CardAction className="flex flex-wrap gap-2">
+                        {selectedClan.activeEffects.map((effect) => (
+                          <ClanEffectBadge key={effect.id} effect={effect} />
                         ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                      </CardAction>
+                    ) : null}
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">{selectedClan.description || 'Aucune description pour le moment.'}</p>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Membres du clan</CardTitle>
+                  <CardDescription>
+                    {selectedClan.members.length}/{selectedClan.maxMembers} membres
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {selectedClan.members.map((member) => {
+                    const isSelf = member.userId === user?.id;
+                    const isClanLeader = selectedClan.leader.id === member.userId;
+                    const displayRole = isClanLeader ? 'Chef' : member.roleName ? member.roleName : member.isLeader ? 'Officier' : 'Membre';
+
+                    return (
+                      <Item key={member.id} variant="outline" size="sm">
+                        <ItemMedia>
+                          <Avatar className="size-10">
+                            <AvatarImage src={resolveImageUrl(member.profilePicture)} alt={member.username} />
+                            <AvatarFallback>{getAvatarFallback(member.username)}</AvatarFallback>
+                          </Avatar>
+                        </ItemMedia>
+                        <ItemContent>
+                          <ItemTitle>
+                            <UsernameDisplay username={member.username} usernameColor={member.usernameColor} />
+                            {isSelf ? <Badge variant="outline">Vous</Badge> : null}
+                          </ItemTitle>
+                          <ItemDescription className="flex items-center gap-1.5">
+                            <span>{formatAura(member.aura)} aura</span>
+                            <span>•</span>
+                            {isClanLeader ? <Crown className="size-3 text-warning" /> : member.isLeader ? <Shield className="size-3" /> : null}
+                            {member.roleColor ? <span className="size-1.5 rounded-full" style={{ backgroundColor: member.roleColor }} /> : null}
+                            <span>{displayRole}</span>
+                          </ItemDescription>
+                        </ItemContent>
+                        {!isSelf && selectedClan.viewer.isMember ? (
+                          <ItemActions>
+                            {(selectedClan.viewer.isLeader || selectedClan.viewer.permissions?.canManageRoles) && !isClanLeader ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon-sm" aria-label="Gérer le rôle" onClick={() => setRoleAssignMemberId(member.userId)} disabled={actionLoading}>
+                                    <Shield style={{ color: member.roleColor ?? undefined }} />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Gérer le rôle</TooltipContent>
+                              </Tooltip>
+                            ) : null}
+                            {selectedClan.viewer.isLeader && selectedClan.leader.id === user?.id && !isClanLeader ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon-sm" aria-label="Transférer le rôle de chef" onClick={() => handleTransferLeadership(member.userId, member.username)} disabled={actionLoading}>
+                                    <Crown />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Transférer le rôle de chef</TooltipContent>
+                              </Tooltip>
+                            ) : null}
+                            {selectedClan.viewer.permissions?.canKickMembers && !isClanLeader && !member.isLeader ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon-sm" aria-label="Exclure du clan" onClick={() => handleRemoveMember(member.userId)} disabled={actionLoading}>
+                                    <UserX />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Exclure du clan</TooltipContent>
+                              </Tooltip>
+                            ) : null}
+                          </ItemActions>
+                        ) : null}
+                      </Item>
+                    );
+                  })}
+
+                  {Array.from({ length: Math.max(0, selectedClan.maxMembers - selectedClan.members.length) }).map((_, index) => (
+                    <Item key={`empty-slot-${index}`} variant="outline" size="sm" className="border-dashed">
+                      <ItemMedia variant="icon">
+                        <Plus />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle className="text-muted-foreground">Slot libre</ItemTitle>
+                        <ItemDescription>En attente d&apos;un membre</ItemDescription>
+                      </ItemContent>
+                    </Item>
+                  ))}
+                </CardContent>
+              </Card>
             </div>
-          </div>
+          )}
         </div>
       </PageShell>
 
       <Dialog open={activeWarsDialogOpen} onOpenChange={setActiveWarsDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Guerres actives</DialogTitle>
             <DialogDescription>
@@ -1608,34 +1533,40 @@ export default function Clans() {
                 : `${otherActiveWars.length} guerre(s) en cours sur le serveur.`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            {otherActiveWars.map((war) => (
-              <button
-                key={war.id}
-                type="button"
-                onClick={() => { setSelectedClanId(war.attackerClan.id); setActiveWarsDialogOpen(false); }}
-                className="w-full rounded-2xl border border-border/50 bg-muted/15 p-4 text-left transition-colors hover:bg-muted/30"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="text-xs text-muted-foreground">Guerre #{war.id.slice(0, 6)}</div>
-                    <div className="font-medium">
-                      {war.attackerClan.name} <span className="text-muted-foreground">contre</span> {war.defenderClan.name}
-                    </div>
-                  </div>
-                  <Badge variant={getStatusVariant(war.status)}>{getStatusLabel(war.status)}</Badge>
-                </div>
-                <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{war.attackerScore} - {war.defenderScore}</span>
-                  <span>
-                    {war.status === 'COMPLETED'
-                      ? `Terminee ${formatDate(war.completedAt)}`
-                      : `Fin dans ${formatCountdown(war.endsAt)}`}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+          <ScrollArea className="max-h-[60vh]">
+            <ItemGroup className="gap-2 pr-3">
+              {otherActiveWars.map((war) => (
+                <Item key={war.id} asChild variant="outline">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedClanId(war.attackerClan.id);
+                      setActiveWarsDialogOpen(false);
+                    }}
+                    className="text-left"
+                  >
+                    <ItemContent>
+                      <ItemDescription>Guerre #{war.id.slice(0, 6)}</ItemDescription>
+                      <ItemTitle>
+                        {war.attackerClan.name} <span className="font-normal text-muted-foreground">contre</span> {war.defenderClan.name}
+                      </ItemTitle>
+                      <ItemDescription className="flex items-center justify-between gap-4">
+                        <span className="tabular-nums">
+                          {war.attackerScore} - {war.defenderScore}
+                        </span>
+                        <span>
+                          {war.status === 'COMPLETED' ? `Terminée ${formatDate(war.completedAt)}` : `Fin dans ${formatCountdown(war.endsAt)}`}
+                        </span>
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Badge variant={getStatusVariant(war.status)}>{getStatusLabel(war.status)}</Badge>
+                    </ItemActions>
+                  </button>
+                </Item>
+              ))}
+            </ItemGroup>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
@@ -1643,47 +1574,55 @@ export default function Clans() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{activeEventMiniGame?.title ?? 'Mini-jeu événement'}</DialogTitle>
-            <DialogDescription>{activeEventMiniGame?.instructions || activeEventMiniGame?.description || 'Fais le meilleur score possible pour ton clan.'}</DialogDescription>
+            <DialogDescription>
+              {activeEventMiniGame?.instructions || activeEventMiniGame?.description || 'Faites le meilleur score possible pour votre clan.'}
+            </DialogDescription>
           </DialogHeader>
 
           {activeEventMiniGame?.type === 'REFLEX' ? (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-border/50 bg-muted/15 p-4 text-sm text-muted-foreground">
-                {reflexPhase === 'waiting'
-                  ? 'Attends le signal vert, puis clique immédiatement.'
-                  : reflexPhase === 'go'
-                    ? 'CLIQUE MAINTENANT'
-                    : reflexPhase === 'result'
-                      ? reflexScore === 0
-                        ? 'Trop tôt. Cette tentative vaut 0.'
-                        : `Score brut: ${Math.floor(reflexScore ?? 0)}`
-                      : 'Prêt ?'}
-              </div>
+            <div className="flex flex-col gap-4">
+              <Alert variant={reflexPhase === 'go' ? 'success' : 'default'}>
+                <AlertDescription>
+                  {reflexPhase === 'waiting'
+                    ? 'Attendez le signal vert, puis cliquez immédiatement.'
+                    : reflexPhase === 'go'
+                      ? 'CLIQUEZ MAINTENANT'
+                      : reflexPhase === 'result'
+                        ? reflexScore === 0
+                          ? 'Trop tôt. Cette tentative vaut 0.'
+                          : `Score brut : ${Math.floor(reflexScore ?? 0)}`
+                        : 'Prêt ?'}
+                </AlertDescription>
+              </Alert>
               <Button
-                className={cn('h-28 w-full text-lg', reflexPhase === 'go' ? 'bg-success hover:bg-success/90' : '')}
+                size="lg"
+                className="h-28 w-full text-lg"
+                variant={reflexPhase === 'go' ? 'default' : 'secondary'}
                 disabled={eventMiniGameSubmitting}
-                onClick={() => { void handleReflexClick(); }}
+                onClick={() => {
+                  void handleReflexClick();
+                }}
               >
-                {reflexPhase === 'waiting' ? '...' : reflexPhase === 'go' ? 'CLIQUE' : 'Tenter'}
+                {reflexPhase === 'waiting' ? '…' : reflexPhase === 'go' ? 'CLIQUE' : 'Tenter'}
               </Button>
             </div>
           ) : activeEventMiniGame?.type === 'TAP_FRENZY' ? (
-            <div className="space-y-4">
+            <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Temps restant</div>
-                  <div className="mt-2 text-2xl font-semibold">{tapFrenzyTimeLeft}s</div>
-                </div>
-                <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Score brut</div>
-                  <div className="mt-2 text-2xl font-semibold">{tapFrenzyScore}</div>
-                </div>
+                <Card className="gap-1 py-4">
+                  <CardHeader className="px-4">
+                    <CardDescription>Temps restant</CardDescription>
+                    <CardTitle className="text-2xl tabular-nums">{tapFrenzyTimeLeft}s</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card className="gap-1 py-4">
+                  <CardHeader className="px-4">
+                    <CardDescription>Score brut</CardDescription>
+                    <CardTitle className="text-2xl tabular-nums">{tapFrenzyScore}</CardTitle>
+                  </CardHeader>
+                </Card>
               </div>
-              <Button
-                className="h-28 w-full text-lg"
-                disabled={!tapFrenzyRunning || eventMiniGameSubmitting}
-                onClick={() => setTapFrenzyScore((current) => current + 10)}
-              >
+              <Button size="lg" className="h-28 w-full text-lg" disabled={!tapFrenzyRunning || eventMiniGameSubmitting} onClick={() => setTapFrenzyScore((current) => current + 10)}>
                 Tap tap tap
               </Button>
             </div>
@@ -1692,64 +1631,57 @@ export default function Clans() {
       </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[85vh] overflow-hidden p-0 sm:max-w-lg">
-          <div className="flex max-h-[85vh] flex-col">
-            <DialogHeader className="shrink-0 border-b px-6 py-5 pr-12">
-              <DialogTitle>Créer un clan</DialogTitle>
-              <DialogDescription>Coût: 100 money. Le chef devient automatiquement le premier membre.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateClan} className="flex min-h-0 flex-1 flex-col">
-              <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-                {formError ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>Erreur</AlertTitle>
-                    <AlertDescription>{formError}</AlertDescription>
-                  </Alert>
-                ) : null}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Nom</label>
-                  <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={32} placeholder="Les Veilleurs" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
-                  <Textarea
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    maxLength={300}
-                    rows={4}
-                    placeholder="Décris l'identité, le style de jeu et l'objectif du clan."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Emblème</label>
-                  <ImagePicker
-                    value={imageUrl}
-                    onChange={setImageUrl}
-                    uploadFn={uploadClanImageFile}
-                    disabled={creating}
-                  />
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div>
-                    <div className="font-medium">Clan public</div>
-                    <div className="text-sm text-muted-foreground">Si désactivé, les joueurs devront envoyer une candidature.</div>
-                  </div>
-                  <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-                </div>
-              </div>
-              <div className="shrink-0 border-t px-6 py-4">
-                <Button type="submit" className="w-full" disabled={creating}>
-                  {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                  Créer le clan
-                </Button>
-              </div>
-            </form>
-          </div>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Créer un clan</DialogTitle>
+            <DialogDescription>Coût : 100 money. Le chef devient automatiquement le premier membre.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateClan} className="flex flex-col gap-4">
+            {formError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Erreur</AlertTitle>
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="clan-name">Nom</FieldLabel>
+                <Input id="clan-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={32} placeholder="Les Veilleurs" />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="clan-description">Description</FieldLabel>
+                <Textarea
+                  id="clan-description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  maxLength={300}
+                  rows={4}
+                  placeholder="Décrivez l'identité, le style de jeu et l'objectif du clan."
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Emblème</FieldLabel>
+                <ImagePicker value={imageUrl} onChange={setImageUrl} uploadFn={uploadClanImageFile} disabled={creating} />
+              </Field>
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldLabel htmlFor="clan-public">Clan public</FieldLabel>
+                  <FieldDescription>Si désactivé, les joueurs devront envoyer une candidature.</FieldDescription>
+                </FieldContent>
+                <Switch id="clan-public" checked={isPublic} onCheckedChange={setIsPublic} />
+              </Field>
+            </FieldGroup>
+            <DialogFooter>
+              <Button type="submit" className="w-full" disabled={creating}>
+                {creating ? <Spinner /> : <Plus />}
+                Créer le clan
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* ── Clan Settings Modal ── */}
-      {/* ── Clan Settings Modal ── */}
+      {/* ── Paramètres du clan ── */}
       <Dialog
         open={clanSettingsOpen}
         onOpenChange={(open) => {
@@ -1761,1165 +1693,886 @@ export default function Clans() {
           setClanSettingsOpen(open);
         }}
       >
-        <DialogContent className="max-w-4xl h-[75vh] p-0 overflow-hidden flex flex-col bg-background/90 backdrop-blur-xl border border-border/40 shadow-2xl">
-          {selectedClan && (
+        <DialogContent className="flex h-[80vh] flex-col gap-0 p-0 sm:max-w-4xl">
+          {selectedClan ? (
             <>
-              <DialogHeader className="px-6 py-4 border-b border-border/40 shrink-0 bg-background/40 backdrop-blur-md">
-                <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
-                  <Settings2 className="h-5.5 w-5.5 text-primary" />
-                  Paramètres du clan — {selectedClan.name}
-                </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Gérez l'emblème, la description, le tag, les rôles et les annonces de votre clan.
-                </DialogDescription>
+              <DialogHeader className="border-b p-6">
+                <DialogTitle>Paramètres du clan — {selectedClan.name}</DialogTitle>
+                <DialogDescription>Gérez l&apos;emblème, la description, le tag, les rôles et les annonces de votre clan.</DialogDescription>
               </DialogHeader>
 
-              <div className="flex-1 flex min-h-0 bg-background/30">
-                {/* Left Sidebar (Settings Tabs) */}
-                <div className="w-56 border-r border-border/40 bg-muted/10 p-4 space-y-1.5 shrink-0 backdrop-blur-sm overflow-y-auto">
-                  <button
-                    type="button"
-                    onClick={() => setSettingsTab('general')}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                      settingsTab === 'general'
-                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                        : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Settings2 className="h-4 w-4 text-primary" />
+              <Tabs
+                value={settingsTab}
+                onValueChange={(value) => setSettingsTab(value as typeof settingsTab)}
+                orientation="vertical"
+                className="min-h-0 flex-1 flex-row gap-0"
+              >
+                <TabsList className="h-auto w-48 shrink-0 flex-col items-stretch justify-start rounded-none border-r bg-transparent p-3">
+                  <TabsTrigger value="general" className="justify-start">
+                    <Settings2 />
                     Général
-                  </button>
-
-                  {selectedClan.tagUnlocked && (
-                    <button
-                      type="button"
-                      onClick={() => setSettingsTab('tag')}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                        settingsTab === 'tag'
-                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                          : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Sparkles className="h-4 w-4 text-warning" />
+                  </TabsTrigger>
+                  {selectedClan.tagUnlocked ? (
+                    <TabsTrigger value="tag" className="justify-start">
+                      <Sparkles />
                       Tag du clan
-                    </button>
-                  )}
-
-                  {(selectedClan.viewer.permissions?.canManageRoles || selectedClan.viewer.isLeader) && (
-                    <button
-                      type="button"
-                      onClick={() => setSettingsTab('roles')}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                        settingsTab === 'roles'
-                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                          : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Shield className="h-4 w-4 text-primary" />
+                    </TabsTrigger>
+                  ) : null}
+                  {selectedClan.viewer.permissions?.canManageRoles || selectedClan.viewer.isLeader ? (
+                    <TabsTrigger value="roles" className="justify-start">
+                      <Shield />
                       Rôles
-                    </button>
-                  )}
-
-                  {selectedClan.viewer.isLeader && (
-                    <button
-                      type="button"
-                      onClick={() => setSettingsTab('messages')}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                        settingsTab === 'messages'
-                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                          : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Megaphone className="h-4 w-4 text-primary" />
+                    </TabsTrigger>
+                  ) : null}
+                  {selectedClan.viewer.isLeader ? (
+                    <TabsTrigger value="messages" className="justify-start">
+                      <Megaphone />
                       Annonces
-                    </button>
-                  )}
-                </div>
+                    </TabsTrigger>
+                  ) : null}
+                </TabsList>
 
-                {/* Right Content Area */}
-                <div className="flex-1 overflow-y-auto p-6 min-h-0 bg-background/50">
-                  {settingsTab === 'general' && (
-                    <div className="space-y-6">
-                      {/* Stats Overview */}
-                      <div className="grid grid-cols-3 gap-3 text-center">
-                        <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 shadow-sm">
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Aura</div>
-                          <div className="text-base font-bold mt-1 text-primary">{formatAura(selectedClan.totalAura)}</div>
+                <ScrollArea className="min-h-0 flex-1">
+                  <div className="p-6">
+                    {settingsTab === 'general' ? (
+                      <div className="flex flex-col gap-6">
+                        <div className="grid grid-cols-3 gap-3">
+                          <Card className="gap-1 py-4">
+                            <CardHeader className="px-4">
+                              <CardDescription>Aura</CardDescription>
+                              <CardTitle className="tabular-nums">{formatAura(selectedClan.totalAura)}</CardTitle>
+                            </CardHeader>
+                          </Card>
+                          <Card className="gap-1 py-4">
+                            <CardHeader className="px-4">
+                              <CardDescription>Trophées</CardDescription>
+                              <CardTitle className="tabular-nums">{formatMoney(selectedClan.warTrophies)}</CardTitle>
+                            </CardHeader>
+                          </Card>
+                          <Card className="gap-1 py-4">
+                            <CardHeader className="px-4">
+                              <CardDescription>Guerres</CardDescription>
+                              <CardTitle className="tabular-nums">
+                                {selectedClan.warWins}V {selectedClan.warLosses}D
+                              </CardTitle>
+                            </CardHeader>
+                          </Card>
                         </div>
-                        <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 shadow-sm">
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Trophées</div>
-                          <div className="text-base font-bold mt-1 text-warning">{formatMoney(selectedClan.warTrophies)}</div>
-                        </div>
-                        <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 shadow-sm">
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Guerres</div>
-                          <div className="text-base font-bold mt-1">{selectedClan.warWins}V {selectedClan.warLosses}D</div>
-                        </div>
+
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base">Emblème</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <ImagePicker value={editImageUrl} onChange={setEditImageUrl} uploadFn={uploadClanImageFile} disabled={savingImage} />
+                          </CardContent>
+                          <CardFooter>
+                            <Button className="w-full" onClick={handleSaveImage} disabled={savingImage}>
+                              {savingImage ? <Spinner /> : <Check />}
+                              Enregistrer l&apos;emblème
+                            </Button>
+                          </CardFooter>
+                        </Card>
+
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base">Description</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <Field>
+                              <Textarea
+                                aria-label="Description du clan"
+                                value={editDescription}
+                                onChange={(event) => setEditDescription(event.target.value)}
+                                maxLength={300}
+                                rows={4}
+                                placeholder="Décrivez l'identité, le style de jeu et l'objectif du clan…"
+                                disabled={savingDescription}
+                              />
+                              <FieldDescription>{editDescription.length}/300</FieldDescription>
+                            </Field>
+                          </CardContent>
+                          <CardFooter>
+                            <Button className="w-full" onClick={handleSaveDescription} disabled={savingDescription}>
+                              {savingDescription ? <Spinner /> : <Check />}
+                              Enregistrer la description
+                            </Button>
+                          </CardFooter>
+                        </Card>
                       </div>
+                    ) : null}
 
-                      <div className="border-t border-border/40 my-4" />
+                    {settingsTab === 'tag' && selectedClan.tagUnlocked ? (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Tag du clan</CardTitle>
+                          <CardDescription>Personnalisez le tag affiché à côté du pseudo de chaque membre.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <FieldGroup>
+                            <Item variant="muted" size="sm">
+                              <ItemContent>
+                                <ItemDescription>Aperçu</ItemDescription>
+                                <ItemTitle>
+                                  Pseudo
+                                  {tagText.trim() ? <ClanTag tag={{ text: tagText.trim(), style: tagStyle }} /> : <span className="font-normal italic text-muted-foreground">aucun tag défini</span>}
+                                </ItemTitle>
+                              </ItemContent>
+                            </Item>
 
-                      {/* Emblem Edit */}
-                      <div className="space-y-3 rounded-2xl border border-border/40 bg-muted/5 p-4 shadow-sm">
-                        <h4 className="text-sm font-bold flex items-center gap-1.5">
-                          <Plus className="h-4 w-4 text-primary" />
-                          Modifier l'emblème
-                        </h4>
-                        <ImagePicker
-                          value={editImageUrl}
-                          onChange={setEditImageUrl}
-                          uploadFn={uploadClanImageFile}
-                          disabled={savingImage}
-                        />
-                        <Button size="sm" className="w-full font-semibold" onClick={handleSaveImage} disabled={savingImage}>
-                          {savingImage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                          Enregistrer l'emblème
-                        </Button>
-                      </div>
+                            <Field>
+                              <FieldLabel htmlFor="tag-text">Texte du tag (1–6 caractères)</FieldLabel>
+                              <Input id="tag-text" value={tagText} onChange={(event) => setTagText(event.target.value.slice(0, 6))} maxLength={6} placeholder="OG" className="w-32 font-mono" />
+                            </Field>
 
-                      {/* Description Edit */}
-                      <div className="space-y-3 rounded-2xl border border-border/40 bg-muted/5 p-4 shadow-sm">
-                        <h4 className="text-sm font-bold flex items-center gap-1.5">
-                          <Pencil className="h-3.5 w-3.5 text-primary" />
-                          Modifier la description
-                        </h4>
-                        <Textarea
-                          value={editDescription}
-                          onChange={(e) => setEditDescription(e.target.value)}
-                          maxLength={300}
-                          rows={4}
-                          placeholder="Décris l'identité, le style de jeu et l'objectif du clan…"
-                          disabled={savingDescription}
-                          className="bg-background/50 text-sm resize-none"
-                        />
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs text-muted-foreground">{editDescription.length}/300</span>
-                          <Button size="sm" className="font-semibold" onClick={handleSaveDescription} disabled={savingDescription}>
-                            {savingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                            Enregistrer la description
+                            <Field>
+                              <FieldLabel>Style de fond</FieldLabel>
+                              <ToggleGroup
+                                type="single"
+                                variant="outline"
+                                value={tagStyle.backgroundType}
+                                onValueChange={(value) => value && setTagStyle((current) => ({ ...current, backgroundType: value as 'solid' | 'gradient' }))}
+                                className="self-start"
+                              >
+                                <ToggleGroupItem value="solid">Uni</ToggleGroupItem>
+                                <ToggleGroupItem value="gradient">Dégradé</ToggleGroupItem>
+                              </ToggleGroup>
+                            </Field>
+
+                            {tagStyle.backgroundType === 'solid' ? (
+                              <Field>
+                                <FieldLabel>Couleur de fond</FieldLabel>
+                                <ColorSwatchPicker
+                                  label="Couleur de fond"
+                                  colors={TAG_PRESET_COLORS}
+                                  value={tagStyle.backgroundColor}
+                                  onChange={(color) => setTagStyle((current) => ({ ...current, backgroundColor: color }))}
+                                />
+                              </Field>
+                            ) : (
+                              <Field>
+                                <FieldLabel>Couleurs du dégradé</FieldLabel>
+                                <div className="flex items-center gap-3">
+                                  <Input
+                                    type="color"
+                                    aria-label="Début du dégradé"
+                                    className="h-9 w-12 cursor-pointer p-1"
+                                    value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').from ?? '#374151'; } catch { return '#374151'; } })()}
+                                    onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, from: e.target.value }) })); }}
+                                  />
+                                  <span className="text-muted-foreground">→</span>
+                                  <Input
+                                    type="color"
+                                    aria-label="Fin du dégradé"
+                                    className="h-9 w-12 cursor-pointer p-1"
+                                    value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').to ?? '#6366f1'; } catch { return '#6366f1'; } })()}
+                                    onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, to: e.target.value }) })); }}
+                                  />
+                                </div>
+                              </Field>
+                            )}
+
+                            <Field>
+                              <FieldLabel>Couleur du texte</FieldLabel>
+                              <ColorSwatchPicker
+                                label="Couleur du texte"
+                                colors={TAG_PRESET_COLORS}
+                                value={tagStyle.textColor}
+                                onChange={(color) => setTagStyle((current) => ({ ...current, textColor: color }))}
+                              />
+                            </Field>
+
+                            <Field>
+                              <FieldLabel>Couleur de bordure</FieldLabel>
+                              <ColorSwatchPicker
+                                label="Couleur de bordure"
+                                colors={TAG_PRESET_COLORS}
+                                value={tagStyle.borderColor}
+                                onChange={(color) => setTagStyle((current) => ({ ...current, borderColor: color }))}
+                              />
+                            </Field>
+                          </FieldGroup>
+                        </CardContent>
+                        <CardFooter>
+                          <Button type="button" className="w-full" onClick={saveTag} disabled={savingTag || !tagText.trim()}>
+                            {savingTag ? <Spinner /> : <Check />}
+                            Enregistrer le tag
                           </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                        </CardFooter>
+                      </Card>
+                    ) : null}
 
-                  {settingsTab === 'tag' && selectedClan.tagUnlocked && (
-                    <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/5 p-5 shadow-sm">
-                      <h4 className="text-sm font-bold flex items-center gap-1.5">
-                        <Sparkles className="h-4 w-4 text-warning" />
-                        Tag du clan
-                      </h4>
-
-                      {/* Tag Preview */}
-                      <div className="flex items-center gap-2.5 rounded-xl bg-muted/20 p-3 border border-border/30">
-                        <span className="text-xs text-muted-foreground font-semibold">Aperçu :</span>
-                        <span className="text-sm font-semibold">Pseudo</span>
-                        {tagText.trim() ? (
-                          <ClanTag tag={{ text: tagText.trim(), style: tagStyle }} />
+                    {settingsTab === 'roles' && (selectedClan.viewer.permissions?.canManageRoles || selectedClan.viewer.isLeader) ? (
+                      <div className="flex flex-col gap-4">
+                        <SectionTitle
+                          title="Rôles du clan"
+                          description="Gérez les grades personnalisés de vos membres et leurs permissions associées."
+                          action={
+                            <Button variant="outline" size="sm" onClick={openRoleCreate}>
+                              <Plus />
+                              Nouveau rôle
+                            </Button>
+                          }
+                        />
+                        {(selectedClan.roles ?? []).length === 0 ? (
+                          <Empty className="border">
+                            <EmptyHeader>
+                              <EmptyTitle>Aucun rôle</EmptyTitle>
+                              <EmptyDescription>Aucun rôle créé pour ce clan. Les grades personnalisés apparaîtront ici.</EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
                         ) : (
-                          <span className="text-xs text-muted-foreground italic">aucun tag défini</span>
+                          <ItemGroup className="gap-2">
+                            {(selectedClan.roles ?? []).map((role) => (
+                              <Item key={role.id} variant="outline">
+                                <ItemMedia>
+                                  <span className="size-4 rounded-full border" style={{ backgroundColor: role.color }} />
+                                </ItemMedia>
+                                <ItemContent>
+                                  <ItemTitle>{role.name}</ItemTitle>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {role.canManageHorses ? <Badge variant="warning">Chevaux</Badge> : null}
+                                    {role.canInviteMembers ? <Badge variant="success">Inviter</Badge> : null}
+                                    {role.canKickMembers ? <Badge variant="destructive">Exclure</Badge> : null}
+                                    {role.canManageRoles ? <Badge variant="secondary">Rôles</Badge> : null}
+                                    {!role.canManageHorses && !role.canInviteMembers && !role.canKickMembers && !role.canManageRoles ? (
+                                      <span className="text-xs italic text-muted-foreground">Aucune permission</span>
+                                    ) : null}
+                                  </div>
+                                </ItemContent>
+                                <ItemActions>
+                                  <Button variant="outline" size="sm" onClick={() => openRoleEdit(role)}>
+                                    <Pencil />
+                                    Modifier
+                                  </Button>
+                                  {!role.isSystem ? (
+                                    <Button variant="ghost" size="icon-sm" aria-label="Supprimer le rôle" onClick={() => void handleDeleteRole(role.id)}>
+                                      <Trash2 />
+                                    </Button>
+                                  ) : null}
+                                </ItemActions>
+                              </Item>
+                            ))}
+                          </ItemGroup>
                         )}
                       </div>
+                    ) : null}
 
-                      {/* Text input */}
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-muted-foreground">Texte du Tag (1–6 caractères)</label>
-                        <Input
-                          value={tagText}
-                          onChange={(e) => setTagText(e.target.value.slice(0, 6))}
-                          maxLength={6}
-                          placeholder="OG"
-                          className="w-32 font-mono h-9 bg-background/50"
+                    {settingsTab === 'messages' && selectedClan.viewer.isLeader ? (
+                      <div className="flex flex-col gap-4">
+                        <SectionTitle
+                          title="Messages de bienvenue & annonces"
+                          description="Configurez des slogans, encouragements ou instructions qui s'affichent aléatoirement aux membres du clan."
                         />
-                      </div>
 
-                      {/* Background type */}
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-muted-foreground">Style de fond</label>
-                        <div className="flex gap-2">
-                          {(['solid', 'gradient'] as const).map((type) => (
-                            <Button
-                              key={type}
-                              type="button"
-                              size="sm"
-                              variant={tagStyle.backgroundType === type ? 'default' : 'outline'}
-                              onClick={() => setTagStyle((s) => ({ ...s, backgroundType: type }))}
-                              className="h-8 text-xs font-semibold px-3"
-                            >
-                              {type === 'solid' ? 'Uni' : 'Dégradé'}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Background colors */}
-                      {tagStyle.backgroundType === 'solid' ? (
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-muted-foreground">Couleur de fond</label>
-                          <div className="flex flex-wrap gap-1.5">
-                            {TAG_PRESET_COLORS.map((c) => (
-                              <button
-                                type="button"
-                                key={c}
-                                onClick={() => setTagStyle((s) => ({ ...s, backgroundColor: c }))}
-                                className={cn('h-5.5 w-5.5 rounded-full border-2 transition-transform hover:scale-110 shadow-sm', tagStyle.backgroundColor === c ? 'border-foreground scale-110' : 'border-transparent')}
-                                style={{ backgroundColor: c }}
-                              />
-                            ))}
-                            <input
-                              type="color"
-                              value={tagStyle.backgroundColor}
-                              onChange={(e) => setTagStyle((s) => ({ ...s, backgroundColor: e.target.value }))}
-                              className="h-5.5 w-5.5 cursor-pointer rounded border p-0 bg-transparent shrink-0"
-                            />
+                        {pumpUpLoading ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Spinner />
+                            Chargement…
                           </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-muted-foreground">Couleurs du dégradé</label>
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="color"
-                              value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').from ?? '#374151'; } catch { return '#374151'; } })()}
-                              onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, from: e.target.value }) })); }}
-                              className="h-7 w-7 cursor-pointer rounded border p-0 bg-transparent shrink-0"
-                            />
-                            <span className="text-xs text-muted-foreground font-semibold">→</span>
-                            <input
-                              type="color"
-                              value={(() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}').to ?? '#6366f1'; } catch { return '#6366f1'; } })()}
-                              onChange={(e) => { const cur = (() => { try { return JSON.parse(tagStyle.backgroundGradient ?? '{}'); } catch { return { from: '#374151', to: '#6366f1', direction: 'to right' }; } })(); setTagStyle((s) => ({ ...s, backgroundGradient: JSON.stringify({ ...cur, to: e.target.value }) })); }}
-                              className="h-7 w-7 cursor-pointer rounded border p-0 bg-transparent shrink-0"
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Text color */}
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-muted-foreground">Couleur du texte</label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {TAG_PRESET_COLORS.map((c) => (
-                            <button
-                              type="button"
-                              key={c}
-                              onClick={() => setTagStyle((s) => ({ ...s, textColor: c }))}
-                              className={cn('h-5.5 w-5.5 rounded-full border-2 transition-transform hover:scale-110 shadow-sm', tagStyle.textColor === c ? 'border-foreground scale-110' : 'border-transparent')}
-                              style={{ backgroundColor: c }}
-                            />
-                          ))}
-                          <input
-                            type="color"
-                            value={tagStyle.textColor}
-                            onChange={(e) => setTagStyle((s) => ({ ...s, textColor: e.target.value }))}
-                            className="h-5.5 w-5.5 cursor-pointer rounded border p-0 bg-transparent shrink-0"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Border color */}
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-muted-foreground">Couleur de bordure</label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {TAG_PRESET_COLORS.map((c) => (
-                            <button
-                              type="button"
-                              key={c}
-                              onClick={() => setTagStyle((s) => ({ ...s, borderColor: c }))}
-                              className={cn('h-5.5 w-5.5 rounded-full border-2 transition-transform hover:scale-110 shadow-sm', tagStyle.borderColor === c ? 'border-foreground scale-110' : 'border-transparent')}
-                              style={{ backgroundColor: c }}
-                            />
-                          ))}
-                          <input
-                            type="color"
-                            value={tagStyle.borderColor}
-                            onChange={(e) => setTagStyle((s) => ({ ...s, borderColor: e.target.value }))}
-                            className="h-5.5 w-5.5 cursor-pointer rounded border p-0 bg-transparent shrink-0"
-                          />
-                        </div>
-                      </div>
-
-                      <Button type="button" size="sm" className="w-full font-semibold" onClick={saveTag} disabled={savingTag || !tagText.trim()}>
-                        {savingTag ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                        Enregistrer le tag
-                      </Button>
-                    </div>
-                  )}
-
-                  {settingsTab === 'roles' && (selectedClan.viewer.permissions?.canManageRoles || selectedClan.viewer.isLeader) && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-border/40 pb-3 gap-2">
-                        <div>
-                          <h3 className="text-sm font-bold flex items-center gap-1.5">
-                            <Shield className="h-4 w-4 text-primary" />
-                            Rôles du clan
-                          </h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Gerez les grades personnalises de vos membres et leurs permissions associees.
-                          </p>
-                        </div>
-                        <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs font-semibold border-border hover:bg-muted" onClick={openRoleCreate}>
-                          <Plus className="mr-1 h-3.5 w-3.5" /> Nouveau rôle
-                        </Button>
-                      </div>
-
-                      {(selectedClan.roles ?? []).length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-border/50 py-10 text-center text-sm text-muted-foreground bg-muted/5">
-                          Aucun rôle créé pour ce clan. Les grades personnalisés apparaîtront ici.
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {(selectedClan.roles ?? []).map((role) => (
-                            <div key={role.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border/40 bg-muted/5 p-4 shadow-sm hover:border-border transition-all">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className="h-4 w-4 rounded-full flex-shrink-0 border border-border/30 shadow-inner" style={{ backgroundColor: role.color }} />
-                                <div className="min-w-0">
-                                  <div className="text-sm font-bold">{role.name}</div>
-                                  <div className="flex flex-wrap gap-1.5 mt-1">
-                                    {role.canManageHorses && <span className="rounded bg-warning/10 border border-warning/10 px-1.5 py-0.5 text-[9px] font-semibold text-warning">Chevaux</span>}
-                                    {role.canInviteMembers && <span className="rounded bg-success/10 border border-success/10 px-1.5 py-0.5 text-[9px] font-semibold text-success">Inviter</span>}
-                                    {role.canKickMembers && <span className="rounded bg-destructive/10 border border-destructive/10 px-1.5 py-0.5 text-[9px] font-semibold text-destructive">Exclure</span>}
-                                    {role.canManageRoles && <span className="rounded bg-muted/10 border border-border/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">Rôles</span>}
-                                    {!role.canManageHorses && !role.canInviteMembers && !role.canKickMembers && !role.canManageRoles && (
-                                      <span className="text-[9px] text-muted-foreground/50 italic">Aucune permission</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 px-2.5 text-xs font-semibold border-border hover:bg-muted"
-                                  onClick={() => openRoleEdit(role)}
-                                >
-                                  <Pencil className="h-3 w-3 mr-1" /> Modifier
-                                </Button>
-                                {!role.isSystem ? (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => void handleDeleteRole(role.id)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                        ) : pumpUpMessages.length === 0 ? (
+                          <Empty className="border">
+                            <EmptyHeader>
+                              <EmptyDescription>Aucun message d&apos;annonce ou de bienvenue pour l&apos;instant.</EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
+                        ) : (
+                          <ItemGroup className="gap-2">
+                            {pumpUpMessages.map((msg) => (
+                              <Item key={msg.id} variant="outline" size="sm">
+                                <ItemMedia>
+                                  <span className="size-3 rounded-full border" style={{ backgroundColor: msg.color }} />
+                                </ItemMedia>
+                                <ItemContent>
+                                  <ItemTitle className="font-normal" style={{ color: msg.color !== '#ffffff' ? msg.color : undefined }}>
+                                    {msg.content}
+                                  </ItemTitle>
+                                </ItemContent>
+                                <ItemActions>
+                                  <Button type="button" variant="ghost" size="icon-sm" aria-label="Modifier le message" onClick={() => startEditPumpUp(msg)}>
+                                    <Pencil />
                                   </Button>
-                                ) : null}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                                  <Button type="button" variant="ghost" size="icon-sm" aria-label="Supprimer le message" onClick={() => void deletePumpUpMessage(msg.id)}>
+                                    <Trash2 />
+                                  </Button>
+                                </ItemActions>
+                              </Item>
+                            ))}
+                          </ItemGroup>
+                        )}
 
-                  {settingsTab === 'messages' && selectedClan.viewer.isLeader && (
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-bold flex items-center gap-1.5">
-                          <Megaphone className="h-4 w-4 text-primary" />
-                          Messages de bienvenue & Annonces
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Configurez des slogans, encouragements ou instructions qui s'affichent aléatoirement aux membres du clan.
-                        </p>
-                      </div>
-
-                      {/* Message list */}
-                      {pumpUpLoading ? (
-                        <p className="text-sm text-muted-foreground">Chargement...</p>
-                      ) : pumpUpMessages.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-border/50 py-8 text-center text-sm text-muted-foreground bg-muted/5">
-                          Aucun message d'annonce ou de bienvenue pour l'instant.
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {pumpUpMessages.map((msg) => (
-                            <div key={msg.id} className="flex items-start gap-2 rounded-2xl border border-border/40 bg-muted/5 p-4 shadow-sm hover:border-border transition-all">
-                              <div className="mt-1 h-3 w-3 shrink-0 rounded-full border border-border/40 shadow-inner" style={{ backgroundColor: msg.color }} />
-                              <p className="min-w-0 flex-1 text-sm leading-relaxed" style={{ color: msg.color !== '#ffffff' ? msg.color : undefined }}>
-                                {msg.content}
-                              </p>
-                              {selectedClan.viewer.isLeader && (
-                                <div className="flex shrink-0 gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => startEditPumpUp(msg)}
-                                    className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => void deletePumpUpMessage(msg.id)}
-                                    className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Editor — leaders only */}
-                      {selectedClan.viewer.isLeader && (
-                        <div className="space-y-4 rounded-2xl border border-border/40 bg-muted/5 p-4 shadow-sm">
-                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                            {pumpUpEditId ? 'Modifier le message' : `Nouveau message (${pumpUpMessages.length}/5)`}
-                          </p>
-
-                          {/* Preview */}
-                          {pumpUpDraft.trim() && (
-                            <div className="rounded-xl bg-muted/20 px-3 py-2 border border-border/30">
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Aperçu : </span>
-                              <span className="text-sm font-semibold" style={{ color: pumpUpColor }}>
-                                {pumpUpDraft.replace('{name}', user?.username ?? 'Nom')}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Text input */}
-                          <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground font-semibold">
-                              Texte — utilise <code className="rounded bg-muted px-1.5 font-semibold text-[11px]">{'{name}'}</code> pour inclure le prénom du membre
-                            </label>
-                            <Input
-                              value={pumpUpDraft}
-                              onChange={(e) => setPumpUpDraft(e.target.value.slice(0, 120))}
-                              placeholder="Bienvenue {name} dans le clan !"
-                              maxLength={120}
-                              className="bg-background/50 h-9"
-                            />
-                            <p className="text-right text-[10px] text-muted-foreground font-semibold">{pumpUpDraft.length}/120</p>
-                          </div>
-
-                          {/* Color picker */}
-                          <div className="space-y-1">
-                            <label className="text-xs text-muted-foreground font-semibold">Couleur d'affichage du texte</label>
-                            <div className="flex flex-wrap gap-1.5">
-                              {TAG_PRESET_COLORS.map((c) => (
-                                <button
-                                  type="button"
-                                  key={c}
-                                  onClick={() => setPumpUpColor(c)}
-                                  className={cn('h-5.5 w-5.5 rounded-full border-2 transition-transform hover:scale-110 shadow-sm', pumpUpColor === c ? 'border-foreground scale-110' : 'border-transparent')}
-                                  style={{ backgroundColor: c }}
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base">{pumpUpEditId ? 'Modifier le message' : `Nouveau message (${pumpUpMessages.length}/5)`}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <FieldGroup>
+                              {pumpUpDraft.trim() ? (
+                                <Item variant="muted" size="sm">
+                                  <ItemContent>
+                                    <ItemDescription>Aperçu</ItemDescription>
+                                    <ItemTitle style={{ color: pumpUpColor }}>{pumpUpDraft.replace('{name}', user?.username ?? 'Nom')}</ItemTitle>
+                                  </ItemContent>
+                                </Item>
+                              ) : null}
+                              <Field>
+                                <FieldLabel htmlFor="pump-up-text">Texte</FieldLabel>
+                                <Input
+                                  id="pump-up-text"
+                                  value={pumpUpDraft}
+                                  onChange={(event) => setPumpUpDraft(event.target.value.slice(0, 120))}
+                                  placeholder="Bienvenue {name} dans le clan !"
+                                  maxLength={120}
                                 />
-                              ))}
-                              <input
-                                type="color"
-                                value={pumpUpColor}
-                                onChange={(e) => setPumpUpColor(e.target.value)}
-                                className="h-5.5 w-5.5 cursor-pointer rounded border p-0 bg-transparent shrink-0"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex gap-2 pt-1">
+                                <FieldDescription>
+                                  Utilisez <code className="rounded bg-muted px-1">{'{name}'}</code> pour inclure le prénom du membre · {pumpUpDraft.length}/120
+                                </FieldDescription>
+                              </Field>
+                              <Field>
+                                <FieldLabel>Couleur d&apos;affichage du texte</FieldLabel>
+                                <ColorSwatchPicker label="Couleur du message" colors={TAG_PRESET_COLORS} value={pumpUpColor} onChange={setPumpUpColor} />
+                              </Field>
+                            </FieldGroup>
+                          </CardContent>
+                          <CardFooter className="gap-2">
                             <Button
                               type="button"
-                              size="sm"
+                              className="flex-1"
                               disabled={pumpUpSaving || !pumpUpDraft.trim() || (!pumpUpEditId && pumpUpMessages.length >= 5)}
                               onClick={() => void savePumpUpMessage()}
-                              className="flex-1 font-semibold"
                             >
-                              {pumpUpSaving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                              {pumpUpSaving ? <Spinner /> : null}
                               {pumpUpEditId ? 'Modifier' : 'Ajouter'}
                             </Button>
-                            {pumpUpEditId && (
-                              <Button type="button" size="sm" variant="outline" onClick={cancelEditPumpUp} className="font-semibold border-border">
+                            {pumpUpEditId ? (
+                              <Button type="button" variant="outline" onClick={cancelEditPumpUp}>
                                 Annuler
                               </Button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+                            ) : null}
+                          </CardFooter>
+                        </Card>
+                      </div>
+                    ) : null}
+                  </div>
+                </ScrollArea>
+              </Tabs>
             </>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
 
-      {/* ── Clan Hub Modal (Tableau de Bord) ── */}
+      {/* ── Tableau de bord du clan ── */}
       <Dialog open={clanHubOpen} onOpenChange={setClanHubOpen}>
-        <DialogContent className="max-w-5xl h-[85vh] p-0 overflow-hidden flex flex-col bg-background/90 backdrop-blur-xl border border-border/40 shadow-2xl">
-          {selectedClan && (
+        <DialogContent className="flex h-[85vh] flex-col gap-0 p-0 sm:max-w-5xl">
+          {selectedClan ? (
             <>
-              <DialogHeader className="px-6 py-4 border-b border-border/40 shrink-0 bg-background/40 backdrop-blur-md">
-                <DialogTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
-                  <LayoutGrid className="h-5.5 w-5.5 text-primary" />
-                  Tableau de Bord — {selectedClan.name}
-                </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Accédez au chat, à la banque, aux guerres, à l'inventaire et à la gestion opérationnelle de votre clan.
-                </DialogDescription>
+              <DialogHeader className="border-b p-6">
+                <DialogTitle>Tableau de bord — {selectedClan.name}</DialogTitle>
+                <DialogDescription>Accédez au chat, à la banque, aux guerres, à l&apos;inventaire et à la gestion opérationnelle de votre clan.</DialogDescription>
               </DialogHeader>
 
-              <div className="flex-1 flex min-h-0 bg-background/30">
-                {/* Left Sidebar (Sidetabs) */}
-                <div className="w-56 border-r border-border/40 bg-muted/10 p-4 space-y-1.5 shrink-0 backdrop-blur-sm overflow-y-auto">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('info')}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                      activeTab === 'info'
-                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                        : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Layout className="h-4 w-4 text-primary" />
-                    Infos & Effets
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('chat')}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                      activeTab === 'chat'
-                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                        : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <MessageSquare className="h-4 w-4 text-primary" />
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+                orientation="vertical"
+                className="min-h-0 flex-1 flex-row gap-0"
+              >
+                <TabsList className="h-auto w-52 shrink-0 flex-col items-stretch justify-start rounded-none border-r bg-transparent p-3">
+                  <TabsTrigger value="info" className="justify-start">
+                    <Layout />
+                    Infos & effets
+                  </TabsTrigger>
+                  <TabsTrigger value="chat" className="justify-start">
+                    <MessageSquare />
                     Chat du clan
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('bank')}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                      activeTab === 'bank'
-                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                        : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Landmark className="h-4 w-4 text-success" />
+                  </TabsTrigger>
+                  <TabsTrigger value="bank" className="justify-start">
+                    <Landmark />
                     Banque
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('inventory')}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                      activeTab === 'inventory'
-                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                        : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Package className="h-4 w-4 text-warning" />
+                  </TabsTrigger>
+                  <TabsTrigger value="inventory" className="justify-start">
+                    <Package />
                     Inventaire
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('guerre')}
-                    className={cn(
-                      "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                      activeTab === 'guerre'
-                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                        : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    <Swords className="h-4 w-4 text-destructive" />
+                  </TabsTrigger>
+                  <TabsTrigger value="guerre" className="justify-start">
+                    <Swords />
                     Guerre
-                  </button>
-
+                  </TabsTrigger>
                   {featuredEvent ? (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('event')}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all text-left border border-transparent",
-                        activeTab === 'event'
-                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                          : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <Sparkles className="h-4 w-4 text-warning" />
+                    <TabsTrigger value="event" className="justify-start">
+                      <Sparkles />
                       Événement
-                    </button>
+                    </TabsTrigger>
                   ) : null}
-
                   {selectedClan.viewer.permissions?.canInviteMembers || selectedClan.viewer.isLeader ? (
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('requests')}
-                      className={cn(
-                        "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all border border-transparent",
-                        activeTab === 'requests'
-                          ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                          : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <UserX className="h-4 w-4 rotate-180 text-success" />
-                        Candidatures
-                      </span>
-                      {selectedClan.joinRequests.length > 0 ? (
-                        <Badge variant="secondary" className="px-1.5 py-0.5 text-[10px] font-bold">
-                          {selectedClan.joinRequests.length}
-                        </Badge>
-                      ) : null}
-                    </button>
+                    <TabsTrigger value="requests" className="justify-start">
+                      <UserPlus />
+                      <span className="flex-1 text-left">Candidatures</span>
+                      {selectedClan.joinRequests.length > 0 ? <Badge variant="secondary">{selectedClan.joinRequests.length}</Badge> : null}
+                    </TabsTrigger>
                   ) : null}
-                </div>
+                </TabsList>
 
-                {/* Right Content Area */}
-                <div className="flex-1 overflow-y-auto p-6 min-h-0 bg-background/50">
-                  {activeTab === 'info' && (
-                    <div className="space-y-6">
-                      {/* Detailed Description */}
-                      <div className="rounded-2xl border border-border/40 bg-muted/5 p-5 space-y-4">
-                        <div className="space-y-1">
-                          <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                            <Layout className="h-4 w-4 text-primary" />
-                            À propos du clan
-                          </h3>
-                          <p className="text-sm leading-relaxed text-muted-foreground">
-                            {selectedClan.description || 'Aucune description pour le moment.'}
-                          </p>
-                        </div>
+                <ScrollArea className="min-h-0 flex-1">
+                  <div className="p-6">
+                    {activeTab === 'info' ? (
+                      <div className="flex flex-col gap-6">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                              <Layout className="size-4" />
+                              À propos du clan
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-sm text-muted-foreground">{selectedClan.description || 'Aucune description pour le moment.'}</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-base">
+                              <Sparkles className="size-4" />
+                              Boosts & effets actifs
+                            </CardTitle>
+                            <CardDescription>Les bonus en cours d&apos;activation pour tous les membres.</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            {selectedClan.activeEffects.length > 0 ? (
+                              <ItemGroup className="gap-2 sm:grid sm:grid-cols-2">
+                                {selectedClan.activeEffects.map((effect) => (
+                                  <Item key={effect.id} variant="outline" size="sm">
+                                    <ItemMedia>
+                                      <ClanEffectBadge effect={effect} />
+                                    </ItemMedia>
+                                    <ItemContent>
+                                      <ItemTitle>{effect.name}</ItemTitle>
+                                      <ItemDescription>{effect.activeUntil ? `Expire dans ${formatEffectCooldown(effect)}` : 'Permanent'}</ItemDescription>
+                                    </ItemContent>
+                                  </Item>
+                                ))}
+                              </ItemGroup>
+                            ) : (
+                              <p className="text-sm italic text-muted-foreground">Aucun effet actif pour le moment.</p>
+                            )}
+                          </CardContent>
+                        </Card>
                       </div>
+                    ) : null}
 
-                      {/* Active Effects */}
-                      <div className="rounded-2xl border border-border/40 bg-muted/5 p-5 space-y-4">
-                        <div className="space-y-1">
-                          <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                            <Sparkles className="h-4 w-4 text-warning" />
-                            Boosts & Effets Actifs
-                          </h3>
-                          <p className="text-xs text-muted-foreground">Les bonus en cours d'activation pour tous les membres.</p>
-                        </div>
-                        {selectedClan.activeEffects.length > 0 ? (
-                          <div className="flex flex-wrap gap-2.5 pt-1">
-                            {selectedClan.activeEffects.map((effect) => (
-                              <div key={effect.id} className="flex items-center gap-2 rounded-xl border border-border/50 bg-muted/15 p-2 pr-3">
-                                <ClanEffectBadge effect={effect} />
-                                <div>
-                                  <div className="text-xs font-semibold">{effect.name}</div>
-                                  <div className="text-[10px] text-muted-foreground">
-                                    {effect.activeUntil ? `Expire dans ${formatEffectCooldown(effect)}` : 'Permanent'}
-                                  </div>
-                                </div>
+                    {activeTab === 'chat' ? (
+                      <div className="flex flex-col gap-4">
+                        <ScrollArea className="h-[22rem] rounded-md border">
+                          <div className="flex flex-col gap-3 p-4">
+                            {chatLoading ? (
+                              <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+                                <Spinner />
+                                Chargement du chat…
                               </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-sm text-muted-foreground italic">Aucun effet actif pour le moment.</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === 'chat' && (
-                    <Card className="border-none bg-transparent shadow-none">
-                      <CardContent className="space-y-4 p-0">
-                        <div className="max-h-[50vh] min-h-[350px] flex-1 space-y-2 overflow-y-auto rounded-2xl border border-border/50 bg-muted/15 p-4">
-                          {chatLoading ? (
-                            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                              <Loader2 className="mr-2 h-4.5 w-4.5 animate-spin" />
-                              Chargement du chat...
-                            </div>
-                          ) : chatMessages.length === 0 ? (
-                            <div className="py-12 text-center text-sm text-muted-foreground">Lance la conversation dans le clan ! 💬</div>
-                          ) : (
-                            chatMessages.map((entry) => {
-                              if (entry.type === 'system') {
+                            ) : chatMessages.length === 0 ? (
+                              <p className="py-12 text-center text-sm text-muted-foreground">Lancez la conversation dans le clan !</p>
+                            ) : (
+                              chatMessages.map((entry) => {
+                                if (entry.type === 'system') {
+                                  return (
+                                    <Alert key={entry.id} variant="warning">
+                                      <Megaphone />
+                                      <AlertDescription className="whitespace-pre-wrap break-words">{entry.message}</AlertDescription>
+                                    </Alert>
+                                  );
+                                }
+                                const isOwnMessage = entry.user?.id === user?.id;
                                 return (
-                                  <div key={entry.id} className="flex justify-center">
-                                    <div className="flex max-w-[90%] items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-1.5">
-                                      <Megaphone className="h-3.5 w-3.5 shrink-0 text-warning" />
-                                      <p className="whitespace-pre-wrap break-words text-center text-xs text-warning">{entry.message}</p>
+                                  <div key={entry.id} className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}>
+                                    <div className={cn('max-w-[85%] rounded-lg border px-3 py-2', isOwnMessage ? 'bg-secondary' : 'bg-card')}>
+                                      <div className="mb-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        <UsernameDisplay username={entry.user?.username ?? 'Inconnu'} usernameColor={entry.user?.usernameColor ?? null} />
+                                        <span>•</span>
+                                        <span>{formatDate(entry.createdAt)}</span>
+                                      </div>
+                                      <p className="whitespace-pre-wrap break-words text-sm">{entry.message}</p>
                                     </div>
                                   </div>
                                 );
-                              }
-                              const isOwnMessage = entry.user?.id === user?.id;
-                              return (
-                                <div key={entry.id} className={cn('flex', isOwnMessage ? 'justify-end' : 'justify-start')}>
-                                  <div className={cn('max-w-[85%] rounded-xl border border-border/50 px-3 py-2', isOwnMessage ? 'border-primary/20 bg-primary/10' : 'bg-background')}>
-                                    <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                      <UsernameDisplay username={entry.user?.username ?? 'Inconnu'} usernameColor={entry.user?.usernameColor ?? null} />
-                                      <span>•</span>
-                                      <span>{formatDate(entry.createdAt)}</span>
-                                    </div>
-                                    <p className="whitespace-pre-wrap break-words text-sm">{entry.message}</p>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                        <form onSubmit={handleSendChatMessage} className="space-y-2">
-                          <Textarea
-                            value={chatDraft}
-                            onChange={(event) => setChatDraft(event.target.value.slice(0, 400))}
-                            rows={3}
-                            placeholder="Écris un message à tes camarades de clan..."
-                            disabled={chatSending}
-                            className="bg-background/50 text-sm resize-none"
-                          />
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-xs text-muted-foreground">{chatDraft.trim().length}/400</span>
-                            <Button type="submit" size="sm" className="h-9 px-4 font-semibold" disabled={chatSending || !chatDraft.trim()}>
-                              {chatSending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Send className="mr-1.5 h-3.5 w-3.5" />}
-                              Envoyer
-                            </Button>
+                              })
+                            )}
                           </div>
-                        </form>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {activeTab === 'bank' && (
-                    <Card className="border-none bg-transparent shadow-none">
-                      <CardContent className="space-y-4 p-0">
-                        <div className="flex flex-wrap items-center justify-between border-b border-border/50 pb-4 gap-3">
-                          <div>
-                            <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                              <Landmark className="h-4 w-4 text-success" />
-                              Banque de clan
-                            </h3>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Les membres peuvent déposer. Seul le chef peut dépenser cet argent pour les améliorations du clan.
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setBankHistoryOpen(true)}
-                            className="h-9 gap-1 text-xs font-semibold border-border hover:bg-muted"
-                          >
-                            <History className="h-3.5 w-3.5" /> Historique des dépôts
-                          </Button>
-                        </div>
-
-                        <div className="rounded-2xl border border-border/50 bg-muted/15 p-5 space-y-4">
-                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider font-bold">
-                                <CurrencyIcon type="money" className="h-3.5 w-3.5" />
-                                Solde actuel
-                              </div>
-                              <div className="mt-1.5 text-3xl font-bold tabular-nums text-foreground">
-                                {formatMoney(selectedClan.clanBankMoney)}
-                              </div>
+                        </ScrollArea>
+                        <form onSubmit={handleSendChatMessage}>
+                          <Field>
+                            <Textarea
+                              aria-label="Message au clan"
+                              value={chatDraft}
+                              onChange={(event) => setChatDraft(event.target.value.slice(0, 400))}
+                              rows={3}
+                              placeholder="Écrivez un message à vos camarades de clan…"
+                              disabled={chatSending}
+                            />
+                            <div className="flex items-center justify-between gap-3">
+                              <FieldDescription>{chatDraft.trim().length}/400</FieldDescription>
+                              <Button type="submit" disabled={chatSending || !chatDraft.trim()}>
+                                {chatSending ? <Spinner /> : <Send />}
+                                Envoyer
+                              </Button>
                             </div>
-                            <div className="flex flex-wrap items-end gap-2.5">
-                              <div className="w-full sm:w-auto min-w-[150px] space-y-1">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Montant à déposer</label>
+                          </Field>
+                        </form>
+                      </div>
+                    ) : null}
+
+                    {activeTab === 'bank' ? (
+                      <div className="flex flex-col gap-4">
+                        <SectionTitle
+                          title="Banque de clan"
+                          description="Les membres peuvent déposer. Seul le chef peut dépenser cet argent pour les améliorations du clan."
+                          action={
+                            <Button type="button" variant="outline" onClick={() => setBankHistoryOpen(true)}>
+                              <History />
+                              Historique des dépôts
+                            </Button>
+                          }
+                        />
+                        <Card>
+                          <CardHeader>
+                            <CardDescription className="flex items-center gap-2">
+                              <CurrencyIcon type="money" className="size-4" />
+                              Solde actuel
+                            </CardDescription>
+                            <CardTitle className="text-3xl tabular-nums">{formatMoney(selectedClan.clanBankMoney)}</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <Field orientation="horizontal" className="items-end">
+                              <FieldContent>
+                                <FieldLabel htmlFor="bank-deposit">Montant à déposer</FieldLabel>
                                 <Input
+                                  id="bank-deposit"
                                   type="number"
                                   min={1}
                                   step={1}
                                   value={bankDepositAmount}
                                   onChange={(event) => setBankDepositAmount(event.target.value)}
                                   disabled={depositingBank}
-                                  className="h-9 text-sm bg-background"
                                 />
-                              </div>
-                              <Button type="button" size="sm" className="h-9 font-semibold" onClick={handleDepositToBank} disabled={depositingBank}>
-                                {depositingBank ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CurrencyIcon type="money" className="mr-1.5 h-3.5 w-3.5" />}
+                              </FieldContent>
+                              <Button type="button" onClick={handleDepositToBank} disabled={depositingBank}>
+                                {depositingBank ? <Spinner /> : <CurrencyIcon type="money" className="size-4" />}
                                 Déposer
                               </Button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                          <div className="text-sm font-semibold flex items-center gap-1.5">
-                            <Package className="h-4 w-4 text-warning" /> Stockage
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {selectedClan.ownedItems.length > 0
-                              ? `${selectedClan.ownedItems.length} objet${selectedClan.ownedItems.length > 1 ? "s" : ""} différent${selectedClan.ownedItems.length > 1 ? "s" : ""} en stock`
-                              : 'Aucun objet de clan en stock.'}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {activeTab === 'inventory' && (
-                    <Card className="border-none bg-transparent shadow-none">
-                      <CardContent className="space-y-4 p-0">
-                        <div>
-                          <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                            <Package className="h-4 w-4 text-warning" />
-                            Objets de clan
-                          </h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Achetés avec la banque du clan. Le chef peut les activer pour le bénéfice de tous.
-                          </p>
-                        </div>
-
-                        {selectedClan.ownedItems.length > 0 ? (
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            {selectedClan.ownedItems.map((clanItem) => (
-                              <div key={clanItem.id} className="flex flex-col justify-between gap-3 rounded-2xl border border-border/50 bg-muted/5 p-4 shadow-sm hover:border-border transition-all">
-                                <div>
-                                  <div className="flex items-center gap-2 text-sm font-bold">
-                                    <span>{clanItem.item.name} {"×"}{clanItem.quantity}</span>
-                                    {["CLAN_BANNER", "CLAN_PROFILE_PICTURE"].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? "") ? (
-                                      <Badge variant="secondary" className="text-[9px] px-1 py-0.5">Image requise</Badge>
-                                    ) : null}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground mt-1">{clanItem.item.description}</div>
-                                </div>
-                                <div className="pt-2 border-t border-border/10 flex justify-end">
-                                  {selectedClan.viewer.isLeader ? (
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      onClick={() => handleUseClanItem(clanItem)}
-                                      disabled={usingClanItemId === clanItem.id}
-                                      className="h-8 text-xs font-semibold px-3"
-                                    >
-                                      {usingClanItemId === clanItem.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
-                                      {["CLAN_BANNER", "CLAN_PROFILE_PICTURE"].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? "") ? "Choisir l'image" : "Activer"}
-                                    </Button>
-                                  ) : (
-                                    <Badge variant="outline" className="text-[9px]">Chef requis</Badge>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="rounded-2xl border border-dashed border-border/50 px-4 py-8 text-center text-sm text-muted-foreground bg-muted/5">
-                            Aucun objet de clan en stock. Les achats apparaîtront ici.
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {activeTab === 'guerre' && (
-                    <div className="space-y-5">
-                      {/* War stats bar */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
-                        <div className="rounded-xl border border-border/40 bg-muted/15 px-3 py-2.5 shadow-sm">
-                          <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Trophées</div>
-                          <div className="text-sm font-bold mt-0.5 text-warning">{formatMoney(selectedClan.warTrophies)}</div>
-                        </div>
-                        <div className="rounded-xl border border-border/40 bg-muted/15 px-3 py-2.5 shadow-sm">
-                          <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Bilan</div>
-                          <div className="text-sm font-bold mt-0.5">{selectedClan.warWins}V {selectedClan.warLosses}D {selectedClan.warDraws}N</div>
-                        </div>
-                        <div className="rounded-xl border border-border/40 bg-muted/15 px-3 py-2.5 shadow-sm">
-                          <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Éligibilité</div>
-                          <div className="text-sm font-bold mt-0.5">
-                            {selectedClan.memberCount >= selectedClan.warHub.minimumMembersRequired
-                              ? 'Éligible'
-                              : `${selectedClan.warHub.minimumMembersRequired} req.`}
-                          </div>
-                        </div>
-                        <div className="rounded-xl border border-border/40 bg-muted/15 px-3 py-2.5 shadow-sm col-span-2 sm:col-span-1">
-                          <div className="text-[9px] uppercase tracking-wider font-bold text-muted-foreground">Disponibilité</div>
-                          <div className="text-xs font-semibold mt-0.5 truncate">
-                            {selectedClan.warHub.cooldownEndsAt
-                              ? `Dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}`
-                              : 'Immédiate'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {selectedClan.warHub.canDeclareWar && (
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline" onClick={() => setWarListDialogOpen(true)} className="h-9 px-4 font-semibold border-border hover:bg-muted">
-                            <History className="mr-1.5 h-3.5 w-3.5" />
-                            Guerres passées
-                          </Button>
-                          <Button size="sm" onClick={() => setWarDialogOpen(true)} className="h-9 px-4 font-semibold shadow-md">
-                            <Swords className="mr-2 h-4 w-4" />
-                            Déclarer une guerre
-                          </Button>
-                        </div>
-                      )}
-
-                      {/* Active war */}
-                      {selectedWar ? (
-                        <Card className="border border-border/40 bg-muted/5 shadow-none rounded-2xl">
-                          <div className="border-b border-border/20 p-5">
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant={getStatusVariant(selectedWar.status)}>{getStatusLabel(selectedWar.status)}</Badge>
-                                  <span className="text-xs text-muted-foreground">Objectif {selectedWar.targetScore} points</span>
-                                </div>
-                                <h4 className="mt-1.5 text-lg font-bold tracking-tight">
-                                  {selectedWar.attackerClan.name} contre {selectedWar.defenderClan.name}
-                                </h4>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {selectedWar.status === 'ACTIVE'
-                                    ? `Fin prévue dans ${formatCountdown(selectedWar.endsAt)}.`
-                                    : `Terminée le ${formatDate(selectedWar.completedAt)}.`}
-                                </p>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3 text-center">
-                                <div className="rounded-xl border border-border/40 bg-background px-4 py-2 shadow-sm min-w-[100px]">
-                                  <div className="text-[10px] text-muted-foreground truncate">{selectedWar.attackerClan.name}</div>
-                                  <div className="mt-0.5 text-2xl font-bold tabular-nums text-primary">{selectedWar.attackerScore}</div>
-                                </div>
-                                <div className="rounded-xl border border-border/40 bg-background px-4 py-2 shadow-sm min-w-[100px]">
-                                  <div className="text-[10px] text-muted-foreground truncate">{selectedWar.defenderClan.name}</div>
-                                  <div className="mt-0.5 text-2xl font-bold tabular-nums text-primary">{selectedWar.defenderScore}</div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <CardContent className="space-y-5 p-5">
-                            {isOwnClan && (
-                              <div className="space-y-4">
-                                <div className="rounded-2xl border border-border/40 bg-background p-4 space-y-4 shadow-sm">
-                                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                                    <div>
-                                      <h5 className="font-semibold text-sm">Centre de commandement</h5>
-                                      <p className="text-xs text-muted-foreground mt-0.5">
-                                        Lance des assauts tactiques instantanés ou complète les mini-jeux pour pousser la ligne de front.
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <Button size="sm" variant="outline" onClick={() => setWarGamesDialogOpen(true)} className="h-8 text-xs border-border">
-                                        🎮 Mes Parties
-                                      </Button>
-                                      <Badge variant="outline" className="font-semibold h-7 bg-primary/5 text-primary border-primary/20">
-                                        Endurance {selectedWar.viewerActions.staminaRemaining}/{selectedWar.viewerActions.staminaCap}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                  <div className="grid gap-3 sm:grid-cols-3">
-                                    {selectedClan.warHub.attackTypes.map((attackType) => {
-                                      const disabled =
-                                        warActionKey === `attack:${attackType.type}`
-                                        || selectedWar.viewerActions.staminaRemaining < attackType.staminaCost
-                                        || !['PREPARING', 'ACTIVE'].includes(selectedWar.status);
-                                      return (
-                                        <div key={attackType.type} className="rounded-2xl border border-border/40 bg-muted/5 p-4 flex flex-col justify-between">
-                                          <div>
-                                            <div className="flex items-center justify-between gap-2 border-b border-border/10 pb-2">
-                                              <div className="text-xs font-bold text-foreground truncate">{attackType.label}</div>
-                                              <Badge variant="secondary" className="text-[9px] px-1 py-0.5 shrink-0">Coût {attackType.staminaCost}</Badge>
-                                            </div>
-                                            <p className="mt-2 text-[11px] leading-normal text-muted-foreground">{attackType.description}</p>
-                                          </div>
-                                          <div className="mt-3">
-                                            <div className="text-[10px] text-muted-foreground font-semibold">
-                                              {attackType.minPoints} à {attackType.maxPoints} pts • dégâts structurels {attackType.structureDamage}
-                                            </div>
-                                            <Button
-                                              size="sm"
-                                              className="mt-3 w-full text-xs font-semibold h-8"
-                                              disabled={disabled}
-                                              onClick={() => void handleWarAttack(attackType.type)}
-                                            >
-                                              {warActionKey === `attack:${attackType.type}` ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Axe className="mr-1.5 h-3 w-3" />}
-                                              Frapper
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-
-                                {/* Games */}
-                                <div className="rounded-2xl border border-border/40 bg-background p-4 space-y-4 shadow-sm">
-                                  <div className="flex items-center justify-between border-b border-border/10 pb-2">
-                                    <div>
-                                      <h5 className="font-semibold text-sm">Jeux de guerre</h5>
-                                      <p className="text-xs text-muted-foreground">Complétez les jeux quotidiennement pour marquer des points.</p>
-                                    </div>
-                                    <Badge variant="secondary" className="text-[10px]">{selectedWar.viewerSide === 'ATTACKER' ? 'Attaquant' : 'Défenseur'}</Badge>
-                                  </div>
-                                  <div className="grid gap-3 sm:grid-cols-3">
-                                    {/* Memory */}
-                                    <div className={cn('rounded-2xl border p-4 space-y-3 flex flex-col justify-between', gameStatus?.canPlayMemory ? 'border-warning/20 bg-warning/5' : 'border-border/40 bg-muted/5')}>
-                                      <div>
-                                        <div className="flex items-start justify-between gap-2 border-b border-border/10 pb-2">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="text-lg">🧩</span>
-                                            <span className="font-bold text-xs">Jeu Mémoire</span>
-                                          </div>
-                                          {gameStatus?.memoryPlayedToday && <Badge variant="outline" className="text-[8px] px-1 py-0 shrink-0 border-success/20 text-success bg-success/5">✓ Joué</Badge>}
-                                        </div>
-                                        <p className="text-[11px] text-muted-foreground mt-2 leading-normal">Retournez les paires pour fortifier et améliorer vos défenses du clan.</p>
-                                      </div>
-                                      <div className="flex flex-col gap-1.5 mt-2">
-                                        <Button size="sm" className="w-full text-xs font-semibold h-8" disabled={!gameStatus?.canPlayMemory} onClick={() => openGame('MEMORY', false)}>
-                                          {gameStatus?.memoryPlayedToday ? 'Déjà joué' : 'Jouer (1×/jour)'}
-                                        </Button>
-                                        <Button size="sm" variant="outline" className="w-full text-xs font-semibold h-8 border-border" onClick={() => openGame('MEMORY', true)}>
-                                          Entraînement
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    {/* Bomb */}
-                                    <div className={cn('rounded-2xl border p-4 space-y-3 flex flex-col justify-between', gameStatus?.canPlayBomb ? 'border-destructive/20 bg-destructive/5' : 'border-border/40 bg-muted/5')}>
-                                      <div>
-                                        <div className="flex items-start justify-between gap-2 border-b border-border/10 pb-2">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="text-lg">💣</span>
-                                            <span className="font-bold text-xs">Bombardement</span>
-                                          </div>
-                                          {gameStatus?.bombPlayedToday && <Badge variant="outline" className="text-[8px] px-1 py-0 shrink-0 border-success/20 text-success bg-success/5">✓ Joué</Badge>}
-                                        </div>
-                                        <p className="text-[11px] text-muted-foreground mt-2 leading-normal">Pilotez un avion et larguez des bombes sur les structures adverses.</p>
-                                      </div>
-                                      <div className="flex flex-col gap-1.5 mt-2">
-                                        <Button size="sm" className="w-full text-xs font-semibold h-8" disabled={!gameStatus?.canPlayBomb} onClick={() => openGame('BOMB', false)}>
-                                          {gameStatus?.bombPlayedToday ? 'Déjà joué' : 'Attaquer (1×/jour)'}
-                                        </Button>
-                                        <Button size="sm" variant="outline" className="w-full text-xs font-semibold h-8 border-border" onClick={() => openGame('BOMB', true)}>
-                                          Entraînement
-                                        </Button>
-                                      </div>
-                                    </div>
-                                    {/* Naval */}
-                                    <div className={cn('rounded-2xl border p-4 space-y-3 flex flex-col justify-between', (gameStatus?.naval?.shotsRemaining ?? 0) > 0 ? 'border-border/20 bg-muted/5' : 'border-border/40 bg-muted/5')}>
-                                      <div>
-                                        <div className="flex items-start justify-between gap-2 border-b border-border/10 pb-2">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="text-lg">🎯</span>
-                                            <span className="font-bold text-xs">Guerre Navale</span>
-                                          </div>
-                                          {gameStatus?.naval && (
-                                            <Badge variant={(gameStatus.naval.shotsRemaining ?? 0) > 0 ? 'secondary' : 'outline'} className="text-[8px] px-1 py-0 shrink-0">
-                                              {gameStatus.naval.shotsRemaining} tirs
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        <p className="text-[11px] text-muted-foreground mt-2 leading-normal">Bombardez la base ennemie sur une grille tactique 6×6 partagée.</p>
-                                      </div>
-                                      <div className="mt-4 flex flex-col justify-end">
-                                        <Button size="sm" className="w-full text-xs font-semibold h-8 mt-2" disabled={(gameStatus?.naval?.shotsRemaining ?? 0) <= 0} onClick={() => openGame('NAVAL', false)}>
-                                          {(gameStatus?.naval?.shotsRemaining ?? 0) <= 0 ? 'Plus de tirs' : 'Ouvrir la carte'}
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Defenses list */}
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                  <div>
-                                    <div className="mb-2 text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                                      <span>🛡️ Nos défenses</span>
-                                      <span className="text-[10px] font-normal text-muted-foreground lowercase">({getWarOwnSide(selectedWar, selectedClan.id).name})</span>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                      {getWarDefenseSet(selectedWar, selectedClan.id).map((defense) => (
-                                        <UpgradeRow key={defense.type} defense={defense} />
-                                      ))}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="mb-2 text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                                      <Target className="h-3 w-3" />
-                                      <span>Défenses ennemies</span>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                      {getWarEnemyDefenseSet(selectedWar, selectedClan.id).map((defense) => (
-                                        <UpgradeRow key={defense.type} defense={defense} />
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Rewards */}
-                                <div className="rounded-2xl border border-border/40 bg-background p-4 space-y-3 shadow-sm">
-                                  <h5 className="font-semibold text-sm">Récompenses de guerre</h5>
-                                  <div className="grid gap-3 sm:grid-cols-2">
-                                    <div className="rounded-2xl border border-border/40 bg-success/5 p-3 text-xs leading-normal">
-                                      <div className="font-bold text-success">Victoire</div>
-                                      <div className="mt-1 text-muted-foreground">+{selectedWar.rewardTable.winner.money} money, +{selectedWar.rewardTable.winner.aura} aura et {formatSignedValue(selectedWar.rewardTable.winner.trophies)} trophées pour le clan.</div>
-                                    </div>
-                                    <div className="rounded-2xl border border-border/40 bg-muted/5 p-3 text-xs leading-normal">
-                                      <div className="font-bold text-foreground/80">Défaite / égalité</div>
-                                      <div className="mt-1 text-muted-foreground font-semibold">+{selectedWar.rewardTable.loser.money} money, +{selectedWar.rewardTable.loser.aura} aura et {formatSignedValue(selectedWar.rewardTable.loser.trophies)} trophées pour le clan.</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between gap-3 border-b border-border/10 pb-2">
-                                <div>
-                                  <h5 className="font-semibold text-sm">Participation des membres</h5>
-                                  <p className="text-[11px] text-muted-foreground font-medium">
-                                    Vérifiez qui a déjà fait ses combats de guerre et son support défensif.
-                                  </p>
-                                </div>
-                                <Badge variant="outline" className="text-[10px]">{getWarOwnSide(selectedWar, selectedClan.id).name}</Badge>
-                              </div>
-                              {getWarParticipantStats(selectedWar, selectedClan.id).length === 0 ? (
-                                <div className="rounded-2xl border border-dashed border-border/60 p-6 text-center text-xs text-muted-foreground bg-muted/5">
-                                  Aucune participation enregistrée pour l'instant.
-                                </div>
-                              ) : (
-                                <div className="grid gap-2 sm:grid-cols-2">
-                                  {getWarParticipantStats(selectedWar, selectedClan.id).map((member) => (
-                                    <WarMemberRow key={member.user.id} member={member} />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                            </Field>
                           </CardContent>
                         </Card>
-                      ) : (
-                        <Alert className="rounded-2xl bg-muted/5 border-border/40">
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>Pas de guerre en cours</AlertTitle>
-                          <AlertDescription className="text-xs">
-                            {selectedClan.warHub.canDeclareWar
-                              ? 'Le chef peut choisir un clan adverse et démarrer la guerre immédiatement.'
-                              : selectedClan.warHub.cooldownEndsAt
-                                ? `Le clan récupère encore jusqu'au ${formatDate(selectedClan.warHub.cooldownEndsAt)}.`
-                                : selectedClan.memberCount < selectedClan.warHub.minimumMembersRequired
-                                  ? `Le clan doit atteindre ${selectedClan.warHub.minimumMembersRequired} membres pour entrer en guerre.`
-                                  : 'Aucun adversaire disponible avec un total de trophées assez proche pour lancer une guerre.'}
-                          </AlertDescription>
-                        </Alert>
-                      )}
+                        <Item variant="outline">
+                          <ItemMedia variant="icon">
+                            <Package />
+                          </ItemMedia>
+                          <ItemContent>
+                            <ItemTitle>Stockage</ItemTitle>
+                            <ItemDescription>
+                              {selectedClan.ownedItems.length > 0
+                                ? `${selectedClan.ownedItems.length} objet${selectedClan.ownedItems.length > 1 ? 's' : ''} différent${selectedClan.ownedItems.length > 1 ? 's' : ''} en stock`
+                                : 'Aucun objet de clan en stock.'}
+                            </ItemDescription>
+                          </ItemContent>
+                        </Item>
+                      </div>
+                    ) : null}
 
-                      {/* War history list (Relocated button & history trigger) */}
-                      <div className="flex justify-start">
-                        <Button size="sm" variant="outline" onClick={() => setWarListDialogOpen(true)} className="h-9 px-4 font-semibold border-border hover:bg-muted">
-                          <History className="mr-1.5 h-3.5 w-3.5" />
-                          Consulter l'historique complet des guerres terminées
+                    {activeTab === 'inventory' ? (
+                      <div className="flex flex-col gap-4">
+                        <SectionTitle title="Objets de clan" description="Achetés avec la banque du clan. Le chef peut les activer pour le bénéfice de tous." />
+                        {selectedClan.ownedItems.length > 0 ? (
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            {selectedClan.ownedItems.map((clanItem) => {
+                              const needsImage = ['CLAN_BANNER', 'CLAN_PROFILE_PICTURE'].includes(parseClanItemEffect(clanItem.item.effect)?.type ?? '');
+                              return (
+                                <Card key={clanItem.id}>
+                                  <CardHeader>
+                                    <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                                      {clanItem.item.name} ×{clanItem.quantity}
+                                      {needsImage ? <Badge variant="secondary">Image requise</Badge> : null}
+                                    </CardTitle>
+                                    <CardDescription>{clanItem.item.description}</CardDescription>
+                                  </CardHeader>
+                                  <CardFooter className="justify-end">
+                                    {selectedClan.viewer.isLeader ? (
+                                      <Button type="button" size="sm" onClick={() => handleUseClanItem(clanItem)} disabled={usingClanItemId === clanItem.id}>
+                                        {usingClanItemId === clanItem.id ? <Spinner /> : <Sparkles />}
+                                        {needsImage ? "Choisir l'image" : 'Activer'}
+                                      </Button>
+                                    ) : (
+                                      <Badge variant="outline">Chef requis</Badge>
+                                    )}
+                                  </CardFooter>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <Empty className="border">
+                            <EmptyHeader>
+                              <EmptyTitle>Aucun objet</EmptyTitle>
+                              <EmptyDescription>Aucun objet de clan en stock. Les achats apparaîtront ici.</EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {activeTab === 'guerre' ? (
+                      <div className="flex flex-col gap-6">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          <ClanStat label="Trophées" value={formatMoney(selectedClan.warTrophies)} />
+                          <ClanStat label="Bilan" value={`${selectedClan.warWins}V ${selectedClan.warLosses}D ${selectedClan.warDraws}N`} />
+                          <ClanStat
+                            label="Éligibilité"
+                            value={selectedClan.memberCount >= selectedClan.warHub.minimumMembersRequired ? 'Éligible' : `${selectedClan.warHub.minimumMembersRequired} req.`}
+                          />
+                          <ClanStat
+                            label="Disponibilité"
+                            value={selectedClan.warHub.cooldownEndsAt ? `Dans ${formatCountdown(selectedClan.warHub.cooldownEndsAt)}` : 'Immédiate'}
+                          />
+                        </div>
+
+                        {selectedClan.warHub.canDeclareWar ? (
+                          <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setWarListDialogOpen(true)}>
+                              <History />
+                              Guerres passées
+                            </Button>
+                            <Button onClick={() => setWarDialogOpen(true)}>
+                              <Swords />
+                              Déclarer une guerre
+                            </Button>
+                          </div>
+                        ) : null}
+
+                        {selectedWar ? (
+                          <Card>
+                            <CardHeader>
+                              <CardDescription className="flex items-center gap-2">
+                                <Badge variant={getStatusVariant(selectedWar.status)}>{getStatusLabel(selectedWar.status)}</Badge>
+                                Objectif {selectedWar.targetScore} points
+                              </CardDescription>
+                              <CardTitle className="text-lg">
+                                {selectedWar.attackerClan.name} contre {selectedWar.defenderClan.name}
+                              </CardTitle>
+                              <CardDescription>
+                                {selectedWar.status === 'ACTIVE'
+                                  ? `Fin prévue dans ${formatCountdown(selectedWar.endsAt)}.`
+                                  : `Terminée le ${formatDate(selectedWar.completedAt)}.`}
+                              </CardDescription>
+                              <CardAction className="grid grid-cols-2 gap-3 text-center">
+                                <div className="flex flex-col rounded-md border px-4 py-2">
+                                  <span className="max-w-24 truncate text-xs text-muted-foreground">{selectedWar.attackerClan.name}</span>
+                                  <span className="text-2xl font-semibold tabular-nums">{selectedWar.attackerScore}</span>
+                                </div>
+                                <div className="flex flex-col rounded-md border px-4 py-2">
+                                  <span className="max-w-24 truncate text-xs text-muted-foreground">{selectedWar.defenderClan.name}</span>
+                                  <span className="text-2xl font-semibold tabular-nums">{selectedWar.defenderScore}</span>
+                                </div>
+                              </CardAction>
+                            </CardHeader>
+                            <CardContent className="flex flex-col gap-6">
+                              {isOwnClan ? (
+                                <>
+                                  <Card>
+                                    <CardHeader>
+                                      <CardTitle className="text-base">Centre de commandement</CardTitle>
+                                      <CardDescription>Lancez des assauts tactiques instantanés ou complétez les mini-jeux pour pousser la ligne de front.</CardDescription>
+                                      <CardAction className="flex items-center gap-2">
+                                        <Button size="sm" variant="outline" onClick={() => setWarGamesDialogOpen(true)}>
+                                          Mes parties
+                                        </Button>
+                                        <Badge variant="outline">
+                                          Endurance {selectedWar.viewerActions.staminaRemaining}/{selectedWar.viewerActions.staminaCap}
+                                        </Badge>
+                                      </CardAction>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-4 sm:grid-cols-3">
+                                      {selectedClan.warHub.attackTypes.map((attackType) => {
+                                        const disabled =
+                                          warActionKey === `attack:${attackType.type}` ||
+                                          selectedWar.viewerActions.staminaRemaining < attackType.staminaCost ||
+                                          !['PREPARING', 'ACTIVE'].includes(selectedWar.status);
+                                        return (
+                                          <Card key={attackType.type} className="gap-3 py-4">
+                                            <CardHeader className="px-4">
+                                              <CardTitle className="flex items-center justify-between gap-2 text-sm">
+                                                <span className="truncate">{attackType.label}</span>
+                                                <Badge variant="secondary">Coût {attackType.staminaCost}</Badge>
+                                              </CardTitle>
+                                              <CardDescription>{attackType.description}</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="flex flex-col gap-3 px-4">
+                                              <p className="text-xs text-muted-foreground">
+                                                {attackType.minPoints} à {attackType.maxPoints} pts • dégâts structurels {attackType.structureDamage}
+                                              </p>
+                                              <Button size="sm" disabled={disabled} onClick={() => void handleWarAttack(attackType.type)}>
+                                                {warActionKey === `attack:${attackType.type}` ? <Spinner /> : <Axe />}
+                                                Frapper
+                                              </Button>
+                                            </CardContent>
+                                          </Card>
+                                        );
+                                      })}
+                                    </CardContent>
+                                  </Card>
+
+                                  <Card>
+                                    <CardHeader>
+                                      <CardTitle className="text-base">Jeux de guerre</CardTitle>
+                                      <CardDescription>Complétez les jeux quotidiennement pour marquer des points.</CardDescription>
+                                      <CardAction>
+                                        <Badge variant="secondary">{selectedWar.viewerSide === 'ATTACKER' ? 'Attaquant' : 'Défenseur'}</Badge>
+                                      </CardAction>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-4 sm:grid-cols-3">
+                                      <Card className="gap-3 py-4">
+                                        <CardHeader className="px-4">
+                                          <CardTitle className="flex items-center justify-between gap-2 text-sm">
+                                            <span>🧩 Jeu Mémoire</span>
+                                            {gameStatus?.memoryPlayedToday ? <Badge variant="success">✓ Joué</Badge> : null}
+                                          </CardTitle>
+                                          <CardDescription>Retournez les paires pour fortifier et améliorer les défenses du clan.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="flex flex-col gap-2 px-4">
+                                          <Button size="sm" disabled={!gameStatus?.canPlayMemory} onClick={() => openGame('MEMORY', false)}>
+                                            {gameStatus?.memoryPlayedToday ? 'Déjà joué' : 'Jouer (1×/jour)'}
+                                          </Button>
+                                          <Button size="sm" variant="outline" onClick={() => openGame('MEMORY', true)}>
+                                            Entraînement
+                                          </Button>
+                                        </CardContent>
+                                      </Card>
+                                      <Card className="gap-3 py-4">
+                                        <CardHeader className="px-4">
+                                          <CardTitle className="flex items-center justify-between gap-2 text-sm">
+                                            <span>💣 Bombardement</span>
+                                            {gameStatus?.bombPlayedToday ? <Badge variant="success">✓ Joué</Badge> : null}
+                                          </CardTitle>
+                                          <CardDescription>Pilotez un avion et larguez des bombes sur les structures adverses.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="flex flex-col gap-2 px-4">
+                                          <Button size="sm" disabled={!gameStatus?.canPlayBomb} onClick={() => openGame('BOMB', false)}>
+                                            {gameStatus?.bombPlayedToday ? 'Déjà joué' : 'Attaquer (1×/jour)'}
+                                          </Button>
+                                          <Button size="sm" variant="outline" onClick={() => openGame('BOMB', true)}>
+                                            Entraînement
+                                          </Button>
+                                        </CardContent>
+                                      </Card>
+                                      <Card className="gap-3 py-4">
+                                        <CardHeader className="px-4">
+                                          <CardTitle className="flex items-center justify-between gap-2 text-sm">
+                                            <span>🎯 Guerre Navale</span>
+                                            {gameStatus?.naval ? (
+                                              <Badge variant={(gameStatus.naval.shotsRemaining ?? 0) > 0 ? 'secondary' : 'outline'}>{gameStatus.naval.shotsRemaining} tirs</Badge>
+                                            ) : null}
+                                          </CardTitle>
+                                          <CardDescription>Bombardez la base ennemie sur une grille tactique 6×6 partagée.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="px-4">
+                                          <Button size="sm" className="w-full" disabled={(gameStatus?.naval?.shotsRemaining ?? 0) <= 0} onClick={() => openGame('NAVAL', false)}>
+                                            {(gameStatus?.naval?.shotsRemaining ?? 0) <= 0 ? 'Plus de tirs' : 'Ouvrir la carte'}
+                                          </Button>
+                                        </CardContent>
+                                      </Card>
+                                    </CardContent>
+                                  </Card>
+
+                                  <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="flex flex-col gap-2">
+                                      <h5 className="text-sm font-medium">🛡️ Nos défenses ({getWarOwnSide(selectedWar, selectedClan.id).name})</h5>
+                                      <ItemGroup className="gap-2">
+                                        {getWarDefenseSet(selectedWar, selectedClan.id).map((defense) => (
+                                          <UpgradeRow key={defense.type} defense={defense} />
+                                        ))}
+                                      </ItemGroup>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                      <h5 className="flex items-center gap-1 text-sm font-medium">
+                                        <Target className="size-3.5" />
+                                        Défenses ennemies
+                                      </h5>
+                                      <ItemGroup className="gap-2">
+                                        {getWarEnemyDefenseSet(selectedWar, selectedClan.id).map((defense) => (
+                                          <UpgradeRow key={defense.type} defense={defense} />
+                                        ))}
+                                      </ItemGroup>
+                                    </div>
+                                  </div>
+
+                                  <Card>
+                                    <CardHeader>
+                                      <CardTitle className="text-base">Récompenses de guerre</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="grid gap-3 sm:grid-cols-2">
+                                      <Alert variant="success">
+                                        <AlertTitle>Victoire</AlertTitle>
+                                        <AlertDescription>
+                                          +{selectedWar.rewardTable.winner.money} money, +{selectedWar.rewardTable.winner.aura} aura et {formatSignedValue(selectedWar.rewardTable.winner.trophies)} trophées pour le clan.
+                                        </AlertDescription>
+                                      </Alert>
+                                      <Alert>
+                                        <AlertTitle>Défaite / égalité</AlertTitle>
+                                        <AlertDescription>
+                                          +{selectedWar.rewardTable.loser.money} money, +{selectedWar.rewardTable.loser.aura} aura et {formatSignedValue(selectedWar.rewardTable.loser.trophies)} trophées pour le clan.
+                                        </AlertDescription>
+                                      </Alert>
+                                    </CardContent>
+                                  </Card>
+                                </>
+                              ) : null}
+
+                              <div className="flex flex-col gap-3">
+                                <SectionTitle
+                                  title="Participation des membres"
+                                  description="Vérifiez qui a déjà fait ses combats de guerre et son support défensif."
+                                  action={<Badge variant="outline">{getWarOwnSide(selectedWar, selectedClan.id).name}</Badge>}
+                                />
+                                {getWarParticipantStats(selectedWar, selectedClan.id).length === 0 ? (
+                                  <Empty className="border">
+                                    <EmptyHeader>
+                                      <EmptyDescription>Aucune participation enregistrée pour l&apos;instant.</EmptyDescription>
+                                    </EmptyHeader>
+                                  </Empty>
+                                ) : (
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    {getWarParticipantStats(selectedWar, selectedClan.id).map((member) => (
+                                      <WarMemberRow key={member.user.id} member={member} />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          <Alert>
+                            <AlertTriangle />
+                            <AlertTitle>Pas de guerre en cours</AlertTitle>
+                            <AlertDescription>
+                              {selectedClan.warHub.canDeclareWar
+                                ? 'Le chef peut choisir un clan adverse et démarrer la guerre immédiatement.'
+                                : selectedClan.warHub.cooldownEndsAt
+                                  ? `Le clan récupère encore jusqu'au ${formatDate(selectedClan.warHub.cooldownEndsAt)}.`
+                                  : selectedClan.memberCount < selectedClan.warHub.minimumMembersRequired
+                                    ? `Le clan doit atteindre ${selectedClan.warHub.minimumMembersRequired} membres pour entrer en guerre.`
+                                    : 'Aucun adversaire disponible avec un total de trophées assez proche pour lancer une guerre.'}
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
+                        <Button variant="outline" className="self-start" onClick={() => setWarListDialogOpen(true)}>
+                          <History />
+                          Consulter l&apos;historique complet des guerres terminées
                         </Button>
                       </div>
-                    </div>
-                  )}
+                    ) : null}
 
-                  {activeTab === 'event' && featuredEvent && (
-                    <div className="space-y-4">
-                      <Card className={panelClassName}>
-                        <CardContent className="space-y-4 p-4">
-                          <div
-                            className="rounded-2xl border border-border/50 p-4"
-                            style={{
-                              background: featuredEvent.highlightColor
-                                ? `linear-gradient(135deg, ${featuredEvent.highlightColor}22, transparent 60%)`
-                                : undefined,
-                            }}
-                          >
-                            <div className="flex flex-wrap items-center gap-2">
+                    {activeTab === 'event' && featuredEvent ? (
+                      <div className="flex flex-col gap-6">
+                        <Card>
+                          <CardHeader>
+                            <CardDescription className="flex flex-wrap items-center gap-2">
                               <Badge variant="secondary">{getClanEventStatusLabel(featuredEvent.status)}</Badge>
                               <Badge variant="outline">
                                 {featuredEvent.status === 'SCHEDULED'
@@ -2928,473 +2581,439 @@ export default function Clans() {
                                     ? `Fin ${formatDate(featuredEvent.endsAt)}`
                                     : `Clôturé ${formatDate(featuredEvent.endsAt)}`}
                               </Badge>
-                            </div>
-                            <h2 className="mt-3 text-xl font-semibold tracking-tight">{featuredEvent.title}</h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                              {featuredEvent.description || 'Un événement compétitif de clan est en cours.'}
-                            </p>
+                            </CardDescription>
+                            <CardTitle className="text-xl">{featuredEvent.title}</CardTitle>
+                            <CardDescription>{featuredEvent.description || 'Un événement compétitif de clan est en cours.'}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="flex flex-col gap-4">
                             {featuredEvent.rulesSummary ? (
-                              <div className="mt-3 rounded-xl border border-border/50 bg-background/70 p-3 text-sm text-muted-foreground">
-                                {featuredEvent.rulesSummary}
-                              </div>
+                              <Alert>
+                                <AlertDescription>{featuredEvent.rulesSummary}</AlertDescription>
+                              </Alert>
                             ) : null}
-                          </div>
-
-                          <div className="grid gap-3 md:grid-cols-3">
-                            <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground">Rang du clan</div>
-                              <div className="mt-2 text-2xl font-semibold">
-                                {featuredEvent.selectedClanEntry?.rank ? `#${featuredEvent.selectedClanEntry.rank}` : 'Non classé'}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground">Points</div>
-                              <div className="mt-2 text-2xl font-semibold">
-                                {(featuredEvent.selectedClanEntry?.totalPoints ?? 0).toLocaleString('fr-FR')}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                              <div className="text-xs uppercase tracking-wide text-muted-foreground">Participation</div>
-                              <div className="mt-2 text-sm font-medium">
-                                {featuredEvent.canParticipate ? 'Ton clan peut jouer maintenant' : 'Lecture seule sur ce clan'}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-                        <Card className={panelClassName}>
-                          <CardContent className="space-y-4 p-4">
-                            <SectionTitle title="Quêtes d'événement" description="Chaque quête terminée ajoute des points au clan." />
-                            <div className="space-y-3">
-                              {featuredEvent.quests.map((quest) => (
-                                <div key={quest.id} className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                                  <div className="flex flex-wrap items-start justify-between gap-2">
-                                    <div>
-                                      <div className="text-sm font-medium">{quest.title}</div>
-                                      <p className="mt-1 text-xs text-muted-foreground">
-                                        {quest.description || getClanEventActivityLabel(quest.activityType)}
-                                      </p>
-                                    </div>
-                                    <Badge variant={quest.progress.isCompleted ? 'secondary' : 'outline'}>
-                                      +{quest.pointsReward} pts
-                                    </Badge>
-                                  </div>
-                                  <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                                    <span>{getClanEventActivityLabel(quest.activityType)}</span>
-                                    <span>
-                                      {Math.min(quest.progress.currentValue, quest.targetValue)}/{quest.targetValue}
-                                    </span>
-                                  </div>
-                                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                                    <div
-                                      className={cn('h-full rounded-full transition-all', quest.progress.isCompleted ? 'bg-success' : 'bg-primary')}
-                                      style={{ width: `${Math.min(100, (quest.progress.currentValue / quest.targetValue) * 100)}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              ))}
+                            <div className="grid gap-3 md:grid-cols-3">
+                              <ClanStat label="Rang du clan" value={featuredEvent.selectedClanEntry?.rank ? `#${featuredEvent.selectedClanEntry.rank}` : 'Non classé'} />
+                              <ClanStat label="Points" value={(featuredEvent.selectedClanEntry?.totalPoints ?? 0).toLocaleString('fr-FR')} />
+                              <ClanStat label="Participation" value={featuredEvent.canParticipate ? 'Peut jouer maintenant' : 'Lecture seule'} />
                             </div>
                           </CardContent>
                         </Card>
 
-                        <div className="space-y-4">
-                          <Card className={panelClassName}>
-                            <CardContent className="space-y-4 p-4">
-                              <SectionTitle title="Mini-jeux" description="Joue pour ajouter des points instantanément." />
-                              <div className="space-y-3">
+                        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-base">Quêtes d&apos;événement</CardTitle>
+                              <CardDescription>Chaque quête terminée ajoute des points au clan.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex flex-col gap-3">
+                              {featuredEvent.quests.map((quest) => (
+                                <Item key={quest.id} variant="outline">
+                                  <ItemContent>
+                                    <ItemTitle>{quest.title}</ItemTitle>
+                                    <ItemDescription>{quest.description || getClanEventActivityLabel(quest.activityType)}</ItemDescription>
+                                    <div className="flex items-center gap-3 pt-1">
+                                      <Progress value={Math.min(100, (quest.progress.currentValue / quest.targetValue) * 100)} />
+                                      <span className="text-xs tabular-nums text-muted-foreground">
+                                        {Math.min(quest.progress.currentValue, quest.targetValue)}/{quest.targetValue}
+                                      </span>
+                                    </div>
+                                  </ItemContent>
+                                  <ItemActions>
+                                    <Badge variant={quest.progress.isCompleted ? 'success' : 'outline'}>+{quest.pointsReward} pts</Badge>
+                                  </ItemActions>
+                                </Item>
+                              ))}
+                            </CardContent>
+                          </Card>
+
+                          <div className="flex flex-col gap-6">
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="text-base">Mini-jeux</CardTitle>
+                                <CardDescription>Jouez pour ajouter des points instantanément.</CardDescription>
+                              </CardHeader>
+                              <CardContent className="flex flex-col gap-3">
                                 {featuredEvent.miniGames.map((miniGame) => {
                                   const isCoolingDown = Boolean(miniGame.viewerStats.nextAvailableAt && new Date(miniGame.viewerStats.nextAvailableAt).getTime() > Date.now());
                                   return (
-                                    <div key={miniGame.id} className="rounded-2xl border border-border/50 bg-muted/15 p-4">
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                          <div className="text-sm font-medium">{miniGame.title}</div>
-                                          <p className="mt-1 text-xs text-muted-foreground">{miniGame.description || miniGame.instructions || 'Mini-jeu de score instantané.'}</p>
+                                    <Item key={miniGame.id} variant="outline">
+                                      <ItemContent>
+                                        <ItemTitle>
+                                          {miniGame.title}
+                                          <Badge variant="outline">Cap {miniGame.maxPointsPerAttempt} pts</Badge>
+                                        </ItemTitle>
+                                        <ItemDescription>{miniGame.description || miniGame.instructions || 'Mini-jeu de score instantané.'}</ItemDescription>
+                                        <div className="flex flex-col gap-0.5 pt-1 text-xs text-muted-foreground">
+                                          <span>Meilleur score : {miniGame.viewerStats.bestScore.toLocaleString('fr-FR')}</span>
+                                          <span>
+                                            Tentatives : {miniGame.viewerStats.attemptsUsed}
+                                            {miniGame.maxAttemptsPerUser ? `/${miniGame.maxAttemptsPerUser}` : ''}
+                                          </span>
+                                          {isCoolingDown ? <span>Recharge : {formatCountdown(miniGame.viewerStats.nextAvailableAt)}</span> : null}
                                         </div>
-                                        <Badge variant="outline">Cap {miniGame.maxPointsPerAttempt} pts</Badge>
-                                      </div>
-                                      <div className="mt-3 grid gap-2 text-xs text-muted-foreground">
-                                        <span>Meilleur score: {miniGame.viewerStats.bestScore.toLocaleString('fr-FR')}</span>
-                                        <span>Tentatives: {miniGame.viewerStats.attemptsUsed}{miniGame.maxAttemptsPerUser ? `/${miniGame.maxAttemptsPerUser}` : ''}</span>
-                                        {isCoolingDown ? <span>Recharge: {formatCountdown(miniGame.viewerStats.nextAvailableAt)}</span> : null}
-                                      </div>
-                                      <Button
-                                        className="mt-3 w-full"
-                                        disabled={!featuredEvent.canParticipate || isCoolingDown || eventMiniGameSubmitting}
-                                        onClick={() => {
-                                          if (miniGame.type === 'REFLEX') startReflexMiniGame(miniGame);
-                                          else startTapFrenzyMiniGame(miniGame);
-                                        }}
-                                      >
-                                        Jouer
-                                      </Button>
-                                    </div>
+                                        <Button
+                                          className="mt-2 w-full"
+                                          disabled={!featuredEvent.canParticipate || isCoolingDown || eventMiniGameSubmitting}
+                                          onClick={() => {
+                                            if (miniGame.type === 'REFLEX') startReflexMiniGame(miniGame);
+                                            else startTapFrenzyMiniGame(miniGame);
+                                          }}
+                                        >
+                                          Jouer
+                                        </Button>
+                                      </ItemContent>
+                                    </Item>
                                   );
                                 })}
-                              </div>
-                            </CardContent>
-                          </Card>
+                              </CardContent>
+                            </Card>
 
-                          <Card className={panelClassName}>
-                            <CardContent className="space-y-4 p-4">
-                              <SectionTitle title="Top clans" description="Classement de l'événement." />
-                              <div className="space-y-2">
-                                {featuredEvent.leaderboard.map((entry) => (
-                                  <div key={entry.clan.id} className="flex items-center justify-between rounded-xl border border-border/50 px-3 py-2.5">
-                                    <div className="min-w-0">
-                                      <div className="text-sm font-medium">#{entry.rank} {entry.clan.name}</div>
-                                      <div className="text-xs text-muted-foreground">{entry.clan.memberCount} membres</div>
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="text-base">Top clans</CardTitle>
+                                <CardDescription>Classement de l&apos;événement.</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <ItemGroup>
+                                  {featuredEvent.leaderboard.map((entry, index) => (
+                                    <div key={entry.clan.id}>
+                                      {index > 0 ? <ItemSeparator /> : null}
+                                      <Item size="sm">
+                                        <ItemContent>
+                                          <ItemTitle>
+                                            #{entry.rank} {entry.clan.name}
+                                          </ItemTitle>
+                                          <ItemDescription>{entry.clan.memberCount} membres</ItemDescription>
+                                        </ItemContent>
+                                        <ItemActions>
+                                          <span className="text-sm font-semibold tabular-nums">{entry.totalPoints.toLocaleString('fr-FR')} pts</span>
+                                        </ItemActions>
+                                      </Item>
                                     </div>
-                                    <div className="text-sm font-semibold">{entry.totalPoints.toLocaleString('fr-FR')} pts</div>
-                                  </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
+                                  ))}
+                                </ItemGroup>
+                              </CardContent>
+                            </Card>
 
-                          <Card className={panelClassName}>
-                            <CardContent className="space-y-4 p-4">
-                              <SectionTitle title="Récompenses" description="Répartition selon le rang final du clan." />
-                              <div className="space-y-2">
-                                {featuredEvent.rewardTiers.map((tier) => (
-                                  <div key={tier.id} className="rounded-xl border border-border/50 bg-muted/15 p-3 text-sm">
-                                    <div className="font-medium">{tier.title}</div>
-                                    <div className="mt-1 text-xs text-muted-foreground">
-                                      Rangs {tier.minRank}{tier.maxRank !== tier.minRank ? `-${tier.maxRank}` : ''} • {tier.moneyReward} money • {tier.auraReward} aura{tier.item ? ` • ${tier.item.name}` : ''}
+                            <Card>
+                              <CardHeader>
+                                <CardTitle className="text-base">Récompenses</CardTitle>
+                                <CardDescription>Répartition selon le rang final du clan.</CardDescription>
+                              </CardHeader>
+                              <CardContent>
+                                <ItemGroup>
+                                  {featuredEvent.rewardTiers.map((tier, index) => (
+                                    <div key={tier.id}>
+                                      {index > 0 ? <ItemSeparator /> : null}
+                                      <Item size="sm">
+                                        <ItemContent>
+                                          <ItemTitle>{tier.title}</ItemTitle>
+                                          <ItemDescription>
+                                            Rangs {tier.minRank}
+                                            {tier.maxRank !== tier.minRank ? `-${tier.maxRank}` : ''} • {tier.moneyReward} money • {tier.auraReward} aura
+                                            {tier.item ? ` • ${tier.item.name}` : ''}
+                                          </ItemDescription>
+                                        </ItemContent>
+                                      </Item>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
+                                  ))}
+                                </ItemGroup>
+                              </CardContent>
+                            </Card>
+                          </div>
                         </div>
-                      </div>
 
-                      <Card className={panelClassName}>
-                        <CardContent className="space-y-4 p-4">
-                          <SectionTitle title="Activité récente" description="Derniers points inscrits dans l'événement." />
-                          <div className="space-y-2">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base">Activité récente</CardTitle>
+                            <CardDescription>Derniers points inscrits dans l&apos;événement.</CardDescription>
+                          </CardHeader>
+                          <CardContent>
                             {featuredEvent.recentActivity.length === 0 ? (
-                              <div className="rounded-xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
-                                Aucun point enregistré pour l'instant.
-                              </div>
-                            ) : featuredEvent.recentActivity.map((activity) => (
-                              <div key={activity.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 px-3 py-2.5">
-                                <div className="min-w-0">
-                                  <div className="text-sm font-medium">{activity.label}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {activity.clan.name} • {formatDate(activity.createdAt)}
+                              <p className="text-sm text-muted-foreground">Aucun point enregistré pour l&apos;instant.</p>
+                            ) : (
+                              <ItemGroup>
+                                {featuredEvent.recentActivity.map((activity, index) => (
+                                  <div key={activity.id}>
+                                    {index > 0 ? <ItemSeparator /> : null}
+                                    <Item size="sm">
+                                      <ItemContent>
+                                        <ItemTitle>{activity.label}</ItemTitle>
+                                        <ItemDescription>
+                                          {activity.clan.name} • {formatDate(activity.createdAt)}
+                                        </ItemDescription>
+                                      </ItemContent>
+                                      <ItemActions>
+                                        <Badge variant="secondary">+{activity.points} pts</Badge>
+                                      </ItemActions>
+                                    </Item>
                                   </div>
-                                </div>
-                                <Badge variant="secondary">+{activity.points} pts</Badge>
-                              </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  )}
+                                ))}
+                              </ItemGroup>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ) : null}
 
-                  {activeTab === 'requests' && (selectedClan.viewer.permissions?.canInviteMembers || selectedClan.viewer.isLeader) && (
-                    <Card className="border-none bg-transparent shadow-none">
-                      <CardContent className="space-y-4 p-0">
-                        <div className="flex items-center justify-between border-b border-border/50 pb-4">
-                          <div>
-                            <h3 className="text-sm font-semibold flex items-center gap-2">
-                              <UserX className="h-5 w-5 rotate-180 text-success" />
-                              Candidatures de recrutement
-                            </h3>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Validez ou rejetez les demandes des joueurs qui souhaitent rejoindre le clan.
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs font-bold px-2 py-0.5">
-                            {selectedClan.joinRequests.length} en attente
-                          </Badge>
-                        </div>
-
+                    {activeTab === 'requests' && (selectedClan.viewer.permissions?.canInviteMembers || selectedClan.viewer.isLeader) ? (
+                      <div className="flex flex-col gap-4">
+                        <SectionTitle
+                          title="Candidatures de recrutement"
+                          description="Validez ou rejetez les demandes des joueurs qui souhaitent rejoindre le clan."
+                          action={<Badge variant="outline">{selectedClan.joinRequests.length} en attente</Badge>}
+                        />
                         {selectedClan.joinRequests.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-12 text-center">
-                            <div className="h-12 w-12 rounded-full bg-muted/10 flex items-center justify-center text-muted-foreground/40 mb-3 border border-dashed border-border">
-                              <UserX className="h-5 w-5 rotate-180" />
-                            </div>
-                            <p className="text-sm font-medium text-muted-foreground">Aucune candidature en attente</p>
-                            <p className="text-xs text-muted-foreground/75 mt-1">Les nouvelles demandes de recrutement apparaîtront ici.</p>
-                          </div>
+                          <Empty className="border">
+                            <EmptyHeader>
+                              <EmptyMedia variant="icon">
+                                <UserPlus />
+                              </EmptyMedia>
+                              <EmptyTitle>Aucune candidature en attente</EmptyTitle>
+                              <EmptyDescription>Les nouvelles demandes de recrutement apparaîtront ici.</EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
                         ) : (
-                          <div className="grid gap-3 sm:grid-cols-2">
+                          <ItemGroup className="gap-2 sm:grid sm:grid-cols-2">
                             {selectedClan.joinRequests.map((request) => (
-                              <div
-                                key={request.id}
-                                className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-muted/5 p-4 shadow-sm hover:border-border transition-all"
-                              >
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <Avatar className="h-10 w-10 border border-border/40 shadow-sm">
+                              <Item key={request.id} variant="outline">
+                                <ItemMedia>
+                                  <Avatar className="size-10">
                                     <AvatarImage src={resolveImageUrl(request.profilePicture)} alt={request.username} />
                                     <AvatarFallback>{getAvatarFallback(request.username)}</AvatarFallback>
                                   </Avatar>
-                                  <div className="min-w-0">
+                                </ItemMedia>
+                                <ItemContent>
+                                  <ItemTitle>
                                     <UsernameDisplay username={request.username} usernameColor={request.usernameColor} />
-                                    <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-semibold">
-                                      <Sparkles className="h-3.5 w-3.5 text-warning" />
-                                      <span>{formatAura(request.aura)} aura</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex gap-2 shrink-0">
-                                  <Button
-                                    size="sm"
-                                    className="h-9 px-3 text-xs bg-success hover:bg-success text-white font-semibold shadow-sm transition-all"
-                                    onClick={() => handleRequestAction(request.id, 'accept')}
-                                    disabled={actionLoading}
-                                  >
-                                    <Check className="h-3.5 w-3.5 mr-1" /> Accepter
+                                  </ItemTitle>
+                                  <ItemDescription className="flex items-center gap-1">
+                                    <Sparkles className="size-3.5" />
+                                    {formatAura(request.aura)} aura
+                                  </ItemDescription>
+                                </ItemContent>
+                                <ItemActions>
+                                  <Button size="sm" onClick={() => handleRequestAction(request.id, 'accept')} disabled={actionLoading}>
+                                    <Check />
+                                    Accepter
                                   </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-9 px-3 text-xs border-destructive/20 text-destructive hover:bg-destructive/10 hover:text-destructive font-semibold"
-                                    onClick={() => handleRequestAction(request.id, 'reject')}
-                                    disabled={actionLoading}
-                                  >
-                                    <X className="h-3.5 w-3.5 mr-1" /> Rejeter
+                                  <Button size="sm" variant="outline" onClick={() => handleRequestAction(request.id, 'reject')} disabled={actionLoading}>
+                                    <X />
+                                    Rejeter
                                   </Button>
-                                </div>
-                              </div>
+                                </ItemActions>
+                              </Item>
                             ))}
-                          </div>
+                          </ItemGroup>
                         )}
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </ScrollArea>
+              </Tabs>
             </>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
 
-      {/* Relocated Dialogs */}
-      {selectedClan && (
+      {/* Dialogs secondaires */}
+      {selectedClan ? (
         <Dialog open={bankHistoryOpen} onOpenChange={setBankHistoryOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Historique de la banque</DialogTitle>
-              <DialogDescription>
-                Chaque dépôt effectué par un membre dans la banque du clan.
-              </DialogDescription>
+              <DialogDescription>Chaque dépôt effectué par un membre dans la banque du clan.</DialogDescription>
             </DialogHeader>
-            <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
-              {selectedClan.bankContributionHistory.length > 0 ? (
-                selectedClan.bankContributionHistory.map((entry) => (
-                  <BankContributionRow key={entry.id} entry={entry} />
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-border/50 px-3 py-4 text-sm text-muted-foreground">
-                  Aucun dépôt enregistré pour le moment.
-                </div>
-              )}
-            </div>
+            <ScrollArea className="max-h-[60vh]">
+              <ItemGroup className="gap-2 pr-3">
+                {selectedClan.bankContributionHistory.length > 0 ? (
+                  selectedClan.bankContributionHistory.map((entry) => <BankContributionRow key={entry.id} entry={entry} />)
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucun dépôt enregistré pour le moment.</p>
+                )}
+              </ItemGroup>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
-      )}
+      ) : null}
 
-      {selectedClan && (
+      {selectedClan ? (
         <Dialog open={warListDialogOpen} onOpenChange={setWarListDialogOpen}>
-          <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-4xl">
+          <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle>Guerres du clan</DialogTitle>
-              <DialogDescription>
-                Toutes les guerres de {selectedClan.name}, avec les détails dépliables de chaque conflit.
-              </DialogDescription>
+              <DialogDescription>Toutes les guerres de {selectedClan.name}, avec les détails dépliables de chaque conflit.</DialogDescription>
             </DialogHeader>
-            <div className="max-h-[65vh] overflow-y-auto pr-1">
-              {clanWars.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/60 p-6 text-sm text-muted-foreground">
-                  Aucune guerre enregistrée pour ce clan.
-                </div>
-              ) : (
-                <Accordion type="single" collapsible className="w-full space-y-3">
-                  {clanWars.map((war) => {
-                    const opponent = getWarOpponent(war, selectedClan.id);
-                    const resultBadge = getWarResultBadge(war, selectedClan.id);
-                    const ownTrophyChange = selectedClan.id === war.attackerClan.id ? war.trophyChanges.attacker : war.trophyChanges.defender;
-                    const ownParticipants = getWarParticipantStats(war, selectedClan.id);
-                    const opponentParticipants = getWarOpponentParticipantStats(war, selectedClan.id);
-                    return (
-                      <AccordionItem
-                        key={war.id}
-                        value={war.id}
-                        className="overflow-hidden rounded-2xl border border-border/50 bg-muted/15 px-4"
-                      >
-                        <AccordionTrigger className="py-4 hover:no-underline">
-                          <div className="flex min-w-0 flex-1 items-center justify-between gap-4 text-left">
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium">Contre {opponent.name}</div>
-                              <div className="mt-1 text-xs text-muted-foreground">
-                                {war.status === 'COMPLETED'
-                                  ? `${formatDate(war.completedAt)} • Score ${war.attackerScore} - ${war.defenderScore}`
-                                  : `${formatDate(war.startsAt)} • En cours ${war.viewerScore} - ${war.opponentScore}`}
+            <ScrollArea className="max-h-[65vh]">
+              <div className="pr-3">
+                {clanWars.length === 0 ? (
+                  <Empty className="border">
+                    <EmptyHeader>
+                      <EmptyDescription>Aucune guerre enregistrée pour ce clan.</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <Accordion type="single" collapsible className="w-full">
+                    {clanWars.map((war) => {
+                      const opponent = getWarOpponent(war, selectedClan.id);
+                      const resultBadge = getWarResultBadge(war, selectedClan.id);
+                      const ownTrophyChange = selectedClan.id === war.attackerClan.id ? war.trophyChanges.attacker : war.trophyChanges.defender;
+                      const ownParticipants = getWarParticipantStats(war, selectedClan.id);
+                      const opponentParticipants = getWarOpponentParticipantStats(war, selectedClan.id);
+                      return (
+                        <AccordionItem key={war.id} value={war.id}>
+                          <AccordionTrigger className="hover:no-underline">
+                            <div className="flex min-w-0 flex-1 items-center justify-between gap-4 text-left">
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium">Contre {opponent.name}</div>
+                                <div className="mt-1 text-xs font-normal text-muted-foreground">
+                                  {war.status === 'COMPLETED'
+                                    ? `${formatDate(war.completedAt)} • Score ${war.attackerScore} - ${war.defenderScore}`
+                                    : `${formatDate(war.startsAt)} • En cours ${war.viewerScore} - ${war.opponentScore}`}
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-2">
+                                <Badge variant={resultBadge.variant}>{resultBadge.label}</Badge>
+                                <span className="text-xs font-medium text-muted-foreground">{formatSignedValue(ownTrophyChange)} trophées</span>
                               </div>
                             </div>
-                            <div className="flex shrink-0 items-center gap-2">
-                              <Badge variant={resultBadge.variant}>{resultBadge.label}</Badge>
-                              <span className="text-xs font-medium text-muted-foreground">
-                                {formatSignedValue(ownTrophyChange)} trophées
-                              </span>
-                            </div>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pb-4">
-                          <div className="space-y-4">
-                            <div className="grid gap-3 md:grid-cols-3">
-                              <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
-                                <div className="text-xs text-muted-foreground">Score</div>
-                                <div className="mt-1 text-lg font-semibold">{war.attackerScore} - {war.defenderScore}</div>
-                                <div className="mt-1 text-xs text-muted-foreground">
-                                  {war.attackerClan.name} contre {war.defenderClan.name}
-                                </div>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <div className="flex flex-col gap-4">
+                              <div className="grid gap-3 md:grid-cols-3">
+                                <Card className="gap-1 py-4">
+                                  <CardHeader className="px-4">
+                                    <CardDescription>Score</CardDescription>
+                                    <CardTitle className="tabular-nums">
+                                      {war.attackerScore} - {war.defenderScore}
+                                    </CardTitle>
+                                    <CardDescription>
+                                      {war.attackerClan.name} contre {war.defenderClan.name}
+                                    </CardDescription>
+                                  </CardHeader>
+                                </Card>
+                                <Card className="gap-1 py-4">
+                                  <CardHeader className="px-4">
+                                    <CardDescription>Dates</CardDescription>
+                                    <CardTitle className="text-sm">Début : {formatDate(war.startsAt)}</CardTitle>
+                                    <CardDescription>{war.completedAt ? `Fin : ${formatDate(war.completedAt)}` : `Fin prévue : ${formatDate(war.endsAt)}`}</CardDescription>
+                                  </CardHeader>
+                                </Card>
+                                <Card className="gap-1 py-4">
+                                  <CardHeader className="px-4">
+                                    <CardDescription>Récompenses</CardDescription>
+                                    <CardTitle className="text-sm">
+                                      +{war.rewardTable.winner.money} money / +{war.rewardTable.winner.aura} aura
+                                    </CardTitle>
+                                    <CardDescription>{formatSignedValue(war.rewardTable.winner.trophies)} trophées en victoire</CardDescription>
+                                  </CardHeader>
+                                </Card>
                               </div>
-                              <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
-                                <div className="text-xs text-muted-foreground">Dates</div>
-                                <div className="mt-1 text-sm font-medium">Début: {formatDate(war.startsAt)}</div>
-                                <div className="mt-1 text-xs text-muted-foreground">
-                                  {war.completedAt ? `Fin: ${formatDate(war.completedAt)}` : `Fin prévue: ${formatDate(war.endsAt)}`}
-                                </div>
-                              </div>
-                              <div className="rounded-2xl border border-border/50 bg-background/70 p-3">
-                                <div className="text-xs text-muted-foreground">Récompenses</div>
-                                <div className="mt-1 text-sm font-medium">
-                                  +{war.rewardTable.winner.money} money / +{war.rewardTable.winner.aura} aura
-                                </div>
-                                <div className="mt-1 text-xs text-muted-foreground">
-                                  {formatSignedValue(war.rewardTable.winner.trophies)} trophées en victoire
-                                </div>
-                              </div>
-                            </div>
 
-                            <div className="grid gap-4 lg:grid-cols-2">
-                              <div className="space-y-2">
-                                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                  Participation de {selectedClan.name}
+                              <div className="grid gap-4 lg:grid-cols-2">
+                                <div className="flex flex-col gap-2">
+                                  <h5 className="text-sm font-medium">Participation de {selectedClan.name}</h5>
+                                  {ownParticipants.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">Aucune donnée de participation.</p>
+                                  ) : (
+                                    ownParticipants.map((member) => <WarMemberRow key={`${war.id}:${member.user.id}`} member={member} />)
+                                  )}
                                 </div>
-                                {ownParticipants.length === 0 ? (
-                                  <div className="rounded-2xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
-                                    Aucune donnée de participation.
-                                  </div>
-                                ) : (
-                                  <div className="space-y-2">
-                                    {ownParticipants.map((member) => (
-                                      <WarMemberRow key={`${war.id}:${member.user.id}`} member={member} />
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="space-y-2">
-                                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                  Participation de {opponent.name}
+                                <div className="flex flex-col gap-2">
+                                  <h5 className="text-sm font-medium">Participation de {opponent.name}</h5>
+                                  {opponentParticipants.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">Aucune donnée de participation.</p>
+                                  ) : (
+                                    opponentParticipants.map((member) => <WarMemberRow key={`${war.id}:opponent:${member.user.id}`} member={member} showClanName />)
+                                  )}
                                 </div>
-                                {opponentParticipants.length === 0 ? (
-                                  <div className="rounded-2xl border border-dashed border-border/60 p-4 text-sm text-muted-foreground">
-                                    Aucune donnée de participation.
-                                  </div>
-                                ) : (
-                                  <div className="space-y-2">
-                                    {opponentParticipants.map((member) => (
-                                      <WarMemberRow key={`${war.id}:opponent:${member.user.id}`} member={member} showClanName />
-                                    ))}
-                                  </div>
-                                )}
                               </div>
-                            </div>
 
-                            {war.recentAttacks.length > 0 ? (
-                              <div className="space-y-2">
-                                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                  Attaques récentes
+                              {war.recentAttacks.length > 0 ? (
+                                <div className="flex flex-col gap-2">
+                                  <h5 className="text-sm font-medium">Attaques récentes</h5>
+                                  <ItemGroup className="gap-2">
+                                    {war.recentAttacks.slice(0, 5).map((attack) => (
+                                      <Item key={attack.id} variant="outline" size="sm">
+                                        <ItemContent>
+                                          <ItemTitle>{attack.attackLabel}</ItemTitle>
+                                          <ItemDescription>
+                                            par {attack.user.username} • {attack.finalPoints} pts
+                                          </ItemDescription>
+                                        </ItemContent>
+                                      </Item>
+                                    ))}
+                                  </ItemGroup>
                                 </div>
-                                <div className="space-y-2">
-                                  {war.recentAttacks.slice(0, 5).map((attack) => (
-                                    <div key={attack.id} className="rounded-2xl border border-border/50 bg-background/70 px-3 py-2 text-sm">
-                                      <span className="font-medium">{attack.attackLabel}</span> par {attack.user.username} • {attack.finalPoints} pts
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    );
-                  })}
-                </Accordion>
-              )}
-            </div>
+                              ) : null}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                  </Accordion>
+                )}
+              </div>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
-      )}
+      ) : null}
 
-      {selectedClan && (
+      {selectedClan ? (
         <Dialog open={warGamesDialogOpen} onOpenChange={setWarGamesDialogOpen}>
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
               <DialogTitle>Mes parties de guerre</DialogTitle>
               <DialogDescription>
                 {selectedWar && isOwnClan
-                  ? `Score actuel: ${selectedWar.viewerScore} - ${selectedWar.opponentScore}. Lance tes parties restantes depuis cette fenêtre.`
-                  : "Tu n'es pas dans une guerre active avec ce clan."}
+                  ? `Score actuel : ${selectedWar.viewerScore} - ${selectedWar.opponentScore}. Lancez vos parties restantes depuis cette fenêtre.`
+                  : "Vous n'êtes pas dans une guerre active avec ce clan."}
               </DialogDescription>
             </DialogHeader>
             {!selectedWar || !isOwnClan || !selectedClan.viewer.isMember ? (
-              <div className="rounded-2xl border border-dashed border-border/60 p-5 text-sm text-muted-foreground">
-                Aucune guerre active pour toi dans ce clan.
-              </div>
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyDescription>Aucune guerre active pour vous dans ce clan.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : pendingWarGames.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border/60 p-5 text-sm text-muted-foreground">
-                Tu as déjà joué toutes tes parties disponibles pour le moment.
-              </div>
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyDescription>Vous avez déjà joué toutes vos parties disponibles pour le moment.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
-              <div className="space-y-3">
+              <ItemGroup className="gap-2">
                 {pendingWarGames.map((game) => (
-                  <div key={game.type} className="flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-muted/15 p-4">
-                    <div>
-                      <div className="text-sm font-medium">{game.title}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">{game.description}</div>
-                      <div className="mt-2 text-xs font-medium text-success">{game.remainingLabel}</div>
-                    </div>
-                    <Button onClick={() => launchWarGameFromDialog(game.type)}>
-                      {game.actionLabel}
-                    </Button>
-                  </div>
+                  <Item key={game.type} variant="outline">
+                    <ItemContent>
+                      <ItemTitle>{game.title}</ItemTitle>
+                      <ItemDescription>{game.description}</ItemDescription>
+                      <span className="text-xs font-medium text-success">{game.remainingLabel}</span>
+                    </ItemContent>
+                    <ItemActions>
+                      <Button onClick={() => launchWarGameFromDialog(game.type)}>{game.actionLabel}</Button>
+                    </ItemActions>
+                  </Item>
                 ))}
-              </div>
+              </ItemGroup>
             )}
           </DialogContent>
         </Dialog>
-      )}
-
+      ) : null}
 
       <Dialog open={bannerItemDialogOpen} onOpenChange={setBannerItemDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>{bannerItemEffectType === 'CLAN_PROFILE_PICTURE' ? 'Appliquer une photo de profil de clan' : 'Appliquer une banniere de clan'}</DialogTitle>
+            <DialogTitle>{bannerItemEffectType === 'CLAN_PROFILE_PICTURE' ? 'Appliquer une photo de profil de clan' : 'Appliquer une bannière de clan'}</DialogTitle>
             <DialogDescription>
               {bannerItemEffectType === 'CLAN_PROFILE_PICTURE'
                 ? "Téléversez l'image qui sera utilisée comme emblème du clan."
                 : "Téléversez l'image qui sera affichée en haut de la page du clan lorsque ce clan est sélectionné."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <ImagePicker
-              value={bannerItemImgUrl}
-              onChange={setBannerItemImgUrl}
-              uploadFn={uploadClanImageFile}
-              disabled={savingBannerItem}
-            />
-          </div>
-          <div className="flex gap-2 justify-end">
+          <ImagePicker value={bannerItemImgUrl} onChange={setBannerItemImgUrl} uploadFn={uploadClanImageFile} disabled={savingBannerItem} />
+          <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
@@ -3406,10 +3025,10 @@ export default function Clans() {
               Annuler
             </Button>
             <Button onClick={handleApplyBannerItem} disabled={savingBannerItem || !bannerItemImgUrl.trim()}>
-              {savingBannerItem ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {savingBannerItem ? <Spinner /> : null}
               Appliquer
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -3418,47 +3037,48 @@ export default function Clans() {
           <DialogHeader>
             <DialogTitle>Déclarer une guerre</DialogTitle>
             <DialogDescription>
-              La guerre démarre immédiatement. Seuls les clans disponibles avec l'écart de trophées le plus faible peuvent être ciblés.
+              La guerre démarre immédiatement. Seuls les clans disponibles avec l&apos;écart de trophées le plus faible peuvent être ciblés.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3">
-            {selectedClan?.warHub.eligibleOpponents.length ? (
-              selectedClan.warHub.eligibleOpponents.map((opponent) => (
-                <div key={opponent.id} className="flex items-center justify-between rounded-2xl border border-border/50 p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12">
+          {selectedClan?.warHub.eligibleOpponents.length ? (
+            <ItemGroup className="gap-2">
+              {selectedClan.warHub.eligibleOpponents.map((opponent) => (
+                <Item key={opponent.id} variant="outline">
+                  <ItemMedia>
+                    <Avatar className="size-12">
                       <AvatarImage src={resolveImageUrl(opponent.imageUrl)} alt={opponent.name} />
                       <AvatarFallback>{getAvatarFallback(opponent.name)}</AvatarFallback>
                     </Avatar>
-                    <div>
-                      <div className="font-medium">{opponent.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {opponent.memberCount}/{opponent.maxMembers} membres • {formatAura(opponent.totalAura)} aura
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatMoney(opponent.warTrophies)} trophées • écart {Math.abs(opponent.warTrophies - selectedClan.warTrophies)}
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => handleDeclareWar(opponent.id)}
-                    disabled={warActionKey === `declare:${opponent.id}`}
-                  >
-                    {warActionKey === `declare:${opponent.id}` ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Axe className="mr-2 h-4 w-4" />}
-                    Déclarer
-                  </Button>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-2xl border border-dashed border-border/60 p-6 text-sm text-muted-foreground">
-                Aucun adversaire disponible actuellement avec un nombre de trophées compatible.
-              </div>
-            )}
-          </div>
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>{opponent.name}</ItemTitle>
+                    <ItemDescription>
+                      {opponent.memberCount}/{opponent.maxMembers} membres • {formatAura(opponent.totalAura)} aura
+                    </ItemDescription>
+                    <ItemDescription>
+                      {formatMoney(opponent.warTrophies)} trophées • écart {Math.abs(opponent.warTrophies - selectedClan.warTrophies)}
+                    </ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Button onClick={() => handleDeclareWar(opponent.id)} disabled={warActionKey === `declare:${opponent.id}`}>
+                      {warActionKey === `declare:${opponent.id}` ? <Spinner /> : <Axe />}
+                      Déclarer
+                    </Button>
+                  </ItemActions>
+                </Item>
+              ))}
+            </ItemGroup>
+          ) : (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyDescription>Aucun adversaire disponible actuellement avec un nombre de trophées compatible.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* ── Tutorial dialogs ── */}
+      {/* ── Tutoriels des jeux de guerre ── */}
       {(['MEMORY', 'BOMB', 'NAVAL'] as const).map((type) => {
         const TUTORIALS = {
           MEMORY: {
@@ -3485,18 +3105,17 @@ export default function Clans() {
                 <DialogTitle>{t.title}</DialogTitle>
                 <DialogDescription>{t.desc}</DialogDescription>
               </DialogHeader>
-              <ul className="space-y-2">
-                {t.tips.map((tip, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <span className="mt-0.5 text-primary shrink-0">▸</span>
-                    <span>{tip}</span>
-                  </li>
+              <ul className="flex list-disc flex-col gap-2 pl-5 text-sm">
+                {t.tips.map((tip, index) => (
+                  <li key={index}>{tip}</li>
                 ))}
               </ul>
-              <div className="flex gap-2 pt-1">
-                <Button className="flex-1" onClick={() => confirmTutorial(type)}>Jouer !</Button>
-                <Button variant="outline" onClick={() => setShowTutorial(null)}>Fermer</Button>
-              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowTutorial(null)}>
+                  Fermer
+                </Button>
+                <Button onClick={() => confirmTutorial(type)}>Jouer !</Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         );
@@ -3508,7 +3127,7 @@ export default function Clans() {
           <DialogHeader>
             <DialogTitle>
               🧩 Jeu Mémoire
-              {gamePractice && <span className="ml-2 text-xs font-normal text-muted-foreground">(Entraînement)</span>}
+              {gamePractice ? <Badge variant="outline" className="ml-2">Entraînement</Badge> : null}
             </DialogTitle>
             <DialogDescription>Trouvez toutes les paires pour améliorer vos défenses.</DialogDescription>
           </DialogHeader>
@@ -3527,7 +3146,7 @@ export default function Clans() {
           <DialogHeader>
             <DialogTitle>
               💣 Bombardement Aérien
-              {gamePractice && <span className="ml-2 text-xs font-normal text-muted-foreground">(Entraînement)</span>}
+              {gamePractice ? <Badge variant="outline" className="ml-2">Entraînement</Badge> : null}
             </DialogTitle>
             <DialogDescription>Cliquez sur la zone de jeu pour larguer vos bombes sur la base ennemie.</DialogDescription>
           </DialogHeader>
@@ -3562,178 +3181,179 @@ export default function Clans() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Role assignment modal ── */}
+      {/* ── Attribution de rôle ── */}
       {(() => {
         const assignMember = roleAssignMemberId ? selectedClan?.members.find((m) => m.userId === roleAssignMemberId) : null;
         return (
           <Dialog open={Boolean(roleAssignMemberId)} onOpenChange={(open) => { if (!open) setRoleAssignMemberId(null); }}>
-            <DialogContent className="sm:max-w-xs">
+            <DialogContent className="sm:max-w-sm">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Rôle de {assignMember?.username ?? '...'}
-                </DialogTitle>
-                <DialogDescription>Sélectionner un rôle ou en créer un nouveau.</DialogDescription>
+                <DialogTitle>Rôle de {assignMember?.username ?? '…'}</DialogTitle>
+                <DialogDescription>Sélectionnez un rôle ou créez-en un nouveau.</DialogDescription>
               </DialogHeader>
               {assignMember ? (
-                <div className="space-y-3">
-                  {/* Promote / Demote */}
+                <FieldGroup>
                   {selectedClan?.viewer.isLeader && selectedClan.leader.id !== assignMember.userId ? (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">Rang</label>
+                    <Field>
+                      <FieldLabel>Rang</FieldLabel>
                       {assignMember.isLeader ? (
-                        <Button variant="outline" size="sm" className="w-full" onClick={() => { void handleDemoteMember(assignMember.userId); setRoleAssignMemberId(null); }} disabled={actionLoading}>
-                          <ChevronDown className="mr-1.5 h-3.5 w-3.5" /> Rétrograder (officier → membre)
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            void handleDemoteMember(assignMember.userId);
+                            setRoleAssignMemberId(null);
+                          }}
+                          disabled={actionLoading}
+                        >
+                          <ChevronDown />
+                          Rétrograder (officier → membre)
                         </Button>
                       ) : (
-                        <Button variant="outline" size="sm" className="w-full" onClick={() => { void handlePromoteMember(assignMember.userId); setRoleAssignMemberId(null); }} disabled={actionLoading}>
-                          <ChevronUp className="mr-1.5 h-3.5 w-3.5" /> Promouvoir (membre → officier)
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            void handlePromoteMember(assignMember.userId);
+                            setRoleAssignMemberId(null);
+                          }}
+                          disabled={actionLoading}
+                        >
+                          <ChevronUp />
+                          Promouvoir (membre → officier)
                         </Button>
                       )}
-                    </div>
+                    </Field>
                   ) : null}
 
-                  {/* Role list */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">Rôle assigné</label>
-                    <div className="space-y-1">
-                      <button
-                        type="button"
-                        onClick={() => { void handleAssignRole(assignMember.userId, null); setRoleAssignMemberId(null); }}
-                        className={cn(
-                          'flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
-                          !assignMember.roleId
-                            ? 'border-foreground/20 bg-muted/30 font-medium text-foreground'
-                            : 'border-border/50 bg-muted/10 text-muted-foreground hover:bg-muted/20',
-                        )}
-                      >
-                        <span className="inline-block h-3 w-3 rounded-full flex-shrink-0 border border-border/50 bg-muted/30" />
-                        Aucun rôle
-                      </button>
-                      {(selectedClan?.roles ?? []).filter((r) => r.name !== 'Chef').map((role) => (
+                  <Field>
+                    <FieldLabel>Rôle assigné</FieldLabel>
+                    <ItemGroup className="gap-1">
+                      <Item asChild size="sm" variant={!assignMember.roleId ? 'muted' : 'outline'}>
                         <button
-                          key={role.id}
                           type="button"
-                          onClick={() => { void handleAssignRole(assignMember.userId, role.id); setRoleAssignMemberId(null); }}
-                          className={cn(
-                            'flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition-colors',
-                            assignMember.roleId === role.id
-                              ? 'border-foreground/20 bg-muted/30 font-medium text-foreground'
-                              : 'border-border/50 bg-muted/10 text-muted-foreground hover:bg-muted/20',
-                          )}
+                          onClick={() => {
+                            void handleAssignRole(assignMember.userId, null);
+                            setRoleAssignMemberId(null);
+                          }}
+                          className="text-left"
                         >
-                          <span className="inline-block h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: role.color }} />
-                          {role.name}
+                          <ItemMedia>
+                            <span className="size-3 rounded-full border bg-muted" />
+                          </ItemMedia>
+                          <ItemContent>
+                            <ItemTitle>Aucun rôle</ItemTitle>
+                          </ItemContent>
                         </button>
-                      ))}
-                    </div>
-                  </div>
+                      </Item>
+                      {(selectedClan?.roles ?? [])
+                        .filter((role) => role.name !== 'Chef')
+                        .map((role) => (
+                          <Item key={role.id} asChild size="sm" variant={assignMember.roleId === role.id ? 'muted' : 'outline'}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleAssignRole(assignMember.userId, role.id);
+                                setRoleAssignMemberId(null);
+                              }}
+                              className="text-left"
+                            >
+                              <ItemMedia>
+                                <span className="size-3 rounded-full" style={{ backgroundColor: role.color }} />
+                              </ItemMedia>
+                              <ItemContent>
+                                <ItemTitle>{role.name}</ItemTitle>
+                              </ItemContent>
+                            </button>
+                          </Item>
+                        ))}
+                    </ItemGroup>
+                  </Field>
 
-                  {/* Create new role shortcut */}
                   {selectedClan?.viewer.permissions?.canManageRoles ? (
-                    <Button variant="outline" size="sm" className="w-full" onClick={() => { setRoleAssignMemberId(null); openRoleCreate(); }}>
-                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Nouveau rôle
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setRoleAssignMemberId(null);
+                        openRoleCreate();
+                      }}
+                    >
+                      <Plus />
+                      Nouveau rôle
                     </Button>
                   ) : null}
-                </div>
+                </FieldGroup>
               ) : null}
             </DialogContent>
           </Dialog>
         );
       })()}
 
-      {/* ── Role edit / create modal ── */}
+      {/* ── Création / modification de rôle ── */}
       <Dialog open={roleEditOpen} onOpenChange={setRoleEditOpen}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2.5">
-              <span className="h-4 w-4 rounded-full border border-border/40 transition-colors" style={{ backgroundColor: roleEditColor }} />
+            <DialogTitle className="flex items-center gap-2">
+              <span className="size-4 rounded-full border" style={{ backgroundColor: roleEditColor }} />
               {roleEditId ? 'Modifier le rôle' : 'Nouveau rôle'}
             </DialogTitle>
             <DialogDescription>
               {roleEditId ? 'Modifiez le nom, la couleur et les permissions de ce rôle.' : 'Créez un rôle personnalisé pour les membres de votre clan.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-5">
-            {/* Name + color preview */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Nom du rôle</label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={roleEditName}
-                  onChange={(e) => setRoleEditName(e.target.value.slice(0, 32))}
-                  placeholder="Ex: Stratège, Éleveur..."
-                  disabled={roleEditIsSystem}
-                  maxLength={32}
-                  className="flex-1"
-                />
-                {roleEditName.trim() ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold border" style={{ color: roleEditColor, borderColor: roleEditColor + '55', backgroundColor: roleEditColor + '18' }}>
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: roleEditColor }} />
-                    {roleEditName.trim()}
-                  </span>
-                ) : null}
-              </div>
-              {roleEditIsSystem && <p className="text-xs text-muted-foreground">Le nom des rôles système ne peut pas être modifié.</p>}
-            </div>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="role-name">Nom du rôle</FieldLabel>
+              <Input
+                id="role-name"
+                value={roleEditName}
+                onChange={(event) => setRoleEditName(event.target.value.slice(0, 32))}
+                placeholder="Ex : Stratège, Éleveur…"
+                disabled={roleEditIsSystem}
+                maxLength={32}
+              />
+              {roleEditIsSystem ? <FieldDescription>Le nom des rôles système ne peut pas être modifié.</FieldDescription> : null}
+            </Field>
 
-            {/* Color */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Couleur</label>
-              <div className="flex flex-wrap gap-1.5">
-                {TAG_PRESET_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={cn('h-6 w-6 rounded-full border-2 transition-transform hover:scale-110', roleEditColor === c ? 'border-foreground scale-110' : 'border-transparent')}
-                    style={{ backgroundColor: c }}
-                    onClick={() => setRoleEditColor(c)}
-                  />
+            <Field>
+              <FieldLabel>Couleur</FieldLabel>
+              <ColorSwatchPicker label="Couleur du rôle" colors={TAG_PRESET_COLORS} value={roleEditColor} onChange={setRoleEditColor} />
+            </Field>
+
+            <Field>
+              <FieldLabel>Permissions</FieldLabel>
+              <div className="flex flex-col gap-2">
+                {([
+                  { key: 'canManageHorses', label: 'Gérer les chevaux', desc: 'Acheter, entraîner, inscrire et soigner les chevaux' },
+                  { key: 'canInviteMembers', label: 'Inviter des membres', desc: 'Accepter ou refuser les candidatures' },
+                  { key: 'canKickMembers', label: 'Exclure des membres', desc: 'Retirer des membres réguliers du clan' },
+                  { key: 'canManageRoles', label: 'Gérer les rôles', desc: 'Créer, modifier et assigner des rôles' },
+                ] as { key: keyof typeof roleEditPerms; label: string; desc: string }[]).map(({ key, label, desc }) => (
+                  <Field key={key} orientation="horizontal" className="rounded-lg border p-3">
+                    <Checkbox
+                      id={`perm-${key}`}
+                      checked={roleEditPerms[key]}
+                      onCheckedChange={(checked) => setRoleEditPerms((prev) => ({ ...prev, [key]: checked === true }))}
+                    />
+                    <FieldContent>
+                      <FieldLabel htmlFor={`perm-${key}`}>{label}</FieldLabel>
+                      <FieldDescription>{desc}</FieldDescription>
+                    </FieldContent>
+                  </Field>
                 ))}
-                <input
-                  type="color"
-                  value={roleEditColor}
-                  onChange={(e) => setRoleEditColor(e.target.value)}
-                  className="h-6 w-6 cursor-pointer rounded-full border p-0"
-                />
               </div>
-            </div>
-
-            {/* Permissions */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Permissions</label>
-              {([
-                { key: 'canManageHorses', label: 'Gérer les chevaux', desc: 'Acheter, entraîner, inscrire et soigner les chevaux', icon: '🐴' },
-                { key: 'canInviteMembers', label: 'Inviter des membres', desc: 'Accepter ou refuser les candidatures', icon: '👋' },
-                { key: 'canKickMembers', label: 'Exclure des membres', desc: 'Retirer des membres réguliers du clan', icon: '🚫' },
-                { key: 'canManageRoles', label: 'Gérer les rôles', desc: 'Créer, modifier et assigner des rôles', icon: '🛡️' },
-              ] as { key: keyof typeof roleEditPerms; label: string; desc: string; icon: string }[]).map(({ key, label, desc, icon }) => (
-                <label key={key} className={cn('flex items-start gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors', roleEditPerms[key] ? 'border-primary/30 bg-primary/5' : 'border-border/50 bg-muted/10 hover:bg-muted/20')}>
-                  <input
-                    type="checkbox"
-                    checked={roleEditPerms[key]}
-                    onChange={(e) => setRoleEditPerms((prev) => ({ ...prev, [key]: e.target.checked }))}
-                    className="mt-0.5 accent-primary"
-                  />
-                  <div>
-                    <div className="text-sm font-medium">{icon} {label}</div>
-                    <div className="text-xs text-muted-foreground">{desc}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={handleSaveRole} disabled={roleSaving || (!roleEditIsSystem && !roleEditName.trim())}>
-                {roleSaving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
-                {roleEditId ? 'Enregistrer les modifications' : 'Créer le rôle'}
-              </Button>
-              <Button variant="outline" onClick={() => setRoleEditOpen(false)}>Annuler</Button>
-            </div>
-          </div>
+            </Field>
+          </FieldGroup>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRoleEditOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleSaveRole} disabled={roleSaving || (!roleEditIsSystem && !roleEditName.trim())}>
+              {roleSaving ? <Spinner /> : <Check />}
+              {roleEditId ? 'Enregistrer les modifications' : 'Créer le rôle'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-    </div>
+    </>
   );
 }
