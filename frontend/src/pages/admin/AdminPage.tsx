@@ -6,7 +6,10 @@ import { adminApi, leaderboardsApi, AdminUser, ShopItem, ShopCategory, BugReport
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
+import { Badge as UiBadge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarTrigger } from '@/components/ui/menubar';
+import { Spinner } from '@/components/ui/spinner';
 import { Tabs } from '@/components/ui/tabs';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
 import { Loader2, Package, ChevronLeft, ChevronRight, ChevronDown, MessageCircle, Gamepad2, Coins, Users, Shield, Gavel, TrendingUp, Eye, Activity, CalendarRange, Award, Terminal, Landmark, Inbox, Settings, BarChart2, Clock } from 'lucide-react';
@@ -4777,166 +4780,114 @@ export default function Admin() {
           {/* ── Custom admin navigation with grouped dropdowns ── */}
           {(() => {
             const inboxCount = pendingUsers.length + bugReports.filter(b => b.status === 'PENDING').length + banAppeals.filter(a => a.status === 'PENDING').length + nameChangeRequests.filter(n => n.status === 'PENDING').length + customBadgeRequests.length + pendingFormationReviews.length + pendingAds.length + pendingSanctions.filter(s => s.status === 'PENDING').length + chatModerationEvents.length;
-            const navBtn = (tabs: AdminTab | AdminTab[], label: string, icon: ReactNode, onClick: () => void, badge?: ReactNode) => {
-              const active = Array.isArray(tabs) ? (tabs as AdminTab[]).includes(activeTab) : activeTab === tabs;
-              return (
-                <button
+            const isActive = (tabs: AdminTab | AdminTab[]) => (Array.isArray(tabs) ? tabs.includes(activeTab) : activeTab === tabs);
+            const navBtn = (tabs: AdminTab | AdminTab[], label: string, icon: ReactNode, onClick: () => void, badge?: ReactNode) => (
+              <MenubarMenu>
+                <MenubarTrigger
                   onClick={onClick}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
-                  )}
+                  data-state-active={isActive(tabs) ? 'true' : undefined}
+                  className={cn('gap-1.5', isActive(tabs) && 'bg-accent text-accent-foreground')}
                 >
                   {icon}
                   {label}
                   {badge}
-                </button>
-              );
-            };
+                </MenubarTrigger>
+              </MenubarMenu>
+            );
+            const navGroup = (tabs: AdminTab[], label: string, icon: ReactNode, items: ReactNode, align: 'start' | 'end' = 'start', trailing?: ReactNode) => (
+              <MenubarMenu>
+                <MenubarTrigger className={cn('gap-1.5', isActive(tabs) && 'bg-accent text-accent-foreground')}>
+                  {icon}
+                  {label}
+                  {trailing}
+                  <ChevronDown className="size-3" />
+                </MenubarTrigger>
+                <MenubarContent align={align}>{items}</MenubarContent>
+              </MenubarMenu>
+            );
             const dropdownItemBtn = (tab: AdminTab, label: string, icon: ReactNode, onClick: () => void, badge?: ReactNode) => (
-              <button
-                key={tab}
-                onClick={onClick}
-                className={cn(
-                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-sm transition-colors',
-                  activeTab === tab ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                )}
-              >
+              <MenubarItem key={tab} onClick={onClick} className={cn(activeTab === tab && 'bg-accent')}>
                 {icon}
                 {label}
                 {badge && <span className="ml-auto">{badge}</span>}
-              </button>
+              </MenubarItem>
             );
-            // Outer: transparent padding bridges the gap so hover state persists when moving into the dropdown
-            const dropdownOuter = 'absolute left-0 top-full pt-1 z-50 hidden group-hover:block';
-            const dropdownInner = 'min-w-40 rounded-md border border-border/50 bg-popover p-1 flex flex-col gap-0.5';
+            const countBadge = (count: number, variant: 'destructive' | 'warning' = 'destructive') => (
+              <UiBadge variant={variant} className="min-w-5 justify-center px-1 tabular-nums">{count}</UiBadge>
+            );
             const isFiscalOnly = isReadOnlyInspectionUser;
             return (
-              <Alert className="flex flex-wrap gap-1 mb-6"><AlertDescription>
-                {/* Réception — admin only */}
-                {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox className="w-4 h-4 shrink-0" />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchPendingSanctions(); fetchChatModerationEvents(); },
-                  inboxCount > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-xs font-semibold leading-none">{inboxCount}</span> : undefined
+              <Menubar className="h-auto flex-wrap gap-1 p-1">
+                {!isFiscalOnly && navBtn('inbox', 'Réception', <Inbox />, () => { setActiveTab('inbox'); fetchCustomBadgeRequests(); fetchPendingFormationReviews(); fetchPendingAds(); fetchPendingSanctions(); fetchChatModerationEvents(); },
+                  inboxCount > 0 ? countBadge(inboxCount) : undefined
                 )}
 
-                {/* Utilisateurs — admin only */}
-                {!isFiscalOnly && navBtn('users', 'Utilisateurs', <Users className="w-4 h-4 shrink-0" />, () => setActiveTab('users'))}
+                {!isFiscalOnly && navBtn('users', 'Utilisateurs', <Users />, () => setActiveTab('users'))}
 
-                {/* Clubs — admin only */}
-                {!isFiscalOnly && navBtn('clubs', 'Clubs', <Shield className="w-4 h-4 shrink-0" />, () => setActiveTab('clubs'))}
+                {!isFiscalOnly && navBtn('clubs', 'Clubs', <Shield />, () => setActiveTab('clubs'))}
 
-                {/* Logs — visible to all */}
-                {navBtn('logs', 'Logs', <Activity className="w-4 h-4 shrink-0" />, () => setActiveTab('logs'),
-                  logStats ? <span className="text-xs">{logStats.total.toLocaleString()}</span> : undefined
+                {navBtn('logs', 'Logs', <Activity />, () => setActiveTab('logs'),
+                  logStats ? <span className="text-xs text-muted-foreground">{logStats.total.toLocaleString()}</span> : undefined
                 )}
 
-                {/* Sanctions — admin only */}
-                {!isFiscalOnly && navBtn('bans', 'Sanctions', <Gavel className="w-4 h-4 shrink-0" />, () => setActiveTab('bans'),
-                  (bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length) > 0 ? <span className="text-xs">{bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length}</span> : undefined
+                {!isFiscalOnly && navBtn('bans', 'Sanctions', <Gavel />, () => setActiveTab('bans'),
+                  (bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length) > 0 ? <span className="text-xs text-muted-foreground">{bans.filter(b => b.isActive).length + users.filter(u => u.isChatMuted).length}</span> : undefined
                 )}
 
-                {/* Contenu dropdown — admin only */}
-                {!isFiscalOnly && <div className="relative group">
-                  <button className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['content', 'ads'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
-                  )}>
-                    <Package className="w-4 h-4 shrink-0" />
-                    Contenu
-                    <ChevronDown className="w-3 h-3 shrink-0" />
-                  </button>
-                  <div className={dropdownOuter}>
-                    <div className={dropdownInner}>
-                      {dropdownItemBtn('content', 'Objets', <Package className="w-3.5 h-3.5" />, () => setActiveTab('content'))}
-                      {dropdownItemBtn('ads', 'Publicités', <Eye className="w-3.5 h-3.5" />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
-                        pendingAds.length > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-warning text-white text-xs font-semibold leading-none">{pendingAds.length}</span> : undefined
-                      )}
-                    </div>
-                  </div>
-                </div>}
+                {!isFiscalOnly && navGroup(['content', 'ads'], 'Contenu', <Package />, (
+                  <>
+                    {dropdownItemBtn('content', 'Objets', <Package />, () => setActiveTab('content'))}
+                    {dropdownItemBtn('ads', 'Publicités', <Eye />, () => { setActiveTab('ads'); fetchPendingAds(); fetchAllAds(); },
+                      pendingAds.length > 0 ? countBadge(pendingAds.length, 'warning') : undefined
+                    )}
+                  </>
+                ))}
 
-                {/* Inspection fiscale — visible to fiscal inspectors and judges */}
-                {isFiscalOnly && navBtn('fiscal', 'Inspection fiscale', <Landmark className="w-4 h-4 shrink-0" />, () => { setActiveTab('fiscal'); fetchFiscalUsers(); })}
+                {isFiscalOnly && navBtn('fiscal', 'Inspection fiscale', <Landmark />, () => { setActiveTab('fiscal'); fetchFiscalUsers(); })}
 
-                {/* Finance — taxes visible to all, referrals admin only */}
                 {isFiscalOnly
-                  ? navBtn('taxes', 'Impôts', <Landmark className="w-4 h-4 shrink-0" />, () => { setActiveTab('taxes'); fetchTaxSettings(); })
-                  : <div className="relative group">
-                  <button className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['taxes', 'referrals'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
-                  )}>
-                    <Coins className="w-4 h-4 shrink-0" />
-                    Finance
-                    <ChevronDown className="w-3 h-3 shrink-0" />
-                  </button>
-                  <div className={dropdownOuter}>
-                    <div className={dropdownInner}>
-                      {dropdownItemBtn('taxes', 'Impôts', <Landmark className="w-3.5 h-3.5" />, () => { setActiveTab('taxes'); fetchTaxSettings(); })}
-                      {dropdownItemBtn('referrals', 'Parrainage', <Users className="w-3.5 h-3.5" />, () => { setActiveTab('referrals'); fetchReferralStats(); },
+                  ? navBtn('taxes', 'Impôts', <Landmark />, () => { setActiveTab('taxes'); fetchTaxSettings(); })
+                  : navGroup(['taxes', 'referrals'], 'Finance', <Coins />, (
+                    <>
+                      {dropdownItemBtn('taxes', 'Impôts', <Landmark />, () => { setActiveTab('taxes'); fetchTaxSettings(); })}
+                      {dropdownItemBtn('referrals', 'Parrainage', <Users />, () => { setActiveTab('referrals'); fetchReferralStats(); },
                         referralStats ? <span className="text-xs text-muted-foreground">{referralStats.overview.approvedReferredUsers.toLocaleString('fr-FR')} validés</span> : undefined
                       )}
-                    </div>
-                  </div>
-                </div>}
+                    </>
+                  ))}
 
-                {/* Statistiques dropdown — admin only */}
-                {!isFiscalOnly && <div className="relative group">
-                  <button className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['activity', 'screen-time', 'demographics', 'wealth', 'badges'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
-                  )}>
-                    <TrendingUp className="w-4 h-4 shrink-0" />
-                    Statistiques
-                    {onlineStats && <span className="text-xs">{onlineStats.current} en ligne</span>}
-                    <ChevronDown className="w-3 h-3 shrink-0" />
-                  </button>
-                  <div className={dropdownOuter}>
-                    <div className={dropdownInner}>
-                      {dropdownItemBtn('activity', 'Activité', <Activity className="w-3.5 h-3.5" />, () => { setActiveTab('activity'); fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); fetchPlatformStats(); fetchGamesLeaderboard(); })}
-                      {dropdownItemBtn('screen-time', "Temps d'écran", <Clock className="w-3.5 h-3.5" />, () => { setActiveTab('screen-time'); fetchScreenTimeLeaderboard(screenTimePeriod); })}
-                      {dropdownItemBtn('demographics', 'Répartition', <BarChart2 className="w-3.5 h-3.5" />, () => setActiveTab('demographics'),
-                        <span className="text-xs text-muted-foreground">{totalDemographicUsers.toLocaleString('fr-FR')} users</span>
-                      )}
-                      {dropdownItemBtn('wealth', 'Richesse', <Coins className="w-3.5 h-3.5" />, () => { setActiveTab('wealth'); fetchWealthStats(); })}
-                      {dropdownItemBtn('badges', 'Badges', <Award className="w-3.5 h-3.5" />, () => { setActiveTab('badges'); fetchBadges(); })}
-                    </div>
-                  </div>
-                </div>}
+                {!isFiscalOnly && navGroup(['activity', 'screen-time', 'demographics', 'wealth', 'badges'], 'Statistiques', <TrendingUp />, (
+                  <>
+                    {dropdownItemBtn('activity', 'Activité', <Activity />, () => { setActiveTab('activity'); fetchActivity(activityPeriod); fetchActivityBreakdown(activityBreakdownDay); fetchPlaytimeLeaderboard(playtimePeriod); fetchPlatformStats(); fetchGamesLeaderboard(); })}
+                    {dropdownItemBtn('screen-time', "Temps d'écran", <Clock />, () => { setActiveTab('screen-time'); fetchScreenTimeLeaderboard(screenTimePeriod); })}
+                    {dropdownItemBtn('demographics', 'Répartition', <BarChart2 />, () => setActiveTab('demographics'),
+                      <span className="text-xs text-muted-foreground">{totalDemographicUsers.toLocaleString('fr-FR')} users</span>
+                    )}
+                    {dropdownItemBtn('wealth', 'Richesse', <Coins />, () => { setActiveTab('wealth'); fetchWealthStats(); })}
+                    {dropdownItemBtn('badges', 'Badges', <Award />, () => { setActiveTab('badges'); fetchBadges(); })}
+                  </>
+                ), 'start', onlineStats ? <span className="text-xs text-muted-foreground">{onlineStats.current} en ligne</span> : undefined)}
 
-                {/* Paramètres dropdown — admin only */}
-                {!isFiscalOnly && <div className="relative group">
-                  <button className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
-                    ['settings', 'game-limits', 'communication', 'chat-history'].includes(activeTab) ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
-                  )}>
-                    <Settings className="w-4 h-4 shrink-0" />
-                    Paramètres
-                    <ChevronDown className="w-3 h-3 shrink-0" />
-                  </button>
-                  <div className={cn(dropdownOuter, 'left-auto right-0')}>
-                    <div className={dropdownInner}>
-                    {dropdownItemBtn('settings', 'Paramètres', <Settings className="w-3.5 h-3.5" />, () => setActiveTab('settings'))}
-                    {dropdownItemBtn('game-limits', 'Limites jeux', <Gamepad2 className="w-3.5 h-3.5" />, () => setActiveTab('game-limits'))}
-                    {dropdownItemBtn('chat-history', 'Historique chat', <CalendarRange className="w-3.5 h-3.5" />, () => { setActiveTab('chat-history'); void fetchChatHistoryDays(); })}
-                    {dropdownItemBtn('communication', 'Communication', <MessageCircle className="w-3.5 h-3.5" />, () => { setActiveTab('communication'); fetchSupportThreads(); },
-                      supportUnread > 0 ? <span className="inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-destructive text-white text-xs font-semibold leading-none">{supportUnread}</span> : undefined
+                {!isFiscalOnly && navGroup(['settings', 'game-limits', 'communication', 'chat-history'], 'Paramètres', <Settings />, (
+                  <>
+                    {dropdownItemBtn('settings', 'Paramètres', <Settings />, () => setActiveTab('settings'))}
+                    {dropdownItemBtn('game-limits', 'Limites jeux', <Gamepad2 />, () => setActiveTab('game-limits'))}
+                    {dropdownItemBtn('chat-history', 'Historique chat', <CalendarRange />, () => { setActiveTab('chat-history'); void fetchChatHistoryDays(); })}
+                    {dropdownItemBtn('communication', 'Communication', <MessageCircle />, () => { setActiveTab('communication'); fetchSupportThreads(); },
+                      supportUnread > 0 ? countBadge(supportUnread) : undefined
                     )}
                     {isAdminOrSuperAdmin && (
-                      <div className="border-t border-border/40 mt-1 pt-1">
-                        <button
-                          onClick={openPrismaStudio}
-                          disabled={openingPrisma}
-                          className="w-full flex items-center gap-2 px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/70 rounded-sm transition-colors disabled:opacity-50"
-                        >
-                          {openingPrisma ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Terminal className="w-3.5 h-3.5" />}
+                      <>
+                        <MenubarSeparator />
+                        <MenubarItem onClick={openPrismaStudio} disabled={openingPrisma}>
+                          {openingPrisma ? <Spinner /> : <Terminal />}
                           Prisma Studio
-                        </button>
-                      </div>
+                        </MenubarItem>
+                      </>
                     )}
-                    </div>
-                  </div>
-                </div>}
-            </AlertDescription></Alert>
+                  </>
+                ), 'end')}
+              </Menubar>
             );
           })()}
 
