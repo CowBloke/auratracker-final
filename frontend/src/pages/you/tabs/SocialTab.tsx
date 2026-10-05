@@ -21,7 +21,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia } from '@/components/ui/empty';
+import { Item, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -38,9 +42,9 @@ import {
   youApi,
 } from '@/services/api';
 import { NewRelationModal } from '../components/modals';
-import { Pill, SectionTitle, UserAvatar } from '../components/YouPrimitives';
+import { Pill, UserAvatar } from '../components/YouPrimitives';
 import { getRelationshipPill, relativeTime, withRouteError } from '../utils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // ─── Relationships ────────────────────────────────────────────────────────────
 
@@ -55,25 +59,23 @@ function RelationListItem({
 }) {
   const pill = getRelationshipPill(relationship.status);
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all ${selected ? 'bg-muted/30 ring-1 ring-border/60' : 'hover:bg-muted/20'}`}
-    >
-      <UserAvatar player={relationship.otherUser} className="h-9 w-9 shrink-0" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{relationship.otherUser.username}</p>
-        <div className="mt-0.5 flex items-center gap-1.5">
-          <Pill label={pill.label} color={pill.color} />
-          {(relationship.pendingProposal || relationship.pendingDivorceProposal) && (
-            <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-          )}
-          {relationship.hasPendingCourtCase && (
-            <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-          )}
-        </div>
-      </div>
-    </button>
+    <Item asChild size="sm" variant={selected ? 'muted' : 'default'}>
+      <button type="button" onClick={onClick} className="w-full text-left">
+        <ItemMedia>
+          <UserAvatar player={relationship.otherUser} className="size-9" />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{relationship.otherUser.username}</ItemTitle>
+          <div className="flex items-center gap-1.5">
+            <Pill label={pill.label} color={pill.color} />
+            {(relationship.pendingProposal || relationship.pendingDivorceProposal) && (
+              <span className="size-1.5 rounded-full bg-warning" />
+            )}
+            {relationship.hasPendingCourtCase && <span className="size-1.5 rounded-full bg-destructive" />}
+          </div>
+        </ItemContent>
+      </button>
+    </Item>
   );
 }
 
@@ -94,23 +96,23 @@ function CourtCaseItem({ courtCase, onReload }: { courtCase: YouCourtCase; onRel
 
   return (
     <Alert variant="destructive">
-      <div className="flex items-center gap-2">
-        <Gavel className="h-4 w-4 text-destructive" />
-        <p className="text-sm font-semibold text-destructive">Suspicion de tricherie</p>
-      </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">{courtCase.accuser.username}</span> te soupçonne de tricherie.
-        Aller en justice te permet de prendre tout son argent si la suspicion est infondee.
-      </p>
-      <div className="mt-3 flex gap-2">
-        <Button size="sm" variant="destructive" className="text-xs" disabled={loading} onClick={() => void respond('court')}>
-          <Scale className="mr-1.5 h-3.5 w-3.5" />
-          Aller en justice
-        </Button>
-        <Button size="sm" variant="outline" className="text-xs" disabled={loading} onClick={() => void respond('drop')}>
-          Ignorer
-        </Button>
-      </div>
+      <Gavel />
+      <AlertTitle>Suspicion de tricherie</AlertTitle>
+      <AlertDescription>
+        <p>
+          <span className="font-medium text-foreground">{courtCase.accuser.username}</span> te soupçonne de tricherie.
+          Aller en justice te permet de prendre tout son argent si la suspicion est infondée.
+        </p>
+        <div className="mt-3 flex gap-2">
+          <Button size="sm" variant="destructive" disabled={loading} onClick={() => void respond('court')}>
+            <Scale />
+            Aller en justice
+          </Button>
+          <Button size="sm" variant="outline" disabled={loading} onClick={() => void respond('drop')}>
+            Ignorer
+          </Button>
+        </div>
+      </AlertDescription>
     </Alert>
   );
 }
@@ -739,23 +741,23 @@ function ContractsSection({ data, currentUserId }: { data: YouState; currentUser
         {/* Left: list */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <SectionTitle>Contrats ({contracts.length})</SectionTitle>
-            <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => setCreateOpen(true)}>
+            <h2 className="text-sm font-semibold">Contrats ({contracts.length})</h2>
+            <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
               <Plus className="h-3.5 w-3.5" />
               Nouveau
             </Button>
           </div>
 
           {contracts.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-3 px-5 py-8 text-center">
-                <ScrollText className="h-8 w-8 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">Aucun contrat. Crée le premier avec le bouton ci-dessus.</p>
-              </CardContent>
-            </Card>
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><ScrollText /></EmptyMedia>
+                <EmptyDescription>Aucun contrat. Crée le premier avec le bouton ci-dessus.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <Card>
-              <CardContent className="space-y-0.5 px-2 py-2">
+              <CardContent className="flex flex-col gap-0.5 px-2">
                 {contracts.map((c) => (
                   <ContractListItem key={c.id} contract={c} selected={selected?.id === c.id} onClick={() => setSelectedId(c.id)} />
                 ))}
@@ -775,12 +777,12 @@ function ContractsSection({ data, currentUserId }: { data: YouState; currentUser
               signing={signing}
             />
           ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-3 px-5 py-16 text-center">
-                <ScrollText className="h-10 w-10 text-muted-foreground/20" />
-                <p className="text-sm text-muted-foreground">Sélectionne un contrat pour le consulter.</p>
-              </CardContent>
-            </Card>
+            <Empty className="min-h-64 border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><ScrollText /></EmptyMedia>
+                <EmptyDescription>Sélectionne un contrat pour le consulter.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           )}
         </div>
       </div>
@@ -815,46 +817,27 @@ export function SocialTab({ data, userId, onReload }: { data: YouState; userId?:
 
   return (
     <>
-      {/* Sub-tab bar */}
-      <Card className="gap-0 py-0 shadow-none mb-5 w-fit"><CardContent className="p-1 flex gap-1">
-        <button
-          type="button"
-          onClick={() => setTab('relations')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-            tab === 'relations'
-              ? 'bg-background shadow-sm text-foreground'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <Users className="h-3.5 w-3.5" />
-          Relations
-          {data.relationships.length > 0 && (
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs leading-none">{data.relationships.length}</span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('contracts')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-            tab === 'contracts'
-              ? 'bg-background shadow-sm text-foreground'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <ScrollText className="h-3.5 w-3.5" />
-          Contrats
-        </button>
-      </CardContent></Card>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as 'relations' | 'contracts')}>
+        <TabsList>
+          <TabsTrigger value="relations">
+            <Users />
+            Relations
+            {data.relationships.length > 0 && <Badge variant="secondary">{data.relationships.length}</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="contracts">
+            <ScrollText />
+            Contrats
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {tab === 'relations' && (
         <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
           {/* Left: List */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <SectionTitle>Relations ({data.relationships.length})</SectionTitle>
-              <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs" onClick={() => setAddOpen(true)}>
+              <h2 className="text-sm font-semibold">Relations ({data.relationships.length})</h2>
+              <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
                 <UserPlus className="h-3.5 w-3.5" />
                 Ajouter
               </Button>
@@ -869,14 +852,14 @@ export function SocialTab({ data, userId, onReload }: { data: YouState; userId?:
             )}
 
             {sortedRelationships.length === 0 ? (
-              <Card>
-                <CardContent className="px-5 py-8 text-center text-sm text-muted-foreground">
-                  Aucune relation. Ajoute quelqu un avec le bouton ci-dessus.
-                </CardContent>
-              </Card>
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyDescription>Aucune relation. Ajoute quelqu&apos;un avec le bouton ci-dessus.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <Card>
-                <CardContent className="space-y-0.5 px-2 py-2">
+                <CardContent className="flex flex-col gap-0.5 px-2">
                   {sortedRelationships.map((r) => (
                     <RelationListItem key={r.id} relationship={r} selected={selected?.id === r.id} onClick={() => setSelectedId(r.id)} />
                   ))}
@@ -889,7 +872,7 @@ export function SocialTab({ data, userId, onReload }: { data: YouState; userId?:
           <div className="space-y-4">
             {selected ? (
               <>
-                <SectionTitle>Actions</SectionTitle>
+                <h2 className="text-sm font-semibold">Actions</h2>
                 <Card>
                   <CardContent className="px-5 py-4">
                     <RelationActions relationship={selected} onReload={onReload} />
@@ -897,11 +880,11 @@ export function SocialTab({ data, userId, onReload }: { data: YouState; userId?:
                 </Card>
               </>
             ) : (
-              <Card>
-                <CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">
-                  Selectionne une relation pour voir les actions disponibles.
-                </CardContent>
-              </Card>
+              <Empty className="min-h-64 border">
+                <EmptyHeader>
+                  <EmptyDescription>Sélectionne une relation pour voir les actions disponibles.</EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
           </div>
         </div>

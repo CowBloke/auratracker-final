@@ -4,13 +4,14 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFeatures } from '@/contexts/FeaturesContext';
 import { CenteredSkeletonCard } from '@/components/ui/loading-skeletons';
-import { Card, CardContent } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty';
 import { type YouState, youApi } from '@/services/api';
 import { ActionsTab } from './tabs/ActionsTab';
 import { ConstructionTab } from './tabs/ConstructionTab';
 import { MarketplaceTab } from './tabs/MarketplaceTab';
 import { SocialTab } from './tabs/SocialTab';
 import { YouDashboard } from './YouDashboard';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
 
 export default function You() {
   const [params] = useSearchParams();
@@ -55,17 +56,17 @@ export default function You() {
 
   if (loading && !data) {
     return (
-      <div className="space-y-4">
+      <PageShell>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <CenteredSkeletonCard key={index} />
           ))}
         </div>
         <CenteredSkeletonCard className="min-h-[380px]" />
-      </div>
+      </PageShell>
     );
   }
-  if (!data || !user) return <div className="space-y-4"><Card><CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">Impossible de charger les donnees YOU.</CardContent></Card></div>;
+  if (!data || !user) return <PageShell><Empty className="border"><EmptyHeader><EmptyDescription>Impossible de charger les données YOU.</EmptyDescription></EmptyHeader></Empty></PageShell>;
 
   if (currentTab === 'carte') {
     return (
@@ -75,26 +76,21 @@ export default function You() {
     );
   }
 
-  if (currentTab === 'social') {
-    return (
-      <div className="space-y-6 pb-8">
-        <SocialTab data={data} onReload={loadState} />
-      </div>
-    );
-  }
-
-  if (currentTab === 'construction') {
-    return (
-      <div className="animate-in space-y-6 fade-in pb-8 duration-300">
-        <ConstructionTab onReload={() => loadState()} />
-      </div>
-    );
-  }
+  const TAB_HEADERS: Record<string, { title: string; description: string }> = {
+    social: { title: 'Social', description: 'Relations, contrats et interactions avec les autres joueurs.' },
+    construction: { title: 'Construction', description: 'Stock de ressources et chantiers disponibles.' },
+    actions: { title: 'Actions', description: 'Production, achats et gestion de tes entreprises.' },
+    'salle-de-marche': { title: 'Marché des ressources', description: 'Achète et vends des ressources entre entreprises.' },
+  };
+  const header = TAB_HEADERS[currentTab];
 
   return (
-    <div className="animate-in space-y-6 fade-in pb-8 duration-300">
+    <PageShell>
+      <PageHeader title={header.title} description={header.description} />
+      {currentTab === 'social' ? <SocialTab data={data} userId={user.id} onReload={loadState} /> : null}
+      {currentTab === 'construction' ? <ConstructionTab onReload={() => loadState()} /> : null}
       {currentTab === 'actions' ? <ActionsTab data={data} userId={user.id} onReload={() => loadState()} /> : null}
       {currentTab === 'salle-de-marche' ? <MarketplaceTab ownedBusinesses={data.ownedBusinesses} /> : null}
-    </div>
+    </PageShell>
   );
 }

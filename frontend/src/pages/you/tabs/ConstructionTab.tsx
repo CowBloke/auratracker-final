@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, Hammer, Loader2, Wallet } from 'lucide-react';
+import { Building2, Hammer, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader } from '@/components/ui/empty';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Spinner } from '@/components/ui/spinner';
 import { RESOURCE_META, type ResourceType } from '@/lib/resources';
 import { type YouResourceActionState, type YouSupplyResourceType, youApi } from '@/services/api';
-import { SectionTitle } from '../components/YouPrimitives';
 
 type ResourceStockItem = {
   resourceType: YouSupplyResourceType;
@@ -116,153 +118,143 @@ export function ConstructionTab({ onReload }: { onReload: () => Promise<void> })
   }
 
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Chargement de la construction...</div>;
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Spinner />
+        Chargement de la construction...
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      <section className="space-y-3">
-        <SectionTitle>Mon stock de ressources</SectionTitle>
+    <div className="flex flex-col gap-8">
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Mon stock de ressources</h2>
         {stock.length === 0 ? (
-          <Card>
-            <CardContent className="px-5 py-8 text-sm text-muted-foreground">
-              Aucune ressource stockee pour le moment.
-            </CardContent>
-          </Card>
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyDescription>Aucune ressource stockée pour le moment.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {stock.map((entry) => {
               const meta = RESOURCE_META[entry.resourceType as ResourceType];
               const Icon = meta?.Icon ?? Building2;
               return (
-                <Card key={entry.resourceType} className="overflow-hidden">
-                  <CardContent className="flex items-center gap-4 px-5 py-4">
-                    <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', meta?.bg ?? 'bg-muted')}>
-                      <Icon className={cn('h-5 w-5', meta?.iconColor ?? 'text-foreground')} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground">{meta?.label ?? entry.resourceType}</p>
-                      <p className="text-xs text-muted-foreground">{meta?.description ?? 'Ressource de construction.'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Disponible</p>
-                      <p className="text-lg font-semibold tabular-nums text-foreground">{entry.quantity}</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <Item key={entry.resourceType} variant="outline">
+                  <ItemMedia variant="icon">
+                    <Icon />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>{meta?.label ?? entry.resourceType}</ItemTitle>
+                    <ItemDescription>{meta?.description ?? 'Ressource de construction.'}</ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <span className="text-lg font-semibold tabular-nums">{entry.quantity}</span>
+                  </ItemActions>
+                </Item>
               );
             })}
           </div>
         )}
       </section>
 
-      <section className="space-y-3">
-        <SectionTitle>Entreprises disponibles a construire</SectionTitle>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Entreprises disponibles à construire</h2>
         <div className="grid gap-4">
           {(state?.constructionCatalog ?? []).map((company) => {
             const missing = company.materials
               .map((material) => {
                 const available = stockByResource.get(material.resourceType) ?? 0;
-                return {
-                  ...material,
-                  available,
-                  missing: Math.max(0, material.quantity - available),
-                };
+                return { ...material, available, missing: Math.max(0, material.quantity - available) };
               })
               .filter((material) => material.missing > 0);
             const missingMoney = Math.max(0, company.totalMoneyCost - (user?.money ?? 0));
             const canBuild = missing.length === 0 && missingMoney === 0 && buildingTypeKey === null;
 
             return (
-              <Card key={company.typeKey} className="overflow-hidden border-border/60">
-                <CardHeader className="border-b border-border/40 bg-muted/10 pb-4">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-xl text-foreground">{company.label}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{company.category}</p>
-                      <p className="text-sm text-muted-foreground">{company.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-full bg-warning/10 px-3 py-1.5 text-sm font-semibold text-warning">
-                      <Wallet className="h-4 w-4" />
-                      {company.totalMoneyCost > 0 ? `${formatMoney(company.totalMoneyCost)}€` : 'Sans cout financier'}
-                    </div>
-                  </div>
+              <Card key={company.typeKey}>
+                <CardHeader>
+                  <CardTitle>{company.label}</CardTitle>
+                  <CardDescription>
+                    {company.category} · {company.description}
+                  </CardDescription>
+                  <CardAction>
+                    <Badge variant="warning">
+                      <Wallet />
+                      {company.totalMoneyCost > 0 ? `${formatMoney(company.totalMoneyCost)}€` : 'Sans coût financier'}
+                    </Badge>
+                  </CardAction>
                 </CardHeader>
 
-                <CardContent className="space-y-4 px-5 py-5">
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground">Ressources requises</p>
-                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                      {company.materials.map((material) => {
-                        const meta = RESOURCE_META[material.resourceType as ResourceType];
-                        const Icon = meta?.Icon ?? Building2;
-                        const available = stockByResource.get(material.resourceType) ?? 0;
-                        const isMissing = available < material.quantity;
-                        return (
-                          <div
-                            key={`${company.typeKey}-${material.resourceType}`}
-                            className={cn(
-                              'flex items-center gap-3 rounded-xl border px-3 py-3',
-                              isMissing ? 'border-destructive/30 bg-destructive/5' : 'border-success/20 bg-success/5',
-                            )}
-                          >
-                            <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', meta?.bg ?? 'bg-muted')}>
-                              <Icon className={cn('h-4 w-4', meta?.iconColor ?? 'text-foreground')} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-foreground">{meta?.label ?? material.resourceType}</p>
-                              <p className={cn('text-xs font-medium', isMissing ? 'text-destructive' : 'text-success')}>
-                                {available} / {material.quantity}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="space-y-1 text-sm">
-                      {missing.length > 0 ? (
-                        <p className="text-destructive">
-                          Il manque{' '}
-                          {missing
-                            .map((material) => {
-                              const label = RESOURCE_META[material.resourceType as ResourceType]?.label ?? material.resourceType;
-                              return `${material.missing} ${label}`;
-                            })
-                            .join(', ')}
-                          .
-                        </p>
-                      ) : (
-                        <p className="text-success">Toutes les ressources sont disponibles.</p>
-                      )}
-                      {missingMoney > 0 ? (
-                        <p className="text-destructive">Il manque {formatMoney(missingMoney)}€ pour lancer cette construction.</p>
-                      ) : company.totalMoneyCost > 0 ? (
-                        <p className="text-muted-foreground">Cout total: {formatMoney(company.totalMoneyCost)}€.</p>
-                      ) : null}
-                    </div>
-
-                    <Button
-                      onClick={() => void handleBuild(company.typeKey, company.label, company.description, company.minCapital)}
-                      disabled={!canBuild}
-                      className="min-w-[160px]"
-                    >
-                      {buildingTypeKey === company.typeKey ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Construction...
-                        </>
-                      ) : (
-                        <>
-                          <Hammer className="mr-2 h-4 w-4" />
-                          Construire
-                        </>
-                      )}
-                    </Button>
+                <CardContent className="flex flex-col gap-3">
+                  <p className="text-sm font-medium text-muted-foreground">Ressources requises</p>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {company.materials.map((material) => {
+                      const meta = RESOURCE_META[material.resourceType as ResourceType];
+                      const Icon = meta?.Icon ?? Building2;
+                      const available = stockByResource.get(material.resourceType) ?? 0;
+                      const isMissing = available < material.quantity;
+                      return (
+                        <Item key={`${company.typeKey}-${material.resourceType}`} variant="outline" size="sm">
+                          <ItemMedia variant="icon">
+                            <Icon />
+                          </ItemMedia>
+                          <ItemContent>
+                            <ItemTitle>{meta?.label ?? material.resourceType}</ItemTitle>
+                          </ItemContent>
+                          <ItemActions>
+                            <Badge variant={isMissing ? 'destructive' : 'success'} className="tabular-nums">
+                              {available} / {material.quantity}
+                            </Badge>
+                          </ItemActions>
+                        </Item>
+                      );
+                    })}
                   </div>
                 </CardContent>
+
+                <CardFooter className="flex flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-col gap-1 text-sm">
+                    {missing.length > 0 ? (
+                      <p className="text-destructive">
+                        Il manque{' '}
+                        {missing
+                          .map((material) => {
+                            const label = RESOURCE_META[material.resourceType as ResourceType]?.label ?? material.resourceType;
+                            return `${material.missing} ${label}`;
+                          })
+                          .join(', ')}
+                        .
+                      </p>
+                    ) : (
+                      <p className="text-success">Toutes les ressources sont disponibles.</p>
+                    )}
+                    {missingMoney > 0 ? (
+                      <p className="text-destructive">Il manque {formatMoney(missingMoney)}€ pour lancer cette construction.</p>
+                    ) : company.totalMoneyCost > 0 ? (
+                      <p className="text-muted-foreground">Coût total : {formatMoney(company.totalMoneyCost)}€.</p>
+                    ) : null}
+                  </div>
+
+                  <Button
+                    onClick={() => void handleBuild(company.typeKey, company.label, company.description, company.minCapital)}
+                    disabled={!canBuild}
+                  >
+                    {buildingTypeKey === company.typeKey ? (
+                      <>
+                        <Spinner />
+                        Construction...
+                      </>
+                    ) : (
+                      <>
+                        <Hammer />
+                        Construire
+                      </>
+                    )}
+                  </Button>
+                </CardFooter>
               </Card>
             );
           })}

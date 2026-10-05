@@ -22,9 +22,14 @@ import {
   type YouSupplyResourceType,
   youApi,
 } from '@/services/api';
-import { Item } from '@/components/ui/item';
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { Spinner } from '@/components/ui/spinner';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Toggle } from '@/components/ui/toggle';
 
 function fmt(v: number) { return Math.round(v).toLocaleString('fr-FR'); }
 function fmtDec(v: number) { return v.toFixed(v < 10 ? 1 : 0).replace('.', ','); }
@@ -38,19 +43,10 @@ function ResourcePill({
   const meta = RESOURCE_META[resourceType as ResourceType];
   const Icon = meta?.Icon ?? Building2;
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition',
-        active
-          ? cn('border-border bg-foreground text-background')
-          : 'border-border/40 bg-background/60 text-muted-foreground hover:text-foreground hover:border-border',
-      )}
-    >
-      <Icon className={cn('h-3 w-3', active ? '' : (meta?.iconColor ?? 'text-muted-foreground'))} />
+    <Toggle pressed={active} onPressedChange={onClick} size="sm" variant="outline">
+      <Icon />
       {resourceLabel(resourceType)}
-    </button>
+    </Toggle>
   );
 }
 
@@ -450,36 +446,33 @@ function ItemListingRow({ listing, onCancelled, onBought }: {
   };
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-3 border-t border-border/30 px-4 py-3.5', listing.mine && 'bg-warning/4')}>
-      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', meta?.bg ?? 'bg-muted')}>
-        <Icon className={cn('h-4.5 w-4.5', meta?.iconColor ?? 'text-muted-foreground')} />
-      </span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground leading-tight">
-          {def?.name ?? resourceLabel(listing.resourceType)}
-          {listing.mine && <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-xs font-bold text-warning">toi</span>}
-        </div>
-        <div className="text-xs text-muted-foreground">{listing.businessName} · {listing.sellerName}</div>
-      </div>
-      <div className="text-right">
-        <div className="text-sm font-bold tabular-nums">{listing.quantity} u. dispo</div>
-      </div>
-      <div className="flex items-center gap-2">
+    <TableRow data-state={listing.mine ? 'selected' : undefined}>
+      <TableCell>
+        <Item className="p-0">
+          <ItemMedia variant="icon">
+            <Icon />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>
+              {def?.name ?? resourceLabel(listing.resourceType)}
+              {listing.mine && <Badge variant="secondary">toi</Badge>}
+            </ItemTitle>
+            <ItemDescription>{listing.businessName} · {listing.sellerName}</ItemDescription>
+          </ItemContent>
+        </Item>
+      </TableCell>
+      <TableCell className="text-right font-semibold tabular-nums">{listing.quantity} u. dispo</TableCell>
+      <TableCell className="text-right">
         {listing.mine ? (
-          <button
-            type="button"
-            onClick={() => void cancel()}
-            disabled={cancelling}
-            className="flex items-center gap-1.5 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-1.5 text-xs font-semibold text-destructive transition hover:bg-destructive/15 disabled:opacity-50"
-          >
-            {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          <Button variant="outline" size="sm" onClick={() => void cancel()} disabled={cancelling}>
+            {cancelling ? <Spinner /> : <Trash2 />}
             Retirer
-          </button>
+          </Button>
         ) : (
           <ItemBuyFlow listing={listing} onBought={onBought} />
         )}
-      </div>
-    </div>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -499,9 +492,9 @@ function ListingRow({
   const avg = stats?.avg ?? listing.unitPrice;
   const diff = ((listing.unitPrice - avg) / avg) * 100;
   const priceFlag = diff < -4
-    ? { label: 'bon prix', cls: 'bg-success/15 text-success' }
+    ? { label: 'bon prix', variant: 'success' as const }
     : diff > 6
-      ? { label: 'cher', cls: 'bg-warning/15 text-warning' }
+      ? { label: 'cher', variant: 'warning' as const }
       : null;
 
   const cancel = async () => {
@@ -518,95 +511,46 @@ function ListingRow({
   };
 
   return (
-    <div
-      className={cn(
-        'grid items-center gap-3 border-t border-border/30 px-4 py-3.5',
-        listing.mine ? 'bg-warning/4' : '',
-      )}
-      style={{ gridTemplateColumns: '1fr auto auto auto auto' }}
-    >
-      {/* Resource + seller */}
-      <div className="flex items-center gap-3 min-w-0">
-        <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', meta?.bg ?? 'bg-muted')}>
-          <Icon className={cn('h-4.5 w-4.5', meta?.iconColor ?? 'text-muted-foreground')} />
-        </span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground leading-tight">
-            {resourceLabel(listing.resourceType)}
-            {listing.mine && (
-              <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-xs font-bold text-warning">toi</span>
-            )}
-          </div>
-          <div className="text-xs text-muted-foreground truncate">
-            {listing.businessName} · {listing.sellerName}
-          </div>
-        </div>
-      </div>
-
-      {/* Qty */}
-      <div className="text-right">
-        <div className="text-base font-bold tabular-nums text-foreground leading-tight">{fmt(listing.quantity)}</div>
+    <TableRow data-state={listing.mine ? 'selected' : undefined}>
+      <TableCell>
+        <Item className="p-0">
+          <ItemMedia variant="icon">
+            <Icon />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>
+              {resourceLabel(listing.resourceType)}
+              {listing.mine && <Badge variant="secondary">toi</Badge>}
+            </ItemTitle>
+            <ItemDescription>{listing.businessName} · {listing.sellerName}</ItemDescription>
+          </ItemContent>
+        </Item>
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        <div className="font-semibold">{fmt(listing.quantity)}</div>
         <div className="text-xs text-muted-foreground">unités</div>
-      </div>
-
-      {/* Unit price + flag */}
-      <div className="text-right">
-        <div className="flex items-baseline gap-1.5 justify-end">
-          <span className="text-base font-bold tabular-nums text-foreground leading-tight">{fmtDec(listing.unitPrice)}€/u</span>
-          {priceFlag && (
-            <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold ', priceFlag.cls)}>
-              {priceFlag.label}
-            </span>
-          )}
+      </TableCell>
+      <TableCell className="text-right tabular-nums">
+        <div className="flex items-center justify-end gap-1.5 font-semibold">
+          {fmtDec(listing.unitPrice)}€/u
+          {priceFlag && <Badge variant={priceFlag.variant}>{priceFlag.label}</Badge>}
         </div>
-        <div className="text-xs text-muted-foreground tabular-nums">total {fmt(listing.quantity * listing.unitPrice)}€</div>
-      </div>
-
-      {/* Avg Price */}
-      <div className="flex items-center gap-2">
-        {stats && (
-          <Card className="gap-0 py-0 shadow-none"><CardContent className="px-2.5 py-1.5">
-            <div className="text-xs font-bold text-muted-foreground leading-tight mb-0.5">Prix moyen</div>
-            <div className="text-xs font-semibold text-foreground">{fmtDec(stats.avg)}€/u</div>
-          </CardContent></Card>
-        )}
-      </div>
-
-      {/* Action */}
-      <div className="flex items-center gap-2 justify-end">
+        <div className="text-xs text-muted-foreground">total {fmt(listing.quantity * listing.unitPrice)}€</div>
+      </TableCell>
+      <TableCell className="text-right tabular-nums text-muted-foreground">
+        {stats ? `${fmtDec(stats.avg)}€/u` : '—'}
+      </TableCell>
+      <TableCell className="text-right">
         {listing.mine ? (
-          <button
-            type="button"
-            onClick={() => void cancel()}
-            disabled={cancelling}
-            className="flex items-center gap-1.5 rounded-lg border border-destructive/25 bg-destructive/8 px-3 py-1.5 text-xs font-semibold text-destructive transition hover:bg-destructive/15 disabled:opacity-50"
-          >
-            {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          <Button variant="outline" size="sm" onClick={() => void cancel()} disabled={cancelling}>
+            {cancelling ? <Spinner /> : <Trash2 />}
             Retirer
-          </button>
+          </Button>
         ) : (
           <BuyFlow listing={listing} ownedBusinesses={ownedBusinesses} onBought={onBought} />
         )}
-      </div>
-    </div>
-  );
-}
-
-// Column header row
-function ColumnHeaders() {
-  return (
-    <div
-      className="grid border-b border-border/30 px-4 py-2 text-xs font-bold text-muted-foreground"
-      style={{ gridTemplateColumns: '1fr auto auto auto auto' }}
-    >
-      <span>Ressource · vendeur</span>
-      <span className="text-right">Quantité</span>
-      <span className="flex cursor-pointer items-center justify-end gap-1 text-right hover:text-foreground">
-        Prix / u <ChevronDown className="h-3 w-3" />
-      </span>
-      <span>Prix Moyen</span>
-      <span className="text-right">Action</span>
-    </div>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -685,73 +629,63 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
 
   const myListingsCount = listings.filter((l) => l.mine).length;
 
+  const colSpanHeader = (
+    <TableHeader>
+      <TableRow>
+        <TableHead>Ressource · vendeur</TableHead>
+        <TableHead className="text-right">Quantité</TableHead>
+        <TableHead className="text-right">Prix / u</TableHead>
+        <TableHead className="text-right">Prix moyen</TableHead>
+        <TableHead className="text-right">Action</TableHead>
+      </TableRow>
+    </TableHeader>
+  );
+
   return (
-    <div className="space-y-4 pb-8">
-      {/* Page header */}
+    <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Salle de marché</h2>
-          <p className="text-xs text-muted-foreground">
-            {listings.length} annonce{listings.length > 1 ? 's' : ''} actives
-          </p>
+        <p className="text-sm text-muted-foreground">
+          {listings.length} annonce{listings.length > 1 ? 's' : ''} active{listings.length > 1 ? 's' : ''}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            {loading ? <Spinner /> : <RefreshCw />}
+            Actualiser
+          </Button>
+          {ownedBusinesses.length > 0 && (
+            <CreateListingModal
+              ownedBusinesses={ownedBusinesses}
+              resourceStats={resourceStats}
+              onCreated={() => void load()}
+              initialOpen={!!presellResource}
+              initialBusinessId={presellFrom ?? ''}
+              initialResourceType={presellResource ?? ''}
+            />
+          )}
         </div>
-        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          {loading ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-2 h-3.5 w-3.5" />}
-          Actualiser
-        </Button>
       </div>
 
-      {/* Inline post form trigger / Modal */}
-      {ownedBusinesses.length > 0 && (
-        <CreateListingModal
-          ownedBusinesses={ownedBusinesses}
-          resourceStats={resourceStats}
-          onCreated={() => void load()}
-          initialOpen={!!presellResource}
-          initialBusinessId={presellFrom ?? ''}
-          initialResourceType={presellResource ?? ''}
-        />
-      )}
-
-      {/* Tabs + filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <Alert className="flex"><AlertDescription>
-          {(['all', 'mine'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={cn(
-                'rounded-md px-3 py-1.5 text-xs font-semibold transition',
-                tab === t ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {t === 'all' ? 'Toutes' : `Mes annonces${myListingsCount > 0 ? ` (${myListingsCount})` : ''}`}
-            </button>
-          ))}
-        </AlertDescription></Alert>
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Ressource, vendeur…"
-            className="h-8 pl-8 text-xs"
-          />
-        </div>
+        <Tabs value={tab} onValueChange={(value) => setTab(value as 'all' | 'mine')}>
+          <TabsList>
+            <TabsTrigger value="all">Toutes</TabsTrigger>
+            <TabsTrigger value="mine">Mes annonces{myListingsCount > 0 ? ` (${myListingsCount})` : ''}</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <InputGroup className="max-w-sm flex-1">
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ressource, vendeur…" />
+        </InputGroup>
       </div>
 
-      {/* Resource filter chips */}
       {availableResources.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {filterResource && (
-            <button
-              type="button"
-              onClick={() => setFilterResource('')}
-              className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border/40 bg-background/60 px-2.5 text-xs font-semibold text-muted-foreground transition hover:text-foreground"
-            >
-              <X className="h-2.5 w-2.5" /> Tout
-            </button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setFilterResource('')}>
+              <X /> Tout
+            </Button>
           )}
           {availableResources.map((rt) => (
             <ResourcePill
@@ -764,74 +698,73 @@ export function MarketplaceTab({ ownedBusinesses }: { ownedBusinesses: YouBusine
         </div>
       )}
 
-      {/* Listings */}
       {loading && !state ? (
         <div className="flex min-h-[240px] items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Chargement du marché…
+          <Spinner /> Chargement du marché…
         </div>
       ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="px-5 py-10 text-center text-sm text-muted-foreground">
-            {tab === 'mine' ? 'Vous n\'avez aucune annonce active.' : 'Aucune annonce pour ce filtre.'}
-          </CardContent>
-        </Card>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyDescription>
+              {tab === 'mine' ? "Tu n'as aucune annonce active." : 'Aucune annonce pour ce filtre.'}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
-        <div className="space-y-4">
-          {/* Items section */}
+        <div className="flex flex-col gap-6">
           {filteredItems.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-bold text-primary">Marché des Items</span>
-                <div className="flex-1 border-t border-border/20" />
-                <span className="text-xs text-muted-foreground">{filteredItems.length} annonce{filteredItems.length > 1 ? 's' : ''}</span>
-              </div>
-              <Card className="overflow-hidden">
-                <div>
-                  {filteredItems.map((listing) => (
-                    <ItemListingRow
-                      key={listing.id}
-                      listing={listing}
-                      onCancelled={() => void load()}
-                      onBought={() => void load()}
-                    />
-                  ))}
-                </div>
+            <section className="flex flex-col gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Sparkles className="size-4" />
+                Marché des items
+                <Badge variant="secondary">{filteredItems.length}</Badge>
+              </h2>
+              <Card className="py-0">
+                <Table>
+                  <TableBody>
+                    {filteredItems.map((listing) => (
+                      <ItemListingRow
+                        key={listing.id}
+                        listing={listing}
+                        onCancelled={() => void load()}
+                        onBought={() => void load()}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
               </Card>
-            </div>
+            </section>
           )}
 
-          {/* Resources section */}
           {filteredResources.length > 0 && (
-            <div className="space-y-2">
-              {filteredItems.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-3.5 w-3.5 text-success" />
-                  <span className="text-xs font-bold text-success">Marché des Ressources</span>
-                  <div className="flex-1 border-t border-success/20" />
-                  <span className="text-xs text-muted-foreground">{filteredResources.length} annonce{filteredResources.length > 1 ? 's' : ''}</span>
-                </div>
-              )}
-              <Card className="overflow-hidden">
-                <ColumnHeaders />
-                <div>
-                  {filteredResources.map((listing) => (
-                    <ListingRow
-                      key={listing.id}
-                      listing={listing}
-                      stats={resourceStats[listing.resourceType]}
-                      ownedBusinesses={
-                        prefilledBusiness
-                          ? [prefilledBusiness, ...ownedBusinesses.filter((b) => b.id !== prefilledBusiness.id)]
-                          : ownedBusinesses
-                      }
-                      onCancelled={() => void load()}
-                      onBought={() => void load()}
-                    />
-                  ))}
-                </div>
+            <section className="flex flex-col gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <TrendingUp className="size-4" />
+                Marché des ressources
+                <Badge variant="secondary">{filteredResources.length}</Badge>
+              </h2>
+              <Card className="py-0">
+                <Table>
+                  {colSpanHeader}
+                  <TableBody>
+                    {filteredResources.map((listing) => (
+                      <ListingRow
+                        key={listing.id}
+                        listing={listing}
+                        stats={resourceStats[listing.resourceType]}
+                        ownedBusinesses={
+                          prefilledBusiness
+                            ? [prefilledBusiness, ...ownedBusinesses.filter((b) => b.id !== prefilledBusiness.id)]
+                            : ownedBusinesses
+                        }
+                        onCancelled={() => void load()}
+                        onBought={() => void load()}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
               </Card>
-            </div>
+            </section>
           )}
         </div>
       )}
