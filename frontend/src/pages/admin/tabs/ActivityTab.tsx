@@ -1113,7 +1113,7 @@ export function ActivityTab(props: ActivityTabProps) {
                       const displayPoint = activeActivity?.point ?? null;
                       const users = displayPoint?.usernames ?? [];
                       return (
-                        <div className="w-44 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
+                        <Card className="w-44 shrink-0 gap-0 py-0 shadow-none" style={{ height: 300 }}><CardContent className="flex h-full flex-col p-0">
                           <div className="px-3 py-2 border-b border-border/40 shrink-0">
                             {displayPoint ? (
                               <>
@@ -1144,7 +1144,7 @@ export function ActivityTab(props: ActivityTabProps) {
                               </ul>
                             )}
                           </div>
-                        </div>
+                        </CardContent></Card>
                       );
                     })()}
                   </div>
@@ -1286,7 +1286,7 @@ export function ActivityTab(props: ActivityTabProps) {
                       </div>
 
                       {/* Per-level user list for the hovered (or latest) point */}
-                      <div className="w-48 shrink-0 border border-border/40 rounded-lg bg-muted/10 flex flex-col" style={{ height: 300 }}>
+                      <Card className="w-48 shrink-0 gap-0 py-0 shadow-none" style={{ height: 300 }}><CardContent className="flex h-full flex-col p-0">
                         <div className="px-3 py-2 border-b border-border/40 shrink-0">
                           <p className="text-xs font-medium tabular-nums">
                             {(activePoint.TERMINALE + activePoint.PREMIERE + activePoint.SECONDE + activePoint.AUTRE)} joueur{(activePoint.TERMINALE + activePoint.PREMIERE + activePoint.SECONDE + activePoint.AUTRE) !== 1 ? 's' : ''}
@@ -1320,7 +1320,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             );
                           })}
                         </div>
-                      </div>
+                      </CardContent></Card>
                     </div>
                   );
                 })()

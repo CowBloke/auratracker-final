@@ -854,7 +854,7 @@ export function SettingsTab(props: SettingsTabProps) {
 
       {/* Danger Zone Section */}
       {showDanger && (
-        <div className="space-y-3 border-2 border-destructive/30 bg-destructive/5 p-4 rounded-xl transition-all">
+        <Card className="gap-0 border-destructive/40 py-0 shadow-none"><CardContent className="space-y-3 p-4">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-destructive shrink-0" />
             <div>
@@ -962,7 +962,7 @@ export function SettingsTab(props: SettingsTabProps) {
               </Button>
             </div>
           </Alert>
-        </div>
+        </CardContent></Card>
       )}
 
       <Dialog open={deployModalOpen} onOpenChange={setDeployModalOpen}>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { usersApi, UserPendingWarning } from '@/services/api';
@@ -189,11 +190,11 @@ export default function AdminWarningModal() {
 
         <div className="space-y-4">
           {isAmende && currentWarning.amount ? (
-            <div className={cn('rounded-lg border-2 p-4 text-center', 'border-destructive/50 bg-destructive/20')}>
+            <Alert variant="destructive" className="text-center">
               <p className="text-xs text-destructive font-medium mb-1">MONTANT DE L'AMENDE</p>
               <p className="text-5xl font-bold text-destructive mb-3">{currentWarning.amount}</p>
               <p className="text-sm text-destructive font-semibold">Pièces d'or</p>
-            </div>
+            </Alert>
           ) : null}
 
           <Card className={cn("gap-0 py-0 shadow-none", config.borderColor, config.bgColor)}><CardContent className="p-4">

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Item } from '@/components/ui/item';
 import { Search, Swords } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -83,10 +84,7 @@ export function DuelPlayerSelectionModal({
                 const isPending = outgoingDuelChallenge?.targetId === onlineUser.userId && outgoingDuelChallenge.gameType === gameType;
 
                 return (
-                  <div
-                    key={onlineUser.userId}
-                    className="flex items-center justify-between py-2 px-3 rounded-md border border-border/40 hover:border-border/80 transition-colors"
-                  >
+                  <Item key={onlineUser.userId} variant="outline" size="sm" className="justify-between">
                     <UsernameDisplay username={onlineUser.username} usernameColor={onlineUser.usernameColor} className="text-sm" />
                     <Button
                       size="sm"
@@ -99,7 +97,7 @@ export function DuelPlayerSelectionModal({
                     >
                       {isPending ? 'Envoyé...' : 'Défier'}
                     </Button>
-                  </div>
+                  </Item>
                 );
               })
             )}
