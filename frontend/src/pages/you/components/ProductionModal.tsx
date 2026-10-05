@@ -87,7 +87,7 @@ function FinanceGame({ onResult }: { onResult: (success: boolean) => void }) {
       <p className="text-center text-sm text-muted-foreground">Quel placement maximise le rendement annuel ?</p>
       <div className="grid grid-cols-2 gap-2">
         {options.map((o) => (
-          <Item asChild variant="outline" size="sm" className={selected === o.label ? 'border-primary bg-accent' : undefined}><button key={o.label} type="button" onClick={() => { if (!selected) { setSelected(o.label); onResult(o.label === best.label); } }} className="text-left text-left">
+          <Item asChild key={o.label} variant="outline" size="sm" className={selected === o.label ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => { if (!selected) { setSelected(o.label); onResult(o.label === best.label); } }} className="text-left">
             <p className="font-medium">{o.label}</p>
             <p className="text-xs text-muted-foreground">{o.yield}% / an</p>
           </button></Item>
@@ -133,7 +133,7 @@ function MemoryGame({ onResult }: { onResult: (success: boolean) => void }) {
       <p className="text-center text-sm text-muted-foreground">Retrouvez toutes les paires</p>
       <div className="grid grid-cols-4 gap-2">
         {deck.map((card) => (
-          <Item asChild variant="outline" size="sm" className={card.flipped || card.matched ? 'border-primary bg-accent' : undefined}><button key={card.id} type="button" onClick={() => flip(card.id)} className="w-full text-left">
+          <Item asChild key={card.id} variant="outline" size="sm" className={card.flipped || card.matched ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => flip(card.id)} className="w-full text-left">
             {card.flipped || card.matched ? card.value : '?'}
           </button></Item>
         ))}
@@ -256,7 +256,7 @@ function SortGame({ onResult }: { onResult: (success: boolean) => void }) {
         {items.map((item) => {
           const pos = order.indexOf(item.id);
           return (
-            <Item asChild variant="outline" size="sm" className={pos >= 0 ? 'border-primary bg-accent' : undefined}><button key={item.id} type="button" onClick={() => pick(item.id)} className="text-left text-left">
+            <Item asChild key={item.id} variant="outline" size="sm" className={pos >= 0 ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => pick(item.id)} className="text-left">
               <div className="flex items-center justify-between">
                 <span>{item.label}</span>
                 {pos >= 0 && <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs font-bold text-primary">#{pos + 1}</span>}

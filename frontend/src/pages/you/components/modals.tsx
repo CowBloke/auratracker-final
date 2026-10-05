@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppDialog } from '@/contexts/AppDialogContext';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -148,33 +149,29 @@ function BusinessTypePickerModal({
                 <div className="grid grid-cols-3 gap-2">
                   {types.map((type) => {
                     const Icon = BUSINESS_ICON_MAP[type.key as keyof typeof BUSINESS_ICON_MAP] ?? Building2;
-                    const style = BUSINESS_STYLE_MAP[type.key as keyof typeof BUSINESS_STYLE_MAP] ?? PICKER_DEFAULT_STYLE;
-                    const color = BUSINESS_COLOR_HEX[type.key] ?? '#9ca3af';
                     const isPreviewing = previewKey === type.key;
                     const isConfirmed = selectedKey === type.key;
                     return (
-                      <Item asChild variant="outline" size="sm" className={isPreviewing ? 'border-primary bg-accent' : undefined}><button key={type.key} type="button" onClick={() => setPreviewKey(type.key)} data-tutorial-id={`business-type-option-${type.key}`} className="text-left text-left">
-                        {/* Watermark */}
-                        <div className="pointer-events-none absolute bottom-0 right-0 select-none overflow-hidden">
-                          <Icon className="h-16 w-16 translate-x-4 translate-y-4" style={{ color, opacity: 0.11 }} />
-                        </div>
-                        {/* Confirmed dot */}
-                        {isConfirmed && (
-                          <div className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full" style={{ background: color }} />
-                        )}
-                        {/* Content */}
-                        <div className="relative flex flex-col gap-2.5">
-                          <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg transition-colors', isPreviewing ? style.iconWrap : 'bg-muted/20')}>
-                            <Icon className={cn('h-[18px] w-[18px] transition-colors', isPreviewing ? style.icon : 'text-foreground/55')} />
+                      <Item
+                        asChild
+                        key={type.key}
+                        variant="outline"
+                        size="sm"
+                        className={isPreviewing ? 'border-primary bg-accent' : undefined}
+                      >
+                        <button type="button" onClick={() => setPreviewKey(type.key)} data-tutorial-id={`business-type-option-${type.key}`} className="flex-col items-start text-left">
+                          <div className="flex w-full items-center justify-between">
+                            <Icon className="size-5" />
+                            {isConfirmed && <Badge variant="secondary">Actuel</Badge>}
                           </div>
                           <div>
-                            <p className="text-xs font-semibold leading-tight text-foreground">{type.label}</p>
-                            <p className="mt-0.5 font-mono text-xs text-muted-foreground/45">
+                            <p className="text-xs font-semibold leading-tight">{type.label}</p>
+                            <p className="mt-0.5 font-mono text-xs text-muted-foreground">
                               {type.creationFee > 0 ? type.creationFee.toLocaleString('fr-FR') : 'Gratuit'}
                             </p>
                           </div>
-                        </div>
-                      </button></Item>
+                        </button>
+                      </Item>
                     );
                   })}
                 </div>
@@ -297,7 +294,7 @@ export function CreateBusinessModal({
         <AppModal.Body scrollable>
         <div data-tutorial-id="create-business-modal" className="space-y-3">
         <FieldRow label="Type d activite">
-          <Item asChild variant="outline" size="sm"><button type="button" onClick={() => setPickerOpen(true)} data-tutorial-id="create-business-type" className="w-full text-left text-left">
+          <Item asChild variant="outline" size="sm"><button type="button" onClick={() => setPickerOpen(true)} data-tutorial-id="create-business-type" className="w-full text-left">
             {selectedType ? (
               <div className="flex items-center gap-4">
                 <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', selectedStyle.iconWrap)}>
@@ -352,7 +349,7 @@ export function CreateBusinessModal({
               <p className="text-xs text-muted-foreground">Chaque juicerie ne produit qu'un seul type de jus. Choisissez votre spécialité :</p>
               <div className="grid grid-cols-1 gap-1.5">
                 {JUICE_OPTIONS.map((opt) => (
-                  <Item asChild variant="outline" size="sm" className={juiceSpecialization === opt.value ? 'border-primary bg-accent' : undefined}><button key={opt.value} type="button" onClick={() => setJuiceSpecialization(opt.value)} className="text-left text-left">
+                  <Item asChild key={opt.value} variant="outline" size="sm" className={juiceSpecialization === opt.value ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setJuiceSpecialization(opt.value)} className="text-left">
                     <Droplets className={cn('h-4 w-4 shrink-0', juiceSpecialization === opt.value ? 'text-primary' : 'text-muted-foreground')} />
                     <div className="min-w-0 flex-1">
                       <p className={cn('text-sm font-semibold leading-tight', juiceSpecialization === opt.value ? 'text-primary' : 'text-foreground')}>{opt.label}</p>
@@ -637,7 +634,7 @@ export function TransferBusinessModal({
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {availablePlayers.map((player) => {
           const selected = player.id === recipientId;
-          return <Item asChild variant="outline" size="sm" className={selected ? 'border-primary bg-accent' : undefined}><button key={player.id} type="button" onClick={() => setRecipientId(player.id)} className="w-full text-left text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Disponible pour recevoir un transfert.'}</p></div>{selected ? <Pill label="Destinataire" color="bg-muted/15 text-primary" /> : null}</button></Item>;
+          return <Item asChild key={player.id} variant="outline" size="sm" className={selected ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setRecipientId(player.id)} className="w-full text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Disponible pour recevoir un transfert.'}</p></div>{selected ? <Pill label="Destinataire" color="bg-muted/15 text-primary" /> : null}</button></Item>;
         })}
       </div>
       <FieldRow label="Montant"><Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} min={1} /></FieldRow>
@@ -806,7 +803,7 @@ export function MeetModal({ open, onClose, players, onSubmitted }: { open: boole
       <div className="max-h-80 space-y-2 overflow-y-auto">
         {candidates.map((player) => {
           const selected = player.id === selectedUserId;
-          return <Item asChild variant="outline" size="sm" className={selected ? 'border-primary bg-accent' : undefined}><button key={player.id} type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-2 text-xs text-muted-foreground">{player.bio?.trim() || 'Pret a ouvrir une nouvelle relation.'}</p></div>{selected ? <Pill label="Selection" color="bg-foreground text-background" /> : null}</button></Item>;
+          return <Item asChild key={player.id} variant="outline" size="sm" className={selected ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-2 text-xs text-muted-foreground">{player.bio?.trim() || 'Pret a ouvrir une nouvelle relation.'}</p></div>{selected ? <Pill label="Selection" color="bg-foreground text-background" /> : null}</button></Item>;
         })}
         {candidates.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible.</p> : null}
       </div>
@@ -853,7 +850,7 @@ export function NewRelationModal({ open, onClose, players, onSubmitted }: { open
       <FieldRow label="Type">
         <div className="flex gap-2">
           {(['DATING', 'FRIEND'] as const).map((t) => (
-            <Item asChild variant="outline" size="sm" className={type === t ? 'border-primary bg-accent' : undefined}><button key={t} type="button" onClick={() => setType(t)} className="flex-1 text-left">
+            <Item asChild key={t} variant="outline" size="sm" className={type === t ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setType(t)} className="flex-1 text-left">
               {t === 'DATING' ? 'En relation' : 'Ami(e)'}
             </button></Item>
           ))}
@@ -863,7 +860,7 @@ export function NewRelationModal({ open, onClose, players, onSubmitted }: { open
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {candidates.map((player) => {
           const sel = player.id === selectedUserId;
-          return <Item asChild variant="outline" size="sm" className={sel ? 'border-primary bg-accent' : undefined}><button key={player.id} type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Aucune bio.'}</p></div>{sel && <Pill label="Selection" color="bg-foreground text-background" />}</button></Item>;
+          return <Item asChild key={player.id} variant="outline" size="sm" className={sel ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setSelectedUserId(player.id)} className="w-full text-left"><UserAvatar player={player} className="h-9 w-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{player.username}</p><p className="line-clamp-1 text-xs text-muted-foreground">{player.bio?.trim() || 'Aucune bio.'}</p></div>{sel && <Pill label="Selection" color="bg-foreground text-background" />}</button></Item>;
         })}
         {candidates.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Aucun joueur disponible.</p>}
       </div>
