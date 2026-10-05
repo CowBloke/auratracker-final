@@ -277,7 +277,7 @@ function BusinessInfoPanel({
       {showReviews && (business.ratings ?? []).length > 0 && (
         <div className="border-t border-border px-3 py-2 space-y-2 max-h-48 overflow-y-auto">
           {(business.ratings ?? []).map((r) => (
-            <div key={r.id} className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2">
+            <Card key={r.id} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-foreground">{r.user.username}</span>
                 <div className="flex items-center gap-0.5">
@@ -287,7 +287,7 @@ function BusinessInfoPanel({
                 </div>
               </div>
               {r.comment && <p className="mt-1 text-xs text-muted-foreground">{r.comment}</p>}
-            </div>
+            </CardContent></Card>
           ))}
         </div>
       )}

@@ -588,10 +588,7 @@ export default function ChatSidebar() {
             <div className="border-b border-border/40 bg-muted/20 px-3 py-3">
               <div className="space-y-2">
                 {pinnedMessages.map((msg) => (
-                  <div
-                    key={`pinned-${msg.id}`}
-                    className="rounded-lg border border-border/50 bg-background/85 px-3 py-2"
-                  >
+                  <Card key={`pinned-${msg.id}`} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2">
                     <div className="mb-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                       <Pin className="h-3 w-3" />
                       <span className="font-medium text-foreground">{msg.username}</span>
@@ -623,7 +620,7 @@ export default function ChatSidebar() {
                         />
                       )}
                     </div>
-                  </div>
+                  </CardContent></Card>
                 ))}
               </div>
             </div>

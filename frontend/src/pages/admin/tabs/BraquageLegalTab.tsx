@@ -13,6 +13,7 @@ import { useSocketBase } from '@/contexts/SocketContext';
 import { adminApi, type AdminUser, type BraquageLegalHistoryEntry, type BraquageLegalSession } from '@/services/api';
 import { Clock3, Loader2, Plus, Sparkles, Ticket, Trophy, UserRoundPlus } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
 
 const DEFAULT_DURATION = 24;
 
@@ -322,7 +323,7 @@ export function BraquageLegalTab({ users }: Props) {
           ) : latestDraws.length ? (
             <div className="space-y-3">
               {latestDraws.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-background/60 px-4 py-3">
+                <Item key={entry.id} variant="outline" className="justify-between">
                   <div>
                     <p className="font-medium">{entry.winner?.username ?? 'Session annulée'}</p>
                     <p className="text-sm text-muted-foreground">{new Date(entry.endTime).toLocaleString('fr-FR')}</p>
@@ -331,7 +332,7 @@ export function BraquageLegalTab({ users }: Props) {
                     <p className="font-semibold tabular-nums text-warning">{entry.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
                     <p className="text-muted-foreground">{entry.totalPool.toLocaleString('fr-FR')} € pool</p>
                   </div>
-                </div>
+                </Item>
               ))}
             </div>
           ) : (

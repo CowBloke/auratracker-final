@@ -233,7 +233,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           crées des relations — et tentes de t'enrichir sans te faire imposer toute ta fortune.
         </p>
         <GuideSection title="Les 8 onglets du jeu">
-          <div className="divide-y divide-border/20 rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0 divide-y divide-border/20">
             {[
               { icon: Star,       label: "Vue d'ensemble", desc: "Dashboard : statistiques, fil d'activité, notifications, guide de démarrage." },
               { icon: Briefcase,  label: 'Travail',        desc: "Créer et gérer tes entreprises, consulter les offres d'emploi reçues, voir tes participations." },
@@ -252,7 +252,7 @@ const youGuideSubsections: TutorialSubsection[] = [
                 </div>
               </div>
             ))}
-          </div>
+          </CardContent></Card>
         </GuideSection>
       </div>
     ),
@@ -315,7 +315,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           </p>
           <div className="space-y-2">
             {BUSINESS_TYPES_DATA.filter(b => b.level === 1).map(b => (
-              <div key={b.key} className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 space-y-1">
+              <Card key={b.key} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3 space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold">{b.key}</p>
                   <Badge variant="outline" className="text-xs">Niveau 1</Badge>
@@ -325,7 +325,7 @@ const youGuideSubsections: TutorialSubsection[] = [
                   <span>Revenu/mois : <strong className="text-success">{b.revenue.toLocaleString('fr-FR')} $</strong></span>
                   {b.npc ? <span>Collect NPC : <strong className="text-success">{b.npc} $ / 6 h</strong></span> : null}
                 </div>
-              </div>
+              </CardContent></Card>
             ))}
           </div>
         </GuideSection>
@@ -335,7 +335,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           </p>
           <div className="space-y-2">
             {BUSINESS_TYPES_DATA.filter(b => b.level === 2).map(b => (
-              <div key={b.key} className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 space-y-1">
+              <Card key={b.key} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3 space-y-1">
                 <div className="flex items-center justify-between gap-2 flex-wrap gap-y-1">
                   <p className="text-sm font-semibold">{b.key}</p>
                   <Badge variant="outline" className="text-xs">Niveau 2</Badge>
@@ -349,7 +349,7 @@ const youGuideSubsections: TutorialSubsection[] = [
                   }
                   {b.npc ? <span className="col-span-2 sm:col-span-1">Collect NPC : <strong className="text-success">{b.npc} $ / 6 h</strong></span> : null}
                 </div>
-              </div>
+              </CardContent></Card>
             ))}
           </div>
         </GuideSection>
@@ -397,12 +397,12 @@ const youGuideSubsections: TutorialSubsection[] = [
             qui paient directement. Tu dois <strong>collecter manuellement</strong> ces recettes depuis l'onglet
             de gestion de ton business. Le cooldown est de <strong>6 heures</strong> entre deux collectes.
           </p>
-          <div className="rounded-xl border border-border/40 overflow-hidden mt-2">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden mt-2"><CardContent className="p-0">
             <Row label="Limonade"   value="150 $ / 6 h" />
             <Row label="Épicerie"   value="300 $ / 6 h" />
             <Row label="Restaurant" value="350 $ / 6 h" />
             <Row label="YouTube"    value="220 $ / 6 h" />
-          </div>
+          </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-1">
             Si tu ne collectes pas, l'argent attend sans se perdre — mais tu perds du temps de génération.
           </p>
@@ -438,7 +438,7 @@ const youGuideSubsections: TutorialSubsection[] = [
         </p>
         <div className="space-y-2">
           {SKILLS_DATA.map((skill) => (
-            <div key={skill.label} className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 space-y-2">
+            <Card key={skill.label} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold', skill.color)}>
                   {skill.label}
@@ -454,7 +454,7 @@ const youGuideSubsections: TutorialSubsection[] = [
               <p className="text-xs text-muted-foreground">
                 <strong className="text-foreground/80">Débloque :</strong> {skill.unlocks}
               </p>
-            </div>
+            </CardContent></Card>
           ))}
         </div>
         <p className={cn('text-sm', 'text-muted-foreground')}>
@@ -478,11 +478,11 @@ const youGuideSubsections: TutorialSubsection[] = [
             Tu peux investir une somme dans le business d'un autre joueur. Le propriétaire choisit un
             <strong> niveau de risque</strong> (faible, moyen, élevé), ce qui détermine le rendement possible :
           </p>
-          <div className="rounded-xl border border-border/40 overflow-hidden mt-2">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden mt-2"><CardContent className="p-0">
             <Row label="Risque faible"  value="2 % – 5 % de rendement" />
             <Row label="Risque moyen"   value="5 % – 15 % de rendement" />
             <Row label="Risque élevé"   value="10 % – 40 % de rendement" />
-          </div>
+          </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-2">
             Le rendement est aléatoire dans la plage correspondante, appliqué à ton montant investi.
             Résultat visible dans le fil d'activité.
@@ -539,7 +539,7 @@ const youGuideSubsections: TutorialSubsection[] = [
           Elles proposent deux types de comptes, accessibles depuis l'onglet Banques ou depuis Explorer.
         </p>
         <GuideSection title="Types de comptes">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <div className="px-4 py-3 space-y-1 border-b border-border/30">
               <p className="text-xs font-semibold text-primary">Compte courant</p>
               <p className="text-xs text-muted-foreground">Dépôt et retrait libres. Sert à stocker de l'argent hors de ton portefeuille principal. Les intérêts dépendent du taux de la banque.</p>
@@ -548,7 +548,7 @@ const youGuideSubsections: TutorialSubsection[] = [
               <p className="text-xs font-semibold text-warning">Livret épargne</p>
               <p className="text-xs text-muted-foreground">Disponible uniquement si le propriétaire de la banque l'a activé. Fonctionne comme un compte courant mais avec un taux d'intérêt potentiellement différent.</p>
             </div>
-          </div>
+          </CardContent></Card>
         </GuideSection>
         <GuideSection title="Intérêts et prêts">
           <p className={cn('text-sm', 'leading-relaxed')}>
@@ -574,12 +574,12 @@ const youGuideSubsections: TutorialSubsection[] = [
           Les relations évoluent et ouvrent des fonctionnalités progressives.
         </p>
         <GuideSection title="Statuts de relation">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <Row label="Ami(e)"    value="Relation de base, pas de compte commun" />
             <Row label="En couple" value="Lien amoureux, option de mariage disponible" />
             <Row label="Marié(e)"  value="Compte commun partagé entre les deux joueurs" />
             <Row label="Liaison"   value="Relation parallèle risquée (voir ci-dessous)" />
-          </div>
+          </CardContent></Card>
         </GuideSection>
         <GuideSection title="Mariage et compte commun">
           <p className={cn('text-sm', 'leading-relaxed')}>
@@ -656,13 +656,13 @@ const youGuideSubsections: TutorialSubsection[] = [
           pour accéder directement à la fiche d'une entreprise.
         </p>
         <GuideSection title="Quartiers">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <Row label="Commerce"  value="Limonade, Épicerie, Restaurant, Coffee Shop" />
             <Row label="Finance"   value="Banque, Service de transfert" />
             <Row label="Tech"      value="Startup Tech, Agence Immobilière" />
             <Row label="Formation" value="Centre de formation" />
             <Row label="Justice"   value="Cabinet d'avocats, Cour Suprême" />
-          </div>
+          </CardContent></Card>
         </GuideSection>
       </div>
     ),
@@ -683,7 +683,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           La plateforme intègre des jeux, une simulation économique multijoueur (You), un système social complet, des boutiques, des clans et bien plus.
         </p>
         <GuideSection title="Deux monnaies, deux rôles">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <div className="px-4 py-3 space-y-1 border-b border-border/30">
               <p className="text-xs font-semibold text-warning">Aura ✦</p>
               <p className="text-xs text-muted-foreground">
@@ -698,7 +698,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
                 Tu démarres avec <strong className="text-foreground">1 000 $</strong> sur ton compte.
               </p>
             </div>
-          </div>
+          </CardContent></Card>
         </GuideSection>
         <GuideSection title="Comment s'inscrire et être approuvé ?">
           <p className={cn('text-sm', 'leading-relaxed')}>
@@ -719,7 +719,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           L'argent s'obtient via plusieurs sources. Certaines ont un <strong>plafond journalier de 1 000 $</strong> (jeux + quêtes combinés).
         </p>
         <GuideSection title="Sources de revenus">
-          <div className="divide-y divide-border/20 rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0 divide-y divide-border/20">
             {[
               { src: 'Jeux', detail: "Doodle Jump, Flappy Bird, 2048, Solitaire et autres rapportent de l'argent à chaque partie. Plafond commun : 1 000 $ / jour (toutes activités confondues).", cap: true },
               { src: 'Quêtes quotidiennes', detail: "3 quêtes sont assignées chaque jour. Les compléter rapporte de l'argent et de l'Aura. Leur récompense compte dans le plafond journalier.", cap: true },
@@ -738,7 +738,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
                 </div>
               </div>
             ))}
-          </div>
+          </CardContent></Card>
         </GuideSection>
       </div>
     ),
@@ -795,12 +795,12 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
             Le <strong>Pass</strong> te permet de réclamer une récompense une fois par jour. Plus tu maintiens ton
             <strong> streak</strong> (jours consécutifs), plus les récompenses sont bonnes.
           </p>
-          <div className="rounded-xl border border-border/40 overflow-hidden mt-2">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden mt-2"><CardContent className="p-0">
             <Row label="Commun"     value="Récompenses légères (argent / Aura de base)" />
             <Row label="Rare"       value="Récompenses intermédiaires" />
             <Row label="Épique"     value="Récompenses significatives" />
             <Row label="Légendaire" value="Récompenses rares et élevées" />
-          </div>
+          </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-2">
             La rareté est tirée aléatoirement. Ne pas réclamer son pass un jour remet le streak à zéro.
           </p>
@@ -817,12 +817,12 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           La plateforme propose plus de 30 jeux accessibles depuis la sidebar. Certains rapportent de l'argent et/ou de l'Aura,
           d'autres sont purement récréatifs. Deux plafonds journaliers s'appliquent aux gains via les jeux :
         </p>
-        <div className="rounded-xl border border-border/40 overflow-hidden">
+        <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
           <Row label="Plafond argent" value="1 000 $ / jour (jeux + quêtes)" />
           <Row label="Plafond Aura"   value="500 Aura / jour (jeux)" />
-        </div>
+        </CardContent></Card>
         <GuideSection title="Jeux avec récompenses">
-          <div className="divide-y divide-border/20 rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0 divide-y divide-border/20">
             {[
               { name: 'Doodle Jump', detail: "Récompenses progressives selon le score. Bonus score élevé : jusqu'à +100 Aura supplémentaire. Bon rapport Aura/partie." },
               { name: 'Flappy Bird', detail: "Récompense à chaque partie, montant variable selon les performances." },
@@ -836,7 +836,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
                 </div>
               </div>
             ))}
-          </div>
+          </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-2">
             Les autres jeux (Casino, Russian Roulette, Poker…) fonctionnent avec ton argent personnel : tu peux gagner ou perdre — ils n'entrent pas dans le plafond journalier de gains.
           </p>
@@ -886,7 +886,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
           <p className={cn('text-sm', 'leading-relaxed')}>
             La boutique officielle vend des items cosmétiques et des boosts, achetables en argent $ ou en Aura.
           </p>
-          <div className="divide-y divide-border/20 rounded-xl border border-border/40 overflow-hidden mt-2">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden mt-2"><CardContent className="p-0 divide-y divide-border/20">
             {[
               { name: 'Couleur de pseudo',   detail: 'Change la couleur affichée de ton nom.' },
               { name: 'Photo de profil',      detail: 'Personnalise ton avatar.' },
@@ -902,7 +902,7 @@ const newcomerGuideSubsections: TutorialSubsection[] = [
                 </div>
               </div>
             ))}
-          </div>
+          </CardContent></Card>
         </GuideSection>
         <GuideSection title="Marketplace (joueur à joueur)">
           <p className={cn('text-sm', 'leading-relaxed')}>
@@ -993,7 +993,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
           Rejoindre ou créer un clan est l'une des façons les plus efficaces de progresser et de peser dans l'économie de la plateforme.
         </p>
         <GuideSection title="Ce qu'un clan apporte">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             {[
               { label: 'Guerres de clans', desc: "Affronte d'autres clans sur 7 jours via des mini-jeux. Victoire = trophées + argent + Aura pour tous les membres." },
               { label: 'Banque commune',   desc: 'Les membres alimentent une caisse collective qui finance les boosts Nation et les récompenses de guerre.' },
@@ -1009,7 +1009,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
                 </div>
               </div>
             ))}
-          </div>
+          </CardContent></Card>
         </GuideSection>
       </div>
     ),
@@ -1022,15 +1022,15 @@ const clanGuideSubsections: TutorialSubsection[] = [
         <p className={cn('text-sm', 'leading-relaxed')}>
           N'importe quel joueur approuvé, sans clan actuel, peut créer le sien. La création coûte <strong>100 $</strong>.
         </p>
-        <div className="rounded-xl border border-border/40 overflow-hidden">
+        <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
           <Row label="Coût de création" value="100 $" />
           <Row label="Longueur du nom"  value="3 à 32 caractères" />
           <Row label="Description"      value="Jusqu'à 300 caractères" />
           <Row label="Membres max"      value="5 (extensible via items)" />
           <Row label="Visibilité"       value="Public (rejoindre librement) ou privé (sur demande)" />
-        </div>
+        </CardContent></Card>
         <GuideSection title="Public vs privé">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <div className="px-4 py-3 space-y-1 border-b border-border/30">
               <p className="text-xs font-semibold text-success">Public</p>
               <p className="text-xs text-muted-foreground">N'importe qui peut rejoindre directement sans accord du chef.</p>
@@ -1039,7 +1039,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
               <p className="text-xs font-semibold text-warning">Privé</p>
               <p className="text-xs text-muted-foreground">Les candidats envoient une demande. Le chef peut accepter ou refuser. Une notification est envoyée au chef à chaque nouvelle demande.</p>
             </div>
-          </div>
+          </CardContent></Card>
         </GuideSection>
         <p className={cn('text-sm', 'text-muted-foreground')}>
           Un joueur ne peut appartenir qu'à <strong className="text-foreground">un seul clan à la fois</strong>. Quitter un clan est définitif — tu perds l'accès au chat, à la banque et aux guerres en cours.
@@ -1077,7 +1077,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
     title: 'Hiérarchie et rôles',
     content: (
       <div className="space-y-5">
-        <div className="rounded-xl border border-border/40 overflow-hidden">
+        <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
           <div className="px-4 py-3 space-y-2 border-b border-border/30">
             <p className="text-xs font-semibold text-warning">Chef (Leader)</p>
             <div className="space-y-0.5 text-xs text-muted-foreground">
@@ -1095,7 +1095,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
             <p className="text-xs font-semibold text-muted-foreground">Membre</p>
             <p className="text-xs text-muted-foreground">Participer aux guerres, aux événements, déposer dans la banque, utiliser le chat, utiliser les items de clan.</p>
           </div>
-        </div>
+        </CardContent></Card>
         <p className={cn('text-sm', 'text-muted-foreground')}>
           Le chef peut transférer son rôle à un autre membre à tout moment depuis la fiche du clan. L'ancien chef devient un membre ordinaire.
         </p>
@@ -1138,7 +1138,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
           Tous les membres reçoivent une récompense en argent et en Aura à la fin, gagnants comme perdants.
         </p>
         <GuideSection title="Conditions et règles">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <Row label="Déclencheur"      value="Le chef déclare la guerre (onglet Guerre)" />
             <Row label="Membres minimum"  value="3 par clan" />
             <Row label="Durée"            value="7 jours" />
@@ -1146,7 +1146,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
             <Row label="Stamina / joueur" value="3 par tranche de 24 h" />
             <Row label="Fortifications"   value="2 par membre sur toute la guerre" />
             <Row label="Matchmaking"      value="Par trophées — adversaire le plus proche disponible" />
-          </div>
+          </CardContent></Card>
         </GuideSection>
         <GuideSection title="3 mini-jeux de guerre">
           <div className="space-y-2">
@@ -1155,7 +1155,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
               { icon: Swords,        color: 'text-destructive bg-destructive/15', title: 'Bombardement (Attaque)',  desc: 'Fais tomber des bombes sur la grille ennemie pour marquer des points de combat. Les défenses adverses réduisent les dégâts.',                     limit: '1 attaque / jour' },
               { icon: TrendingUp,    color: 'text-warning bg-warning/15', title: 'Guerre navale (Attaque)', desc: 'Tire sur la grille adverse pour toucher des cibles cachées. Chaque touche rapporte des points. Le stock de tirs se reconstitue chaque jour.', limit: 'Tirs limités par période' },
             ].map(({ icon: Icon, color, title, desc, limit }) => (
-              <div key={title} className="rounded-xl border border-border/40 bg-muted/5 px-4 py-3 space-y-1.5">
+              <Card key={title} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3 space-y-1.5">
                 <div className="flex items-center gap-2">
                   <span className={cn('flex h-6 w-6 items-center justify-center rounded-md text-xs', color)}>
                     <Icon className="h-3 w-3" />
@@ -1164,26 +1164,26 @@ const clanGuideSubsections: TutorialSubsection[] = [
                   <span className="ml-auto text-xs text-muted-foreground/60 border border-border/40 rounded px-1.5">{limit}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">{desc}</p>
-              </div>
+              </CardContent></Card>
             ))}
           </div>
         </GuideSection>
         <GuideSection title="Types d'attaque">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <Row label="Raid éclair (1 stamina)"  value="18 – 28 pts · dégâts structures : 10" />
             <Row label="Siège lourd (2 stamina)"  value="30 – 44 pts · dégâts structures : 18" />
             <Row label="Sabotage (1 stamina)"     value="16 – 24 pts · dégâts structures : 22" />
-          </div>
+          </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-2">
             Le Sabotage inflige le plus de dégâts sur les structures (Armurerie, Bannière). Le Siège est le plus puissant en points bruts mais consomme 2 stamina.
           </p>
         </GuideSection>
         <GuideSection title="Structures défensives (3 niveaux max chacune)">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <Row label="🏰 Forteresse" value="−4 pts/niveau sur les bombardements ennemis" />
             <Row label="⚔️ Armurerie"  value="+3 pts/niveau sur vos propres bombardements" />
             <Row label="🚩 Bannière"   value="+2 pts/niveau sur vos tirs navals" />
-          </div>
+          </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-2">
             Les défenses se renforcent via le jeu mémoire. Chaque membre contribue jusqu'à 2 fois. Elles ont une durabilité qui décroît sous les attaques ennemies.
           </p>
@@ -1208,11 +1208,11 @@ const clanGuideSubsections: TutorialSubsection[] = [
           des stats d'influence, un drapeau personnalisé, des alliances et un marché noir d'armes.
         </p>
         <GuideSection title="Stats de Nation">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <Row label="Influence"       value="Augmente via les victoires de guerre (+6 par victoire)" />
             <Row label="Intimidation"    value="Augmente sur le clan perdant après une défaite (+4)" />
             <Row label="Contrôle marché" value="Augmente via les victoires de guerre (+5 par victoire)" />
-          </div>
+          </CardContent></Card>
         </GuideSection>
         <GuideSection title="Territoires">
           <p className={cn('text-sm', 'leading-relaxed')}>
@@ -1228,11 +1228,11 @@ const clanGuideSubsections: TutorialSubsection[] = [
           </p>
         </GuideSection>
         <GuideSection title="Marché noir (armes)">
-          <div className="rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <Row label="Pistolet" value="500 000 $ · −1 slot adverse · −12 pts de pénalité" />
             <Row label="AK"       value="1 000 000 $ · −2 slots adverses · −24 pts de pénalité" />
             <Row label="Sniper"   value="1 500 000 $ · −3 slots adverses · −36 pts de pénalité" />
-          </div>
+          </CardContent></Card>
           <p className="text-xs text-muted-foreground mt-2">
             Achetées depuis la banque de clan. Les armes infligent des pénalités de points au score adverse et bloquent certains slots pendant la guerre en cours.
             Coût prélevé sur la banque du clan.
@@ -1258,7 +1258,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
           ou en jouant à des mini-jeux exclusifs.
         </p>
         <GuideSection title="Types d'activités suivies">
-          <div className="divide-y divide-border/20 rounded-xl border border-border/40 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0 divide-y divide-border/20">
             {[
               { label: 'Parties jouées',         desc: "N'importe quel jeu de la plateforme." },
               { label: 'Victoires',              desc: 'Parties gagnées sur les jeux.' },
@@ -1274,7 +1274,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
                 </div>
               </div>
             ))}
-          </div>
+          </CardContent></Card>
         </GuideSection>
       </div>
     ),
@@ -1308,7 +1308,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
           Certains items achetés à la boutique ont un effet collectif sur l'ensemble du clan.
           Le chef ou les membres autorisés peuvent les activer depuis l'onglet Inventaire du clan.
         </p>
-        <div className="rounded-xl border border-border/40 overflow-hidden">
+        <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
           {[
             { name: 'Boost argent en jeux', desc: "Augmente les gains $ en jeux pour tous les membres pendant une durée limitée. Visible dans la barre d'effets actifs." },
             { name: 'Photo de clan',         desc: "Remplace l'avatar du clan par une image personnalisée (via l'item CLAN_PROFILE_PICTURE)." },
@@ -1322,7 +1322,7 @@ const clanGuideSubsections: TutorialSubsection[] = [
               </div>
             </div>
           ))}
-        </div>
+        </CardContent></Card>
       </div>
     ),
   },
@@ -1471,10 +1471,7 @@ function TutorialsTab() {
               const isSelected = selectedGuideId === guide.id;
               if (guide.comingSoon) {
                 return (
-                  <div
-                    key={guide.id}
-                    className="overflow-hidden rounded-xl border border-border/50 bg-background/70 opacity-40 pointer-events-none"
-                  >
+                  <Card key={guide.id} className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0 opacity-40 pointer-events-none">
                     <div className="px-3 py-2 flex min-w-0 items-center gap-3">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/40 bg-muted/30">
                         <Icon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -1484,7 +1481,7 @@ function TutorialsTab() {
                         {guide.tag && <span className="text-xs text-muted-foreground/60">{guide.tag} · Bientôt</span>}
                       </div>
                     </div>
-                  </div>
+                  </CardContent></Card>
                 );
               }
               return (

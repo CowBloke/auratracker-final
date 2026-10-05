@@ -93,7 +93,7 @@ export function FiscalTab(props: FiscalTabProps) {
         ) : fiscalUsers.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aucun joueur trouve.</p>
         ) : (
-          <div className="rounded-lg border border-border/60 overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 border-b border-border/60">
                 <tr>
@@ -118,7 +118,7 @@ export function FiscalTab(props: FiscalTabProps) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </CardContent></Card>
         )}
       </div>
     </TabsContent>

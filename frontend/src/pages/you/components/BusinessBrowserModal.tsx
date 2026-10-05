@@ -192,7 +192,7 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
               <h3 className="px-1 text-sm font-semibold text-muted-foreground">{section}</h3>
             )}
             {sectionItems.map((item) => (
-              <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              <Item key={item.key} variant="muted" className="justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-warning/15 text-lg">
                     {(item as any).imageUrl
@@ -206,7 +206,7 @@ function PurchaseItemModal({ open, onClose, business, onSubmitted }: { open: boo
                   </div>
                 </div>
                 <Button size="sm" onClick={() => void buy(item.key)} disabled={buying !== null}>Acheter</Button>
-              </div>
+              </Item>
             ))}
           </div>
         ))}
@@ -346,7 +346,7 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
           {reviews.length > 0 && (
             <div className="space-y-2">
               {reviews.map((r) => (
-                <div key={r.id} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-3">
+                <Card key={r.id} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-semibold text-foreground">{r.user.username}</span>
                     <div className="flex items-center gap-0.5">
@@ -358,7 +358,7 @@ function ReviewsModal({ open, onClose, business }: { open: boolean; onClose: () 
                   {r.comment && (
                     <p className="mt-1.5 text-xs text-muted-foreground">{r.comment}</p>
                   )}
-                </div>
+                </CardContent></Card>
               ))}
             </div>
           )}
@@ -383,10 +383,10 @@ function InvestmentsModal({ open, onClose, business }: { open: boolean; onClose:
           {business.recentInvestments.map((inv) => {
             const riskColor = inv.riskLevel === 'low' ? 'text-success' : inv.riskLevel === 'high' ? 'text-destructive' : 'text-warning';
             return (
-              <div key={inv.id} className="flex items-center justify-between gap-2 rounded-lg border border-border/15 bg-muted/10 px-3 py-2 text-xs">
+              <Item key={inv.id} variant="muted" className="justify-between gap-2 text-xs">
                 <span className="font-medium">{inv.investor.username}</span>
                 <span className={cn('font-semibold', riskColor)}>{fmt(inv.amount)}</span>
-              </div>
+              </Item>
             );
           })}
         </div>
@@ -422,7 +422,7 @@ function ShareholdersModal({ open, onClose, business, userId }: {
         {business.shareholders.length === 0 ? (
           <p className="py-3 text-center text-sm text-muted-foreground">Aucun actionnaire externe.</p>
         ) : business.shareholders.map((s) => (
-          <div key={s.id} className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2.5">
+          <Card key={s.id} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2.5">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">{s.user.username}{s.user.id === userId ? ' · toi' : ''}</span>
               <span className="font-bold">{s.sharePercent.toFixed(2)}%</span>
@@ -430,7 +430,7 @@ function ShareholdersModal({ open, onClose, business, userId }: {
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/40">
               <div className="h-full rounded-full bg-warning/70" style={{ width: `${Math.max(0, Math.min(100, s.sharePercent))}%` }} />
             </div>
-          </div>
+          </CardContent></Card>
         ))}
       </div>
       </AppModal.Body>
@@ -716,7 +716,7 @@ function DetailPanel({
             <div className="space-y-1.5">
               <p className="text-xs font-bold text-muted-foreground">Produits</p>
               {business.startupProducts.map((product) => (
-                <div key={product.id} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
+                <Card key={product.id} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <p className="text-xs font-medium">{product.name}</p>
@@ -729,7 +729,7 @@ function DetailPanel({
                       <div className="h-full rounded-full bg-muted" style={{ width: `${product.progressPercent}%` }} />
                     </div>
                   )}
-                </div>
+                </CardContent></Card>
               ))}
             </div>
           )}

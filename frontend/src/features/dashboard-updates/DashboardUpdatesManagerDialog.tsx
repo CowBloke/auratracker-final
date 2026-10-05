@@ -666,10 +666,7 @@ export function DashboardUpdatesManagerDialog({
                           </Badge>
                           <div className="space-y-2">
                             {items.map((item, index) => (
-                              <div
-                                key={`${category}-${index}`}
-                                className="group relative rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm leading-6 transition-colors focus-within:border-border"
-                              >
+                              <Card key={`${category}-${index}`} className="gap-0 py-0 shadow-none group relative"><CardContent className="px-4 py-3 text-sm leading-6 transition-colors focus-within:border-border">
                                 <AutoTextarea
                                   value={item}
                                   onChange={(event) => updateSectionItem(category, index, event.target.value)}
@@ -686,7 +683,7 @@ export function DashboardUpdatesManagerDialog({
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 ) : null}
-                              </div>
+                              </CardContent></Card>
                             ))}
                             <button
                               type="button"

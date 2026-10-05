@@ -2010,12 +2010,12 @@ export default function MessagesPage() {
                 <Card className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-3">
                   <p className="text-xs font-semibold text-primary">Plaignant</p>
                   {courtArguments.filter((argument) => argument.side === 'PLAINTIFF').map((argument) => (
-                    <div key={argument.id} className="rounded-lg border border-border/25 bg-background/70 p-3">
+                    <Card key={argument.id} className="gap-0 py-0 shadow-none"><CardContent className="p-3">
                       <p className="text-xs text-muted-foreground">
                         {argument.author?.username ?? 'Anonyme'} · {format(new Date(argument.createdAt), 'dd MMM HH:mm', { locale: fr })}
                       </p>
                       <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{argument.content}</p>
-                    </div>
+                    </CardContent></Card>
                   ))}
                   {courtArguments.every((argument) => argument.side !== 'PLAINTIFF') && (
                     <p className="text-xs text-muted-foreground">Aucun argument du plaignant.</p>
@@ -2024,12 +2024,12 @@ export default function MessagesPage() {
                 <Alert variant="destructive" className="space-y-3">
                   <p className="text-xs font-semibold text-destructive">Coupable</p>
                   {courtArguments.filter((argument) => argument.side === 'DEFENDANT').map((argument) => (
-                    <div key={argument.id} className="rounded-lg border border-destructive/25 bg-background/70 p-3">
+                    <Alert key={argument.id} variant="destructive">
                       <p className="text-xs text-muted-foreground">
                         {argument.author?.username ?? 'Anonyme'} · {format(new Date(argument.createdAt), 'dd MMM HH:mm', { locale: fr })}
                       </p>
                       <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">{argument.content}</p>
-                    </div>
+                    </Alert>
                   ))}
                   {courtArguments.every((argument) => argument.side !== 'DEFENDANT') && (
                     <p className="text-xs text-muted-foreground">Aucun argument du coupable.</p>

@@ -1419,7 +1419,7 @@ export function ActivityTab(props: ActivityTabProps) {
 
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {activityBreakdown?.topPages.map((entry: { page: string; total: number }, index: number) => (
-                        <div key={entry.page} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
+                        <Item key={entry.page} variant="muted" className="justify-between text-xs">
                           <div className="flex min-w-0 items-center gap-2">
                             <span
                               className="h-2.5 w-2.5 rounded-full"
@@ -1428,7 +1428,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             <span className="truncate">{getPageMetaForPath(entry.page).title}</span>
                           </div>
                           <span className="tabular-nums text-muted-foreground">{entry.total}</span>
-                        </div>
+                        </Item>
                       ))}
                     </div>
                   </>
@@ -1505,7 +1505,7 @@ export function ActivityTab(props: ActivityTabProps) {
 
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {activityBreakdown?.topGames.map((entry: { gameType: string; total: number }, index: number) => (
-                        <div key={entry.gameType} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
+                        <Item key={entry.gameType} variant="muted" className="justify-between text-xs">
                           <div className="flex min-w-0 items-center gap-2">
                             <span
                               className="h-2.5 w-2.5 rounded-full"
@@ -1514,7 +1514,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             <span className="truncate">{gameTypeLabels[entry.gameType] ?? humanizeUiLabel(entry.gameType)}</span>
                           </div>
                           <span className="tabular-nums text-muted-foreground">{entry.total}</span>
-                        </div>
+                        </Item>
                       ))}
                     </div>
                   </>
@@ -1591,7 +1591,7 @@ export function ActivityTab(props: ActivityTabProps) {
 
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {activityBreakdown?.topGameDurations.map((entry: { gameType: string; totalSeconds: number }, index: number) => (
-                        <div key={entry.gameType} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/10 px-3 py-2 text-xs">
+                        <Item key={entry.gameType} variant="muted" className="justify-between text-xs">
                           <div className="flex min-w-0 items-center gap-2">
                             <span
                               className="h-2.5 w-2.5 rounded-full"
@@ -1600,7 +1600,7 @@ export function ActivityTab(props: ActivityTabProps) {
                             <span className="truncate">{gameTypeLabels[entry.gameType] ?? humanizeUiLabel(entry.gameType)}</span>
                           </div>
                           <span className="tabular-nums text-muted-foreground">{formatDurationShort(entry.totalSeconds)}</span>
-                        </div>
+                        </Item>
                       ))}
                     </div>
                   </>

@@ -449,7 +449,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                 {surveys.map((survey: any) => {
                   const totalVotes = survey.totalResponses || 0;
                   return (
-                    <div key={survey.id} className="rounded-lg border border-border/60 bg-background p-4">
+                    <Card key={survey.id} className="gap-0 py-0 shadow-none"><CardContent className="p-4">
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
@@ -546,7 +546,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                           );
                         })}
                       </div>
-                    </div>
+                    </CardContent></Card>
                   );
                 })}
               </div>
@@ -573,7 +573,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
           ) : (
             <div className="grid gap-3 lg:grid-cols-2">
               {supportReports.slice(0, 8).map((report: any) => (
-                <div key={report.id} className="rounded-lg border border-border/60 bg-background p-3 space-y-3">
+                <Card key={report.id} className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold">{report.conversationTitle || report.conversationType || 'Conversation'}</p>
@@ -601,14 +601,14 @@ export function CommunicationTab(props: CommunicationTabProps) {
                       </Button>
                     </div>
                   )}
-                </div>
+                </CardContent></Card>
               ))}
             </div>
           )}
         </CardContent></Card>
 
         <div className="flex gap-4 h-[600px]">
-          <div className="w-72 shrink-0 flex flex-col border border-border rounded-lg overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none w-72 shrink-0 overflow-hidden"><CardContent className="p-0 flex flex-col">
             <div className="px-4 py-3 border-b border-border bg-muted/40 flex items-center justify-between">
               <h3 className="text-lg font-semibold tracking-tight">Conversations</h3>
               <div className="flex items-center gap-1">
@@ -655,9 +655,9 @@ export function CommunicationTab(props: CommunicationTabProps) {
                 ))
               )}
             </div>
-          </div>
+          </CardContent></Card>
 
-          <div className="flex-1 flex flex-col border border-border rounded-lg overflow-hidden">
+          <Card className="gap-0 py-0 shadow-none flex-1 overflow-hidden"><CardContent className="p-0 flex flex-col">
             {!activeThreadUserId ? (
               <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
                 Selectionne une conversation.
@@ -771,7 +771,7 @@ export function CommunicationTab(props: CommunicationTabProps) {
                 </div>
               </>
             )}
-          </div>
+          </CardContent></Card>
         </div>
       </div>
     </TabsContent>

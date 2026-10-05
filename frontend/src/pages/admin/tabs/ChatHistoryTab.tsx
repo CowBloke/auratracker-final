@@ -65,7 +65,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-              <div className="rounded-lg border border-border/60 overflow-hidden">
+              <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
                 <div className="px-3 py-2 border-b border-border/60 bg-muted/20 text-xs font-medium text-muted-foreground ">
                   Jours
                 </div>
@@ -115,9 +115,9 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                     </div>
                   )}
                 </div>
-              </div>
+              </CardContent></Card>
 
-              <div className="rounded-lg border border-border/60 overflow-hidden">
+              <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
                 <div className="px-3 py-2 border-b border-border/60 bg-muted/20 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm font-medium">
                     {chatHistoryDay
@@ -193,7 +193,7 @@ export function ChatHistoryTab(props: ChatHistoryTabProps) {
                     ))
                   )}
                 </div>
-              </div>
+              </CardContent></Card>
             </div>
           </CardContent>
         </Card>

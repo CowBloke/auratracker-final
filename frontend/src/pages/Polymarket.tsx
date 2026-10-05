@@ -2088,7 +2088,7 @@ export default function Polymarket() {
                         {sortedBets.length === 0 ? (
                           <p className="text-sm text-muted-foreground text-center py-6">Aucun pari pour le moment</p>
                         ) : (
-                          <div className="rounded-lg border border-border/50 overflow-hidden">
+                          <Card className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
                             {/* Table header */}
                             <div className="grid grid-cols-[1fr_80px_60px_48px] gap-3 px-4 py-2 bg-muted/40 text-xs font-semibold text-muted-foreground border-b border-border/50">
                               <span>Joueur</span>
@@ -2124,7 +2124,7 @@ export default function Polymarket() {
                                 </div>
                               );
                             })}
-                          </div>
+                          </CardContent></Card>
                         )}
                       </div>
                     </>

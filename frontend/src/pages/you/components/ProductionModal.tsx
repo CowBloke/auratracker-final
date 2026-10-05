@@ -449,7 +449,7 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
           const canWork = isMe && !member.workedToday && !submitting;
           const canRemind = isOwner && !isMe && !member.workedToday;
           return (
-            <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/10 px-4 py-3">
+            <Item key={member.id} variant="muted" className="gap-3">
               <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
                 isMe ? 'bg-muted/20 text-primary' : 'bg-muted/20 text-primary',
               )}>
@@ -488,7 +488,7 @@ function ProductionTab({ business, currentUserId, onWorkDone }: {
                   </button>
                 )}
               </div>
-            </div>
+            </Item>
           );
         })}
       </div>
@@ -537,14 +537,14 @@ function StockTab({ stock, storage }: { stock: StockEntry[]; storage: StorageSta
             const meta = RESOURCE_META[resource];
             const tier = TIER_META[meta.tier];
             return (
-              <div key={resource} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/10 p-3">
+              <Item key={resource} variant="muted" className="gap-3">
                 <ResIcon type={resource} size="md" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{meta.label}</p>
                   <Badge className={cn('mt-0.5 border px-1.5 py-0 text-xs leading-4', tier.cls)}>{tier.label}</Badge>
                   <p className="mt-1 text-base font-bold tabular-nums">{qty} u.</p>
                 </div>
-              </div>
+              </Item>
             );
           })}
         </div>
@@ -591,7 +591,7 @@ function CraftingTab({ business, stock }: { business: YouBusiness; stock: StockE
         const canCraft = hasEnough(recipe);
         const busy = crafting === recipe.id;
         return (
-          <div key={recipe.id} className="rounded-xl border border-border/50 bg-muted/10 p-4">
+          <Card key={recipe.id} className="gap-0 py-0 shadow-none"><CardContent className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -627,7 +627,7 @@ function CraftingTab({ business, stock }: { business: YouBusiness; stock: StockE
                 {canCraft ? 'Fabriquer' : 'Manque'}
               </Button>
             </div>
-          </div>
+          </CardContent></Card>
         );
       })}
     </div>

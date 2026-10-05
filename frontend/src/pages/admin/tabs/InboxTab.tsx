@@ -468,12 +468,12 @@ export function InboxTab(props: InboxTabProps) {
                           ) : (
                             <div className="space-y-2">
                               {contextMessages.map((message) => (
-                                <div key={message.id} className="rounded-md border border-border/30 bg-background/60 px-3 py-2 text-sm">
+                                <Card key={message.id} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2 text-sm">
                                   <p className="text-xs text-muted-foreground/60 mb-1">
                                     {message.username} · {new Date(message.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                   </p>
                                   <p className="whitespace-pre-wrap break-words">{message.message}</p>
-                                </div>
+                                </CardContent></Card>
                               ))}
                             </div>
                           )}

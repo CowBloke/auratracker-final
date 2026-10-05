@@ -174,12 +174,12 @@ export function DemographicsTab({
 
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {classAveragesData.slice(0, 4).map((entry) => (
-                    <div key={entry.label} className="rounded-lg border border-border/40 bg-muted/10 p-3">
+                    <Card key={entry.label} className="gap-0 py-0 shadow-none"><CardContent className="p-3">
                       <p className="text-sm font-medium truncate">{entry.label}</p>
                       <p className={cn('text-xs', 'text-muted-foreground')}>n = {entry.count}</p>
                       <p className="text-sm mt-1">Aura moy: <span className="font-semibold tabular-nums">{Math.round(entry.avgAura).toLocaleString('fr-FR')}</span></p>
                       <p className="text-sm">Argent moy: <span className="font-semibold tabular-nums">{Math.round(entry.avgMoney).toLocaleString('fr-FR')}</span></p>
-                    </div>
+                    </CardContent></Card>
                   ))}
                 </div>
               </div>
@@ -201,7 +201,7 @@ export function DemographicsTab({
           </CardHeader>
           <CardContent className="space-y-3">
             {topUsersByLevel.length > 0 ? topUsersByLevel.map((entry) => (
-              <div key={entry.level} className="rounded-lg border border-border/40 bg-muted/10 p-3 space-y-2">
+              <Card key={entry.level} className="gap-0 py-0 shadow-none"><CardContent className="p-3 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold">{entry.level}</p>
                     <p className={cn('text-xs', 'text-muted-foreground')}>{entry.users.length} affichés</p>
@@ -219,7 +219,7 @@ export function DemographicsTab({
                     </div>
                   ))}
                 </div>
-              </div>
+              </CardContent></Card>
             )) : (
               <p className="py-8 text-center text-sm text-muted-foreground">Aucune donnée disponible</p>
             )}
@@ -241,7 +241,7 @@ export function DemographicsTab({
           {usersByClass.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               {usersByClass.map((entry) => (
-                <div key={entry.classLabel} className="rounded-lg border border-border/40 bg-muted/10 overflow-hidden">
+                <Card key={entry.classLabel} className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
                   <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
                     <p className="text-sm font-semibold truncate">{entry.classLabel}</p>
                     <p className={cn('text-xs', 'text-muted-foreground')}>{entry.users.length} utilisateur{entry.users.length > 1 ? 's' : ''}</p>
@@ -267,7 +267,7 @@ export function DemographicsTab({
                       </tbody>
                     </table>
                   </div>
-                </div>
+                </CardContent></Card>
               ))}
             </div>
           ) : (

@@ -800,12 +800,12 @@ function ConstructionPanel({
         </div>
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
           {project.materials.map((m) => (
-            <div key={m.resourceType} className="flex items-center gap-1.5 rounded-md bg-background/60 border border-border/30 px-2 py-1.5">
+            <Item key={m.resourceType} variant="outline" className="gap-1.5">
               <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
               <span className="text-xs text-muted-foreground truncate">
                 {RESOURCE_META[m.resourceType as ResourceType]?.label ?? m.resourceType} ×{m.requiredQuantity}
               </span>
-            </div>
+            </Item>
           ))}
         </div>
       </div>
@@ -1312,7 +1312,7 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
             </p>
             <div className="space-y-2">
               {data.jobOffers.filter((o) => o.needsViewerAcceptance).map((offer) => (
-                <div key={offer.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/30 bg-muted/20 px-3 py-2">
+                <Card key={offer.id} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold">{offer.business.name}</p>
                     <p className="text-xs text-muted-foreground">
@@ -1323,7 +1323,7 @@ export function ActionsTab({ data, userId, onReload }: { data: YouState; userId:
                     <Button size="sm" className="h-7 text-xs" onClick={async () => { await youApi.respondToBusinessInvitation(offer.id, 'accept'); onReload?.(); }}>Accepter</Button>
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => { await youApi.respondToBusinessInvitation(offer.id, 'reject'); onReload?.(); }}>Refuser</Button>
                   </div>
-                </div>
+                </CardContent></Card>
               ))}
             </div>
           </CardContent>

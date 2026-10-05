@@ -13,6 +13,7 @@ import { adminApi, type BraquageLegalDrawResult, type BraquageLegalHistoryEntry,
 import { toast } from 'sonner';
 import { Clock3, Loader2, Ticket, Users } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
 
 const TIER_CONFIG: Record<BraquageLegalTier, { cost: number; tickets: number; maxParticipations: number; label: string; description: string; color: string }> = {
   BRONZE: { cost: 500, tickets: 1, maxParticipations: 10, label: 'Bronze', description: 'Entrée la plus accessible.', color: 'border-warning/25 bg-warning/10 text-warning' },
@@ -324,7 +325,7 @@ export default function BraquageLegal() {
                       const config = TIER_CONFIG[participation.tier];
                       const remaining = Math.max(0, config.maxParticipations - participation.participationCount);
                       return (
-                        <div key={participation.tier} className="flex items-center justify-between rounded-xl border border-border/50 bg-background/60 px-4 py-3">
+                        <Item key={participation.tier} variant="outline" className="justify-between">
                           <div>
                             <p className="font-medium">{config.label}</p>
                             <p className="text-sm text-muted-foreground">{participation.ticketCount} tickets gagnés à chaque participation</p>
@@ -333,7 +334,7 @@ export default function BraquageLegal() {
                             <p className="font-semibold tabular-nums">{participation.participationCount}/{config.maxParticipations}</p>
                             <p className="text-muted-foreground">{remaining} restantes</p>
                           </div>
-                        </div>
+                        </Item>
                       );
                     })}
                   </div>
@@ -352,7 +353,7 @@ export default function BraquageLegal() {
                 {latestWinners.length ? (
                   <div className="space-y-3">
                     {latestWinners.map((entry) => (
-                      <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border/50 bg-background/60 px-4 py-3">
+                      <Item key={entry.id} variant="outline" className="justify-between">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
                             <AvatarImage src={entry.winner?.profilePicture ? resolveImageUrl(entry.winner.profilePicture) : undefined} alt={entry.winner?.username ?? 'Gagnant'} />
@@ -367,7 +368,7 @@ export default function BraquageLegal() {
                           <p className="font-semibold tabular-nums text-warning">{entry.winnerPayout?.toLocaleString('fr-FR') ?? 0} €</p>
                           <p className="text-muted-foreground">pool {entry.totalPool.toLocaleString('fr-FR')} €</p>
                         </div>
-                      </div>
+                      </Item>
                     ))}
                   </div>
                 ) : (

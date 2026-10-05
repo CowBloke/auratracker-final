@@ -474,7 +474,7 @@ export function InvitePlayersModal({
           {availablePlayers.map((player) => {
             const selected = selectedIds.includes(player.id);
             return (
-              <div key={player.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+              <Item key={player.id} variant="muted" className="gap-3">
                 <UserAvatar player={player} className="h-9 w-9" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{player.username}</p>
@@ -483,7 +483,7 @@ export function InvitePlayersModal({
                 <Button size="sm" variant={selected ? 'secondary' : 'outline'} className="h-8 text-xs" onClick={() => setSelectedIds((current) => current.includes(player.id) ? current.filter((entry) => entry !== player.id) : [...current, player.id])}>
                   {selected ? 'Selectionne' : 'Inviter'}
                 </Button>
-              </div>
+              </Item>
             );
           })}
           {availablePlayers.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Aucun joueur disponible pour cette recherche.</p> : null}
@@ -1426,7 +1426,7 @@ export function ManageBusinessModal({
                   <InlineSection open={activeSection === 'illegalUpgrades'}>
                     <div className="space-y-2">
                       {(business.illegalUpgrades ?? []).map((upgrade) => (
-                        <div key={upgrade.key} className="rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
+                        <Card key={upgrade.key} className="gap-0 py-0 shadow-none"><CardContent className="px-3 py-2.5">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-sm font-semibold">{upgrade.label}</p>
@@ -1448,7 +1448,7 @@ export function ManageBusinessModal({
                               </Button>
                             )}
                           </div>
-                        </div>
+                        </CardContent></Card>
                       ))}
                       {(business.illegalUpgrades ?? []).length === 0 ? (
                         <p className="text-xs text-muted-foreground">Aucune amelioration disponible.</p>
@@ -1631,10 +1631,10 @@ export function ManageBusinessModal({
                     { label: 'Membres', value: String(business.memberCount) },
                     { label: 'Revenu mensuel', value: `+${business.monthlyRevenue.toLocaleString('fr-FR')} €` },
                   ].map((entry) => (
-                    <div key={entry.label} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                    <Card key={entry.label} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3">
                       <p className="text-xs text-muted-foreground/60">{entry.label}</p>
                       <p className="mt-1 text-sm font-semibold tabular-nums">{entry.value}</p>
-                    </div>
+                    </CardContent></Card>
                   ))}
                 </div>
                 <Alert variant="warning">
@@ -1719,7 +1719,7 @@ export function ManageBusinessModal({
                         const canClaimCollateral = isPastDue && loan.collateralAuraHeld > 0;
                         const isActive = loan.status === 'ACTIVE';
                         return (
-                          <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3 space-y-2">
+                          <Card key={loan.id} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3 space-y-2">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
@@ -1780,7 +1780,7 @@ export function ManageBusinessModal({
                                 <p className="shrink-0 text-xs text-muted-foreground">Remboursement en cours</p>
                               ) : null}
                             </div>
-                          </div>
+                          </CardContent></Card>
                         );
                       })}
                     </div>
@@ -1824,7 +1824,7 @@ export function ManageBusinessModal({
                 <CardContent className="space-y-3 px-5 py-4">
                   <SectionTitle>Demandes de prêt ({pendingLoans.length})</SectionTitle>
                   {pendingLoans.map((loan) => (
-                    <div key={loan.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                    <Card key={loan.id} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold">{loan.borrower.username}</p>
@@ -1836,7 +1836,7 @@ export function ManageBusinessModal({
                           <Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewLoan(loan.id, 'reject')} disabled={reviewingLoanId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button>
                         </div>
                       </div>
-                    </div>
+                    </CardContent></Card>
                   ))}
                 </CardContent>
               </Card>
@@ -1848,7 +1848,7 @@ export function ManageBusinessModal({
                 <CardContent className="space-y-3 px-5 py-4">
                   <SectionTitle>Offres de rachat ({pendingBuyoutOffers.length})</SectionTitle>
                   {pendingBuyoutOffers.map((offer) => (
-                    <div key={offer.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                    <Card key={offer.id} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold">{offer.bidder.username}</p>
@@ -1860,7 +1860,7 @@ export function ManageBusinessModal({
                           <Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewBuyout(offer.id, 'reject')} disabled={reviewingBuyoutId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button>
                         </div>
                       </div>
-                    </div>
+                    </CardContent></Card>
                   ))}
                 </CardContent>
               </Card>
@@ -1871,7 +1871,7 @@ export function ManageBusinessModal({
                 <CardContent className="space-y-3 px-5 py-4">
                   <SectionTitle>Propositions actionnaires ({pendingShareholderProposals.length})</SectionTitle>
                   {pendingShareholderProposals.map((proposal) => (
-                    <div key={proposal.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                    <Card key={proposal.id} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold">{proposal.investor.username}</p>
@@ -1884,7 +1884,7 @@ export function ManageBusinessModal({
                           <Button size="sm" variant="outline" className="text-xs" onClick={() => void reviewShareholderProposal(proposal.id, 'reject')} disabled={reviewingShareProposalId !== null}><X className="mr-1.5 h-3.5 w-3.5" />Refuser</Button>
                         </div>
                       </div>
-                    </div>
+                    </CardContent></Card>
                   ))}
                 </CardContent>
               </Card>
@@ -2053,7 +2053,7 @@ export function ManageTeamModal({
               <SectionTitle>Contrats en attente ({pendingInvitations.length})</SectionTitle>
               <div className="max-h-52 space-y-2 overflow-y-auto">
                 {pendingInvitations.map((invitation) => (
-                  <div key={invitation.id} className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+                  <Card key={invitation.id} className="gap-0 py-0 shadow-none"><CardContent className="px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -2074,7 +2074,7 @@ export function ManageTeamModal({
                         </div>
                       ) : null}
                     </div>
-                  </div>
+                  </CardContent></Card>
                 ))}
               </div>
             </div>
@@ -2089,7 +2089,7 @@ export function ManageTeamModal({
               <SectionTitle>Membres actifs</SectionTitle>
               <div className="max-h-80 space-y-1.5 overflow-y-auto">
                 {activeMembers.map((member) => (
-                  <div key={member.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-3 py-2.5">
+                  <Item key={member.id} variant="muted" className="gap-3">
                     <UserAvatar player={member.user} className="h-8 w-8 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -2110,7 +2110,7 @@ export function ManageTeamModal({
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                  </div>
+                  </Item>
                 ))}
               </div>
             </div>
@@ -2369,7 +2369,7 @@ export function TeamRosterModal({
       ) : (
         <div className="space-y-2">
           {members.map((m, i) => (
-            <div key={`${m.user.id}-${i}`} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+            <Item key={`${m.user.id}-${i}`} variant="muted" className="gap-3">
               <UserAvatar player={m.user} className="h-10 w-10 shrink-0" />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -2379,7 +2379,7 @@ export function TeamRosterModal({
                 </div>
                 {m.specialty ? <p className="mt-0.5 text-xs text-muted-foreground">{m.specialty}</p> : null}
               </div>
-            </div>
+            </Item>
           ))}
         </div>
       )}
@@ -2749,7 +2749,7 @@ export function ManageFormationsModal({
       ) : (
         <div className="space-y-2">
           {products.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
+            <Item key={p.id} variant="muted" className="gap-3">
               {p.imageUrl ? (
                 <img src={p.imageUrl} alt={p.title} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
               ) : (
@@ -2776,7 +2776,7 @@ export function ManageFormationsModal({
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
-            </div>
+            </Item>
           ))}
         </div>
       )}
@@ -3041,7 +3041,7 @@ export function FormationCatalogModal({
             const isAccessingExternal = accessingTarget?.productId === product.id && accessingTarget.mode === 'external';
 
             return (
-              <div key={product.id} className="overflow-hidden rounded-xl border border-border/40 bg-muted/10">
+              <Card key={product.id} className="gap-0 py-0 shadow-none overflow-hidden"><CardContent className="p-0">
                 {product.imageUrl ? (
                   <img
                     src={product.imageUrl}
@@ -3143,7 +3143,7 @@ export function FormationCatalogModal({
                   )}
 
                 </div>
-              </div>
+              </CardContent></Card>
             );
           })}
         </div>
