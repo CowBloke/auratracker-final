@@ -5,6 +5,7 @@ import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { cn } from '@/lib/utils';
@@ -116,11 +117,7 @@ export default function PaperIo() {
 
   return (
     <div className={cn('grid gap-4', isFullscreen ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-[minmax(0,1fr)_240px]')}>
-      <div
-        ref={containerRef}
-        className={cn('flex flex-col gap-3', isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4')}
-      >
-        <GameTopBar
+      <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
           title="Paper.io"
           score={score}
           highScore={highScore}
@@ -131,7 +128,8 @@ export default function PaperIo() {
           onToggleFullscreen={toggleFullscreen}
           showLeaderboard={showLeaderboard}
           onToggleLeaderboard={() => setShowLeaderboard((v) => !v)}
-        />
+        />}>
+        
 
         <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={GAME_WIDTH} baseHeight={GAME_HEIGHT}>
           <iframe
@@ -172,7 +170,7 @@ export default function PaperIo() {
             </div>
           )}
         </GameFullscreenStage>
-      </div>
+      </GameShell>
 
       {showLeaderboard && !isFullscreen && (
         <div className="w-[240px] shrink-0 hidden xl:block">

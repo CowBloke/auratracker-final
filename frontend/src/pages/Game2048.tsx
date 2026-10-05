@@ -5,6 +5,7 @@ import { gamesApi } from '../services/api';
 import { Play, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
@@ -566,17 +567,7 @@ export default function Game2048() {
   );
 
   return (
-    <div
-      ref={gameContainerRef}
-      className={cn(
-        'flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4'
-      )}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-    >
-      {/* ── Top bar — full width ── */}
-      <GameTopBar
+    <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} topBar={<GameTopBar
         title="2048"
         score={score}
         highScore={highScore}
@@ -589,7 +580,9 @@ export default function Game2048() {
         onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
         <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
-      </GameTopBar>
+      </GameTopBar>}>
+      {/* ── Top bar — full width ── */}
+      
 
       {/* ── Game + leaderboard row ── */}
       <div className="flex items-start justify-center gap-4">
@@ -610,7 +603,7 @@ export default function Game2048() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }
 

@@ -4,6 +4,7 @@ import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { clashApi, type ClashBattleEntry, type ClashBuilding, type ClashLeaderboardEntry, type ClashStateResponse, type ClashTarget } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -450,11 +451,7 @@ export default function ClashVillage() {
   );
 
   return (
-    <div
-      ref={containerRef}
-      className="relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8"
-    >
-      <GameTopBar
+    <GameShell containerRef={containerRef} topBar={<GameTopBar
         title="Clash Village"
         score={village.moneyInStorage}
         highScore={village.trophies}
@@ -474,7 +471,8 @@ export default function ClashVillage() {
             <SlidersHorizontal className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </GameTopBar>
+      </GameTopBar>}>
+      
 
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
         <DialogContent className="sm:max-w-sm rounded-[32px]">
@@ -791,6 +789,6 @@ export default function ClashVillage() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }

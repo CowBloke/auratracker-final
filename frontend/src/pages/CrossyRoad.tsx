@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -253,14 +254,7 @@ export default function CrossyRoad() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
-    >
-      <GameTopBar
+    <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
         title="Crossy Road"
         score={highScore}
         highScore={highScore}
@@ -291,7 +285,8 @@ export default function CrossyRoad() {
           <Play className="mr-2 h-4 w-4" />
           Recharger
         </Button>
-      </GameTopBar>
+      </GameTopBar>}>
+      
 
       <div className="flex items-start justify-center gap-4">
         <div className="flex w-full max-w-[1280px] flex-col">
@@ -343,7 +338,7 @@ export default function CrossyRoad() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }
 

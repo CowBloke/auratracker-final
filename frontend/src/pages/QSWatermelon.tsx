@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { gamesApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -158,11 +159,7 @@ export default function QSWatermelon() {
   );
 
   return (
-    <div
-      ref={gameContainerRef}
-      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
-    >
-      <GameTopBar
+    <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
         title="QS Watermelon"
         score={0} // Score is handled inside iframe usually, but we could show highscore
         highScore={highScore}
@@ -182,7 +179,8 @@ export default function QSWatermelon() {
         >
           <SlidersHorizontal className="h-3.5 w-3.5" />
         </Button>
-      </GameTopBar>
+      </GameTopBar>}>
+      
 
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
         <DialogContent className="sm:max-w-sm">
@@ -222,7 +220,7 @@ export default function QSWatermelon() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }
 

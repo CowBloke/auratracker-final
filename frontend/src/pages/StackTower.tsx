@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi } from '../services/api';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { useHideGameLeaderboards } from '@/lib/game-preferences';
@@ -664,14 +665,7 @@ export default function StackTower() {
   }, [submitScore]);
 
   return (
-    <div
-      ref={gameContainerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4',
-      )}
-    >
-          <GameTopBar
+    <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
             title="Stack Tower"
             score={score}
             highScore={highScore}
@@ -688,7 +682,8 @@ export default function StackTower() {
             showLeaderboard={leaderboardVisible}
             onToggleLeaderboard={() => setShowLeaderboard((value) => !value)}
             className="w-full max-w-[900px]"
-          />
+          />}>
+          
 
       <div className="flex items-start justify-center gap-4">
         <div className="flex w-full max-w-[900px] flex-col">
@@ -753,7 +748,7 @@ export default function StackTower() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }
 

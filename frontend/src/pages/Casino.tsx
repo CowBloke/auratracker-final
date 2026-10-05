@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { startRouletteRound } from './casino/start-roulette-round';
@@ -1390,10 +1391,7 @@ export default function Casino() {
   );
 
   return (
-    <div ref={containerRef} className="relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8">
-      <CasinoCelebrationLayer celebration={celebration} onDismiss={() => setCelebration(null)} />
-
-      <GameTopBar
+    <GameShell containerRef={containerRef} topBar={<GameTopBar
         title={activeGame ? CASINO_GAME_LABELS[activeGame] : "Etage Casino"}
         score={user?.money ?? 0}
         highScore={user?.aura ?? 0}
@@ -1413,7 +1411,10 @@ export default function Casino() {
             <SlidersHorizontal className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </GameTopBar>
+      </GameTopBar>}>
+      <CasinoCelebrationLayer celebration={celebration} onDismiss={() => setCelebration(null)} />
+
+      
 
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
         <DialogContent className="sm:max-w-xs">
@@ -1460,7 +1461,7 @@ export default function Casino() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }
 

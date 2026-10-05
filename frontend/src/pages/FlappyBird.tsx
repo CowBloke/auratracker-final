@@ -11,6 +11,7 @@ import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 
 // ============================================
 // GAME CONSTANTS
@@ -467,14 +468,7 @@ export default function FlappyBird() {
   // RENDER
   // ============================================
   return (
-    <div
-      ref={gameContainerRef}
-      className={cn(
-        'flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
-    >
-      <GameTopBar
+    <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
         title="Flappy Bird"
         score={score}
         highScore={highScore}
@@ -502,7 +496,8 @@ export default function FlappyBird() {
         onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
         <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!canPause} />
-      </GameTopBar>
+      </GameTopBar>}>
+      
 
       <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
         <canvas
@@ -558,7 +553,7 @@ export default function FlappyBird() {
           />
         </div>
       )}
-    </div>
+    </GameShell>
   );
 }
 

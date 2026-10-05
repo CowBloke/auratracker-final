@@ -8,6 +8,7 @@ import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -238,11 +239,7 @@ export default function HexGL() {
   );
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
-    >
-      <GameTopBar
+    <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
         title="HexGL"
         score={0}
         highScore={highScore || 0}
@@ -269,7 +266,8 @@ export default function HexGL() {
             <SlidersHorizontal className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </GameTopBar>
+      </GameTopBar>}>
+      
 
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
         <DialogContent className="sm:max-w-sm">
@@ -320,7 +318,7 @@ export default function HexGL() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }
 

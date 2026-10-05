@@ -8,6 +8,7 @@ import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 
 interface TetrisGameEndMessage {
   type: 'AURA_TETRIS_GAME_END';
@@ -130,14 +131,7 @@ export default function Tetris() {
   }, []);
 
   return (
-    <div
-      ref={gameContainerRef}
-      className={cn(
-        'flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen bg-background px-4 py-4'
-      )}
-    >
-      <GameTopBar
+    <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
         title="Tetris"
         score={lastScore ?? 0}
         highScore={highScore}
@@ -155,7 +149,8 @@ export default function Tetris() {
         onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
       >
         <GamePauseButton isPaused={isPaused} onToggle={() => setIsPaused((current) => !current)} disabled={!lastScore} />
-      </GameTopBar>
+      </GameTopBar>}>
+      
 
       <div className="flex items-start justify-center gap-4">
         <div className="flex w-full max-w-[640px] flex-col">
@@ -187,7 +182,7 @@ export default function Tetris() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }
 

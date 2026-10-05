@@ -11,6 +11,7 @@ import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 
 type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 type Grid = number[][];
@@ -552,14 +553,7 @@ export default function Sudoku() {
 return (
     <PageShell size="wide">
 
-      <div
-        ref={gameContainerRef}
-        className={cn(
-          'flex flex-col items-center gap-4 px-4 pb-6',
-          isFullscreen && 'min-h-screen w-screen justify-center bg-background px-4 py-6'
-        )}
-      >
-        <GameTopBar
+      <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
           title="Sudoku"
           score={completed ? currentScore : 0}
           highScore={highScore}
@@ -581,7 +575,8 @@ return (
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
           </Button>
-        </GameTopBar>
+        </GameTopBar>}>
+        
 
         <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
           <DialogContent className="sm:max-w-sm">
@@ -692,7 +687,7 @@ return (
             />
           </div>
         )}
-      </div>
+      </GameShell>
     </PageShell>
   );
 }

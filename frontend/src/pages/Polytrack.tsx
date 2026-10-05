@@ -9,6 +9,7 @@ import { ListSkeleton } from '@/components/ui/loading-skeletons';
 import { GamePauseButton } from '@/components/game/GamePauseButton';
 import { GamePauseOverlay } from '@/components/game/GamePauseOverlay';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
@@ -154,14 +155,7 @@ export default function Polytrack() {
   const personalHighScore = currentTrack?.personalBest?.timeMs ?? null;
 
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
-    >
-      <GameTopBar
+    <GameShell containerRef={containerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
         title="PolyTrack"
         score={personalHighScore ?? 0}
         highScore={personalHighScore ?? 0}
@@ -287,7 +281,8 @@ export default function Polytrack() {
           <RotateCcw className="mr-2 h-4 w-4" />
           Recharger
         </Button>
-      </GameTopBar>
+      </GameTopBar>}>
+      
 
       <div className="flex items-start justify-center gap-4">
         <div className="flex w-full max-w-[1280px] flex-col">
@@ -336,6 +331,6 @@ export default function Polytrack() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }

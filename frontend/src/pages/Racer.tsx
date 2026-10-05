@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 
@@ -1377,14 +1378,7 @@ export default function Racer() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   return (
-    <div
-      ref={gameContainerRef}
-      className={cn(
-        'relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8',
-        isFullscreen && 'min-h-screen w-screen items-center bg-background px-4 py-4'
-      )}
-    >
-      <GameTopBar
+    <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
         title="Racer"
         score={allTimeBestLapTimeMs ?? 0}
         highScore={allTimeBestLapTimeMs ?? 0}
@@ -1422,7 +1416,8 @@ export default function Racer() {
             Rejouer
           </Button>
         )}
-      </GameTopBar>
+      </GameTopBar>}>
+      
 
       <div className="flex items-start justify-center gap-4">
         <div className="flex w-full max-w-[1024px] flex-col">
@@ -1496,6 +1491,6 @@ export default function Racer() {
           </div>
         )}
       </div>
-    </div>
+    </GameShell>
   );
 }

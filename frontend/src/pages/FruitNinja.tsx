@@ -9,6 +9,7 @@ import { GameFullscreenStage } from '@/components/game/GameFullscreenStage';
 import { useGameFullscreen } from '@/hooks/use-game-fullscreen';
 import { GameLeaderboard, type GameLeaderboardEntry } from '@/components/game/GameLeaderboard';
 import { GameTopBar } from '@/components/game/GameTopBar';
+import { GameShell } from '@/components/game/GameShell';
 
 // ============================================
 // CONSTANTS
@@ -826,11 +827,7 @@ export default function FruitNinja() {
   const isPlaying = started && !gameOver;
 
   return (
-    <div
-      ref={gameContainerRef}
-      className={`relative flex flex-col gap-3 px-4 pb-6 lg:px-6 lg:pb-8 ${isFullscreen ? 'min-h-screen w-screen items-center bg-background px-4 py-4' : ''}`}
-    >
-      <GameTopBar
+    <GameShell containerRef={gameContainerRef} isFullscreen={isFullscreen} topBar={<GameTopBar
         title="Fruit Ninja"
         score={score}
         highScore={highScore}
@@ -879,7 +876,8 @@ export default function FruitNinja() {
         onToggleFullscreen={toggleFullscreen}
         showLeaderboard={showLeaderboard}
         onToggleLeaderboard={() => setShowLeaderboard(v => !v)}
-      />
+      />}>
+      
 
       <GameFullscreenStage isFullscreen={isFullscreen} baseWidth={CANVAS_WIDTH} baseHeight={CANVAS_HEIGHT}>
         <canvas
@@ -947,7 +945,7 @@ export default function FruitNinja() {
           />
         </div>
       )}
-    </div>
+    </GameShell>
   );
 }
 
