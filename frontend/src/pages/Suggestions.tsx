@@ -1,20 +1,13 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronUp, LayoutGrid, List, MessageSquare, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestionsApi, Suggestion, uploadUserImage } from '../services/api';
-import { ImagePicker } from '@/components/ui/image-picker';
-import { ChevronUp, ChevronDown, Loader2, Plus, SlidersHorizontal, Trash2, X } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Card, CardContent } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Slider } from '@/components/ui/slider';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,12 +20,23 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { ImagePicker } from '@/components/ui/image-picker';
+import { Input } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemSeparator, ItemTitle } from '@/components/ui/item';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Slider } from '@/components/ui/slider';
+import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { prepareImageUploadPayload } from '@/lib/image-upload';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { PageShell } from '@/components/layout/PageShell';
-import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
 
 type PendingSortOption = 'trending' | 'newest' | 'top' | 'discussed';
 type DoneSortOption = 'recently-done' | 'best-rated' | 'most-rated' | 'discussed';
@@ -586,546 +590,436 @@ export default function Suggestions() {
     const { showRatings, emptyTitle, emptySubtitle } = options;
     if (items.length === 0) {
       return (
-        <div className="text-center py-16">
-          <p className={cn(TYPOGRAPHY.H5, "text-muted-foreground")}>
-            {emptyTitle}
-          </p>
-          <p className={cn(TYPOGRAPHY.MUTED, "mt-1")}>
-            {emptySubtitle}
-          </p>
-        </div>
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>{emptyTitle}</EmptyTitle>
+            <EmptyDescription>{emptySubtitle}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       );
     }
 
     return (
-      <div className={cn(SPACING.CARD_SPACING, viewMode === 'grid' && 'grid grid-cols-1 gap-4 xl:grid-cols-3')}>
+      <div className={cn('flex flex-col gap-6', viewMode === 'grid' && 'grid grid-cols-1 xl:grid-cols-3')}>
         {items.map((suggestion) => {
           const ratingValue = ratingInputs[suggestion.id] ?? suggestion.userRating ?? 5;
+          const canDelete = suggestion.user.id === user?.id || user?.isAdmin;
 
           return (
-            <Card
-              key={suggestion.id}
-              id={`suggestion-${suggestion.id}`}
-              className={cn('group hover:border-border/60 transition-colors', viewMode === 'grid' && 'h-full')}
-            >
-              <div className={cn('flex', viewMode === 'grid' && 'h-full flex-col')}>
-                {/* Vote Column */}
-                <div
-                  className={cn(
-                    'flex items-center bg-muted/20 border-border/30',
-                    viewMode === 'list'
-                      ? 'flex-col px-3 py-4 border-r'
-                      : 'gap-1 border-b px-4 py-3'
-                  )}
-                >
-                  <Button
-                    onClick={() => handleVote(suggestion.id, 1)}
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      'h-7 w-7',
-                      suggestion.userVote === 1 && 'text-success'
-                    )}
-                  >
-                    <ChevronUp className="h-5 w-5" />
-                  </Button>
-                  <span
-                    className={cn(
-                      TYPOGRAPHY.H5,
-                      'tabular-nums py-1',
-                      viewMode === 'grid' && 'min-w-[3ch] text-center',
-                      suggestion.score > 0 && 'text-success',
-                      suggestion.score < 0 && 'text-destructive'
-                    )}
-                  >
-                    {suggestion.score}
+            <Card key={suggestion.id} id={`suggestion-${suggestion.id}`}>
+              <CardHeader>
+                <CardTitle className="flex flex-wrap items-center gap-2">
+                  {suggestion.title}
+                  {suggestion.boost && suggestion.boost > 0 ? <Badge variant="warning">Nouveau</Badge> : null}
+                </CardTitle>
+                <CardDescription>
+                  par{' '}
+                  <span style={suggestion.user.usernameColor ? { color: suggestion.user.usernameColor } : undefined}>
+                    {suggestion.user.username}
                   </span>
-                  <Button
-                    onClick={() => handleVote(suggestion.id, -1)}
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      'h-7 w-7',
-                      suggestion.userVote === -1 && 'text-destructive'
-                    )}
-                  >
-                    <ChevronDown className="h-5 w-5" />
-                  </Button>
-                </div>
-
-                {/* Content */}
-                <CardContent className="flex-1 p-4 min-w-0">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className={TYPOGRAPHY.H5}>{suggestion.title}</h3>
-                        {suggestion.boost && suggestion.boost > 0 && (
-                          <span className={cn(TYPOGRAPHY.XS, "px-2 py-0.5 font-medium bg-warning/20 text-warning border border-warning/30 rounded")}>
-                            Nouveau
-                          </span>
-                        )}
-                      </div>
-                      <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1")}>
-                        par{' '}
-                        <span
-                          style={
-                            suggestion.user.usernameColor
-                              ? { color: suggestion.user.usernameColor }
-                              : undefined
-                          }
-                        >
-                          {suggestion.user.username}
-                        </span>
-                        {' · '}
-                        {formatDate(suggestion.createdAt)}
-                        {suggestion.resolvedAt && (
-                          <>
-                            {' · '}
-                            {suggestion.status === 'DONE' ? 'réalisée le ' : 'non réalisée le '}
-                            {formatDate(suggestion.resolvedAt)}
-                          </>
-                        )}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {user?.isAdmin && (
-                        <div className="flex flex-wrap items-center gap-2">
-                          {statusUpdating[suggestion.id] ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : null}
-                          {suggestion.status !== 'PENDING' && (
-                            <Button
-                              type="button"
-                              onClick={() => handleStatusUpdate(suggestion.id, 'PENDING')}
-                              disabled={statusUpdating[suggestion.id]}
-                              variant="outline"
-                              size="sm"
-                              className="text-xs"
-                            >
-                              Remettre en cours
-                            </Button>
-                          )}
-                          {suggestion.status !== 'DONE' && (
-                            <Button
-                              type="button"
-                              onClick={() => handleStatusUpdate(suggestion.id, 'DONE')}
-                              disabled={statusUpdating[suggestion.id]}
-                              variant="outline"
-                              size="sm"
-                              className="text-xs"
-                            >
-                              Marquer réalisée
-                            </Button>
-                          )}
-                          {suggestion.status !== 'REJECTED' && (
-                            <Button
-                              type="button"
-                              onClick={() => handleStatusUpdate(suggestion.id, 'REJECTED')}
-                              disabled={statusUpdating[suggestion.id]}
-                              variant="outline"
-                              size="sm"
-                              className="text-xs text-destructive border-destructive/40 hover:text-destructive"
-                            >
-                              Marquer non réalisée
-                            </Button>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Delete button for author or admin */}
-                      {(suggestion.user.id === user?.id || user?.isAdmin) && (
+                  {' · '}
+                  {formatDate(suggestion.createdAt)}
+                  {suggestion.resolvedAt ? (
+                    <>
+                      {' · '}
+                      {suggestion.status === 'DONE' ? 'réalisée le ' : 'non réalisée le '}
+                      {formatDate(suggestion.resolvedAt)}
+                    </>
+                  ) : null}
+                </CardDescription>
+                <CardAction className="flex items-center gap-1">
+                  <div className="flex items-center rounded-md border">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <Button
-                          onClick={() => handleDelete(suggestion.id)}
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 h-8 w-8 text-muted-foreground hover:text-destructive"
-                          aria-label="Supprimer la suggestion"
+                          onClick={() => handleVote(suggestion.id, 1)}
+                          variant={suggestion.userVote === 1 ? 'secondary' : 'ghost'}
+                          size="icon-sm"
+                          aria-label="Voter pour"
+                          aria-pressed={suggestion.userVote === 1}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <ChevronUp />
                         </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{suggestion.upvotes} pour</TooltipContent>
+                    </Tooltip>
+                    <span
+                      className={cn(
+                        'min-w-8 text-center text-sm font-semibold tabular-nums',
+                        suggestion.score > 0 && 'text-success',
+                        suggestion.score < 0 && 'text-destructive'
                       )}
-                    </div>
-                  </div>
-
-                  <p className={cn("mt-3 whitespace-pre-wrap break-words", TYPOGRAPHY.MUTED)}>
-                    {suggestion.description}
-                  </p>
-
-                  {suggestion.imageUrl && (
-                    <Card className="mt-4 ">
-                      <CardContent className="p-0">
-                        <img
-                          src={resolveImageUrl(suggestion.imageUrl)}
-                          alt={suggestion.title}
-                          className={cn('rounded-md object-cover', viewMode === 'grid' ? 'h-56 w-full' : 'max-h-64')}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Vote stats */}
-                  <div className={cn("mt-4 flex items-center gap-4", TYPOGRAPHY.XS, "text-muted-foreground/60")}>
-                    <span className="flex items-center gap-1">
-                      <ChevronUp className="h-3 w-3" />
-                      {suggestion.upvotes}
+                    >
+                      {suggestion.score}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <ChevronDown className="h-3 w-3" />
-                      {suggestion.downvotes}
-                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => handleVote(suggestion.id, -1)}
+                          variant={suggestion.userVote === -1 ? 'secondary' : 'ghost'}
+                          size="icon-sm"
+                          aria-label="Voter contre"
+                          aria-pressed={suggestion.userVote === -1}
+                        >
+                          <ChevronDown />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{suggestion.downvotes} contre</TooltipContent>
+                    </Tooltip>
                   </div>
+                  {canDelete ? (
+                    <Button onClick={() => handleDelete(suggestion.id)} variant="ghost" size="icon-sm" aria-label="Supprimer la suggestion">
+                      <Trash2 />
+                    </Button>
+                  ) : null}
+                </CardAction>
+              </CardHeader>
 
-                  {showRatings && (
-                    <div className={cn("mt-6 border-t border-border/30 pt-4", SPACING.CARD_SPACING)}>
-                      <div className={cn("flex flex-wrap items-center justify-between gap-2", TYPOGRAPHY.XS, "text-muted-foreground/70")}>
-                        <span>
+              <CardContent className="flex flex-col gap-4">
+                <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{suggestion.description}</p>
+
+                {suggestion.imageUrl ? (
+                  <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-md border">
+                    <img
+                      src={resolveImageUrl(suggestion.imageUrl)}
+                      alt={suggestion.title}
+                      className="size-full object-cover"
+                      onError={(event) => {
+                        (event.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </AspectRatio>
+                ) : null}
+
+                {user?.isAdmin ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {statusUpdating[suggestion.id] ? <Spinner /> : null}
+                    {suggestion.status !== 'PENDING' ? (
+                      <Button type="button" onClick={() => handleStatusUpdate(suggestion.id, 'PENDING')} disabled={statusUpdating[suggestion.id]} variant="outline" size="sm">
+                        Remettre en cours
+                      </Button>
+                    ) : null}
+                    {suggestion.status !== 'DONE' ? (
+                      <Button type="button" onClick={() => handleStatusUpdate(suggestion.id, 'DONE')} disabled={statusUpdating[suggestion.id]} variant="outline" size="sm">
+                        Marquer réalisée
+                      </Button>
+                    ) : null}
+                    {suggestion.status !== 'REJECTED' ? (
+                      <Button type="button" onClick={() => handleStatusUpdate(suggestion.id, 'REJECTED')} disabled={statusUpdating[suggestion.id]} variant="destructive" size="sm">
+                        Marquer non réalisée
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {showRatings ? (
+                  <>
+                    <Separator />
+                    <Field>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                        <FieldLabel htmlFor={`rating-${suggestion.id}`}>
                           {suggestion.ratingCount > 0 && suggestion.averageRating !== null
-                            ? `Note moyenne: ${suggestion.averageRating.toFixed(1)}/10 (${suggestion.ratingCount})`
+                            ? `Note moyenne : ${suggestion.averageRating.toFixed(1)}/10 (${suggestion.ratingCount})`
                             : 'Pas encore de note'}
-                        </span>
-                        <span>Votre note: {ratingValue}/10</span>
+                        </FieldLabel>
+                        <span className="text-muted-foreground">Votre note : {ratingValue}/10</span>
                       </div>
-
                       <div className="flex items-center gap-3">
                         <Slider
+                          id={`rating-${suggestion.id}`}
                           value={[ratingValue]}
                           min={1}
                           max={10}
                           step={1}
-                          onValueChange={(value) =>
-                            setRatingInputs((prev) => ({ ...prev, [suggestion.id]: value[0] }))
-                          }
+                          onValueChange={(value) => setRatingInputs((prev) => ({ ...prev, [suggestion.id]: value[0] }))}
                         />
-                        <Button
-                          type="button"
-                          onClick={() => handleRatingSubmit(suggestion.id)}
-                          disabled={ratingSubmitting[suggestion.id]}
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                        >
-                          {ratingSubmitting[suggestion.id] ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                          ) : null}
+                        <Button type="button" onClick={() => handleRatingSubmit(suggestion.id)} disabled={ratingSubmitting[suggestion.id]} variant="outline" size="sm">
+                          {ratingSubmitting[suggestion.id] ? <Spinner /> : null}
                           Noter
                         </Button>
                       </div>
+                    </Field>
+                  </>
+                ) : null}
+
+                <Separator />
+                <section className="flex flex-col gap-3">
+                  <h4 className="flex items-center gap-2 text-sm font-medium">
+                    <MessageSquare className="size-4" />
+                    Commentaires ({suggestion.comments.length})
+                  </h4>
+
+                  {suggestion.comments.length > 0 ? (
+                    <ItemGroup>
+                      {suggestion.comments.map((comment, index) => (
+                        <div key={comment.id}>
+                          {index > 0 ? <ItemSeparator /> : null}
+                          <Item size="sm">
+                            <ItemContent>
+                              <ItemDescription className="flex items-center gap-2">
+                                <span style={comment.user.usernameColor ? { color: comment.user.usernameColor } : undefined}>
+                                  {comment.user.username}
+                                </span>
+                                <span>·</span>
+                                <span>{formatDateTime(comment.createdAt)}</span>
+                              </ItemDescription>
+                              <ItemTitle className="whitespace-pre-wrap break-words font-normal">{comment.content}</ItemTitle>
+                            </ItemContent>
+                            {comment.user.id === user?.id || user?.isAdmin ? (
+                              <ItemActions>
+                                <Button
+                                  onClick={() => handleCommentDelete(suggestion.id, comment.id)}
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  disabled={commentDeleting[comment.id]}
+                                  aria-label="Supprimer le commentaire"
+                                >
+                                  {commentDeleting[comment.id] ? <Spinner /> : <X />}
+                                </Button>
+                              </ItemActions>
+                            ) : null}
+                          </Item>
+                        </div>
+                      ))}
+                    </ItemGroup>
+                  ) : null}
+
+                  <Field>
+                    <Textarea
+                      value={commentInputs[suggestion.id] || ''}
+                      onChange={(event) => handleCommentChange(suggestion.id, event.target.value)}
+                      placeholder="Ajouter un commentaire…"
+                      maxLength={500}
+                      rows={3}
+                      aria-label="Ajouter un commentaire"
+                    />
+                    <div className="flex items-center justify-between">
+                      <FieldDescription>{(commentInputs[suggestion.id] || '').length}/500</FieldDescription>
+                      <Button
+                        type="button"
+                        onClick={() => handleCommentSubmit(suggestion.id)}
+                        disabled={commentSubmitting[suggestion.id] || !(commentInputs[suggestion.id] || '').trim()}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {commentSubmitting[suggestion.id] ? <Spinner /> : null}
+                        Commenter
+                      </Button>
                     </div>
-                  )}
-
-                  {/* Comments */}
-                  <div className={cn("mt-6 border-t border-border/30 pt-4", SPACING.CARD_SPACING)}>
-                    <div className={cn("flex items-center justify-between", TYPOGRAPHY.XS, "text-muted-foreground/60")}>
-                      <span>Commentaires ({suggestion.comments.length})</span>
-                    </div>
-
-                    {suggestion.comments.length > 0 && (
-                      <div className="space-y-3">
-                        {suggestion.comments.map((comment) => (
-                          <Card key={comment.id}>
-                            <CardContent className="p-3">
-                              <div className="flex gap-3">
-                                <div className="min-w-0 flex-1">
-                                  <div className={cn("flex items-center gap-2", TYPOGRAPHY.XS, "text-muted-foreground/70")}>
-                                    <span
-                                      style={
-                                        comment.user.usernameColor
-                                          ? { color: comment.user.usernameColor }
-                                          : undefined
-                                      }
-                                    >
-                                      {comment.user.username}
-                                    </span>
-                                    <span>·</span>
-                                    <span>{formatDateTime(comment.createdAt)}</span>
-                                  </div>
-                                  <p className={cn(TYPOGRAPHY.SMALL, "text-muted-foreground mt-1 whitespace-pre-wrap break-words")}>
-                                    {comment.content}
-                                  </p>
-                                </div>
-
-                                {(comment.user.id === user?.id || user?.isAdmin) && (
-                                  <Button
-                                    onClick={() => handleCommentDelete(suggestion.id, comment.id)}
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                    disabled={commentDeleting[comment.id]}
-                                    aria-label="Supprimer le commentaire"
-                                  >
-                                    {commentDeleting[comment.id] ? (
-                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    ) : (
-                                      <X className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="space-y-2">
-                      <Textarea
-                        value={commentInputs[suggestion.id] || ''}
-                        onChange={(e) => handleCommentChange(suggestion.id, e.target.value)}
-                        placeholder="Ajouter un commentaire..."
-                        maxLength={500}
-                        className="min-h-[80px] bg-transparent border-border/50 resize-none"
-                      />
-                      <div className={cn("flex items-center justify-between", TYPOGRAPHY.XS, "text-muted-foreground/60")}>
-                        <span>{(commentInputs[suggestion.id] || '').length}/500</span>
-                        <Button
-                          type="button"
-                          onClick={() => handleCommentSubmit(suggestion.id)}
-                          disabled={
-                            commentSubmitting[suggestion.id] ||
-                            !(commentInputs[suggestion.id] || '').trim()
-                          }
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                        >
-                          {commentSubmitting[suggestion.id] ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                          ) : null}
-                          Commenter
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </div>
+                  </Field>
+                </section>
+              </CardContent>
+              <CardFooter className="text-xs text-muted-foreground">
+                {suggestion.upvotes} pour · {suggestion.downvotes} contre
+              </CardFooter>
             </Card>
-            );
-          })}
-        </div>
-      );
-    };
+          );
+        })}
+      </div>
+    );
+  };
 
   if (loading) {
     return (
-      <div className="w-full px-4 pb-6 lg:px-6 lg:pb-8 space-y-8">
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="w-1 h-8 bg-foreground/20 animate-pulse" />
+      <PageShell>
+        <PageHeader title="Suggestions" description="Proposez des idées et votez pour celles de la communauté." />
+        <div className="flex flex-col gap-6">
+          {Array.from({ length: 3 }, (_, index) => (
+            <Skeleton key={index} className="h-56 w-full" />
+          ))}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
-    return (
-      <>
-        <PageShell>
-        <div className={SPACING.PAGE_CONTENT}>
-          {/* Tab Selector */}
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'pending' | 'done' | 'rejected')}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <TabsList className="h-auto flex-wrap">
-                <TabsTrigger value="pending">
-                  Suggestions ({filteredPendingSuggestions.length})
-                </TabsTrigger>
-                <TabsTrigger value="done">
-                  Réalisées ({filteredDoneSuggestions.length})
-                </TabsTrigger>
-                <TabsTrigger value="rejected">
-                  Non réalisées ({filteredRejectedSuggestions.length})
-                </TabsTrigger>
-              </TabsList>
+  const searchPlaceholder =
+    activeTab === 'pending' ? 'Rechercher une suggestion' : activeTab === 'done' ? 'Rechercher une réalisation' : 'Rechercher une suggestion non réalisée';
 
-              <div className="flex w-full flex-col gap-3 lg:w-auto lg:flex-row">
-                <Input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder={
-                    activeTab === 'pending'
-                      ? 'Rechercher une suggestion'
-                      : activeTab === 'done'
-                        ? 'Rechercher une réalisation'
-                        : 'Rechercher une suggestion non réalisée'
-                  }
-                  className="lg:w-[250px]"
-                />
+  return (
+    <>
+      <PageShell>
+        <PageHeader
+          title="Suggestions"
+          description="Proposez des idées et votez pour celles de la communauté."
+          actions={
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus />
+              Créer
+            </Button>
+          }
+        />
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="justify-between gap-2">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <SlidersHorizontal className="h-4 w-4 shrink-0" />
-                        <span className="truncate">filtres ({activeFiltersCount})</span>
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-72">
-                    <DropdownMenuLabel>Tri</DropdownMenuLabel>
-                    {activeTab === 'pending' ? (
-                      <DropdownMenuRadioGroup value={pendingSortBy} onValueChange={(value) => setPendingSortBy(value as PendingSortOption)}>
-                        <DropdownMenuRadioItem value="trending">Tendance</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="newest">Plus récentes</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="top">Mieux votées</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="discussed">Plus discutées</DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    ) : activeTab === 'done' ? (
-                      <DropdownMenuRadioGroup value={doneSortBy} onValueChange={(value) => setDoneSortBy(value as DoneSortOption)}>
-                        <DropdownMenuRadioItem value="recently-done">Réalisées récemment</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="best-rated">Mieux notées</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="most-rated">Plus notées</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="discussed">Plus discutées</DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    ) : (
-                      <DropdownMenuRadioGroup value={rejectedSortBy} onValueChange={(value) => setRejectedSortBy(value as RejectedSortOption)}>
-                        <DropdownMenuRadioItem value="recently-updated">Mises à jour récemment</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="newest">Plus récentes</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="top">Mieux votées</DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="discussed">Plus discutées</DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    )}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'pending' | 'done' | 'rejected')} className="gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TabsList>
+              <TabsTrigger value="pending">Suggestions ({filteredPendingSuggestions.length})</TabsTrigger>
+              <TabsTrigger value="done">Réalisées ({filteredDoneSuggestions.length})</TabsTrigger>
+              <TabsTrigger value="rejected">Non réalisées ({filteredRejectedSuggestions.length})</TabsTrigger>
+            </TabsList>
 
-                    <DropdownMenuSeparator />
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>Participation</DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-56">
-                        <DropdownMenuRadioGroup value={participationFilter} onValueChange={(value) => setParticipationFilter(value as ParticipationFilter)}>
-                          <DropdownMenuRadioItem value="all">Toute la communauté</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="mine">Mes suggestions</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="voted">J&apos;ai voté</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="commented">J&apos;ai commenté</DropdownMenuRadioItem>
+            <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row">
+              <InputGroup className="lg:w-64">
+                <InputGroupAddon>
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={searchPlaceholder} />
+              </InputGroup>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <SlidersHorizontal />
+                    Filtres ({activeFiltersCount})
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuLabel>Tri</DropdownMenuLabel>
+                  {activeTab === 'pending' ? (
+                    <DropdownMenuRadioGroup value={pendingSortBy} onValueChange={(value) => setPendingSortBy(value as PendingSortOption)}>
+                      <DropdownMenuRadioItem value="trending">Tendance</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="newest">Plus récentes</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="top">Mieux votées</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="discussed">Plus discutées</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  ) : activeTab === 'done' ? (
+                    <DropdownMenuRadioGroup value={doneSortBy} onValueChange={(value) => setDoneSortBy(value as DoneSortOption)}>
+                      <DropdownMenuRadioItem value="recently-done">Réalisées récemment</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="best-rated">Mieux notées</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="most-rated">Plus notées</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="discussed">Plus discutées</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  ) : (
+                    <DropdownMenuRadioGroup value={rejectedSortBy} onValueChange={(value) => setRejectedSortBy(value as RejectedSortOption)}>
+                      <DropdownMenuRadioItem value="recently-updated">Mises à jour récemment</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="newest">Plus récentes</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="top">Mieux votées</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="discussed">Plus discutées</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  )}
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>Participation</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-56">
+                      <DropdownMenuRadioGroup value={participationFilter} onValueChange={(value) => setParticipationFilter(value as ParticipationFilter)}>
+                        <DropdownMenuRadioItem value="all">Toute la communauté</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="mine">Mes suggestions</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="voted">J&apos;ai voté</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="commented">J&apos;ai commenté</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>{activeTab === 'done' ? 'Retours' : 'Contenu'}</DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-56">
+                      {activeTab === 'pending' ? (
+                        <DropdownMenuRadioGroup value={pendingContentFilter} onValueChange={(value) => setPendingContentFilter(value as ContentFilter)}>
+                          <DropdownMenuRadioItem value="all">Tous les formats</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="with-image">Avec image</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="without-image">Sans image</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="boosted">Nouvelles en avant</DropdownMenuRadioItem>
                         </DropdownMenuRadioGroup>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
+                      ) : activeTab === 'done' ? (
+                        <DropdownMenuRadioGroup value={doneFeedbackFilter} onValueChange={(value) => setDoneFeedbackFilter(value as FeedbackFilter)}>
+                          <DropdownMenuRadioItem value="all">Tous les retours</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="rated">Déjà notées</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="to-rate">À noter</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="with-comments">Avec commentaires</DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      ) : (
+                        <DropdownMenuRadioGroup value={rejectedFilter} onValueChange={(value) => setRejectedFilter(value as RejectedFilter)}>
+                          <DropdownMenuRadioItem value="all">Toutes</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="with-image">Avec image</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="without-image">Sans image</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="with-comments">Avec commentaires</DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>{activeTab === 'done' ? 'Retours' : 'Contenu'}</DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="w-56">
-                        {activeTab === 'pending' ? (
-                          <DropdownMenuRadioGroup value={pendingContentFilter} onValueChange={(value) => setPendingContentFilter(value as ContentFilter)}>
-                            <DropdownMenuRadioItem value="all">Tous les formats</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="with-image">Avec image</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="without-image">Sans image</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="boosted">Nouvelles en avant</DropdownMenuRadioItem>
-                          </DropdownMenuRadioGroup>
-                        ) : activeTab === 'done' ? (
-                          <DropdownMenuRadioGroup value={doneFeedbackFilter} onValueChange={(value) => setDoneFeedbackFilter(value as FeedbackFilter)}>
-                            <DropdownMenuRadioItem value="all">Tous les retours</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="rated">Déjà notées</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="to-rate">À noter</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="with-comments">Avec commentaires</DropdownMenuRadioItem>
-                          </DropdownMenuRadioGroup>
-                        ) : (
-                          <DropdownMenuRadioGroup value={rejectedFilter} onValueChange={(value) => setRejectedFilter(value as RejectedFilter)}>
-                            <DropdownMenuRadioItem value="all">Toutes</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="with-image">Avec image</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="without-image">Sans image</DropdownMenuRadioItem>
-                            <DropdownMenuRadioItem value="with-comments">Avec commentaires</DropdownMenuRadioItem>
-                          </DropdownMenuRadioGroup>
-                        )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
-
-                <Button onClick={() => setDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Créer
-                </Button>
-              </div>
+              <ToggleGroup type="single" variant="outline" value={viewMode} onValueChange={(value) => value && setViewMode(value as SuggestionsViewMode)}>
+                <ToggleGroupItem value="list" aria-label="Vue liste">
+                  <List />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="grid" aria-label="Vue grille">
+                  <LayoutGrid />
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
+          </div>
 
-            {/* Content */}
-            <TabsContent value="pending" className={SPACING.SECTION_SPACING}>
-              {renderSuggestions(filteredPendingSuggestions, {
-                showRatings: false,
-                emptyTitle: 'Aucune suggestion active',
-                emptySubtitle: 'Soyez le premier à proposer une idée !',
-              })}
-            </TabsContent>
-            <TabsContent value="done" className={SPACING.SECTION_SPACING}>
-              {renderSuggestions(filteredDoneSuggestions, {
-                showRatings: true,
-                emptyTitle: 'Aucune suggestion réalisée pour le moment',
-                emptySubtitle: 'Revenez plus tard pour noter les mises à jour !',
-              })}
-            </TabsContent>
-            <TabsContent value="rejected" className={SPACING.SECTION_SPACING}>
-              {renderSuggestions(filteredRejectedSuggestions, {
-                showRatings: false,
-                emptyTitle: 'Aucune suggestion non réalisée',
-                emptySubtitle: 'Les suggestions refusées apparaîtront ici.',
-              })}
-            </TabsContent>
-          </Tabs>
-        </div>
+          <TabsContent value="pending">
+            {renderSuggestions(filteredPendingSuggestions, {
+              showRatings: false,
+              emptyTitle: 'Aucune suggestion active',
+              emptySubtitle: 'Soyez le premier à proposer une idée !',
+            })}
+          </TabsContent>
+          <TabsContent value="done">
+            {renderSuggestions(filteredDoneSuggestions, {
+              showRatings: true,
+              emptyTitle: 'Aucune suggestion réalisée pour le moment',
+              emptySubtitle: 'Revenez plus tard pour noter les mises à jour !',
+            })}
+          </TabsContent>
+          <TabsContent value="rejected">
+            {renderSuggestions(filteredRejectedSuggestions, {
+              showRatings: false,
+              emptyTitle: 'Aucune suggestion non réalisée',
+              emptySubtitle: 'Les suggestions refusées apparaîtront ici.',
+            })}
+          </TabsContent>
+        </Tabs>
       </PageShell>
 
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open);
-          if (!open) {
-            setImageUrl('');
-          }
+          if (!open) setImageUrl('');
         }}
       >
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className={TYPOGRAPHY.H4}>Nouvelle suggestion</DialogTitle>
+            <DialogTitle>Nouvelle suggestion</DialogTitle>
+            <DialogDescription>Décrivez votre idée pour que la communauté puisse voter.</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Input
-                placeholder="Titre de la suggestion"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={100}
-                className="h-12 bg-transparent border-border/50"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Textarea
-                placeholder="Description détaillée..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={2000}
-                className="min-h-[120px] bg-transparent border-border/50 resize-none"
-                required
-              />
-              <p className={cn(TYPOGRAPHY.XS, "text-muted-foreground/60 text-right tabular-nums")}>
-                {description.length}/2000
-              </p>
-            </div>
-            <div className="space-y-2">
-              <ImagePicker
-                value={imageUrl}
-                onChange={setImageUrl}
-                uploadFn={uploadSuggestionImageFile}
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                onClick={() => setDialogOpen(false)}
-                variant="outline"
-              >
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="suggestion-title">Titre</FieldLabel>
+                <Input id="suggestion-title" placeholder="Titre de la suggestion" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} required />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="suggestion-description">Description</FieldLabel>
+                <Textarea
+                  id="suggestion-description"
+                  placeholder="Description détaillée…"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  maxLength={2000}
+                  rows={5}
+                  required
+                />
+                <FieldDescription className="text-right tabular-nums">{description.length}/2000</FieldDescription>
+              </Field>
+              <Field>
+                <FieldLabel>Image (optionnel)</FieldLabel>
+                <ImagePicker value={imageUrl} onChange={setImageUrl} uploadFn={uploadSuggestionImageFile} />
+              </Field>
+            </FieldGroup>
+            <DialogFooter>
+              <Button type="button" onClick={() => setDialogOpen(false)} variant="outline">
                 Annuler
               </Button>
-              <Button
-                type="submit"
-                disabled={submitting || !title.trim() || !description.trim()}
-              >
-                {submitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
+              <Button type="submit" disabled={submitting || !title.trim() || !description.trim()}>
+                {submitting ? <Spinner /> : null}
                 Publier
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

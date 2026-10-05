@@ -1,18 +1,22 @@
-﻿import { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Progress } from '../components/ui/progress';
-import { TYPOGRAPHY, SPACING } from '@/lib/design-system';
-import { questsApi, passApi, DailyQuest, UserDailyQuest, type PassStatus, type PassRewardEntry } from '../services/api';
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Gift, LayoutGrid, List, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { questsApi, passApi, DailyQuest, UserDailyQuest, type PassStatus, type PassRewardEntry } from '../services/api';
 import { useRewardQueue, type RewardItem } from '../contexts/RewardQueueContext';
-import { CheckCircle2, Circle, Gift, Search } from 'lucide-react';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemSeparator, ItemTitle } from '@/components/ui/item';
+import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ViewModeSwitcher } from '@/components/ui/view-mode-switcher';
-import { PageShell } from '@/components/layout/PageShell';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { t } from '@/lib/i18n';
 
 type QuestSortMode = 'recommended' | 'reward-desc' | 'target-asc' | 'title-asc';
@@ -24,6 +28,21 @@ const QUEST_SORT_OPTIONS: Array<{ value: QuestSortMode; label: string }> = [
   { value: 'target-asc', label: t('quests_sort_target_asc') },
   { value: 'title-asc', label: t('quests_sort_title_asc') },
 ];
+
+function Rewards({ money, aura }: { money: number; aura: number }) {
+  return (
+    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+      <span className="flex items-center gap-1 font-medium">
+        <CurrencyIcon type="money" className="size-4" />
+        {money}
+      </span>
+      <span className="flex items-center gap-1 font-medium">
+        <CurrencyIcon type="aura" className="size-4" />
+        {aura}
+      </span>
+    </div>
+  );
+}
 
 export default function Quests() {
   const [dailyQuests, setDailyQuests] = useState<DailyQuest[]>([]);
@@ -233,20 +252,187 @@ export default function Quests() {
       });
   }, [dailyQuests, normalizedSearch, sortMode]);
 
-  const layoutClassName = viewMode === 'grid'
-    ? 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3'
-    : 'space-y-4';
+  const gridClassName = 'grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3';
+
+  const renderMyQuests = () => {
+    if (viewMode === 'list') {
+      return (
+        <Card className="py-2">
+          <ItemGroup>
+            {displayedMyQuests.map((userQuest, index) => {
+              const progress = userQuest.progress?.currentValue || 0;
+              const target = userQuest.quest.targetValue;
+              const isReady = userQuest.isCompleted && !userQuest.isClaimed;
+              return (
+                <div key={userQuest.id}>
+                  {index > 0 ? <ItemSeparator /> : null}
+                  <Item>
+                    <ItemContent>
+                      <ItemTitle>
+                        {userQuest.quest.title}
+                        {isReady ? <Badge variant="success">{t('quests_completed')}</Badge> : null}
+                        {userQuest.isClaimed ? <Badge variant="secondary">{t('quests_claimed')}</Badge> : null}
+                      </ItemTitle>
+                      <ItemDescription>{userQuest.quest.description}</ItemDescription>
+                      <div className="flex items-center gap-3 pt-1">
+                        <Progress value={Math.min((progress / target) * 100, 100)} className="max-w-xs" />
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {progress} / {target}
+                        </span>
+                      </div>
+                    </ItemContent>
+                    <ItemActions>
+                      <Rewards money={userQuest.quest.moneyReward} aura={userQuest.quest.auraReward} />
+                      {isReady ? (
+                        <Button size="sm" onClick={() => handleClaim([userQuest.id])} disabled={claiming}>
+                          {t('quests_claim')}
+                        </Button>
+                      ) : null}
+                    </ItemActions>
+                  </Item>
+                </div>
+              );
+            })}
+          </ItemGroup>
+        </Card>
+      );
+    }
+
+    return (
+      <div className={gridClassName}>
+        {displayedMyQuests.map((userQuest) => {
+          const progress = userQuest.progress?.currentValue || 0;
+          const target = userQuest.quest.targetValue;
+          const isReady = userQuest.isCompleted && !userQuest.isClaimed;
+          return (
+            <Card key={userQuest.id} className={isReady ? 'border-success' : undefined}>
+              <CardHeader>
+                <CardTitle>{userQuest.quest.title}</CardTitle>
+                <CardDescription>{userQuest.quest.description}</CardDescription>
+                {isReady || userQuest.isClaimed ? (
+                  <CardAction>
+                    {isReady ? (
+                      <Badge variant="success">
+                        <CheckCircle2 />
+                        {t('quests_completed')}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">
+                        <CheckCircle2 />
+                        {t('quests_claimed')}
+                      </Badge>
+                    )}
+                  </CardAction>
+                ) : null}
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{t('quests_progression')}</span>
+                    <span className="font-semibold tabular-nums">
+                      {progress} / {target}
+                    </span>
+                  </div>
+                  <Progress value={Math.min((progress / target) * 100, 100)} />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <Rewards money={userQuest.quest.moneyReward} aura={userQuest.quest.auraReward} />
+                  {isReady ? (
+                    <Button size="sm" onClick={() => handleClaim([userQuest.id])} disabled={claiming}>
+                      {t('quests_claim')}
+                    </Button>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderDailyQuests = () => {
+    if (viewMode === 'list') {
+      return (
+        <Card className="py-2">
+          <ItemGroup>
+            {displayedDailyQuests.map((quest, index) => {
+              const isSelected = selectedQuestIds.includes(quest.id);
+              return (
+                <div key={quest.id}>
+                  {index > 0 ? <ItemSeparator /> : null}
+                  <Item asChild variant={isSelected ? 'muted' : 'default'}>
+                    <button type="button" aria-pressed={isSelected} onClick={() => handleSelectQuest(quest.id)} className="text-left">
+                      <Checkbox checked={isSelected} aria-hidden tabIndex={-1} />
+                      <ItemContent>
+                        <ItemTitle>{quest.title}</ItemTitle>
+                        <ItemDescription>{quest.description}</ItemDescription>
+                      </ItemContent>
+                      <ItemActions>
+                        <Rewards money={quest.moneyReward} aura={quest.auraReward} />
+                      </ItemActions>
+                    </button>
+                  </Item>
+                </div>
+              );
+            })}
+          </ItemGroup>
+        </Card>
+      );
+    }
+
+    return (
+      <div className={gridClassName}>
+        {displayedDailyQuests.map((quest) => {
+          const isSelected = selectedQuestIds.includes(quest.id);
+          return (
+            <Card
+              key={quest.id}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
+              className={isSelected ? 'cursor-pointer border-primary ring-2 ring-primary' : 'cursor-pointer transition-colors hover:bg-accent/40'}
+              onClick={() => handleSelectQuest(quest.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  handleSelectQuest(quest.id);
+                }
+              }}
+            >
+              <CardHeader>
+                <CardTitle>{quest.title}</CardTitle>
+                <CardDescription>{quest.description}</CardDescription>
+                <CardAction>
+                  <Checkbox checked={isSelected} aria-hidden tabIndex={-1} />
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                <Rewards money={quest.moneyReward} aura={quest.auraReward} />
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const noMatch = (
+    <Empty className="border">
+      <EmptyHeader>
+        <EmptyDescription>{t('quests_no_match')}</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  );
 
   if (loading) {
     return (
       <PageShell>
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-48 bg-muted rounded"></div>
-            ))}
-          </div>
+        <PageHeader title="Quêtes" description="Relevez des défis quotidiens et gagnez des récompenses." />
+        <div className={gridClassName}>
+          {Array.from({ length: 6 }, (_, index) => (
+            <Skeleton key={index} className="h-48" />
+          ))}
         </div>
       </PageShell>
     );
@@ -254,84 +440,64 @@ export default function Quests() {
 
   return (
     <PageShell>
+      <PageHeader title="Quêtes" description="Relevez des défis quotidiens et gagnez des récompenses." />
+
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Quetes + boite quotidienne</p>
-              <p className={TYPOGRAPHY.SMALL}>
-                Streak: {passStatus?.streak ?? 0} · Reset dans {passCountdown}
-              </p>
-            </div>
-            <Button
-              onClick={handleClaimDailyBox}
-              disabled={passLoading || passClaiming || passStatus?.status === 'claimed'}
-              className="w-full sm:w-auto"
-            >
-              <Gift className="mr-2 h-4 w-4" />
-              {passLoading
-                ? 'Loading...'
-                : passStatus?.status === 'claimed'
-                  ? 'Already claimed today'
-                  : passClaiming
-                    ? 'Claiming...'
-                    : 'Claim your daily box'}
+        <CardHeader>
+          <CardTitle>Boîte quotidienne</CardTitle>
+          <CardDescription>
+            Série : {passStatus?.streak ?? 0} · Réinitialisation dans {passCountdown}
+          </CardDescription>
+          <CardAction>
+            <Button onClick={handleClaimDailyBox} disabled={passLoading || passClaiming || passStatus?.status === 'claimed'}>
+              {passLoading || passClaiming ? <Spinner /> : <Gift />}
+              {passLoading ? 'Chargement…' : passStatus?.status === 'claimed' ? "Déjà récupérée aujourd'hui" : passClaiming ? 'Ouverture…' : 'Récupérer la boîte'}
             </Button>
-          </div>
-        </CardContent>
+          </CardAction>
+        </CardHeader>
       </Card>
 
-      {(completedQuests.length > 0 || canSelectNewQuests) && (
+      {completedQuests.length > 0 || canSelectNewQuests ? (
         <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              {completedQuests.length > 0 && (
-                <>
-                  <span className={TYPOGRAPHY.SMALL}>
-                    {completedQuests.length} {t('quests_rewards_to_claim')}
-                  </span>
-                  <Button
-                    onClick={() => handleClaim(completedQuests.map((q) => q.id))}
-                    disabled={claiming}
-                    className="w-full sm:w-auto"
-                  >
+          <CardHeader>
+            {completedQuests.length > 0 ? (
+              <>
+                <CardTitle>
+                  {completedQuests.length} {t('quests_rewards_to_claim')}
+                </CardTitle>
+                <CardAction>
+                  <Button onClick={() => handleClaim(completedQuests.map((quest) => quest.id))} disabled={claiming}>
+                    {claiming ? <Spinner /> : null}
                     {t('quests_claim_all')} ({completedQuests.length})
                   </Button>
-                </>
-              )}
-
-              {canSelectNewQuests && (
-                <>
-                  <span className={TYPOGRAPHY.SMALL}>
-                    {selectedQuestIds.length} / 3 {t('quests_selected_count')}
-                  </span>
-                  <Button
-                    onClick={handleConfirmSelection}
-                    disabled={selectedQuestIds.length !== 3 || selecting}
-                    className="w-full sm:w-auto"
-                  >
+                </CardAction>
+              </>
+            ) : (
+              <>
+                <CardTitle>
+                  {selectedQuestIds.length} / 3 {t('quests_selected_count')}
+                </CardTitle>
+                <CardAction>
+                  <Button onClick={handleConfirmSelection} disabled={selectedQuestIds.length !== 3 || selecting}>
+                    {selecting ? <Spinner /> : null}
                     {selecting ? t('quests_selection_in_progress') : t('quests_confirm_selection')}
                   </Button>
-                </>
-              )}
-            </div>
-          </CardContent>
+                </CardAction>
+              </>
+            )}
+          </CardHeader>
         </Card>
-      )}
+      ) : null}
 
-      {(hasSelectedQuests || canSelectNewQuests) && (
+      {hasSelectedQuests || canSelectNewQuests ? (
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={t('quests_search_placeholder')}
-              className="pl-9"
-            />
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:w-full lg:w-auto">
+          <InputGroup className="lg:max-w-md">
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={t('quests_search_placeholder')} />
+          </InputGroup>
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Select value={sortMode} onValueChange={(value) => setSortMode(value as QuestSortMode)}>
               <SelectTrigger className="w-full sm:w-56">
                 <SelectValue placeholder={t('quests_sort_placeholder')} />
@@ -344,160 +510,37 @@ export default function Quests() {
                 ))}
               </SelectContent>
             </Select>
-
-            <ViewModeSwitcher value={viewMode} onChange={(value) => setViewMode(value as QuestViewMode)} />
+            <ToggleGroup type="single" variant="outline" value={viewMode} onValueChange={(value) => value && setViewMode(value as QuestViewMode)}>
+              <ToggleGroupItem value="list" aria-label="Vue liste">
+                <List />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="grid" aria-label="Vue grille">
+                <LayoutGrid />
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {hasSelectedQuests && (
-        <div className={SPACING.CARD_SPACING}>
-          <h2 className={TYPOGRAPHY.H3}>{t('quests_my_quests')}</h2>
-          {displayedMyQuests.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className={TYPOGRAPHY.MUTED}>{t('quests_no_match')}</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className={layoutClassName}>
-            {displayedMyQuests.map((userQuest) => {
-              const progress = userQuest.progress?.currentValue || 0;
-              const target = userQuest.quest.targetValue;
-              const progressPercent = Math.min((progress / target) * 100, 100);
-              const isCompleted = userQuest.isCompleted;
-              const isClaimed = userQuest.isClaimed;
+      {hasSelectedQuests ? (
+        <section className="flex flex-col gap-4">
+          <h2 className="text-lg font-semibold tracking-tight">{t('quests_my_quests')}</h2>
+          {displayedMyQuests.length === 0 ? noMatch : renderMyQuests()}
+        </section>
+      ) : null}
 
-              return (
-                <Card key={userQuest.id} className={isCompleted && !isClaimed ? 'border-success' : ''}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className={TYPOGRAPHY.H5}>{userQuest.quest.title}</CardTitle>
-                      </div>
-                      {isCompleted && !isClaimed && (
-                        <Badge variant="default" className="bg-success">
-                          <CheckCircle2 className="w-4 h-4 mr-1" />
-                          {t('quests_completed')}
-                        </Badge>
-                      )}
-                      {isClaimed && (
-                        <Badge variant="secondary">
-                          <CheckCircle2 className="w-4 h-4 mr-1" />
-                          {t('quests_claimed')}
-                        </Badge>
-                      )}
-                      {isCompleted && !isClaimed && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleClaim([userQuest.id])}
-                          disabled={claiming}
-                        >
-                          {t('quests_claim')}
-                        </Button>
-                      )}
-                    </div>
-                    <CardDescription>{userQuest.quest.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{t('quests_progression')}</span>
-                        <span className="font-semibold">
-                          {progress} / {target}
-                        </span>
-                      </div>
-                      <Progress value={progressPercent} className="h-2" />
-                    </div>
+      {canSelectNewQuests ? (
+        <section className="flex flex-col gap-4">{displayedDailyQuests.length === 0 ? noMatch : renderDailyQuests()}</section>
+      ) : null}
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <CurrencyIcon type="money" className="w-4 h-4" />
-                          <span className="font-semibold">{userQuest.quest.moneyReward}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <CurrencyIcon type="aura" className="w-4 h-4" />
-                          <span className="font-semibold">{userQuest.quest.auraReward}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {canSelectNewQuests && (
-        <div className={SPACING.CARD_SPACING}>
-          {displayedDailyQuests.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center">
-                <p className={TYPOGRAPHY.MUTED}>{t('quests_no_match')}</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className={layoutClassName}>
-            {displayedDailyQuests.map((quest) => {
-              const isSelected = selectedQuestIds.includes(quest.id);
-
-              return (
-                <Card
-                  key={quest.id}
-                  className={`cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-primary ring-2 ring-primary'
-                      : 'hover:border-primary/50'
-                  }`}
-                  onClick={() => handleSelectQuest(quest.id)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className={TYPOGRAPHY.H5}>{quest.title}</CardTitle>
-                      </div>
-                      {isSelected ? (
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
-                      ) : (
-                        <Circle className="w-5 h-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <CardDescription>{quest.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <CurrencyIcon type="money" className="w-4 h-4" />
-                          <span className="font-semibold">{quest.moneyReward}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <CurrencyIcon type="aura" className="w-4 h-4" />
-                          <span className="font-semibold">{quest.auraReward}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {!hasSelectedQuests && !canSelectNewQuests && (
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className={TYPOGRAPHY.MUTED}>
-              {t('quests_no_available')}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {!hasSelectedQuests && !canSelectNewQuests ? (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Aucune quête</EmptyTitle>
+            <EmptyDescription>{t('quests_no_available')}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : null}
     </PageShell>
   );
 }

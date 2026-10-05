@@ -1,69 +1,30 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { forumApi, ForumSubreddit, ForumPost } from '@/services/api';
-import { PageShell } from '@/components/layout/PageShell';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import {
-  ChevronUp,
-  ChevronDown,
-  MessageSquare,
-  Plus,
-  Users,
-  ExternalLink,
-  Trash2,
-  ArrowLeft,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowLeft, ExternalLink, MessageSquare, Plus, Trash2, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
+import { forumApi, ForumSubreddit, ForumPost } from '@/services/api';
+import { VoteButtons } from '@/components/forum/VoteButtons';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-// ─── Vote buttons ────────────────────────────────────────────────────────────
-
-function VoteButtons({
-  score,
-  userVote,
-  onVote,
-  vertical = true,
-}: {
-  score: number;
-  userVote: number;
-  onVote: (v: number) => void;
-  vertical?: boolean;
-}) {
-  return (
-    <div className={cn('flex items-center gap-1', vertical ? 'flex-col' : 'flex-row')}>
-      <button
-        onClick={() => onVote(userVote === 1 ? 0 : 1)}
-        className={cn(
-          'rounded p-1 transition-colors hover:bg-muted',
-          userVote === 1 ? 'text-warning' : 'text-muted-foreground'
-        )}
-      >
-        <ChevronUp className="h-5 w-5" />
-      </button>
-      <span className={cn('text-sm font-bold', userVote === 1 ? 'text-warning' : userVote === -1 ? 'text-primary' : 'text-foreground')}>
-        {score}
-      </span>
-      <button
-        onClick={() => onVote(userVote === -1 ? 0 : -1)}
-        className={cn(
-          'rounded p-1 transition-colors hover:bg-muted',
-          userVote === -1 ? 'text-primary' : 'text-muted-foreground'
-        )}
-      >
-        <ChevronDown className="h-5 w-5" />
-      </button>
-    </div>
-  );
-}
-
-// ─── Post card ───────────────────────────────────────────────────────────────
+// ─── Post card ───────────────────────────────────────────────────────────
 
 function PostCard({
   post,
@@ -82,86 +43,57 @@ function PostCard({
 }) {
   const navigate = useNavigate();
   const age = formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: fr });
+  const postPath = `/forum/c/${post.subreddit.name}/post/${post.id}`;
 
   return (
-    <div className="flex gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-border/80">
-      {/* Vote column */}
-      <VoteButtons
-        score={post.score}
-        userVote={post.userVote}
-        onVote={(v) => onVote(post.id, v)}
-        vertical
-      />
-
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-          {showSubreddit && (
-            <Link
-              to={`/forum/c/${post.subreddit.name}`}
-              className="font-semibold text-foreground hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
+    <Card>
+      <CardHeader>
+        <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {showSubreddit ? (
+            <Link to={`/forum/c/${post.subreddit.name}`} className="font-semibold text-foreground hover:underline">
               #{post.subreddit.name}
             </Link>
-          )}
+          ) : null}
           <span>
             posté par{' '}
-            <Link
-              to={`/profile/${post.author.id}`}
-              className="hover:underline"
-              onClick={(e) => e.stopPropagation()}
-              style={{ color: post.author.usernameColor ?? undefined }}
-            >
+            <Link to={`/profile/${post.author.id}`} className="hover:underline" style={{ color: post.author.usernameColor ?? undefined }}>
               @{post.author.username}
             </Link>
           </span>
           <span>{age}</span>
-        </div>
-
-        <button
-          className="mt-1 w-full text-left"
-          onClick={() => navigate(`/forum/c/${post.subreddit.name}/post/${post.id}`)}
-        >
-          <h3 className="text-sm font-semibold leading-snug">{post.title}</h3>
-          {post.type === 'link' && post.url && (
-            <a
-              href={post.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink className="h-3 w-3" />
+        </CardDescription>
+        <CardTitle>
+          <button type="button" className="text-left hover:underline" onClick={() => navigate(postPath)}>
+            {post.title}
+          </button>
+        </CardTitle>
+      </CardHeader>
+      {(post.type === 'link' && post.url) || (post.type === 'text' && post.body) ? (
+        <CardContent>
+          {post.type === 'link' && post.url ? (
+            <a href={post.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm underline-offset-4 hover:underline">
+              <ExternalLink className="size-4" />
               {post.url}
             </a>
+          ) : (
+            <p className="line-clamp-3 text-sm text-muted-foreground">{post.body}</p>
           )}
-          {post.type === 'text' && post.body && (
-            <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">{post.body}</p>
-          )}
-        </button>
-
-        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-          <button
-            className="flex items-center gap-1 rounded px-2 py-1 hover:bg-muted"
-            onClick={() => navigate(`/forum/c/${post.subreddit.name}/post/${post.id}`)}
-          >
-            <MessageSquare className="h-4 w-4" />
-            {post.commentCount} commentaire{post.commentCount !== 1 ? 's' : ''}
-          </button>
-
-          {(post.author.id === currentUserId || isAdmin) && (
-            <button
-              className="flex items-center gap-1 rounded px-2 py-1 text-destructive hover:bg-destructive/10"
-              onClick={() => onDelete(post.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Supprimer
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+        </CardContent>
+      ) : null}
+      <CardFooter className="flex flex-wrap items-center gap-2">
+        <VoteButtons score={post.score} userVote={post.userVote} onVote={(value) => onVote(post.id, value)} />
+        <Button variant="ghost" size="sm" onClick={() => navigate(postPath)}>
+          <MessageSquare />
+          {post.commentCount} commentaire{post.commentCount !== 1 ? 's' : ''}
+        </Button>
+        {post.author.id === currentUserId || isAdmin ? (
+          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => onDelete(post.id)}>
+            <Trash2 />
+            Supprimer
+          </Button>
+        ) : null}
+      </CardFooter>
+    </Card>
   );
 }
 
@@ -222,74 +154,74 @@ function CreatePostDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-lg">
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Créer un post</DialogTitle>
+          <DialogDescription>Partagez un texte ou un lien avec la communauté.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          {/* forum selector */}
-          {!subredditName && (
-            <select
-              value={selectedSub}
-              onChange={(e) => setSelectedSub(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="">Choisir un forum...</option>
-              {subreddits.map((s) => (
-                <option key={s.id} value={s.name}>#{s.name}</option>
-              ))}
-            </select>
-          )}
+        <FieldGroup>
+          {!subredditName ? (
+            <Field>
+              <FieldLabel htmlFor="post-forum">Forum</FieldLabel>
+              <Select value={selectedSub} onValueChange={setSelectedSub}>
+                <SelectTrigger id="post-forum" className="w-full">
+                  <SelectValue placeholder="Choisir un forum…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {subreddits.map((sub) => (
+                    <SelectItem key={sub.id} value={sub.name}>
+                      #{sub.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          ) : null}
 
-          {/* Type tabs */}
-          <div className="flex rounded-md border">
-            <button
-              className={cn('flex-1 py-2 text-sm font-medium transition-colors', type === 'text' ? 'bg-muted' : 'hover:bg-muted/50')}
-              onClick={() => setType('text')}
-            >
+          <ToggleGroup type="single" variant="outline" value={type} onValueChange={(value) => value && setType(value as 'text' | 'link')} className="w-full">
+            <ToggleGroupItem value="text" className="flex-1">
               Texte
-            </button>
-            <button
-              className={cn('flex-1 py-2 text-sm font-medium transition-colors', type === 'link' ? 'bg-muted' : 'hover:bg-muted/50')}
-              onClick={() => setType('link')}
-            >
+            </ToggleGroupItem>
+            <ToggleGroupItem value="link" className="flex-1">
               Lien
-            </button>
-          </div>
+            </ToggleGroupItem>
+          </ToggleGroup>
 
-          <Input
-            placeholder="Titre"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            maxLength={300}
-          />
+          <Field>
+            <FieldLabel htmlFor="post-title">Titre</FieldLabel>
+            <Input id="post-title" placeholder="Titre" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={300} />
+          </Field>
 
           {type === 'text' ? (
-            <Textarea
-              placeholder="Texte (optionnel)"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={5}
-            />
+            <Field>
+              <FieldLabel htmlFor="post-body">Texte (optionnel)</FieldLabel>
+              <Textarea id="post-body" value={body} onChange={(event) => setBody(event.target.value)} rows={5} />
+            </Field>
           ) : (
-            <Input
-              placeholder="https://..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-            />
+            <Field>
+              <FieldLabel htmlFor="post-url">Lien</FieldLabel>
+              <Input id="post-url" placeholder="https://…" value={url} onChange={(event) => setUrl(event.target.value)} />
+            </Field>
           )}
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+        </FieldGroup>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose}>Annuler</Button>
-            <Button onClick={submit} disabled={loading || !title.trim() || !selectedSub}>
-              {loading ? 'Envoi...' : 'Publier'}
-            </Button>
-          </div>
-        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>
+            Annuler
+          </Button>
+          <Button onClick={submit} disabled={loading || !title.trim() || !selectedSub}>
+            {loading ? <Spinner /> : null}
+            Publier
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -334,41 +266,43 @@ function CreateSubredditDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Créer un forum</DialogTitle>
+          <DialogDescription>Créez un espace de discussion thématique.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Input
-              placeholder="Nom (ex: AuraTracker)"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={21}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">3–21 caractères, lettres, chiffres et underscores uniquement</p>
-          </div>
-          <Textarea
-            placeholder="Description du forum..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-          />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose}>Annuler</Button>
-            <Button onClick={submit} disabled={loading || !name.trim() || !description.trim()}>
-              {loading ? 'Création...' : 'Créer'}
-            </Button>
-          </div>
-        </div>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="forum-name">Nom</FieldLabel>
+            <Input id="forum-name" placeholder="Nom (ex : AuraTracker)" value={name} onChange={(event) => setName(event.target.value)} maxLength={21} />
+            <FieldDescription>3 à 21 caractères : lettres, chiffres et underscores uniquement.</FieldDescription>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="forum-description">Description</FieldLabel>
+            <Textarea id="forum-description" placeholder="Description du forum…" value={description} onChange={(event) => setDescription(event.target.value)} rows={3} />
+          </Field>
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+        </FieldGroup>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>
+            Annuler
+          </Button>
+          <Button onClick={submit} disabled={loading || !name.trim() || !description.trim()}>
+            {loading ? <Spinner /> : null}
+            Créer
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-// ─── Main page ───────────────────────────────────────────────────────────────
+// ─── Main page ───────────────────────────────────────────────────────────
 
 type SortMode = 'hot' | 'new' | 'top';
 
@@ -377,6 +311,32 @@ const SORT_LABELS = {
   new: 'Nouveau',
   top: 'Top',
 };
+
+function ForumLink({ sub, active, rank }: { sub: ForumSubreddit; active: boolean; rank?: number }) {
+  return (
+    <Item asChild size="sm" variant={active ? 'muted' : 'default'}>
+      <Link to={`/forum/c/${sub.name}`}>
+        {rank ? <span className="w-4 text-xs text-muted-foreground">{rank}</span> : null}
+        <ItemMedia>
+          <Avatar className="size-6">
+            <AvatarFallback className="text-xs">{sub.name[0].toUpperCase()}</AvatarFallback>
+          </Avatar>
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle className="truncate">#{sub.name}</ItemTitle>
+        </ItemContent>
+        {rank ? (
+          <ItemActions>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Users className="size-3" />
+              {sub.memberCount}
+            </span>
+          </ItemActions>
+        ) : null}
+      </Link>
+    </Item>
+  );
+}
 
 export default function Forum() {
   const { subredditName } = useParams<{ subredditName?: string }>();
@@ -486,204 +446,131 @@ export default function Forum() {
   const popularSubs = [...subreddits].sort((a, b) => b.memberCount - a.memberCount).slice(0, 10);
 
   return (
-    <PageShell size="wide" className="pb-10">
-      <div className="flex gap-6">
-        {/* ── Main feed ── */}
-        <div className="min-w-0 flex-1">
-          {/* forum header */}
-          {currentSub && (
-            <div className="mb-4 rounded-lg border bg-card p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning text-2xl font-bold text-white">
-                    {currentSub.icon ? (
-                      <span>{currentSub.icon}</span>
-                    ) : (
-                      currentSub.name[0].toUpperCase()
-                    )}
-                  </div>
-                  <div>
-                    <div className="mb-2">
-                      <button
-                        onClick={() => navigate('/forum')}
-                        className="flex items-center gap-2 rounded px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                        Tous les forums
-                      </button>
-                    </div>
-                    <h1 className="text-xl font-bold">#{currentSub.name}</h1>
-                    <p className="text-sm text-muted-foreground">{currentSub.description}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    {currentSub.memberCount.toLocaleString()}
-                  </span>
-                  <Button
-                    variant={currentSub.isJoined ? 'outline' : 'default'}
-                    size="sm"
-                    onClick={() => handleJoin(currentSub.name)}
-                  >
-                    {currentSub.isJoined ? 'Quitté' : 'Rejoindre'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Sort bar + Create post */}
-          <div className="mb-3 flex items-center gap-2">
-            <Tabs value={sort} onValueChange={(v) => setSort(v as SortMode)}>
-              <TabsList className="border-border/60 bg-muted/20">
-                {(Object.keys(SORT_LABELS) as SortMode[]).map((s) => (
-                  <TabsTrigger key={s} value={s} className="text-muted-foreground data-[state=active]:border-border/60 data-[state=active]:bg-background data-[state=active]:text-foreground">
-                    {SORT_LABELS[s]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-            <Button
-              size="sm"
-              className="ml-auto"
-              onClick={() => setShowCreatePost(true)}
-              disabled={!currentSub && subreddits.length === 0}
-            >
-              <Plus className="mr-1 h-4 w-4" />
+    <PageShell size="wide">
+      <PageHeader
+        title={currentSub ? `#${currentSub.name}` : 'Forum'}
+        description={currentSub ? currentSub.description : 'Discutez avec la communauté dans des forums thématiques.'}
+        actions={
+          <>
+            {currentSub ? (
+              <>
+                <Button variant="ghost" onClick={() => navigate('/forum')}>
+                  <ArrowLeft />
+                  Tous les forums
+                </Button>
+                <Badge variant="secondary">
+                  <Users />
+                  {currentSub.memberCount.toLocaleString()}
+                </Badge>
+                <Button variant={currentSub.isJoined ? 'outline' : 'default'} onClick={() => handleJoin(currentSub.name)}>
+                  {currentSub.isJoined ? 'Quitter' : 'Rejoindre'}
+                </Button>
+              </>
+            ) : null}
+            <Button onClick={() => setShowCreatePost(true)} disabled={!currentSub && subreddits.length === 0}>
+              <Plus />
               Nouveau post
             </Button>
-          </div>
+          </>
+        }
+      />
 
-          {/* Posts list */}
-          <div className="space-y-2">
-            {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                showSubreddit={!subredditName}
-                onVote={handleVote}
-                onDelete={handleDelete}
-                currentUserId={user!.id}
-                isAdmin={user!.isAdmin}
-              />
-            ))}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <Tabs value={sort} onValueChange={(value) => setSort(value as SortMode)}>
+            <TabsList>
+              {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
+                <TabsTrigger key={mode} value={mode}>
+                  {SORT_LABELS[mode]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
-            {loadingPosts && (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex gap-3 rounded-lg border bg-card p-3">
-                  <div className="flex flex-col items-center gap-1">
-                    <Skeleton className="h-5 w-5" />
-                    <Skeleton className="h-4 w-6" />
-                    <Skeleton className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-1/4" />
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-1/3" />
-                  </div>
-                </div>
-              ))
-            )}
+          {posts.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              showSubreddit={!subredditName}
+              onVote={handleVote}
+              onDelete={handleDelete}
+              currentUserId={user!.id}
+              isAdmin={user!.isAdmin}
+            />
+          ))}
 
-            {!loadingPosts && posts.length === 0 && (
-              <div className="rounded-lg border bg-card p-8 text-center">
-                <p className="text-muted-foreground">Aucun post pour l'instant.</p>
-                <Button className="mt-3" size="sm" onClick={() => setShowCreatePost(true)}>
-                  <Plus className="mr-1 h-4 w-4" />
+          {loadingPosts
+            ? Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-36 w-full" />)
+            : null}
+
+          {!loadingPosts && posts.length === 0 ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>Aucun post</EmptyTitle>
+                <EmptyDescription>Aucun post pour l&apos;instant.</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button size="sm" onClick={() => setShowCreatePost(true)}>
+                  <Plus />
                   Créer le premier post
                 </Button>
-              </div>
-            )}
+              </EmptyContent>
+            </Empty>
+          ) : null}
 
-            {hasMore && posts.length > 0 && !loadingPosts && (
-              <div className="flex justify-center pt-2">
-                <Button variant="outline" size="sm" onClick={loadMore}>
-                  Charger plus
-                </Button>
-              </div>
-            )}
-          </div>
+          {hasMore && posts.length > 0 && !loadingPosts ? (
+            <Button variant="outline" className="self-center" onClick={loadMore}>
+              Charger plus
+            </Button>
+          ) : null}
         </div>
 
-        {/* ── Sidebar ── */}
-        <aside className="hidden w-72 shrink-0 lg:block">
-          {/* Create buttons */}
-          <div className="mb-4 space-y-2">
-            <Button className="w-full" onClick={() => setShowCreatePost(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Créer un post
-            </Button>
-            <Button variant="outline" className="w-full" onClick={() => setShowCreateSub(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Créer un forum
-            </Button>
-          </div>
+        <aside className="hidden flex-col gap-4 lg:flex">
+          <Button variant="outline" onClick={() => setShowCreateSub(true)}>
+            <Plus />
+            Créer un forum
+          </Button>
 
-          {/* My forums */}
-          {joinedSubs.length > 0 && (
-            <div className="mb-4 rounded-lg border bg-card p-4">
-              <h3 className="mb-3 text-sm font-semibold">Mes forums</h3>
-              <ul className="space-y-1">
-                {joinedSubs.map((s) => (
-                  <li key={s.id}>
-                    <Link
-                      to={`/forum/c/${s.name}`}
-                      className={cn(
-                        'flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-muted',
-                        subredditName === s.name && 'bg-muted font-medium'
-                      )}
-                    >
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-warning text-xs font-bold text-white">
-                        {s.name[0].toUpperCase()}
-                      </span>
-                      #{s.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {joinedSubs.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Mes forums</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ItemGroup>
+                  {joinedSubs.map((sub) => (
+                    <ForumLink key={sub.id} sub={sub} active={subredditName === sub.name} />
+                  ))}
+                </ItemGroup>
+              </CardContent>
+            </Card>
+          ) : null}
 
-          {/* Popular forums */}
-          <div className="rounded-lg border bg-card p-4">
-            <h3 className="mb-3 text-sm font-semibold">Forums populaires</h3>
-            {loadingSubs ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
-              </div>
-            ) : popularSubs.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Aucun forum pour l'instant.</p>
-            ) : (
-              <ul className="space-y-2">
-                {popularSubs.map((s, idx) => (
-                  <li key={s.id}>
-                    <Link
-                      to={`/forum/c/${s.name}`}
-                      className={cn(
-                        'flex items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-muted',
-                        subredditName === s.name && 'bg-muted font-medium'
-                      )}
-                    >
-                      <span className="w-4 text-xs text-muted-foreground">{idx + 1}</span>
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-warning text-xs font-bold text-white">
-                        {s.name[0].toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate">#{s.name}</span>
-                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-                        <Users className="h-3 w-3" />
-                        {s.memberCount}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Forums populaires</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingSubs ? (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <Skeleton key={index} className="h-8 w-full" />
+                  ))}
+                </div>
+              ) : popularSubs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun forum pour l&apos;instant.</p>
+              ) : (
+                <ItemGroup>
+                  {popularSubs.map((sub, index) => (
+                    <ForumLink key={sub.id} sub={sub} active={subredditName === sub.name} rank={index + 1} />
+                  ))}
+                </ItemGroup>
+              )}
+            </CardContent>
+          </Card>
         </aside>
       </div>
 
-      {/* Dialogs */}
       <CreatePostDialog
         open={showCreatePost}
         onClose={() => setShowCreatePost(false)}
@@ -691,11 +578,7 @@ export default function Forum() {
         subreddits={subreddits}
         onCreated={handlePostCreated}
       />
-      <CreateSubredditDialog
-        open={showCreateSub}
-        onClose={() => setShowCreateSub(false)}
-        onCreated={handleSubCreated}
-      />
+      <CreateSubredditDialog open={showCreateSub} onClose={() => setShowCreateSub(false)} onCreated={handleSubCreated} />
     </PageShell>
   );
 }

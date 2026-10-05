@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Archive,
@@ -33,11 +33,15 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { CurrencyIcon } from '@/components/currency/CurrencyIcon';
 import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ListSkeleton } from '@/components/ui/loading-skeletons';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemSeparator, ItemTitle } from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { cn } from '@/lib/utils';
 import { type Notification } from '@/services/api';
 
 const TYPE_ICON: Record<string, React.FC<{ className?: string }>> = {
@@ -172,6 +176,7 @@ function NotificationRow({
   const dateLabel = isToday
     ? formatDistanceToNow(date, { addSuffix: false, locale: fr })
     : format(date, 'dd MMM', { locale: fr });
+  const isUnread = !notification.isRead && !isArchiveView;
 
   const handleClick = () => {
     if (!notification.isRead) onRead(notification.id);
@@ -179,80 +184,69 @@ function NotificationRow({
   };
 
   return (
-    <div
+    <Item
+      variant={isUnread ? 'muted' : 'default'}
+      role={notification.link ? 'button' : undefined}
+      tabIndex={notification.link ? 0 : undefined}
       onClick={handleClick}
-      className={cn(
-        'group flex items-start gap-3 border-b border-border/40 px-4 py-3 transition-colors last:border-b-0 sm:px-5',
-        !notification.isRead && !isArchiveView && 'bg-muted/[0.32]',
-        notification.link && 'cursor-pointer hover:bg-muted/45'
-      )}
+      onKeyDown={(event) => {
+        if (notification.link && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          handleClick();
+        }
+      }}
     >
-      <div className="flex w-2 shrink-0 justify-center pt-1.5">
-        {!notification.isRead && !isArchiveView ? <span className="h-1.5 w-1.5 rounded-full bg-foreground/70" /> : null}
-      </div>
-
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/50 bg-muted/20 text-muted-foreground">
-        <IconComp className="h-3.5 w-3.5" />
-      </div>
-
-      <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
-        <div className="flex items-start justify-between gap-3">
-          <span className={cn('text-sm leading-5', !notification.isRead && !isArchiveView ? 'font-medium text-foreground' : 'text-foreground/88')}>
-            {notification.title}
-          </span>
-          <span className="shrink-0 pt-0.5 text-[11px] tabular-nums text-muted-foreground/70">{dateLabel}</span>
-        </div>
-        <p className="truncate text-sm leading-5 text-muted-foreground">{notification.body}</p>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <ItemMedia variant="icon">
+        <IconComp />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle>
+          {notification.title}
+          {isUnread ? <Badge variant="secondary">Nouveau</Badge> : null}
+        </ItemTitle>
+        <ItemDescription>{notification.body}</ItemDescription>
+      </ItemContent>
+      <ItemActions>
+        <span className="text-xs tabular-nums text-muted-foreground">{dateLabel}</span>
         {!notification.isRead && !isArchiveView ? (
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Marquer comme lu"
-            onClick={(event) => {
-              event.stopPropagation();
-              onRead(notification.id);
-            }}
-          >
-            <CheckCheck className="h-3 w-3" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Marquer comme lu"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRead(notification.id);
+                }}
+              >
+                <CheckCheck />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Marquer comme lu</TooltipContent>
+          </Tooltip>
         ) : null}
-
-        {isArchiveView ? (
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Desarchiver"
-            onClick={(event) => {
-              event.stopPropagation();
-              onUnarchive(notification.id);
-            }}
-          >
-            <Inbox className="h-3 w-3" />
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Archiver"
-            onClick={(event) => {
-              event.stopPropagation();
-              onArchive(notification.id);
-            }}
-          >
-            <Archive className="h-3 w-3" />
-          </Button>
-        )}
-      </div>
-    </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label={isArchiveView ? 'Désarchiver' : 'Archiver'}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (isArchiveView) onUnarchive(notification.id);
+                else onArchive(notification.id);
+              }}
+            >
+              {isArchiveView ? <Inbox /> : <Archive />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{isArchiveView ? 'Désarchiver' : 'Archiver'}</TooltipContent>
+        </Tooltip>
+      </ItemActions>
+    </Item>
   );
 }
 
@@ -309,115 +303,102 @@ export default function InboxPage() {
       ? `${unreadCount} notification${unreadCount > 1 ? 's' : ''} non lue${unreadCount > 1 ? 's' : ''}`
       : 'Tout est a jour';
 
+  const isLoading = (isArchiveView ? loadingArchived : loading) && filteredNotifications.length === 0;
+
   return (
-    <PageShell className="w-full">
+    <PageShell>
       <PageHeader
         title="Inbox"
         description={description}
-        actions={!isArchiveView ? (
-          <>
-            {unreadCount > 0 ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={markAllRead}
-                className="gap-1.5 border-border/60 bg-background shadow-none"
-              >
-                <CheckCheck className="h-3.5 w-3.5" />
-                Tout marquer comme lu
+        actions={
+          !isArchiveView ? (
+            <>
+              {unreadCount > 0 ? (
+                <Button variant="outline" onClick={markAllRead}>
+                  <CheckCheck />
+                  Tout marquer comme lu
+                </Button>
+              ) : null}
+              <Button variant="outline" onClick={archiveAllRead}>
+                <Archive />
+                Archiver les lus
               </Button>
-            ) : null}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={archiveAllRead}
-              className="gap-1.5 border-border/60 bg-background text-muted-foreground shadow-none hover:text-foreground"
-            >
-              <Archive className="h-3.5 w-3.5" />
-              Archiver les lus
-            </Button>
-          </>
-        ) : undefined}
+            </>
+          ) : undefined
+        }
       />
 
-      <Card className="overflow-hidden border-border/50 bg-background p-0 shadow-none">
-        <div className="flex min-h-[420px] flex-col md:flex-row">
-          <div className="shrink-0 border-b border-border/40 bg-muted/10 p-2 md:w-48 md:border-b-0 md:border-r">
-            {CATEGORIES.map((category) => {
-              const count = categoryCounts[category.id] ?? 0;
-              const isActive = activeCategory === category.id;
+      <Tabs
+        value={activeCategory}
+        onValueChange={(value) => setActiveCategory(value as CategoryId)}
+        orientation="vertical"
+        className="items-start gap-6 md:flex-row"
+      >
+        <TabsList className="h-auto w-full flex-row flex-wrap justify-start md:w-52 md:flex-col md:items-stretch">
+          {CATEGORIES.map((category) => {
+            const count = categoryCounts[category.id] ?? 0;
+            return (
+              <TabsTrigger key={category.id} value={category.id} className="justify-start">
+                <category.Icon />
+                <span className="flex-1 text-left">{category.label}</span>
+                {count > 0 ? <Badge variant="secondary">{count}</Badge> : null}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => setActiveCategory(category.id)}
-                  className={cn(
-                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    isActive
-                      ? 'bg-background text-foreground'
-                      : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
-                  )}
-                >
-                  <category.Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="flex-1 truncate">{category.label}</span>
-                  {count > 0 ? (
-                    <span className="shrink-0 rounded-full bg-foreground/5 px-1.5 py-0.5 text-[10px] font-medium text-foreground/70">
-                      {count}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex min-w-0 flex-1 flex-col">
-            {(isArchiveView ? loadingArchived : loading) && filteredNotifications.length === 0 ? (
-              <div className="flex-1 p-4">
-                <ListSkeleton rows={5} showAvatar={false} showActions />
-              </div>
-            ) : filteredNotifications.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16">
-                {isArchiveView ? <Archive className="h-8 w-8 text-muted-foreground/30" /> : <Bell className="h-8 w-8 text-muted-foreground/30" />}
-                <p className="text-sm text-muted-foreground">
-                  {isArchiveView ? 'Aucun message archive' : 'Aucune notification'}
-                </p>
-              </div>
-            ) : (
-              <>
-                {filteredNotifications.map((notification) => (
-                  <NotificationRow
-                    key={notification.id}
-                    notification={notification}
-                    onRead={markRead}
-                    onArchive={archiveNotification}
-                    onUnarchive={unarchiveNotification}
-                    isArchiveView={isArchiveView}
-                  />
-                ))}
-
-                {(isArchiveView ? hasMoreArchived : hasMore) ? (
-                  <div className="flex justify-center border-t border-border/40 p-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-border/60 bg-background shadow-none"
-                      onClick={() => {
-                        if (isArchiveView) {
-                          fetchArchived();
-                          return;
-                        }
-                        fetchNotifications();
-                      }}
-                    >
-                      Charger plus
-                    </Button>
+        <Card className="min-h-96 w-full min-w-0 flex-1 gap-0 py-2">
+          {isLoading ? (
+            <div className="flex flex-col gap-2 p-4">
+              {Array.from({ length: 5 }, (_, index) => (
+                <Skeleton key={index} className="h-14 w-full" />
+              ))}
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">{isArchiveView ? <Archive /> : <Bell />}</EmptyMedia>
+                <EmptyTitle>{isArchiveView ? 'Aucun message archivé' : 'Aucune notification'}</EmptyTitle>
+                <EmptyDescription>Les nouveaux éléments apparaîtront ici.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <>
+              <ItemGroup>
+                {filteredNotifications.map((notification, index) => (
+                  <div key={notification.id}>
+                    {index > 0 ? <ItemSeparator /> : null}
+                    <NotificationRow
+                      notification={notification}
+                      onRead={markRead}
+                      onArchive={archiveNotification}
+                      onUnarchive={unarchiveNotification}
+                      isArchiveView={isArchiveView}
+                    />
                   </div>
-                ) : null}
-              </>
-            )}
-          </div>
-        </div>
-      </Card>
+                ))}
+              </ItemGroup>
+
+              {(isArchiveView ? hasMoreArchived : hasMore) ? (
+                <div className="flex justify-center p-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (isArchiveView) {
+                        fetchArchived();
+                        return;
+                      }
+                      fetchNotifications();
+                    }}
+                  >
+                    Charger plus
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          )}
+        </Card>
+      </Tabs>
     </PageShell>
   );
 }
