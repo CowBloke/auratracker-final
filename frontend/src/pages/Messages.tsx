@@ -1,4 +1,4 @@
-﻿import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { format, isToday, isYesterday } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -36,7 +36,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { PageShell } from '@/components/layout/PageShell';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { MessageFormatToolbar } from '@/components/chat/MessageFormatToolbar';
@@ -61,7 +61,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChatSkeleton, ListSkeleton } from '@/components/ui/loading-skeletons';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupTextarea } from '@/components/ui/input-group';
+import { Item, ItemContent, ItemMedia } from '@/components/ui/item';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { useAppDialog } from '@/contexts/AppDialogContext';
@@ -1567,19 +1573,19 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
-        <ChatSkeleton className="h-full" />
-      </PageShell>
+      <div className="flex h-full min-h-0 flex-col p-4 md:p-6">
+        <Skeleton className="h-full w-full" />
+      </div>
     );
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <PageShell size="full" className="min-h-0 h-full overflow-hidden !space-y-0 !px-4 !pt-0 !pb-0 lg:!px-6">
+    <div className="flex h-full min-h-0 flex-col p-4 md:p-6">
 
       {/* ── Respect modal ── */}
       <Dialog open={respectOpen} onOpenChange={setRespectOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-warning" />
@@ -1598,7 +1604,7 @@ export default function MessagesPage() {
       </Dialog>
 
       <Dialog open={Boolean(dmOtherUser) && dmProfilePreviewOpen} onOpenChange={setDmProfilePreviewOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Apercu du profil</DialogTitle>
             <DialogDescription>
@@ -1641,10 +1647,10 @@ export default function MessagesPage() {
 
       {/* ── Create conversation modal ── */}
       <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) { setCreateSearch(''); setCreateParticipantIds([]); setCreateTitle(''); setCreateMode('DM'); setCreateSendAs('perso'); } }}>
-        <DialogContent className="max-w-md gap-0 p-0 overflow-hidden">
-          <div className="border-b border-border/60 px-4 py-3">
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Nouvelle conversation</DialogTitle>
-          </div>
+          </DialogHeader>
           <div className="flex border-b border-border/60">
             {(['DM', 'GROUP'] as const).map((mode) => (
               <button key={mode} type="button"
@@ -1701,14 +1707,14 @@ export default function MessagesPage() {
               {filteredPlayers.length === 0 && <p className="px-3 py-4 text-center text-xs text-muted-foreground">Aucun joueur trouvé.</p>}
             </div>
           </ScrollArea>
-          <div className="flex items-center justify-end gap-2 border-t border-border/60 px-3 py-2.5">
+          <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setCreateOpen(false)}>Annuler</Button>
             <Button size="sm"
               disabled={!createParticipantIds.length || (createMode === 'DM' && createParticipantIds.length !== 1) || (createMode === 'GROUP' && createParticipantIds.length < 2)}
               onClick={handleCreateConversation}>
               Créer
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1722,14 +1728,14 @@ export default function MessagesPage() {
           }
         }}
       >
-        <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
-          <div className="border-b border-border/60 px-4 py-3">
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Infos du groupe</DialogTitle>
             <DialogDescription className="text-xs">Gérez le nom, la description, l’icône et les membres du groupe depuis un seul endroit.</DialogDescription>
             {!canManageCourtGroup && (
               <p className="mt-1 text-[11px] text-muted-foreground">Sur un dossier judiciaire, seuls les admins ou le juge du dossier peuvent renommer le groupe et ajouter des membres.</p>
             )}
-          </div>
+          </DialogHeader>
           <ScrollArea className="max-h-[75vh]">
             <div className="space-y-5 p-4">
               <div className="flex items-start gap-3">
@@ -1877,11 +1883,11 @@ export default function MessagesPage() {
       </Dialog>
 
       <Dialog open={witnessRequestOpen} onOpenChange={setWitnessRequestOpen}>
-        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
-          <div className="border-b border-border/60 px-4 py-3">
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Demander un témoin</DialogTitle>
             <DialogDescription className="text-xs">Les admins recevront la demande et décideront d'ajouter ou non le témoin.</DialogDescription>
-          </div>
+          </DialogHeader>
           <div className="space-y-3 p-4">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -1914,21 +1920,21 @@ export default function MessagesPage() {
               Garder le témoin anonyme (visible uniquement comme rôle)
             </label>
           </div>
-          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-2.5">
+          <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setWitnessRequestOpen(false)} disabled={witnessSubmitting}>Annuler</Button>
             <Button size="sm" disabled={witnessSubmitting || !witnessUserId} onClick={() => void handleRequestWitness()}>
               {witnessSubmitting ? 'Envoi...' : 'Envoyer la demande'}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={addMembersOpen} onOpenChange={setAddMembersOpen}>
-        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
-          <div className="border-b border-border/60 px-4 py-3">
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Ajouter des membres</DialogTitle>
             <DialogDescription className="text-xs">Recherchez un joueur puis ajoutez-le au groupe.</DialogDescription>
-          </div>
+          </DialogHeader>
           <div className="space-y-3 p-4">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -1956,11 +1962,11 @@ export default function MessagesPage() {
       </Dialog>
 
       <Dialog open={groupReportOpen} onOpenChange={setGroupReportOpen}>
-        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
-          <div className="border-b border-border/60 px-4 py-3">
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Signaler la conversation</DialogTitle>
             <DialogDescription className="text-xs">Décris brièvement le problème rencontré.</DialogDescription>
-          </div>
+          </DialogHeader>
           <div className="space-y-3 p-4">
             <Textarea
               value={groupReportReason}
@@ -1971,25 +1977,25 @@ export default function MessagesPage() {
             />
             <p className="text-[11px] text-muted-foreground/70">{groupReportReason.trim().length}/280</p>
           </div>
-          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-2.5">
+          <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setGroupReportOpen(false)} disabled={groupReportSubmitting}>
               Annuler
             </Button>
             <Button size="sm" disabled={groupReportSubmitting || !groupReportReason.trim()} onClick={() => void handleReportGroup()}>
               {groupReportSubmitting ? 'Envoi...' : 'Signaler'}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showArgumentsDialog} onOpenChange={setShowArgumentsDialog}>
-        <DialogContent className="max-w-3xl gap-0 overflow-hidden p-0">
-          <div className="border-b border-border/60 px-4 py-3">
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Arguments des deux côtés</DialogTitle>
             <DialogDescription className="mt-1 text-xs">
               Historique des plaidoiries enregistrées pour cette affaire.
             </DialogDescription>
-          </div>
+          </DialogHeader>
           <div className="max-h-[70vh] space-y-4 overflow-y-auto p-4">
             {argumentsLoading ? (
               <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
@@ -2058,43 +2064,41 @@ export default function MessagesPage() {
 
       {/* ── Verdict panel ── */}
       <Dialog open={showVerdictPanel} onOpenChange={setShowVerdictPanel}>
-        <DialogContent className="max-w-lg gap-0 p-0 overflow-hidden">
-          <div className="border-b border-border/60 px-4 py-3 flex items-center gap-2">
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
             <Gavel className="h-4 w-4 text-warning" />
             <DialogTitle className="text-sm font-semibold">Rendre le verdict</DialogTitle>
-          </div>
+          </DialogHeader>
           <div className="p-4 space-y-4">
             <div>
               <p className="text-xs font-medium mb-1">Verdict <span className="text-destructive">*</span></p>
-              <textarea value={verdictDraft} onChange={(e) => setVerdictDraft(e.target.value)} rows={4} maxLength={1000}
-                placeholder="Résumez votre décision judiciaire..."
-                className="w-full resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring" />
+              <Textarea value={verdictDraft} onChange={(e) => setVerdictDraft(e.target.value)} rows={4} maxLength={1000}
+                placeholder="Résumez votre décision judiciaire..." />
             </div>
             <div>
               <p className="text-xs font-medium mb-1">Sanction / Peine (optionnel)</p>
-              <textarea value={sentencingDraft} onChange={(e) => setSentencingDraft(e.target.value)} rows={2} maxLength={500}
-                placeholder="Amende, suspension, etc."
-                className="w-full resize-none rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring" />
+              <Textarea value={sentencingDraft} onChange={(e) => setSentencingDraft(e.target.value)} rows={2} maxLength={500}
+                placeholder="Amende, suspension, etc." />
             </div>
           </div>
-          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-2.5">
+          <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setShowVerdictPanel(false)}>Annuler</Button>
             <Button size="sm" disabled={verdictSaving || !verdictDraft.trim()} onClick={handleDeliverVerdict}>
               {verdictSaving ? 'Envoi...' : 'Rendre le verdict'}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* ── Main layout ── */}
       <Dialog open={showRepresentationDialog} onOpenChange={setShowRepresentationDialog}>
-        <DialogContent className="max-w-2xl gap-0 overflow-hidden p-0">
-          <div className="border-b border-border/60 px-4 py-3">
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Choisir une representation</DialogTitle>
             <DialogDescription className="mt-1 text-xs">
               Selectionne un cabinet prive ou demande un defenseur public pour ce dossier.
             </DialogDescription>
-          </div>
+          </DialogHeader>
           <div className="space-y-4 p-4">
             <div className="grid gap-2 sm:grid-cols-2">
               <button
@@ -2217,25 +2221,25 @@ export default function MessagesPage() {
               </div>
             )}
           </div>
-          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-3">
+          <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setShowRepresentationDialog(false)} disabled={representationSubmitting}>
               Annuler
             </Button>
             <Button size="sm" onClick={() => void handleSubmitRepresentation()} disabled={representationSubmitting || (representationType === 'PRIVATE_LAWYER' && (!selectedLawFirmId || !selectedLawyerUserId))}>
               {representationSubmitting ? 'Envoi...' : 'Confirmer'}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showLawyerRatingDialog} onOpenChange={setShowLawyerRatingDialog}>
-        <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
-          <div className="border-b border-border/60 px-4 py-3">
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Noter l'avocat</DialogTitle>
             <DialogDescription className="mt-1 text-xs">
               Cet avis concerne la representation de ton dossier cloture.
             </DialogDescription>
-          </div>
+          </DialogHeader>
           <div className="space-y-4 p-4">
             {assignedLawyer ? (
               <div className="rounded-xl border border-border/40 bg-muted/10 px-4 py-3">
@@ -2251,28 +2255,27 @@ export default function MessagesPage() {
                 </button>
               ))}
             </div>
-            <textarea
+            <Textarea
               value={lawyerRatingComment}
               onChange={(e) => setLawyerRatingComment(e.target.value)}
               rows={4}
               maxLength={500}
               placeholder="Decris ton experience avec cet avocat..."
-              className="w-full resize-none rounded-xl border border-border/40 bg-muted/10 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-warning/40"
             />
             <p className="text-[11px] text-muted-foreground/60">{lawyerRatingComment.trim().length}/500</p>
           </div>
-          <div className="flex justify-end gap-2 border-t border-border/60 px-4 py-3">
+          <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setShowLawyerRatingDialog(false)} disabled={lawyerRatingSubmitting}>
               Fermer
             </Button>
             <Button size="sm" onClick={() => void handleSubmitLawyerRating()} disabled={lawyerRatingSubmitting || lawyerRating === 0 || !canRateAssignedLawyer}>
               {lawyerRatingSubmitting ? 'Envoi...' : 'Envoyer'}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <div className="relative h-full overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+      <Card className="relative min-h-0 flex-1 overflow-hidden py-0">
         <div className="grid h-full min-h-0 lg:grid-cols-[300px_minmax(0,1fr)]">
 
           {/* ── Sidebar ── */}
@@ -2294,11 +2297,12 @@ export default function MessagesPage() {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-              <div className="mt-2 relative">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..."
-                  className="w-full rounded-lg border border-border/50 bg-muted/30 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-primary/40 focus:bg-background transition-colors" />
-              </div>
+              <InputGroup className="mt-2">
+                <InputGroupAddon>
+                  <Search />
+                </InputGroupAddon>
+                <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher…" />
+              </InputGroup>
               <div className="mt-2 flex items-center gap-1">
                 {(activeMessagesTab === MESSAGING_TABS.BUSINESS ? BUSINESS_SORT_OPTIONS : DM_SORT_OPTIONS)
                   && (Object.keys(activeMessagesTab === MESSAGING_TABS.BUSINESS ? BUSINESS_SORT_OPTIONS : DM_SORT_OPTIONS) as Array<DmSortMode | BusinessSortMode>).map((mode) => (
@@ -2581,8 +2585,10 @@ export default function MessagesPage() {
                   <ScrollArea ref={messagesScrollAreaRef} className="h-full px-4 py-4 sm:px-6">
                     <div className="flex w-full flex-col gap-0.5">
                       {convLoading ? (
-                        <div className="py-2">
-                          <ListSkeleton rows={4} showAvatar={false} />
+                        <div className="flex flex-col gap-3 py-2">
+                          {Array.from({ length: 4 }, (_, index) => (
+                            <Skeleton key={index} className="h-10 w-2/3" />
+                          ))}
                         </div>
                       ) : visibleMessages.length === 0 ? (
                         <div className="flex flex-col items-center py-12 text-center">
@@ -2990,8 +2996,8 @@ export default function MessagesPage() {
                           e.target.value = '';
                         }}
                       />
-                      <div className="flex-1 rounded-2xl border border-border/50 bg-muted/20 px-3 py-2 focus-within:border-primary/40 focus-within:bg-background transition-colors">
-                      <textarea ref={textareaRef} value={draft} rows={1}
+                      <InputGroup className="flex-1">
+                        <InputGroupTextarea ref={textareaRef} value={draft} rows={1}
                         onChange={(e) => {
                           const nextValue = e.target.value;
                           setDraft(nextValue);
@@ -3018,15 +3024,16 @@ export default function MessagesPage() {
                         }}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
                         placeholder={isCourtChatLocked ? 'Le chat est disponible uniquement quand l affaire est en cours' : `Message ${selectedConversation.displayName}`}
-                        className="w-full resize-none bg-transparent text-sm leading-5 outline-none placeholder:text-muted-foreground/50"
-                        maxLength={1000} style={{ minHeight: '20px' }} disabled={isCourtChatLocked} />
-                      <MessageFormatToolbar inputRef={textareaRef} value={draft} onChange={setDraft} />
-                      {hasMessageFormatting(draft) && (
-                        <div className="mt-2 rounded-lg border border-border/50 bg-background/70 px-2.5 py-1.5 text-sm text-foreground">
-                          <FormattedMessageText text={draft} />
-                        </div>
-                      )}
-                    </div>
+                        maxLength={1000} className="min-h-0" disabled={isCourtChatLocked} />
+                        <InputGroupAddon align="block-end" className="flex-col items-stretch gap-2">
+                          <MessageFormatToolbar inputRef={textareaRef} value={draft} onChange={setDraft} />
+                          {hasMessageFormatting(draft) ? (
+                            <div className="rounded-md border px-2.5 py-1.5 text-sm text-foreground">
+                              <FormattedMessageText text={draft} />
+                            </div>
+                          ) : null}
+                        </InputGroupAddon>
+                      </InputGroup>
                     <Button type="button" size="icon" className="h-9 w-9 shrink-0 rounded-xl"
                         disabled={sending || (!draft.trim() && !imageUrlToSend) || isCourtChatLocked} onClick={() => void handleSend()}>
                       <SendHorizonal className="h-4 w-4" />
@@ -3050,7 +3057,7 @@ export default function MessagesPage() {
             )}
           </section>
         </div>
-      </div>
+      </Card>
 
       <Dialog open={Boolean(courtImagePreviewUrl)} onOpenChange={(open) => { if (!open) setCourtImagePreviewUrl(null); }}>
         <DialogContent className="h-[95vh] w-[95vw] max-w-none overflow-hidden border-0 bg-black/95 p-0 text-white sm:rounded-2xl">
@@ -3062,7 +3069,7 @@ export default function MessagesPage() {
         </DialogContent>
       </Dialog>
 
-    </PageShell>
+    </div>
   );
 }
 
@@ -3092,98 +3099,79 @@ function ConvRow({
   const lastOutgoingMessageReadState = getLastOutgoingMessageReadState(conversation, currentUserId);
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        'group flex w-full min-w-0 max-w-full items-center gap-2.5 overflow-hidden px-3 py-2 text-left transition-colors',
-        isClosedAffaire && 'opacity-55',
-        isActive ? 'bg-primary/10' : 'hover:bg-muted/50',
-      )}
-    >
-      <div className={cn(isClosedAffaire && 'grayscale')}>
-        <ConversationAvatar conversation={conversation} />
-      </div>
-      <div className="w-0 min-w-0 flex-1 overflow-hidden">
-        <div className="flex min-w-0 items-baseline gap-1 overflow-hidden">
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-            <p
-              className={cn(
-                'min-w-0 flex-1 truncate text-xs font-semibold',
-                conversation.type === 'DM' && 'text-foreground',
-                isActive && conversation.type !== 'DM' && 'text-primary',
-                isClosedAffaire && 'text-muted-foreground',
-              )}
+    <Item asChild size="sm" variant={isActive ? 'muted' : 'default'} className={cn('group rounded-none', isClosedAffaire && 'opacity-60')}>
+      <button type="button" onClick={onSelect} className="w-full text-left">
+        <ItemMedia className={cn(isClosedAffaire && 'grayscale')}>
+          <ConversationAvatar conversation={conversation} />
+        </ItemMedia>
+        <ItemContent className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span
+              className={cn('min-w-0 flex-1 truncate text-sm font-medium', isClosedAffaire && 'text-muted-foreground')}
               style={conversation.type === 'DM' && dmParticipant?.usernameColor ? { color: dmParticipant.usernameColor } : undefined}
             >
               {conversation.displayName}
-            </p>
-            {conversation.type === 'SUPPORT' && (
-              <span className="shrink-0 rounded-full bg-muted/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
-                Support
-              </span>
-            )}
-            {conversation.courtCaseId && (
-              <span className="shrink-0 rounded-full bg-warning/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-warning flex items-center gap-0.5">
-                <Scale className="h-2.5 w-2.5" />Tribunal
-              </span>
-            )}
-            {conversation.tagType === 'Professionnel' && (
-              <span className="shrink-0 rounded-full bg-success/12 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-success">
-                {conversation.tagLabel ?? 'Professionnel'}
-              </span>
-            )}
+            </span>
+            {conversation.type === 'SUPPORT' ? <Badge variant="secondary">Support</Badge> : null}
+            {conversation.courtCaseId ? (
+              <Badge variant="warning">
+                <Scale />
+                Tribunal
+              </Badge>
+            ) : null}
+            {conversation.tagType === 'Professionnel' ? <Badge variant="success">{conversation.tagLabel ?? 'Professionnel'}</Badge> : null}
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {conversation.lastMessage?.createdAt ? formatTime(conversation.lastMessage.createdAt) : ''}
+            </span>
           </div>
-          <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{conversation.lastMessage?.createdAt ? formatTime(conversation.lastMessage.createdAt) : ''}</span>
-        </div>
-        <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-          {lastOutgoingMessageReadState && (
-            <span
-              className={cn(
-                'inline-flex shrink-0 items-center justify-center',
-                lastOutgoingMessageReadState === 'READ' ? 'text-primary' : 'text-muted-foreground/70',
-              )}
-              title={lastOutgoingMessageReadState === 'READ' ? 'Lu' : 'Non lu'}
-              aria-label={lastOutgoingMessageReadState === 'READ' ? 'Dernier message lu' : 'Dernier message non lu'}
-            >
-              {lastOutgoingMessageReadState === 'READ' ? (
-                <CheckCheck className="h-3.5 w-3.5" />
-              ) : (
-                <Check className="h-3.5 w-3.5" />
-              )}
-            </span>
-          )}
-          <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] text-muted-foreground">{getPreview(conversation)}</p>
-          {conversation.unreadCount > 0 && (
-            <span
-              className="ml-auto shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-primary/20 bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground shadow-sm"
-              title={`${conversation.unreadCount} message${conversation.unreadCount > 1 ? 's' : ''} non lu${conversation.unreadCount > 1 ? 's' : ''}`}
-            >
-              {conversation.unreadCount}
-            </span>
-          )}
-        </div>
-      </div>
-      {conversation.type !== 'SUPPORT' && (
-        <div className="ml-0.5 flex shrink-0 items-center gap-1">
-          {conversation.type === 'DM' && (
-            <button
-              type="button"
-              onClick={onToggleDmPin}
-              className={cn('opacity-0 transition-opacity group-hover:opacity-100', isPinnedDm && 'opacity-100')}
-              tabIndex={-1}
-            >
-              <Pin className={cn('h-3.5 w-3.5', isPinnedDm ? 'fill-primary/20 text-primary' : 'text-muted-foreground')} />
-            </button>
-          )}
-          <button type="button"
-            onClick={onToggleFavorite}
-            className={cn('opacity-0 transition-opacity group-hover:opacity-100', conversation.isFavorite && 'opacity-100')}
-            tabIndex={-1}>
-            <Star className={cn('h-3.5 w-3.5', conversation.isFavorite ? 'fill-warning text-warning' : 'text-muted-foreground')} />
-          </button>
-        </div>
-      )}
-    </button>
+          <div className="flex min-w-0 items-center gap-1">
+            {lastOutgoingMessageReadState ? (
+              <span
+                className={cn('inline-flex shrink-0', lastOutgoingMessageReadState === 'READ' ? 'text-foreground' : 'text-muted-foreground')}
+                aria-label={lastOutgoingMessageReadState === 'READ' ? 'Dernier message lu' : 'Dernier message non lu'}
+              >
+                {lastOutgoingMessageReadState === 'READ' ? <CheckCheck className="size-3.5" /> : <Check className="size-3.5" />}
+              </span>
+            ) : null}
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{getPreview(conversation)}</span>
+            {conversation.unreadCount > 0 ? (
+              <Badge className="h-5 min-w-5 justify-center rounded-full px-1.5 tabular-nums">{conversation.unreadCount}</Badge>
+            ) : null}
+          </div>
+        </ItemContent>
+        {conversation.type !== 'SUPPORT' ? (
+          <div className="flex shrink-0 items-center gap-1">
+            {conversation.type === 'DM' ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    onClick={onToggleDmPin}
+                    className={cn('opacity-0 transition-opacity group-hover:opacity-100', isPinnedDm && 'opacity-100')}
+                  >
+                    <Pin className={cn('size-3.5', isPinnedDm ? 'fill-current' : 'text-muted-foreground')} />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{isPinnedDm ? 'Désépingler' : 'Épingler'}</TooltipContent>
+              </Tooltip>
+            ) : null}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  onClick={onToggleFavorite}
+                  className={cn('opacity-0 transition-opacity group-hover:opacity-100', conversation.isFavorite && 'opacity-100')}
+                >
+                  <Star className={cn('size-3.5', conversation.isFavorite ? 'fill-warning text-warning' : 'text-muted-foreground')} />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{conversation.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}</TooltipContent>
+            </Tooltip>
+          </div>
+        ) : null}
+      </button>
+    </Item>
   );
 }
