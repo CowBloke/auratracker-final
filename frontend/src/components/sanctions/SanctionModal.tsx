@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Gavel, Landmark, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -126,34 +128,35 @@ export default function SanctionModal({
             <Label htmlFor="target" className="text-xs font-medium">
               {type === 'AMENDE' ? 'Joueur condamné' : 'Joueur qui doit payer'}
             </Label>
-            <select
-              id="target"
-              value={targetUserId}
-              onChange={(e) => { setTargetUserId(e.target.value); setBeneficiaryUserId(''); }}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            <Select
+              value={targetUserId || undefined}
+              onValueChange={(value) => { setTargetUserId(value); setBeneficiaryUserId(''); }}
             >
-              <option value="">— Sélectionner un joueur —</option>
-              {eligibleTargets.map((p) => (
-                <option key={p.id} value={p.id}>{p.username}</option>
-              ))}
-            </select>
+              <SelectTrigger id="target" className="w-full">
+                <SelectValue placeholder="Sélectionner un joueur" />
+              </SelectTrigger>
+              <SelectContent>
+                {eligibleTargets.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.username}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Beneficiary (PAYMENT only) */}
           {type === 'PAYMENT' && (
             <div className="space-y-1.5">
               <Label htmlFor="beneficiary" className="text-xs font-medium">Bénéficiaire du paiement</Label>
-              <select
-                id="beneficiary"
-                value={beneficiaryUserId}
-                onChange={(e) => setBeneficiaryUserId(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="">— Sélectionner le bénéficiaire —</option>
-                {eligibleBeneficiaries.map((p) => (
-                  <option key={p.id} value={p.id}>{p.username}</option>
-                ))}
-              </select>
+              <Select value={beneficiaryUserId || undefined} onValueChange={setBeneficiaryUserId}>
+                <SelectTrigger id="beneficiary" className="w-full">
+                  <SelectValue placeholder="Sélectionner le bénéficiaire" />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibleBeneficiaries.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.username}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -173,14 +176,13 @@ export default function SanctionModal({
           {/* Message */}
           <div className="space-y-1.5">
             <Label htmlFor="message" className="text-xs font-medium">Motif / message</Label>
-            <textarea
+            <Textarea
               id="message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
               maxLength={500}
               placeholder="Expliquez la raison de cette sanction..."
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 

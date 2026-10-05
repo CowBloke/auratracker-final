@@ -1774,15 +1774,16 @@ export default function Polymarket() {
               </div>
               <div>
                 <label className="text-sm font-medium">Statut</label>
-                <select
-                  name="status"
-                  defaultValue={selectedEventForEdit.status}
-                  className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="OPEN">Ouvert</option>
-                  <option value="CLOSED">Fermé</option>
-                  <option value="RESOLVED">Résolu</option>
-                </select>
+                <Select name="status" defaultValue={selectedEventForEdit.status}>
+                  <SelectTrigger className="mt-2 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPEN">Ouvert</SelectItem>
+                    <SelectItem value="CLOSED">Fermé</SelectItem>
+                    <SelectItem value="RESOLVED">Résolu</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setEditEventDialogOpen(false)}>Annuler</Button>

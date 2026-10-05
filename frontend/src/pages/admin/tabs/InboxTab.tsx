@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -665,8 +666,7 @@ export function InboxTab(props: InboxTabProps) {
 
                         {/* Compose */}
                         <div className="px-5 py-4 border-t border-border/40 shrink-0 space-y-2">
-                          <textarea
-                            className="w-full rounded-md border border-border/40 bg-muted/20 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring/50 placeholder:text-muted-foreground/40"
+                          <Textarea
                             rows={3}
                             placeholder="Répondre… La réponse sera notifiée par e-mail."
                             value={replyValue}

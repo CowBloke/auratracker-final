@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { dashboardUpdatesApi, type DashboardUpdateEntry, type DashboardUpdatePayload, type DashboardUpdateSection } from '@/services/api';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -170,11 +171,11 @@ const buildPayload = (state: EditorState): DashboardUpdatePayload => ({
 });
 
 const inlineFieldClass =
-  'w-full bg-transparent outline-none border-0 placeholder:text-muted-foreground/50 rounded-md -mx-1 px-1 transition-colors hover:bg-muted/40 focus:bg-muted/60';
+  'h-auto min-h-0 border-0 bg-transparent px-1 py-0.5 shadow-none hover:bg-muted/40 focus-visible:bg-muted/60 focus-visible:ring-0 dark:bg-transparent';
 
 const InlineInput = forwardRef<HTMLInputElement, ComponentPropsWithoutRef<'input'>>(
   ({ className, ...props }, ref) => (
-    <input ref={ref} {...props} className={cn(inlineFieldClass, className)} />
+    <Input ref={ref} {...props} className={cn(inlineFieldClass, className)} />
   ),
 );
 InlineInput.displayName = 'InlineInput';
@@ -190,7 +191,7 @@ const AutoTextarea = forwardRef<HTMLTextAreaElement, ComponentPropsWithoutRef<'t
       el.style.height = `${el.scrollHeight}px`;
     }, [value]);
     return (
-      <textarea
+      <Textarea
         ref={innerRef}
         value={value}
         rows={1}

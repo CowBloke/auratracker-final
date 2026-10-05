@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Send, Sparkles } from 'lucide-react';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { Button } from '@/components/ui/button';
 
 export interface SpectateFloatingMessage {
@@ -83,26 +84,26 @@ export function SpectateEffectBar({ messages, onSend, onConfetti, showInput = tr
       {/* Input bar — only for spectators */}
       {showInput && (
         <div className="absolute bottom-2 left-2 right-2 z-20">
-          <form
-            onSubmit={handleSubmit}
-            className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/75 px-3 py-1.5"
-          >
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Envoyer un message… 🎉"
-              maxLength={80}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground min-w-0"
-            />
-            {onConfetti && (
-              <Button variant="ghost" size="icon-xs" type="button" onClick={onConfetti} tabIndex={0} title="Lancer des confettis" className="shrink-0">
-                <Sparkles className="h-3.5 w-3.5" />
-              </Button>
-            )}
-            <Button variant="ghost" size="icon-xs" type="submit" tabIndex={0} aria-label="Action" className="shrink-0">
-              <Send className="h-3.5 w-3.5" />
-            </Button>
+          <form onSubmit={handleSubmit}>
+            <InputGroup className="bg-background/75">
+              <InputGroupInput
+                type="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Envoyer un message… 🎉"
+                maxLength={80}
+              />
+              <InputGroupAddon align="inline-end">
+                {onConfetti && (
+                  <InputGroupButton type="button" size="icon-xs" onClick={onConfetti} title="Lancer des confettis" aria-label="Lancer des confettis">
+                    <Sparkles />
+                  </InputGroupButton>
+                )}
+                <InputGroupButton type="submit" size="icon-xs" aria-label="Envoyer">
+                  <Send />
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
           </form>
         </div>
       )}
