@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Gavel, Landmark, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Item } from '@/components/ui/item';
 
 export interface SanctionParty {
   id: string;
@@ -109,30 +110,14 @@ export default function SanctionModal({
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Type de sanction</Label>
             <div className="flex gap-2">
-              <button
-                onClick={() => setType('AMENDE')}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors',
-                  type === 'AMENDE'
-                    ? 'border-warning/60 bg-warning/10 text-warning font-medium'
-                    : 'border-border/60 text-muted-foreground hover:bg-muted/50'
-                )}
-              >
+              <Item asChild variant="outline" size="sm" className={type === 'AMENDE' ? 'border-primary bg-accent' : undefined}><button onClick={() => setType('AMENDE')} className="flex-1 justify-center text-left">
                 <Landmark className="w-3.5 h-3.5" />
                 Amende
-              </button>
-              <button
-                onClick={() => setType('PAYMENT')}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors',
-                  type === 'PAYMENT'
-                    ? 'border-border/60 bg-muted/10 text-primary font-medium'
-                    : 'border-border/60 text-muted-foreground hover:bg-muted/50'
-                )}
-              >
+              </button></Item>
+              <Item asChild variant="outline" size="sm" className={type === 'PAYMENT' ? 'border-primary bg-accent' : undefined}><button onClick={() => setType('PAYMENT')} className="flex-1 justify-center text-left">
                 <ArrowRight className="w-3.5 h-3.5" />
                 Paiement forcé
-              </button>
+              </button></Item>
             </div>
           </div>
 

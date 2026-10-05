@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { usersApi, type UserPendingSurvey } from '@/services/api';
 import { useSocketBase } from '@/contexts/SocketContext';
 import { toast } from 'sonner';
+import { Item } from '@/components/ui/item';
 
 const BLOCKED_ROUTE_PREFIXES = ['/games', '/party'];
 
@@ -144,16 +145,10 @@ export default function SurveyPopupModal() {
           {pendingSurvey.options.map((option) => {
             const active = selectedOptionId === option.id;
             return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setSelectedOptionId(option.id)}
-                className="w-full rounded-lg border p-3 text-left transition-colors"
-                style={{
+              <Item asChild variant="outline" size="sm"><button key={option.id} type="button" onClick={() => setSelectedOptionId(option.id)} style={{
                   borderColor: active ? option.color : undefined,
                   backgroundColor: active ? `${option.color}22` : undefined,
-                }}
-              >
+                }} className="w-full text-left text-left">
                 <div className="flex items-center gap-3">
                   {option.imageUrl
                     ? <img src={option.imageUrl} alt={option.label} className="h-8 w-8 rounded object-cover border border-border shrink-0" />
@@ -161,7 +156,7 @@ export default function SurveyPopupModal() {
                   }
                   <span className="text-sm font-medium">{option.label}</span>
                 </div>
-              </button>
+              </button></Item>
             );
           })}
         </div>

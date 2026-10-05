@@ -27,6 +27,7 @@ import {
   Swords,
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Item } from '@/components/ui/item';
 
 interface TaxBracket {
   id: string;
@@ -1512,22 +1513,12 @@ function TutorialsTab() {
                     <AccordionContent className="px-2 pb-2 pt-0">
                       <div className="space-y-1">
                         {guide.subsections.map((subsection) => (
-                          <button
-                            key={subsection.id}
-                            type="button"
-                            onClick={() => {
+                          <Item asChild variant="outline" size="sm" className={isSelected && selectedSubsectionId === subsection.id ? 'border-primary bg-accent' : undefined}><button key={subsection.id} type="button" onClick={() => {
                               setSelectedGuideId(guide.id);
                               setSelectedSubsectionId(subsection.id);
-                            }}
-                            className={cn(
-                              'flex w-full items-center rounded-lg border px-3 py-2 text-left text-xs transition-colors',
-                              isSelected && selectedSubsectionId === subsection.id
-                                ? 'border-primary/30 bg-primary/5 text-foreground'
-                                : 'border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-muted/40',
-                            )}
-                          >
+                            }} className="w-full text-left text-left">
                             <span className="truncate font-medium">{subsection.title}</span>
-                          </button>
+                          </button></Item>
                         ))}
                       </div>
                     </AccordionContent>

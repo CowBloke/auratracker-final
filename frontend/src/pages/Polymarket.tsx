@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { resolveImageUrl } from '@/lib/images';
 import { toast } from 'sonner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Item } from '@/components/ui/item';
 
 // ─── Option helpers ───────────────────────────────────────────────────────────
 
@@ -135,30 +136,12 @@ function OptionsEditor({
     <div className="space-y-3">
       {/* Mode toggle */}
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => onModeChange('binary')}
-          className={cn(
-            'px-3 py-1.5 rounded-md text-sm font-medium border transition-colors',
-            mode === 'binary'
-              ? 'bg-primary text-primary-foreground border-primary'
-              : 'bg-background text-muted-foreground border-border hover:bg-muted',
-          )}
-        >
+        <Item asChild variant="outline" size="sm" className={mode === 'binary' ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => onModeChange('binary')} className="w-full text-left">
           Oui / Non
-        </button>
-        <button
-          type="button"
-          onClick={() => onModeChange('custom')}
-          className={cn(
-            'px-3 py-1.5 rounded-md text-sm font-medium border transition-colors',
-            mode === 'custom'
-              ? 'bg-primary text-primary-foreground border-primary'
-              : 'bg-background text-muted-foreground border-border hover:bg-muted',
-          )}
-        >
+        </button></Item>
+        <Item asChild variant="outline" size="sm" className={mode === 'custom' ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => onModeChange('custom')} className="w-full text-left">
           Options personnalisées
-        </button>
+        </button></Item>
       </div>
 
       {/* Inputs */}
@@ -1618,17 +1601,11 @@ export default function Polymarket() {
                   {options.map((opt) => {
                     const isSelected = betPrediction === opt.key;
                     return (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        className="rounded-xl border-2 p-4 flex flex-col items-center gap-2 transition-all focus:outline-none"
-                        style={
+                      <Item asChild variant="outline" size="sm"><button key={opt.key} type="button" style={
                           isSelected
                             ? { background: opt.color, borderColor: opt.color }
                             : { background: 'transparent', borderColor: opt.color, color: opt.color }
-                        }
-                        onClick={() => setBetPrediction(opt.key)}
-                      >
+                        } onClick={() => setBetPrediction(opt.key)} className="w-full text-left">
                         <span className={cn('text-sm font-bold', isSelected ? 'text-white' : '')}>{opt.label}</span>
                         <span className={cn('text-2xl font-semibold tabular-nums leading-none', isSelected ? 'text-white' : '')}>
                           {opt.odds.toFixed(2)}x
@@ -1636,7 +1613,7 @@ export default function Polymarket() {
                         {isSelected && (
                           <span className="text-xs text-white/75 font-medium">Sélectionné ✓</span>
                         )}
-                      </button>
+                      </button></Item>
                     );
                   })}
                 </div>
@@ -1742,22 +1719,13 @@ export default function Polymarket() {
                     style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}
                   >
                     {options.map((opt) => (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        className={cn(
-                          'rounded-md px-3 py-2 text-sm font-medium border-2 transition-all',
-                          resolution === opt.key ? 'text-white border-transparent' : 'bg-background border-border',
-                        )}
-                        style={
+                      <Item asChild variant="outline" size="sm" className={resolution === opt.key ? 'border-primary bg-accent' : undefined}><button key={opt.key} type="button" style={
                           resolution === opt.key
                             ? { background: opt.color }
                             : { color: opt.color, borderColor: opt.color + '60' }
-                        }
-                        onClick={() => setResolution(opt.key)}
-                      >
+                        } onClick={() => setResolution(opt.key)} className="w-full text-left">
                         {opt.label}
-                      </button>
+                      </button></Item>
                     ))}
                   </div>
                 </div>

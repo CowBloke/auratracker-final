@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Empty, EmptyHeader, EmptyDescription } from '@/components/ui/empty';
+import { Item } from '@/components/ui/item';
 
 type SectionCategory = DashboardUpdateSection['category'];
 
@@ -541,10 +542,7 @@ export function DashboardUpdatesManagerDialog({
                       {/* Cover image */}
                       <Popover>
                         <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            className="group relative block w-full overflow-hidden rounded-xl border border-border/50 bg-background/70 text-left transition-colors hover:border-primary/60"
-                          >
+                          <Item asChild variant="outline" size="sm"><button type="button" className="w-full text-left text-left">
                             {form.imageUrl ? (
                               <>
                                 <img
@@ -571,7 +569,7 @@ export function DashboardUpdatesManagerDialog({
                                 Cliquer pour ajouter une image
                               </div>
                             )}
-                          </button>
+                          </button></Item>
                         </PopoverTrigger>
                         <PopoverContent align="start" className="w-[360px]">
                           <ImagePicker
@@ -685,14 +683,10 @@ export function DashboardUpdatesManagerDialog({
                                 ) : null}
                               </CardContent></Card>
                             ))}
-                            <button
-                              type="button"
-                              onClick={() => addSectionItem(category)}
-                              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/60 px-4 py-2 text-xs text-muted-foreground transition hover:border-primary/50 hover:text-foreground"
-                            >
+                            <Item asChild variant="outline" size="sm"><button type="button" onClick={() => addSectionItem(category)} className="w-full justify-center text-left">
                               <Plus className="h-3.5 w-3.5" />
                               Ajouter une ligne
-                            </button>
+                            </button></Item>
                           </div>
                         </div>
                       );

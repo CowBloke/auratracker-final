@@ -273,15 +273,7 @@ export function BraquageLegalTab({ users }: Props) {
               {filteredUsers.map((user) => {
                 const isSelected = user.id === selectedOwnerId;
                 return (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => setSelectedOwnerId(user.id)}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors',
-                      isSelected ? 'border-primary bg-primary/10' : 'border-border/50 bg-background/60 hover:bg-muted/60'
-                    )}
-                  >
+                  <Item asChild variant="outline" size="sm" className={isSelected ? 'border-primary bg-accent' : undefined}><button key={user.id} type="button" onClick={() => setSelectedOwnerId(user.id)} className="w-full text-left text-left">
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={user.profilePicture ? resolveImageUrl(user.profilePicture) : undefined} alt={user.username} />
                       <AvatarFallback>{user.username.slice(0, 1).toUpperCase()}</AvatarFallback>
@@ -293,7 +285,7 @@ export function BraquageLegalTab({ users }: Props) {
                       </div>
                       <p className="truncate text-xs text-muted-foreground">{user.firstName ?? 'Sans prénom'}</p>
                     </div>
-                  </button>
+                  </button></Item>
                 );
               })}
             </div>

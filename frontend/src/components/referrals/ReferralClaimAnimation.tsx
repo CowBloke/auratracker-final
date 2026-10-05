@@ -3,6 +3,7 @@ import { Copy, Sparkles, Ticket, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Item } from '@/components/ui/item';
 
 interface ReferralClaimAnimationProps {
   open: boolean;
@@ -74,12 +75,7 @@ export default function ReferralClaimAnimation({
             Reclame ton code ({clicks}/{CLICKS_NEEDED})
           </p>
 
-          <button
-            type="button"
-            onClick={handleCharge}
-            className="referral-claim-token group relative flex h-36 w-36 items-center justify-center rounded-xl border border-white/15 bg-[radial-gradient(circle_at_top,#facc15,transparent_55%),linear-gradient(140deg,#1f2937,#0f172a_55%,#111827)] transition-transform active:scale-95"
-            style={{ ['--claim-progress' as string]: `${clicks / CLICKS_NEEDED}` }}
-          >
+          <Item asChild variant="outline" size="sm"><button type="button" onClick={handleCharge} style={{ ['--claim-progress' as string]: `${clicks / CLICKS_NEEDED}` }} className="w-36 justify-center text-left">
             <div className="referral-claim-ring absolute inset-0 rounded-xl" />
             <Ticket className="h-14 w-14 text-warning transition-transform group-hover:scale-110" />
             <div className="absolute inset-x-5 bottom-5 h-2 overflow-hidden rounded-full bg-white/10">
@@ -88,7 +84,7 @@ export default function ReferralClaimAnimation({
                 style={{ width: `${(clicks / CLICKS_NEEDED) * 100}%` }}
               />
             </div>
-          </button>
+          </button></Item>
 
           <div className="flex gap-2">
             {Array.from({ length: CLICKS_NEEDED }).map((_, index) => (

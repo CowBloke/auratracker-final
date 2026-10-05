@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Item } from '@/components/ui/item';
 
 const FADE_DURATION = 2000;
 
@@ -92,12 +93,9 @@ export default function IntroVideo() {
             >
               Regarder maintenant
             </button>
-            <button
-              onClick={watchLater}
-              className="px-6 py-2.5 rounded-lg border border-white/30 text-white/70 text-sm hover:border-white/60 hover:text-white transition-colors"
-            >
+            <Item asChild variant="outline" size="sm"><button onClick={watchLater} className="w-full text-left">
               Plus tard
-            </button>
+            </button></Item>
           </div>
         </div>
       )}

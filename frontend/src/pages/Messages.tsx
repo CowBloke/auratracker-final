@@ -2103,28 +2103,14 @@ export default function MessagesPage() {
           </DialogHeader>
           <div className="space-y-4 p-4">
             <div className="grid gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => setRepresentationType('PRIVATE_LAWYER')}
-                className={cn(
-                  'rounded-xl border px-4 py-3 text-left transition-colors',
-                  representationType === 'PRIVATE_LAWYER' ? 'border-success/40 bg-success/10' : 'border-border/40 bg-muted/10',
-                )}
-              >
+              <Item asChild variant="outline" size="sm" className={representationType === 'PRIVATE_LAWYER' ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setRepresentationType('PRIVATE_LAWYER')} className="text-left text-left">
                 <p className="text-sm font-semibold">Cabinet prive</p>
                 <p className="mt-1 text-xs text-muted-foreground">Choisis un avocat et sa specialite.</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setRepresentationType('PUBLIC_DEFENDER')}
-                className={cn(
-                  'rounded-xl border px-4 py-3 text-left transition-colors',
-                  representationType === 'PUBLIC_DEFENDER' ? 'border-border/40 bg-muted/10' : 'border-border/40 bg-muted/10',
-                )}
-              >
+              </button></Item>
+              <Item asChild variant="outline" size="sm" className={representationType === 'PUBLIC_DEFENDER' ? 'border-primary bg-accent' : undefined}><button type="button" onClick={() => setRepresentationType('PUBLIC_DEFENDER')} className="text-left text-left">
                 <p className="text-sm font-semibold">Defenseur public</p>
                 <p className="mt-1 text-xs text-muted-foreground">Representation par l'institution judiciaire.</p>
-              </button>
+              </button></Item>
             </div>
 
             {representationType === 'PRIVATE_LAWYER' ? (
@@ -2142,15 +2128,7 @@ export default function MessagesPage() {
                     {sortedLawFirms.map((firm) => {
                       const primaryLawyer = firm.lawyers?.find((entry) => entry.isPrimaryLawyer) ?? firm.lawyers?.[0] ?? null;
                       return (
-                        <button
-                          key={firm.id}
-                          type="button"
-                          onClick={() => setSelectedLawFirmId(firm.id)}
-                          className={cn(
-                            'w-full rounded-xl border px-4 py-3 text-left transition-colors',
-                            selectedLawFirmId === firm.id ? 'border-success/40 bg-success/10' : 'border-border/40 bg-muted/10 hover:bg-muted/20',
-                          )}
-                        >
+                        <Item asChild variant="outline" size="sm" className={selectedLawFirmId === firm.id ? 'border-primary bg-accent' : undefined}><button key={firm.id} type="button" onClick={() => setSelectedLawFirmId(firm.id)} className="w-full text-left text-left">
                           <div className="flex items-start gap-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/20">
                               {firm.logoUrl ? (
@@ -2172,7 +2150,7 @@ export default function MessagesPage() {
                               </p>
                             </div>
                           </div>
-                        </button>
+                        </button></Item>
                       );
                     })}
                   </div>
@@ -2189,15 +2167,7 @@ export default function MessagesPage() {
                               Aucun avocat disponible dans ce cabinet pour ce dossier.
                             </AlertDescription></Alert>
                           ) : selectedLawFirmLawyers.map((lawyer) => (
-                            <button
-                              key={lawyer.userId}
-                              type="button"
-                              onClick={() => setSelectedLawyerUserId(lawyer.userId)}
-                              className={cn(
-                                'w-full rounded-xl border px-3 py-3 text-left transition-colors',
-                                selectedLawyerUserId === lawyer.userId ? 'border-success/40 bg-success/10' : 'border-border/40 bg-background/70 hover:bg-muted/20',
-                              )}
-                            >
+                            <Item asChild variant="outline" size="sm" className={selectedLawyerUserId === lawyer.userId ? 'border-primary bg-accent' : undefined}><button key={lawyer.userId} type="button" onClick={() => setSelectedLawyerUserId(lawyer.userId)} className="w-full text-left text-left">
                               <div className="flex items-center justify-between gap-3">
                                 <div className="min-w-0">
                                   <p className="text-sm font-medium">{lawyer.user.username}</p>
@@ -2205,7 +2175,7 @@ export default function MessagesPage() {
                                 </div>
                                 {lawyer.isPrimaryLawyer ? <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning">Principal</span> : null}
                               </div>
-                            </button>
+                            </button></Item>
                           ))}
                         </div>
                       </div>
@@ -2564,19 +2534,14 @@ export default function MessagesPage() {
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-0.5">
                       {pinnedMessages.slice(0, 4).map((message) => (
-                        <button
-                          key={message.id}
-                          type="button"
-                          onClick={() => scrollToMessage(message.id)}
-                          className="min-w-44 max-w-64 rounded-lg border border-warning/20 bg-background/80 px-2.5 py-1.5 text-left text-xs shadow-sm transition-colors hover:bg-warning/10"
-                        >
+                        <Item asChild variant="outline" size="sm"><button key={message.id} type="button" onClick={() => scrollToMessage(message.id)} className="min-w-44 max-w-64 text-left text-left">
                           <p className="truncate font-medium text-foreground">
                             {message.sender?.username ?? 'Message'}
                           </p>
                           <p className="mt-0.5 max-h-10 overflow-hidden text-muted-foreground">
                             <FormattedMessageText text={message.body || (message.imageUrl ? '[image]' : 'Message épinglé')} />
                           </p>
-                        </button>
+                        </button></Item>
                       ))}
                     </div>
                   </div>

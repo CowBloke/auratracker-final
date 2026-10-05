@@ -146,22 +146,9 @@ export function MemoryGame({ isPractice, onComplete }: MemoryGameProps) {
       {/* Card grid */}
       <div className="grid grid-cols-4 gap-2">
         {cards.map((card) => (
-          <button
-            key={card.id}
-            type="button"
-            onClick={() => handleClick(card.id)}
-            disabled={card.isMatched || card.isFlipped || checking || isOver}
-            className={cn(
-              'aspect-square rounded-xl border-2 text-2xl transition-all duration-200 select-none',
-              card.isMatched
-                ? cn('scale-95 opacity-70', CARD_COLORS[card.type])
-                : card.isFlipped
-                  ? cn('scale-105', CARD_COLORS[card.type])
-                  : 'cursor-pointer border-border/40 bg-muted/25 hover:bg-muted/50 hover:scale-105 active:scale-95'
-            )}
-          >
+          <Item asChild variant="outline" size="sm" className={card.isMatched ? 'border-primary bg-accent' : undefined}><button key={card.id} type="button" onClick={() => handleClick(card.id)} disabled={card.isMatched || card.isFlipped || checking || isOver} className="w-full text-left">
             {card.isFlipped || card.isMatched ? ICONS[card.type] : '?'}
-          </button>
+          </button></Item>
         ))}
       </div>
 
