@@ -4,7 +4,15 @@ import { getSocket, initSocket } from '@/services/socket';
 import { pixelBoardApi, type PixelBoardAnalysis, type PixelBoardSettings, type PixelBoardState } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item';
+import { PageHeader, PageShell } from '@/components/layout/PageShell';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Slider } from '@/components/ui/slider';
+import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -187,194 +195,200 @@ export default function PixelBoard() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-xs uppercase text-muted-foreground">
-            <SquarePen className="h-4 w-4" />
-            Pixel event
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Pixel Board</h1>
-          <p className="text-sm text-muted-foreground">100x100 pixels, un placement par cooldown, score clans en fin d event.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => void loadState()}>
-            <RefreshCw className="mr-1.5 h-4 w-4" />Sync
-          </Button>
-          {canAdmin && (
-            <Button variant="outline" size="sm" onClick={() => setShowAdmin((value) => !value)}>
-              <Crown className="mr-1.5 h-4 w-4" />Admin
+    <PageShell>
+      <PageHeader
+        title="Pixel Board"
+        description="100x100 pixels, un placement par cooldown, score clans en fin d'event."
+        actions={(
+          <>
+            <Button variant="outline" size="sm" onClick={() => void loadState()}>
+              <RefreshCw />Sync
             </Button>
-          )}
-        </div>
-      </div>
+            {canAdmin && (
+              <Button variant="outline" size="sm" onClick={() => setShowAdmin((value) => !value)}>
+                <Crown />Admin
+              </Button>
+            )}
+          </>
+        )}
+      />
 
       {isPublicLocked ? (
-        <Card>
-          <CardContent className="flex min-h-[360px] flex-col items-center justify-center gap-3 p-8 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted/30">
-              <Lock className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold">Pixel Board bloque</h2>
-            <p className="max-w-md text-sm text-muted-foreground">{settings?.lockedMessage}</p>
-          </CardContent>
-        </Card>
+        <Empty className="min-h-[360px] border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Lock /></EmptyMedia>
+            <EmptyTitle>Pixel Board bloqué</EmptyTitle>
+            <EmptyDescription>{settings?.lockedMessage}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <Card className="overflow-hidden">
-          <CardHeader className="border-b border-border/50 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className={cn('font-medium', canPlace ? 'text-green-500' : 'text-amber-500')}>
-                Cooldown : {cooldownLabel}
-              </span>
-              <span className="font-mono text-xs text-muted-foreground">
-                {hoveredPixel ? `x:${hoveredPixel.x} y:${hoveredPixel.y}` : 'x:- y:-'}
-              </span>
-              <span className="text-muted-foreground">{settings?.isPaused ? 'Pause' : settings?.isEnded ? 'Termine' : `Fin : ${eventRemaining}`}</span>
-              {settings?.isLocked && <span className="text-amber-500">Bloque public</span>}
-              <span className="text-muted-foreground">{status}</span>
-            </div>
-          </CardHeader>
-          <CardContent className="p-3 sm:p-4">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => updateZoom(zoom - 0.25)}>
-                <Minus className="h-4 w-4" />
-              </Button>
-              <input
-                aria-label="Zoom canvas"
-                type="range"
-                min="0.5"
-                max="4"
-                step="0.25"
-                value={zoom}
-                onChange={(event) => updateZoom(Number(event.target.value))}
-                className="w-40"
-              />
-              <Button type="button" size="sm" variant="outline" onClick={() => updateZoom(zoom + 0.25)}>
-                <Plus className="h-4 w-4" />
-              </Button>
-              <span className="font-mono text-xs text-muted-foreground">{Math.round(zoom * 100)}%</span>
-            </div>
-            <div className="max-h-[78vh] overflow-auto rounded border border-border bg-muted/20 p-2">
-              <div className="min-w-[640px]" style={{ width: `${zoom * 100}%` }}>
-                <div
-                  className="grid w-full border border-border bg-white shadow-sm"
-                  style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))`, aspectRatio: '1 / 1' }}
-                >
-                  {board.map((color, index) => (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b">
+              <CardTitle className="flex flex-wrap items-center gap-2">
+                <Badge variant={canPlace ? 'success' : 'warning'}>Cooldown : {cooldownLabel}</Badge>
+                {settings?.isLocked && <Badge variant="warning">Bloqué public</Badge>}
+              </CardTitle>
+              <CardDescription>
+                {settings?.isPaused ? 'Pause' : settings?.isEnded ? 'Terminé' : `Fin : ${eventRemaining}`} · {status}
+              </CardDescription>
+              <CardAction>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {hoveredPixel ? `x:${hoveredPixel.x} y:${hoveredPixel.y}` : 'x:- y:-'}
+                </span>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <Button type="button" size="icon-sm" variant="outline" aria-label="Zoom arrière" onClick={() => updateZoom(zoom - 0.25)}>
+                  <Minus />
+                </Button>
+                <Slider
+                  aria-label="Zoom canvas"
+                  min={0.5}
+                  max={4}
+                  step={0.25}
+                  value={[zoom]}
+                  onValueChange={([value]) => updateZoom(value)}
+                  className="w-40"
+                />
+                <Button type="button" size="icon-sm" variant="outline" aria-label="Zoom avant" onClick={() => updateZoom(zoom + 0.25)}>
+                  <Plus />
+                </Button>
+                <span className="font-mono text-xs text-muted-foreground">{Math.round(zoom * 100)}%</span>
+              </div>
+              <ScrollArea className="max-h-[78vh] rounded-md border bg-muted/20">
+                <div className="min-w-[640px] p-2" style={{ width: `${zoom * 100}%` }}>
+                  <div
+                    className="grid w-full border bg-white"
+                    style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))`, aspectRatio: '1 / 1' }}
+                  >
+                    {board.map((color, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        aria-label={`Pixel ${index % BOARD_SIZE}, ${Math.floor(index / BOARD_SIZE)}`}
+                        onClick={() => placePixel(index)}
+                        onMouseEnter={() => setHoveredPixel({ x: index % BOARD_SIZE, y: Math.floor(index / BOARD_SIZE) })}
+                        onFocus={() => setHoveredPixel({ x: index % BOARD_SIZE, y: Math.floor(index / BOARD_SIZE) })}
+                        onMouseLeave={() => setHoveredPixel(null)}
+                        onBlur={() => setHoveredPixel(null)}
+                        className="aspect-square border-0 p-0 outline outline-0 outline-offset-0 hover:relative hover:z-10 hover:outline-1 hover:outline-black focus-visible:relative focus-visible:z-10 focus-visible:outline-1 focus-visible:outline-black"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-col gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Palette</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-8 gap-2">
+                  {palette.map((color) => (
                     <button
-                      key={index}
+                      key={color}
                       type="button"
-                      aria-label={`Pixel ${index % BOARD_SIZE}, ${Math.floor(index / BOARD_SIZE)}`}
-                      onClick={() => placePixel(index)}
-                      onMouseEnter={() => setHoveredPixel({ x: index % BOARD_SIZE, y: Math.floor(index / BOARD_SIZE) })}
-                      onFocus={() => setHoveredPixel({ x: index % BOARD_SIZE, y: Math.floor(index / BOARD_SIZE) })}
-                      onMouseLeave={() => setHoveredPixel(null)}
-                      onBlur={() => setHoveredPixel(null)}
-                      className="aspect-square border-0 p-0 outline outline-0 outline-offset-0 hover:relative hover:z-10 hover:outline-1 hover:outline-black focus-visible:relative focus-visible:z-10 focus-visible:outline-1 focus-visible:outline-black"
+                      title={color}
+                      onClick={() => setSelectedColor(color)}
+                      className={cn('h-8 rounded-md border', selectedColor === color && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}
                       style={{ backgroundColor: color }}
                     />
                   ))}
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="py-3">
-              <h2 className="text-sm font-semibold">Palette</h2>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-8 gap-2">
-                {palette.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    title={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={cn('h-8 rounded border border-border', selectedColor === color && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Trophy className="size-4" />Classement</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {leaderboard.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aucun pixel posé.</p>
+                ) : (
+                  <ItemGroup>
+                    {leaderboard.slice(0, 6).map((entry, index) => (
+                      <Item key={entry.userId} size="sm">
+                        <ItemContent>
+                          <ItemTitle style={entry.usernameColor ? { color: entry.usernameColor } : undefined}>
+                            {index + 1}. {entry.username}
+                          </ItemTitle>
+                        </ItemContent>
+                        <ItemActions>
+                          <span className="font-mono text-xs text-muted-foreground">{entry.actions}</span>
+                        </ItemActions>
+                      </Item>
+                    ))}
+                  </ItemGroup>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="py-3">
-              <h2 className="flex items-center gap-2 text-sm font-semibold"><Trophy className="h-4 w-4" />Leaderboard</h2>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {leaderboard.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun pixel pose.</p>
-              ) : leaderboard.slice(0, 6).map((entry, index) => (
-                <div key={entry.userId} className="flex items-center justify-between rounded border border-border/60 px-2 py-1.5 text-sm">
-                  <span className="truncate" style={entry.usernameColor ? { color: entry.usernameColor } : undefined}>
-                    {index + 1}. {entry.username}
-                  </span>
-                  <span className="font-mono text-xs text-muted-foreground">{entry.actions}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="py-3">
-              <h2 className="text-sm font-semibold">Analyse</h2>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={loadAnalysis}>Calculer</Button>
-              <Button size="sm" variant="outline" disabled={!analysis} onClick={() => analysis && downloadJson('pixel-board-analysis.json', analysis)}>
-                <Download className="mr-1.5 h-4 w-4" />Export
-              </Button>
-              {analysis && <p className="w-full text-xs text-muted-foreground">{analysis.eventCount} events logs.</p>}
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Analyse</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={loadAnalysis}>Calculer</Button>
+                <Button size="sm" variant="outline" disabled={!analysis} onClick={() => analysis && downloadJson('pixel-board-analysis.json', analysis)}>
+                  <Download />Export
+                </Button>
+                {analysis && <p className="w-full text-xs text-muted-foreground">{analysis.eventCount} events logs.</p>}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
       )}
 
       {canAdmin && showAdmin && (
         <Card>
-          <CardHeader className="py-3">
-            <h2 className="text-sm font-semibold">Admin Pixel Board</h2>
+          <CardHeader>
+            <CardTitle>Admin Pixel Board</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap items-end gap-3">
-            <label className="space-y-1 text-xs text-muted-foreground">
-              Cooldown secondes
-              <Input value={adminCooldown} onChange={(e) => setAdminCooldown(e.target.value)} className="w-32" />
-            </label>
-            <label className="space-y-1 text-xs text-muted-foreground">
-              Duree heures
-              <Input value={adminDurationHours} onChange={(e) => setAdminDurationHours(e.target.value)} className="w-32" />
-            </label>
-            <label className="min-w-[260px] flex-1 space-y-1 text-xs text-muted-foreground">
-              Message page bloquee
-              <textarea
+          <CardContent className="flex flex-col gap-6">
+            <FieldGroup className="sm:grid sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="pixel-cooldown">Cooldown (secondes)</FieldLabel>
+                <Input id="pixel-cooldown" value={adminCooldown} onChange={(e) => setAdminCooldown(e.target.value)} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="pixel-duration">Durée (heures)</FieldLabel>
+                <Input id="pixel-duration" value={adminDurationHours} onChange={(e) => setAdminDurationHours(e.target.value)} />
+              </Field>
+            </FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="pixel-locked-message">Message page bloquée</FieldLabel>
+              <Textarea
+                id="pixel-locked-message"
                 value={adminLockedMessage}
                 onChange={(e) => setAdminLockedMessage(e.target.value)}
                 maxLength={240}
-                className="min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
-            </label>
-            <Button size="sm" onClick={saveAdminSettings}>Appliquer</Button>
-            <Button size="sm" variant="outline" onClick={toggleLocked}>
-              <Lock className="mr-1.5 h-4 w-4" />
-              {settings?.isLocked ? 'Ouvrir public' : 'Bloquer public'}
-            </Button>
-            <Button size="sm" variant="outline" onClick={togglePause}>
-              {settings?.isPaused ? <Play className="mr-1.5 h-4 w-4" /> : <Pause className="mr-1.5 h-4 w-4" />}
-              {settings?.isPaused ? 'Reprendre' : 'Pause'}
-            </Button>
-            <Button size="sm" variant="outline" onClick={forceEnd}>Force end</Button>
-            <Button size="sm" variant="outline" className="border-destructive/50 text-destructive" onClick={resetBoard}>
-              <RotateCcw className="mr-1.5 h-4 w-4" />Reset canvas
-            </Button>
+            </Field>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={saveAdminSettings}>Appliquer</Button>
+              <Button size="sm" variant="outline" onClick={toggleLocked}>
+                <Lock />
+                {settings?.isLocked ? 'Ouvrir public' : 'Bloquer public'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={togglePause}>
+                {settings?.isPaused ? <Play /> : <Pause />}
+                {settings?.isPaused ? 'Reprendre' : 'Pause'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={forceEnd}>Force end</Button>
+              <Button size="sm" variant="destructive" onClick={resetBoard}>
+                <RotateCcw />Reset canvas
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageShell>
   );
 }
