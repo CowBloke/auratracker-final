@@ -22,6 +22,7 @@ import { ProductionModal } from './components/ProductionModal';
 import { BUSINESS_ICON_MAP } from './constants';
 import { isYouNotification, withRouteError } from './utils';
 import { FeedCard } from './components/YouPrimitives';
+import { YouSkillsCard } from './components/YouSkillsCard';
 import { type FeedItem } from './types';
 import { CarteTab, type CarteTabHandle } from './tabs/CarteTab';
 import { BusinessBrowserModal } from './components/BusinessBrowserModal';
@@ -248,6 +249,8 @@ function DashLeftRail({ data, currentUserId, onManageBiz, onWorkBiz, onStartPlac
               </CardContent>
             </Card>
           ) : null}
+
+          <YouSkillsCard />
 
           <div className="flex flex-col gap-2">
             {owned.map((b) => (
